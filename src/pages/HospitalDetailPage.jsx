@@ -1,0 +1,601 @@
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Container, Row, Col, Nav } from 'react-bootstrap'
+import useHospitalDetail from '../hooks/useHospitalDetail'
+import useDoctors from '../hooks/useDoctors'
+import DoctorCard from '../components/common/DoctorCard'
+import { HospitalDetailSkeleton } from '../components/common/Skeletons'
+import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
+import { useTranslation } from 'react-i18next'
+import { useTheme } from '../context/ThemeContext'
+import { useFavorites } from '../context/FavoritesContext'
+import { translateMetadata } from '../utils/translationUtils'
+import useShare from '../hooks/useShare'
+import ShareModal from '../components/common/ShareModal'
+import { 
+  IconHeart, IconShare, IconCircleCheckFilled, IconMapPin, IconClock, 
+  IconPhone, IconWorld, IconStar, IconUsers, IconBed, 
+  IconAmbulance, IconStethoscope, IconNurse, IconMicroscope,
+  IconChevronRight, IconMessageQuestion, IconPhoto, IconBriefcase,
+  IconCalendarEvent, IconCheck, IconDiscountCheckFilled,
+  IconScissors, IconEye, IconLayoutGrid, IconActivity
+} from '@tabler/icons-react'
+
+const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003f?q=80&w=2070&auto=format&fit=crop'
+const DEMO_LOGO = 'https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=2070&auto=format&fit=crop'
+
+function HospitalDetailPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { isHospitalFavorite, toggleFavoriteHospital } = useFavorites()
+  const { triggerShare, shareModalOpen, shareData, closeShareModal } = useShare()
+  const { t, i18n } = useTranslation()
+  const language = i18n.language
+  const { theme } = useTheme()
+
+  const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail(id)
+  const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: id })
+
+  const [activeTab, setActiveTab] = useState('summary')
+  const activeTabRef = useRef('summary')
+  const tabContainerRef = useRef(null)
+  const isProgrammaticScroll = useRef(false)
+  const scrollTimeout = useRef(null)
+
+  const handleSetActiveTab = (tab) => {
+    if (activeTabRef.current !== tab) {
+      activeTabRef.current = tab
+      setActiveTab(tab)
+    }
+  }
+
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      isProgrammaticScroll.current = true;
+      handleSetActiveTab(sectionId);
+
+      const isMobile = window.innerWidth < 992;
+      const offset = isMobile ? 148 : 205;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+
+      scrollTimeout.current = setTimeout(() => {
+        isProgrammaticScroll.current = false;
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    const updateActiveTabOnScroll = () => {
+      if (isProgrammaticScroll.current) return;
+
+      const sections = ['summary', 'department', 'doctors', 'facilities', 'gallery', 'reviews', 'contact'];
+      const isMobile = window.innerWidth < 992;
+      const offset = isMobile ? 150 : 220;
+
+      let currentActive = 'summary';
+
+      for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= offset) {
+            currentActive = id;
+          }
+        }
+      }
+
+      handleSetActiveTab(currentActive);
+    };
+
+    window.addEventListener('scroll', updateActiveTabOnScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', updateActiveTabOnScroll);
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeTab) return;
+    const container = tabContainerRef.current;
+    if (!container) return;
+
+    const activeEl = container.querySelector('.nav-link.active');
+    if (!activeEl) return;
+
+    const containerWidth = container.offsetWidth;
+    const activeWidth = activeEl.offsetWidth;
+    const activeLeft = activeEl.offsetLeft;
+
+    const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
+
+    container.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth'
+    });
+  }, [activeTab]);
+
+  if (loadingHeader) return (
+    <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh' }}>
+       <Container className="py-5">
+         <HospitalDetailSkeleton />
+       </Container>
+    </div>
+  )
+
+  if (errorHeader || !hospital) return (
+    <div className="text-center py-5" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ fontSize: 60, marginBottom: 20 }}>🏥</div>
+      <h4 style={{ color: '#1E293B', fontWeight: 700 }}>{t('hospital_not_found')}</h4>
+      <div className="d-flex justify-content-center gap-3 mt-4">
+        <button onClick={() => refetchHospital()} style={{ background: '#006B52', color: 'white', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 600 }}>{t('try_again')}</button>
+        <button onClick={() => navigate('/hospitals')} style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 28px', fontWeight: 600, color: '#1E293B' }}>{t('back_to_hospitals')}</button>
+      </div>
+    </div>
+  )
+
+  const primaryGreen = '#006B52'
+  const textColor = '#1E293B'
+  const mutedColor = '#64748B'
+  const borderColor = '#E2E8F0'
+
+  return (
+    <div className="page-wrapper" style={{ background: '#F9FAFB', minHeight: '100vh', fontFamily: "'Hind Siliguri', sans-serif" }}>
+      
+      {/* 1. Breadcrumbs */}
+      <div style={{ padding: '12px 0' }}>
+        <Container>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/')}>হোম</span>
+            <IconChevronRight size={14} color={mutedColor} />
+            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/hospitals')}>হাসপাতাল</span>
+            <IconChevronRight size={14} color={mutedColor} />
+            <span style={{ color: mutedColor }}>{hospital?.name}</span>
+          </div>
+        </Container>
+      </div>
+
+      {/* 2. Hero Section (Header part remains premium) */}
+      <section style={{ marginBottom: 40 }}>
+        <Container>
+          <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${borderColor}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <div style={{ height: 320, width: '100%', position: 'relative', background: '#F1F5F9' }}>
+              <img 
+                src={hospital?.photo_url || DEMO_BANNER} 
+                alt="Banner"
+                onError={(e) => { e.target.style.display='none' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            <div style={{ padding: '0 40px 40px', marginTop: -90, position: 'relative' }}>
+              <Row className="g-4 align-items-end">
+                <Col md={4} lg={3}>
+                  <div style={{ position: 'relative', width: '100%', maxWidth: 220, margin: '0 auto' }}>
+                    <div style={{ width: '100%', aspectRatio: '1/1', background: 'white', borderRadius: 24, padding: 12, border: `1px solid ${borderColor}`, boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img src={DEMO_LOGO} alt="Logo" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                    </div>
+                    <div style={{ marginTop: 15, background: primaryGreen, color: 'white', padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(0,107,82,0.2)' }}>
+                      <IconDiscountCheckFilled size={20} /> ভেরিফাইড হাসপাতাল
+                    </div>
+                  </div>
+                </Col>
+                <Col md={8} lg={9}>
+                  <div className="d-flex flex-column gap-3">
+                    <div className="d-flex flex-column flex-xl-row justify-content-between align-items-start gap-4">
+                      <div style={{ flex: 1 }}>
+                        <div className="d-flex align-items-center gap-2 mb-1">
+                          <h1 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 950, color: textColor, margin: 0, lineHeight: 1.2 }}>{hospital?.name}</h1>
+                          <IconDiscountCheckFilled size={26} color="#10B981" style={{ flexShrink: 0 }} />
+                        </div>
+                        <p style={{ fontSize: 18, fontWeight: 700, color: '#475569', margin: 0 }}>মাল্টিস্পেশালিটি হাসপাতাল</p>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <button 
+                          onClick={() => hospital && toggleFavoriteHospital(hospital)}
+                          style={{ 
+                            height: 46, 
+                            padding: '0 20px', 
+                            borderRadius: 10, 
+                            border: `1px solid ${hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : borderColor}`, 
+                            background: hospital && isHospitalFavorite(hospital.id) ? '#FEF2F2' : 'white', 
+                            color: hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : textColor,
+                            fontWeight: 800, 
+                            fontSize: 14, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8, 
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <IconHeart 
+                            size={18} 
+                            fill={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : 'none'} 
+                            color={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : textColor} 
+                          /> 
+                          {hospital && isHospitalFavorite(hospital.id) ? 'সেভড' : 'সেভ'}
+                        </button>
+                        <button 
+                          onClick={() => hospital && triggerShare({
+                            title: hospital.name,
+                            text: `${hospital.address || 'মাল্টিস্পেশালিটি হাসপাতাল'} | Doctor Booklet`,
+                            url: window.location.href,
+                            image: hospital.photo_url || DEMO_BANNER
+                          })}
+                          style={{ height: 46, padding: '0 20px', borderRadius: 10, border: `1px solid ${borderColor}`, background: 'white', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                        >
+                          <IconShare size={18} /> শেয়ার
+                        </button>
+                        <button onClick={() => navigate(`/doctors?hospital_id=${id}`)} style={{ height: 46, padding: '0 28px', borderRadius: 10, border: 'none', background: primaryGreen, color: 'white', fontWeight: 950, fontSize: 15, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(0,107,82,0.15)' }}>অ্যাপয়েন্টমেন্ট নিন</button>
+                      </div>
+                    </div>
+                    <div className="d-flex flex-column gap-2 mb-1">
+                      <div className="d-flex align-items-center gap-3" style={{ color: '#475569', fontSize: 15, fontWeight: 700 }}><IconMapPin size={20} color={mutedColor} /> {hospital?.address || 'ধানমণ্ডি, ঢাকা - ১২০৫'}</div>
+                      <div className="d-flex align-items-center gap-3" style={{ color: '#475569', fontSize: 15, fontWeight: 700 }}><IconPhone size={20} color={mutedColor} /> {hospital?.phone || '+880 2 48119911-15'}</div>
+                      <div className="d-flex align-items-center gap-3" style={{ color: '#475569', fontSize: 15, fontWeight: 700 }}><IconWorld size={20} color={mutedColor} /> {hospital?.url || 'www.labaidhospital.com'}</div>
+                    </div>
+                    <div className="d-flex align-items-center gap-4 flex-wrap">
+                      <div className="d-flex align-items-center gap-2"><IconStar size={22} color="#F59E0B" fill="#F59E0B" /><span style={{ fontSize: 17, fontWeight: 950, color: textColor }}>4.8</span><span style={{ fontSize: 14, color: mutedColor, fontWeight: 700 }}>(1,256 রিভিউ)</span></div>
+                      <div style={{ width: 1.5, height: 18, background: '#E2E8F0' }} />
+                      <div className="d-flex align-items-center gap-2" style={{ color: '#334155', fontWeight: 800 }}><IconUsers size={20} color={mutedColor} /><span style={{ fontSize: 14 }}>রোগী সেবা দেওয়া হয়েছে: ৫০০K+</span></div>
+                      <div style={{ width: 1.5, height: 18, background: '#E2E8F0' }} />
+                      <div className="d-flex align-items-center gap-2" style={{ color: '#334155', fontWeight: 800 }}><IconBed size={20} color={mutedColor} /><span style={{ fontSize: 14 }}>বেড সংখ্যা: ২৫০+</span></div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </div>
+            <div style={{ padding: '24px 40px', background: '#F8FAFC', borderTop: `1.5px solid #F1F5F9` }}>
+              <Row className="g-4">
+                {[
+                  { icon: <IconClock size={24} />, label: '২৪/৭ সেবা', value: '২৪ ঘণ্টা খোলা' },
+                  { icon: <IconAmbulance size={24} />, label: 'অ্যাম্বুলেন্স', value: 'সার্ভিস আছে' },
+                  { icon: <IconBed size={24} />, label: 'ইনডোর বেড', value: '২৫০+' },
+                  { icon: <IconStethoscope size={24} />, label: 'ডাক্তারের সংখ্যা', value: '১৫০+' },
+                  { icon: <IconNurse size={24} />, label: 'নার্স সংখ্যা', value: '৩০০+' },
+                  { icon: <IconMicroscope size={24} />, label: 'প্যাথলজি', value: 'সুবিধা আছে' }
+                ].map((item, idx) => (
+                  <Col key={idx} xs={6} lg={2} style={{ borderRight: idx < 5 && window.innerWidth >= 992 ? `1.5px solid #F1F5F9` : 'none', padding: '0 15px' }}>
+                    <div className="d-flex align-items-center gap-3">
+                      <div style={{ color: '#059669', flexShrink: 0 }}>{item.icon}</div>
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 900, color: mutedColor, margin: 0, textTransform: 'uppercase', marginBottom: 2 }}>{item.label}</p>
+                        <p style={{ fontSize: 13, fontWeight: 950, color: textColor, margin: 0 }}>{item.value}</p>
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* 3. Navigation Tabs */}
+      <div className="sticky-tab-bar" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}`, position: 'sticky', zIndex: 990 }}>
+        <Container>
+          <Nav ref={tabContainerRef} className="flex-nowrap overflow-auto" activeKey={activeTab} onSelect={(k) => scrollToSection(k)} style={{ gap: 40, padding: '0' }}>
+            {[
+              { key: 'summary', label: 'সারসংক্ষেপ', icon: <IconLayoutGrid size={20} /> },
+              { key: 'department', label: 'ডিপার্টমেন্ট', icon: <IconStethoscope size={20} /> },
+              { key: 'doctors', label: 'ডাক্তার সমূহ', icon: <IconUsers size={20} /> },
+              { key: 'facilities', label: 'সুবিধাসমূহ', icon: <IconStar size={20} /> },
+              { key: 'gallery', label: 'গ্যালারি', icon: <IconPhoto size={20} /> },
+              { key: 'reviews', label: 'রিভিউ (১২৫৬)', icon: <IconStar size={20} /> },
+              { key: 'contact', label: 'যোগাযোগ', icon: <IconPhone size={20} /> }
+            ].map(tab => (
+              <Nav.Item key={tab.key}>
+                <Nav.Link eventKey={tab.key} style={{ padding: '20px 0', fontSize: 15, fontWeight: 900, color: activeTab === tab.key ? '#059669' : mutedColor, borderBottom: `3px solid ${activeTab === tab.key ? '#059669' : 'transparent'}`, borderRadius: 0, transition: '0.2s', background: 'transparent', display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>{tab.icon} {tab.label}</Nav.Link>
+              </Nav.Item>
+            ))}
+          </Nav>
+        </Container>
+      </div>
+
+      {/* 4. Main Content (LG=8 for Content, LG=4 for Sidebar) */}
+      <Container style={{ paddingTop: 40, paddingBottom: 80 }}>
+        <Row className="g-5">
+          {/* Main Content Column */}
+          <Col lg={8}>
+            <div className="d-flex flex-column" style={{ gap: '60px' }}>
+              
+              {/* About Section */}
+              <div id="summary" className="scroll-section">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, margin: 0 }}>হাসপাতাল সম্পর্কে</h3>
+                </div>
+                <p style={{ color: '#334155', fontSize: 16, lineHeight: 1.8, margin: 0, textAlign: 'justify' }}>
+                  {hospital?.bio || 'ল্যাবএইড হাসপাতাল, ধানমণ্ডি বাংলাদেশের একটি শীর্ষস্থানীয় ও আধুনিক মাল্টিস্পেশালিটি হাসপাতাল। ১৯৮৮ সালে প্রতিষ্ঠিত এই হাসপাতালটি দীর্ঘ সময় ধরে উন্নত চিকিৎসা সেবা প্রদান করে আসছে। এখানে অভিজ্ঞ ডাক্তার, আধুনিক চিকিৎসা সরঞ্জাম ও রোগীদের মানসম্মত পরিবেশ নিশ্চিত করা হয়।'}
+                </p>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Departments Section */}
+              <div id="department" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>আমাদের ডিপার্টমেন্ট সমূহ</h3>
+                <Row className="g-3">
+                  {[
+                    { name: 'কার্ডিওলজি', sub: 'হৃদরোগ বিভাগ', icon: <IconHeart size={28} /> },
+                    { name: 'নিউরোলজি', sub: 'স্নায়ুরোগ বিভাগ', icon: <IconActivity size={28} /> },
+                    { name: 'গ্যাস্ট্রোএন্টারোলজি', sub: 'হজম ও লিভার বিভাগ', icon: <IconActivity size={28} /> },
+                    { name: 'অর্থোপেডিকস', sub: 'হাড় ও জয়েন্ট বিভাগ', icon: <IconActivity size={28} /> },
+                    { name: 'ইউরোলজি', sub: 'মূত্র ও কিডনি বিভাগ', icon: <IconScissors size={28} /> },
+                    { name: 'গাইনি ও অবস', sub: 'নারী ও প্রসূতি বিভাগ', icon: <IconUsers size={28} /> },
+                    { name: 'চক্ষু বিভাগ', sub: 'চোখের সেবা', icon: <IconEye size={28} /> },
+                    { name: 'ইএনটি', sub: 'কান, নাক, গলা', icon: <IconStethoscope size={28} /> }
+                  ].map((dept, idx) => (
+                    <Col key={idx} xs={6} md={4} lg={3}>
+                      <div style={{ 
+                        padding: '24px 20px', borderRadius: 16, border: `1.5px solid #F1F5F9`, 
+                        background: 'white', color: textColor, height: '100%',
+                        display: 'flex', flexDirection: 'column', gap: 12, transition: '0.2s', cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                      }} onMouseEnter={e => e.currentTarget.style.borderColor = primaryGreen} onMouseLeave={e => e.currentTarget.style.borderColor = '#F1F5F9'}>
+                        <div style={{ color: primaryGreen }}>{dept.icon}</div>
+                        <div>
+                          <p style={{ fontSize: 16, fontWeight: 900, margin: 0 }}>{dept.name}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: mutedColor, margin: 0 }}>{dept.sub}</p>
+                        </div>
+                      </div>
+                    </Col>
+                  ))}
+                  <Col xs={6} md={4} lg={3}>
+                    <div style={{ padding: '24px 20px', borderRadius: 16, border: `1.5px solid ${borderColor}`, background: '#F8FAFC', color: mutedColor, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer' }}>
+                      <IconChevronRight size={20} /> <span style={{ fontWeight: 900, fontSize: 14 }}>আরও দেখুন</span>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Popular Doctors Section */}
+              <div id="doctors" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>জনপ্রিয় ডাক্তার সমূহ</h3>
+                <Row className="g-3">
+                  {doctors.slice(0, 4).map(doc => (
+                    <Col key={doc.id} xs={12} sm={6} md={4}>
+                      <div style={{ background: 'white', borderRadius: 20, border: `1.5px solid #F1F5F9`, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                        <div style={{ padding: 16 }}>
+                          <img src={doc.photo || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=1470&auto=format&fit=crop'} alt={doc.name} style={{ width: '100%', aspectRatio: '1/1', borderRadius: 16, objectFit: 'cover', marginBottom: 12 }} />
+                          <h4 style={{ fontSize: 15, fontWeight: 950, color: textColor, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, marginBottom: 2 }}>কার্ডিওলজিস্ট</p>
+                          <p style={{ fontSize: 12, fontWeight: 800, color: '#334155', margin: 0 }}>{doc.experience} বছর অভিজ্ঞতা</p>
+                        </div>
+                        <div className="mt-auto border-top">
+                          <button onClick={() => navigate(`/doctors/${doc.id}`)} style={{ width: '100%', padding: '12px', border: 'none', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 900 }}>প্রোফাইল দেখুন</button>
+                        </div>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+                <div className="text-end mt-4">
+                  <span style={{ color: '#059669', fontWeight: 900, cursor: 'pointer', fontSize: 15 }}>সব ডাক্তার দেখুন</span>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Facilities Section */}
+              <div id="facilities" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>হাসপাতালের সুবিধাসমূহ</h3>
+                <Row className="g-4">
+                  {[
+                    { icon: <IconAmbulance size={28} />, name: '২৪/৭ অ্যাম্বুলেন্স' },
+                    { icon: <IconBed size={28} />, name: 'আইসিইউ (ICU)' },
+                    { icon: <IconMicroscope size={28} />, name: 'আধুনিক প্যাথলজি' },
+                    { icon: <IconActivity size={28} />, name: 'জরুরী বিভাগ (Emergency)' },
+                    { icon: <IconStethoscope size={28} />, name: 'বিশেষজ্ঞ ডাক্তার' },
+                    { icon: <IconCheck size={28} />, name: 'ফার্মেসি' },
+                  ].map((facility, idx) => (
+                    <Col key={idx} xs={6} md={4}>
+                      <div style={{ padding: '20px', borderRadius: 16, border: `1.5px solid #F1F5F9`, background: 'white', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ color: '#059669' }}>{facility.icon}</div>
+                        <p style={{ fontSize: 16, fontWeight: 800, color: textColor, margin: 0 }}>{facility.name}</p>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Gallery Section */}
+              <div id="gallery" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>গ্যালারি</h3>
+                <Row className="g-3">
+                  {[
+                    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=1453&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1581594693702-fbdc51b2763b?q=80&w=1470&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1538108149393-fbbd81895907?q=80&w=1528&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=1470&auto=format&fit=crop'
+                  ].map((img, idx) => (
+                    <Col key={idx} xs={6} md={6}>
+                      <img src={img} alt="Gallery" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 16, border: `1px solid ${borderColor}` }} />
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Reviews Section */}
+              <div id="reviews" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>রোগী রিভিউ</h3>
+                <div style={{ background: 'white', borderRadius: 24, padding: 32, border: `1px solid ${borderColor}` }}>
+                  <div className="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom">
+                    <div style={{ fontSize: 48, fontWeight: 950, color: textColor, lineHeight: 1 }}>4.8</div>
+                    <div>
+                      <div className="d-flex gap-1 mb-1">
+                        {[1, 2, 3, 4, 5].map(s => <IconStar key={s} size={22} color="#F59E0B" fill="#F59E0B" />)}
+                      </div>
+                      <p style={{ fontSize: 15, color: mutedColor, margin: 0, fontWeight: 700 }}>১,২৫৬ জন রোগীর মতামতের ভিত্তিতে</p>
+                    </div>
+                  </div>
+                  
+                  <div className="d-flex flex-column gap-4">
+                    {[1, 2].map((review) => (
+                      <div key={review} className="d-flex gap-3">
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#334155', flexShrink: 0 }}>
+                          R
+                        </div>
+                        <div>
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <h5 style={{ fontSize: 16, fontWeight: 900, color: textColor, margin: 0 }}>রাকিবুল ইসলাম</h5>
+                            <span style={{ fontSize: 13, color: mutedColor, fontWeight: 600 }}>২ দিন আগে</span>
+                          </div>
+                          <div className="d-flex gap-1 mb-2">
+                            {[1, 2, 3, 4, 5].map(s => <IconStar key={s} size={14} color="#F59E0B" fill="#F59E0B" />)}
+                          </div>
+                          <p style={{ fontSize: 15, color: '#475569', margin: 0, lineHeight: 1.6 }}>হাসপাতালের পরিবেশ খুব সুন্দর এবং পরিষ্কার। ডাক্তার এবং নার্সদের ব্যবহার অনেক ভালো ছিল। সার্ভিস নিয়ে আমি সন্তুষ্ট।</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button style={{ width: '100%', marginTop: 24, padding: '12px', borderRadius: 12, border: `1px solid ${borderColor}`, background: '#F8FAFC', color: textColor, fontWeight: 800, fontSize: 15 }}>আরও রিভিউ দেখুন</button>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: borderColor }} />
+
+              {/* Contact Section */}
+              <div id="contact" className="scroll-section">
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>যোগাযোগের ঠিকানা</h3>
+                <div style={{ background: 'white', borderRadius: 24, padding: 32, border: `1px solid ${borderColor}` }}>
+                  <div className="d-flex flex-column gap-4">
+                    {[
+                      { icon: <IconPhone size={24} />, title: 'ফোন নাম্বার', value: hospital?.phone || '+880 2 48119911-15' },
+                      { icon: <IconMessageQuestion size={24} />, title: 'ইমেইল এড্রেস', value: hospital?.email || 'info@labaidhospital.com' },
+                      { icon: <IconWorld size={24} />, title: 'ওয়েবসাইট', value: hospital?.url || 'www.labaidhospital.com' },
+                      { icon: <IconMapPin size={24} />, title: 'লোকেশন', value: hospital?.address || 'ধানমণ্ডি, ঢাকা - ১২০৫, বাংলাদেশ' }
+                    ].map((contact, idx) => (
+                      <div key={idx} className="d-flex align-items-start gap-3">
+                        <div style={{ width: 48, height: 48, borderRadius: 12, background: '#F0FDF4', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {contact.icon}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 800, color: mutedColor, margin: 0, marginBottom: 2 }}>{contact.title}</p>
+                          <p style={{ fontSize: 16, fontWeight: 900, color: textColor, margin: 0 }}>{contact.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </Col>
+
+          {/* Sidebar Column */}
+          <Col lg={4}>
+            <div className="sticky-sidebar d-flex flex-column gap-4">
+              
+              {/* Info Sidebar Card */}
+              <div style={{ background: '#F8FAFC', borderRadius: 24, padding: 32, border: `1.5px solid ${borderColor}` }}>
+                <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, marginBottom: 24 }}>তথ্য এক নজরে</h3>
+                <div className="d-flex flex-column gap-3">
+                  {[
+                    { label: 'প্রতিষ্ঠাবর্ষ', value: hospital?.established_year || '১৯৯৮' },
+                    { label: 'প্রতিষ্ঠাতা', value: 'ল্যাবএইড গ্রুপ' },
+                    { label: 'হাসপাতালের ধরন', value: 'মাল্টিস্পেশালিটি' },
+                    { label: 'বেড সংখ্যা', value: '২৫০+' },
+                    { label: 'ICU বেড', value: '৪০+' },
+                    { label: 'অপারেশন থিয়েটার', value: '১০+' },
+                    { label: 'ডাক্তারের সংখ্যা', value: '১৫০+' },
+                    { label: 'নার্স সংখ্যা', value: '৩০০+' },
+                    { label: 'অবস্থান', value: 'ধানমণ্ডি, ঢাকা' }
+                  ].map((info, idx) => (
+                    <div key={idx} className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex align-items-center gap-2">
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#334155' }} />
+                        <p style={{ fontSize: 15, fontWeight: 700, color: '#475569', margin: 0 }}>{info.label}:</p>
+                      </div>
+                      <p style={{ fontSize: 15, fontWeight: 900, color: textColor, margin: 0 }}>{info.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact Sidebar Card */}
+              <div style={{ background: 'white', borderRadius: 24, padding: 32, border: `1px solid ${borderColor}` }}>
+                <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, marginBottom: 24 }}>যোগাযোগ করুন</h3>
+                <div className="d-flex flex-column gap-4">
+                  {[
+                    { icon: <IconPhone size={22} />, value: hospital?.phone || '+880 2 48119911-15' },
+                    { icon: <IconMessageQuestion size={22} />, value: hospital?.email || 'info@labaidhospital.com' },
+                    { icon: <IconWorld size={22} />, value: hospital?.url || 'www.labaidhospital.com' },
+                    { icon: <IconMapPin size={22} />, value: 'ধানমণ্ডি, ঢাকা - ১২০৫' }
+                  ].map((contact, idx) => (
+                    <div key={idx} className="d-flex align-items-center gap-3">
+                      <div style={{ color: primaryGreen }}>{contact.icon}</div>
+                      <p style={{ fontSize: 15, fontWeight: 800, color: textColor, margin: 0 }}>{contact.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </Col>
+        </Row>
+      </Container>
+
+      {/* 5. Bottom Banner CTA */}
+      <Container className="pb-5">
+        <div style={{ background: '#F0FDF4', borderRadius: 24, padding: '32px 48px', border: '1.5px solid #DCFCE7', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
+          <div className="d-flex align-items-center gap-4">
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: '#DCFCE7', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconCalendarEvent size={36} /></div>
+            <div>
+              <h4 style={{ fontSize: 24, fontWeight: 950, color: textColor, marginBottom: 4 }}>সহজে অ্যাপয়েন্টমেন্ট নিন</h4>
+              <p style={{ fontSize: 16, color: mutedColor, margin: 0, fontWeight: 800 }}>দ্রুত ও সহজে আপনার পছন্দের ডাক্তার এর সিরিয়াল বুক করুন</p>
+            </div>
+          </div>
+          <button onClick={() => navigate(`/doctors?hospital_id=${id}`)} style={{ padding: '14px 40px', borderRadius: 12, border: 'none', background: primaryGreen, color: 'white', fontWeight: 950, fontSize: 16, marginLeft: 'auto' }}>অ্যাপয়েন্টমেন্ট নিন</button>
+        </div>
+      </Container>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+        .nav-link:hover { color: #059669 !important; }
+
+        /* Hide horizontal scrollbar for tab navigation container */
+        .sticky-tab-bar .nav::-webkit-scrollbar {
+          display: none !important;
+        }
+        .sticky-tab-bar .nav {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+
+        .sticky-tab-bar {
+          top: var(--header-height);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+          transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (min-width: 992px) {
+          .sticky-sidebar {
+            position: sticky;
+            top: 180px;
+            align-self: start;
+          }
+        }
+      ` }} />
+
+      <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />
+    </div>
+  )
+}
+
+export default HospitalDetailPage

@@ -1,0 +1,692 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700;800;900&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+/* ===================================================
+   GLOBAL STYLES — Doctor Booklet
+   These variables let you change the whole color theme
+   in ONE place instead of hunting through 50 files.
+=================================================== */
+
+:root {
+  --mc-primary: #00A88C;
+  --mc-primary-dark: #008a74;
+  --mc-primary-light: #E6F6F4;
+  --mc-accent: #00C9A7;
+  --mc-accent-dark: #00A88C;
+  --mc-text: #1A1D2E;
+  --mc-text-muted: #6B7280;
+  --mc-bg: #F8FAFB;
+  --mc-white: #ffffff;
+  --mc-border: #E5EAF0;
+  --mc-radius: 24px;
+  --mc-radius-sm: 14px;
+  --mc-shadow: 0 10px 40px rgba(0, 168, 140, 0.08);
+  --mc-shadow-hover: 0 20px 60px rgba(0, 168, 140, 0.16);
+  --mc-nav-bg: #00A88C;
+  
+  /* Premium Palette */
+  --mc-emerald: #10B981;
+  --mc-slate: #334155;
+  --mc-glass: rgba(255, 255, 255, 0.7);
+  --mc-glass-border: rgba(255, 255, 255, 0.4);
+  --mc-gradient: linear-gradient(135deg, #00A88C 0%, #00C9A7 100%);
+  --mc-gradient-dark: linear-gradient(135deg, #008a74 0%, #00A88C 100%);
+}
+
+
+[data-theme='dark'] {
+  --mc-primary: #00CBA7;
+  --mc-primary-dark: #00A88C;
+  --mc-primary-light: #064E3B;
+  --mc-accent: #00E9C7;
+  --mc-accent-dark: #00CBA7;
+  --mc-text: #F9FAFB;
+  --mc-text-muted: #9CA3AF;
+  --mc-bg: #0F172A;
+  --mc-white: #1E293B;
+  --mc-border: #334155;
+  --mc-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --mc-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --mc-nav-bg: #0F172A;
+}
+
+
+
+
+/* Base reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  height: 100%;
+}
+
+/* Enforce Bengali fonts on all text elements so they don't get overridden by Bootstrap or inline styles */
+body, p, span, div, h1, h2, h3, h4, h5, h6, li, a, label {
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+body {
+  background-color: var(--mc-bg);
+  color: var(--mc-text);
+  overflow-x: clip;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  line-height: 1.6; /* A better line-height for Bengali typography */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-top: 0 !important; /* Force reset for Google Translate */
+  top: 0 !important;
+  min-height: 100%;
+  position: relative;
+}
+
+button, input, select, textarea {
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Fix for Google Translate Banner Gap */
+.goog-te-banner-frame.skiptranslate, 
+#goog-gt-tt, 
+.goog-te-balloon-frame { 
+  display: none !important; 
+}
+body { top: 0 !important; }
+.goog-te-gadget-simple { background: transparent !important; border: none !important; }
+
+/* PREMIUM SCROLLBAR */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--mc-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 10px;
+  border: 3px solid var(--mc-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border: 3px solid #0F172A;
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+::selection {
+  background: rgba(0, 168, 140, 0.2);
+  color: #008a74;
+}
+
+
+
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--mc-text);
+  line-height: 1.4;
+}
+
+a {
+  color: var(--mc-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--mc-primary-dark);
+}
+
+/* ===== BUTTONS ===== */
+.btn-mc-primary {
+  background-color: var(--mc-primary);
+  border-color: var(--mc-primary);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 24px;
+  transition: all 0.2s ease;
+}
+
+.btn-mc-primary:hover {
+  background-color: var(--mc-primary-dark);
+  border-color: var(--mc-primary-dark);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 168, 140, 0.3);
+}
+
+.btn-mc-outline {
+  background-color: transparent;
+  border: 1.5px solid var(--mc-primary);
+  color: var(--mc-primary);
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 24px;
+  transition: all 0.2s ease;
+}
+
+.btn-mc-outline:hover {
+  background-color: var(--mc-primary-light);
+  color: var(--mc-primary);
+}
+
+.btn-mc-accent {
+  background-color: var(--mc-accent);
+  border-color: var(--mc-accent);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 24px;
+  transition: all 0.2s ease;
+}
+
+.btn-mc-accent:hover {
+  background-color: var(--mc-accent-dark);
+  border-color: var(--mc-accent-dark);
+  color: #fff;
+}
+
+/* ===== SECTION HELPERS ===== */
+.section-tag {
+  display: inline-block;
+  background: var(--mc-primary-light);
+  color: var(--mc-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 99px;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.section-subtitle {
+  color: var(--mc-text-muted);
+  font-size: 16px;
+  max-width: 520px;
+  margin: 0 auto 40px;
+}
+
+/* ===== CARDS ===== */
+.mc-card {
+  background: var(--mc-white);
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius);
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.mc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mc-shadow-hover);
+}
+
+/* ===== AVATAR INITIALS ===== */
+.avatar-initials {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* ===== PAGE WRAPPER ===== */
+.page-wrapper {
+  min-height: calc(100vh - 70px);
+  padding-top: 110px; /* balanced gap from fixed header (topbar + navbar) */
+}
+
+/* ===== SPINNER OVERLAY ===== */
+.spinner-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--mc-text-muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+/* ===== FORM CONTROLS ===== */
+.mc-form-control {
+  border-radius: 10px !important;
+  border: 1px solid var(--mc-border) !important;
+  padding: 10px 14px !important;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mc-form-control:focus {
+  border-color: var(--mc-primary) !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 140, 0.1) !important;
+  outline: none;
+}
+
+/* ===== RESPONSIVE UTILITIES ===== */
+@media (max-width: 991px) {
+  .page-wrapper {
+    padding-top: 66px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+}
+
+/* ===== FIXED NAVBAR STABILITY (prevents position shift on mobile scroll) ===== */
+.fixed-top {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ===== PREMIUM GREEN NAVBAR ===== */
+.premium-navbar {
+  background: var(--mc-nav-bg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  padding: 16px 0;
+  z-index: 1030;
+}
+
+.premium-navbar.scrolled {
+  background: rgba(0, 168, 140, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 12px 0;
+  box-shadow: 0 4px 30px rgba(0, 168, 140, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brand-logo .logo-icon {
+  width: 36px;
+  height: 36px;
+  background: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.brand-logo .logo-icon rect { fill: #00A88C; }
+
+.brand-text {
+  font-weight: 800;
+  font-size: 20px;
+  color: white;
+  letter-spacing: -0.5px;
+}
+
+
+.premium-nav-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 600;
+  font-size: 15px;
+  position: relative;
+  transition: color 0.2s;
+  padding: 8px 12px !important;
+}
+
+.premium-nav-link:hover, .premium-nav-link.active {
+  color: white !important;
+}
+
+/* underline hover effect */
+.premium-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.premium-nav-link:hover::after, .premium-nav-link.active::after {
+  transform: scaleX(1);
+}
+
+.user-menu-btn {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 14px 4px 4px;
+  border-radius: 99px;
+  transition: background 0.2s;
+}
+
+.user-menu-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid white;
+}
+
+.user-name {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-premium-outline {
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  color: white;
+  background: transparent;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 8px 24px;
+  transition: all 0.2s;
+}
+
+.btn-premium-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: white;
+}
+
+.btn-premium-solid {
+  background: var(--mc-primary);
+  color: white;
+  border: none;
+
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 8px 24px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-premium-solid:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  background: white;
+  color: #008A74;
+}
+
+/* Dropdown styling */
+.premium-dropdown .dropdown-menu {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.premium-dropdown .dropdown-item {
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 500;
+  color: var(--mc-text);
+  transition: all 0.2s;
+}
+
+.premium-dropdown .dropdown-item:hover {
+  background: var(--mc-bg);
+  color: var(--mc-primary);
+  transform: translateX(4px);
+}
+
+@media (max-width: 991px) {
+  .premium-navbar .navbar-collapse {
+    background: var(--mc-white);
+
+    padding: 24px;
+    border-radius: 16px;
+    margin-top: 16px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  
+  .premium-nav-link {
+    color: var(--mc-text) !important;
+    font-size: 16px;
+    padding: 12px !important;
+    border-radius: 12px;
+  }
+  
+  .premium-nav-link:hover, .premium-nav-link.active {
+    background: var(--mc-bg);
+    color: var(--mc-primary) !important;
+  }
+  
+  .premium-nav-link::after { display: none; }
+  .user-name { color: var(--mc-text); }
+  .user-menu-btn { background: transparent; padding: 8px 0; }
+  .user-menu-btn:hover { background: transparent; }
+  .btn-premium-outline { border-color: var(--mc-border); color: var(--mc-text); }
+  .btn-premium-solid { background: var(--mc-primary); color: white; }
+
+  .nav-toggle-icon {
+    color: white;
+    transition: transform 0.3s ease;
+  }
+  .nav-toggle-icon.open {
+    transform: rotate(90deg);
+  }
+}
+
+/* ===================================================
+   PREMIUM SWIPER CUSTOMIZATION
+   Making standard sliders look "Fantastic"
+   =================================================== */
+
+/* Custom Navigation UI */
+.swiper-button-next,
+.swiper-button-prev {
+  width: 44px !important;
+  height: 44px !important;
+  background: white !important;
+  border-radius: 50% !important;
+  color: var(--mc-primary) !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.12) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid var(--mc-border) !important;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 16px !important;
+  font-weight: 900 !important;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background: var(--mc-primary) !important;
+  color: white !important;
+  transform: scale(1.1);
+  box-shadow: 0 8px 25px rgba(0,168,140,0.25) !important;
+}
+
+/* Hide arrows on small mobile to avoid overlap */
+@media (max-width: 576px) {
+  .swiper-button-next,
+  .swiper-button-prev {
+    display: none !important;
+  }
+}
+
+/* Custom Pagination UI (Pill Style) */
+.swiper-pagination-bullet {
+  width: 8px !important;
+  height: 8px !important;
+  background: var(--mc-border) !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+  margin: 0 6px !important;
+}
+
+.swiper-pagination-bullet-active {
+  width: 24px !important;
+  border-radius: 4px !important;
+  background: var(--mc-primary) !important;
+  box-shadow: 0 2px 8px rgba(0,168,140,0.3) !important;
+}
+
+/* Position dots lower to avoid card collision */
+.swiper-horizontal > .swiper-pagination-bullets, 
+.swiper-pagination-bullets.swiper-pagination-horizontal {
+  bottom: 0px !important;
+}
+
+.swiper {
+  padding-bottom: 50px !important;
+}
+
+/* ===================================================
+   PREMIUM TOAST NOTIFICATIONS (react-hot-toast)
+   =================================================== */
+
+/* ===================================================
+   PREMIUM TOAST NOTIFICATIONS (react-toastify)
+   =================================================== */
+
+:root {
+  --toastify-color-success: #00A88C;
+  --toastify-color-error: #EF4444;
+  --toastify-toast-min-width: 320px;
+  --toastify-toast-max-width: 480px;
+}
+
+.Toastify__toast-container {
+  width: auto !important;
+  max-width: 500px;
+}
+
+.premium-toast-container {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 30px -5px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4) !important;
+  border-radius: 5px !important;
+  padding: 8px 16px !important;
+  margin-bottom: 16px !important;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .premium-toast-container {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+.premium-toast-body {
+  color: #1E293B !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  letter-spacing: -0.01em !important;
+  font-family: inherit !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+[data-theme='dark'] .premium-toast-body {
+  color: #F1F5F9 !important;
+}
+
+/* Success/Error Left Accents */
+.premium-toast-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 10;
+}
+
+.Toastify__toast--success.premium-toast-container::before {
+  background: #00A88C;
+}
+
+.Toastify__toast--error.premium-toast-container::before {
+  background: #EF4444;
+}
+
+/* Progress Bar Styling */
+.premium-toast-progress {
+  height: 4px !important;
+  border-radius: 0 0 0 5px !important;
+}
+
+.Toastify__progress-bar--success {
+  background: linear-gradient(90deg, #00A88C, #00C9A7) !important;
+}
+
+.Toastify__progress-bar--error {
+  background: linear-gradient(90deg, #EF4444, #F87171) !important;
+}
+
+/* Override default Toastify animations with our premium ones if needed, 
+   but react-toastify's Slide transition is already quite good. 
+   We will refine it below. */
+
+.Toastify__slide-enter--top-right {
+  animation-name: premiumToastSlideIn !important;
+  animation-duration: 0.5s !important;
+}
+
+@keyframes premiumToastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) translateY(-20px) scale(0.9);
+  }
+  70% {
+    transform: translateX(-10px) translateY(0) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+.Toastify__toast-icon {
+  width: 24px !important;
+  margin-inline-end: 12px !important;
+}
+
+
+

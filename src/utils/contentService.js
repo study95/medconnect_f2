@@ -1,0 +1,213 @@
+import axiosInstance from '../api/axiosInstance'
+
+const INITIAL_CONTENT = {
+  // ── SITE SETTINGS ──────────────────────────────
+  site: {
+    name: 'Doctor Booklet Bangladesh',
+    tagline: 'ডিজিটাল স্বাস্থ্যসেবার নতুন অভিজ্ঞতা',
+    phone: '017 XXXX XXXX',
+    phone_secondary: '(প্রিমিয়াম সদস্যরা সকাল ৮টা - রাত ১০টা)',
+    email: 'info@doctorbooklet.com.bd',
+    email_support: 'support@doctorbooklet.com.bd',
+    website: 'www.doctorbooklet.com.bd',
+    address: 'মেডকানেক্ট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫',
+    office_hours: 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: সকাল ১০টা - বিকাল ৫টা',
+    facebook: 'https://facebook.com',
+    youtube: 'https://youtube.com',
+    twitter: 'https://x.com',
+    instagram: 'https://instagram.com',
+    linkedin: 'https://linkedin.com',
+    copyright: '© ২০২৬ Doctor Booklet Bangladesh. সকল অধিকার সংরক্ষিত।',
+  },
+
+  // ── HERO SECTION (Home page) ─────────────────
+  hero: {
+    badge: 'বাংলাদেশের এক নম্বর স্বাস্থ্যসেবা প্ল্যাটফর্ম',
+    title_line1: 'স্বাস্থ্যই হোক',
+    title_line2: 'আপনার অগ্রাধিকার',
+    subtitle: 'বিশ্বস্ত ডাক্তার, আধুনিক হাসপাতাল এবং স্বাস্থ্যসেবা তথ্য এখন মুঠোফোনে। সুস্থ জীবন গড়ুন আমাদের সাথে।',
+    btn_primary: 'ডাক্তার খুঁজুন',
+    btn_secondary: 'হাসপাতাল দেখুন',
+    image_url: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=700&q=80',
+  },
+
+  // ── STATS (Home page) ───────────────────────
+  stats: {
+    doctors_count: '১০০০+',
+    doctors_label: 'বিশেষজ্ঞ ডাক্তার',
+    hospitals_count: '৫০০+',
+    hospitals_label: 'হাসপাতাল ও ক্লিনিক',
+    services_count: '৮০+',
+    services_label: 'স্বাস্থ্য সেবা',
+    patients_count: '১০ লাখ+',
+    patients_label: 'সন্তুষ্ট রোগী',
+  },
+
+  // ── WHY CHOOSE US (Home page) ───────────────
+  why_us: {
+    badge: 'কেন আমরা?',
+    title: 'বিশ্বস্ত ও নির্ভরযোগ্য কেন?',
+    features: [
+      { icon: '🛡️', title: 'যাচাইকৃত ডাক্তার', desc: 'চিকিৎসা বোর্ড দ্বারা যাচাইকৃত সকল ডাক্তার' },
+      { icon: '⚡', title: 'সহজ ও দ্রুত', desc: 'যেকোনো সময় মিনিটেই বুক করুন' },
+      { icon: '⭐', title: 'মানসম্মত সেবা', desc: 'শীর্ষ রেটেড হাসপাতাল ও ক্লিনিক' },
+      { icon: '🎧', title: '২৪/৭ সহায়তা', desc: 'সর্বদা আপনার পাশে আছি' },
+    ],
+  },
+
+  // ── NEWSLETTER ──────────────────────────────
+  newsletter: {
+    title: 'স্বাস্থ্য সম্পর্কিত সর্বশেষ তথ্য ও টিপস পেতে আমাদের সাথে থাকুন',
+    subtitle: 'নিয়মিত আপডেট পেতে আমাদের নিউজলেটারে সাবস্ক্রাইব করুন।',
+    placeholder: 'আপনার ইমেইল লিখুন',
+    btn_label: 'সাবস্ক্রাইব করুন',
+  },
+
+  // ── FAQ ─────────────────────────────────────
+  // ── FAQ ─────────────────────────────────────
+  faq: {
+    badge: 'সচরাচর জিজ্ঞাসা (FAQ)',
+    title: 'আপনার প্রশ্নের সহজ ও দ্রুত সমাধান',
+    subtitle: 'Doctor Booklet সম্পর্কিত সবচেয়ে সাধারণ প্রশ্নগুলোর উত্তর নিচে খুঁজে নিন',
+    categories: [
+      { id: 'all', label: 'সব প্রশ্ন' },
+      { id: 'appointment', label: 'অ্যাপয়েন্টমেন্ট' },
+      { id: 'payment', label: 'পেমেন্ট ও রিফান্ড' },
+      { id: 'account', label: 'অ্যাকাউন্ট ও নিরাপত্তা' },
+      { id: 'services', label: 'ডিজিটাল সেবা' },
+    ],
+    items: [
+      { id: 1, category: 'account', q: 'Doctor Booklet-এ কীভাবে অ্যাকাউন্ট তৈরি করব?', a: 'রেজিস্টার পেজে গিয়ে রোগী বা ডাক্তার হিসেবে প্রয়োজনীয় তথ্য পূরণ করুন। মোবাইল নম্বর ও ইমেইলে প্রাপ্ত ওটিপি যাচাই করলেই অ্যাকাউন্ট সক্রিয় হবে।' },
+      { id: 2, category: 'appointment', q: 'কীভাবে ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?', a: 'ডাক্তার সার্চ বার থেকে আপনার পছন্দের ডাক্তার, বিশেষজ্ঞতা বা এলাকা বেছে নিন। খালি তারিখ ও সময় নির্বাচন করে "বুক করুন" বাটনে ক্লিক করুন।' },
+      { id: 3, category: 'payment', q: 'পেমেন্ট পদ্ধতি কী কী এবং এটি কি নিরাপদ?', a: 'আমরা বিকাশ, নগদ, রকেট, ডেবিট/ক্রেডিট কার্ড এবং সরাসরি হাসপাতালে পেমেন্ট সাপোর্ট করি। আমাদের অনলাইন পেমেন্ট সিস্টেম সম্পূর্ণ SSL এনক্রিপ্টেড ও নিরাপদ।' },
+      { id: 4, category: 'appointment', q: 'অ্যাপয়েন্টমেন্ট পরিবর্তন বা বাতিল কীভাবে করব?', a: 'আপনার প্রোফাইলের "আমার অ্যাপয়েন্টমেন্ট" সেকশনে গিয়ে অ্যাপয়েন্টমেন্টের ২ ঘণ্টা পূর্বে বিনামূল্যে বাতিল বা সময় পুনর্নির্ধারণ করতে পারবেন।' },
+      { id: 5, category: 'account', q: 'আমার ব্যক্তিগত ও স্বাস্থ্য সম্পর্কিত তথ্য কি নিরাপদ?', a: 'হ্যাঁ, সম্পূর্ণভাবে। Doctor Booklet আন্তর্জাতিক তথ্য সুরক্ষা স্ট্যান্ডার্ড এবং এন্ড-টু-এন্ড এনক্রিপশন মেনে চলে। আপনার তথ্য কেবল অনুমোদিত চিকিৎসক দেখতে পাবেন।' },
+      { id: 6, category: 'services', q: 'অনলাইন ভিডিও কনসালটেশন কীভাবে কাজ করে?', a: 'অ্যাপয়েন্টমেন্টের সময় হলে আপনার ড্যাশবোর্ড থেকে "ভিডিও কল শুরু করুন" বাটনে ক্লিক করে সরাসরি ডাক্তারের সাথে ভিডিওতে পরামর্শ নিতে পারবেন।' },
+      { id: 7, category: 'payment', q: 'অ্যাপয়েন্টমেন্ট বাতিল করলে রিফান্ড কতদিনে পাওয়া যাবে?', a: 'সফলভাবে বাতিল করার পর আপনার অর্থ ৩-৫ কার্যদিবসের মধ্যে আপনার বিকাশ/নগদ/ব্যাংক অ্যাকাউন্টে স্বয়ংক্রিয়ভাবে ফেরত পাঠানো হয়।' },
+      { id: 8, category: 'services', q: 'প্রেসক্রিপশন কীভাবে সংগ্রহ করব?', a: 'কনসালটেশন শেষে ডাক্তার ডিজিটাল প্রেসক্রিপশন আপলোড করলে তা আপনার প্রোফাইলের "আমার প্রেসক্রিপশন" সেকশন থেকে যেকোনো সময় ডাউনলোড বা প্রিন্ট করতে পারবেন।' },
+    ],
+  },
+
+  // ── HELPLINES ───────────────────────────────
+  helplines: {
+    title: 'স্বাস্থ্য জরুরি হেল্পলাইন',
+    items: [
+      { label: 'জাতীয় জরুরি সেবা', number: '999' },
+      { label: 'স্বাস্থ্য বাতায়ন', number: '16263' },
+      { label: 'আইইডিসিআর হটলাইন', number: '10655' },
+      { label: 'অ্যাম্বুলেন্স সেবা', number: '01199' },
+    ],
+  },
+
+  // ── CONTACT PAGE ────────────────────────────
+  contact: {
+    hero_title: 'আমরা আছি আপনার সেবায় সর্বদা',
+    hero_subtitle: 'আপনার যেকোনো প্রশ্ন, মতামত বা সহায়তার জন্য আমাদের সাথে যোগাযোগ করুন। আমাদের টিম আপনার সাথে যোগাযোগ করবে।',
+    emergency_title: 'জরুরী সহায়তা প্রয়োজন?',
+    emergency_subtitle: 'আমাদের হেল্পলাইনে এ কল করুন',
+    map_embed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3651.902444685767!2d90.38795307603397!3d23.746469478681074!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b087026b81%3A0x8fa563bbdd5904c2!2sDhanmondi%2C%20Dhaka!5e0!3m2!1sen!2sbd!4v1683000000000!5m2!1sen!2sbd',
+  },
+
+  // ── ABOUT PAGE ──────────────────────────────
+  about_us: {
+    title: 'স্বাস্থ্যসেবায় বিপ্লব',
+    subtitle: 'Doctor Booklet Bangladesh ঢাকার পান্থপথে একটি অনন্য স্বপ্ন নিয়ে প্রতিষ্ঠিত হয়েছিল — বাংলাদেশের প্রতিটি রোগীর কাছে বিএমডিসি-যাচাইকৃত বিশেষজ্ঞ চিকিৎসকদের সেবা নিরবচ্ছিন্নভাবে পৌঁছে দেওয়া।',
+    description: 'আমাদের প্ল্যাটফর্ম প্রতিটি চিকিৎসকের জন্য বহু-স্তর বিশিষ্ট যাচাইকরণ প্রক্রিয়া পরিচালনা করে, যার মধ্যে রয়েছে সক্রিয় বিএমডিসি নিবন্ধন যাচাই, হাসপাতাল অনুমোদন ও পেশাদার শংসাপত্র নিশ্চিতকরণ। আমরা বিশ্বাস করি যে একটি মেডিকেল অ্যাপয়েন্টমেন্ট বুক করা যতটা নির্ভরযোগ্য হওয়া উচিত, ঠিক ততটাই স্বচ্ছ ও সহজ হওয়া প্রয়োজন।',
+    mission: 'অত্যাধুনিক ডিজিটাল শিডিউলিং ও ভেরিফিকেশন সিস্টেম ব্যবহার করে বাংলাদেশ জুড়ে ক্লিনিকাল অ্যাক্সেসিবিলিটির প্রতিটি বাধা দূর করা — যাতে সঠিক ডাক্তারের কাছে পৌঁছানো হয় মিনিটের মধ্যে, ঘণ্টার নয়।',
+    vision: '১৭ কোটি নাগরিকের জন্য নিশ্চিত স্বাস্থ্য-আস্থা স্তর হয়ে ওঠা — এমন একটি ভবিষ্যৎ নির্মাণ করা যেখানে প্রতিটি বাংলাদেশি মানসম্পন্ন স্বাস্থ্যসেবার নিশ্চয়তা পান।',
+  },
+
+  // ── TERMS PAGE ──────────────────────────────
+  terms: {
+    title: 'সেবার শর্তাবলী',
+    content: 'মেডকানেক্ট ব্যবহার করার মাধ্যমে, আপনি আমাদের বুকিং নীতিমালার সাথে সম্মত হন। ডিজিটাল পেমেন্টের মাধ্যমে বুক করা অ্যাপয়েন্টমেন্টগুলি উচ্চ-অগ্রাধিকার সিরিয়াল পায়। সরাসরি পেমেন্টের বিকল্পগুলি হাসপাতালের রিসেপশন উপলব্ধতার ওপর নির্ভরশীল।',
+    cancellation: 'স্লটের ২ ঘণ্টা আগে বুকিং বাতিল করতে হবে। ডিজিটাল পেমেন্টের রিফান্ড ৩-৫ কার্যদিবসের মধ্যে সম্পন্ন করা হয়।',
+  },
+
+  // ── PRIVACY PAGE ────────────────────────────
+  privacy: {
+    title: 'গোপনীয়তা এবং তথ্য সুরক্ষা',
+    content: 'আপনার স্বাস্থ্য তথ্য আমাদের কাছে পবিত্র। মেডকানেক্ট সমস্ত রোগী-ডাক্তার যোগাযোগের জন্য এন্ড-টু-এন্ড এনক্রিপশন ব্যবহার করে। আমরা আপনার ব্যক্তিগত তথ্য কোনো তৃতীয় পক্ষের বিজ্ঞাপনদাতাদের কাছে বিক্রি করি না।',
+    cookies: 'আমরা আপনার লগইন সেশন এবং পছন্দগুলি বজায় রাখার জন্য প্রয়োজনীয় কুকি ব্যবহার করি।',
+  },
+
+  // ── SUPPORT PAGE ────────────────────────────
+  support: {
+    title: '২৪/৭ এলিট সহায়তা',
+    content: 'আমাদের ডেডিকেটেড সাপোর্ট টিম হেল্পলাইন বা ইমেলের মাধ্যমে উপলব্ধ রয়েছে। জরুরি চিকিৎসার জন্য, দয়া করে অবিলম্বে নিকটস্থ হাসপাতালে যোগাযোগ করুন।',
+    hr_notice: 'অ-জরুরি জিজ্ঞাসার জন্য স্ট্যান্ডার্ড রেসপন্স টাইম ২ ঘণ্টা।',
+  },
+}
+
+const STORAGE_KEY = 'doctor_booklet_cms_v2'
+
+export const getContent = () => {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      return deepMerge(INITIAL_CONTENT, parsed)
+    } catch (e) {
+      return INITIAL_CONTENT
+    }
+  }
+  return INITIAL_CONTENT
+}
+
+export const fetchContentFromBackend = async () => {
+  try {
+    const res = await axiosInstance.get('/cms-content')
+    if (res.data && typeof res.data === 'object' && !res.data.status) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data))
+      window.dispatchEvent(new Event('cms-updated'))
+      return deepMerge(INITIAL_CONTENT, res.data)
+    }
+  } catch (e) {
+    // Silently fall back to cached / initial content
+  }
+  return getContent()
+}
+
+// Auto-trigger background fetch on module load
+fetchContentFromBackend()
+
+export const saveContent = async (newContent) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newContent))
+  window.dispatchEvent(new Event('cms-updated'))
+
+  try {
+    await axiosInstance.post('/admin/cms-content', newContent)
+  } catch (e) {
+    try {
+      await axiosInstance.post('/cms-content', newContent)
+    } catch (err) {
+      // Local storage saved
+    }
+  }
+}
+
+export const resetContent = () => {
+  localStorage.removeItem(STORAGE_KEY)
+  window.dispatchEvent(new Event('cms-updated'))
+  return INITIAL_CONTENT
+}
+
+// Deep merge helper: keeps initial keys as default, overrides with saved values
+function deepMerge(base, override) {
+  const result = { ...base }
+  for (const key of Object.keys(override)) {
+    if (
+      override[key] &&
+      typeof override[key] === 'object' &&
+      !Array.isArray(override[key]) &&
+      base[key] &&
+      typeof base[key] === 'object' &&
+      !Array.isArray(base[key])
+    ) {
+      result[key] = deepMerge(base[key], override[key])
+    } else {
+      result[key] = override[key]
+    }
+  }
+  return result
+}
