@@ -3,7 +3,6 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Container, Form, Button, Card } from 'react-bootstrap'
 import axiosInstance from '../api/axiosInstance'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'react-toastify'
 import PasswordInput from '../components/common/PasswordInput'
 
 function ResetPasswordPage() {
@@ -19,20 +18,23 @@ function ResetPasswordPage() {
   const { t } = useTranslation()
 
 
+  const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setStatusMsg({ type: '', text: '' })
     if (!token) {
-      toast.error('Invalid or missing reset token. Please check your link.')
+      setStatusMsg({ type: 'danger', text: 'Invalid token.' })
       return
     }
 
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters.')
+      setStatusMsg({ type: 'danger', text: 'Password must be at least 6 characters.' })
       return
     }
 
     if (password !== password_confirmation) {
-      toast.error(t('passwords_do_not_match') || 'Passwords do not match.')
+      setStatusMsg({ type: 'danger', text: 'Passwords do not match.' })
       return
     }
 
@@ -42,13 +44,13 @@ function ResetPasswordPage() {
         email, token, password, password_confirmation
       })
       if (res.data.success) {
-        toast.success(res.data.message || t('password_reset_success'))
+        setStatusMsg({ type: 'success', text: 'Password reset successfully! Redirecting...' })
         setTimeout(() => navigate('/login'), 3000)
       } else {
-        toast.error(res.data.message || t('something_went_wrong'))
+        setStatusMsg({ type: 'danger', text: res.data.message || 'Password reset failed.' })
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to process request.')
+      setStatusMsg({ type: 'danger', text: err.response?.data?.message || 'Something went wrong.' })
     } finally {
       setLoading(false)
     }

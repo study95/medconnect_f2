@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getSubscriptionPackages, validatePromoCode, purchaseSubscription } from '../../../api/subscriptionApi'
 import { useSubscription } from '../../../context/SubscriptionContext'
-import { toast } from 'react-toastify'
 
 const PAYMENT_METHODS = [
   { key: 'bkash', label: 'bKash', icon: '📱', color: '#E2136E' },
@@ -42,11 +41,11 @@ export default function CheckoutPage() {
       if (found) {
         setPkg(found)
       } else {
-        toast.error('Package not found')
+        
         navigate('/admin/subscription')
       }
     } catch {
-      toast.error('Failed to load package')
+      
     } finally {
       setLoading(false)
     }
@@ -58,7 +57,7 @@ export default function CheckoutPage() {
     try {
       const res = await validatePromoCode(promoCode)
       setPromoResult(res.data?.data)
-      toast.success('Promo code applied!')
+      
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid promo code'
       setPromoError(true)
@@ -97,11 +96,11 @@ export default function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!paymentMethod) {
-      toast.error('Please select a payment method')
+      
       return
     }
     if ((paymentMethod !== 'sslcommerz') && !paymentReference.trim()) {
-      toast.error('Please enter payment reference / transaction ID')
+      
       return
     }
 
@@ -113,11 +112,11 @@ export default function CheckoutPage() {
         payment_reference: paymentReference.trim(),
         promo_code: promoResult ? promoCode : null,
       })
-        toast.success('Subscription activated!')
+        
         refreshSubscription()
         setShowSuccess(true)
       } catch (err) {
-      toast.error(err.response?.data?.message || 'Purchase failed')
+      
     } finally {
       setSubmitting(false)
     }

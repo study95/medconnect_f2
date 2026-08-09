@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { hospitalCheckIdentifier } from '../../api/authApi'
-import { toast } from 'react-toastify'
 import { Eye, EyeOff } from 'lucide-react'
 import '../../styles/auth.css'
 
@@ -40,7 +39,7 @@ export default function HospitalLoginPage() {
       setStep(2)
     } catch (err) {
       if (err.response?.status === 404) {
-        setError(err.response?.data?.message || 'Not finding this user. Please register first.')
+        setError(err.response?.data?.message || 'আপনার ইমেইল/মোবাইল নম্বরটি নিবন্ধিত নয়, নিবন্ধন করুন।')
       } else {
         setError('Something went wrong checking the identifier.')
       }
@@ -59,7 +58,7 @@ export default function HospitalLoginPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success('Logged in successfully!')
+      
       navigate(from, { replace: true })
     } else {
       if (result.message && result.message.toLowerCase().includes('not finding')) {
@@ -79,9 +78,8 @@ export default function HospitalLoginPage() {
         {/* LEFT — Info Panel */}
         <div className="auth-info-panel" style={{ background: 'linear-gradient(135deg, #0284c7, #38bdf8)' }}>
           <div className="auth-info-content">
-            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 20 }}>
-              <img src="/doctorBookletLogo.png" alt="Doctor Booklet Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain', background: 'white', padding: '3px 8px', borderRadius: '8px' }} />
-              <span style={{ color: 'white', fontWeight: 800, fontSize: 16 }}>Doctor <span style={{ color: '#00D4AF' }}>Booklet</span></span>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', marginBottom: 20 }}>
+              <img src="/doctorBookletLogo.png" alt="Doctor Booklet Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain', background: 'white', padding: '4px 10px', borderRadius: '8px' }} />
             </Link>
             <div className="auth-info-icon" style={{ background: 'rgba(255,255,255,0.2)' }}>🏥</div>
             <h2 className="auth-info-title">

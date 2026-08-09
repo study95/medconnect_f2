@@ -1,6 +1,5 @@
 // PurchaseReportPage.jsx — Admin Purchase Income Report
 import { useState, useEffect, useRef } from 'react'
-import { toast } from 'react-toastify'
 import { getPurchaseReport, getDoctors, getHospitals } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
@@ -152,8 +151,7 @@ export default function PurchaseReportPage() {
       setData(reportData)
       setSummary(reportSummary)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load report'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }

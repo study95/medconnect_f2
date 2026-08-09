@@ -1,7 +1,6 @@
 // SubscriptionHistoryPage.jsx — Doctor's past subscriptions
 import { useState, useEffect } from 'react'
 import { getSubscriptionHistory } from '../../../api/subscriptionApi'
-import { toast } from 'react-toastify'
 
 const statusColors = {
   active: { bg: '#D1FAE5', color: '#065F46' },
@@ -24,8 +23,10 @@ export default function SubscriptionHistoryPage() {
   const loadHistory = async () => {
     try {
       const res = await getSubscriptionHistory()
-      setItems(res.data?.data || [])
-    } catch { toast.error('Failed to load history') }
+      const raw = res.data?.data
+      const list = Array.isArray(raw) ? raw : (raw?.data || [])
+      setItems(list)
+    } catch {  }
     finally { setLoading(false) }
   }
 

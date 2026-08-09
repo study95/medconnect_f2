@@ -1,5 +1,4 @@
 // ChamberListPage.jsx — Premium Doctor Chamber Management
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -157,8 +156,7 @@ export default function ChamberListPage() {
       const res = await getChambers(params)
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load chambers'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -176,10 +174,9 @@ export default function ChamberListPage() {
     try {
       await deleteChamber(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Chamber schedule deleted')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -188,11 +185,10 @@ export default function ChamberListPage() {
   const handleToggle = async (id) => {
     try {
       const res = await toggleChamberActive(id)
-      toast.success(res.data?.message || 'Chamber status updated')
+      
       setItems(items.map(i => i.id === id ? { ...i, is_active: !i.is_active } : i))
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Toggle failed'))
-    }
+}
   }
 
   const hasActiveFilters = search || doctorId || hospitalId || statusFilter !== ''

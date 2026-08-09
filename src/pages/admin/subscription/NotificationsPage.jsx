@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../../api/subscriptionApi'
 import { useSubscription } from '../../../context/SubscriptionContext'
-import { toast } from 'react-toastify'
 
 const typeIcons = {
   warning: '⚠️', info: 'ℹ️', promo: '🎁', system: '🔧', expiry: '⏰'
@@ -29,7 +28,7 @@ export default function NotificationsPage() {
       const res = await getNotifications()
       const data = res.data?.data
       setNotifications(data?.data || data || [])
-    } catch { toast.error('Failed to load notifications') }
+    } catch {  }
     finally { setLoading(false) }
   }
 
@@ -53,7 +52,7 @@ export default function NotificationsPage() {
       await markAllNotificationsRead()
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
       refreshUnreadCount()
-      toast.success('All marked as read')
+      
     } catch {}
   }
 

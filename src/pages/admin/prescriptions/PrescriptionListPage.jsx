@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getPrescriptions, deletePrescription } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 export default function PrescriptionListPage() {
@@ -26,8 +25,7 @@ export default function PrescriptionListPage() {
       const res = await getPrescriptions()
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load prescriptions'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -38,10 +36,9 @@ export default function PrescriptionListPage() {
     try {
       await deletePrescription(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Prescription deleted')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

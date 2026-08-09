@@ -3,27 +3,36 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 // By default, removing '/api' gives us the base domain. 
-// If your backend serves storage files from a different path, adjust here.
 const BASE_DOMAIN = API_BASE.replace('/api', '');
 
 /**
- * Ensures a media URL is absolute.
- * @param {string} path - The media path from the database (e.g. 'storage/doctors/img.jpg').
+ * Ensures a media URL is absolute and correctly points to backend storage.
+ * @param {string} path - The media path from the database (e.g. 'doctors/img.jpg' or 'storage/doctors/img.jpg').
  * @param {string} fallback - The fallback image URL.
  * @returns {string} The full absolute URL.
  */
 export const getMediaUrl = (path, fallback = '') => {
   if (!path) return fallback;
   
-  // If it's already an absolute URL (http://, https://, data:, blob:), return it
-  if (/^(http|https|data|blob):/i.test(path)) {
+  // Data URLs or Blob URLs
+  if (/^(data|blob):/i.test(path)) {
     return path;
   }
   
-  // Clean up leading slashes to prevent double slashes like http://127.0.0.1:8000//storage/...
-  const cleanPath = path.replace(/^\/+/, '');
+  // If it's already an absolute HTTP/HTTPS URL
+  if (/^https?:\/\//i.test(path)) {
+    // Normalize localhost / 127.0.0.1 hostnames to match current BASE_DOMAIN
+    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, BASE_DOMAIN);
+  }
   
-  // Check if the backend is already adding 'storage/' to the path or not.
-  // We just append the path to the base domain.
+  // Clean up leading slashes
+  let cleanPath = path.replace(/^\/+/, '');
+  
+  // Prepend 'storage/' if it's missing from relative path
+  if (!cleanPath.toLowerCase().startsWith('storage/')) {
+    cleanPath = `storage/${cleanPath}`;
+  }
+  
   return `${BASE_DOMAIN}/${cleanPath}`;
 };
+

@@ -1,5 +1,4 @@
 // UpazilaFormPage.jsx — Premium Upazila Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -169,8 +168,7 @@ export default function UpazilaFormPage() {
         loadDistricts(u.district.division_id)
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load upazila'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -199,15 +197,14 @@ export default function UpazilaFormPage() {
 
       if (isEdit) {
         await updateUpazila(id, payload)
-        toast.success('Upazila updated successfully!')
+        
       } else {
         await createUpazila(payload)
-        toast.success('Upazila created successfully!')
+        
       }
       navigate('/admin/upazilas')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save upazila'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

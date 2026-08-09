@@ -6,10 +6,9 @@ import {
   UserCircle, Shield, Clock, CalendarCheck,
   Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole
 } from 'lucide-react'
-import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
 import { sendOtp } from '../api/authApi'
-import { translateToBangla } from '../utils/errorHelper'
+import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import '../styles/auth-premium.css'
 
 const RegisterPage = () => {
@@ -103,26 +102,43 @@ const RegisterPage = () => {
 
   const handleLockedFieldClick = () => {
     if (!role) {
-      toast.warning('⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন! (Please select user type)', {
-        toastId: 'select-role-warn',
-        position: 'top-center',
-        autoClose: 3000,
-        icon: false,
-      })
+      setFieldErrors(prev => ({ ...prev, role: 'অনুগ্রহ করে প্রথমে ভূমিকা নির্বাচন করুন।' }))
     }
   }
+
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    if (name === 'mobile' && isAlreadyRegistered) {
-      setIsAlreadyRegistered(false)
+    let updatedValue = value
+    if (name === 'mobile') {
+      // Allow only digits
+      updatedValue = value.replace(/\D/g, '').slice(0, 11)
+      if (isAlreadyRegistered) {
+        setIsAlreadyRegistered(false)
+      }
     }
-    setForm(prev => ({ ...prev, [name]: value }))
+    setFieldErrors(prev => ({ ...prev, [name]: '', mobile: name === 'mobile' ? '' : prev.mobile, general: '' }))
+    setForm(prev => ({ ...prev, [name]: updatedValue }))
   }
 
   const handleSendOTP = async () => {
-    if (!form.mobile || form.mobile.length < 11) {
-      toast.error('সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন')
+    setFieldErrors({})
+    if (!role) {
+      setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন।' })
+      return
+    }
+
+    const mobileNum = form.mobile ? form.mobile.trim() : ''
+    const bdMobileRegex = /^01[3-9]\d{8}$/
+
+    if (!mobileNum) {
+      setFieldErrors({ mobile: 'অনুগ্রহ করে মোবাইল নম্বর লিখুন।' })
+      return
+    }
+
+    if (!bdMobileRegex.test(mobileNum)) {
+      setFieldErrors({ mobile: 'সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)' })
       return
     }
 
@@ -130,47 +146,38 @@ const RegisterPage = () => {
     setIsAlreadyRegistered(false)
 
     try {
-      const res = await sendOtp({ mobile: form.mobile, type: 'registration' })
+      const res = await sendOtp({ mobile: mobileNum, type: 'registration' })
+
+      if (res.data && res.data.already_registered) {
+        setLoading(false)
+        setIsAlreadyRegistered(true)
+        setFieldErrors({ mobile: translateToBangla(res.data.message || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত!') })
+        return
+      }
 
       if (res.data && res.data.success === false) {
         setLoading(false)
-        setIsAlreadyRegistered(true)
-        toast.error(translateToBangla(res.data.message))
+        setFieldErrors({ mobile: translateToBangla(res.data.message || 'OTP পাঠানো ব্যর্থ হয়েছে।') })
         return
       }
 
       setLoading(false)
       setOtpSent(true)
-      toast.success('OTP পাঠানো হয়েছে: ' + form.mobile)
 
     } catch (err) {
       setLoading(false)
+      const status = err.response?.status
       const errMsg = err.response?.data?.message || err.response?.data?.error || ''
+      const isAlready = status === 409 || err.response?.data?.already_registered || errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')
 
-      // If backend returned error that mobile is already registered
-      if (
-        err.response?.status === 400 ||
-        err.response?.status === 409 ||
-        err.response?.status === 422 ||
-        errMsg.toLowerCase().includes('already') ||
-        errMsg.toLowerCase().includes('registered')
-      ) {
+      if (isAlready) {
         setIsAlreadyRegistered(true)
-        toast.error(translateToBangla(errMsg || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।'))
+        setFieldErrors({ mobile: 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।' })
         return
       }
 
-      // Demo/known registered numbers fallback
-      const knownRegistered = ['01700000000', '01800000000', '01900000000', '01711111111', '01310101010', '01712345678']
-      if (knownRegistered.includes(form.mobile)) {
-        setIsAlreadyRegistered(true)
-        toast.error('এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।')
-        return
-      }
-
-      // Otherwise allow mock OTP for dev
-      setOtpSent(true)
-      toast.success('OTP পাঠানো হয়েছে: ' + form.mobile)
+      const displayError = getErrorMessage(err, 'মোবাইল নম্বরটি সঠিক নয় অথবা সিস্টেম সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+      setFieldErrors({ mobile: displayError })
     }
   }
 
@@ -182,6 +189,7 @@ const RegisterPage = () => {
     newDigits[index] = value
     setOtpDigits(newDigits)
     setOtp(newDigits.join(''))
+    setFieldErrors(prev => ({ ...prev, otp: '' }))
 
     if (value && index < 5) {
       otpRefs.current[index + 1]?.focus()
@@ -195,26 +203,28 @@ const RegisterPage = () => {
   }
 
   const handleVerifyOTP = () => {
+    setFieldErrors({})
     if (otp.length !== 6) {
-      toast.error('৬ সংখ্যার OTP কোড লিখুন')
+      setFieldErrors({ otp: '৬ সংখ্যার OTP কোড লিখুন' })
       return
     }
     setVerifying(true)
     setTimeout(() => {
       setVerifying(false)
       setStep(2)
-      toast.success('মোবাইল নম্বর যাচাই সফল!')
     }, 600)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFieldErrors({})
+
     if (form.password !== form.confirm) {
-      toast.error('পাসওয়ার্ড মিলছে না!')
+      setFieldErrors({ confirm: 'পাসওয়ার্ড মিলছে না!' })
       return
     }
     if (form.password.length < 6) {
-      toast.error('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে')
+      setFieldErrors({ password: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে' })
       return
     }
 
@@ -233,18 +243,20 @@ const RegisterPage = () => {
 
     setLoading(false)
     if (result.success) {
-      toast.success('রেজিস্ট্রেশন সফল হয়েছে!')
       setStep(3)
     } else {
       const errMsg = result.message || ''
+      const translatedMsg = translateToBangla(errMsg || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
+
       if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('mobile') || errMsg.toLowerCase().includes('registered')) {
-        // If backend returned registered error, send user back to Step 1 & show login prompt
         setStep(1)
         setOtpSent(false)
         setIsAlreadyRegistered(true)
-        toast.error(translateToBangla(errMsg))
+        setFieldErrors({ mobile: translatedMsg })
+      } else if (errMsg.toLowerCase().includes('email')) {
+        setFieldErrors({ email: translatedMsg })
       } else {
-        toast.error(translateToBangla(errMsg || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'))
+        setFieldErrors({ general: translatedMsg })
       }
     }
   }
@@ -279,13 +291,12 @@ const RegisterPage = () => {
         {/* ===== LEFT PANEL — EXECUTIVE NAVY BRANDING ===== */}
         <div className="auth-info-panel">
           <div>
-            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center gap-2" style={{ cursor: 'pointer' }}>
+            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center" style={{ cursor: 'pointer' }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
-                style={{ height: '44px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
+                style={{ height: '48px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
               />
-              <span className="info-panel-logo-text">Doctor <span style={{ color: '#00D4AF' }}>Booklet</span></span>
             </Link>
 
             <h2 className="info-panel-title">{panelContent.title}</h2>
@@ -326,7 +337,10 @@ const RegisterPage = () => {
                     <Form.Select
                       id="register-role-select"
                       value={role}
-                      onChange={(e) => setRole(e.target.value)}
+                      onChange={(e) => {
+                        setRole(e.target.value)
+                        setFieldErrors(prev => ({ ...prev, role: '' }))
+                      }}
                       className="auth-input-premium"
                       style={{
                         paddingLeft: 46,
@@ -351,6 +365,13 @@ const RegisterPage = () => {
                     </span>
                   </div>
                 </Form.Group>
+
+                {/* Inline Red Error for Role */}
+                {fieldErrors.role && (
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.role}
+                  </p>
+                )}
 
                 {/* Dynamic Role Selected Message (Red Text with Warning Icon) */}
                 <p
@@ -433,7 +454,7 @@ const RegisterPage = () => {
                       </Button>
                     ) : (
                       <button
-                        onClick={() => { setOtpSent(false); setOtpDigits(['','','','','','']); setOtp('') }}
+                        onClick={() => { setOtpSent(false); setOtpDigits(['','','','','','']); setOtp(''); setFieldErrors({}) }}
                         className="input-link-premium"
                         style={{ color: '#0D9488', fontSize: 12, fontWeight: 700, border: 'none', background: 'none' }}
                       >
@@ -441,6 +462,13 @@ const RegisterPage = () => {
                       </button>
                     )}
                   </div>
+
+                  {/* Inline Red Error under Mobile Field */}
+                  {fieldErrors.mobile && (
+                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.mobile}
+                    </p>
+                  )}
                 </Form.Group>
 
                 {/* Already Registered Alert Box */}
@@ -509,6 +537,14 @@ const RegisterPage = () => {
                           />
                         ))}
                       </div>
+
+                      {/* Inline Red Error for OTP */}
+                      {fieldErrors.otp && (
+                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.otp}
+                        </p>
+                      )}
+
                       <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 10, fontWeight: 500 }}>
                         কোড পাননি? <button onClick={handleSendOTP} style={{ background: 'none', border: 'none', color: '#0D9488', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>পুনরায় পাঠান</button>
                       </p>
@@ -567,6 +603,11 @@ const RegisterPage = () => {
                         className="auth-input-premium"
                       />
                     </div>
+                    {fieldErrors.name && (
+                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.name}
+                      </p>
+                    )}
                   </Form.Group>
 
                   <Form.Group style={{ marginBottom: 14 }}>
@@ -580,6 +621,11 @@ const RegisterPage = () => {
                         className="auth-input-premium"
                       />
                     </div>
+                    {fieldErrors.email && (
+                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.email}
+                      </p>
+                    )}
                   </Form.Group>
 
                   <Row className="g-2" style={{ marginBottom: 18 }}>
@@ -598,6 +644,11 @@ const RegisterPage = () => {
                             {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
+                        {fieldErrors.password && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.password}
+                          </p>
+                        )}
                       </Form.Group>
                     </Col>
                     <Col md={6}>
@@ -615,9 +666,20 @@ const RegisterPage = () => {
                             {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
+                        {fieldErrors.confirm && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.confirm}
+                          </p>
+                        )}
                       </Form.Group>
                     </Col>
                   </Row>
+
+                  {fieldErrors.general && (
+                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {fieldErrors.general}
+                    </p>
+                  )}
 
                   <Button
                     type="submit" disabled={loading}

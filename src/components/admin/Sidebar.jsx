@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 
 import { useSubscription } from '../../context/SubscriptionContext'
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare } from 'lucide-react'
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -252,8 +252,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </NavLink>
           )}
 
-          {/* Marketing Section — Admin only */}
-          {isAdmin && (
+          {/* Marketing Section — Admin & Manager */}
+          {(isAdmin || isManager || hasPermission('commission.view')) && (
             <>
               <div className="sidebar-section-title">Promotion</div>
               <NavLink
@@ -350,6 +350,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     <span className="nav-text">Services</span>
                   </NavLink>
                 </>
+              )}
+
+              {isAdmin && (
+                <NavLink
+                  to="/admin/audit-logs"
+                  className={`sidebar-nav-item ${isActive('/admin/audit-logs') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Audit Log' : undefined}
+                >
+                  <span className="nav-icon"><Shield size={18} /></span>
+                  <span className="nav-text">Audit Log</span>
+                </NavLink>
               )}
             </>
           )}

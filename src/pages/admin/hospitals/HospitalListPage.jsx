@@ -1,5 +1,4 @@
 // HospitalListPage.jsx — Premium Hospital Management
-import { toast } from 'react-toastify'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
@@ -190,8 +189,7 @@ export default function HospitalListPage() {
       const res = await getHospitals({ per_page: 500 })
       setHospitals(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load hospitals'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -202,10 +200,9 @@ export default function HospitalListPage() {
     try {
       await deleteHospital(deleteTarget.id)
       setHospitals(hospitals.filter(h => h.id !== deleteTarget.id))
-      toast.success('Hospital deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -216,10 +213,9 @@ export default function HospitalListPage() {
       const newStatus = !hospital.is_active
       await updateHospital(hospital.id, { is_active: newStatus ? 1 : 0 })
       setHospitals(hospitals.map(h => h.id === hospital.id ? { ...h, is_active: newStatus } : h))
-      toast.success(`Hospital ${newStatus ? 'activated' : 'deactivated'} successfully`)
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Status update failed'))
-    }
+}
   }
 
   const clearFilters = () => {
@@ -342,11 +338,32 @@ export default function HospitalListPage() {
                   <tr key={h.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <Link to={`/admin/hospitals/view/${h.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
-                        {h.photo_url ? (
-                          <img src={getMediaUrl(h.photo_url)} alt="H" style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--admin-border)' }} />
-                        ) : (
-                          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, border: '1px solid var(--admin-border)' }}>🏥</div>
-                        )}
+                        {h.photo_url || h.logo_url || h.photo || h.hospital_logo ? (
+                          <img
+                            src={getMediaUrl(h.photo_url || h.logo_url || h.photo || h.hospital_logo)}
+                            alt={h.name || 'H'}
+                            style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--admin-border)' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: 'rgba(0,0,0,0.02)',
+                            display: (h.photo_url || h.logo_url || h.photo || h.hospital_logo) ? 'none' : 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 20,
+                            border: '1px solid var(--admin-border)'
+                          }}
+                        >
+                          🏥
+                        </div>
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{h.name}</div>
                           {(h.top_10_hospital === 'yes' || h.top_10_hospital === true) && (

@@ -1,5 +1,4 @@
 // DistrictListPage.jsx — Premium District Management (Admin)
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -133,8 +132,7 @@ export default function DistrictListPage() {
       const res = await getDistricts(params)
       setItems(res.data.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load districts'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -145,10 +143,9 @@ export default function DistrictListPage() {
     try {
       await deleteDistrict(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('District deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

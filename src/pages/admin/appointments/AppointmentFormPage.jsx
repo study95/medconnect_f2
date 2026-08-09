@@ -1,7 +1,6 @@
 // AppointmentFormPage.jsx — Premium Appointment Create/Edit Form
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useSearchParams, useParams } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { 
   getDoctors, getChambers, getPatients, createAppointment, 
@@ -175,7 +174,7 @@ export default function AppointmentFormPage() {
         status: a.status || 'pending'
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load appointment'))
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -183,7 +182,7 @@ export default function AppointmentFormPage() {
 
   const handleWalkInSubmit = async (e) => {
     e.preventDefault()
-    if (!walkIn.name || !walkIn.phone) return toast.error('Name and Phone are required')
+    if (!walkIn.name || !walkIn.phone) return 
     setCreatingPatient(true)
     try {
       const res = await createWalkInPatient(walkIn)
@@ -191,9 +190,8 @@ export default function AppointmentFormPage() {
       setPatients([newPatient, ...patients])
       setForm(f => ({ ...f, patient_id: newPatient.id }))
       setShowWalkIn(false)
-      toast.success('Patient record created')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to create patient'))
+      console.error(err)
     } finally {
       setCreatingPatient(false)
     }
@@ -206,18 +204,15 @@ export default function AppointmentFormPage() {
     try {
       if (isEdit) {
         await updateAppointment(id, form)
-        toast.success('Appointment updated successfully')
       } else {
         await createAppointment(form)
-        toast.success('Appointment booked successfully')
       }
       navigate('/admin/appointments')
     } catch (err) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors || {})
-        toast.error('Please check the form for errors')
       } else {
-        toast.error(getErrorMessage(err, 'Submission failed'))
+        console.error(err)
       }
     } finally {
       setSaving(false)

@@ -1,13 +1,14 @@
 // UserListPage.jsx — User management (Admin only)
 import { useState, useEffect } from 'react'
+import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getUsers, updateUserRole, deleteUser, getAllPermissions, updateUserPermissions } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const ROLES = ['admin', 'manager', 'doctor', 'user']
+const ROLE_LABELS = { admin: 'ADMIN', manager: 'HOSPITAL', doctor: 'DOCTOR', user: 'USER' }
 
 // Helper to get initials for avatar
 const getInitials = (name) => {
@@ -74,8 +75,7 @@ export default function UserListPage() {
       const data = res.data?.data?.data || res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : [])
       setUsers(data)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load users'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -92,11 +92,10 @@ export default function UserListPage() {
     setChangingRole(userId)
     try {
       await updateUserRole(userId, newRole)
-      toast.success(`Role changed to ${newRole}`)
+      
       fetchUsers()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Role change failed'))
-    } finally {
+} finally {
       setChangingRole(null)
     }
   }
@@ -107,10 +106,9 @@ export default function UserListPage() {
     try {
       await deleteUser(deleteTarget.id)
       setUsers(users.filter(u => u.id !== deleteTarget.id))
-      toast.success('User deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -133,12 +131,11 @@ export default function UserListPage() {
     setSavingPerms(true)
     try {
       await updateUserPermissions(selectedUserForPerms.id, userPermissions)
-      toast.success('Permissions updated')
+      
       setSelectedUserForPerms(null)
       fetchUsers()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update permissions'))
-    } finally {
+} finally {
       setSavingPerms(false)
     }
   }
@@ -180,7 +177,7 @@ export default function UserListPage() {
               style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
             >
               <option value="">All Roles</option>
-              {ROLES.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="admin-form-group">
@@ -235,12 +232,26 @@ export default function UserListPage() {
                         <td style={{ paddingLeft: 24 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <div style={{ 
-                              width: 40, height: 40, borderRadius: 12, 
+                              width: 40, height: 40, borderRadius: 12, overflow: 'hidden',
                               background: 'var(--admin-bg)', border: '1px solid var(--admin-border)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontWeight: 800, fontSize: 14, color: 'var(--admin-primary)'
                             }}>
-                              {getInitials(u.name)}
+                              {u.profile_pic ? (
+                                <img
+                                  src={getMediaUrl(u.profile_pic)}
+                                  alt={u.name}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'block';
+                                  }}
+                                />
+                              ) : null}
+                              <span style={{ display: u.profile_pic ? 'none' : 'block' }}>
+                                {getInitials(u.name)}
+                              </span>
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{u.name}</div>
@@ -274,7 +285,7 @@ export default function UserListPage() {
                             disabled={changingRole === u.id}
                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                           >
-                            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
                           </select>
                         </td>
                         <td style={{ textAlign: 'right', paddingRight: 24 }}>

@@ -217,20 +217,17 @@ function Footer() {
 
         {/* Centered Logo & Brand Area — Single Line Alignment with Logo Image */}
         <div style={{ padding: '40px 20px 80px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 20 }}>
+          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
             <img 
               src="/doctorBookletLogo.png" 
               alt="Doctor Booklet Logo" 
               style={{ 
-                height: '42px', 
+                height: '46px', 
                 width: 'auto', 
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 4px 12px rgba(0, 212, 175, 0.3))' 
               }} 
             />
-            <span style={{ fontSize: 24, fontWeight: 900, color: 'white', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
-              Doctor <span style={{ color: '#00D4AF' }}>Booklet</span>
-            </span>
           </Link>
           
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0, fontWeight: 500, letterSpacing: '0.5px', lineHeight: 1.6 }}>
@@ -260,20 +257,17 @@ function Footer() {
         <Row className="g-5">
           {/* 1. BRAND & STORY */}
           <Col lg={4} className="mb-4 mb-lg-0">
-            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+            <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginBottom: 24 }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
                 style={{ 
-                  height: '48px', 
+                  height: '52px', 
                   width: 'auto', 
                   objectFit: 'contain',
                   filter: 'drop-shadow(0 4px 12px rgba(0, 212, 175, 0.3))' 
                 }} 
               />
-              <span style={{ fontSize: 26, fontWeight: 900, color: 'white', letterSpacing: '-0.5px' }}>
-                Doctor <span style={{ color: '#00D4AF' }}>Booklet</span>
-              </span>
             </Link>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7, marginBottom: 32, maxWidth: 340 }}>
               {site.tagline || 'আমরা আধুনিক প্রযুক্তির মাধ্যমে স্বাস্থ্যসেবাকে আপনার দোরগোড়ায় পৌঁছে দিতে প্রতিশ্রুতিবদ্ধ। বিশ্বস্ত ডাক্তার ও উন্নত হাসপাতালের সাথে যুক্ত থাকুন Doctor Booklet-এর মাধ্যমে।'}

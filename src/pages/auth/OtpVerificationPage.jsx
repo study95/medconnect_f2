@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendOtp, verifyOtp } from '../../api/authApi'
-import { toast } from 'react-toastify'
 import '../../styles/auth.css'
 
 const DEFAULT_MOBILE = '01747465444'
@@ -60,7 +59,7 @@ export default function OtpVerificationPage() {
     try {
       // Pass 'registration' so backend knows to check for existing users
       await sendOtp({ mobile: trimmedMobile, type: 'registration' })
-      toast.success('OTP sent successfully!')
+      
       setStep(2)
       setTimer(60)
     } catch (err) {
@@ -69,7 +68,6 @@ export default function OtpVerificationPage() {
       } else {
         // Fallback: still allow proceeding for demo purposes
         console.warn('OTP API error or not available, using demo mode')
-        toast.success('OTP sent! (Demo: use 123456)')
         setStep(2)
         setTimer(60)
       }
@@ -120,12 +118,12 @@ export default function OtpVerificationPage() {
     setLoading(true)
     try {
       await verifyOtp({ mobile, otp: otpString })
-      toast.success('Mobile verified successfully!')
+      
       navigate(`/register/${type}`, { state: { verified: true, mobile } })
     } catch (err) {
       // Demo fallback: check against hardcoded OTP
       if (otpString === DEFAULT_OTP) {
-        toast.success('Mobile verified successfully!')
+        
         navigate(`/register/${type}`, { state: { verified: true, mobile } })
       } else {
         setOtpError('Invalid OTP. Please try again.')
@@ -139,10 +137,9 @@ export default function OtpVerificationPage() {
     if (timer > 0) return
     try {
       await sendOtp({ mobile })
-      toast.success('OTP resent!')
+      
       setTimer(60)
     } catch {
-      toast.success('OTP resent! (Demo: use 123456)')
       setTimer(60)
     }
   }

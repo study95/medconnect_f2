@@ -1,5 +1,4 @@
 // DivisionListPage.jsx — Premium Division Management (Admin)
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -25,8 +24,7 @@ export default function DivisionListPage() {
       const res = await getDivisions()
       setItems(res.data.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load divisions'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -37,10 +35,9 @@ export default function DivisionListPage() {
     try {
       await deleteDivision(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Division deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

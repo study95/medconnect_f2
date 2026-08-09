@@ -1,7 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
-import { toast } from 'react-toastify';
 import { Lock, Mail, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,7 +20,7 @@ export default function AdminSecureLoginPage() {
       const response = await axiosInstance.post('/admin-login', { email, password });
       
       if (response.data.success) {
-        toast.success('Admin authentication successful.');
+        
         
         // Update AuthContext state directly without full page reload
         storeAuth(response.data.token, response.data.user, 'admin');
@@ -31,12 +30,12 @@ export default function AdminSecureLoginPage() {
       }
     } catch (err) {
       if (err.response?.data?.unauthorized_role) {
-        toast.error(err.response.data.message || 'Unauthorized access. Redirecting...');
+        
         navigate('/');
       } else if (err.response?.status === 403) {
-        toast.error(err.response?.data?.message || 'Access Denied. Account may be blocked.');
+        
       } else {
-        toast.error(err.response?.data?.message || 'Invalid credentials.');
+        
       }
     } finally {
       setLoading(false);

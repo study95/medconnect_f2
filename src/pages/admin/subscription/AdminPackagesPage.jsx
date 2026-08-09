@@ -1,7 +1,6 @@
 // AdminPackagesPage.jsx — CRUD subscription packages
 import { useState, useEffect } from 'react'
 import { getAdminPackages, createAdminPackage, updateAdminPackage, deleteAdminPackage } from '../../../api/subscriptionApi'
-import { toast } from 'react-toastify'
 
 export default function AdminPackagesPage() {
   const [packages, setPackages] = useState([])
@@ -20,7 +19,7 @@ export default function AdminPackagesPage() {
     try {
       const res = await getAdminPackages()
       setPackages(res.data?.data || [])
-    } catch { toast.error('Failed to load packages') }
+    } catch {  }
     finally { setLoading(false) }
   }
 
@@ -45,23 +44,23 @@ export default function AdminPackagesPage() {
     try {
       if (editing) {
         await updateAdminPackage(editing.id, form)
-        toast.success('Package updated')
+        
       } else {
         await createAdminPackage(form)
-        toast.success('Package created')
+        
       }
       setShowModal(false)
       load()
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+    } catch (err) {  }
   }
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this package?')) return
     try {
       await deleteAdminPackage(id)
-      toast.success('Package deleted')
+      
       load()
-    } catch { toast.error('Failed to delete') }
+    } catch {  }
   }
 
   return (

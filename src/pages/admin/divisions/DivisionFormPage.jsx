@@ -1,5 +1,4 @@
 // DivisionFormPage.jsx — Premium Division Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -27,8 +26,7 @@ export default function DivisionFormPage() {
       if (!d) throw new Error('Division not found')
       setForm({ name: d.name || '', bangla_name: d.bangla_name || '' })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load division'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -44,15 +42,14 @@ export default function DivisionFormPage() {
     try {
       if (isEdit) {
         await updateDivision(id, form)
-        toast.success('Division updated successfully!')
+        
       } else {
         await createDivision(form)
-        toast.success('Division created successfully!')
+        
       }
       navigate('/admin/divisions')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save division'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

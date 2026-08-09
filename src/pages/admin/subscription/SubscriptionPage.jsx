@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSubscriptionPackages } from '../../../api/subscriptionApi'
 import { useSubscription } from '../../../context/SubscriptionContext'
-import { toast } from 'react-toastify'
 
 export default function SubscriptionPage() {
   const navigate = useNavigate()
@@ -21,7 +20,7 @@ export default function SubscriptionPage() {
       const res = await getSubscriptionPackages()
       setPackages(res.data?.data || [])
     } catch (err) {
-      toast.error('Failed to load packages')
+      
     } finally {
       setLoading(false)
     }

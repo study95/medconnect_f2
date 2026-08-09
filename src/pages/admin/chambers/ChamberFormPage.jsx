@@ -1,5 +1,4 @@
 // ChamberFormPage.jsx — Premium Chamber Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -168,8 +167,7 @@ export default function ChamberFormPage() {
         fee: d.fee || ''
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load chamber'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -192,11 +190,10 @@ export default function ChamberFormPage() {
     try {
       if (isEdit) await updateChamber(id, form)
       else await createChamber(form)
-      toast.success(isEdit ? 'Chamber updated!' : 'Chamber created successfully!')
+      
       navigate('/admin/chambers')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save chamber'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

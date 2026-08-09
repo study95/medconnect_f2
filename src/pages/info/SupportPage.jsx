@@ -10,7 +10,6 @@ import {
   ExternalLink, Copy
 } from 'lucide-react'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
-import { toast } from 'react-toastify'
 
 export default function SupportPage() {
   const navigate = useNavigate()
@@ -113,13 +112,13 @@ export default function SupportPage() {
 
   const handleVote = (id, type) => {
     setVotedFaqs(prev => ({ ...prev, [id]: type }))
-    toast.success(type === 'up' ? 'ধন্যবাদ! আপনার প্রতিক্রিয়া রেকর্ড করা হয়েছে।' : 'মতামতের জন্য ধন্যবাদ। আমরা তথ্যটি আরও উন্নত করছি।')
+    
   }
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text)
     setCopiedText(field)
-    toast.info(`${text} কপি করা হয়েছে!`)
+    
     setTimeout(() => setCopiedText(null), 2000)
   }
 
@@ -127,7 +126,7 @@ export default function SupportPage() {
   const handleTicketSubmit = async (e) => {
     e.preventDefault()
     if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) {
-      toast.error('অনুগ্ৰহ করে সমস্ত প্রয়োজনীয় ঘর পূরণ করুন।')
+      
       return
     }
     setTicketSubmitting(true)
@@ -142,7 +141,7 @@ export default function SupportPage() {
     }
     setSubmittedTicket(newTicket)
     setTicketSubmitting(false)
-    toast.success(`সাপোর্ট টিকিট #${ticketId} তৈরি হয়েছে!`)
+    
     setTicketForm({ name: '', contact: '', category: 'অ্যাপয়েন্টমেন্ট সমস্যা', priority: 'সাধারণ', subject: '', message: '' })
   }
 
@@ -151,7 +150,7 @@ export default function SupportPage() {
     e.preventDefault()
     setStatusError('')
     if (!statusSearchId.trim()) {
-      toast.error('অনুগ্ৰহ করে একটি সঠিক টিকিট আইডি প্রদান করুন।')
+      
       return
     }
     const cleanId = statusSearchId.trim().toUpperCase()
@@ -181,14 +180,14 @@ export default function SupportPage() {
   const handleCallbackSubmit = async (e) => {
     e.preventDefault()
     if (!callbackPhone) {
-      toast.error('আপনার মোবাইল নম্বরটি লিখুন।')
+      
       return
     }
     setCallbackSubmitting(true)
     await new Promise(r => setTimeout(r, 800))
     setCallbackSubmitting(false)
     setShowCallbackModal(false)
-    toast.success(`ধন্যবাদ! আমাদের সাপোর্ট টিম শীঘ্রই ${callbackPhone} নম্বরে কল করবে।`)
+    
     setCallbackPhone('')
   }
 

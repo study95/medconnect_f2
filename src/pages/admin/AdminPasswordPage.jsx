@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { toast } from 'react-toastify'
 import { updatePasswordApi } from '../../api/authApi'
 import { Lock, Save, Eye, EyeOff } from 'lucide-react'
 
@@ -22,17 +21,17 @@ export default function AdminPasswordPage() {
   const handleSave = async (e) => {
     e.preventDefault()
     if (form.new_password !== form.new_password_confirmation) {
-      return toast.error("New passwords do not match!")
+      return 
     }
 
     setLoading(true)
     try {
       await updatePasswordApi(form)
-      toast.success('Password updated successfully!')
+      
       setForm({ current_password: '', new_password: '', new_password_confirmation: '' })
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to update password'
-      toast.error(msg)
+      
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,4 @@
 // DistrictFormPage.jsx — Premium District Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -129,8 +128,7 @@ export default function DistrictFormPage() {
         division_id: d.division_id || ''
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load district'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -151,15 +149,14 @@ export default function DistrictFormPage() {
     try {
       if (isEdit) {
         await updateDistrict(id, form)
-        toast.success('District updated successfully!')
+        
       } else {
         await createDistrict(form)
-        toast.success('District created successfully!')
+        
       }
       navigate('/admin/districts')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save district'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

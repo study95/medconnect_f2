@@ -88,11 +88,11 @@ export function AuthProvider({ children }) {
     setUserType(type)
   }
 
-  const login = async (email, password) => {
+  const login = async (email, password, role = null) => {
     try {
-      const response = await loginApi({ email, password })
+      const response = await loginApi({ email, identifier: email, password, role, type: role })
       const { token, user: userData } = response.data
-      storeAuth(token, userData)
+      storeAuth(token, userData, role || userData.registration_type)
       return { success: true }
     } catch (error) {
       const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
@@ -101,39 +101,15 @@ export function AuthProvider({ children }) {
   }
 
   const loginAsPatient = async (identifier, password) => {
-    try {
-      const response = await patientLoginApi({ identifier, password })
-      const { token, user: userData } = response.data
-      storeAuth(token, userData, 'patient')
-      return { success: true }
-    } catch (error) {
-      const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
-      return { success: false, message }
-    }
+    return login(identifier, password, 'patient')
   }
 
   const loginAsDoctor = async (identifier, password) => {
-    try {
-      const response = await doctorLoginApi({ identifier, password })
-      const { token, user: userData } = response.data
-      storeAuth(token, userData, 'doctor')
-      return { success: true }
-    } catch (error) {
-      const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
-      return { success: false, message }
-    }
+    return login(identifier, password, 'doctor')
   }
 
   const loginAsHospital = async (identifier, password) => {
-    try {
-      const response = await hospitalLoginApi({ identifier, password })
-      const { token, user: userData } = response.data
-      storeAuth(token, userData, 'hospital')
-      return { success: true }
-    } catch (error) {
-      const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
-      return { success: false, message }
-    }
+    return login(identifier, password, 'hospital')
   }
 
   const register = async (name, email, password) => {

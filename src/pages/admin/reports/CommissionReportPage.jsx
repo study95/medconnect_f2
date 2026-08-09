@@ -1,6 +1,5 @@
 // CommissionReportPage.jsx — Admin Commission Report with premium filters
 import { useState, useEffect, useRef } from 'react'
-import { toast } from 'react-toastify'
 import { getCommissionReport, getDoctors, getHospitals, updateAppointment, bulkUpdateCommissionStatus } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import CommissionMemo from './CommissionMemo'
@@ -156,8 +155,7 @@ export default function CommissionReportPage() {
       setSummary(reportSummary)
       setSelectedAppointments([])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load report'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -166,11 +164,10 @@ export default function CommissionReportPage() {
     setUpdating(id)
     try {
       await updateAppointment(id, { commission_status: status })
-      toast.success('Status updated')
+      
       fetchReport()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Update failed'))
-    } finally {
+} finally {
       setUpdating(null)
     }
   }
@@ -183,11 +180,10 @@ export default function CommissionReportPage() {
         appointment_ids: selectedAppointments,
         commission_status: status
       })
-      toast.success(`Bulk updated ${selectedAppointments.length} items to ${status}`)
+      
       fetchReport()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Bulk update failed'))
-    } finally {
+} finally {
       setBulking(false)
     }
   }
@@ -383,7 +379,7 @@ export default function CommissionReportPage() {
                             background: row.created_by_role === 'manager' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
                             color: row.created_by_role === 'manager' ? '#F59E0B' : '#3B82F6'
                          }}>
-                            {row.created_by_role}
+                            {row.created_by_role === 'manager' ? 'hospital' : row.created_by_role}
                          </span>
                       </td>
                       <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>৳{row.amount}</td>

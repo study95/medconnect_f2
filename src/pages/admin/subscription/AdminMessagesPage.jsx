@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getAdminNotifications, sendAdminNotification, deleteAdminNotification } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 
@@ -148,7 +147,7 @@ export default function AdminMessagesPage() {
       const res = await getAdminNotifications()
       const data = res.data?.data
       setNotifications(data?.data || data || [])
-    } catch { toast.error('Failed to load') }
+    } catch {  }
     finally { setLoading(false) }
   }
 
@@ -166,16 +165,16 @@ export default function AdminMessagesPage() {
       const data = { ...form }
       if (!data.doctor_id) data.doctor_id = null // broadcast
       await sendAdminNotification(data)
-      toast.success('Notification sent!')
+      
       setShowModal(false)
       load()
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+    } catch (err) {  }
   }
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this notification?')) return
-    try { await deleteAdminNotification(id); toast.success('Deleted'); load() }
-    catch { toast.error('Failed') }
+    try { await deleteAdminNotification(id);  load() }
+    catch {  }
   }
 
   const typeIcons = { warning: '⚠️', info: 'ℹ️', promo: '🎁', system: '🔧', expiry: '⏰' }

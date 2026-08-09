@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Modal } from 'react-bootstrap'
-import { toast } from 'react-toastify'
 import { 
   IconCopy, IconCheck, IconBrandWhatsapp, IconBrandFacebook, 
   IconBrandTelegram, IconMail, IconX, IconShare
@@ -28,11 +27,11 @@ export default function ShareModal({ show, onHide, shareData }) {
         document.body.removeChild(textarea)
       }
       setCopied(true)
-      toast.success('লিংক কপি করা হয়েছে!')
+      
       setTimeout(() => setCopied(false), 3000)
     } catch (err) {
       console.error('Failed to copy link:', err)
-      toast.error('লিংক কপি করতে ব্যর্থ হয়েছে!')
+      
     }
   }
 
@@ -63,11 +62,11 @@ export default function ShareModal({ show, onHide, shareData }) {
       window.location.href = imoUrl
       setTimeout(() => {
         handleCopyLink()
-        toast.info('IMO অ্যাপ না খুললে লিংক কপি করা হয়েছে!')
+        
       }, 1200)
     } else {
       handleCopyLink()
-      toast.info('IMO শেয়ারের জন্য লিংক কপি করা হয়েছে!')
+      
     }
     if (onHide) onHide()
   }

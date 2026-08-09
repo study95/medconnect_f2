@@ -6,7 +6,6 @@ import {
   Sparkles, AlertCircle, Building2, User, HelpCircle, ArrowRight
 } from 'lucide-react'
 import { getContent } from '../utils/contentService'
-import { toast } from 'react-toastify'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 
 export default function ContactPage() {
@@ -24,12 +23,12 @@ export default function ContactPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.phone || !form.message) {
-      toast.error('অনুগ্ৰহ করে প্রয়োজনীয় ঘরগুলো পূরণ করুন।')
+      
       return
     }
     setLoading(true)
     await new Promise(r => setTimeout(r, 800))
-    toast.success('ধন্যবাদ! আপনার বার্তা সফলভাবে জমা হয়েছে। আমাদের প্রতিনিধি শীঘ্রই আপনার সাথে যোগাযোগ করবেন।')
+    
     setForm({ name: '', email: '', phone: '', subject: 'সাধারণ জিজ্ঞাসা', message: '' })
     setLoading(false)
   }
@@ -37,12 +36,12 @@ export default function ContactPage() {
   const handleNewsletter = async (e) => {
     e.preventDefault()
     if (!nlEmail || !nlEmail.includes('@')) {
-      toast.error('একটি সঠিক ইমেইল ঠিকানা প্রদান করুন।')
+      
       return
     }
     setNlLoading(true)
     await new Promise(r => setTimeout(r, 600))
-    toast.success('আমাদের নিউজলেটারে সাবস্ক্রাইব করার জন্য ধন্যবাদ!')
+    
     setNlEmail('')
     setNlLoading(false)
   }
@@ -50,7 +49,7 @@ export default function ContactPage() {
   const handleCopy = (text, fieldName) => {
     navigator.clipboard.writeText(text)
     setCopiedField(fieldName)
-    toast.info(`${text} কপি করা হয়েছে!`)
+    
     setTimeout(() => setCopiedField(null), 2000)
   }
 

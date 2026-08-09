@@ -1,7 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
-import { ToastContainer, Bounce } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
 import AppNavbar     from './components/layout/Navbar'
 import Footer        from './components/layout/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
@@ -111,6 +109,7 @@ const PurchaseReportPage     = lazy(() => import('./pages/admin/reports/Purchase
 // Profile & Password
 const AdminProfilePage       = lazy(() => import('./pages/admin/AdminProfilePage'))
 const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPage'))
+const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
 
 function PageLoader() {
   return (
@@ -291,22 +290,6 @@ function App() {
   return (
     <ErrorBoundary message="The application encountered an error. Please refresh the page.">
       <ScrollToTop />
-      <ToastContainer
-        position="top-right"
-        autoClose={4000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        transition={Bounce}
-        toastClassName="premium-toast-container"
-        bodyClassName="premium-toast-body"
-        progressClassName="premium-toast-progress"
-      />
 
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -423,6 +406,9 @@ function App() {
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="password" element={<AdminPasswordPage />} />
+
+            {/* Audit Log */}
+            <Route path="audit-logs" element={<AuditLogPage />} />
           </Route>
 
           {/* ===== AUTH ROUTES (No navbar/footer) ===== */}

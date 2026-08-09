@@ -4,7 +4,6 @@ import { getAppointmentById } from '../api/appointmentApi'
 import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { useTranslation } from 'react-i18next'
 import { Circle, Copy, Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset } from 'lucide-react'
-import { toast } from 'react-toastify'
 
 const getAvatarColors = (name) => {
   const colors = [
@@ -137,7 +136,7 @@ export default function AppointmentTicketPage() {
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    
   }
 
   return (

@@ -1,5 +1,4 @@
 // UnionFormPage.jsx — Premium Union Create/Edit Form with Full Cascading
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -195,8 +194,7 @@ export default function UnionFormPage() {
       if (upazila.district_id) loadUpazilas(upazila.district_id)
       
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load union'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -225,15 +223,14 @@ export default function UnionFormPage() {
 
       if (isEdit) {
         await updateUnion(id, payload)
-        toast.success('Union updated successfully!')
+        
       } else {
         await createUnion(payload)
-        toast.success('Union created successfully!')
+        
       }
       navigate('/admin/unions')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save union'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

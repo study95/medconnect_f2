@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getMedicine, createMedicine, updateMedicine } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const DOSAGE_TYPES = ['TAB', 'SYP', 'DROP', 'CAP', 'INJ', 'SUSP', 'SUPP']
@@ -20,7 +19,7 @@ export default function MedicineFormPage() {
       const canUpdate = isEdit && (isAdmin || hasPermission('medicine.update'))
       
       if (!isAdmin && !canCreate && !canUpdate) {
-        toast.error('You do not have permission to perform this action')
+        
         navigate('/admin/medicines')
       }
     }
@@ -54,8 +53,7 @@ export default function MedicineFormPage() {
         company_name: med.company_name || '',
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load medicine'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -83,15 +81,14 @@ export default function MedicineFormPage() {
     try {
       if (isEdit) {
         await updateMedicine(id, form)
-        toast.success('Medicine updated!')
+        
       } else {
         await createMedicine(form)
-        toast.success('Medicine created!')
+        
       }
       setTimeout(() => navigate('/admin/medicines'), 600)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save medicine'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

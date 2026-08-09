@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { Container, Row, Col } from 'react-bootstrap'
 import HeroSection from '../components/home/HeroSection'
+import ImageBannerSlider from '../components/home/ImageBannerSlider'
 import MostViewedDoctors from '../components/home/MostViewedDoctors'
 import TopSpecialtiesSlider from '../components/home/TopSpecialtiesSlider'
 import TopHospitals from '../components/home/TopHospitals'
@@ -926,6 +927,10 @@ function HomePage() {
     <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
       <HeroSection stats={data?.stats} />
       
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <ImageBannerSlider />
+      </ScrollReveal>
+
       <ScrollReveal direction="up" distance={28} duration={600}>
         <MostViewedDoctors doctors={data?.top_doctors} loading={isLoading} />
       </ScrollReveal>

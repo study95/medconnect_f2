@@ -1,5 +1,4 @@
 // HospitalFormPage.jsx — Premium Hospital Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -194,8 +193,7 @@ export default function HospitalFormPage() {
         bannerPreview: h.banner_url
       }))
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load data'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -247,15 +245,14 @@ export default function HospitalFormPage() {
       if (isEdit) {
         formData.append('_method', 'PUT')
         await updateHospital(id, formData)
-        toast.success('Hospital updated')
+        
       } else {
         await createHospital(formData)
-        toast.success('Hospital created')
+        
       }
       navigate('/admin/hospitals')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Operation failed'))
-      if (err.response?.data?.errors) setErrors(err.response.data.errors)
+if (err.response?.data?.errors) setErrors(err.response.data.errors)
     } finally {
       setSaving(false)
     }

@@ -6,7 +6,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import useLocations from '../../hooks/useLocations'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
-import { toast } from 'react-toastify'
 import PasswordInput from '../../components/common/PasswordInput'
 import '../../styles/auth.css'
 
@@ -21,7 +20,7 @@ export default function PatientRegisterPage() {
 
   useEffect(() => {
     if (!verified) {
-      toast.error('Please verify your mobile number first')
+      
       navigate('/register/patient/verify')
     }
   }, [verified, navigate])
@@ -114,11 +113,11 @@ export default function PatientRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success('Registration successful!')
+      
       navigate('/')
     } else {
       if (result.errors) setErrors(result.errors)
-      toast.error(result.message)
+      
     }
   }
 

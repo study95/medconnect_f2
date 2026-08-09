@@ -1,5 +1,4 @@
 ﻿// DoctorFormPage.jsx — Premium Doctor Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -255,8 +254,7 @@ export default function DoctorFormPage() {
         }
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load doctor'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -306,11 +304,10 @@ export default function DoctorFormPage() {
     try {
       if (isEdit) await updateDoctor(id, formData)
       else await createDoctor(formData)
-      toast.success(isEdit ? 'Profile Updated' : 'Doctor Registered')
+      
       navigate('/admin/doctors')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Operation failed'))
-      if (err.response?.data?.errors) setErrors(err.response.data.errors)
+if (err.response?.data?.errors) setErrors(err.response.data.errors)
     } finally {
       setSaving(false)
     }

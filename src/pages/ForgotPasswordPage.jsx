@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { Container, Form, Button, Card } from 'react-bootstrap'
 import axiosInstance from '../api/axiosInstance'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'react-toastify'
 
 
 function ForgotPasswordPage() {
@@ -13,24 +12,24 @@ function ForgotPasswordPage() {
   const { t } = useTranslation()
 
 
+  const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setStatusMsg({ type: '', text: '' })
     try {
       const res = await axiosInstance.post('/forgot-password', { email })
-      // For development, API might return the token in response so we can test the reset flow easily.
       if (res.data.token) {
         setDevToken(res.data.token)
-        toast.success('Development Mode: Reset link generated.')
       }
-      
       if (res.data.success) {
-        toast.success(res.data.message || t('password_reset_sent'))
+        setStatusMsg({ type: 'success', text: res.data.message || 'Password reset link has been sent.' })
       } else if (!res.data.token) {
-        toast.error(res.data.message || t('something_went_wrong'))
+        setStatusMsg({ type: 'danger', text: res.data.message || 'Unable to process request.' })
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || t('something_went_wrong'))
+      setStatusMsg({ type: 'danger', text: err.response?.data?.message || 'Something went wrong.' })
     } finally {
       setLoading(false)
     }

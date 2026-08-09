@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { createPrescription, updatePrescription, getPrescription, getAppointment, createWalkInPatient, searchMedicines } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const emptyMedicine = { medicine_name: '', dosage: '', duration: '', instructions: '' }
@@ -118,7 +117,8 @@ export default function PrescriptionFormPage() {
         medicines: p.medicines?.length > 0 ? p.medicines : [{ ...emptyMedicine }]
       })
       if (p.appointment_id) loadAppointment(p.appointment_id)
-    } catch (err) { toast.error(getErrorMessage(err, 'Failed to load')) }
+    } catch (err) {
+}
     finally { setLoading(false) }
   }
 
@@ -262,31 +262,30 @@ export default function PrescriptionFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.diagnosis.trim()) { toast.error('Diagnosis is required'); setActiveTab('clinical'); return; }
+    if (!form.diagnosis.trim()) {  setActiveTab('clinical'); return; }
 
     const cleanMedicines = form.medicines.filter(m => m.medicine_name.trim())
-    if (cleanMedicines.length === 0) { toast.error('At least one medicine is required'); setActiveTab('medicines'); return; }
+    if (cleanMedicines.length === 0) {  setActiveTab('medicines'); return; }
 
     setSaving(true)
     try {
       if (isEdit) {
         await updatePrescription(id, { ...form, medicines: cleanMedicines })
-        toast.success('Prescription updated!')
+        
       } else {
         await createPrescription({ ...form, medicines: cleanMedicines })
-        toast.success('Prescription created!')
+        
       }
       setTimeout(() => navigate('/admin/prescriptions'), 800)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save prescription'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }
 
   const handleWalkInRegister = async () => {
     if (!walkInForm.name) {
-      toast.error('Patient name is required')
+      
       return
     }
 
@@ -296,13 +295,12 @@ export default function PrescriptionFormPage() {
       const data = res.data?.data
       if (data && data.appointment_id) {
         setForm({ ...form, appointment_id: data.appointment_id })
-        toast.success(res.data.message || 'Patient registered & Appointment created!')
+        
         loadAppointment(data.appointment_id)
         setShowWalkIn(false)
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to register patient'))
-    } finally {
+} finally {
       setRegistering(false)
     }
   }

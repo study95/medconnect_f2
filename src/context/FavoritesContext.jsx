@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { toast } from 'react-toastify'
 
 const FavoritesContext = createContext(null)
 
@@ -46,7 +45,7 @@ export function FavoritesProvider({ children }) {
           const updated = [...current, doc]
           localStorage.setItem(key, JSON.stringify(updated))
           setFavoriteDoctors(updated)
-          toast.success(`${doc.name || 'ডাক্তার'} পছন্দের তালিকায় সেভ করা হয়েছে!`)
+          
         }
       } else if (pending.type === 'hospital') {
         const hosp = pending.data
@@ -56,7 +55,7 @@ export function FavoritesProvider({ children }) {
           const updated = [...current, hosp]
           localStorage.setItem(key, JSON.stringify(updated))
           setFavoriteHospitals(updated)
-          toast.success(`${hosp.name || 'হাসপাতাল'} পছন্দের তালিকায় সেভ করা হয়েছে!`)
+          
         }
       }
       localStorage.removeItem('pending_favorite')
@@ -82,7 +81,7 @@ export function FavoritesProvider({ children }) {
     if (!isLoggedIn) {
       // Not logged in -> save pending action & redirect to login
       localStorage.setItem('pending_favorite', JSON.stringify({ type: 'doctor', data: doctor }))
-      toast.info('পছন্দের তালিকায় যোগ করতে অনুগ্রহ করে প্রথমে লগইন করুন')
+      
       navigate('/login', { state: { from: location } })
       return
     }
@@ -95,10 +94,10 @@ export function FavoritesProvider({ children }) {
     let updated
     if (exists) {
       updated = favoriteDoctors.filter(d => String(d.id) !== String(doctor.id))
-      toast.info('ডাক্তার পছন্দের তালিকা থেকে সরানো হয়েছে')
+      
     } else {
       updated = [...favoriteDoctors, doctor]
-      toast.success('ডাক্তার পছন্দের তালিকায় সেভ করা হয়েছে')
+      
     }
 
     setFavoriteDoctors(updated)
@@ -111,7 +110,7 @@ export function FavoritesProvider({ children }) {
     if (!isLoggedIn) {
       // Not logged in -> save pending action & redirect to login
       localStorage.setItem('pending_favorite', JSON.stringify({ type: 'hospital', data: hospital }))
-      toast.info('পছন্দের তালিকায় যোগ করতে অনুগ্রহ করে প্রথমে লগইন করুন')
+      
       navigate('/login', { state: { from: location } })
       return
     }
@@ -124,10 +123,10 @@ export function FavoritesProvider({ children }) {
     let updated
     if (exists) {
       updated = favoriteHospitals.filter(h => String(h.id) !== String(hospital.id))
-      toast.info('হাসপাতাল পছন্দের তালিকা থেকে সরানো হয়েছে')
+      
     } else {
       updated = [...favoriteHospitals, hospital]
-      toast.success('হাসপাতাল পছন্দের তালিকায় সেভ করা হয়েছে')
+      
     }
 
     setFavoriteHospitals(updated)
@@ -139,7 +138,7 @@ export function FavoritesProvider({ children }) {
     const updated = favoriteDoctors.filter(d => String(d.id) !== String(doctorId))
     setFavoriteDoctors(updated)
     localStorage.setItem(`favorites_doctors_${user.id}`, JSON.stringify(updated))
-    toast.info('ডাক্তার পছন্দের তালিকা থেকে সরানো হয়েছে')
+    
   }, [isLoggedIn, user?.id, favoriteDoctors])
 
   const removeFavoriteHospital = useCallback((hospitalId) => {
@@ -147,7 +146,7 @@ export function FavoritesProvider({ children }) {
     const updated = favoriteHospitals.filter(h => String(h.id) !== String(hospitalId))
     setFavoriteHospitals(updated)
     localStorage.setItem(`favorites_hospitals_${user.id}`, JSON.stringify(updated))
-    toast.info('হাসপাতাল পছন্দের তালিকা থেকে সরানো হয়েছে')
+    
   }, [isLoggedIn, user?.id, favoriteHospitals])
 
   return (

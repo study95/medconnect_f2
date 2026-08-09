@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { patientCheckIdentifier } from '../../api/authApi'
-import { toast } from 'react-toastify'
 import { Eye, EyeOff } from 'lucide-react'
 import '../../styles/auth.css'
 
@@ -36,7 +35,7 @@ export default function PatientLoginPage() {
       setStep(2)
     } catch (err) {
       if (err.response?.status === 404) {
-        setError(err.response?.data?.message || 'Not finding this user. Please register first.')
+        setError(err.response?.data?.message || 'আপনার ইমেইল/মোবাইল নম্বরটি নিবন্ধিত নয়, নিবন্ধন করুন।')
       } else {
         setError('Something went wrong checking the identifier.')
       }
@@ -56,7 +55,7 @@ export default function PatientLoginPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success('Logged in successfully!')
+      
       navigate(from, { replace: true })
     } else {
       setError(result.message || 'Invalid credentials. Please try again.')
@@ -73,9 +72,8 @@ export default function PatientLoginPage() {
         {/* LEFT — Info Panel */}
         <div className="auth-info-panel patient">
           <div className="auth-info-content">
-            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 20 }}>
-              <img src="/doctorBookletLogo.png" alt="Doctor Booklet Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain', background: 'white', padding: '3px 8px', borderRadius: '8px' }} />
-              <span style={{ color: 'white', fontWeight: 800, fontSize: 16 }}>Doctor <span style={{ color: '#00D4AF' }}>Booklet</span></span>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', marginBottom: 20 }}>
+              <img src="/doctorBookletLogo.png" alt="Doctor Booklet Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain', background: 'white', padding: '4px 10px', borderRadius: '8px' }} />
             </Link>
             <div className="auth-info-icon">👤</div>
             <h2 className="auth-info-title">
@@ -208,7 +206,7 @@ export default function PatientLoginPage() {
 
           {/* Google Login */}
           <div className="auth-divider">OR</div>
-          <button className="auth-btn-google" onClick={() => toast('Google login coming soon!')}>
+          <button className="auth-btn-google" onClick={() => setError('Google Sign-In is not implemented yet.')}>
             <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92a8.78 8.78 0 0 0 2.68-6.62z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853"/><path d="M3.96 10.71A5.41 5.41 0 0 1 3.68 9c0-.59.1-1.17.28-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.59A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/></svg>
             Continue with Google
           </button>

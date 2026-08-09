@@ -4,7 +4,6 @@ import { useAuth } from '../../../context/AuthContext'
 import { getPayments, updatePayment, deletePayment } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import StatusBadge from '../../../components/admin/StatusBadge'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const PAYMENT_STATUS_COLORS = {
@@ -41,8 +40,7 @@ export default function PaymentListPage() {
       const raw = res.data?.data?.data || res.data?.data || res.data || []
       setItems(Array.isArray(raw) ? raw : [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load payment records'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }, [dateFilter, monthFilter, yearFilter, search])
@@ -88,11 +86,10 @@ export default function PaymentListPage() {
     try {
       await updatePayment(editTarget.id, editForm)
       setItems(items.map(i => i.id === editTarget.id ? { ...i, ...editForm } : i))
-      toast.success('Payment record updated!')
+      
       setEditTarget(null)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Update failed'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }
@@ -103,10 +100,9 @@ export default function PaymentListPage() {
     try {
       await deletePayment(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Payment record deleted')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

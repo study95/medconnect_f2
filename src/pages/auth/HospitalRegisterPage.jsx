@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import useLocations from '../../hooks/useLocations'
-import { toast } from 'react-toastify'
 import PasswordInput from '../../components/common/PasswordInput'
 import '../../styles/auth.css'
 
@@ -18,7 +17,7 @@ export default function HospitalRegisterPage() {
 
   useEffect(() => {
     if (!verified) {
-      toast.error('Please verify your mobile number first')
+      
       navigate('/register/hospital/verify')
     }
   }, [verified, navigate])
@@ -108,11 +107,11 @@ export default function HospitalRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success('Hospital registered successfully!')
+      
       navigate('/admin')
     } else {
       if (result.errors) setErrors(result.errors)
-      toast.error(result.message)
+      
     }
   }
 

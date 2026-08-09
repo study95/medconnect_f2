@@ -1,7 +1,6 @@
 // AppointmentViewPage.jsx — Premium Detailed Appointment View
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import { getAppointment, updateAppointment } from '../../../api/adminApi'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
@@ -24,7 +23,7 @@ export default function AppointmentViewPage() {
       const res = await getAppointment(id)
       setAppt(res.data?.data || res.data)
     } catch (err) {
-      toast.error('Failed to load appointment details')
+      
       navigate('/admin/appointments')
     } finally {
       setLoading(false)
@@ -36,9 +35,9 @@ export default function AppointmentViewPage() {
       setUpdating(true)
       await updateAppointment(id, { status: newStatus })
       setAppt(prev => ({ ...prev, status: newStatus }))
-      toast.success(`Status updated to ${newStatus}`)
+      
     } catch (err) {
-      toast.error('Failed to update status')
+      
     } finally {
       setUpdating(false)
     }

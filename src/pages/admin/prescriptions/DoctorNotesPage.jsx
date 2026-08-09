@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
-import { toast } from 'react-toastify'
 
 export default function DoctorNotesPage() {
   const { user } = useAuth()
@@ -29,16 +28,16 @@ export default function DoctorNotesPage() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.title.trim() || !formData.content.trim()) {
-      toast.error('Title and content are required')
+      
       return
     }
 
     if (editingId) {
       saveNotes(notes.map(n => n.id === editingId ? { ...n, ...formData } : n))
-      toast.success('Note updated')
+      
     } else {
       saveNotes([...notes, { id: Date.now().toString(), ...formData }])
-      toast.success('Note added')
+      
     }
     
     setEditingId(null)
@@ -53,7 +52,7 @@ export default function DoctorNotesPage() {
   const handleDelete = (id) => {
     if(window.confirm('Are you sure you want to delete this note?')) {
       saveNotes(notes.filter(n => n.id !== id))
-      toast.success('Note deleted')
+      
     }
   }
 

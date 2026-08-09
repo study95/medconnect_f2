@@ -1,4 +1,4 @@
-﻿import React, { useRef } from 'react'
+import React, { useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import html2pdf from 'html2pdf.js'
 
@@ -116,7 +116,7 @@ export default function CommissionMemo({ show, onClose, data, summary, filters, 
                     </td>
                     <td style={{ padding: '12px 0', fontSize: 13, textTransform: 'capitalize' }}>
                       <span style={{ background: row.created_by_role === 'manager' ? '#FEF3C7' : '#E0E7FF', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600, color: row.created_by_role === 'manager' ? '#92400E' : '#3730A3' }}>
-                        {row.created_by_role}
+                        {row.created_by_role === 'manager' ? 'hospital' : row.created_by_role}
                       </span>
                     </td>
                     <td style={{ padding: '12px 0', fontSize: 13, textAlign: 'right' }}>৳{row.amount}</td>
@@ -133,7 +133,7 @@ export default function CommissionMemo({ show, onClose, data, summary, filters, 
                 <div style={{ background: '#F8FAFC', padding: 20, borderRadius: 8, width: 300 }}>
                   <h4 style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 16 }}>Commission Breakdown</h4>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, color: '#64748B' }}>Manager Commission:</span>
+                    <span style={{ fontSize: 13, color: '#64748B' }}>Hospital Commission:</span>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>৳{managerCommission.toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>

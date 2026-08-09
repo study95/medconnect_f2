@@ -1,5 +1,4 @@
 // PatientFormPage.jsx — Premium Patient Profile Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -116,6 +115,8 @@ export default function PatientFormPage() {
     divisions: [], districts: [], upazilas: [], unions: []
   })
 
+  const [initialLoadDone, setInitialLoadDone] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
@@ -123,67 +124,97 @@ export default function PatientFormPage() {
   const ageInfo = calculateAge(form.date_of_birth)
 
   useEffect(() => {
-    loadInitialData()
-    if (isEdit) loadPatient()
+    const init = async () => {
+      setLoading(true)
+      try {
+        const divRes = await getDivisions()
+        const divisions = divRes.data?.data || []
+        let districts = [], upazilas = [], unions = []
+
+        if (isEdit) {
+          const pRes = await getAdminPatient(id)
+          const p = pRes.data?.data || pRes.data
+
+          if (p.division_id) {
+            const distRes = await getDistricts({ division_id: p.division_id })
+            districts = distRes.data?.data || []
+          }
+          if (p.district_id) {
+            const upazilaRes = await getUpazilas({ district_id: p.district_id })
+            upazilas = upazilaRes.data?.data || []
+          }
+          if (p.upazila_id) {
+            const unionRes = await getUnions({ upazila_id: p.upazila_id })
+            unions = unionRes.data?.data || []
+          }
+
+          setLocationData({ divisions, districts, upazilas, unions })
+
+          let dob = ''
+          if (p.date_of_birth) {
+            dob = p.date_of_birth.substring(0, 10)
+          }
+
+          setForm({
+            name: p.name || '',
+            email: p.email || '',
+            phone: p.mobile || p.phone || '',
+            occupation: p.occupation || '',
+            date_of_birth: dob,
+            gender: p.gender || '',
+            blood_group: p.blood_group || '',
+            division_id: p.division_id ? p.division_id.toString() : '',
+            district_id: p.district_id ? p.district_id.toString() : '',
+            upazila_id: p.upazila_id ? p.upazila_id.toString() : '',
+            union_id: p.union_id ? p.union_id.toString() : '',
+          })
+
+          if (p.profile_pic) setPhotoPreview(p.profile_pic)
+        } else {
+          setLocationData(ld => ({ ...ld, divisions }))
+        }
+
+        setInitialLoadDone(true)
+      } catch (err) {
+} finally {
+        setLoading(false)
+      }
+    }
+    init()
   }, [id])
 
-  // Location Cascading logic
   useEffect(() => {
+    if (!initialLoadDone) return
     if (form.division_id) {
-      getDistricts({ division_id: form.division_id }).then(res => setLocationData(p => ({ ...p, districts: res.data?.data || [] })))
+      getDistricts({ division_id: form.division_id }).then(res =>
+        setLocationData(p => ({ ...p, districts: res.data?.data || [], upazilas: [], unions: [] }))
+      )
     } else {
       setLocationData(p => ({ ...p, districts: [], upazilas: [], unions: [] }))
     }
-  }, [form.division_id])
+  }, [form.division_id, initialLoadDone])
 
   useEffect(() => {
+    if (!initialLoadDone) return
     if (form.district_id) {
-      getUpazilas({ district_id: form.district_id }).then(res => setLocationData(p => ({ ...p, upazilas: res.data?.data || [] })))
+      getUpazilas({ district_id: form.district_id }).then(res =>
+        setLocationData(p => ({ ...p, upazilas: res.data?.data || [], unions: [] }))
+      )
     } else {
       setLocationData(p => ({ ...p, upazilas: [], unions: [] }))
     }
-  }, [form.district_id])
+  }, [form.district_id, initialLoadDone])
 
   useEffect(() => {
+    if (!initialLoadDone) return
     if (form.upazila_id) {
-      getUnions({ upazila_id: form.upazila_id }).then(res => setLocationData(p => ({ ...p, unions: res.data?.data || [] })))
+      getUnions({ upazila_id: form.upazila_id }).then(res =>
+        setLocationData(p => ({ ...p, unions: res.data?.data || [] }))
+      )
     } else {
       setLocationData(p => ({ ...p, unions: [] }))
     }
-  }, [form.upazila_id])
-
-  const loadInitialData = async () => {
-    try {
-      const res = await getDivisions()
-      setLocationData(p => ({ ...p, divisions: res.data?.data || [] }))
-    } catch (err) { console.error(err) }
-  }
-
-  const loadPatient = async () => {
-    setLoading(true)
-    try {
-      const res = await getAdminPatient(id)
-      const p = res.data?.data || res.data
-      setForm({
-        name: p.name || '',
-        email: p.email || '',
-        phone: p.mobile || p.phone || '',
-        occupation: p.occupation || '',
-        date_of_birth: p.date_of_birth || '',
-        gender: p.gender || '',
-        blood_group: p.blood_group || '',
-        division_id: p.division_id || '',
-        district_id: p.district_id || '',
-        upazila_id: p.upazila_id || '',
-        union_id: p.union_id || ''
-      })
-      if (p.profile_pic) setPhotoPreview(p.profile_pic)
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load patient'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [form.upazila_id, initialLoadDone])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -209,21 +240,23 @@ export default function PatientFormPage() {
       }
     })
 
-    if (photo instanceof File) formData.append('photo', photo)
+    if (photo instanceof File) {
+      formData.append('profile_pic', photo)
+    }
+
     if (isEdit) formData.append('_method', 'PUT')
 
     try {
       if (isEdit) {
         await updateAdminPatient(id, formData)
-        toast.success('Patient Profile Updated')
+        
       } else {
         await createAdminPatient(formData)
-        toast.success('Patient Registered Successfully')
+        
       }
       navigate('/admin/patients')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Save failed'))
-      if (err.response?.data?.errors) setErrors(err.response.data.errors)
+if (err.response?.data?.errors) setErrors(err.response.data.errors)
     } finally {
       setSaving(false)
     }
@@ -255,13 +288,15 @@ export default function PatientFormPage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
                 {photoPreview ? (
-                  <img src={photoPreview} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={photoPreview} alt="Patient" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ color: 'var(--admin-text-muted)', fontSize: 40 }}>👤</div>
                 )}
                 <input type="file" onChange={handlePhotoChange} accept="image/*" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
               </div>
-              <p style={{ marginTop: 12, fontSize: 12, color: 'var(--admin-text-muted)' }}>Click to change photo</p>
+              <p style={{ marginTop: 12, fontSize: 12, color: 'var(--admin-text-muted)' }}>
+                {photoPreview ? 'Click to change photo' : 'Click to upload photo'}
+              </p>
             </div>
 
             {/* Personal Details */}

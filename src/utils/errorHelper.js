@@ -1,7 +1,10 @@
 /**
  * Translates error/notification strings into clear, user-friendly Bangla.
  */
-export const translateToBangla = (msg, fallback = 'একটি অপ্রত্যাশিত সমস্যা দেখা দিয়েছে।') => {
+/**
+ * Translates error/notification strings into clear, user-friendly Bangla.
+ */
+export const translateToBangla = (msg, fallback = 'তথ্য প্রক্রিয়াকরণে সমস্যা হচ্ছে। অনুগ্রহ করে আপনার তথ্য পরীক্ষা করে আবার চেষ্টা করুন।') => {
   if (!msg) return fallback;
   if (typeof msg !== 'string') return fallback;
 
@@ -12,14 +15,29 @@ export const translateToBangla = (msg, fallback = 'একটি অপ্রত�
 
   const lower = msg.toLowerCase();
 
+  // Network / Connection errors
+  if (lower.includes('network error') || lower.includes('failed to fetch') || lower.includes('econnrefused')) {
+    return 'সার্ভারের সাথে সংযোগ করা যাচ্ছে না। আপনার ইন্টারনেট কানেকশন চেক করুন অথবা কিছুক্ষণ পর চেষ্টা করুন।';
+  }
+
   // Mobile / Phone already registered
-  if ((lower.includes('mobile') || lower.includes('phone') || lower.includes('number')) && (lower.includes('already') || lower.includes('exist') || lower.includes('registered') || lower.includes('duplicate'))) {
+  if ((lower.includes('mobile') || lower.includes('phone') || lower.includes('number')) && (lower.includes('already') || lower.includes('exist') || lower.includes('registered') || lower.includes('duplicate') || lower.includes('taken'))) {
     return 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।';
   }
 
   // Email already registered
-  if (lower.includes('email') && (lower.includes('already') || lower.includes('exist') || lower.includes('registered') || lower.includes('duplicate'))) {
+  if (lower.includes('email') && (lower.includes('already') || lower.includes('exist') || lower.includes('registered') || lower.includes('duplicate') || lower.includes('taken'))) {
     return 'এই ইমেইল ঠিকানাটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।';
+  }
+
+  // Role mismatch / Account type conflict
+  if (lower.includes('role') || (lower.includes('registered as') && (lower.includes('doctor') || lower.includes('patient')))) {
+    return 'এই নম্বরটি ইতিমধ্যে অন্য অ্যাকাউন্টের ধরন হিসেবে নিবন্ধিত।';
+  }
+
+  // Mobile format / length
+  if (lower.includes('mobile') && (lower.includes('format') || lower.includes('invalid') || lower.includes('regex'))) {
+    return 'সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।';
   }
 
   // Credentials mismatch / Unauthorized
@@ -29,20 +47,29 @@ export const translateToBangla = (msg, fallback = 'একটি অপ্রত�
 
   // Password errors
   if (lower.includes('password') && (lower.includes('short') || lower.includes('at least') || lower.includes('min'))) {
-    // Extract the number from the message (e.g., "must be at least 12 characters")
     const numMatch = msg.match(/(\d+)/);
     const minLen = numMatch ? numMatch[1] : '৬';
-    // Convert to Bangla digits
     const banglaDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' };
     const banglaLen = String(minLen).replace(/\d/g, d => banglaDigits[d] || d);
     return `পাসওয়ার্ডটি কমপক্ষে ${banglaLen} অক্ষরের হতে হবে।`;
   }
 
   // OTP errors
-  if (lower.includes('otp') || lower.includes('code')) {
+  if (lower.includes('otp') || lower.includes('code') || lower.includes('sms')) {
     if (lower.includes('sent')) return 'OTP সফলভাবে পাঠানো হয়েছে!';
     if (lower.includes('invalid') || lower.includes('incorrect') || lower.includes('wrong')) return 'OTP কোডটি সঠিক নয়। আবার চেষ্টা করুন।';
     if (lower.includes('expired')) return 'OTP কোডের মেয়াদ শেষ হয়েছে। পুনরায় পাঠান।';
+    if (lower.includes('failed') || lower.includes('unable')) return 'OTP পাঠাতে ব্যর্থ হয়েছে। অনুগ্রহ করে মোবাইল নম্বর চেক করে আবার চেষ্টা করুন।';
+  }
+
+  // Validation generic
+  if (lower.includes('given data was invalid') || lower.includes('validation error') || lower.includes('field is required')) {
+    return 'অনুগ্রহ করে সঠিক তথ্য প্রদান করুন।';
+  }
+
+  // Rate limiting / Too many attempts
+  if (lower.includes('too many') || lower.includes('attempts') || lower.includes('throttle')) {
+    return 'অতিরিক্ত চেষ্টা করা হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।';
   }
 
   // Duplicate database entry fallback
@@ -56,30 +83,44 @@ export const translateToBangla = (msg, fallback = 'একটি অপ্রত�
   }
 
   // Default fallback in Bangla if unhandled English string
-  return 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।';
+  return fallback;
 };
 
-export const getErrorMessage = (error, fallback = 'একটি অপ্রত্যাশিত সমস্যা দেখা দিয়েছে।') => {
+export const getErrorMessage = (error, fallback = 'তথ্য প্রক্রিয়াকরণে সমস্যা হচ্ছে। অনুগ্রহ করে আপনার তথ্য পরীক্ষা করে আবার চেষ্টা করুন।') => {
   if (!error?.response) {
-    return translateToBangla(error?.message, fallback);
+    const msg = error?.message || '';
+    if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
+      return 'সার্ভারের সাথে সংযোগ করা যাচ্ছে না। আপনার ইন্টারনেট কানেকশন চেক করুন।';
+    }
+    return translateToBangla(msg, fallback);
   }
 
-  const { data } = error.response;
+  const { data, status } = error.response;
 
   // 1. Check for specific validation errors (Laravel style)
   if (data?.errors && typeof data.errors === 'object') {
     const errorMessages = Object.values(data.errors).flat();
     if (errorMessages.length > 0) {
-      return translateToBangla(errorMessages[0], fallback);
+      const firstMsg = errorMessages[0];
+      return translateToBangla(firstMsg, fallback);
     }
   }
 
   // 2. Check for main message or error property
-  let mainMessage = data?.message || data?.error || '';
+  const mainMessage = data?.message || data?.error || '';
   if (mainMessage) {
     return translateToBangla(mainMessage, fallback);
   }
 
-  // 3. Fallback
+  // 3. Status-based fallback messages
+  if (status === 401) return 'অনুগ্রহ করে পুনরায় লগইন করুন।';
+  if (status === 403) return 'এই কাজটি করার অনুমতি নেই।';
+  if (status === 404) return 'অনুরোধকৃত তথ্য পাওয়া যায়নি।';
+  if (status === 409) return 'এই তথ্যটি ইতিমধ্যে সিস্টেমে বিদ্যমান।';
+  if (status === 422) return 'প্রদত্ত তথ্য সঠিক নয়। অনুগ্রহ করে সকল ফিল্ড পরীক্ষা করুন।';
+  if (status === 429) return 'অতিরিক্ত অনুরোধ পাঠানো হয়েছে। অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন।';
+  if (status === 500) return 'সার্ভারে সাময়িক কারিগরি সমস্যা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।';
+
+  // 4. Final fallback
   return fallback;
 };

@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { getAdminTrialDays, grantTrialDays, deleteTrialDay } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 
 export default function AdminTrialDaysPage() {
   const [trials, setTrials] = useState([])
@@ -17,7 +16,7 @@ export default function AdminTrialDaysPage() {
     try {
       const res = await getAdminTrialDays()
       setTrials(res.data?.data || [])
-    } catch { toast.error('Failed to load') }
+    } catch {  }
     finally { setLoading(false) }
   }
 
@@ -33,16 +32,16 @@ export default function AdminTrialDaysPage() {
     e.preventDefault()
     try {
       await grantTrialDays(form)
-      toast.success('Trial days granted!')
+      
       setShowModal(false)
       load()
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+    } catch (err) {  }
   }
 
   const handleDelete = async (id) => {
     if (!confirm('Remove this trial entry?')) return
-    try { await deleteTrialDay(id); toast.success('Removed'); load() }
-    catch { toast.error('Failed') }
+    try { await deleteTrialDay(id);  load() }
+    catch {  }
   }
 
   return (

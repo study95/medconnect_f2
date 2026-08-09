@@ -1,7 +1,6 @@
 // AdminPromoCodesPage.jsx — CRUD promo codes
 import { useState, useEffect } from 'react'
 import { getAdminPromoCodes, createAdminPromoCode, updateAdminPromoCode, deleteAdminPromoCode } from '../../../api/subscriptionApi'
-import { toast } from 'react-toastify'
 
 export default function AdminPromoCodesPage() {
   const [promos, setPromos] = useState([])
@@ -19,7 +18,7 @@ export default function AdminPromoCodesPage() {
     try {
       const res = await getAdminPromoCodes()
       setPromos(res.data?.data || [])
-    } catch { toast.error('Failed to load') }
+    } catch {  }
     finally { setLoading(false) }
   }
 
@@ -46,20 +45,20 @@ export default function AdminPromoCodesPage() {
       if (!data.max_uses) data.max_uses = null
       if (editing) {
         await updateAdminPromoCode(editing.id, data)
-        toast.success('Promo updated')
+        
       } else {
         await createAdminPromoCode(data)
-        toast.success('Promo created')
+        
       }
       setShowModal(false)
       load()
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+    } catch (err) {  }
   }
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this promo code?')) return
-    try { await deleteAdminPromoCode(id); toast.success('Deleted'); load() }
-    catch { toast.error('Failed') }
+    try { await deleteAdminPromoCode(id);  load() }
+    catch {  }
   }
 
   return (

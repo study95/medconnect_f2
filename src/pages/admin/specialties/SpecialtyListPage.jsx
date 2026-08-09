@@ -1,5 +1,4 @@
 // SpecialtyListPage.jsx — Premium Specialty Management (Admin)
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -24,8 +23,7 @@ export default function SpecialtyListPage() {
       const res = await getSpecialties()
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load specialties'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -36,10 +34,9 @@ export default function SpecialtyListPage() {
     try {
       await deleteSpecialty(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Specialty deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

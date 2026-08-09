@@ -5,7 +5,6 @@ import { useAuth } from '../../../context/AuthContext'
 import { getAppointments, updateAppointment, deleteAppointment, getDoctors, getHospitals } from '../../../api/adminApi'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 // Custom Searchable Dropdown Component (Premium Select)
@@ -156,8 +155,7 @@ export default function AppointmentListPage() {
       const res = await getAppointments(params)
       setAppointments(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load appointments'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -167,10 +165,9 @@ export default function AppointmentListPage() {
     try {
       await updateAppointment(id, { status: newStatus })
       setAppointments(appointments.map(a => a.id === id ? { ...a, status: newStatus } : a))
-      toast.success('Status updated')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update status'))
-    } finally {
+} finally {
       setChangingStatus(null)
     }
   }
@@ -181,10 +178,9 @@ export default function AppointmentListPage() {
     try {
       await deleteAppointment(deleteTarget.id)
       setAppointments(appointments.filter(a => a.id !== deleteTarget.id))
-      toast.success('Appointment deleted')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -205,7 +201,7 @@ export default function AppointmentListPage() {
   const roleOptions = [
     { id: 'patient', name: '😷 Patient' },
     { id: 'doctor', name: '👨‍⚕️ Doctor' },
-    { id: 'manager', name: '🏢 Manager' },
+    { id: 'manager', name: '🏥 Hospital' },
     { id: 'admin', name: '🔧 Admin' }
   ]
 
@@ -337,20 +333,20 @@ export default function AppointmentListPage() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--admin-text)' }}>
-                            {appt.patient?.name ? appt.patient.name.charAt(0).toUpperCase() : 'P'}
+                            {(appt.patient?.name || appt.user_name || 'P').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || 'Unknown Patient'}</div>
-                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{appt.patient?.phone || appt.patient?.email || 'No contact info'}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || appt.user_name || 'Unknown Patient'}</div>
+                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{appt.patient?.phone || appt.patient?.mobile || appt.patient?.email || appt.user_email || 'No contact info'}</div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.doctor?.name || 'No Doctor assigned'}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.doctor?.name || appt.doctor_name || 'No Doctor assigned'}</div>
                         <div style={{ fontSize: 11, color: 'var(--admin-primary)', fontWeight: 600 }}>{appt.doctor?.specialty?.name || 'General Practitioner'}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{appt.hospital?.name || '—'}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{appt.hospital?.name || appt.hospital_name || '—'}</div>
                         <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{appt.chamber_name || 'General Appointment'}</div>
                       </td>
                       <td>

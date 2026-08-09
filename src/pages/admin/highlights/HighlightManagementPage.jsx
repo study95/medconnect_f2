@@ -57,7 +57,7 @@ export default function HighlightManagementPage() {
       setItems(data)
     } catch (err) {
       console.error('Highlight Load Error:', err)
-      toast.error('Failed to load highlighted items')
+      
     } finally {
       setLoading(false)
     }
@@ -115,12 +115,12 @@ export default function HighlightManagementPage() {
         formData.append('_method', 'PUT')
         await updateDoctor(item.id, formData)
       }
-      toast.success('Added to highlights successfully')
+      
       setSearchQuery('')
       setShowSearch(false)
       loadItems()
     } catch (err) {
-      toast.error('Failed to add item')
+      
     }
   }
 
@@ -142,10 +142,10 @@ export default function HighlightManagementPage() {
         formData.append('_method', 'PUT')
         await updateDoctor(removingItem.id, formData)
       }
-      toast.success('Removed from highlights')
+      
       loadItems()
     } catch (err) {
-      toast.error('Failed to remove item')
+      
     } finally {
       setProcessing(false)
       setRemovingItem(null)

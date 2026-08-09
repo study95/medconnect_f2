@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { getAdminSubscriptions, updateAdminSubscription, deleteAdminSubscription } from '../../../api/subscriptionApi'
 import { useAuth } from '../../../context/AuthContext'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import DeleteModal from '../../../components/admin/DeleteModal'
 
@@ -25,8 +24,7 @@ export default function AdminSubscriptionListPage() {
       const data = res.data?.data?.data || res.data?.data || []
       setSubscriptions(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to fetch subscriptions'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -34,11 +32,10 @@ export default function AdminSubscriptionListPage() {
   const handleUpdate = async (id, payload) => {
     try {
       await updateAdminSubscription(id, payload)
-      toast.success('Subscription updated successfully')
+      
       fetchSubscriptions()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update subscription'))
-    }
+}
   }
 
   const handleDelete = async () => {
@@ -46,12 +43,11 @@ export default function AdminSubscriptionListPage() {
     setDeleting(true)
     try {
       await deleteAdminSubscription(deleteTarget.id)
-      toast.success('Subscription deleted')
+      
       setSubscriptions(subscriptions.filter(s => s.id !== deleteTarget.id))
       setDeleteTarget(null)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete subscription'))
-    } finally {
+} finally {
       setDeleting(false)
     }
   }

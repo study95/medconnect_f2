@@ -1,5 +1,4 @@
 // SpecialtyFormPage.jsx — Premium Specialty Create/Edit Form
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -27,8 +26,7 @@ export default function SpecialtyFormPage() {
       if (!d) throw new Error('Specialty not found')
       setForm({ name: d.name || '', slug: d.slug || '' })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load specialty'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -49,15 +47,14 @@ export default function SpecialtyFormPage() {
     try {
       if (isEdit) {
         await updateSpecialty(id, form)
-        toast.success('Specialty updated successfully!')
+        
       } else {
         await createSpecialty(form)
-        toast.success('Specialty created successfully!')
+        
       }
       navigate('/admin/specialties')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save specialty'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

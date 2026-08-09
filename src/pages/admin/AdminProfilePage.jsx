@@ -6,7 +6,6 @@ import useLocations from '../../hooks/useLocations'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getColor, getInitials } from '../../utils/avatar'
-import { toast } from 'react-toastify'
 import { User, Mail, Phone, MapPin, Briefcase, Key, Edit2, Save, X, Calendar, Activity, GraduationCap, Building2, Search, Settings } from 'lucide-react'
 
 function AdminProfilePage() {
@@ -145,13 +144,13 @@ function AdminProfilePage() {
 
       await updateMyProfile(formData)
 
-      toast.success('Profile updated successfully!')
+      
       setEditing(false)
       await fetchCurrentUser()
       loadProfile()
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to update profile'
-      toast.error(msg)
+      
     } finally {
       setSaving(false)
     }

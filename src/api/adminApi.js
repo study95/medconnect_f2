@@ -107,11 +107,11 @@ export const deletePayment = (id) => axiosInstance.delete(`/appointments/${id}`)
 
 // ===== COMMISSION & SERVICE ENABLEMENT =====
 // Doctor service enablement
-export const getServiceEnablements = () => axiosInstance.get('/admin/service-enablements')
+export const getServiceEnablements = (params = {}) => axiosInstance.get('/admin/service-enablements', { params: { per_page: 500, ...params } })
 export const updateServiceEnablement = (doctorId, data) => axiosInstance.put(`/admin/service-enablements/${doctorId}`, data)
 
 // Hospital commission settings
-export const getHospitalCommissions = () => axiosInstance.get('/admin/hospital-commissions')
+export const getHospitalCommissions = (params = {}) => axiosInstance.get('/admin/hospital-commissions', { params: { per_page: 500, ...params } })
 export const updateHospitalCommission = (hospitalId, data) => axiosInstance.put(`/admin/hospital-commissions/${hospitalId}`, data)
 
 // Patient booking commission (global)

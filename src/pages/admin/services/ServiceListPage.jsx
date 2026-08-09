@@ -17,7 +17,7 @@ export default function ServiceListPage() {
       const res = await axiosInstance.get('/admin/services')
       setServices(res.data)
     } catch (err) {
-      toast.error('Failed to fetch services')
+      
     } finally {
       setLoading(false)
     }
@@ -30,11 +30,11 @@ export default function ServiceListPage() {
   const handleDelete = async () => {
     try {
       await axiosInstance.delete(`/admin/services/\${deletingId}`)
-      toast.success('Service deleted successfully')
+      
       fetchServices()
       setShowDelete(false)
     } catch (err) {
-      toast.error('Failed to delete service')
+      
     }
   }
 

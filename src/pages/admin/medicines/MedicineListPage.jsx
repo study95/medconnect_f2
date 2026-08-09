@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getMedicines, deleteMedicine } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import { useAuth } from '../../../context/AuthContext'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const DOSAGE_TYPES = ['ALL', 'TAB', 'SYP', 'DROP', 'CAP', 'INJ', 'SUSP', 'SUPP']
@@ -68,8 +67,7 @@ export default function MedicineListPage() {
         setPagination({ current_page: 1, last_page: 1, total: 0 })
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load medicines'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -101,10 +99,9 @@ export default function MedicineListPage() {
     try {
       await deleteMedicine(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Medicine deleted')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

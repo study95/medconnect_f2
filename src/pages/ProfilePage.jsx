@@ -10,7 +10,6 @@ import useLocations from '../hooks/useLocations'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../utils/dateUtils'
 import { getColor, getInitials } from '../utils/avatar'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
-import { toast } from 'react-toastify'
 import { 
   IconUser, IconMail, IconPhone, IconBriefcase, IconCalendar, 
   IconDroplet, IconStethoscope, IconSchool, IconBuilding, 
@@ -182,13 +181,13 @@ function ProfilePage() {
 
       await updateMyProfile(formData)
 
-      toast.success('প্রোফাইল সফলভাবে আপডেট করা হয়েছে!')
+      
       setEditing(false)
       await fetchCurrentUser()
       loadProfile()
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'প্রোফাইল আপডেট করতে ব্যর্থ হয়েছে'
-      toast.error(msg)
+      
     } finally {
       setSaving(false)
     }

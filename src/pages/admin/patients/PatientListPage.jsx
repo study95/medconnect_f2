@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getPatients, deleteAdminPatient, getDivisions, getDistricts, getUpazilas, getUnions } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 // Custom Searchable Dropdown Component (Premium Select)
@@ -171,8 +170,7 @@ export default function PatientListPage() {
       const res = await getPatients(params)
       setPatients(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load patients'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -189,8 +187,8 @@ export default function PatientListPage() {
     try {
       await deleteAdminPatient(deleteTarget.id)
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
-      toast.success('Patient deleted')
-    } catch (err) { toast.error('Delete failed') } finally { setDeleting(false); setDeleteTarget(null) }
+      
+    } catch (err) {  } finally { setDeleting(false); setDeleteTarget(null) }
   }
 
   return (
@@ -290,10 +288,27 @@ export default function PatientListPage() {
                           border: '1px solid var(--admin-border)'
                         }}>
                           {p.profile_pic ? (
-                            <img src={getMediaUrl(p.profile_pic)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <span style={{ fontSize: 18, fontWeight: 900, color: '#6366F1' }}>{p.name?.charAt(0)?.toUpperCase()}</span>
-                          )}
+                            <img
+                              src={getMediaUrl(p.profile_pic)}
+                              alt={p.name || ''}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'block');
+                              }}
+                            />
+                          ) : null}
+                          <span
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 900,
+                              color: '#6366F1',
+                              display: p.profile_pic ? 'none' : 'block'
+                            }}
+                          >
+                            {p.name?.charAt(0)?.toUpperCase() || 'P'}
+                          </span>
                         </div>
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{p.name}</div>

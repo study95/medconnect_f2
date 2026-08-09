@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getHospital, getDoctors, getChambers } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
@@ -34,7 +33,7 @@ export default function HospitalDetailPage() {
       setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
       setChambers(chamRes.data?.data || chamRes.data || [])
     } catch (err) {
-      toast.error('Failed to load facility data')
+      
       navigate('/admin/hospitals')
     } finally {
       setLoading(false)
@@ -58,9 +57,9 @@ export default function HospitalDetailPage() {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
       pdf.save(`Hospital_Profile_${hospital.name?.replace(/\s+/g, '_')}.pdf`)
-      toast.success('Profile downloaded successfully!')
+      
     } catch (err) {
-      toast.error('Failed to generate PDF')
+      
     } finally {
       setExporting(false)
     }

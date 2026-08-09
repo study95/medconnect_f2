@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { getPrescription } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -107,7 +106,7 @@ export default function PrescriptionViewPage() {
       }
     } catch (err) {
       console.error('PDF Error:', err);
-      toast.error('Failed to generate PDF');
+      
       if (newTab) newTab.close();
     }
   };
@@ -118,8 +117,7 @@ export default function PrescriptionViewPage() {
       const res = await getPrescription(id)
       setPrescription(res.data?.data || res.data)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load prescription'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }

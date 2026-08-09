@@ -1,5 +1,4 @@
 // UpazilaListPage.jsx — Premium Upazila Management with Deep Filtering
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -159,8 +158,7 @@ export default function UpazilaListPage() {
       const res = await getUpazilas(params)
       setItems(res.data.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load upazilas'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -171,10 +169,9 @@ export default function UpazilaListPage() {
     try {
       await deleteUpazila(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      toast.success('Upazila deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }

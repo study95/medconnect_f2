@@ -4,7 +4,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getUser, getAppointments, getPrescriptions, getPrescription } from '../../../api/adminApi'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import html2canvas from 'html2canvas'
@@ -39,8 +38,7 @@ export default function PatientProfilePage() {
       setAppointments(apptRes.data?.data?.data || apptRes.data?.data || [])
       setPrescriptions(pressRes.data?.data?.data || pressRes.data?.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load patient record'))
-      navigate('/admin/users')
+navigate('/admin/users')
     } finally {
       setLoading(false)
     }
@@ -72,10 +70,10 @@ export default function PatientProfilePage() {
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297)
         pdf.save(`Prescription_${rxId}.pdf`)
         setExportingId(null); setExportingRx(null)
-        toast.success('Prescription downloaded!')
+        
       }, 500)
     } catch (err) {
-      toast.error('Export failed'); setExportingId(null); setExportingRx(null)
+       setExportingId(null); setExportingRx(null)
     }
   }
 

@@ -1,6 +1,5 @@
 // ServiceEnablementPage.jsx — Admin Commission & Service Management with deep location filters
 import { useState, useEffect, useRef } from 'react'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import {
   getServiceEnablements, updateServiceEnablement,
@@ -267,19 +266,21 @@ function DoctorServiceTab() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const res = await getServiceEnablements()
-      setDoctorsData(res.data?.data || [])
+      const res = await getServiceEnablements({ per_page: 500 })
+      const raw = res.data?.data
+      const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
+      setDoctorsData(list)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load doctor service data'))
+setDoctorsData([])
     } finally {
       setLoading(false)
     }
   }
 
   const handleUpdate = async (doctorId, field, value) => {
-    const doctor = doctorsData.find(d => d.id === doctorId)
+    const doctor = (Array.isArray(doctorsData) ? doctorsData : []).find(d => d.id === doctorId)
     if (doctor?.has_active_access && field !== 'is_enabled') {
-      toast.warning('This doctor already has an active package.')
+      
       return
     }
 
@@ -297,11 +298,10 @@ function DoctorServiceTab() {
     setSaving(doctorId)
     try {
       await updateServiceEnablement(doctorId, payload)
-      toast.success('Settings updated')
+      
       fetchData()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Update failed'))
-    } finally {
+} finally {
       setSaving(null)
     }
   }
@@ -317,7 +317,8 @@ function DoctorServiceTab() {
     setUnionId('')
   }
 
-  const filtered = doctorsData.filter(d => {
+  const doctorList = Array.isArray(doctorsData) ? doctorsData : []
+  const filtered = doctorList.filter(d => {
     const matchText = !search || d.name?.toLowerCase().includes(search.toLowerCase()) || d.bmdc?.toLowerCase().includes(search.toLowerCase())
     const matchDoctor = !doctorFilter || String(d.id) === String(doctorFilter)
     const matchStatus = !statusFilter || (statusFilter === 'active' ? d.is_active : !d.is_active)
@@ -579,17 +580,19 @@ function HospitalCommissionTab() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const res = await getHospitalCommissions()
-      setHospitalsData(res.data?.data || [])
+      const res = await getHospitalCommissions({ per_page: 500 })
+      const raw = res.data?.data
+      const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
+      setHospitalsData(list)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load hospital commission data'))
+setHospitalsData([])
     } finally {
       setLoading(false)
     }
   }
 
   const handleUpdate = async (hospitalId, field, value) => {
-    const hospital = hospitalsData.find(h => h.id === hospitalId)
+    const hospital = (Array.isArray(hospitalsData) ? hospitalsData : []).find(h => h.id === hospitalId)
     const current = hospital?.commission || {}
     const payload = {
       commission_percentage: current.commission_percentage || 0,
@@ -600,11 +603,10 @@ function HospitalCommissionTab() {
     setSaving(hospitalId)
     try {
       await updateHospitalCommission(hospitalId, payload)
-      toast.success('Hospital settings updated')
+      
       fetchData()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Update failed'))
-    } finally {
+} finally {
       setSaving(null)
     }
   }
@@ -619,7 +621,8 @@ function HospitalCommissionTab() {
     setUnionId('')
   }
 
-  const filtered = hospitalsData.filter(h => {
+  const hospitalList = Array.isArray(hospitalsData) ? hospitalsData : []
+  const filtered = hospitalList.filter(h => {
     const matchText = !search || h.name?.toLowerCase().includes(search.toLowerCase())
     const matchHospital = !hospitalFilter || String(h.id) === String(hospitalFilter)
     const matchStatus = !statusFilter || (statusFilter === 'active' ? h.is_active : !h.is_active)
@@ -799,8 +802,7 @@ function PatientBookingTab() {
         waive_if_doctor_subscribed: data.waive_if_doctor_subscribed ?? true,
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load settings'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -809,11 +811,10 @@ function PatientBookingTab() {
     setSaving(true)
     try {
       await updatePatientBookingCommission(form)
-      toast.success('Global settings saved!')
+      
       fetchData()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Save failed'))
-    } finally {
+} finally {
       setSaving(false)
     }
   }

@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getDoctors, deleteDoctor, updateDoctor, getDivisions, getDistricts, getUpazilas, getUnions, getHospitals, getSpecialties } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import { toast } from 'react-toastify'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -189,8 +188,7 @@ export default function DoctorListPage() {
       const res = await getDoctors(params)
       setDoctors(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load doctors'))
-    } finally {
+} finally {
       setLoading(false)
     }
   }
@@ -201,10 +199,9 @@ export default function DoctorListPage() {
     try {
       await deleteDoctor(deleteTarget.id)
       setDoctors(doctors.filter(d => d.id !== deleteTarget.id))
-      toast.success('Doctor deleted successfully')
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete failed'))
-    } finally {
+} finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -228,10 +225,9 @@ export default function DoctorListPage() {
       const newStatus = !doctor.is_active
       await updateDoctor(doctor.id, { is_active: newStatus ? 1 : 0 })
       setDoctors(doctors.map(d => d.id === doctor.id ? { ...d, is_active: newStatus } : d))
-      toast.success(`Doctor ${newStatus ? 'activated' : 'deactivated'} successfully`)
+      
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Status update failed'))
-    }
+}
   }
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
@@ -520,10 +516,20 @@ export default function DoctorListPage() {
                         border: '1px solid rgba(0, 168, 140, 0.1)'
                       }}>
                         {doctor.photo ? (
-                          <img src={getMediaUrl(doctor.photo)} alt="" onError={(e) => { e.target.onerror = null; e.target.src = DEMO_AVATAR; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ fontSize: 18, fontWeight: 900, color: '#00A88C' }}>{doctor.name?.charAt(0)}</span>
-                        )}
+                          <img
+                            src={getMediaUrl(doctor.photo)}
+                            alt={doctor.name || ''}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.style.display = 'none';
+                              if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'block';
+                            }}
+                          />
+                        ) : null}
+                        <span style={{ fontSize: 18, fontWeight: 900, color: '#00A88C', display: doctor.photo ? 'none' : 'block' }}>
+                          {doctor.name?.charAt(0) || 'D'}
+                        </span>
                       </div>
                     </td>
                     <td>

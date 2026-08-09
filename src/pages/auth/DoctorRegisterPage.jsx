@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext'
 import useLocations from '../../hooks/useLocations'
 import { getSpecialties } from '../../api/adminApi'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
-import { toast } from 'react-toastify'
 import PasswordInput from '../../components/common/PasswordInput'
 import '../../styles/auth.css'
 
@@ -20,7 +19,7 @@ export default function DoctorRegisterPage() {
 
   useEffect(() => {
     if (!verified) {
-      toast.error('Please verify your mobile number first')
+      
       navigate('/register/doctor/verify')
     }
   }, [verified, navigate])
@@ -124,11 +123,11 @@ export default function DoctorRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success('Doctor registration successful!')
+      
       navigate('/')
     } else {
       if (result.errors) setErrors(result.errors)
-      toast.error(result.message)
+      
     }
   }
 

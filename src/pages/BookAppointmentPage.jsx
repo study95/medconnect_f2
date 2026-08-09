@@ -9,7 +9,6 @@ import { BookAppointmentSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import { useTranslation } from 'react-i18next'
 import { translateMetadata } from '../utils/translationUtils'
-import { toast } from 'react-toastify'
 import useDoctorDetail from '../hooks/useDoctorDetail'
 import {
   IconCalendarEvent, IconClock, IconMapPin, IconPhone,
@@ -180,7 +179,7 @@ export default function BookAppointmentPage() {
       : chambers.filter(c => c.day === dayNameEng);
       
     if (availableChambers.length === 0) {
-      toast.error('এই দিনে নির্ধারিত চেম্বার নেই')
+      
       return
     }
     
@@ -246,15 +245,15 @@ export default function BookAppointmentPage() {
   const handleConfirmClick = (e) => {
     e.preventDefault()
     if (!selectedChamberId) {
-      toast.error('চেম্বার নির্বাচন করুন')
+      
       return
     }
     if (!form.appointment_date) {
-      toast.error('তারিখ নির্বাচন করুন')
+      
       return
     }
     if (!form.appointment_time) {
-      toast.error('সময় স্লট নির্বাচন করুন')
+      
       return
     }
     if (!isLoggedIn) {
@@ -290,7 +289,7 @@ export default function BookAppointmentPage() {
       window.scrollTo(0, 0)
     } catch (err) {
       const apiMsg = err.response?.data?.message || ''
-      toast.error(apiMsg || t('booking_failed'))
+      console.error(apiMsg || err)
     } finally {
       setSubmitting(false)
     }
@@ -298,14 +297,13 @@ export default function BookAppointmentPage() {
 
   // Auth Functions (Same as previous)
   const handleSendOtp = async () => {
-    if (!mobileNumber || mobileNumber.length < 11) { toast.error('সঠিক মোবাইল নম্বর দিন'); return }
+    if (!mobileNumber || mobileNumber.length < 11) { return }
     setOtpSending(true)
     try {
       await sendOtp({ mobile: mobileNumber })
       setAuthMode('otp-verify')
-      toast.success('OTP পাঠানো হয়েছে!')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'OTP পাঠাতে সমস্যা হয়েছে')
+      console.error(err)
     } finally {
       setOtpSending(false)
     }
@@ -313,20 +311,18 @@ export default function BookAppointmentPage() {
 
   const handleVerifyOtp = async () => {
     const otp = otpDigits.join('')
-    if (otp.length < 4) { toast.error('সম্পূর্ণ OTP কোড দিন'); return }
+    if (otp.length < 4) { return }
     setOtpVerifying(true)
     try {
       const res = await verifyOtp({ mobile: mobileNumber, otp })
       if (res.data?.token) {
         storeAuth(res.data.token, res.data.user || { mobile: mobileNumber }, 'patient')
-        toast.success('যাচাই সফল! অ্যাপয়েন্টমেন্ট নিশ্চিত হচ্ছে...')
         setTimeout(() => submitAppointment(), 500)
       } else {
-        toast.success('মোবাইল যাচাই সফল!')
         submitAppointment(mobileNumber)
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'OTP যাচাই ব্যর্থ হয়েছে')
+      console.error(err)
     } finally {
       setOtpVerifying(false)
     }

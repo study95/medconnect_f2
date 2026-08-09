@@ -30,7 +30,7 @@ export default function ServiceFormPage() {
           const res = await axiosInstance.get(`/admin/services/\${id}`)
           setFormData(res.data)
         } catch (err) {
-          toast.error('Failed to load service details')
+          
           navigate('/admin/services')
         }
       }
@@ -44,14 +44,14 @@ export default function ServiceFormPage() {
     try {
       if (isEdit) {
         await axiosInstance.put(`/admin/services/\${id}`, formData)
-        toast.success('Service updated successfully')
+        
       } else {
         await axiosInstance.post('/admin/services', formData)
-        toast.success('Service created successfully')
+        
       }
       navigate('/admin/services')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong')
+      
     } finally {
       setLoading(false)
     }

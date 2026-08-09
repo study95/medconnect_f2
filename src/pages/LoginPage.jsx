@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
-import { toast } from 'react-toastify'
 import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole } from 'lucide-react'
 import '../styles/auth-premium.css'
 
@@ -12,10 +11,11 @@ function LoginPage() {
   const location = useLocation()
 
   const [role, setRole] = useState('')
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const from = location.state?.from?.pathname || '/'
 
@@ -68,34 +68,48 @@ function LoginPage() {
 
   const handleLockedFieldClick = () => {
     if (!role) {
-      toast.warning('⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন! (Please select user type)', {
-        toastId: 'select-role-warn',
-        position: 'top-center',
-        autoClose: 3000,
-        icon: false,
-      })
+      setFieldErrors({ role: '⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন!' })
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFieldErrors({})
+
     if (!role) {
-      toast.warning('⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন! (Please select user type)', {
-        toastId: 'select-role-warn',
-        position: 'top-center',
-        autoClose: 3000,
-        icon: false,
-      })
+      setFieldErrors({ role: '⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন!' })
       return
     }
+
+    if (!identifier) {
+      setFieldErrors({ identifier: '⚠️ ইমেইল অথবা মোবাইল নম্বর দিন।' })
+      return
+    }
+
+    if (!password) {
+      setFieldErrors({ password: '⚠️ পাসওয়ার্ড দিন।' })
+      return
+    }
+
     setLoading(true)
-    const result = await login(email, password)
+    const result = await login(identifier, password, role)
     setLoading(false)
+
     if (result.success) {
-      toast.success('সফলভাবে লগইন হয়েছে!')
       navigate(from, { replace: true })
     } else {
-      toast.error(result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
+      const errMsg = result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
+      const lower = errMsg.toLowerCase()
+
+      if (lower.includes('নিবন্ধিত নয়') || lower.includes('নিবন্ধন করুন') || lower.includes('পাওয়া যায়নি') || lower.includes('not find') || lower.includes('found') || lower.includes('email') || lower.includes('phone') || lower.includes('mobile')) {
+        setFieldErrors({ password: errMsg })
+      } else if (lower.includes('পাসওয়ার্ড') || lower.includes('password') || lower.includes('credential') || lower.includes('invalid')) {
+        setFieldErrors({ password: errMsg })
+      } else if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
+        setFieldErrors({ role: errMsg })
+      } else {
+        setFieldErrors({ password: errMsg })
+      }
     }
   }
 
@@ -109,13 +123,12 @@ function LoginPage() {
         {/* ===== LEFT PANEL — EXECUTIVE NAVY BRANDING ===== */}
         <div className="auth-info-panel">
           <div>
-            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center gap-2" style={{ cursor: 'pointer' }}>
+            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center" style={{ cursor: 'pointer' }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
-                style={{ height: '44px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
+                style={{ height: '48px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
               />
-              <span className="info-panel-logo-text">Doctor <span style={{ color: '#00D4AF' }}>Booklet</span></span>
             </Link>
 
             <h2 className="info-panel-title">
@@ -165,7 +178,10 @@ function LoginPage() {
                 <Form.Select
                   id="login-role-select"
                   value={role}
-                  onChange={(e) => setRole(e.target.value)}
+                  onChange={(e) => {
+                    setRole(e.target.value)
+                    setFieldErrors(prev => ({ ...prev, role: '' }))
+                  }}
                   className="auth-input-premium"
                   style={{
                     paddingLeft: 46,
@@ -190,6 +206,13 @@ function LoginPage() {
                 </span>
               </div>
             </Form.Group>
+
+            {/* Inline Red Error for Role */}
+            {fieldErrors.role && (
+              <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.role}
+              </p>
+            )}
 
             {/* Dynamic Role Selected Message (Red Text with Warning Icon) */}
             <p
@@ -218,10 +241,10 @@ function LoginPage() {
 
             {/* Form */}
             <Form onSubmit={handleSubmit}>
-              {/* Email Field */}
+              {/* Email or Mobile Field */}
               <Form.Group style={{ marginBottom: 18 }}>
                 <Form.Label className="auth-label-premium" style={{ color: !role ? '#94A3B8' : undefined }}>
-                  ইমেইল ঠিকানা {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
+                  ইমেইল অথবা মোবাইল নম্বর {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
                 </Form.Label>
                 <div
                   className="input-group-premium"
@@ -242,17 +265,25 @@ function LoginPage() {
                   )}
                   <span className="input-icon-premium"><Mail size={17} /></span>
                   <Form.Control
-                    id="login-email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    id="login-identifier"
+                    type="text"
+                    placeholder="01XXXXXXXXX অথবা name@example.com"
+                    value={identifier}
+                    onChange={e => {
+                      setIdentifier(e.target.value)
+                      setFieldErrors(prev => ({ ...prev, identifier: '' }))
+                    }}
                     required
                     className="auth-input-premium"
                     disabled={!role}
                     style={{ cursor: !role ? 'not-allowed' : undefined }}
                   />
                 </div>
+                {fieldErrors.identifier && (
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.identifier}
+                  </p>
+                )}
               </Form.Group>
 
               {/* Password Field */}
@@ -288,7 +319,10 @@ function LoginPage() {
                     type={showPass ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => {
+                      setPassword(e.target.value)
+                      setFieldErrors(prev => ({ ...prev, password: '' }))
+                    }}
                     required
                     className="auth-input-premium"
                     disabled={!role}
@@ -304,7 +338,18 @@ function LoginPage() {
                     {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.password}
+                  </p>
+                )}
               </Form.Group>
+
+              {fieldErrors.general && (
+                <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {fieldErrors.general}
+                </p>
+              )}
 
               {/* Submit Button */}
               <Button

@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal } from 'react-bootstrap'
 import {
-  IconStarFilled, IconStethoscope, IconShieldCheck, IconBuildingHospital, IconCalendarPlus, IconMapPin, IconClock, IconX, IconExternalLink, IconHeart
+  IconStarFilled, IconStethoscope, IconShieldCheck, IconBuildingHospital, IconCalendarPlus, IconMapPin, IconClock, IconX, IconHeart, IconUsers
 } from '@tabler/icons-react'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import OptimizedImage from './OptimizedImage'
@@ -60,7 +60,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
         position: 'relative',
         background: 'white', 
         borderRadius: 7, 
-        border: '1.5px solid #F1F5F9',
+        border: '1px solid #E2E8F0',
         cursor: 'pointer', 
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex', 
@@ -75,7 +75,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
         e.currentTarget.style.transform = 'translateY(-3px)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = '#F1F5F9'
+        e.currentTarget.style.borderColor = '#E2E8F0'
         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.02)'
         e.currentTarget.style.transform = 'translateY(0)'
       }}
@@ -121,12 +121,13 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
           color="#EF4444"
         />
       </button>
+
       {/* Inner Info Row */}
-      <div style={{ display: 'flex', gap: 16, padding: showBookingButton ? '16px' : '16px 16px 12px 16px', flex: 1 }}>
+      <div style={{ display: 'flex', gap: 16, padding: '14px 16px 8px 16px' }}>
         
-        {/* Left Column (Photo, Verified Rosette, Experience) */}
+        {/* Left Column (Photo & Verified Rosette) */}
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 80 }}>
-          <div style={{ position: 'relative', marginBottom: 10 }}>
+          <div style={{ position: 'relative', width: 80, height: 80 }}>
             <OptimizedImage
               src={getMediaUrl(doctor.photo)}
               fallback={DEMO_AVATAR}
@@ -136,49 +137,33 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
               borderRadius={7}
               style={{ objectFit: 'cover', background: '#F1F5F9' }}
             />
-            {/* Rosette Verified Badge */}
-            <div style={{
-              position: 'absolute',
-              bottom: -8,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 10,
-              background: '#D1FAE5',
-              color: '#065F46',
-              padding: '2px 8px',
-              borderRadius: 99,
-              fontSize: 9,
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              boxShadow: '0 4px 10px rgba(6, 95, 70, 0.08)',
-              whiteSpace: 'nowrap',
-              border: '1.5px solid white'
-            }}>
-              <span style={{ 
-                background: '#065F46', 
-                color: '#D1FAE5', 
-                borderRadius: '50%', 
-                width: 12, 
-                height: 12, 
-                display: 'inline-flex', 
-                alignItems: 'center', 
+            {/* Verified Badge - Blue Scalloped Icon at Bottom Right */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 8,
-                fontWeight: 900
-              }}>✓</span>
-              VERIFIED
-            </div>
-          </div>
-          
-          {/* Experience Stack Below Photo */}
-          <div style={{ textAlign: 'center', marginTop: 2 }}>
-            <div style={{ color: '#0F172A', fontWeight: 800, fontSize: 14 }}>
-              {experience} {String(experience).includes('বছর') ? '' : 'বছর+'}
-            </div>
-            <div style={{ color: '#64748B', fontSize: 12, fontWeight: 500 }}>
-              অভিজ্ঞতা
+                lineHeight: 0
+              }}
+              title="ভেরিফাইড ডাক্তার"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 2C12.55 2 13.06 2.25 13.42 2.68L14.41 3.86C14.73 4.24 15.22 4.45 15.71 4.42L17.25 4.33C18.3 4.27 19.17 5.09 19.26 6.14L19.39 7.68C19.43 8.18 19.67 8.64 20.07 8.93L21.3 9.85C22.14 10.48 22.31 11.67 21.68 12.51C21.6 12.62 21.5 12.72 21.4 12.81L20.24 13.82C19.86 14.15 19.65 14.63 19.66 15.13L19.7 16.68C19.73 17.74 18.89 18.62 17.83 18.68L16.29 18.77C15.79 18.8 15.33 19.04 15.04 19.45L14.12 20.68C13.49 21.52 12.3 21.69 11.46 21.06C11.35 20.98 11.25 20.88 11.16 20.78L10.15 19.62C9.82 19.24 9.34 19.03 8.84 19.04L7.29 19.08C6.23 19.11 5.35 18.27 5.29 17.21L5.2 15.67C5.17 15.17 4.93 14.71 4.53 14.42L3.3 13.5C2.46 12.87 2.29 11.68 2.92 10.84C3 10.73 3.1 10.63 3.2 10.54L4.36 9.53C4.74 9.2 4.95 8.72 4.94 8.22L4.9 6.67C4.87 5.61 5.71 4.73 6.77 4.67L8.31 4.58C8.81 4.55 9.27 4.31 9.56 3.9L10.48 2.67C11.08 1.83 12.24 1.62 13.1 2.21"
+                  fill="#0084FF"
+                />
+                <path
+                  d="M9 12.2L11 14.2L15.5 9.2"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
           </div>
         </div>
@@ -191,7 +176,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
             color: '#0F172A', 
             fontSize: 14, 
             fontWeight: 800, 
-            margin: '0 0 0px 0',
+            margin: '0 0 2px 0',
             lineHeight: 1.3,
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
@@ -201,7 +186,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
           }} title={doctor.name}>
             {doctor.name}
           </h3>
-          <div style={{ color: '#475569', fontSize: 13, marginBottom: 2 }}>
+          <div style={{ color: '#475569', fontSize: 13, marginBottom: 6 }}>
             {degrees}
           </div>
 
@@ -216,7 +201,6 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
             borderRadius: 4,
             fontSize: 11,
             fontWeight: 700,
-            marginBottom: 4,
             width: 'fit-content',
             maxWidth: '100%',
             whiteSpace: 'nowrap',
@@ -229,52 +213,62 @@ function DoctorCard({ doctor, index = 0, showBookingButton = false }) {
             </span>
           </div>
 
-          {/* Visiting Fee */}
-          <div style={{ marginTop: 2, fontSize: 13, color: '#475569', fontWeight: 500 }}>
-            <span style={{ color: '#64748B' }}>ভিজিট ফি:</span>{' '}
-            <span style={{ color: '#0F172A', fontWeight: 800, fontSize: 14 }}>৳{fee}</span>
-          </div>
-
-          {/* Ratings & Visits (Single Row, No Wrapping) */}
-          <div 
-            className={showBookingButton ? "d-flex" : "d-none d-md-flex"} 
-            style={{ alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 4, whiteSpace: 'nowrap' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-              <IconStarFilled size={15} color="#F59E0B" />
-              <span style={{ color: '#475569', fontSize: 12, fontWeight: 600 }}>৫</span>
-              <span style={{ color: '#94A3B8', fontSize: 12 }}>(১৩৪৫)</span>
-            </div>
-            <span style={{ color: '#E2E8F0' }}>|</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-              <IconStethoscope size={15} color="#3B82F6" />
-              <span style={{ color: '#475569', fontSize: 12 }}>৪,৮৬৩ ভিজিট</span>
-            </div>
-          </div>
-
-          {/* Know about doctor link */}
-          <div style={{ marginTop: 0 }}>
-            <span
-              onClick={handleDetails}
-              style={{
-                color: '#2563EB',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                gap: 4
-              }}
-              onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-              onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-            >
-              ডাক্তার সম্পর্কে জানুন
-              <IconExternalLink size={14} stroke={2.2} />
+          {/* Experience Line */}
+          <div style={{ marginTop: 4, fontSize: 12, color: '#475569', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#0F172A', fontWeight: 700 }}>
+              {experience} {String(experience).includes('বছর') ? '' : 'বছর+'}
             </span>
+            <span style={{ color: '#64748B' }}>অভিজ্ঞতা</span>
           </div>
           
+        </div>
+      </div>
+
+      {/* 3-Column Stats Row (Fee, Rating & Reviews, Patients) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '6px 6px',
+        borderTop: '1px solid #F1F5F9',
+        background: '#FAFBFD'
+      }}>
+        {/* Column 1: Consultation Fee */}
+        <div style={{ flex: 1, textAlign: 'center', padding: '0 2px' }}>
+          <div style={{ fontSize: 10, color: '#64748B', fontWeight: 500, marginBottom: 1, whiteSpace: 'nowrap' }}>
+            ভিজিট ফি
+          </div>
+          <div style={{ fontSize: 15, color: '#047857', fontWeight: 800, lineHeight: 1.1 }}>
+            ৳{fee}
+          </div>
+        </div>
+
+        {/* Divider 1 */}
+        <div style={{ width: 1, height: 22, background: '#E2E8F0', flexShrink: 0 }} />
+
+        {/* Column 2: Rating */}
+        <div style={{ flex: 1, textAlign: 'center', padding: '0 2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginBottom: 1 }}>
+            <IconStarFilled size={14} color="#F59E0B" />
+            <span style={{ fontSize: 14, color: '#0F172A', fontWeight: 800, lineHeight: 1.1 }}>৫.০</span>
+          </div>
+          <div style={{ fontSize: 10, color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            (১৩৪৫ রিভিউ)
+          </div>
+        </div>
+
+        {/* Divider 2 */}
+        <div style={{ width: 1, height: 22, background: '#E2E8F0', flexShrink: 0 }} />
+
+        {/* Column 3: Patients */}
+        <div style={{ flex: 1, textAlign: 'center', padding: '0 2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginBottom: 1 }}>
+            <IconUsers size={15} color="#2563EB" />
+            <span style={{ fontSize: 14, color: '#0F172A', fontWeight: 800, lineHeight: 1.1 }}>৪,৮৬৩</span>
+          </div>
+          <div style={{ fontSize: 10, color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            রোগী
+          </div>
         </div>
       </div>
 

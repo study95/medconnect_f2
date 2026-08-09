@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getDoctor, getChambers } from '../../../api/adminApi'
-import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
@@ -33,7 +32,7 @@ export default function DoctorDetailPage() {
       const filtered = allChambers.filter(c => String(c.doctor_id) === String(id))
       setChambers(filtered)
     } catch (err) {
-      toast.error('Failed to load doctor details')
+      
       navigate('/admin/doctors')
     } finally {
       setLoading(false)
@@ -57,9 +56,9 @@ export default function DoctorDetailPage() {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
       pdf.save(`Doctor_Profile_${doctor.name?.replace(/\s+/g, '_')}.pdf`)
-      toast.success('Profile downloaded successfully!')
+      
     } catch (err) {
-      toast.error('Failed to generate PDF')
+      
     } finally {
       setExporting(false)
     }

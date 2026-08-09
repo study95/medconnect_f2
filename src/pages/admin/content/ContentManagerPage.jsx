@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Row, Col, Form, Button } from 'react-bootstrap'
 import { getContent, saveContent } from '../../../utils/contentService'
-import { toast } from 'react-toastify'
 
 const TABS = [
   { key: 'site', label: '⚙️ সাইট সেটিং' },
@@ -250,7 +249,7 @@ export default function ContentManagerPage() {
 
   const handleSave = async () => {
     await saveContent(content)
-    toast.success('✅ কন্টেন্ট সফলভাবে ব্যাকএন্ড ও সাইটে আপডেট হয়েছে!')
+    
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }
