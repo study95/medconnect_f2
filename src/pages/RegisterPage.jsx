@@ -125,7 +125,7 @@ const RegisterPage = () => {
   const handleSendOTP = async () => {
     setFieldErrors({})
     if (!role) {
-      setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন।' })
+      setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে ভূমিকা নির্বাচন করুন।' })
       return
     }
 
@@ -291,11 +291,11 @@ const RegisterPage = () => {
         {/* ===== LEFT PANEL — EXECUTIVE NAVY BRANDING ===== */}
         <div className="auth-info-panel">
           <div>
-            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center" style={{ cursor: 'pointer' }}>
+            <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
-                style={{ height: '48px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
+                style={{ height: '38px', width: 'auto', objectFit: 'contain' }} 
               />
             </Link>
 
@@ -368,37 +368,34 @@ const RegisterPage = () => {
 
                 {/* Inline Red Error for Role */}
                 {fieldErrors.role && (
-                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.role}
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.role}
                   </p>
                 )}
 
-                {/* Dynamic Role Selected Message (Red Text with Warning Icon) */}
-                <p
-                  key={role}
-                  className="fade-in-up"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    color: '#DC2626',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    marginTop: 6,
-                    marginBottom: 16,
-                    minHeight: 22
-                  }}
-                >
-                  {!role && (
-                    <><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনার অ্যাকাউন্টের ধরন বেছে নিন।</>
-                  )}
-                  {role === 'patient' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি রোগী হিসেবে রেজিস্টার করছেন।</>)}
-                  {role === 'doctor' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি ডাক্তার হিসেবে রেজিস্টার করছেন।</>)}
-                  {role === 'hospital' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি হাসপাতাল হিসেবে রেজিস্টার করছেন।</>)}
-                </p>
+                {/* Dynamic Role Selected Message */}
+                {role && (
+                  <p
+                    key={role}
+                    className="fade-in-up"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      color: role === 'patient' ? '#0D9488' : role === 'doctor' ? '#2563EB' : '#4F46E5',
+                      fontWeight: 600,
+                      fontSize: 12.5,
+                      marginTop: 4,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {role === 'patient' && (<><User size={14} style={{ flexShrink: 0 }} /> আপনি রোগী হিসেবে রেজিস্টার করছেন।</>)}
+                    {role === 'doctor' && (<><ShieldCheck size={14} style={{ flexShrink: 0 }} /> আপনি ডাক্তার হিসেবে রেজিস্টার করছেন।</>)}
+                    {role === 'hospital' && (<><Hotel size={14} style={{ flexShrink: 0 }} /> আপনি হাসপাতাল হিসেবে রেজিস্টার করছেন।</>)}
+                  </p>
+                )}
               </>
             )}
-
 
             {/* ===== STEP 1: MOBILE VERIFICATION ===== */}
             {step === 1 && (
@@ -427,7 +424,7 @@ const RegisterPage = () => {
                     {!role && (
                       <div style={{
                         position: 'absolute', inset: 0, zIndex: 10,
-                        borderRadius: 12, cursor: 'not-allowed',
+                        borderRadius: 0, cursor: 'not-allowed',
                         background: 'rgba(248,250,252,0.6)',
                       }} />
                     )}
@@ -444,7 +441,7 @@ const RegisterPage = () => {
                         onClick={() => role ? handleSendOTP() : handleLockedFieldClick()} disabled={loading || !role}
                         style={{
                           position: 'absolute', right: 5, top: 5, bottom: 5,
-                          background: !role ? '#CBD5E1' : '#0D9488', border: 'none', borderRadius: 8,
+                          background: !role ? '#CBD5E1' : '#0D9488', border: 'none', borderRadius: 0,
                           fontSize: 12.5, fontWeight: 700, padding: '0 14px', color: 'white', zIndex: 11,
                           cursor: !role ? 'not-allowed' : 'pointer',
                           transition: 'background 0.3s',
@@ -465,8 +462,8 @@ const RegisterPage = () => {
 
                   {/* Inline Red Error under Mobile Field */}
                   {fieldErrors.mobile && (
-                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.mobile}
+                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.mobile}
                     </p>
                   )}
                 </Form.Group>
@@ -478,14 +475,14 @@ const RegisterPage = () => {
                     padding: '14px 16px',
                     background: '#FEF2F2',
                     border: '1px solid #FCA5A5',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 12
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 16 }}>⚠️</span>
+                      <AlertTriangle size={16} color="#DC2626" />
                       <span style={{ fontSize: 13, fontWeight: 600, color: '#991B1B' }}>
                         এই নম্বরটি ইতিমধ্যে নিবন্ধিত!
                       </span>
@@ -495,7 +492,7 @@ const RegisterPage = () => {
                       style={{
                         background: '#DC2626',
                         border: 'none',
-                        borderRadius: 8,
+                        borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: 700,
                         padding: '6px 14px',
@@ -526,7 +523,7 @@ const RegisterPage = () => {
                             onKeyDown={e => handleOtpKeyDown(i, e)}
                             style={{
                               width: 44, height: 50, textAlign: 'center',
-                              fontSize: 20, fontWeight: 800, borderRadius: 10,
+                              fontSize: 20, fontWeight: 800, borderRadius: 0,
                               border: digit ? '1.5px solid #0D9488' : '1px solid #E2E8F0',
                               background: digit ? '#F0FDF4' : '#F8FAFC',
                               outline: 'none', transition: 'all 0.2s',
@@ -540,8 +537,8 @@ const RegisterPage = () => {
 
                       {/* Inline Red Error for OTP */}
                       {fieldErrors.otp && (
-                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                          <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.otp}
+                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.otp}
                         </p>
                       )}
 
@@ -580,7 +577,7 @@ const RegisterPage = () => {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     background: '#F0FDF4', border: '1px solid #CCFBF1',
-                    borderRadius: 10, padding: '8px 14px', marginBottom: 16
+                    borderRadius: 0, padding: '8px 14px', marginBottom: 16
                   }}>
                     <CheckCircle size={16} color="#0D9488" />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0F766E' }}>
@@ -604,8 +601,8 @@ const RegisterPage = () => {
                       />
                     </div>
                     {fieldErrors.name && (
-                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.name}
+                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.name}
                       </p>
                     )}
                   </Form.Group>
@@ -622,8 +619,8 @@ const RegisterPage = () => {
                       />
                     </div>
                     {fieldErrors.email && (
-                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.email}
+                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.email}
                       </p>
                     )}
                   </Form.Group>
@@ -645,8 +642,8 @@ const RegisterPage = () => {
                           </button>
                         </div>
                         {fieldErrors.password && (
-                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.password}
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0 }}>
+                            {fieldErrors.password}
                           </p>
                         )}
                       </Form.Group>
@@ -724,7 +721,7 @@ const RegisterPage = () => {
                     style={{
                       padding: '12px', fontSize: 14, fontWeight: 700, width: '100%',
                       background: '#F8FAFC', color: '#0F172A',
-                      border: '1px solid #E2E8F0', borderRadius: 12,
+                      border: '1px solid #E2E8F0', borderRadius: 0,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       transition: 'all 0.2s'
                     }}

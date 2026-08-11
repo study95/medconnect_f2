@@ -68,7 +68,7 @@ function LoginPage() {
 
   const handleLockedFieldClick = () => {
     if (!role) {
-      setFieldErrors({ role: '⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন!' })
+      setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে ভূমিকা নির্বাচন করুন।' })
     }
   }
 
@@ -77,17 +77,17 @@ function LoginPage() {
     setFieldErrors({})
 
     if (!role) {
-      setFieldErrors({ role: '⚠️ অনুগ্রহ করে প্রথমে অ্যাকাউন্টের ধরন বেছে নিন!' })
+      setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে ভূমিকা নির্বাচন করুন।' })
       return
     }
 
     if (!identifier) {
-      setFieldErrors({ identifier: '⚠️ ইমেইল অথবা মোবাইল নম্বর দিন।' })
+      setFieldErrors({ identifier: 'ইমেইল অথবা মোবাইল নম্বর দিন।' })
       return
     }
 
     if (!password) {
-      setFieldErrors({ password: '⚠️ পাসওয়ার্ড দিন।' })
+      setFieldErrors({ password: 'পাসওয়ার্ড দিন।' })
       return
     }
 
@@ -123,11 +123,11 @@ function LoginPage() {
         {/* ===== LEFT PANEL — EXECUTIVE NAVY BRANDING ===== */}
         <div className="auth-info-panel">
           <div>
-            <Link to="/" className="info-panel-logo mb-4 text-decoration-none d-inline-flex align-items-center" style={{ cursor: 'pointer' }}>
+            <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
-                style={{ height: '48px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }} 
+                style={{ height: '38px', width: 'auto', objectFit: 'contain' }} 
               />
             </Link>
 
@@ -159,17 +159,17 @@ function LoginPage() {
           <div className="slide-in-right">
             
             {/* Header */}
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 24, marginBottom: 4, letterSpacing: '-0.5px' }}>
+            <div style={{ marginBottom: 14 }}>
+              <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 2, letterSpacing: '-0.5px' }}>
                 স্বাগতম 👋
               </h2>
-              <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0 }}>
+              <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13, margin: 0 }}>
                 আপনার অ্যাকাউন্টে লগইন করতে তথ্য দিন
               </p>
             </div>
 
             {/* Account Type Selection Dropdown */}
-            <Form.Group style={{ marginBottom: 6 }}>
+            <Form.Group style={{ marginBottom: 4 }}>
               <Form.Label className="auth-label-premium">অ্যাকাউন্টের ধরন (Account Type)</Form.Label>
               <div className="input-group-premium" style={{ position: 'relative' }}>
                 <span className="input-icon-premium" style={{ color: role ? cfg.color : '#94A3B8' }}>
@@ -209,40 +209,38 @@ function LoginPage() {
 
             {/* Inline Red Error for Role */}
             {fieldErrors.role && (
-              <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.role}
+              <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.role}
               </p>
             )}
 
-            {/* Dynamic Role Selected Message (Red Text with Warning Icon) */}
-            <p
-              key={role}
-              className="fade-in-up"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                color: '#DC2626',
-                fontWeight: 600,
-                fontSize: 13,
-                marginTop: 6,
-                marginBottom: 16,
-                minHeight: 22
-              }}
-            >
-              {!role && (
-                <><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনার অ্যাকাউন্টের ধরন বেছে নিন।</>
-              )}
-              {role === 'patient' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি রোগী হিসেবে লগইন করছেন।</>)}
-              {role === 'doctor' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি ডাক্তার হিসেবে লগইন করছেন।</>)}
-              {role === 'hospital' && (<><AlertTriangle size={14} style={{ flexShrink: 0 }} /> আপনি হাসপাতাল হিসেবে লগইন করছেন।</>)}
-            </p>
+            {/* Dynamic Role Selected Message */}
+            {role && (
+              <p
+                key={role}
+                className="fade-in-up"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: role === 'patient' ? '#0D9488' : role === 'doctor' ? '#2563EB' : '#4F46E5',
+                  fontWeight: 600,
+                  fontSize: 12.5,
+                  marginTop: 4,
+                  marginBottom: 10,
+                }}
+              >
+                {role === 'patient' && (<><User size={14} style={{ flexShrink: 0 }} /> আপনি রোগী হিসেবে লগইন করছেন।</>)}
+                {role === 'doctor' && (<><ShieldCheck size={14} style={{ flexShrink: 0 }} /> আপনি ডাক্তার হিসেবে লগইন করছেন।</>)}
+                {role === 'hospital' && (<><Hotel size={14} style={{ flexShrink: 0 }} /> আপনি হাসপাতাল হিসেবে লগইন করছেন।</>)}
+              </p>
+            )}
 
 
             {/* Form */}
             <Form onSubmit={handleSubmit}>
               {/* Email or Mobile Field */}
-              <Form.Group style={{ marginBottom: 18 }}>
+              <Form.Group style={{ marginBottom: 14 }}>
                 <Form.Label className="auth-label-premium" style={{ color: !role ? '#94A3B8' : undefined }}>
                   ইমেইল অথবা মোবাইল নম্বর {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
                 </Form.Label>
@@ -259,7 +257,7 @@ function LoginPage() {
                   {!role && (
                     <div style={{
                       position: 'absolute', inset: 0, zIndex: 10,
-                      borderRadius: 12, cursor: 'not-allowed',
+                      borderRadius: 0, cursor: 'not-allowed',
                       background: 'rgba(248,250,252,0.6)',
                     }} />
                   )}
@@ -280,14 +278,14 @@ function LoginPage() {
                   />
                 </div>
                 {fieldErrors.identifier && (
-                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.identifier}
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.identifier}
                   </p>
                 )}
               </Form.Group>
 
               {/* Password Field */}
-              <Form.Group style={{ marginBottom: 22 }}>
+              <Form.Group style={{ marginBottom: 16 }}>
                 <div className="d-flex justify-content-between align-items-center">
                   <Form.Label className="auth-label-premium mb-0" style={{ color: !role ? '#94A3B8' : undefined }}>
                     পাসওয়ার্ড {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
@@ -309,7 +307,7 @@ function LoginPage() {
                   {!role && (
                     <div style={{
                       position: 'absolute', inset: 0, zIndex: 10,
-                      borderRadius: 12, cursor: 'not-allowed',
+                      borderRadius: 0, cursor: 'not-allowed',
                       background: 'rgba(248,250,252,0.6)',
                     }} />
                   )}
@@ -339,15 +337,15 @@ function LoginPage() {
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <AlertTriangle size={13} style={{ flexShrink: 0 }} /> {fieldErrors.password}
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.password}
                   </p>
                 )}
               </Form.Group>
 
               {fieldErrors.general && (
                 <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {fieldErrors.general}
+                  <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.general}
                 </p>
               )}
 
@@ -359,6 +357,7 @@ function LoginPage() {
                 className={`w-100 auth-btn-premium ${cfg.btnClass}`}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px',
                   opacity: !role ? 0.7 : 1,
                   transition: 'opacity 0.3s',
                 }}
@@ -371,8 +370,8 @@ function LoginPage() {
             </Form>
 
             {/* Footer */}
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <p style={{ fontSize: 13.5, fontWeight: 500, color: '#64748B', margin: 0 }}>
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B', margin: 0 }}>
                 অ্যাকাউন্ট নেই?{' '}
                 <Link to="/register" style={{ color: '#0D9488', fontWeight: 700, textDecoration: 'none' }}>
                   এখানে রেজিস্টার করুন

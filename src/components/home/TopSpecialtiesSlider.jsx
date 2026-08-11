@@ -160,76 +160,58 @@ function SpecCard({ spec, language, t, navigate }) {
       onClick={() => navigate(`/doctors?specialty_id=${spec.id}`)}
       className="tss-card"
       style={{
-        background: 'white',
-        borderRadius: 7,
-        padding: 0,
-        border: '1px solid #E2E8F0',
+        background: '#FFFFFF',
+        borderRadius: 0,
+        padding: '24px 16px 20px',
+        border: '1.5px solid #E2E8F0',
         height: '100%',
+        minHeight: 145,
         cursor: 'pointer',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
       }}
     >
-      {/* Banner Image */}
-      <div style={{ height: 80, position: 'relative', overflow: 'hidden', background: '#F1F5F9', flexShrink: 0 }}>
-        <img
-          src={getImage(spec.name)}
-          alt={spec.name}
-          className="tss-img"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
-        />
-        {/* Gradient overlay */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(15,23,42,0.25) 100%)' }} />
-        {/* Glassmorphic icon */}
-        <div
-          className="tss-icon"
-          style={{
-            position: 'absolute', bottom: 6, left: 10,
-            width: 32, height: 32, borderRadius: 8,
-            background: 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(10px)',
-            color: '#00A88C',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-            transition: 'all 0.3s ease',
-          }}
-        >
-          {getIcon(spec.name, 16)}
-        </div>
+      {/* Icon Circle Container (Image 1 Style) */}
+      <div
+        className="tss-icon-box"
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: '50%',
+          background: '#F0FDFA',
+          color: '#00A88C',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 14,
+          transition: 'all 0.3s ease',
+          border: '1px solid rgba(0,168,140,0.15)'
+        }}
+      >
+        {getIcon(spec.name, 28)}
       </div>
 
-      {/* Card Body */}
-      <div style={{ padding: '12px 12px 10px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <h4 style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginBottom: 4, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {translateMetadata(spec.name, language, t)}
-        </h4>
-        <p style={{ fontSize: 11, color: '#64748B', lineHeight: 1.3, marginBottom: 8, fontWeight: 500, flexGrow: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {getDesc(spec.name, language)}
-        </p>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F1F5F9', paddingTop: 8 }}>
-          <div>
-            <span style={{ fontSize: 12, fontWeight: 900, color: '#00A88C' }}>{getCount(spec.name)}</span>
-            <span style={{ fontSize: 9, fontWeight: 600, color: '#94A3B8', marginLeft: 4 }}>
-              {language === 'bn' ? 'ডাক্তার' : 'Doctors'}
-            </span>
-          </div>
-          <div
-            className="tss-arrow"
-            style={{
-              width: 20, height: 20, borderRadius: '50%',
-              background: '#F8FAFC', color: '#64748B',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.3s ease',
-            }}
-          >
-            <IconArrowRight size={12} />
-          </div>
-        </div>
-      </div>
+      {/* Specialty Title */}
+      <h4 style={{
+        fontSize: 14,
+        fontWeight: 800,
+        color: '#0F172A',
+        margin: 0,
+        lineHeight: 1.35,
+        textAlign: 'center',
+        fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden'
+      }}>
+        {translateMetadata(spec.name, language, t)}
+      </h4>
     </div>
   )
 }
@@ -268,7 +250,7 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
   const allSpecialties = propSpecialties !== undefined ? propSpecialties : fallbackSpecialties
   const loading        = propLoading     !== undefined ? propLoading     : fallbackLoading
 
-  const displayed = useMemo(() => allSpecialties.slice(0, 6), [allSpecialties])
+  const displayed = useMemo(() => allSpecialties.slice(0, 15), [allSpecialties])
 
   const filteredSpecialties = useMemo(() => {
     if (!searchQuery) return allSpecialties
@@ -285,97 +267,43 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
   return (
     <section
       id="tss-section"
-      style={{ padding: '20px 0', background: 'white', borderTop: '1px solid rgba(226,232,240,0.6)' }}
+      style={{ padding: '52px 0 44px', background: 'white', borderTop: '1px solid rgba(226,232,240,0.6)' }}
     >
       <Container>
         {/* ── Section Header ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: '#E0F2FE', color: '#0369A1',
-              fontSize: 12, fontWeight: 800, padding: '6px 14px', borderRadius: 99, marginBottom: 14,
-            }}>
-              <IconStethoscope size={16} stroke={2.5} />
-              <span>SPECIALTIES / বিশেষজ্ঞ সেবা</span>
-            </div>
-          </div>
+        <div style={{ marginBottom: '28px' }}>
+          <h2 style={{
+            fontSize: 'clamp(22px, 3.5vw, 32px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            margin: 0,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+          }}>
+            বিশেষজ্ঞ চিকিৎসা সেবাসমূহ
+          </h2>
         </div>
  
-         {/* ── Slider ── */}
-         <div style={{ position: 'relative' }}>
+         {/* ── Specialties Grid (Exact Reference Image 1 Design) ── */}
+         <div>
            {loading ? (
-             <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
-               {[...Array(6)].map((_, i) => (
-                 <div key={i} style={{ flex: '0 0 calc(16.666% - 14px)' }}>
+             <Row className="row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+               {[...Array(10)].map((_, i) => (
+                 <Col key={i}>
                    <SkeletonCard />
-                 </div>
+                 </Col>
                ))}
-             </div>
+             </Row>
            ) : (
-             <Swiper
-               modules={[Autoplay]}
-               spaceBetween={16}
-               slidesPerView={2.3}
-               autoplay={{ delay: 3000, disableOnInteraction: false }}
-               loop={false}
-               breakpoints={{
-                 480: { slidesPerView: 3 },
-                 768: { slidesPerView: 4 },
-                 1024: { slidesPerView: 5 },
-                 1200: { slidesPerView: 6 },
-               }}
-               style={{ padding: '10px 0' }}
-             >
-              {displayed.map(spec => (
-                <SwiperSlide key={spec.id} style={{ height: 'auto' }}>
-                  <SpecCard spec={spec} language={language} t={t} navigate={navigate} />
-                </SwiperSlide>
-              ))}
+             <Row className="row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+               {displayed.map(spec => (
+                 <Col key={spec.id}>
+                   <SpecCard spec={spec} language={language} t={t} navigate={navigate} />
+                 </Col>
+               ))}
+             </Row>
+           )}
+         </div>
 
-              {allSpecialties.length > 6 && (
-                <SwiperSlide style={{ height: 'auto' }}>
-                  <div
-                    onClick={() => setShowModal(true)}
-                    className="tss-show-all-card"
-                    style={{
-                      background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
-                      borderRadius: 7,
-                      border: '2px dashed #00A88C',
-                      height: '100%',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textAlign: 'center',
-                      padding: '24px 16px',
-                    }}
-                  >
-                    <div style={{
-                      width: 50, height: 50, borderRadius: '50%',
-                      background: '#00A88C', color: 'white',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      marginBottom: 12,
-                      boxShadow: '0 4px 12px rgba(0,168,140,0.25)',
-                    }}>
-                      <IconLayoutGrid size={24} stroke={1.5} />
-                    </div>
-                    <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
-                      {language === 'bn' ? 'সব বিভাগ দেখুন' : 'View All'}
-                    </h4>
-                    <p style={{ fontSize: 12, color: '#475569', margin: 0, fontWeight: 500 }}>
-                      {language === 'bn'
-                        ? `আরও ${allSpecialties.length - 6}টি বিভাগ`
-                        : `${allSpecialties.length - 6} more specialties`}
-                    </p>
-                  </div>
-                </SwiperSlide>
-              )}
-            </Swiper>
-          )}
-        </div>
       </Container>
 
       {/* ── All Specialties Modal ── */}
@@ -438,16 +366,14 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
         }
         .tss-card:hover {
           border-color: #00A88C !important;
-          box-shadow: 0 8px 24px rgba(0,168,140,0.08) !important;
+          box-shadow: 0 8px 24px rgba(0,168,140,0.12) !important;
           transform: translateY(-4px);
         }
-        .tss-card:hover .tss-img {
-          transform: scale(1.07);
-        }
-        .tss-card:hover .tss-icon {
+        .tss-card:hover .tss-icon-box {
           background: #00A88C !important;
-          color: white !important;
-          transform: scale(1.08) rotate(-8deg);
+          color: #FFFFFF !important;
+          border-color: #00A88C !important;
+          transform: scale(1.08);
         }
         .tss-card:hover .tss-arrow {
           background: #00A88C !important;

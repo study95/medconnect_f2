@@ -371,11 +371,6 @@ function AppNavbar() {
                 <CalendarCheck size={18} strokeWidth={2.2} />
                 <span>অ্যাপয়েন্টমেন্ট বুক করুন</span>
               </Link>
-
-              <a href="tel:09613868438" className="db-btn-outline">
-                <Phone size={17} strokeWidth={2.2} />
-                <span>হেল্পলাইন</span>
-              </a>
             </div>
           </Container>
         </div>
@@ -466,9 +461,6 @@ function AppNavbar() {
             <Link to="/support" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
               <HelpCircle size={16} /> <span>সহায়তা কেন্দ্র</span>
             </Link>
-            <a href="tel:09613868438" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
-              <Phone size={16} /> <span>হেল্পলাইন (09613868438)</span>
-            </a>
           </div>
 
           <div className="mt-auto pt-3 border-top">

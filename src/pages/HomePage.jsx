@@ -11,7 +11,8 @@ import ScrollReveal from '../components/common/ScrollReveal'
 import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
   IconChevronLeft, IconChevronRight, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
-  IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare
+  IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
+  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight
 } from '@tabler/icons-react'
 import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -62,7 +63,7 @@ function ServicePreview() {
   const display = fetchedServices || DEFAULT
 
   return (
-    <section style={{ padding: '20px 0', background: 'white' }}>
+    <section style={{ padding: '14px 0', background: 'white' }}>
       <Container>
         {/* Header Row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', gap: '20px', flexWrap: 'wrap' }}>
@@ -207,7 +208,7 @@ function ServicePreview() {
 function AppointmentCTA() {
   const navigate = useNavigate()
   return (
-    <section style={{ padding: '20px 0', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
+    <section style={{ padding: '14px 0', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
       <Container>
         <div className="appointment-cta-container" style={{
           background: 'linear-gradient(135deg, #022C22 0%, #064E3B 45%, #0F766E 100%)',
@@ -489,7 +490,7 @@ function WhyChooseUs() {
   ]
 
   return (
-    <section style={{ padding: '20px 0', background: 'radial-gradient(circle at bottom left, #F8FAFC 0%, #FFFFFF 50%)', position: 'relative', overflow: 'hidden' }}>
+    <section style={{ padding: '14px 0', background: 'radial-gradient(circle at bottom left, #F8FAFC 0%, #FFFFFF 50%)', position: 'relative', overflow: 'hidden' }}>
       {/* Decorative background element */}
       <div style={{ position: 'absolute', top: '10%', right: '-5%', width: '30%', height: '40%', background: 'rgba(0,168,140,0.02)', borderRadius: '40% 60% 30% 70% / 60% 30% 70% 40%', filter: 'blur(60px)' }} />
 
@@ -608,312 +609,824 @@ function WhyChooseUs() {
   )
 }
 
-
-
-
-
-
-// ─── REGISTRATION CARDS ──────────────────────────────────────────────────────
+// ─── REGISTRATION CARDS (PIC 1 EXECUTIVE STYLE) ──────────────────────────────
 function RegistrationCards() {
   const navigate = useNavigate()
-  const scrollRef = React.useRef(null)
-  const thumbRef  = React.useRef(null)
 
-  React.useEffect(() => {
-    const el    = scrollRef.current
-    const thumb = thumbRef.current
-    if (!el || !thumb) return
-    const onScroll = () => {
-      const max = el.scrollWidth - el.clientWidth
-      const pct = max > 0 ? (el.scrollLeft / max) * (200 / 3) : 0
-      thumb.style.transform = `translateX(${pct}%)`
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const cards = [
+  const steps = [
     {
+      stepNum: 'STEP 01',
       title: 'ডাক্তার হিসেবে যুক্ত হোন',
+      subTitle: 'Doctor Registration',
       desc: 'আপনার প্র্যাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
-      btnText: 'ডাক্তার রেজিস্ট্রেশন',
       link: '/register?role=doctor',
-      infoLink: '/register-doctor',
-      icon: <IconStethoscope size={20} />,
-      color: '#2563EB',
-      solidBg: '#E0F2FE',
-      image: '/images/promotion/doctor.png'
+      icon: <IconStethoscope size={42} stroke={1.5} color="#F59E0B" />,
     },
     {
+      stepNum: 'STEP 02',
       title: 'হাসপাতাল পার্টনার হোন',
+      subTitle: 'Hospital Registration',
       desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
-      btnText: 'হাসপাতাল রেজিস্ট্রেশন',
       link: '/register?role=hospital',
-      infoLink: '/register-hospital',
-      icon: <IconBuildingHospital size={20} />,
-      color: '#DB2777',
-      solidBg: '#FCE7F3',
-      image: '/images/promotion/hospital.png'
+      icon: <IconBuildingHospital size={42} stroke={1.5} color="#F59E0B" />,
     },
     {
+      stepNum: 'STEP 03',
       title: 'পেশেন্ট হিসেবে যুক্ত হোন',
+      subTitle: 'Patient Registration',
       desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
-      btnText: 'পেশেন্ট রেজিস্ট্রেশন',
       link: '/register?role=patient',
-      infoLink: '/support',
-      icon: <IconUsers size={20} />,
-      color: '#059669',
-      solidBg: '#DCFCE7',
-      image: '/images/promotion/care.png'
+      icon: <IconUsers size={42} stroke={1.5} color="#F59E0B" />,
     }
   ]
 
   return (
-    <section className="registration-section" style={{ padding: '16px 0 20px', background: 'transparent' }}>
+    <section className="registration-section" style={{ padding: '28px 0', background: 'transparent' }}>
       <Container>
-        {/* Header Row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px', flexWrap: 'nowrap' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#D1FAE5', color: '#065F46', fontSize: 12, fontWeight: 800, padding: '6px 14px', borderRadius: 99, boxShadow: '0 4px 10px rgba(6, 95, 70, 0.05)', whiteSpace: 'nowrap' }}>
-            <IconUsers size={16} stroke={2.5} />
+        {/* Title Header */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#D1FAE5', color: '#065F46', fontSize: 12, fontWeight: 800, padding: '5px 14px', borderRadius: 0, marginBottom: 12 }}>
+            <IconUsers size={15} stroke={2.5} />
             <span>REGISTRATION / নিবন্ধন</span>
+          </div>
+          <h2 style={{
+            fontSize: 'clamp(24px, 3.5vw, 36px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            marginBottom: 8,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+          }}>
+            সহজ ৩টি ধাপে নিবন্ধন করুন
+          </h2>
+          <p style={{
+            fontSize: 14.5,
+            color: '#64748B',
+            fontWeight: 500,
+            maxWidth: 540,
+            margin: '0 auto',
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            ডাক্তার, হাসপাতাল এবং রোগী — সবার জন্য ডিজিটাল স্বাস্থ্যসেবা এখন এক জায়গায়
+          </p>
+        </div>
+
+        {/* Pic 1 Style Dark Navy Box Container */}
+        <div style={{
+          background: '#0B192C',
+          borderRadius: 0,
+          boxShadow: '0 20px 45px -10px rgba(11, 25, 44, 0.25)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div className="pic1-steps-grid">
+            {steps.map((item, i) => (
+              <div
+                key={i}
+                className="pic1-step-col"
+                onClick={() => navigate(item.link)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '36px 28px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  position: 'relative',
+                  transition: 'background 0.3s ease'
+                }}
+              >
+                {/* Step Tag */}
+                <span style={{
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  color: '#F59E0B',
+                  letterSpacing: '1.8px',
+                  marginBottom: 20,
+                  textTransform: 'uppercase'
+                }}>
+                  {item.stepNum}
+                </span>
+
+                {/* Icon Box */}
+                <div style={{
+                  marginBottom: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 54,
+                  transition: 'transform 0.3s ease'
+                }} className="pic1-icon-wrap">
+                  {item.icon}
+                </div>
+
+                {/* Title */}
+                <h3 style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  marginBottom: 4,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  {item.title}
+                </h3>
+
+                {/* Subtitle */}
+                <span style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: '#F59E0B',
+                  marginBottom: 12,
+                  display: 'block'
+                }}>
+                  {item.subTitle}
+                </span>
+
+                {/* Description */}
+                <p style={{
+                  fontSize: 13,
+                  color: '#94A3B8',
+                  lineHeight: 1.6,
+                  margin: 0,
+                  fontWeight: 400,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  {item.desc}
+                </p>
+
+                {/* Arrow connector between columns (desktop only) */}
+                {i < steps.length - 1 && (
+                  <div className="pic1-step-connector">
+                    <IconChevronRight size={14} color="#F59E0B" />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Cards — horizontal scroll on mobile, 3-col grid on desktop */}
-        <div className="reg-cards-scroll-wrap">
-        <div className="reg-cards-grid" ref={scrollRef}>
-          {cards.map((card, i) => (
-            <div
-              key={i}
-              className="premium-reg-card"
-              onClick={() => navigate(card.link)}
-              style={{
-                background: 'white',
-                borderRadius: 7,
-                border: '1px solid #E2E8F0',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-                '--card-color': card.color,
-                '--card-color-light': `${card.color}30`
-              }}
-            >
-              {/* ── MOBILE: horizontal (text left, image right) ── */}
-              <div className="reg-card-mobile" style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px',
-                gap: 14,
-                background: `linear-gradient(130deg, ${card.solidBg}80 0%, white 55%)`
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Role icon pill */}
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: 'white', color: card.color,
-                    boxShadow: `0 3px 10px ${card.color}20`,
-                    border: `2px solid ${card.solidBg}`,
-                    marginBottom: 8
-                  }}>
-                    {card.icon}
-                  </div>
-                  <h3 style={{
-                    fontSize: 16, fontWeight: 900, color: '#0F172A',
-                    marginBottom: 5, lineHeight: 1.3,
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}>{card.title}</h3>
-                  <p style={{
-                    fontSize: 12.5, color: '#64748B', lineHeight: 1.5,
-                    marginBottom: 12, fontWeight: 500,
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}>{card.desc}</p>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(card.link) }}
-                      className="reg-card-primary-btn"
-                      style={{
-                        background: card.color, color: 'white', border: 'none',
-                        borderRadius: 7, padding: '8px 14px', fontWeight: 700,
-                        fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 5,
-                        cursor: 'pointer', whiteSpace: 'nowrap',
-                        fontFamily: "'Hind Siliguri', sans-serif"
-                      }}
-                    >
-                      রেজিস্ট্রেশন <IconArrowRight size={13} className="btn-arrow" style={{ transition: 'transform 0.3s ease' }} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(card.infoLink) }}
-                      className="reg-card-secondary-btn"
-                      style={{
-                        background: 'transparent', color: '#475569',
-                        border: '1.5px solid #E2E8F0', borderRadius: 7,
-                        padding: '8px 11px', fontWeight: 700, fontSize: 12.5,
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        cursor: 'pointer', whiteSpace: 'nowrap',
-                        fontFamily: "'Hind Siliguri', sans-serif"
-                      }}
-                    >
-                      বিস্তারিত <IconInfoCircle size={13} />
-                    </button>
-                  </div>
-                </div>
-                <div style={{ width: 100, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <OptimizedImage
-                    src={card.image} alt={card.title} objectFit="contain"
-                    style={{ width: '100%', height: 95, mixBlendMode: 'multiply', transition: 'transform 0.5s ease' }}
-                    className="reg-card-img-mobile"
-                  />
-                </div>
-              </div>
-
-              {/* ── DESKTOP: vertical card (image top, body bottom) ── */}
-              <div className="reg-card-desktop" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{
-                  height: 180,
-                  background: `linear-gradient(135deg, ${card.solidBg}50 0%, ${card.solidBg}20 100%)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative', overflow: 'hidden', padding: '20px'
-                }}>
-                  <div style={{ position: 'absolute', width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.4)', top: -30, right: -30, filter: 'blur(20px)', pointerEvents: 'none' }} />
-                  <div style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', bottom: -20, left: -20, filter: 'blur(15px)', pointerEvents: 'none' }} />
-                  <OptimizedImage
-                    src={card.image} alt={card.title} objectFit="contain"
-                    style={{ height: '100%', maxHeight: 140, width: 'auto', transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)', mixBlendMode: 'multiply' }}
-                    className="reg-card-img-desktop"
-                  />
-                </div>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'white', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, position: 'absolute', top: 156, left: 24, zIndex: 10, border: `2px solid ${card.solidBg}` }}>
-                  {card.icon}
-                </div>
-                <div style={{ padding: '32px 24px 28px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', marginBottom: 10, marginTop: 8, lineHeight: 1.3, fontFamily: "'Hind Siliguri', sans-serif" }}>{card.title}</h3>
-                  <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.6, marginBottom: 24, fontWeight: 500, flexGrow: 1, fontFamily: "'Hind Siliguri', sans-serif" }}>{card.desc}</p>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 'auto' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(card.link) }}
-                      className="reg-card-primary-btn"
-                      style={{ background: card.color, color: 'white', border: 'none', borderRadius: 12, padding: '12px 20px', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1.3, cursor: 'pointer', boxShadow: `0 4px 14px ${card.color}20`, fontFamily: "'Hind Siliguri', sans-serif" }}
-                    >
-                      <span style={{ whiteSpace: 'nowrap' }}>{card.btnText}</span>
-                      <IconArrowRight size={16} className="btn-arrow" style={{ transition: 'transform 0.3s ease' }} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(card.infoLink) }}
-                      className="reg-card-secondary-btn"
-                      style={{ background: 'transparent', color: '#475569', border: '1.5px solid #E2E8F0', borderRadius: 12, padding: '12px 14px', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flex: 0.7, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}
-                    >
-                      <span style={{ whiteSpace: 'nowrap' }}>বিস্তারিত</span>
-                      <IconInfoCircle size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        </div>
-
-        {/* Scroll progress bar — mobile only */}
-        <div className="reg-scroll-track">
-          <div className="reg-scroll-thumb" ref={thumbRef} />
+        {/* Primary CTA Button Below Box */}
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              background: '#F59E0B',
+              color: '#0F172A',
+              border: 'none',
+              borderRadius: 0,
+              padding: '14px 38px',
+              fontWeight: 800,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
+              transition: 'all 0.3s ease',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#D97706' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+          >
+            <span>এখনই নিবন্ধন শুরু করুন</span>
+            <IconArrowRight size={18} stroke={2.5} />
+          </button>
         </div>
       </Container>
 
       <style>{`
-        /* ── Mobile: horizontal scroll row ── */
-        .reg-cards-scroll-wrap {
-          margin: 0 -12px;
-          padding: 4px 12px;
+        .pic1-steps-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
         }
-        .reg-cards-grid {
+        .pic1-step-col {
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .pic1-step-col:last-child {
+          border-right: none;
+        }
+        .pic1-step-col:hover {
+          background: rgba(255, 255, 255, 0.03);
+        }
+        .pic1-step-col:hover .pic1-icon-wrap {
+          transform: translateY(-4px) scale(1.08);
+        }
+        .pic1-step-connector {
+          position: absolute;
+          right: -13px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: #0B192C;
+          border: 1px solid rgba(245, 158, 11, 0.4);
           display: flex;
-          flex-direction: row;
-          gap: 12px;
-          overflow-x: auto;
-          overflow-y: visible;
-          scroll-snap-type: x mandatory;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          padding-top: 10px;
-          padding-bottom: 12px;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
         }
-        .reg-cards-grid::-webkit-scrollbar { display: none; }
-        .reg-cards-grid .premium-reg-card {
-          flex: 0 0 85vw;
-          max-width: 320px;
-          scroll-snap-align: start;
-        }
-
-        /* ── Desktop: 3-col grid ── */
-        @media (min-width: 768px) {
-          .reg-cards-scroll-wrap { margin: 0; padding: 0; }
-          .reg-cards-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            overflow-x: visible;
+        @media (max-width: 860px) {
+          .pic1-steps-grid {
+            grid-template-columns: 1fr;
           }
-          .reg-cards-grid .premium-reg-card {
-            flex: none;
-            max-width: none;
+          .pic1-step-col {
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 28px 20px;
+          }
+          .pic1-step-col:last-child {
+            border-bottom: none;
+          }
+          .pic1-step-connector {
+            display: none;
           }
         }
-
-        /* ── Toggle mobile vs desktop card inner layout ── */
-        .reg-card-mobile  { display: flex !important; }
-        .reg-card-desktop { display: none !important; }
-        @media (min-width: 768px) {
-          .reg-card-mobile  { display: none !important; }
-          .reg-card-desktop { display: flex !important; }
-        }
-
-        /* ── Scroll progress bar (mobile only) ── */
-        .reg-scroll-track {
-          height: 3px;
-          background: #E2E8F0;
-          border-radius: 99px;
-          margin-top: 14px;
-          overflow: hidden;
-        }
-        .reg-scroll-thumb {
-          height: 100%;
-          width: 33.33%;
-          background: linear-gradient(90deg, #00A88C, #00D4AF);
-          border-radius: 99px;
-          transform: translateX(0%);
-          transition: transform 0.15s ease;
-        }
-        @media (min-width: 768px) {
-          .reg-scroll-track { display: none; }
-        }
-
-        /* ── Card hover ── */
-        .premium-reg-card {
-          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-        .premium-reg-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 16px 36px -8px var(--card-color-light), 0 1px 3px rgba(0,0,0,0.04) !important;
-          border-color: var(--card-color) !important;
-        }
-        .premium-reg-card:hover .reg-card-img-desktop,
-        .premium-reg-card:hover .reg-card-img-mobile {
-          transform: scale(1.06) translateY(-3px) !important;
-        }
-        .reg-card-primary-btn { transition: all 0.3s ease !important; }
-        .reg-card-primary-btn:hover .btn-arrow { transform: translateX(4px) !important; }
-        .reg-card-secondary-btn { transition: all 0.3s ease !important; }
-        .reg-card-secondary-btn:hover { background: #F8FAFC !important; border-color: #CBD5E1 !important; color: #0F172A !important; }
-
-        /* ── Why Choose (unrelated, kept) ── */
-        .why-choose-card { transition: all 0.4s cubic-bezier(0.4,0,0.2,1) !important; }
-        .why-choose-card:hover { transform: translateY(-12px) scale(1.03) !important; border-color: #00A88C !important; box-shadow: 0 22px 50px rgba(0,168,140,0.18) !important; background: linear-gradient(180deg,#FFFFFF 0%,#F0FDFA 100%) !important; }
-        .why-choose-card:hover .why-choose-icon-box { transform: scale(1.12) rotate(4deg) !important; background: linear-gradient(135deg,#00A88C 0%,#00796B 100%) !important; color:#FFFFFF !important; box-shadow: 0 12px 28px rgba(0,168,140,0.35) !important; }
       `}</style>
+    </section>
+  )
+}
 
+// ─── DIGITAL DASHBOARD BANNER (PIC 2 REFERENCE STYLE) ──────────────────────
+function DigitalDashboardBanner() {
+  const navigate = useNavigate()
 
+  const features = [
+    {
+      icon: <IconCalendar size={20} stroke={2.2} />,
+      title: 'ডিজিটাল অ্যাপয়েন্টমেন্ট বুকিং',
+      subtitle: 'অনলাইন সিডিউল, রোগী তালিকা, অটো স্লট'
+    },
+    {
+      icon: <IconFileText size={20} stroke={2.2} />,
+      title: 'ইনভয়েস ও ই-প্রেসক্রিপশন',
+      subtitle: 'এক ক্লিকে ডিজিটাল প্রেসক্রিপশন, PDF রসিদ'
+    },
+    {
+      icon: <IconBell size={20} stroke={2.2} />,
+      title: 'অটো রিমাইন্ডার ও SMS নোটিফিকেশন',
+      subtitle: 'অ্যাপয়েন্টমেন্টের আগে ও পরে অটো SMS'
+    },
+    {
+      icon: <IconBuildingHospital size={20} stroke={2.2} />,
+      title: 'হাসপাতাল ও চেম্বার পেজ',
+      subtitle: 'ডাক্তার তালিকা, ইউনিট ও পাবলিক পেজ'
+    },
+    {
+      icon: <IconChartBar size={20} stroke={2.2} />,
+      title: 'আয়-ব্যয় ও পেমেন্ট অ্যানালিটিক্স',
+      subtitle: 'চার্ট, রিপোর্ট, হিসাব এক্সপোর্ট'
+    }
+  ]
+
+  return (
+    <section style={{ background: '#0B192C', padding: '56px 0 52px', color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
+      <Container>
+        {/* Title Header */}
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <h2 style={{
+            fontSize: 'clamp(24px, 3.8vw, 38px)',
+            fontWeight: 900,
+            color: '#FFFFFF',
+            marginBottom: 10,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
+            letterSpacing: '-0.5px'
+          }}>
+            ডাক্তার ও হাসপাতাল? ব্যবস্থাপনা ডিজিটাল করুন
+          </h2>
+          <p style={{
+            fontSize: 14.5,
+            color: '#94A3B8',
+            fontWeight: 500,
+            maxWidth: 620,
+            margin: '0 auto',
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            অ্যাপয়েন্টমেন্ট, রোগী ব্যবস্থাপনা, ইনভয়েস, রিমাইন্ডার — সব এক ড্যাশবোর্ডে
+          </p>
+        </div>
+
+        {/* Feature Cards Grid */}
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <Row className="g-3 justify-content-center mb-4">
+            {features.map((item, i) => (
+              <Col key={i} xs={12} md={6} lg={4}>
+                <div style={{
+                  background: 'rgba(15, 30, 52, 0.75)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 0,
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  transition: 'all 0.3s ease',
+                  height: '100%'
+                }} className="dashboard-feature-card">
+                  {/* Gold Square Icon Badge */}
+                  <div style={{
+                    width: 38,
+                    height: 38,
+                    background: '#F59E0B',
+                    color: '#0B192C',
+                    borderRadius: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontWeight: 900
+                  }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h4 style={{
+                      fontSize: 15,
+                      fontWeight: 800,
+                      color: '#FFFFFF',
+                      marginBottom: 2,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      lineHeight: 1.3
+                    }}>
+                      {item.title}
+                    </h4>
+                    <p style={{
+                      fontSize: 12,
+                      color: '#94A3B8',
+                      margin: 0,
+                      fontWeight: 500,
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}>
+                      {item.subtitle}
+                    </p>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        </div>
+
+        {/* Sub-label below cards */}
+        <div style={{ textAlign: 'center', marginBottom: 24, fontSize: 13, color: '#64748B', fontWeight: 600 }}>
+          doctorbooklet.com Owner Dashboard
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate('/services')}
+            style={{
+              background: '#F59E0B',
+              color: '#0B192C',
+              border: 'none',
+              borderRadius: 0,
+              padding: '13px 32px',
+              fontWeight: 800,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.25)',
+              transition: 'all 0.3s ease',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#D97706' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+          >
+            <span>সব ফিচার দেখুন</span>
+            <IconArrowRight size={17} stroke={2.5} />
+          </button>
+
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              background: 'transparent',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: 0,
+              padding: '13px 28px',
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.3s ease',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)' }}
+          >
+            <span>ফ্রি অ্যাকাউন্ট খুলুন</span>
+          </button>
+        </div>
+      </Container>
+
+      <style>{`
+        .dashboard-feature-card:hover {
+          background: rgba(15, 30, 52, 0.95) !important;
+          border-color: rgba(245, 158, 11, 0.4) !important;
+          transform: translateY(-3px);
+        }
+      `}</style>
+    </section>
+  )
+}
+
+// ─── EXPLORE DIVISIONS / CITIES SECTION (IMAGE 1 REFERENCE DESIGN) ───────────
+function BrowseByLocationSection() {
+  const navigate = useNavigate()
+
+  const divisions = [
+    {
+      bnName: 'ঢাকা বিভাগ',
+      enName: 'Dhaka Division',
+      count: '৪৫+ হাসপাতাল',
+      searchKey: 'Dhaka',
+      img: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600&auto=format&fit=crop&q=70'
+    },
+    {
+      bnName: 'সিলেট বিভাগ',
+      enName: 'Sylhet Division',
+      count: '১৮+ হাসপাতাল',
+      searchKey: 'Sylhet',
+      img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=70'
+    },
+    {
+      bnName: 'চট্টগ্রাম বিভাগ',
+      enName: 'Chattogram Division',
+      count: '২৫+ হাসপাতাল',
+      searchKey: 'Chattogram',
+      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600&auto=format&fit=crop&q=70'
+    },
+    {
+      bnName: 'রাজশাহী সিটি',
+      enName: 'Rajshahi City',
+      count: '১৫+ হাসপাতাল',
+      searchKey: 'Rajshahi',
+      img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=70'
+    }
+  ]
+
+  return (
+    <section style={{ background: '#F8FAFC', padding: '56px 0 52px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+      <Container>
+        {/* Title & Top Right Button Header (Matching Image 1) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h2 style={{
+              fontSize: 'clamp(22px, 3.5vw, 32px)',
+              fontWeight: 900,
+              color: '#0F172A',
+              margin: 0,
+              fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+            }}>
+              বিভাগ অনুযায়ী হাসপাতাল খুঁজুন
+            </h2>
+            <p style={{ fontSize: 13.5, color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+              বাংলাদেশের জনপ্রিয় বিভাগ ও এলাকার সেরা হাসপাতাল এবং ল্যাব সেন্টার
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/hospitals')}
+            style={{
+              background: '#FFFFFF',
+              color: '#0F172A',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: 0,
+              padding: '10px 20px',
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              transition: 'all 0.3s ease',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0F172A'; e.currentTarget.style.background = '#F8FAFC' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#FFFFFF' }}
+          >
+            <span>সব এলাকা দেখুন</span>
+            <IconArrowRight size={16} color="#16A34A" stroke={2.5} />
+          </button>
+        </div>
+
+        {/* 4 Image Division Cards Grid (Matching Image 1) */}
+        <Row className="g-3">
+          {divisions.map((div, i) => (
+            <Col key={i} xs={12} sm={6} lg={3}>
+              <div
+                onClick={() => navigate(`/hospitals?search=${encodeURIComponent(div.searchKey)}`)}
+                style={{
+                  position: 'relative',
+                  height: 230,
+                  borderRadius: 0,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)'
+                }}
+                className="division-image-card"
+              >
+                {/* Background Image */}
+                <img
+                  src={div.img}
+                  alt={div.enName}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transition: 'transform 0.5s ease'
+                  }}
+                  className="division-card-img"
+                />
+
+                {/* Dark Overlay */}
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.45) 55%, rgba(15,23,42,0.15) 100%)'
+                }} />
+
+                {/* Content at Bottom Left */}
+                <div style={{ position: 'absolute', bottom: 18, left: 18, right: 65, zIndex: 2 }}>
+                  <h4 style={{
+                    fontSize: 18,
+                    fontWeight: 900,
+                    color: '#FFFFFF',
+                    margin: '0 0 3px 0',
+                    lineHeight: 1.25,
+                    fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+                  }}>
+                    {div.bnName}
+                  </h4>
+                  <span style={{
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.85)',
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>
+                    {div.count}
+                  </span>
+                </div>
+
+                {/* Bottom Right Glassmorphic Arrow Button (↗) */}
+                <div
+                  className="division-card-arrow"
+                  style={{
+                    position: 'absolute',
+                    bottom: 18,
+                    right: 18,
+                    width: 38,
+                    height: 38,
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.28)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease',
+                    zIndex: 2,
+                    border: '1px solid rgba(255, 255, 255, 0.4)'
+                  }}
+                >
+                  <IconArrowUpRight size={20} stroke={2.5} />
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+      </Container>
+
+      <style>{`
+        .division-image-card:hover .division-card-img {
+          transform: scale(1.08);
+        }
+        .division-image-card:hover .division-card-arrow {
+          background: #FFFFFF !important;
+          color: #0F172A !important;
+          transform: scale(1.1) rotate(45deg);
+        }
+      `}</style>
+    </section>
+  )
+}
+
+// ─── PATIENT TESTIMONIALS SECTION (EXACT REFERENCE DESIGN) ─────────────────
+function PatientTestimonialsSection() {
+  const swiperRef = React.useRef(null)
+
+  const testimonials = [
+    {
+      name: 'ঐশী খান',
+      role: 'রোগী (ঢাকা)',
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      comment: 'ঘরে বসেই মাত্র কয়েক ক্লিকে ধানমন্ডির সেরা শিশু বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করতে পেরেছি! সময় বেঁচেছে অনেক এবং সিরিয়ালও সঠিক সময়ে পেয়েছি।'
+    },
+    {
+      name: 'মনিরুল ইসলাম',
+      role: 'রোগী (সিলেট)',
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      comment: 'জরুরি প্রয়োজনে অভিজ্ঞ হৃদরোগ বিশেষজ্ঞ ডাক্তার খুঁজে পাওয়া ছিল কঠিন। কিন্তু এই প্ল্যাটফর্মের মাধ্যমে সরাসরি সিরিয়াল ও ডিজিটাল টিকিট পেয়ে খুব উপকার হয়েছে।'
+    },
+    {
+      name: 'তানজিলা রহমান',
+      role: 'রোগী (চট্টগ্রাম)',
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      comment: 'হাসপাতালে ঘণ্টার পর ঘণ্টা সিরিয়ালের লাইনে দাঁড়িয়ে থাকার দিন শেষ! এখন স্মার্টফোন থেকেই সিরিয়াল দেওয়া যায় আর নোটিফিকেশনও পাওয়া যায়।'
+    },
+    {
+      name: 'মোঃ আরিফ হোসেন',
+      role: 'রোগী (রাজশাহী)',
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      comment: 'যাচাইকৃত বিএমডিসি নিবন্ধিত বিশেষজ্ঞ ডাক্তারদের সরাসরি চেম্বার ঠিকানা ও সিরিয়াল নম্বর সহজে জানা যায়। প্ল্যাটফর্মটির সেবা সত্যি প্রশংসনীয়।'
+    }
+  ]
+
+  return (
+    <section style={{ background: '#FFFFFF', padding: '64px 0 60px', borderTop: '1px solid #E2E8F0' }}>
+      <Container>
+        {/* Section Title Header */}
+        <div style={{ textAlign: 'center', maxWidth: 720, margin: '0 auto 42px' }}>
+          <h2 style={{
+            fontSize: 'clamp(24px, 4vw, 36px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            marginBottom: 10,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+          }}>
+            হাজারো রোগীর ভরসা ও সন্তুষ্টি (Trusted by Thousands)
+          </h2>
+          <p style={{
+            fontSize: 14.5,
+            color: '#64748B',
+            margin: 0,
+            lineHeight: 1.6,
+            fontWeight: 500,
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।
+          </p>
+        </div>
+
+        {/* Swiper Slider Wrapper */}
+        <div style={{ position: 'relative', padding: '0 16px' }}>
+          <Swiper
+            onSwiper={(swiper) => { swiperRef.current = swiper }}
+            modules={[Autoplay]}
+            spaceBetween={24}
+            slidesPerView={1}
+            autoplay={{ delay: 4000, disableOnInteraction: false }}
+            loop={true}
+            breakpoints={{
+              768: { slidesPerView: 2 },
+            }}
+            style={{ padding: '4px 2px' }}
+          >
+            {testimonials.map((item, index) => (
+              <SwiperSlide key={index} style={{ height: 'auto' }}>
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 0,
+                  padding: '28px 24px 24px',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 16px rgba(15,23,42,0.04)',
+                  transition: 'all 0.3s ease'
+                }}
+                className="testimonial-card"
+                >
+                  {/* Top Header: Avatar, Name & Rating */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #F0FDFA'
+                        }}
+                      />
+                      <div>
+                        <h4 style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: '#0F172A',
+                          margin: 0,
+                          fontFamily: "'Hind Siliguri', sans-serif"
+                        }}>
+                          {item.name}
+                        </h4>
+                        <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                          {item.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 5 Gold Star Rating */}
+                    <div style={{ display: 'flex', gap: 3, color: '#F59E0B' }}>
+                      {[...Array(item.rating)].map((_, i) => (
+                        <IconStar key={i} size={18} fill="#F59E0B" stroke={0} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Comment Text */}
+                  <p style={{
+                    fontSize: 14,
+                    color: '#334155',
+                    lineHeight: 1.65,
+                    margin: 0,
+                    fontWeight: 500,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    flexGrow: 1
+                  }}>
+                    "{item.comment}"
+                  </p>
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+
+          {/* Left Side Navigation Button */}
+          <button
+            onClick={() => swiperRef.current?.slidePrev()}
+            aria-label="Previous Testimonial"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: -14,
+              transform: 'translateY(-50%)',
+              zIndex: 30,
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              border: '1.5px solid #E2E8F0',
+              color: '#0F172A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
+            }}
+            className="testimonial-prev"
+          >
+            <IconChevronLeft size={22} stroke={2.5} />
+          </button>
+
+          {/* Right Side Navigation Button */}
+          <button
+            onClick={() => swiperRef.current?.slideNext()}
+            aria-label="Next Testimonial"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: -14,
+              transform: 'translateY(-50%)',
+              zIndex: 30,
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              border: '1.5px solid #E2E8F0',
+              color: '#0F172A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
+            }}
+            className="testimonial-next"
+          >
+            <IconChevronRight size={22} stroke={2.5} />
+          </button>
+        </div>
+      </Container>
+
+      <style>{`
+        .testimonial-card:hover {
+          border-color: #00A88C !important;
+          box-shadow: 0 8px 24px rgba(0,168,140,0.08) !important;
+        }
+        .testimonial-prev:hover, .testimonial-next:hover {
+          background: #0F172A !important;
+          color: #FFFFFF !important;
+          border-color: #0F172A !important;
+        }
+      `}</style>
     </section>
   )
 }
@@ -926,7 +1439,7 @@ function HomePage() {
   return (
     <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
       <HeroSection stats={data?.stats} />
-      
+
       <ScrollReveal direction="up" distance={28} duration={600}>
         <ImageBannerSlider />
       </ScrollReveal>
@@ -936,35 +1449,28 @@ function HomePage() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
-        <TopSpecialtiesSlider specialties={data?.specialties} loading={isLoading} />
+        <BrowseByLocationSection />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
-        <RegistrationCards />
+        <TopSpecialtiesSlider specialties={data?.specialties} loading={isLoading} />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <TopHospitals hospitals={data?.top_hospitals} loading={isLoading} />
       </ScrollReveal>
 
-      {/* Below-the-fold sections fetch their own data independently via TanStack Query */}
       <ScrollReveal direction="up" distance={28} duration={600}>
-        <ServicePreview />
+        <PatientTestimonialsSection />
       </ScrollReveal>
 
-      <ScrollReveal direction="up" distance={28} duration={600}>
-        <AppointmentCTA />
-      </ScrollReveal>
 
-      <ScrollReveal direction="up" distance={28} duration={600}>
-        <WhyChooseUs />
-      </ScrollReveal>
 
 
 
       <style>{`
         @media (max-width: 768px) {
-          section { padding: 12px 0 !important; }
+          section { padding: 10px 0 !important; }
           .registration-section { padding: 6px 0 0px !important; }
           .registration-card { text-align: center !important; }
           .registration-card-icon { margin: 0 auto !important; }

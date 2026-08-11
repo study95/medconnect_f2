@@ -40,7 +40,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
   }
 
   return (
-    <section style={{ padding: '20px 0 20px', background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)', position: 'relative', overflow: 'hidden' }}>
+    <section style={{ padding: '14px 0', background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: '10%', left: '-5%', width: '30%', height: '40%', background: 'rgba(34, 197, 94, 0.03)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '10%', right: '-5%', width: '25%', height: '35%', background: 'rgba(37, 99, 235, 0.02)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
