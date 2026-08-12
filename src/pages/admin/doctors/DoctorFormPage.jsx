@@ -1,7 +1,8 @@
-﻿// DoctorFormPage.jsx — Premium Doctor Create/Edit Form
+// DoctorFormPage.jsx — Premium Doctor Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { 
   getDoctor, createDoctor, updateDoctor, getSpecialties, getHospitals,
@@ -13,7 +14,7 @@ import 'react-quill/dist/quill.snow.css'
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
 
 // Premium Searchable Select Component
-function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false, error = '' }) {
+function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const dropdownRef = useRef(null)
@@ -31,15 +32,17 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
+  const hasErr = !!error
+
   return (
-    <div className="admin-form-group" ref={dropdownRef} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
+    <div id={id} className="admin-form-group" ref={dropdownRef} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
       <label className="admin-form-label">{label}</label>
       <div 
-        className={`admin-form-input ${error ? 'border-red-500' : ''}`}
+        className={`admin-form-input ${hasErr ? 'has-error' : ''}`}
         style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           cursor: disabled ? 'not-allowed' : 'pointer', background: 'var(--admin-card-bg)', 
-          height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid var(--admin-border)',
+          height: 48, padding: '0 16px', borderRadius: 12, border: hasErr ? '1.5px solid #EF4444' : '1px solid var(--admin-border)',
           fontSize: 14, fontWeight: 500, transition: 'all 0.2s', color: 'var(--admin-text)'
         }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -193,7 +196,7 @@ export default function DoctorFormPage() {
         name_bn: d.name_bn || '',
         slug: d.slug || '',
         slug_bn: d.slug_bn || '',
-        specialty_id: d.specialty_id || '',
+        specialty_id: (d.specialty_id ?? d.specialty?.id ?? '').toString(),
         specialty_bn: d.specialty_bn || '',
         degree: d.degree || '',
         degree_bn: d.degree_bn || '',
@@ -217,10 +220,10 @@ export default function DoctorFormPage() {
         top_10_doctor: d.top_10_doctor === 'yes' ? 'yes' : 'no',
         available_telemedicine: d.available_telemedicine === 'yes' ? 'yes' : 'no',
         is_active: d.is_active === 1 || d.is_active === true,
-        division_id: d.division_id || '',
-        district_id: d.district_id || '',
-        upazila_id: d.upazila_id || '',
-        union_id: d.union_id || ''
+        division_id: (d.division_id ?? d.division?.id ?? '').toString(),
+        district_id: (d.district_id ?? d.district?.id ?? '').toString(),
+        upazila_id: (d.upazila_id ?? d.upazila?.id ?? '').toString(),
+        union_id: (d.union_id ?? d.union?.id ?? '').toString()
       }
       
       setForm(mappedData)
@@ -276,8 +279,70 @@ export default function DoctorFormPage() {
     }
   }
 
+  const scrollToFirstError = (errorObj) => {
+    if (!errorObj || Object.keys(errorObj).length === 0) return
+
+    const fieldOrder = [
+      'name', 'name_bn', 'slug', 'slug_bn', 'specialty_id', 'specialty_bn',
+      'workplace', 'workplace_bn', 'bmdc', 'fee', 'experience', 'degree',
+      'division_id', 'district_id', 'upazila_id', 'union_id', 'phone', 'email'
+    ]
+
+    const firstErrField = fieldOrder.find(f => errorObj[f]) || Object.keys(errorObj)[0]
+    if (!firstErrField) return
+
+    setTimeout(() => {
+      const el = document.querySelector(`[name="${firstErrField}"]`) || document.getElementById(`field-${firstErrField}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (typeof el.focus === 'function') el.focus()
+      } else {
+        const errorEl = document.querySelector('.admin-form-error')
+        if (errorEl) {
+          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    }, 100)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Client-side mandatory field & format validation with field-specific messages
+    const newErrors = {}
+    if (!form.name || !form.name.trim()) newErrors.name = 'Doctor Name (English) is required.'
+    if (!form.name_bn || !form.name_bn.trim()) newErrors.name_bn = 'Doctor Name (Bangla) is required.'
+    if (!form.slug || !form.slug.trim()) newErrors.slug = 'Profile Slug is required.'
+    if (!form.specialty_id) newErrors.specialty_id = 'Specialty selection is required.'
+    if (!form.workplace || !form.workplace.trim()) newErrors.workplace = 'Current Workplace / Hospital is required.'
+    if (!form.bmdc || !form.bmdc.trim()) newErrors.bmdc = 'BMDC Registration Number is required.'
+
+    // Phone validation
+    if (!form.phone || !form.phone.trim()) {
+      newErrors.phone = 'Phone Number is required.'
+    } else {
+      const bdPhoneRegex = /^01[3-9]\d{8}$/
+      if (!bdPhoneRegex.test(form.phone.trim())) {
+        newErrors.phone = 'Mobile number must be a valid 11-digit number starting with 013-019.'
+      }
+    }
+
+    // Email validation
+    if (!form.email || !form.email.trim()) {
+      newErrors.email = 'Email Address is required.'
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(form.email.trim())) {
+        newErrors.email = 'Please enter a valid email address (e.g. doctor@example.com).'
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      scrollToFirstError(newErrors)
+      return
+    }
+
     setSaving(true)
     const formData = new FormData()
     
@@ -302,15 +367,34 @@ export default function DoctorFormPage() {
     if (isEdit) formData.append('_method', 'PUT')
 
     try {
-      if (isEdit) await updateDoctor(id, formData)
-      else await createDoctor(formData)
+      if (isEdit) {
+        await updateDoctor(id, formData)
+        toast.success('Doctor profile updated successfully!')
+      } else {
+        await createDoctor(formData)
+        toast.success('Doctor profile created successfully!')
+      }
       
       navigate('/admin/doctors')
     } catch (err) {
-if (err.response?.data?.errors) setErrors(err.response.data.errors)
+      if (err.response?.data?.errors) {
+        const errs = err.response.data.errors
+        setErrors(errs)
+        scrollToFirstError(errs)
+      } else {
+        const message = err.response?.data?.message || getErrorMessage(err, 'Failed to save doctor profile.')
+        toast.error(message)
+      }
     } finally {
       setSaving(false)
     }
+  }
+
+  const renderFieldError = (fieldKey) => {
+    const err = errors[fieldKey]
+    if (!err) return null
+    const message = Array.isArray(err) ? err[0] : err
+    return <div className="admin-form-error">{message}</div>
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Preparing Doctor Profile...</div>
@@ -369,11 +453,12 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
                 <div className="admin-form-group">
                   <label className="admin-form-label">Doctor Name (English) *</label>
                   <input className="admin-form-input" name="name" value={form.name} onChange={handleChange} placeholder="Dr. John Doe" />
-                  {errors.name && <div className="admin-form-error">{errors.name}</div>}
+                  {renderFieldError('name')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Doctor Name (Bangla) *</label>
                   <input className="admin-form-input" name="name_bn" value={form.name_bn} onChange={handleChange} placeholder="ডাঃ জন ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  {renderFieldError('name_bn')}
                 </div>
               </div>
 
@@ -381,19 +466,34 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
                 <div className="admin-form-group">
                   <label className="admin-form-label">Profile Slug (URL) *</label>
                   <input className="admin-form-input" name="slug" value={form.slug} onChange={handleChange} placeholder="dr-john-doe" />
-                  {errors.slug && <div className="admin-form-error">{errors.slug}</div>}
+                  {renderFieldError('slug')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Bangla Slug</label>
                   <input className="admin-form-input" name="slug_bn" value={form.slug_bn} onChange={handleChange} placeholder="ডাঃ-জন-ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  {renderFieldError('slug_bn')}
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                <SearchableSelect label="Specialty *" options={dropdowns.specialties} value={form.specialty_id} onChange={(v) => setForm(f => ({...f, specialty_id: v}))} placeholder="Select Specialty" error={errors.specialty_id} />
+                <SearchableSelect id="field-specialty_id" label="Specialty *" options={dropdowns.specialties} value={form.specialty_id} onChange={(v) => { setForm(f => ({...f, specialty_id: v})); if (errors.specialty_id) setErrors(e => ({...e, specialty_id: ''})); }} placeholder="Select Specialty" error={errors.specialty_id} />
                 <div className="admin-form-group">
                   <label className="admin-form-label">Specialty (Bangla)</label>
                   <input className="admin-form-input" name="specialty_bn" value={form.specialty_bn} onChange={handleChange} placeholder="বিশেষজ্ঞ..." />
+                  {renderFieldError('specialty_bn')}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Current Workplace / Hospital (English) *</label>
+                  <input className="admin-form-input" name="workplace" value={form.workplace} onChange={handleChange} placeholder="e.g. Dhaka Medical College Hospital" />
+                  {renderFieldError('workplace')}
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">বর্তমান কর্মস্থল (Bangla)</label>
+                  <input className="admin-form-input" name="workplace_bn" value={form.workplace_bn} onChange={handleChange} placeholder="যেমনঃ ঢাকা মেডিকেল কলেজ হাসপাতাল" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  {renderFieldError('workplace_bn')}
                 </div>
               </div>
 
@@ -401,22 +501,24 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
                 <div className="admin-form-group">
                   <label className="admin-form-label">BMDC Reg No. *</label>
                   <input className="admin-form-input" name="bmdc" value={form.bmdc} onChange={handleChange} placeholder="A-12345" />
-                  {errors.bmdc && <div className="admin-form-error">{errors.bmdc}</div>}
+                  {renderFieldError('bmdc')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Consultation Fee (৳)</label>
                   <input type="number" className="admin-form-input" name="fee" value={form.fee} onChange={handleChange} placeholder="500" />
+                  {renderFieldError('fee')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Experience (Years)</label>
                   <input type="number" className="admin-form-input" name="experience" value={form.experience} onChange={handleChange} placeholder="10" />
+                  {renderFieldError('experience')}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Qualifications & Workplace */}
+        {/* Qualifications & Degrees */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
           <div className="admin-card">
             <div className="admin-card-header">
@@ -426,14 +528,14 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
               <div className="admin-form-group">
                 <label className="admin-form-label">Primary Degrees</label>
                 <input className="admin-form-input" name="degree" value={form.degree} onChange={handleChange} placeholder="MBBS, FCPS" />
+                {renderFieldError('degree')}
               </div>
               {[1, 2, 3, 4].map(num => (
-                <input key={num} className="admin-form-input" name={`degree${num}`} value={form[`degree${num}`]} onChange={handleChange} placeholder={`Additional Degree ${num}`} />
+                <div key={num} className="admin-form-group">
+                  <input className="admin-form-input" name={`degree${num}`} value={form[`degree${num}`]} onChange={handleChange} placeholder={`Additional Degree ${num}`} />
+                  {renderFieldError(`degree${num}`)}
+                </div>
               ))}
-              <div className="admin-form-group" style={{ marginTop: 12 }}>
-                <label className="admin-form-label">Current Workplace</label>
-                <input className="admin-form-input" name="workplace" value={form.workplace} onChange={handleChange} placeholder="Dhaka Medical College" />
-              </div>
             </div>
           </div>
 
@@ -445,14 +547,14 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
               <div className="admin-form-group">
                 <label className="admin-form-label">ডিগ্রীসমূহ</label>
                 <input className="admin-form-input" name="degree_bn" value={form.degree_bn} onChange={handleChange} placeholder="এমবিবিএস, এফসিপিএস" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                {renderFieldError('degree_bn')}
               </div>
               {[1, 2, 3, 4].map(num => (
-                <input key={num} className="admin-form-input" name={`degree${num}_bn`} value={form[`degree${num}_bn`]} onChange={handleChange} placeholder={`অতিরিক্ত ডিগ্রী ${num}`} style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                <div key={num} className="admin-form-group">
+                  <input className="admin-form-input" name={`degree${num}_bn`} value={form[`degree${num}_bn`]} onChange={handleChange} placeholder={`অতিরিক্ত ডিগ্রী ${num}`} style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  {renderFieldError(`degree${num}_bn`)}
+                </div>
               ))}
-              <div className="admin-form-group" style={{ marginTop: 12 }}>
-                <label className="admin-form-label">বর্তমান কর্মস্থল</label>
-                <input className="admin-form-input" name="workplace_bn" value={form.workplace_bn} onChange={handleChange} placeholder="ঢাকা মেডিকেল কলেজ" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
-              </div>
             </div>
           </div>
         </div>
@@ -464,21 +566,22 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
           </div>
           <div className="admin-card-body" style={{ overflow: 'visible' }}>
              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 24 }}>
-                <SearchableSelect label="Division" options={dropdowns.divisions} value={form.division_id} onChange={(v) => setForm(f => ({...f, division_id: v, district_id: '', upazila_id: '', union_id: ''}))} placeholder="All Divisions" />
-                <SearchableSelect label="District" options={dropdowns.districts} value={form.district_id} onChange={(v) => setForm(f => ({...f, district_id: v, upazila_id: '', union_id: ''}))} placeholder="All Districts" disabled={!form.division_id} />
-                <SearchableSelect label="Upazila" options={dropdowns.upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({...f, upazila_id: v, union_id: ''}))} placeholder="All Upazilas" disabled={!form.district_id} />
-                <SearchableSelect label="Union" options={dropdowns.unions} value={form.union_id} onChange={(v) => setForm(f => ({...f, union_id: v}))} placeholder="All Unions" disabled={!form.upazila_id} />
+                <SearchableSelect label="Division" options={dropdowns.divisions} value={form.division_id} onChange={(v) => setForm(f => ({...f, division_id: v, district_id: '', upazila_id: '', union_id: ''}))} placeholder="All Divisions" error={errors.division_id} />
+                <SearchableSelect label="District" options={dropdowns.districts} value={form.district_id} onChange={(v) => setForm(f => ({...f, district_id: v, upazila_id: '', union_id: ''}))} placeholder="All Districts" disabled={!form.division_id} error={errors.district_id} />
+                <SearchableSelect label="Upazila" options={dropdowns.upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({...f, upazila_id: v, union_id: ''}))} placeholder="All Upazilas" disabled={!form.district_id} error={errors.upazila_id} />
+                <SearchableSelect label="Union" options={dropdowns.unions} value={form.union_id} onChange={(v) => setForm(f => ({...f, union_id: v}))} placeholder="All Unions" disabled={!form.upazila_id} error={errors.union_id} />
              </div>
 
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Phone *</label>
-                  <input className="admin-form-input" name="phone" value={form.phone} onChange={handleChange} placeholder="+880..." />
-                  {errors.phone && <div className="admin-form-error">{errors.phone}</div>}
+                  <input className={`admin-form-input ${errors.phone ? 'has-error' : ''}`} name="phone" value={form.phone} onChange={handleChange} placeholder="+880..." />
+                  {renderFieldError('phone')}
                 </div>
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Email</label>
-                  <input className="admin-form-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="doctor@doctorbooklet.com" />
+                  <label className="admin-form-label">Email *</label>
+                  <input className={`admin-form-input ${errors.email ? 'has-error' : ''}`} type="email" name="email" value={form.email} onChange={handleChange} placeholder="doctor@doctorbooklet.com" />
+                  {renderFieldError('email')}
                 </div>
              </div>
           </div>

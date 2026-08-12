@@ -429,10 +429,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   }
 
   const featureCards = [
-    { icon: <IconUserCheck size={26} color="#15803D" />, title: 'Verified Doctors', desc: '100% verified & experienced healthcare professionals' },
-    { icon: <IconCalendarEvent size={26} color="#15803D" />, title: 'Easy Appointment', desc: 'Book appointments in just a few clicks' },
-    { icon: <IconShieldCheck size={26} color="#15803D" />, title: 'Secure & Reliable', desc: 'Your health information is safe with us' },
-    { icon: <IconHeadset size={26} color="#15803D" />, title: '24/7 Support', desc: "We're here to help you anytime, anywhere" }
+    { icon: <IconUserCheck size={26} color="#15803D" />, title: 'যাচাইকৃত ডাক্তার', desc: '১০০% যাচাইকৃত ও অভিজ্ঞ স্বাস্থ্যসেবা বিশেষজ্ঞ' },
+    { icon: <IconCalendarEvent size={26} color="#15803D" />, title: 'সহজ অ্যাপয়েন্টমেন্ট', desc: 'মাত্র কয়েক ক্লিকেই অ্যাপয়েন্টমেন্ট বুক করুন' },
+    { icon: <IconShieldCheck size={26} color="#15803D" />, title: 'নিরাপদ ও নির্ভরযোগ্য', desc: 'আপনার স্বাস্থ্য তথ্য আমাদের কাছে সম্পূর্ণ নিরাপদ' },
+    { icon: <IconHeadset size={26} color="#15803D" />, title: '২৪/৭ সহায়তা', desc: 'যেকোনো প্রয়োজনে যেকোনো সময় পাশে আছি' }
   ]
 
   return (

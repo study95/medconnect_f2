@@ -244,6 +244,8 @@ export default function DoctorListPage() {
   const filtered = allowedDoctors.filter(d =>
     d.name?.toLowerCase().includes(search.toLowerCase()) ||
     d.specialty?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    d.workplace?.toLowerCase().includes(search.toLowerCase()) ||
+    d.bmdc?.toLowerCase().includes(search.toLowerCase()) ||
     d.email?.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -558,8 +560,30 @@ export default function DoctorListPage() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{doctor.workplace || 'Chamber Address'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>Professional HQ</div>
+                      {doctor.workplace ? (
+                        <>
+                          <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>
+                            {doctor.workplace}
+                          </div>
+                          {doctor.workplace_bn && (
+                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              {doctor.workplace_bn}
+                            </div>
+                          )}
+                        </>
+                      ) : doctor.workplace_bn ? (
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                          {doctor.workplace_bn}
+                        </div>
+                      ) : doctor.hospital?.name ? (
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>
+                          {doctor.hospital.name}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', fontStyle: 'italic' }}>
+                          —
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', maxWidth: 160, lineHeight: 1.5 }}>

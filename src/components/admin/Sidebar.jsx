@@ -40,30 +40,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         {/* ===== ZONE 1: Brand (Sticky Top) ===== */}
         <div className="sidebar-brand-wrapper">
           <NavLink to="/admin" className="sidebar-brand" onClick={onClose}>
-            <div className="sidebar-brand-logo-img">
+            {isCollapsed ? (
+              <div className="sidebar-brand-logo-img">
+                <img
+                  src="/favicon.png"
+                  alt="Doctor Booklet"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+            ) : (
               <img
                 src="/doctorBookletLogo.png"
                 alt="Doctor Booklet"
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                onError={e => {
-                  e.target.style.display = 'none'
-                  e.target.nextSibling.style.display = 'flex'
-                }}
+                className="sidebar-full-logo"
+                style={{ height: '40px', maxWidth: '175px', objectFit: 'contain' }}
               />
-              <span style={{
-                display: 'none',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                fontWeight: 900,
-                fontSize: 15,
-                color: 'white'
-              }}>DB</span>
-            </div>
-            <div className="sidebar-brand-text">
-              Doctor <span>Booklet</span>
-            </div>
+            )}
           </NavLink>
         </div>
 

@@ -6,6 +6,18 @@ import useLocations from '../../hooks/useLocations'
 import PasswordInput from '../../components/common/PasswordInput'
 import '../../styles/auth.css'
 
+const HOSPITAL_TYPES = [
+  { id: 'Private Hospital', name: 'Private Hospital (বেসরকারি হাসপাতাল)' },
+  { id: 'Govt Hospital', name: 'Govt Hospital (সরকারি হাসপাতাল)' },
+  { id: 'Clinic', name: 'Clinic (ক্লিনিক)' },
+  { id: 'Diagnostic Center', name: 'Diagnostic Center (ডায়াগনস্টিক সেন্টার)' },
+  { id: 'Specialized Hospital (Maa-O-Shishu)', name: 'Specialized Hospital - Maa-O-Shishu (মা ও শিশু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Eye)', name: 'Specialized Hospital - Eye (চক্ষু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Cancer)', name: 'Specialized Hospital - Cancer (ক্যান্সার হাসপাতাল)' },
+  { id: 'Specialized Hospital (Dental)', name: 'Specialized Hospital - Dental (ডেন্টাল হাসপাতাল)' },
+  { id: 'Specialized Hospital (Other)', name: 'Specialized Hospital - Other (অন্যান্য বিশেষায়িত হাসপাতাল)' }
+]
+
 export default function HospitalRegisterPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -17,13 +29,12 @@ export default function HospitalRegisterPage() {
 
   useEffect(() => {
     if (!verified) {
-      
       navigate('/register/hospital/verify')
     }
   }, [verified, navigate])
 
   const [form, setForm] = useState({
-    name: '', hospital_name: '', email: '', phone: verifiedMobile, address: '',
+    name: '', hospital_name: '', hospital_type: '', license_number: '', hotline: '', official_email: '', email: '', phone: verifiedMobile, address: '',
     division_id: '', district_id: '', upazila_id: '', union_id: '',
     password: '', password_confirmation: '',
     hospital_logo: null, hospital_banner: null
@@ -82,6 +93,9 @@ export default function HospitalRegisterPage() {
     const errs = {}
     if (!form.name.trim()) errs.name = 'Manager Name is required'
     if (!form.hospital_name.trim()) errs.hospital_name = 'Hospital Name is required'
+    if (!form.hospital_type) errs.hospital_type = 'Type of Hospital is required'
+    if (!form.license_number.trim()) errs.license_number = 'License Number is required'
+    if (!form.address.trim()) errs.address = 'Hospital Address is required'
     if (!form.email.trim()) errs.email = 'Email is required'
     if (!form.phone.trim()) errs.phone = 'Phone number is required'
     if (!form.password) errs.password = 'Password is required'
@@ -178,28 +192,44 @@ export default function HospitalRegisterPage() {
                 {errors.hospital_name && <div className="auth-field-error">{errors.hospital_name}</div>}
               </div>
               <div className="auth-input-group">
-                <label>Manager Full Name *</label>
-                <input className={`auth-input ${errors.name ? 'error' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Enter manager name" />
-                {errors.name && <div className="auth-field-error">{errors.name}</div>}
+                <label>Type of Hospital *</label>
+                <select className={`auth-select ${errors.hospital_type ? 'error' : ''}`} name="hospital_type" value={form.hospital_type} onChange={handleChange}>
+                  <option value="">Select Hospital Type</option>
+                  {HOSPITAL_TYPES.map(ht => <option key={ht.id} value={ht.id}>{ht.name}</option>)}
+                </select>
+                {errors.hospital_type && <div className="auth-field-error">{errors.hospital_type}</div>}
+              </div>
+            </div>
+
+            <div className="auth-form-row">
+              <div className="auth-input-group">
+                <label>Hospital License Number *</label>
+                <input className={`auth-input ${errors.license_number ? 'error' : ''}`} name="license_number" value={form.license_number} onChange={handleChange} placeholder="e.g. REG-HS-99281" />
+                {errors.license_number && <div className="auth-field-error">{errors.license_number}</div>}
+              </div>
+              <div className="auth-input-group">
+                <label>Hot Number (Hotline)</label>
+                <input className="auth-input" name="hotline" value={form.hotline} onChange={handleChange} placeholder="e.g. 10616" />
               </div>
             </div>
 
             <div className="auth-form-row">
               <div className="auth-input-group">
                 <label>Official Email *</label>
-                <input className={`auth-input ${errors.email ? 'error' : ''}`} name="email" type="email" value={form.email} onChange={handleChange} placeholder="hospital@example.com" />
+                <input className={`auth-input ${errors.email ? 'error' : ''}`} name="email" type="email" value={form.email} onChange={(e) => { handleChange(e); setForm(f => ({ ...f, official_email: e.target.value })) }} placeholder="hospital@example.com" />
                 {errors.email && <div className="auth-field-error">{errors.email}</div>}
               </div>
               <div className="auth-input-group">
-                <label>Phone Number (Verified)</label>
-                <input className="auth-input" value={verifiedMobile} disabled style={{ background: '#f0f9ff', color: '#0284c7', fontWeight: 700 }} />
-                <span style={{ fontSize: 11, color: '#0284c7', fontWeight: 600 }}>✓ Verified</span>
+                <label>Manager Full Name *</label>
+                <input className={`auth-input ${errors.name ? 'error' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Enter manager name" />
+                {errors.name && <div className="auth-field-error">{errors.name}</div>}
               </div>
             </div>
 
             <div className="auth-input-group">
-              <label>Detailed Address</label>
-              <textarea className="auth-input" name="address" value={form.address} onChange={handleChange} placeholder="Full hospital address" rows={3}></textarea>
+              <label>Detailed Address *</label>
+              <textarea className={`auth-input ${errors.address ? 'error' : ''}`} name="address" value={form.address} onChange={handleChange} placeholder="Full hospital address" rows={3}></textarea>
+              {errors.address && <div className="auth-field-error">{errors.address}</div>}
             </div>
 
             {/* Address */}

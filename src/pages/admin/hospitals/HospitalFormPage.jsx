@@ -7,8 +7,20 @@ import {
   getDivisions, getDistricts, getUpazilas, getUnions
 } from '../../../api/adminApi'
 
-// Premium Searchable Select Component
-function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false, error = '' }) {
+const HOSPITAL_TYPES = [
+  { id: 'Private Hospital', name: 'Private Hospital (বেসরকারি হাসপাতাল)' },
+  { id: 'Govt Hospital', name: 'Govt Hospital (সরকারি হাসপাতাল)' },
+  { id: 'Clinic', name: 'Clinic (ক্লিনিক)' },
+  { id: 'Diagnostic Center', name: 'Diagnostic Center (ডায়াগনস্টিক সেন্টার)' },
+  { id: 'Specialized Hospital (Maa-O-Shishu)', name: 'Specialized Hospital - Maa-O-Shishu (মা ও শিশু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Eye)', name: 'Specialized Hospital - Eye (চক্ষু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Cancer)', name: 'Specialized Hospital - Cancer (ক্যান্সার হাসপাতাল)' },
+  { id: 'Specialized Hospital (Dental)', name: 'Specialized Hospital - Dental (ডেন্টাল হাসপাতাল)' },
+  { id: 'Specialized Hospital (Other)', name: 'Specialized Hospital - Other (অন্যান্য বিশেষায়িত হাসপাতাল)' }
+]
+
+// Searchable Select Component
+function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const dropdownRef = useRef(null)
@@ -30,11 +42,13 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     <div className="admin-form-group" ref={dropdownRef} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
       <label className="admin-form-label">{label}</label>
       <div
-        className={`admin-form-input ${error ? 'border-red-500' : ''}`}
+        id={id}
+        tabIndex={0}
+        className={`admin-form-input ${error ? 'has-error' : ''}`}
         style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           cursor: disabled ? 'not-allowed' : 'pointer', background: 'var(--admin-card-bg)',
-          height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid var(--admin-border)',
+          height: 48, padding: '0 16px', borderRadius: 12,
           fontSize: 14, fontWeight: 500, transition: 'all 0.2s', color: 'var(--admin-text)'
         }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -45,7 +59,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
 
-      {error && <div className="admin-form-error" style={{ marginTop: 4 }}>{error}</div>}
+      {error && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
 
       {isOpen && (
         <div style={{
@@ -99,10 +113,12 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function HospitalFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const isEdit = !!id
+  const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', district_id: '', upazila_id: '', union_id: '', division_id: '', address: '', phone: '', email: '', url: '',
+    name: '', hospital_type: '', license_number: '',
+    district_id: '', upazila_id: '', union_id: '', division_id: '',
+    address: '', phone: '', hotline: '', email: '', official_email: '', url: '',
     ambulance_number: '', reserved_doctor_number: '', visited_doctor_number: '',
     nurse_number: '', staff_number: '', ICU_number: '', CCU_number: '', HDU_number: '', Cabin_number: '',
     top_10_hospital: 'no', is_active: true
@@ -165,13 +181,17 @@ export default function HospitalFormPage() {
       const h = res.data?.data || res.data
       setForm({
         name: h.name || '',
+        hospital_type: h.hospital_type || '',
+        license_number: h.license_number || '',
         division_id: h.division_id || '',
         district_id: h.district_id || '',
         upazila_id: h.upazila_id || '',
         union_id: h.union_id || '',
         address: h.address || '',
         phone: h.phone || '',
+        hotline: h.hotline || '',
         email: h.email || '',
+        official_email: h.official_email || h.email || '',
         url: h.url || '',
         ambulance_number: h.ambulance_number || '',
         reserved_doctor_number: h.reserved_doctor_number || '',
@@ -193,7 +213,8 @@ export default function HospitalFormPage() {
         bannerPreview: h.banner_url
       }))
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setLoading(false)
     }
   }
@@ -201,7 +222,7 @@ export default function HospitalFormPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
-    if (errors[name]) setErrors({ ...errors, [name]: '' })
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const handleMediaChange = (e, type) => {
@@ -215,18 +236,99 @@ export default function HospitalFormPage() {
     }
   }
 
+  const scrollToFirstError = (errObj) => {
+    const errorKeys = Object.keys(errObj)
+    if (errorKeys.length === 0) return
+
+    const fieldOrder = [
+      'name',
+      'hospital_type',
+      'license_number',
+      'division_id',
+      'district_id',
+      'address',
+      'phone',
+      'hotline',
+      'official_email',
+      'email'
+    ]
+
+    const firstKey = fieldOrder.find(key => errObj[key]) || errorKeys[0]
+
+    let targetEl = document.querySelector(`[name="${firstKey}"]`)
+    if (!targetEl) targetEl = document.getElementById(`field-${firstKey}`)
+    if (!targetEl && firstKey === 'division_id') targetEl = document.getElementById('field-division_id')
+    if (!targetEl && firstKey === 'district_id') targetEl = document.getElementById('field-district_id')
+    if (!targetEl && firstKey === 'hospital_type') targetEl = document.getElementById('field-hospital_type')
+
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => {
+        targetEl.focus?.()
+      }, 300)
+    }
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!form.name || !form.name.trim()) {
+      newErrors.name = 'Hospital Name is required.'
+    }
+    if (!form.hospital_type) {
+      newErrors.hospital_type = 'Type of Hospital is required.'
+    }
+    if (!form.license_number || !form.license_number.trim()) {
+      newErrors.license_number = 'Hospital License Number is required.'
+    }
+    if (!form.division_id) {
+      newErrors.division_id = 'Division selection is required.'
+    }
+    if (!form.district_id) {
+      newErrors.district_id = 'District selection is required.'
+    }
+    if (!form.address || !form.address.trim()) {
+      newErrors.address = 'Hospital Address is required.'
+    }
+    if (!form.phone || !form.phone.trim()) {
+      newErrors.phone = 'Mobile / Phone Number is required.'
+    } else if (!/^01[3-9]\d{8}$/.test(form.phone.trim())) {
+      newErrors.phone = 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).'
+    }
+
+    if (form.official_email && form.official_email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(form.official_email.trim())) {
+        newErrors.official_email = 'Please enter a valid email address (e.g. info@hospital.com).'
+      }
+    }
+
+    if (form.email && form.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(form.email.trim())) {
+        newErrors.email = 'Please enter a valid email address (e.g. info@hospital.com).'
+      }
+    }
+
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) {
+      scrollToFirstError(newErrors)
+      return false
+    }
+    return true
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!validateForm()) return
+
     setSaving(true)
     const formData = new FormData()
 
-    // Core Fields - Clean submission
+    // Core Fields
     Object.keys(form).forEach(key => {
       let value = form[key]
-
-      // Convert boolean for Laravel FormData compatibility
       if (key === 'is_active') value = value ? '1' : '0'
-
       if (value !== null && value !== undefined) {
         formData.append(key, value)
       }
@@ -245,14 +347,21 @@ export default function HospitalFormPage() {
       if (isEdit) {
         formData.append('_method', 'PUT')
         await updateHospital(id, formData)
-        
       } else {
         await createHospital(formData)
-        
       }
       navigate('/admin/hospitals')
     } catch (err) {
-if (err.response?.data?.errors) setErrors(err.response.data.errors)
+      const backendErrors = err.response?.data?.errors || {}
+      const formattedErrors = {}
+      Object.keys(backendErrors).forEach(key => {
+        const msg = Array.isArray(backendErrors[key]) ? backendErrors[key][0] : backendErrors[key]
+        formattedErrors[key] = msg
+      })
+      setErrors(formattedErrors)
+      if (Object.keys(formattedErrors).length > 0) {
+        scrollToFirstError(formattedErrors)
+      }
     } finally {
       setSaving(false)
     }
@@ -265,7 +374,7 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>{isEdit ? '🏢 Edit Hospital Profile' : '🏥 Register New Hospital'}</h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure facility details, capacity, and geographical location</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure facility details, license, capacity, and geographical location</p>
         </div>
         <Link to="/admin/hospitals" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
       </div>
@@ -278,17 +387,45 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
             <h3 className="admin-card-title">Basic Information</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gap: 24 }}>
-            <div className="admin-form-group">
-              <label className="admin-form-label">Hospital Name *</label>
-              <input
-                className="admin-form-input"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Enter full hospital name"
-                style={{ height: 48, fontSize: 16, fontWeight: 600 }}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Hospital Name *</label>
+                <input
+                  className={`admin-form-input ${errors.name ? 'has-error' : ''}`}
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Enter full hospital name"
+                  style={{ height: 48, fontSize: 15, fontWeight: 600 }}
+                />
+                {errors.name && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.name}</div>}
+              </div>
+
+              <SearchableSelect
+                id="field-hospital_type"
+                label="Type of Hospital *"
+                options={HOSPITAL_TYPES}
+                value={form.hospital_type}
+                onChange={(val) => {
+                  setForm(f => ({ ...f, hospital_type: val }))
+                  if (errors.hospital_type) setErrors(e => ({ ...e, hospital_type: '' }))
+                }}
+                placeholder="Select Hospital Type (e.g. Clinic, Specialized, etc.)"
+                error={errors.hospital_type}
               />
-              {errors.name && <div className="admin-form-error">{errors.name}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">Hospital License Number *</label>
+              <input
+                className={`admin-form-input ${errors.license_number ? 'has-error' : ''}`}
+                name="license_number"
+                value={form.license_number}
+                onChange={handleChange}
+                placeholder="e.g. REG-HS-998234"
+                style={{ height: 48, fontSize: 14, fontWeight: 500 }}
+              />
+              {errors.license_number && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.license_number}</div>}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
@@ -320,74 +457,76 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
         {/* Location & Geography */}
         <div className="admin-card" style={{ overflow: 'visible' }}>
           <div className="admin-card-header" style={{ background: 'rgba(16, 185, 129, 0.05)' }}>
-            <h3 className="admin-card-title" style={{ color: '#10B981' }}>Geographical Location</h3>
+            <h3 className="admin-card-title" style={{ color: '#10B981' }}>Geographical Location & Address</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
-            <SearchableSelect label="Division *" options={locationData.divisions} value={form.division_id} onChange={(val) => setForm(f => ({ ...f, division_id: val, district_id: '', upazila_id: '', union_id: '' }))} placeholder="Select Division" error={errors.division_id} />
-            <SearchableSelect label="District *" options={locationData.districts} value={form.district_id} onChange={(val) => setForm(f => ({ ...f, district_id: val, upazila_id: '', union_id: '' }))} placeholder="Select District" disabled={!form.division_id} error={errors.district_id} />
+            <SearchableSelect id="field-division_id" label="Division *" options={locationData.divisions} value={form.division_id} onChange={(val) => { setForm(f => ({ ...f, division_id: val, district_id: '', upazila_id: '', union_id: '' })); if (errors.division_id) setErrors(e => ({ ...e, division_id: '' })) }} placeholder="Select Division" error={errors.division_id} />
+            <SearchableSelect id="field-district_id" label="District *" options={locationData.districts} value={form.district_id} onChange={(val) => { setForm(f => ({ ...f, district_id: val, upazila_id: '', union_id: '' })); if (errors.district_id) setErrors(e => ({ ...e, district_id: '' })) }} placeholder="Select District" disabled={!form.division_id} error={errors.district_id} />
             <SearchableSelect label="Upazila" options={locationData.upazilas} value={form.upazila_id} onChange={(val) => setForm(f => ({ ...f, upazila_id: val, union_id: '' }))} placeholder="Select Upazila" disabled={!form.district_id} />
             <SearchableSelect label="Union" options={locationData.unions} value={form.union_id} onChange={(val) => setForm(f => ({ ...f, union_id: val }))} placeholder="Select Union" disabled={!form.upazila_id} />
 
             <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="admin-form-label">Full Street Address</label>
+              <label className="admin-form-label">Full Hospital Address *</label>
               <textarea
-                className="admin-form-input"
+                className={`admin-form-input ${errors.address ? 'has-error' : ''}`}
                 name="address"
                 value={form.address}
                 onChange={handleChange}
-                placeholder="Specific location details..."
+                placeholder="Specific location, road, house number, area details..."
                 style={{ height: 100, padding: '12px 16px', resize: 'none' }}
               />
+              {errors.address && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.address}</div>}
             </div>
           </div>
         </div>
 
-        {/* Capacity & Stats */}
-        <div className="admin-card">
-          <div className="admin-card-header" style={{ background: 'rgba(59, 130, 246, 0.05)' }}>
-            <h3 className="admin-card-title" style={{ color: '#3B82F6' }}>Facility Capacity & Statistics</h3>
-          </div>
-          <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
-            {[
-              { name: 'ambulance_number', label: 'Ambulances', icon: '🚑' },
-              { name: 'reserved_doctor_number', label: 'Reserved Doctors', icon: '👨‍⚕️' },
-              { name: 'visited_doctor_number', label: 'Visiting Doctors', icon: '🩺' },
-              { name: 'nurse_number', label: 'Total Nurses', icon: '👩‍⚕️' },
-              { name: 'staff_number', label: 'Total Staff', icon: '👥' },
-              { name: 'ICU_number', label: 'ICU Beds', icon: '🏥' },
-              { name: 'CCU_number', label: 'CCU Beds', icon: '💓' },
-              { name: 'HDU_number', label: 'HDU Beds', icon: '🛌' },
-              { name: 'Cabin_number', label: 'Private Cabins', icon: '🏠' },
-            ].map(field => (
-              <div key={field.name} className="admin-form-group">
-                <label className="admin-form-label">{field.icon} {field.label}</label>
-                <input
-                  type="number"
-                  className="admin-form-input"
-                  name={field.name}
-                  value={form[field.name]}
-                  onChange={handleChange}
-                  placeholder="0"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Contact & Medical Tests */}
+        {/* Contact & Hot Numbers */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
           <div className="admin-card">
             <div className="admin-card-header">
-              <h3 className="admin-card-title">Contact & Web</h3>
+              <h3 className="admin-card-title">Contact & Communication</h3>
             </div>
             <div className="admin-card-body" style={{ display: 'grid', gap: 20 }}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Phone Number</label>
-                <input className="admin-form-input" name="phone" value={form.phone} onChange={handleChange} placeholder="+880..." />
+                <label className="admin-form-label">Mobile / Phone Number *</label>
+                <input
+                  className={`admin-form-input ${errors.phone ? 'has-error' : ''}`}
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="017XXXXXXXX"
+                />
+                {errors.phone && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.phone}</div>}
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Hot Number (Hotline)</label>
+                <input
+                  className={`admin-form-input ${errors.hotline ? 'has-error' : ''}`}
+                  name="hotline"
+                  value={form.hotline}
+                  onChange={handleChange}
+                  placeholder="e.g. 10616 / 09612345678"
+                />
+                {errors.hotline && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.hotline}</div>}
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">Official Email</label>
-                <input className="admin-form-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="info@hospital.com" />
+                <input
+                  className={`admin-form-input ${errors.official_email || errors.email ? 'has-error' : ''}`}
+                  type="email"
+                  name="official_email"
+                  value={form.official_email}
+                  onChange={(e) => {
+                    handleChange(e)
+                    setForm(f => ({ ...f, email: e.target.value }))
+                  }}
+                  placeholder="info@hospital.com"
+                />
+                {(errors.official_email || errors.email) && (
+                  <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>
+                    {errors.official_email || errors.email}
+                  </div>
+                )}
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">Website URL</label>
@@ -418,6 +557,38 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
               ))}
               <button type="button" onClick={() => setTests([...tests, ''])} className="admin-btn admin-btn-outline" style={{ width: '100%', marginTop: 8 }}>+ Add Service/Test</button>
             </div>
+          </div>
+        </div>
+
+        {/* Capacity & Stats */}
+        <div className="admin-card">
+          <div className="admin-card-header" style={{ background: 'rgba(59, 130, 246, 0.05)' }}>
+            <h3 className="admin-card-title" style={{ color: '#3B82F6' }}>Facility Capacity & Statistics</h3>
+          </div>
+          <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+            {[
+              { name: 'ambulance_number', label: 'Ambulance Contact', icon: '🚑' },
+              { name: 'reserved_doctor_number', label: 'Reserved Doctors', icon: '👨‍⚕️' },
+              { name: 'visited_doctor_number', label: 'Visiting Doctors', icon: '🩺' },
+              { name: 'nurse_number', label: 'Total Nurses', icon: '👩‍⚕️' },
+              { name: 'staff_number', label: 'Total Staff', icon: '👥' },
+              { name: 'ICU_number', label: 'ICU Beds', icon: '🏥' },
+              { name: 'CCU_number', label: 'CCU Beds', icon: '💓' },
+              { name: 'HDU_number', label: 'HDU Beds', icon: '🛌' },
+              { name: 'Cabin_number', label: 'Private Cabins', icon: '🏠' },
+            ].map(field => (
+              <div key={field.name} className="admin-form-group">
+                <label className="admin-form-label">{field.icon} {field.label}</label>
+                <input
+                  type="number"
+                  className="admin-form-input"
+                  name={field.name}
+                  value={form[field.name]}
+                  onChange={handleChange}
+                  placeholder="0"
+                />
+              </div>
+            ))}
           </div>
         </div>
 

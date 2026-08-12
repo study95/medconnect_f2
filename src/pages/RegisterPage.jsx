@@ -8,8 +8,21 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { sendOtp } from '../api/authApi'
+import { getSpecialties } from '../api/adminApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import '../styles/auth-premium.css'
+
+const HOSPITAL_TYPES = [
+  { id: 'Private Hospital', name: 'Private Hospital (বেসরকারি হাসপাতাল)' },
+  { id: 'Govt Hospital', name: 'Govt Hospital (সরকারি হাসপাতাল)' },
+  { id: 'Clinic', name: 'Clinic (ক্লিনিক)' },
+  { id: 'Diagnostic Center', name: 'Diagnostic Center (ডায়াগনস্টিক সেন্টার)' },
+  { id: 'Specialized Hospital (Maa-O-Shishu)', name: 'Specialized Hospital - Maa-O-Shishu (মা ও শিশু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Eye)', name: 'Specialized Hospital - Eye (চক্ষু হাসপাতাল)' },
+  { id: 'Specialized Hospital (Cancer)', name: 'Specialized Hospital - Cancer (ক্যান্সার হাসপাতাল)' },
+  { id: 'Specialized Hospital (Dental)', name: 'Specialized Hospital - Dental (ডেন্টাল হাসপাতাল)' },
+  { id: 'Specialized Hospital (Other)', name: 'Specialized Hospital - Other (অন্যান্য বিশেষায়িত হাসপাতাল)' }
+]
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -21,6 +34,13 @@ const RegisterPage = () => {
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
+  const [specialties, setSpecialties] = useState([])
+
+  useEffect(() => {
+    getSpecialties().then(res => {
+      setSpecialties(res.data?.data || res.data || [])
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -32,6 +52,8 @@ const RegisterPage = () => {
 
   const [form, setForm] = useState({
     name: '', hospital_name: '', email: '', mobile: '',
+    specialty_id: '', workplace: '', bmdc_number: '',
+    hospital_type: '', license_number: '', address: '', hotline: '', official_email: '',
     password: '', confirm: ''
   })
 
@@ -235,6 +257,60 @@ const RegisterPage = () => {
     formData.append('email', form.email)
     formData.append('mobile', form.mobile)
     formData.append('password', form.password)
+
+    if (role === 'doctor') {
+      if (!form.specialty_id) {
+        setLoading(false)
+        setFieldErrors({ specialty_id: 'স্পেশালটি নির্বাচন করা বাধ্যতামূলক।' })
+        return
+      }
+      if (!form.workplace || !form.workplace.trim()) {
+        setLoading(false)
+        setFieldErrors({ workplace: 'বর্তমান কর্মস্থল দেওয়া বাধ্যতামূলক।' })
+        return
+      }
+      if (!form.bmdc_number || !form.bmdc_number.trim()) {
+        setLoading(false)
+        setFieldErrors({ bmdc_number: 'বিএমডিসি নম্বর দেওয়া বাধ্যতামূলক।' })
+        return
+      }
+      formData.append('specialty_id', form.specialty_id)
+      formData.append('workplace', form.workplace)
+      formData.append('bmdc_number', form.bmdc_number)
+      formData.append('bmdc', form.bmdc_number)
+    }
+
+    if (role === 'hospital') {
+      if (!form.hospital_name || !form.hospital_name.trim()) {
+        setLoading(false)
+        setFieldErrors({ hospital_name: 'হাসপাতালের নাম দেওয়া বাধ্যতামূলক।' })
+        return
+      }
+      if (!form.hospital_type) {
+        setLoading(false)
+        setFieldErrors({ hospital_type: 'হাসপাতালের ধরন নির্বাচন করা বাধ্যতামূলক।' })
+        return
+      }
+      if (!form.license_number || !form.license_number.trim()) {
+        setLoading(false)
+        setFieldErrors({ license_number: 'লাইসেন্স নম্বর দেওয়া বাধ্যতামূলক।' })
+        return
+      }
+      if (!form.address || !form.address.trim()) {
+        setLoading(false)
+        setFieldErrors({ address: 'হাসপাতালের ঠিকানা দেওয়া বাধ্যতামূলক।' })
+        return
+      }
+      formData.append('hospital_name', form.hospital_name)
+      formData.append('hospital_type', form.hospital_type)
+      formData.append('license_number', form.license_number)
+      formData.append('address', form.address)
+      if (form.hotline) formData.append('hotline', form.hotline)
+      if (form.official_email) {
+        formData.append('official_email', form.official_email)
+        if (!form.email) formData.append('email', form.official_email)
+      }
+    }
 
     let result
     if (role === 'patient') result = await registerPatient(formData)
@@ -585,45 +661,246 @@ const RegisterPage = () => {
                     </span>
                   </div>
 
-                  <Form.Group style={{ marginBottom: 14 }}>
-                    <Form.Label className="auth-label-premium">
-                      {role === 'hospital' ? 'হাসপাতালের নাম' : 'পূর্ণ নাম'}
-                    </Form.Label>
-                    <div className="input-group-premium">
-                      <span className="input-icon-premium"><UserCircle size={17} /></span>
-                      <Form.Control
-                        name={role === 'hospital' ? 'hospital_name' : 'name'}
-                        type="text"
-                        placeholder={role === 'hospital' ? 'হাসপাতালের নাম লিখুন' : 'আপনার পূর্ণ নাম'}
-                        value={role === 'hospital' ? form.hospital_name : form.name}
-                        onChange={handleChange} required
-                        className="auth-input-premium"
-                      />
-                    </div>
-                    {fieldErrors.name && (
-                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.name}
-                      </p>
-                    )}
-                  </Form.Group>
+                  {role !== 'hospital' && (
+                    <Form.Group style={{ marginBottom: 14 }}>
+                      <Form.Label className="auth-label-premium">পূর্ণ নাম</Form.Label>
+                      <div className="input-group-premium">
+                        <span className="input-icon-premium"><UserCircle size={17} /></span>
+                        <Form.Control
+                          name="name"
+                          type="text"
+                          placeholder="আপনার পূর্ণ নাম"
+                          value={form.name}
+                          onChange={handleChange} required
+                          className="auth-input-premium"
+                        />
+                      </div>
+                      {fieldErrors.name && (
+                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.name}
+                        </p>
+                      )}
+                    </Form.Group>
+                  )}
 
-                  <Form.Group style={{ marginBottom: 14 }}>
-                    <Form.Label className="auth-label-premium">ইমেইল ঠিকানা</Form.Label>
-                    <div className="input-group-premium">
-                      <span className="input-icon-premium"><Mail size={17} /></span>
-                      <Form.Control
-                        name="email" type="email"
-                        placeholder="name@example.com"
-                        value={form.email} onChange={handleChange} required
-                        className="auth-input-premium"
-                      />
-                    </div>
-                    {fieldErrors.email && (
-                      <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.email}
-                      </p>
-                    )}
-                  </Form.Group>
+                  {role !== 'hospital' && (
+                    <Form.Group style={{ marginBottom: 14 }}>
+                      <Form.Label className="auth-label-premium">ইমেইল ঠিকানা</Form.Label>
+                      <div className="input-group-premium">
+                        <span className="input-icon-premium"><Mail size={17} /></span>
+                        <Form.Control
+                          name="email" type="email"
+                          placeholder="name@example.com"
+                          value={form.email} onChange={handleChange} required
+                          className="auth-input-premium"
+                        />
+                      </div>
+                      {fieldErrors.email && (
+                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.email}
+                        </p>
+                      )}
+                    </Form.Group>
+                  )}
+
+                  {role === 'hospital' && (
+                    <>
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">হাসপাতালের নাম (Hospital Name) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><Hotel size={17} /></span>
+                          <Form.Control
+                            name="hospital_name"
+                            type="text"
+                            placeholder="যেমনঃ অ্যাপোলো স্পেশালাইজড হাসপাতাল"
+                            value={form.hospital_name}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          />
+                        </div>
+                        {fieldErrors.hospital_name && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.hospital_name}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">হাসপাতালের ধরন (Type of Hospital) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><Hotel size={17} /></span>
+                          <Form.Select
+                            name="hospital_type"
+                            value={form.hospital_type}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          >
+                            <option value="">হাসপাতালের ধরন নির্বাচন করুন</option>
+                            {HOSPITAL_TYPES.map(ht => (
+                              <option key={ht.id} value={ht.id}>{ht.name}</option>
+                            ))}
+                          </Form.Select>
+                        </div>
+                        {fieldErrors.hospital_type && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.hospital_type}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">লাইসেন্স নম্বর (License Number) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><ShieldCheck size={17} /></span>
+                          <Form.Control
+                            name="license_number"
+                            type="text"
+                            placeholder="যেমনঃ HS-REG-99281"
+                            value={form.license_number}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          />
+                        </div>
+                        {fieldErrors.license_number && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.license_number}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">হাসপাতালের ঠিকানা (Hospital Address) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><Hotel size={17} /></span>
+                          <Form.Control
+                            name="address"
+                            type="text"
+                            placeholder="সম্পূর্ণ ঠিকানা লিখুন (যেমনঃ ধানমন্ডি, ঢাকা)"
+                            value={form.address}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          />
+                        </div>
+                        {fieldErrors.address && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.address}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Row className="g-2" style={{ marginBottom: 14 }}>
+                        <Col md={6}>
+                          <Form.Group>
+                            <Form.Label className="auth-label-premium">হট নম্বর (Hotline)</Form.Label>
+                            <div className="input-group-premium">
+                              <span className="input-icon-premium"><Phone size={17} /></span>
+                              <Form.Control
+                                name="hotline"
+                                type="text"
+                                placeholder="যেমনঃ 10616"
+                                value={form.hotline}
+                                onChange={handleChange}
+                                className="auth-input-premium"
+                              />
+                            </div>
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group>
+                            <Form.Label className="auth-label-premium">অফিসিয়াল ইমেইল (Official Email)</Form.Label>
+                            <div className="input-group-premium">
+                              <span className="input-icon-premium"><Mail size={17} /></span>
+                              <Form.Control
+                                name="official_email"
+                                type="email"
+                                placeholder="info@hospital.com"
+                                value={form.official_email}
+                                onChange={(e) => {
+                                  handleChange(e)
+                                  setForm(f => ({ ...f, email: e.target.value }))
+                                }}
+                                className="auth-input-premium"
+                              />
+                            </div>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                    </>
+                  )}
+
+                  {role === 'doctor' && (
+                    <>
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">স্পেশালটি (Specialty) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><Stethoscope size={17} /></span>
+                          <Form.Select
+                            name="specialty_id"
+                            value={form.specialty_id}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          >
+                            <option value="">স্পেশালটি নির্বাচন করুন</option>
+                            {specialties.map(s => (
+                              <option key={s.id} value={s.id}>{s.name} ({s.name_bn || s.name})</option>
+                            ))}
+                          </Form.Select>
+                        </div>
+                        {fieldErrors.specialty_id && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.specialty_id}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">বর্তমান কর্মস্থল (Workplace) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><Hotel size={17} /></span>
+                          <Form.Control
+                            name="workplace"
+                            type="text"
+                            placeholder="যেমনঃ ঢাকা মেডিকেল কলেজ হাসপাতাল"
+                            value={form.workplace}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          />
+                        </div>
+                        {fieldErrors.workplace && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.workplace}
+                          </p>
+                        )}
+                      </Form.Group>
+
+                      <Form.Group style={{ marginBottom: 14 }}>
+                        <Form.Label className="auth-label-premium">বিএমডিসি নম্বর (BMDC Reg No.) *</Form.Label>
+                        <div className="input-group-premium">
+                          <span className="input-icon-premium"><ShieldCheck size={17} /></span>
+                          <Form.Control
+                            name="bmdc_number"
+                            type="text"
+                            placeholder="যেমনঃ A-12345"
+                            value={form.bmdc_number}
+                            onChange={handleChange}
+                            required
+                            className="auth-input-premium"
+                          />
+                        </div>
+                        {fieldErrors.bmdc_number && (
+                          <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.bmdc_number}
+                          </p>
+                        )}
+                      </Form.Group>
+                    </>
+                  )}
 
                   <Row className="g-2" style={{ marginBottom: 18 }}>
                     <Col md={6}>

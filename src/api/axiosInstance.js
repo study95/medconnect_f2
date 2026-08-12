@@ -55,9 +55,12 @@ axiosInstance.interceptors.response.use(
     }
 
     if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login')) {
-      const serverErr = error.response?.data?.message || error.response?.data?.error
-      const toastErr = typeof serverErr === 'string' && serverErr.trim() ? serverErr : 'An error occurred while saving changes.'
-      toast.error(toastErr, { id: `err-${method}-${url}` })
+      // Skip global toast for 422 validation errors so pages can handle inline errors & auto-scroll cleanly
+      if (error.response?.status !== 422) {
+        const serverErr = error.response?.data?.message || error.response?.data?.error
+        const toastErr = typeof serverErr === 'string' && serverErr.trim() ? serverErr : 'An error occurred while saving changes.'
+        toast.error(toastErr, { id: `err-${method}-${url}` })
+      }
     }
 
     return Promise.reject(error)

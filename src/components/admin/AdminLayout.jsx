@@ -132,7 +132,7 @@ export default function AdminLayout() {
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name || 'User'}</span>
                     <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--admin-primary)', textTransform: 'uppercase' }}>{roleName}</span>
                   </div>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--admin-border)', background: 'var(--admin-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(0, 168, 140, 0.3)', background: 'rgba(0, 168, 140, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {user?.photo ? (
                       <img src={getMediaUrl(user.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
@@ -175,21 +175,8 @@ export default function AdminLayout() {
               
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
               
-              <Link to="/" className="admin-back-link" title="Go to Website" style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 6, 
-                fontSize: 13, 
-                fontWeight: 600, 
-                color: 'var(--admin-primary)',
-                textDecoration: 'none',
-                transition: 'opacity 0.2s',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = 0.8}
-              onMouseLeave={e => e.currentTarget.style.opacity = 1}
-              >
-                <span className="back-link-text">Go to Website</span> <IconExternalLink size={16} />
+              <Link to="/" className="admin-back-link" title="Go to Website">
+                <span className="back-link-text">Go to Website</span> <IconExternalLink size={15} />
               </Link>
             </div>
           </div>

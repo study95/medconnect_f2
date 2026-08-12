@@ -337,7 +337,6 @@ export default function AppointmentListPage() {
                     <th>Booked By</th>
                     <th>Schedule</th>
                     <th>Status</th>
-                    {isAdmin && <th>Economics</th>}
                     <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                   </tr>
                 </thead>
@@ -400,16 +399,6 @@ export default function AppointmentListPage() {
                           <StatusBadge status={appt.status} />
                         )}
                       </td>
-                      {isAdmin && (
-                        <td>
-                          {appt.commission_rate > 0 ? (
-                            <div>
-                              <div style={{ fontWeight: 800, color: 'var(--admin-text)' }}>৳{appt.commission_amount}</div>
-                              <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{appt.commission_rate}% Commission</div>
-                            </div>
-                          ) : <span style={{ color: 'var(--admin-text-muted)' }}>—</span>}
-                        </td>
-                      )}
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>
                         <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
                           <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/appointments/view/${appt.id}`)} title="View Details">👁️</button>

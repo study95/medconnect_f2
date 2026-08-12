@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query'
 import axiosInstance from '../api/axiosInstance'
 import { getContent } from '../utils/contentService'
 import useHomepage from '../hooks/useHomepage'
+import { getMediaUrl } from '../utils/mediaUtils'
 
 // Swiper imports
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -1300,7 +1301,7 @@ function PatientTestimonialsSection() {
             marginBottom: 10,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
-            হাজারো রোগীর ভরসা ও সন্তুষ্টি (Trusted by Thousands)
+            হাজারো রোগীর ভরসা ও সন্তুষ্টি
           </h2>
           <p style={{
             fontSize: 14.5,
@@ -1725,6 +1726,126 @@ function DarkRegistrationSection() {
   )
 }
 
+// ─── OUR HOSPITAL PARTNERS (CONTINUOUS MARQUEE SLOW SCROLLING) ───────────────
+function HospitalPartnersSection({ hospitals = [] }) {
+  // Static fallback partners with logos if backend photo is not set
+  const DEFAULT_PARTNERS = [
+    { name: 'Bangladesh Specialized Hospital', photo_url: '/images/hospital.png' },
+    { name: 'Chevron Clinical Laboratory', photo_url: '/images/care.png' },
+    { name: 'Popular Diagnostic Center', photo_url: '/images/doctor.png' },
+    { name: 'Praava Health', photo_url: '/images/doctor-hero-centered.png' },
+    { name: 'York Hospital', photo_url: '/images/doctor-premium.png' }
+  ]
+
+  const items = (hospitals && hospitals.length > 0) ? hospitals : DEFAULT_PARTNERS
+
+  // Multiply array elements to guarantee seamless infinite loop animation
+  const marqueeItems = [...items, ...items, ...items, ...items]
+
+  return (
+    <section style={{ padding: '36px 0 44px', background: '#FFFFFF', borderTop: '1px solid #E2E8F0', overflow: 'hidden' }}>
+      <Container>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <h2 style={{
+            fontSize: 'clamp(22px, 3.2vw, 34px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            letterSpacing: '-0.02em',
+            marginBottom: 6,
+            fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif"
+          }}>
+            আমাদের সহযোগী হাসপাতালসমূহ
+          </h2>
+          <p style={{ fontSize: 13.5, color: '#64748B', fontWeight: 500, margin: 0, fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
+            দেশজুড়ে নির্ভরযোগ্য হাসপাতাল ও ক্লিনিক্যাল সেন্টারসমূহ
+          </p>
+        </div>
+      </Container>
+
+      {/* Infinite Continuous Slow Marquee Slider */}
+      <div className="partner-marquee-container" style={{ position: 'relative', width: '100%', overflow: 'hidden', padding: '10px 0' }}>
+        {/* Left & Right subtle gradient fade overlays */}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 90, background: 'linear-gradient(to right, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 90, background: 'linear-gradient(to left, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+
+        <div className="partner-marquee-track">
+          {marqueeItems.map((hosp, idx) => {
+            const imgSrc = hosp.logo_url || hosp.logo || hosp.photo_url || hosp.photo || hosp.image
+            const finalImg = imgSrc ? getMediaUrl(imgSrc) : '/favicon.png'
+
+            return (
+              <div key={idx} className="partner-marquee-item">
+                <div className="partner-logo-card">
+                  <img
+                    src={finalImg}
+                    alt={hosp.name || 'Hospital Logo'}
+                    style={{
+                      width: '80px',
+                      height: '50px',
+                      objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null
+                      e.target.src = '/favicon.png'
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <style>{`
+        .partner-marquee-track {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          width: max-content;
+          animation: partnerMarquee 40s linear infinite;
+        }
+
+        .partner-marquee-container:hover .partner-marquee-track {
+          animation-play-state: paused;
+        }
+
+        .partner-marquee-item {
+          flex-shrink: 0;
+        }
+
+        .partner-logo-card {
+          width: 140px;
+          height: 76px;
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 12px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .partner-logo-card:hover {
+          border-color: #00A88C;
+          box-shadow: 0 12px 28px rgba(0, 168, 140, 0.16);
+          transform: translateY(-4px);
+        }
+
+        @keyframes partnerMarquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
+    </section>
+  )
+}
+
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 function HomePage() {
   // SINGLE API CALL: Fetches top doctors, top hospitals, specialties, and stats
@@ -1764,6 +1885,10 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <PatientTestimonialsSection />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <HospitalPartnersSection hospitals={data?.top_hospitals} />
       </ScrollReveal>
 
 

@@ -93,12 +93,14 @@ export default function DoctorRegisterPage() {
 
   const validate = () => {
     const errs = {}
-    if (!form.name.trim()) errs.name = 'Name is required'
-    if (!form.email.trim()) errs.email = 'Email is required'
+    if (!form.name.trim()) errs.name = 'Full Name is required'
+    if (!form.email.trim()) errs.email = 'Email Address is required'
+    if (!form.bmdc_number.trim()) errs.bmdc_number = 'BMDC Registration Number is required'
+    if (!form.specialty_id) errs.specialty_id = 'Specialty selection is required'
+    if (!form.workplace.trim()) errs.workplace = 'Current Workplace is required'
+    if (!form.nid.trim()) errs.nid = 'NID Number is required'
     if (!form.date_of_birth) errs.date_of_birth = 'Date of birth is required'
     if (!form.gender) errs.gender = 'Gender is required'
-    if (!form.bmdc_number.trim()) errs.bmdc_number = 'BMDC number is required'
-    if (!form.nid.trim()) errs.nid = 'NID number is required'
     if (!form.password) errs.password = 'Password is required'
     else {
       if (form.password.length < 6) errs.password = 'Minimum 6 characters required'
@@ -210,8 +212,9 @@ export default function DoctorRegisterPage() {
 
             <div className="auth-form-row">
               <div className="auth-input-group">
-                <label>Workplace</label>
-                <input className="auth-input" name="workplace" value={form.workplace} onChange={handleChange} placeholder="Hospital/Clinic name" />
+                <label>Current Workplace *</label>
+                <input className={`auth-input ${errors.workplace ? 'error' : ''}`} name="workplace" value={form.workplace} onChange={handleChange} placeholder="e.g. Dhaka Medical College Hospital" />
+                {errors.workplace && <div className="auth-field-error">{errors.workplace}</div>}
               </div>
               <div className="auth-input-group">
                 <label>Visiting Fee (৳)</label>
