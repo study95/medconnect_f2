@@ -1,6 +1,7 @@
 // AppointmentListPage.jsx — Admin appointment management with premium filters
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getAppointments, updateAppointment, deleteAppointment, getDoctors, getHospitals } from '../../../api/adminApi'
 import StatusBadge from '../../../components/admin/StatusBadge'
@@ -106,6 +107,7 @@ export default function AppointmentListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [changingStatus, setChangingStatus] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Filters State
   const [search, setSearch] = useState('')
@@ -232,51 +234,64 @@ export default function AppointmentListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Track patient bookings and manage clinical schedules</p>
         </div>
-        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/appointments/create')}>
-          + New Appointment
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            type="button" 
+            className={`admin-btn ${showFilters || (search || date || month || year || doctorId || hospitalId || roleFilter) ? 'admin-btn-primary' : 'admin-btn-outline'}`} 
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {(search || date || month || year || doctorId || hospitalId || roleFilter) ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/appointments/create')}>
+            + New Appointment
+          </button>
+        </div>
       </div>
 
       {/* Advanced Filter Card */}
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
-        <div className="admin-card-body">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  className="status-select" 
-                  placeholder="Doctor, patient, or date..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
+          <div className="admin-card-body">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="status-select" 
+                    placeholder="Doctor, patient, or date..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Date</label>
-              <input type="date" className="status-select" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }} />
-            </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Date</label>
+                <input type="date" className="status-select" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }} />
+              </div>
 
-            <SearchableSelect label="Month" options={months} value={month} onChange={setMonth} placeholder="All Months" />
-            <SearchableSelect label="Year" options={years} value={year} onChange={setYear} placeholder="All" />
-            <SearchableSelect label="Doctor Filter" options={doctors} value={doctorId} onChange={setDoctorId} placeholder="All Doctors" />
-            <SearchableSelect label="Hospital Filter" options={hospitals} value={hospitalId} onChange={setHospitalId} placeholder="All Hospitals" />
-            <SearchableSelect label="Role" options={roleOptions} value={roleFilter} onChange={setRoleFilter} placeholder="All Roles" />
+              <SearchableSelect label="Month" options={months} value={month} onChange={setMonth} placeholder="All Months" />
+              <SearchableSelect label="Year" options={years} value={year} onChange={setYear} placeholder="All" />
+              <SearchableSelect label="Doctor Filter" options={doctors} value={doctorId} onChange={setDoctorId} placeholder="All Doctors" />
+              <SearchableSelect label="Hospital Filter" options={hospitals} value={hospitalId} onChange={setHospitalId} placeholder="All Hospitals" />
+              <SearchableSelect label="Role" options={roleOptions} value={roleFilter} onChange={setRoleFilter} placeholder="All Roles" />
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchAppointments} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
-              {(search || date || month || year || doctorId || hospitalId || roleFilter) && (
-                <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Reset</button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchAppointments} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
+                {(search || date || month || year || doctorId || hospitalId || roleFilter) && (
+                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Reset</button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs / Counters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>

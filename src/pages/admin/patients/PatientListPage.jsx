@@ -1,5 +1,6 @@
 // PatientListPage.jsx — Premium Admin patient management (separate table from users)
 import { useState, useEffect, useRef } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -102,6 +103,7 @@ export default function PatientListPage() {
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -115,16 +117,14 @@ export default function PatientListPage() {
   const [upazilas, setUpazilas] = useState([])
   const [unions, setUnions] = useState([])
 
+  const hasFilters = Boolean(search || divisionId || districtId || upazilaId || unionId || dateFrom)
+
   useEffect(() => { 
     fetchPatients()
-    loadInitialData()
+    loadInitialLocations()
   }, [])
 
-  useEffect(() => {
-    fetchPatients()
-  }, [divisionId, districtId, upazilaId, unionId, dateFrom, dateTo])
-
-  const loadInitialData = async () => {
+  const loadInitialLocations = async () => {
     try {
       const res = await getDivisions()
       setDivisions(res.data?.data || [])
@@ -158,25 +158,25 @@ export default function PatientListPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true)
-      const params = { per_page: 100 }
-      if (search) params.search = search
-      if (dateFrom) params.date_from = dateFrom
-      if (dateTo) params.date_to = dateTo
+      const params = {}
+      if (search.trim()) params.search = search.trim()
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
       if (upazilaId) params.upazila_id = upazilaId
       if (unionId) params.union_id = unionId
+      if (dateFrom) params.date_from = dateFrom
 
       const res = await getPatients(params)
-      setPatients(res.data?.data?.data || res.data?.data || res.data || [])
+      setPatients(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
 
-  const clearFilters = async () => {
-    setSearch(''); setDateFrom(''); setDateTo('')
+  const clearFilters = () => {
+    setSearch('')
+    setDateFrom('')
     setDivisionId(''); setDistrictId(''); setUpazilaId(''); setUnionId('')
     setTimeout(fetchPatients, 0)
   }
@@ -187,7 +187,6 @@ export default function PatientListPage() {
     try {
       await deleteAdminPatient(deleteTarget.id)
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
-      
     } catch (err) {  } finally { setDeleting(false); setDeleteTarget(null) }
   }
 
@@ -201,51 +200,64 @@ export default function PatientListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Manage medical accounts and clinical profiles</p>
         </div>
-        {(isAdmin || isManager) && (
-          <Link to="/admin/patients/create" className="admin-btn admin-btn-primary" style={{ borderRadius: 12, padding: '12px 24px' }}>
-            + Register New Patient
-          </Link>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          {(isAdmin || isManager) && (
+            <Link to="/admin/patients/create" className="admin-btn admin-btn-primary">
+              + Register New Patient
+            </Link>
+          )}
+        </div>
       </div>
 
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #6366F1', overflow: 'visible' }}>
-        <div className="admin-card-body">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  className="status-select" 
-                  placeholder="Name, email, phone..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 10, color: 'var(--admin-text)' }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #6366F1', overflow: 'visible' }}>
+          <div className="admin-card-body">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="status-select" 
+                    placeholder="Name, email, phone..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
 
-            <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
-            <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
-            <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
-            <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
+              <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
+              <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
+              <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
+              <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
 
-            <div style={{ minWidth: 140 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Joined From</label>
-              <input type="date" className="status-select" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 10, color: 'var(--admin-text)' }} />
-            </div>
+              <div style={{ minWidth: 140 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Joined From</label>
+                <input type="date" className="status-select" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }} />
+              </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchPatients} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: '#6366F1' }}>Filter</button>
-              {(search || divisionId || districtId || upazilaId || unionId || dateFrom) && (
-                <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 10 }}>Reset</button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchPatients} style={{ height: 42, padding: '0 20px', background: '#6366F1' }}>Filter</button>
+                {hasFilters && (
+                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>Reset</button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="admin-card">
         <div className="admin-card-header">

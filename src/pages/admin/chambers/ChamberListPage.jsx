@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getChambers, deleteChamber, getDoctors, getHospitals, toggleChamberActive } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -107,6 +108,7 @@ export default function ChamberListPage() {
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   
   // Advanced Filters
   const [doctorId, setDoctorId] = useState('')
@@ -145,7 +147,8 @@ export default function ChamberListPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const params = { search }
+      const params = {}
+      if (search.trim()) params.search = search.trim()
       
       if (!isDoctorOnly) {
         if (doctorId) params.doctor_id = doctorId
@@ -156,7 +159,7 @@ export default function ChamberListPage() {
       const res = await getChambers(params)
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -166,6 +169,7 @@ export default function ChamberListPage() {
     setDoctorId('')
     setHospitalId('')
     setStatusFilter('')
+    setTimeout(fetchData, 0)
   }
 
   const handleDelete = async () => {
@@ -176,7 +180,7 @@ export default function ChamberListPage() {
       setItems(items.filter(i => i.id !== deleteTarget.id))
       
     } catch (err) {
-} finally {
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -188,10 +192,10 @@ export default function ChamberListPage() {
       
       setItems(items.map(i => i.id === id ? { ...i, is_active: !i.is_active } : i))
     } catch (err) {
-}
+    }
   }
 
-  const hasActiveFilters = search || doctorId || hospitalId || statusFilter !== ''
+  const hasActiveFilters = Boolean(search || doctorId || hospitalId || statusFilter !== '')
 
   return (
     <div className="admin-container">
@@ -203,76 +207,89 @@ export default function ChamberListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure visiting hours, hospitals, and consultation fees</p>
         </div>
-        <Link to="/admin/chambers/create" className="admin-btn admin-btn-primary" style={{ borderRadius: 12, padding: '12px 24px' }}>
-          + Add New Schedule
-        </Link>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`admin-btn ${showFilters || hasActiveFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {hasActiveFilters ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <Link to="/admin/chambers/create" className="admin-btn admin-btn-primary" style={{ borderRadius: 12, padding: '12px 24px' }}>
+            + Add New Schedule
+          </Link>
+        </div>
       </div>
 
       {/* Advanced Cascading Filter Bar */}
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <div style={{ flex: '1 1 240px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  className="status-select" 
-                  placeholder="Doctor, hospital or day..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40, border: '1px solid var(--admin-border)', borderRadius: 10, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <div style={{ flex: '1 1 240px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="status-select" 
+                    placeholder="Doctor, hospital or day..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40, border: '1px solid var(--admin-border)', borderRadius: 10, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
 
-            {!isDoctorOnly && (
-              <>
-                <SearchableSelect 
-                  label="Doctor Filter"
-                  placeholder="All Doctors"
-                  options={doctors}
-                  value={doctorId}
-                  onChange={setDoctorId}
-                />
+              {!isDoctorOnly && (
+                <>
+                  <SearchableSelect 
+                    label="Doctor Filter"
+                    placeholder="All Doctors"
+                    options={doctors}
+                    value={doctorId}
+                    onChange={setDoctorId}
+                  />
 
-                <SearchableSelect 
-                  label="Hospital Filter"
-                  placeholder="All Hospitals"
-                  options={hospitals}
-                  value={hospitalId}
-                  onChange={setHospitalId}
-                />
-              </>
-            )}
-
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-              <select 
-                className="status-select" 
-                value={statusFilter} 
-                onChange={e => setStatusFilter(e.target.value)}
-                style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 10, color: 'var(--admin-text)' }}
-              >
-                <option value="">All Active</option>
-                <option value="1">Active Only</option>
-                <option value="0">Disabled Only</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchData} style={{ height: 42, padding: '0 24px', borderRadius: 10 }}>Refresh</button>
-              {hasActiveFilters && (
-                <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 10 }}>
-                  Reset
-                </button>
+                  <SearchableSelect 
+                    label="Hospital Filter"
+                    placeholder="All Hospitals"
+                    options={hospitals}
+                    value={hospitalId}
+                    onChange={setHospitalId}
+                  />
+                </>
               )}
+
+              <div style={{ flex: '1 1 140px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
+                <select 
+                  className="status-select" 
+                  value={statusFilter} 
+                  onChange={e => setStatusFilter(e.target.value)} 
+                  style={{ width: '100%', height: 42, border: '1px solid var(--admin-border)', borderRadius: 10, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+                >
+                  <option value="">All Status</option>
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchData} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
+                {hasActiveFilters && (
+                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="admin-card">
         <div className="admin-card-header">

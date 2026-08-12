@@ -1,5 +1,5 @@
-// Sidebar.jsx — Dynamic navigation based on user role with fixed scroll structure
 import { NavLink, useLocation } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -10,6 +10,16 @@ import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, Map
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+
+  const handleToggleTheme = () => {
+    toggleTheme()
+    toast.success(`Switched to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`)
+  }
+
+  const handleLogout = () => {
+    logout()
+    toast.success('Logged out successfully')
+  }
 
   const { unreadCount } = useSubscription()
   const location = useLocation()
@@ -51,11 +61,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 color: 'white'
               }}>DB</span>
             </div>
-            {!isCollapsed && (
-              <div className="sidebar-brand-text">
-                Doctor <span>Booklet</span>
-              </div>
-            )}
+            <div className="sidebar-brand-text">
+              Doctor <span>Booklet</span>
+            </div>
           </NavLink>
         </div>
 
@@ -464,7 +472,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         }}>
           <button
             className="sidebar-control-btn"
-            onClick={toggleTheme}
+            onClick={handleToggleTheme}
             title={isCollapsed ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : undefined}
             style={{
               flex: 1, height: 38, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -475,11 +483,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             onMouseLeave={(e) => e.target.style.background = 'var(--admin-sidebar-user-bg)'}
           >
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            {!isCollapsed && (theme === 'dark' ? 'Light' : 'Dark')}
+            <span className="control-text">{theme === 'dark' ? 'Light' : 'Dark'}</span>
           </button>
           <button
             className="sidebar-control-btn"
-            onClick={logout}
+            onClick={handleLogout}
             title={isCollapsed ? 'Logout' : undefined}
             style={{
               flex: 1, height: 38, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -490,7 +498,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             onMouseLeave={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
           >
             <LogOut size={14} />
-            {!isCollapsed && 'Logout'}
+            <span className="control-text">Logout</span>
           </button>
         </div>
       </aside>

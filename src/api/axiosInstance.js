@@ -4,6 +4,7 @@
 // ONE configured axios instance here and import it everywhere.
 
 import axios from 'axios'
+import { toast } from 'react-hot-toast'
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api', // ← from .env
@@ -14,9 +15,6 @@ const axiosInstance = axios.create({
 })
 
 // REQUEST INTERCEPTOR
-// This runs automatically BEFORE every request is sent.
-// If the user is logged in, it grabs the token from localStorage
-// and adds it to the Authorization header so protected routes work.
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -29,13 +27,25 @@ axiosInstance.interceptors.request.use(
 )
 
 // RESPONSE INTERCEPTOR
-// This runs automatically AFTER every response comes back.
-// If the server returns 401 (Unauthorized / token expired),
-// we clear the stored login data and trigger an event
-// so the UI can redirect cleanly without a hard page reload.
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = response.config?.method?.toLowerCase()
+    const url = response.config?.url || ''
+
+    // Automatically trigger react-hot-toast for admin panel mutations (POST, PUT, PATCH, DELETE)
+    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login') && !url.includes('/register') && !url.includes('/auth/check')) {
+      const defaultMsg = method === 'delete' ? 'Item deleted successfully!' : 'Changes saved successfully!'
+      const serverMsg = response.data?.message || response.data?.status
+      const toastMsg = typeof serverMsg === 'string' && serverMsg.trim() ? serverMsg : defaultMsg
+      toast.success(toastMsg, { id: `toast-${method}-${url}` })
+    }
+
+    return response
+  },
   (error) => {
+    const method = error.config?.method?.toLowerCase()
+    const url = error.config?.url || ''
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -43,6 +53,13 @@ axiosInstance.interceptors.response.use(
       // Dispatch custom event to notify React app
       window.dispatchEvent(new Event('auth-expired'))
     }
+
+    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login')) {
+      const serverErr = error.response?.data?.message || error.response?.data?.error
+      const toastErr = typeof serverErr === 'string' && serverErr.trim() ? serverErr : 'An error occurred while saving changes.'
+      toast.error(toastErr, { id: `err-${method}-${url}` })
+    }
+
     return Promise.reject(error)
   }
 )

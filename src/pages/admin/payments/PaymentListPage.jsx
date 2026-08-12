@@ -1,5 +1,6 @@
 // PaymentListPage.jsx — Admin payment records management
 import { useState, useEffect, useCallback } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getPayments, updatePayment, deletePayment } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -22,6 +23,7 @@ export default function PaymentListPage() {
   const [paymentFilter, setPaymentFilter] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
   const [yearFilter, setYearFilter] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
@@ -61,7 +63,7 @@ export default function PaymentListPage() {
     unpaid: items.filter(a => a.payment_status === 'Unpaid').length,
   }
 
-  const hasFilters = search || dateFilter || paymentFilter || monthFilter || yearFilter
+  const hasFilters = Boolean(search || dateFilter || paymentFilter || monthFilter || yearFilter)
   const clearFilters = () => {
     setSearch('')
     setDateFilter('')
@@ -117,6 +119,15 @@ export default function PaymentListPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>💳 Payment Records</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>{items.length} total payment records · {counts.paid} paid · {counts.unpaid} unpaid</p>
         </div>
+        <button
+          type="button"
+          className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+          onClick={() => setShowFilters(p => !p)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+          {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
       </div>
 
       {/* Status Filter Tabs */}
@@ -163,82 +174,84 @@ export default function PaymentListPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="admin-filters-bar" style={{ padding: 20, marginBottom: 32 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(3, 1fr) auto', gap: 16, alignItems: 'flex-end' }}>
-          {/* Search */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
-              🔍 Manual Search
-            </label>
-            <input
-              type="text"
-              className="admin-form-input"
-              placeholder="TxnID, Reference, Patient..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ padding: '10px 14px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            />
-          </div>
+      {showFilters && (
+        <div className="admin-filters-bar" style={{ padding: 20, marginBottom: 32 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(3, 1fr) auto', gap: 16, alignItems: 'flex-end' }}>
+            {/* Search */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
+                🔍 Manual Search
+              </label>
+              <input
+                type="text"
+                className="admin-form-input"
+                placeholder="TxnID, Reference, Patient..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ padding: '10px 14px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              />
+            </div>
 
-          {/* Date */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
-              📅 Date
-            </label>
-            <input
-              type="date"
-              className="admin-form-input"
-              value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
-              style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            />
-          </div>
+            {/* Date */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
+                📅 Date
+              </label>
+              <input
+                type="date"
+                className="admin-form-input"
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              />
+            </div>
 
-          {/* Month */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
-              📆 Month
-            </label>
-            <select
-              className="admin-form-select"
-              value={monthFilter}
-              onChange={e => setMonthFilter(e.target.value)}
-              style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            >
-              <option value="">All Months</option>
-              {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-                <option key={i} value={i + 1}>{m}</option>
-              ))}
-            </select>
-          </div>
+            {/* Month */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
+                📆 Month
+              </label>
+              <select
+                className="admin-form-select"
+                value={monthFilter}
+                onChange={e => setMonthFilter(e.target.value)}
+                style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              >
+                <option value="">All Months</option>
+                {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                  <option key={i} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Year */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
-              🗓️ Year
-            </label>
-            <select
-              className="admin-form-select"
-              value={yearFilter}
-              onChange={e => setYearFilter(e.target.value)}
-              style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            >
-              <option value="">All Years</option>
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
+            {/* Year */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
+                🗓️ Year
+              </label>
+              <select
+                className="admin-form-select"
+                value={yearFilter}
+                onChange={e => setYearFilter(e.target.value)}
+                style={{ padding: '9px 12px', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              >
+                <option value="">All Years</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
 
-          {hasFilters && (
-            <button 
-              className="admin-btn admin-btn-outline admin-btn-sm" 
-              onClick={clearFilters}
-              style={{ height: 42, padding: '0 16px', color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-            >
-              ✕ Clear
-            </button>
-          )}
+            {hasFilters && (
+              <button 
+                className="admin-btn admin-btn-outline admin-btn-sm" 
+                onClick={clearFilters}
+                style={{ height: 42, padding: '0 16px', color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
         {[

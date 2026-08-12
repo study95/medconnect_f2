@@ -1,5 +1,6 @@
 // CommissionReportPage.jsx — Admin Commission Report with premium filters
 import { useState, useEffect, useRef } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getCommissionReport, getDoctors, getHospitals, updateAppointment, bulkUpdateCommissionStatus } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import CommissionMemo from './CommissionMemo'
@@ -109,6 +110,7 @@ export default function CommissionReportPage() {
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(null)
   const [bulking, setBulking] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   
   const [data, setData] = useState([])
   const [summary, setSummary] = useState({})
@@ -126,6 +128,8 @@ export default function CommissionReportPage() {
 
   const [selectedAppointments, setSelectedAppointments] = useState([])
   const [showMemo, setShowMemo] = useState(false)
+
+  const hasFilters = Boolean(filters.doctor_id || filters.hospital_id || filters.month || filters.status)
 
   useEffect(() => {
     loadOptions()
@@ -155,7 +159,7 @@ export default function CommissionReportPage() {
       setSummary(reportSummary)
       setSelectedAppointments([])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -167,7 +171,7 @@ export default function CommissionReportPage() {
       
       fetchReport()
     } catch (err) {
-} finally {
+    } finally {
       setUpdating(null)
     }
   }
@@ -183,7 +187,7 @@ export default function CommissionReportPage() {
       
       fetchReport()
     } catch (err) {
-} finally {
+    } finally {
       setBulking(false)
     }
   }
@@ -215,70 +219,81 @@ export default function CommissionReportPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Analyze and manage commissions for doctors and hospitals</p>
         </div>
+        <button
+          type="button"
+          className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+          onClick={() => setShowFilters(p => !p)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+          {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
       </div>
 
       {/* Filters Bar */}
-      <div className="admin-card" style={{ marginBottom: 28, overflow: 'visible', borderTop: '4px solid var(--admin-primary)' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <SearchableSelect 
-              label="Doctor" 
-              options={doctors} 
-              value={filters.doctor_id} 
-              onChange={val => setFilters({ ...filters, doctor_id: val, hospital_id: '' })} 
-              placeholder="All Doctors" 
-            />
-
-            <SearchableSelect 
-              label="Hospital" 
-              options={hospitals} 
-              value={filters.hospital_id} 
-              onChange={val => setFilters({ ...filters, hospital_id: val, doctor_id: '' })} 
-              placeholder="All Hospitals" 
-            />
-
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Month</label>
-              <select className="admin-form-select" value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })} style={{ height: 42 }}>
-                <option value="">Select Month</option>
-                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Year</label>
-              <input 
-                type="number" 
-                className="admin-form-input" 
-                value={filters.year} 
-                onChange={e => setFilters({ ...filters, year: e.target.value })} 
-                style={{ height: 42 }}
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, overflow: 'visible', borderTop: '4px solid var(--admin-primary)' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <SearchableSelect 
+                label="Doctor" 
+                options={doctors} 
+                value={filters.doctor_id} 
+                onChange={val => setFilters({ ...filters, doctor_id: val, hospital_id: '' })} 
+                placeholder="All Doctors" 
               />
-            </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-              <select className="admin-form-select" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ height: 42 }}>
-                <option value="">All Status</option>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-              </select>
-            </div>
+              <SearchableSelect 
+                label="Hospital" 
+                options={hospitals} 
+                value={filters.hospital_id} 
+                onChange={val => setFilters({ ...filters, hospital_id: val, doctor_id: '' })} 
+                placeholder="All Hospitals" 
+              />
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, padding: '0 24px' }}>Filter</button>
-              <button 
-                className="admin-btn admin-btn-outline" 
-                onClick={() => setFilters({ doctor_id: '', hospital_id: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), status: '' })}
-                style={{ height: 42 }}
-              >
-                Reset
-              </button>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Month</label>
+                <select className="admin-form-select" value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })} style={{ height: 42 }}>
+                  <option value="">Select Month</option>
+                  {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Year</label>
+                <input 
+                  type="number" 
+                  className="admin-form-input" 
+                  value={filters.year} 
+                  onChange={e => setFilters({ ...filters, year: e.target.value })} 
+                  style={{ height: 42 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
+                <select className="admin-form-select" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ height: 42 }}>
+                  <option value="">All Status</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, padding: '0 24px' }}>Filter</button>
+                <button 
+                  className="admin-btn admin-btn-outline" 
+                  onClick={() => setFilters({ doctor_id: '', hospital_id: '', month: '', year: new Date().getFullYear(), status: '' })}
+                  style={{ height: 42 }}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="stats-grid" style={{ marginBottom: 28 }}>

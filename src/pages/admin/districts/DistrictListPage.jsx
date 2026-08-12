@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getDistricts, getDivisions, deleteDistrict } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 
@@ -26,35 +27,35 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 
   return (
     <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', flex: '1 1 220px', opacity: disabled ? 0.6 : 1 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
       <div 
         className="status-select" 
         style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          cursor: disabled ? 'not-allowed' : 'pointer', background: 'white', 
-          height: 42, padding: '0 14px', border: '1px solid #E2E8F0', borderRadius: 10, 
-          fontSize: 13, fontWeight: 500, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+          cursor: disabled ? 'not-allowed' : 'pointer', background: 'var(--admin-card-bg)', 
+          height: 42, padding: '0 14px', border: '1px solid var(--admin-border)', borderRadius: 10, 
+          fontSize: 13, fontWeight: 500, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', color: 'var(--admin-text)'
         }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
-        <span style={{ color: selectedOption ? '#1E293B' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
         </span>
-        <span style={{ fontSize: 10, color: '#94A3B8' }}>{isOpen ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
 
       {isOpen && (
         <div style={{ 
           position: 'absolute', top: '100%', left: 0, right: 0,
-          background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, marginTop: 6,
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', overflow: 'hidden', zIndex: 1000
+          background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 12, marginTop: 6,
+          boxShadow: 'var(--admin-shadow-lg)', overflow: 'hidden', zIndex: 1000
         }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg)' }}>
             <input 
               type="text" 
               autoFocus
               placeholder="Search..." 
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: 13 }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--admin-border)', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
               value={search}
               onChange={e => setSearch(e.target.value)}
               onClick={e => e.stopPropagation()}
@@ -62,31 +63,32 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
           </div>
           <div style={{ maxHeight: 200, overflowY: 'auto' }}>
             <div 
-              style={{ padding: '10px 14px', fontSize: 12, cursor: 'pointer', color: '#F59E0B', fontWeight: 700, textAlign: 'center', background: '#FFFBEB' }}
+              style={{ padding: '10px 14px', fontSize: 12, cursor: 'pointer', color: '#F59E0B', fontWeight: 700, textAlign: 'center', background: 'rgba(245, 158, 11, 0.08)' }}
               onClick={() => { onChange(''); setIsOpen(false); setSearch('') }}
             >
               ✕ Clear Filter
             </div>
             {filteredOptions.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>No matching results</div>
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>No matching results</div>
             ) : (
               filteredOptions.map(opt => (
                 <div 
                   key={opt.id} 
                   style={{ 
                     padding: '10px 14px', fontSize: 13, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent',
-                    borderBottom: '1px solid #F8FAFC'
+                    background: value.toString() === opt.id.toString() ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                    borderBottom: '1px solid var(--admin-border)',
+                    color: 'var(--admin-text)'
                   }}
-                  onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'}
+                  onMouseEnter={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.05)'}
+                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(245, 158, 11, 0.12)' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500, color: '#334155' }}>
+                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500 }}>
                     {opt.bangla_name || opt.name}
                   </div>
                 </div>
@@ -106,9 +108,12 @@ export default function DistrictListPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [divisionFilter, setDivisionFilter] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+
+  const hasFilters = Boolean(search || divisionFilter)
 
   useEffect(() => {
     loadDivisions()
@@ -157,59 +162,72 @@ export default function DistrictListPage() {
     <div className="admin-container">
       <div className="admin-page-header">
         <div>
-          <h2 className="admin-page-title">
+          <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
             <span style={{ marginRight: 12 }}>🏙️</span>
             District Management
           </h2>
-          <p className="admin-page-subtitle">Configure major regional boundaries for hospital and clinic networks</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure major regional boundaries for hospital and clinic networks</p>
         </div>
-        <Link to="/admin/districts/create" className="admin-btn admin-btn-primary" style={{ background: '#F59E0B', borderRadius: 12 }}>
-          + Add New District
-        </Link>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <Link to="/admin/districts/create" className="admin-btn admin-btn-primary" style={{ background: '#F59E0B' }}>
+            + Add New District
+          </Link>
+        </div>
       </div>
 
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #F59E0B', overflow: 'visible' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <div style={{ flex: '1 1 300px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  className="status-select" 
-                  placeholder="District name..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40, border: '1px solid #E2E8F0', borderRadius: 10 }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #F59E0B', overflow: 'visible' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <div style={{ flex: '1 1 300px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="status-select" 
+                    placeholder="District name..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
 
-            <SearchableSelect 
-              label="Division Filter"
-              placeholder="All Divisions"
-              options={divisions}
-              value={divisionFilter}
-              onChange={setDivisionFilter}
-            />
+              <SearchableSelect 
+                label="Division Filter"
+                placeholder="All Divisions"
+                options={divisions}
+                value={divisionFilter}
+                onChange={setDivisionFilter}
+              />
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchDistricts} style={{ height: 42, background: '#F59E0B', padding: '0 24px', borderRadius: 10 }}>Refresh</button>
-              {(search || divisionFilter) && (
-                <button 
-                  className="admin-btn admin-btn-outline" 
-                  onClick={() => { setSearch(''); setDivisionFilter('') }} 
-                  style={{ height: 42, color: '#EF4444', borderColor: '#FEE2E2', background: '#FEF2F2', borderRadius: 10 }}
-                >
-                  Reset
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchDistricts} style={{ height: 42, background: '#F59E0B', padding: '0 24px' }}>Refresh</button>
+                {hasFilters && (
+                  <button 
+                    className="admin-btn admin-btn-outline" 
+                    onClick={() => { setSearch(''); setDivisionFilter('') }} 
+                    style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>

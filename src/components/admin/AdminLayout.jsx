@@ -1,6 +1,6 @@
-// AdminLayout.jsx — Wraps all /admin/* pages with sidebar + header
 import { useState } from 'react'
 import { Outlet, Link } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
@@ -30,6 +30,33 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-wrapper">
+      <Toaster 
+        position="top-right" 
+        toastOptions={{ 
+          duration: 3500,
+          style: {
+            background: 'var(--admin-card-bg)',
+            color: 'var(--admin-text)',
+            border: '1px solid var(--admin-border)',
+            borderRadius: '0px',
+            fontSize: '13px',
+            fontWeight: '600',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.12)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#00A88C',
+              secondary: '#ffffff'
+            }
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#ffffff'
+            }
+          }
+        }}
+      />
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -57,8 +84,8 @@ export default function AdminLayout() {
               {isCollapsed ? <IconLayoutSidebarLeftExpand size={20} /> : <IconLayoutSidebarLeftCollapse size={20} />}
             </button>
             
-            <div style={{ marginLeft: 12, display: 'flex', alignItems: 'center' }}>
-              <span style={{ 
+            <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center' }}>
+              <span className="admin-header-role-title" style={{ 
                 fontSize: 16, 
                 fontWeight: 900, 
                 background: 'linear-gradient(135deg, var(--admin-primary), #0ea5e9)',
@@ -66,7 +93,8 @@ export default function AdminLayout() {
                 WebkitTextFillColor: 'transparent',
                 textTransform: 'uppercase', 
                 letterSpacing: '0.5px',
-                display: 'inline-block'
+                display: 'inline-block',
+                whiteSpace: 'nowrap'
               }}>
                 {roleName === 'admin' ? 'Admin Panel' : roleName === 'manager' ? 'Manager Panel' : roleName === 'doctor' ? 'Doctor Panel' : 'User Panel'}
               </span>
@@ -89,7 +117,7 @@ export default function AdminLayout() {
                 )}
               </Link>
 
-              <div style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
+              <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 
               {/* User Dropdown */}
               <div style={{ position: 'relative' }}>
@@ -100,7 +128,7 @@ export default function AdminLayout() {
                     border: 'none', cursor: 'pointer', padding: 0 
                   }}
                 >
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+                  <div className="header-user-details" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name || 'User'}</span>
                     <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--admin-primary)', textTransform: 'uppercase' }}>{roleName}</span>
                   </div>
@@ -145,9 +173,9 @@ export default function AdminLayout() {
                 )}
               </div>
               
-              <div style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
+              <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
               
-              <Link to="/" className="admin-back-link" style={{ 
+              <Link to="/" className="admin-back-link" title="Go to Website" style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 6, 
@@ -155,12 +183,13 @@ export default function AdminLayout() {
                 fontWeight: 600, 
                 color: 'var(--admin-primary)',
                 textDecoration: 'none',
-                transition: 'opacity 0.2s'
+                transition: 'opacity 0.2s',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = 0.8}
               onMouseLeave={e => e.currentTarget.style.opacity = 1}
               >
-                Go to Website <IconExternalLink size={16} />
+                <span className="back-link-text">Go to Website</span> <IconExternalLink size={16} />
               </Link>
             </div>
           </div>

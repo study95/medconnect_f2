@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 
 import HospitalCard from '../components/common/HospitalCard'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
@@ -12,17 +12,8 @@ import {
   IconChevronRight, IconChevronLeft, IconClock, IconHeadset, IconLock,
   IconAdjustmentsHorizontal, IconX, IconCheck, IconTrash, IconMapPin,
   IconChevronUp, IconChevronDown, IconStethoscope, IconAlertTriangle,
-  IconVideo, IconCalendarCheck, IconStar
+  IconCalendarCheck, IconStar, IconListDetails, IconGridDots, IconMap
 } from '@tabler/icons-react'
-import { useTypewriter } from '../hooks/useTypewriter'
-
-const SEARCH_PHRASES = [
-  'হাসপাতালের নাম লিখুন...',
-  'যেমন: স্কয়ার হাসপাতাল',
-  'যেমন: ল্যাবএইড ডায়াগনস্টিক',
-  'যেমন: ইবনে সিনা ক্লিনিক',
-  'যেমন: সরকারি মেডিকেল'
-]
 
 const HOSPITAL_TYPES = [
   { id: 'private',    label: 'প্রাইভেট হাসপাতাল',   icon: '🏥' },
@@ -39,16 +30,16 @@ const BED_RANGES = [
   { id: '301-999', label: '৩০০+ শয্যা' },
 ]
 
-/* ─── HOSPITAL HERO ───────────────────────── */
-function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
-  const typingPlaceholder = useTypewriter(SEARCH_PHRASES)
+function HospitalsPage() {
+  const [searchParams] = useSearchParams()
   const {
-    divisions, districts, upazilas, unions,
+    divisions, districts, upazilas,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
   } = useLocations()
 
-  const [searchParams] = useSearchParams()
+  const { specialties } = useSpecialties()
+
   const [hospitalType, setHospitalType]       = useState(searchParams.get('type') || '')
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
   const [selectedBeds, setSelectedBeds]       = useState(searchParams.get('beds') || '')
@@ -57,18 +48,17 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
   const [searchText, setSearchText]           = useState(searchParams.get('search') || '')
   const [specialtySearch, setSpecialtySearch] = useState('')
 
-  const { specialties } = useSpecialties()
+  const [sortBy, setSortBy]   = useState('newest')
+  const [viewMode, setViewMode] = useState('list') // 'list' | 'grid' | 'map'
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
-  // Accordion open/close state
+  // Accordion open/close state inside left filter panel & mobile drawer
   const [openAccordions, setOpenAccordions] = useState({
     type: true,
+    location: true,
+    beds: true,
     specialty: false,
-    division: true,
-    district: false,
-    upazila: false,
-    beds: false,
     extras: true,
   })
 
@@ -77,7 +67,7 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
   }
 
   useEffect(() => {
-    const divId = searchParams.get('division_id')
+    const divId  = searchParams.get('division_id')
     const distId = searchParams.get('district_id')
     const upaId  = searchParams.get('upazila_id')
     const uniId  = searchParams.get('union_id')
@@ -87,39 +77,70 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
     if (uniId)  setSelectedUnion(uniId)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
 
-  const getParamObj = () => ({
-    division_id:  selectedDivision,
-    district_id:  selectedDistrict,
-    upazila_id:   selectedUpazila,
-    union_id:     selectedUnion,
-    type:         hospitalType,
-    specialty_id: selectedSpecialty,
-    beds:         selectedBeds,
-    emergency:    emergencyOnly,
-    open_today:   openTodayOnly,
-    search:       searchText.trim(),
-  })
+  const appliedFilters = useMemo(() => {
+    const p = {}
+    if (selectedDivision)  p.division_id  = selectedDivision
+    if (selectedDistrict)  p.district_id  = selectedDistrict
+    if (selectedUpazila)   p.upazila_id   = selectedUpazila
+    if (selectedUnion)     p.union_id     = selectedUnion
+    if (hospitalType)      p.type         = hospitalType
+    if (selectedSpecialty) p.specialty_id = selectedSpecialty
+    if (selectedBeds)      p.beds         = selectedBeds
+    if (emergencyOnly)     p.emergency    = true
+    if (openTodayOnly)     p.open_today   = true
+    if (searchText.trim()) p.search       = searchText.trim()
+    return p
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText])
 
-  const handleSubmit = (e) => {
-    if (e) e.preventDefault()
-    const params = {}
-    if (selectedDivision)  params.division_id  = selectedDivision
-    if (selectedDistrict)  params.district_id  = selectedDistrict
-    if (selectedUpazila)   params.upazila_id   = selectedUpazila
-    if (selectedUnion)     params.union_id      = selectedUnion
-    if (hospitalType)      params.type          = hospitalType
-    if (selectedSpecialty) params.specialty_id  = selectedSpecialty
-    if (selectedBeds)      params.beds          = selectedBeds
-    if (emergencyOnly)     params.emergency     = true
-    if (openTodayOnly)     params.open_today    = true
-    if (searchText.trim()) params.search        = searchText.trim()
-    onSearch(params)
-  }
+  const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
 
-  const handleApplyFilters = () => {
-    handleSubmit()
-    setIsDrawerOpen(false)
-  }
+  const sortedHospitals = useMemo(() => {
+    const list = [...hospitals]
+    if (sortBy === 'name_asc')  return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    if (sortBy === 'name_desc') return list.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+    return list
+  }, [hospitals, sortBy])
+
+  // Active filters list
+  const activeFilters = useMemo(() => {
+    const list = []
+    if (selectedDivision) {
+      const item = divisions.find(d => String(d.id) === String(selectedDivision))
+      list.push({ key: 'division', label: item ? item.name || item.bangla_name : 'Division', clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+    }
+    if (selectedDistrict) {
+      const item = districts.find(d => String(d.id) === String(selectedDistrict))
+      list.push({ key: 'district', label: item ? item.name || item.bangla_name : 'District', clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+    }
+    if (selectedUpazila) {
+      const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
+      list.push({ key: 'upazila', label: item ? item.name || item.bangla_name : 'Upazila', clear: () => { setSelectedUpazila(''); setSelectedUnion('') } })
+    }
+    if (hospitalType) {
+      const item = HOSPITAL_TYPES.find(t => t.id === hospitalType)
+      list.push({ key: 'type', label: item ? item.label : hospitalType, clear: () => setHospitalType('') })
+    }
+    if (selectedSpecialty) {
+      const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
+      list.push({ key: 'specialty', label: item ? item.name || item.name_bn : 'Specialty', clear: () => setSelectedSpecialty('') })
+    }
+    if (selectedBeds) {
+      const item = BED_RANGES.find(b => b.id === selectedBeds)
+      list.push({ key: 'beds', label: item ? item.label : selectedBeds, clear: () => setSelectedBeds('') })
+    }
+    if (emergencyOnly) {
+      list.push({ key: 'emergency', label: '24/7 Emergency', clear: () => setEmergencyOnly(false) })
+    }
+    if (openTodayOnly) {
+      list.push({ key: 'open_today', label: 'Open Today', clear: () => setOpenTodayOnly(false) })
+    }
+    if (searchText.trim()) {
+      list.push({ key: 'search', label: `"${searchText.trim()}"`, clear: () => setSearchText('') })
+    }
+    return list
+  }, [selectedDivision, selectedDistrict, selectedUpazila, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText, divisions, districts, upazilas, specialties])
+
+  const activeCount = activeFilters.length
 
   const handleClearAllFilters = () => {
     setSelectedDivision('')
@@ -131,79 +152,40 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
     setSelectedBeds('')
     setEmergencyOnly(false)
     setOpenTodayOnly(false)
-    onSearch({})
+    setSearchText('')
   }
 
-  const getSelectedLabel = (type) => {
-    if (type === 'division' && selectedDivision) {
-      const item = divisions.find(d => String(d.id) === String(selectedDivision))
-      return item ? item.name || item.bangla_name : ''
-    }
-    if (type === 'district' && selectedDistrict) {
-      const item = districts.find(d => String(d.id) === String(selectedDistrict))
-      return item ? item.name || item.bangla_name : ''
-    }
-    if (type === 'upazila' && selectedUpazila) {
-      const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      return item ? item.name || item.bangla_name : ''
-    }
-    if (type === 'type' && hospitalType) {
-      const item = HOSPITAL_TYPES.find(t => t.id === hospitalType)
-      return item ? item.label : hospitalType
-    }
-    if (type === 'specialty' && selectedSpecialty) {
-      const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
-      return item ? item.name || item.name_bn : ''
-    }
-    if (type === 'beds' && selectedBeds) {
-      const item = BED_RANGES.find(b => b.id === selectedBeds)
-      return item ? item.label : selectedBeds
-    }
-    return ''
-  }
+  // Infinite scroll sentinel
+  const sentinelRef = useRef(null)
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && hasMore && !fetchingNext) fetchMore() },
+      { threshold: 0.1 }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, fetchingNext, fetchMore])
 
-  // Active filters list
-  const activeFilters = useMemo(() => {
-    const list = []
-    if (hospitalType) {
-      const item = HOSPITAL_TYPES.find(t => t.id === hospitalType)
-      list.push({ key: 'type', label: item ? item.label : hospitalType, clear: () => { setHospitalType(''); onSearch({ ...getParamObj(), type: '' }) } })
-    }
-    if (selectedSpecialty) {
-      const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
-      list.push({ key: 'specialty', label: item ? item.name || item.name_bn : 'Specialty', clear: () => { setSelectedSpecialty(''); onSearch({ ...getParamObj(), specialty_id: '' }) } })
-    }
-    if (selectedDivision) {
-      const item = divisions.find(d => String(d.id) === String(selectedDivision))
-      list.push({ key: 'division', label: `${item ? item.name || item.bangla_name : 'বিভাগ'} Division`, clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion(''); onSearch({ ...getParamObj(), division_id: '', district_id: '', upazila_id: '', union_id: '' }) } })
+  // Dynamic location title for heading
+  const locationHeadingText = useMemo(() => {
+    const parts = []
+    if (selectedUpazila) {
+      const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
+      if (upaObj) parts.push(upaObj.name || upaObj.bangla_name)
     }
     if (selectedDistrict) {
-      const item = districts.find(d => String(d.id) === String(selectedDistrict))
-      list.push({ key: 'district', label: item ? item.name || item.bangla_name : 'জেলা', clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion(''); onSearch({ ...getParamObj(), district_id: '', upazila_id: '', union_id: '' }) } })
+      const distObj = districts.find(d => String(d.id) === String(selectedDistrict))
+      if (distObj) parts.push(distObj.name || distObj.bangla_name)
     }
-    if (selectedUpazila) {
-      const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      list.push({ key: 'upazila', label: item ? item.name || item.bangla_name : 'উপজেলা', clear: () => { setSelectedUpazila(''); setSelectedUnion(''); onSearch({ ...getParamObj(), upazila_id: '', union_id: '' }) } })
+    if (selectedDivision) {
+      const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
+      if (divObj) parts.push(divObj.name || divObj.bangla_name)
     }
-    if (selectedBeds) {
-      const item = BED_RANGES.find(b => b.id === selectedBeds)
-      list.push({ key: 'beds', label: item ? item.label : selectedBeds, clear: () => { setSelectedBeds(''); onSearch({ ...getParamObj(), beds: '' }) } })
-    }
-    if (emergencyOnly) {
-      list.push({ key: 'emergency', label: '২৪/৭ জরুরি সেবা', clear: () => { setEmergencyOnly(false); onSearch({ ...getParamObj(), emergency: false }) } })
-    }
-    if (openTodayOnly) {
-      list.push({ key: 'open_today', label: 'আজ খোলা আছে', clear: () => { setOpenTodayOnly(false); onSearch({ ...getParamObj(), open_today: false }) } })
-    }
-    if (searchText.trim()) {
-      list.push({ key: 'search', label: `"${searchText.trim()}"`, clear: () => { setSearchText(''); onSearch({ ...getParamObj(), search: '' }) } })
-    }
-    return list
-  }, [hospitalType, selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedBeds, emergencyOnly, openTodayOnly, searchText, specialties, divisions, districts, upazilas])
+    return parts.join(', ')
+  }, [selectedDivision, selectedDistrict, selectedUpazila, divisions, districts, upazilas])
 
-  const activeCount = activeFilters.length
-
-  // Filtered specialties list
+  // Filtered specialties list for search inside drawer
   const filteredSpecialties = useMemo(() => {
     if (!specialtySearch.trim()) return specialties
     const q = specialtySearch.toLowerCase()
@@ -211,16 +193,10 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
   }, [specialties, specialtySearch])
 
   return (
-    <>
+    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* ── RESPONSIVE FILTER DRAWER CSS ── */}
       <style>{`
-        .hospital-filter-hero {
-          display: block;
-          background: white;
-          padding: 24px 0 16px;
-        }
-        .hospital-mobile-hero {
-          display: none;
-        }
         .filter-drawer-backdrop {
           position: fixed;
           inset: 0;
@@ -242,7 +218,7 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
           bottom: 0;
           right: -100%;
           width: 100%;
-          max-width: 390px;
+          max-width: 380px;
           background: white;
           z-index: 30000;
           box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
@@ -256,89 +232,54 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
         .drawer-scroll-body {
           flex: 1;
           overflow-y: auto;
-          padding: 8px 24px 20px 24px;
+          padding: 12px 20px 20px 20px;
         }
-        .drawer-scroll-body::-webkit-scrollbar { width: 4px; }
-        .drawer-scroll-body::-webkit-scrollbar-track { background: #F8FAFC; }
-        .drawer-scroll-body::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-        .hosp-toggle-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 7px 14px;
-          border-radius: 20px;
-          border: 1.5px solid #E2E8F0;
-          background: white;
-          color: #475569;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.18s ease;
-          font-family: 'Hind Siliguri', sans-serif;
-          white-space: nowrap;
-        }
-        .hosp-toggle-pill.active {
-          background: #E6F4EA;
-          border-color: #008767;
-          color: #008767;
-        }
-        .hosp-toggle-pill:hover {
-          border-color: #008767;
-          color: #008767;
-        }
-        .specialty-search-input {
-          width: 100%;
-          padding: 7px 12px;
-          border: 1.5px solid #E2E8F0;
-          border-radius: 8px;
-          font-size: 13px;
-          outline: none;
-          margin-bottom: 8px;
-          font-family: 'Hind Siliguri', sans-serif;
-          color: #1E293B;
-        }
-        .specialty-search-input:focus {
-          border-color: #008767;
-        }
-        .accordion-item-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 6px 4px;
-          cursor: pointer;
-          border-radius: 6px;
-          transition: background 0.12s;
-        }
-        .accordion-item-row:hover {
-          background: #F8FAFC;
-        }
-        @media (max-width: 767px) {
-          .hospital-filter-hero {
+        @media (max-width: 991px) {
+          .hosp-desktop-search {
             display: none !important;
           }
-          .hospital-mobile-hero {
+          .hosp-mobile-search-bar {
             display: block !important;
           }
-          .results-header-row {
+        }
+        @media (min-width: 992px) {
+          .hosp-mobile-search-bar {
             display: none !important;
           }
         }
       `}</style>
 
-      {/* ── MOBILE STICKY SEARCH BAR ── */}
-      <div className="hospital-mobile-hero" style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '8px 16px', position: 'sticky', top: 66, zIndex: 1040 }}>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
+      <div className="hosp-mobile-search-bar" style={{
+        position: 'sticky',
+        top: 'calc(var(--header-height, 68px) - 1px)',
+        zIndex: 1040,
+        background: 'white',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '8px 16px'
+      }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <input
               type="text"
-              placeholder={typingPlaceholder || 'হাসপাতালের নাম...'}
+              placeholder="হাসপাতালের নাম লিখুন..."
               value={searchText}
-              onChange={e => { setSearchText(e.target.value); onSearch({ ...getParamObj(), search: e.target.value.trim() }) }}
-              style={{ width: '100%', height: 42, borderRadius: 10, border: '1.5px solid #CBD5E1', padding: '0 36px 0 14px', fontSize: 13.5, color: '#1E293B', fontWeight: 600, outline: 'none', fontFamily: "'Hind Siliguri', sans-serif" }}
+              onChange={e => setSearchText(e.target.value)}
+              style={{
+                width: '100%',
+                height: 42,
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                padding: '0 36px 0 14px',
+                fontSize: 13.5,
+                color: '#0F172A',
+                fontWeight: 600,
+                outline: 'none',
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}
             />
             {searchText ? (
-              <button type="button" onClick={() => { setSearchText(''); onSearch({ ...getParamObj(), search: '' }) }}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <button type="button" onClick={() => setSearchText('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 <IconX size={18} />
               </button>
             ) : (
@@ -347,571 +288,730 @@ function HospitalHero({ onSearch, total, sortBy, setSortBy }) {
               </span>
             )}
           </div>
-          <button type="button" onClick={() => setIsDrawerOpen(true)}
-            style={{ height: 42, padding: '0 12px', borderRadius: 10, background: 'white', border: '1.5px solid #008767', color: '#008767', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>
+
+          {/* Filter Button */}
+          <button
+            type="button"
+            onClick={() => setIsMobileFilterOpen(true)}
+            style={{
+              height: 42,
+              padding: '0 14px',
+              borderRadius: 8,
+              background: '#0B192C',
+              color: 'white',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+          >
             <IconAdjustmentsHorizontal size={18} />
             <span>ফিল্টার</span>
             {activeCount > 0 && (
-              <span style={{ background: '#EF4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{
+                background: '#EF4444',
+                color: 'white',
+                borderRadius: '50%',
+                width: 18,
+                height: 18,
+                fontSize: 10,
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
                 {activeCount}
               </span>
             )}
           </button>
-        </form>
+        </div>
       </div>
 
-      {/* ── DESKTOP HERO BANNER ── */}
-      <section className="hospital-filter-hero">
-        <Container>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: '#64748B', fontSize: 15, fontWeight: 600, marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>আপনার স্বাস্থ্য, আমাদের অঙ্গীকার</p>
-            <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 44px)', fontWeight: 900, color: '#1E293B', marginBottom: 16, fontFamily: "'Hind Siliguri', sans-serif" }}>
-              বিশ্বস্ত <span style={{ color: '#008767' }}>হাসপাতাল</span> খুঁজুন
-            </h1>
-          </div>
-        </Container>
-      </section>
-
-      {/* ── DESKTOP STICKY SEARCH FORM ── */}
-      <section className="hospital-filter-hero" style={{ position: 'sticky', top: 'calc(var(--header-height) - 1px)', zIndex: 990, background: '#F8FAFC', padding: '10px 0' }}>
-        <Container>
-          <div style={{ background: 'white', borderRadius: 16, padding: '14px 18px', boxShadow: '0 6px 24px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0' }}>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 12, width: '100%', alignItems: 'center' }}>
-              {/* Search input */}
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', display: 'flex', alignItems: 'center' }}>
-                  <IconSearch size={18} />
-                </span>
-                <input
-                  type="text"
-                  placeholder={typingPlaceholder || 'হাসপাতালের নাম দিয়ে খুঁজুন...'}
-                  value={searchText}
-                  onChange={e => { setSearchText(e.target.value); onSearch({ ...getParamObj(), search: e.target.value.trim() }) }}
-                  style={{ width: '100%', height: 48, borderRadius: 10, border: '1.5px solid #E2E8F0', padding: '0 40px 0 46px', fontSize: 14, color: '#1E293B', fontWeight: 500, outline: 'none', fontFamily: "'Hind Siliguri', sans-serif" }}
-                />
-                {searchText && (
-                  <button type="button" onClick={() => { setSearchText(''); onSearch({ ...getParamObj(), search: '' }) }}
-                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    <IconX size={18} />
-                  </button>
-                )}
-              </div>
-
-              {/* Search button */}
-              <button type="submit" style={{ height: 48, borderRadius: 10, background: '#008767', color: 'white', border: 'none', fontWeight: 700, fontSize: 15, padding: '0 28px', cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", boxShadow: '0 4px 12px rgba(0,135,103,0.2)', whiteSpace: 'nowrap' }}>
-                খুঁজুন
-              </button>
-
-              {/* Filter button */}
-              <button type="button" onClick={() => setIsDrawerOpen(true)}
-                style={{ height: 48, borderRadius: 10, background: 'white', color: '#008767', border: '1.5px solid #008767', fontWeight: 700, fontSize: 15, padding: '0 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>
-                <IconAdjustmentsHorizontal size={18} color="#008767" />
-                <span>ফিল্টার</span>
-                {activeCount > 0 && (
-                  <span style={{ background: '#EF4444', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {activeCount}
-                  </span>
-                )}
-              </button>
-            </form>
-          </div>
-        </Container>
-      </section>
-
-      {/* ── ACTIVE FILTERS CHIPS STRIP ── */}
+      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS (White Background) ── */}
       {activeCount > 0 && (
-        <section style={{ paddingTop: 8, paddingBottom: 4 }}>
-          <Container>
-            <div style={{ background: 'white', borderRadius: 14, border: '1px solid #E2E8F0', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  আপনার নির্বাচিত ফিল্টার সমূহ:
-                </span>
-                {activeFilters.map(f => (
-                  <span key={f.key} style={{ background: '#E6F4EA', color: '#008767', border: '1px solid #C6E7D2', borderRadius: 16, padding: '4px 12px', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {f.label}
-                    <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#008767', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                      <IconX size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <button type="button" onClick={handleClearAllFilters} style={{ background: 'transparent', border: 'none', color: '#008767', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                সব ক্লিয়ার করুন <IconTrash size={15} />
-              </button>
-            </div>
-          </Container>
-        </section>
+        <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {activeFilters.map(f => (
+              <span key={f.key} style={{
+                background: '#0F172A',
+                color: 'white',
+                border: '1px solid #0F172A',
+                borderRadius: 4,
+                padding: '4px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                {f.label}
+                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                  <IconX size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            Clear All ✕
+          </button>
+        </div>
       )}
 
-      {/* ── BACKDROP ── */}
-      <div className={`filter-drawer-backdrop ${isDrawerOpen ? 'open' : ''}`} onClick={() => setIsDrawerOpen(false)} />
+      <Container fluid style={{ maxWidth: 1380, padding: '20px 24px' }}>
+        
+        {/* ── BREADCRUMB ── */}
+        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
+          <span>/</span>
+          <span style={{ color: '#0F172A', fontWeight: 600 }}>Hospital Listings</span>
+        </div>
 
-      {/* ── RIGHT-SIDE FILTER DRAWER ── */}
-      <div className={`filter-drawer ${isDrawerOpen ? 'open' : ''}`}>
+        {/* ── HEADING TITLE ── */}
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 800,
+          color: '#0F172A',
+          marginBottom: 16,
+          letterSpacing: '-0.5px'
+        }}>
+          {locationHeadingText ? (
+            <>
+              <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
+            </>
+          ) : (
+            <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল তালিকা</span>
+          )}
+        </h1>
 
+        {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
+        <div className="hosp-desktop-search" style={{
+          background: 'white',
+          borderRadius: 8,
+          border: '1px solid #CBD5E1',
+          padding: '4px 6px 4px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          marginBottom: 20
+        }}>
+          <IconSearch size={18} color="#94A3B8" />
+          <input
+            type="text"
+            placeholder="Search by area, hospital type, keyword..."
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: 14,
+              color: '#0F172A',
+              fontWeight: 500,
+              background: 'transparent',
+              padding: '10px 0'
+            }}
+          />
+          {searchText && (
+            <button onClick={() => setSearchText('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+              <IconX size={16} />
+            </button>
+          )}
+          <button style={{
+            background: '#0B192C',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            padding: '10px 24px',
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: 'pointer',
+            fontFamily: "'Inter', sans-serif"
+          }}>
+            Search
+          </button>
+        </div>
+
+        {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ color: '#64748B', fontSize: 13, fontWeight: 500 }}>
+            Showing <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}</strong> out of <strong style={{ color: '#0F172A' }}>{total || sortedHospitals.length}</strong> properties
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {/* Sort Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                style={{
+                  background: 'white',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 6,
+                  padding: '6px 10px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="newest">Newest First</option>
+                <option value="name_asc">Name (A - Z)</option>
+                <option value="name_desc">Name (Z - A)</option>
+              </select>
+            </div>
+
+            {/* View Mode Toggle Buttons (List :== , Grid ::: , Map [ ]) */}
+            <div style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white' }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                title="List View"
+                style={{
+                  padding: '6px 10px',
+                  background: viewMode === 'list' ? '#0B192C' : 'white',
+                  color: viewMode === 'list' ? 'white' : '#64748B',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <IconListDetails size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+                style={{
+                  padding: '6px 10px',
+                  background: viewMode === 'grid' ? '#0B192C' : 'white',
+                  color: viewMode === 'grid' ? 'white' : '#64748B',
+                  border: 'none',
+                  borderLeft: '1px solid #CBD5E1',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <IconGridDots size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('map')}
+                title="Map View"
+                style={{
+                  padding: '6px 10px',
+                  background: viewMode === 'map' ? '#0B192C' : 'white',
+                  color: viewMode === 'map' ? 'white' : '#64748B',
+                  border: 'none',
+                  borderLeft: '1px solid #CBD5E1',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <IconMap size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── MAIN CONTENT AREA ── */}
+        {viewMode === 'map' ? (
+          /* ── MAP VIEW: NO LEFT FILTER SIDEBAR, FULL-WIDTH 2-COLUMN SPLIT MAP ── */
+          <Row className="g-3">
+            {/* Left ~65% Live Hospital Map Area */}
+            <Col xs={12} lg={7} xl={8}>
+              <div style={{
+                position: 'relative',
+                height: 580,
+                borderRadius: 10,
+                border: '1px solid #CBD5E1',
+                overflow: 'hidden',
+                background: '#E5E7EB',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+              }}>
+                {/* Live OpenStreetMap Embed */}
+                <iframe
+                  title="Hospital Live Map View"
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  marginHeight="0"
+                  marginWidth="0"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=90.350%2C23.830%2C90.430%2C23.900&amp;layer=mapnik"
+                  style={{ border: 0, filter: 'contrast(1.02) saturate(1.05)' }}
+                />
+
+                {/* Live Hospital Pin Markers (NO TAKA / MONEY, ONLY HOSPITAL NAMES) */}
+                {sortedHospitals.slice(0, 6).map((h, idx) => {
+                  const positions = [
+                    { top: '32%', left: '36%' },
+                    { top: '48%', left: '55%' },
+                    { top: '62%', left: '26%' },
+                    { top: '25%', left: '58%' },
+                    { top: '72%', left: '46%' },
+                    { top: '50%', left: '72%' }
+                  ]
+                  const pos = positions[idx % positions.length]
+                  return (
+                    <div
+                      key={h.id}
+                      onClick={() => navigate(`/hospitals/${h.id}`)}
+                      style={{
+                        position: 'absolute',
+                        top: pos.top,
+                        left: pos.left,
+                        background: '#0B192C',
+                        color: 'white',
+                        padding: '5px 12px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        boxShadow: '0 4px 14px rgba(11, 25, 44, 0.35)',
+                        border: '2px solid white',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'scale(1.08)'
+                        e.currentTarget.style.background = '#008767'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.background = '#0B192C'
+                      }}
+                    >
+                      <span>🏥</span>
+                      <span>{h.name}</span>
+                    </div>
+                  )
+                })}
+
+                {/* Map Controls (Top Right) */}
+                <div style={{
+                  position: 'absolute',
+                  top: 14,
+                  right: 14,
+                  background: 'white',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                  zIndex: 20
+                }}>
+                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontWeight: 800, fontSize: 16, color: '#0F172A' }}>+</button>
+                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontWeight: 800, fontSize: 16, color: '#0F172A' }}>-</button>
+                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎯</button>
+                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⤢</button>
+                </div>
+              </div>
+            </Col>
+
+            {/* Right ~35% Scrollable Hospital List */}
+            <Col xs={12} lg={5} xl={4}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#64748B', marginBottom: 12, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                ম্যাপে <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}টি</strong> হাসপাতাল দেখানো হচ্ছে
+              </div>
+              <div style={{ maxHeight: 585, overflowY: 'auto', paddingRight: 4 }}>
+                {sortedHospitals.map((h, i) => (
+                  <HospitalCard key={h.id} hospital={h} index={i} viewMode="map-compact" />
+                ))}
+              </div>
+            </Col>
+          </Row>
+        ) : (
+          /* ── LIST & GRID VIEW (WITH LEFT FILTER SIDEBAR) ── */
+          <Row className="g-4">
+
+            {/* ── LEFT COLUMN: FILTERS PANEL (Desktop Only ≥992px) ── */}
+            <Col xs={12} lg={3} className="d-none d-lg-block">
+              <div style={{
+                background: 'white',
+                borderRadius: 8,
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                position: 'sticky',
+                top: 'calc(var(--header-height, 110px) + 16px)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}>
+                {/* Filter Sidebar Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <IconAdjustmentsHorizontal size={18} color="#0F172A" />
+                    <div>
+                      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Filters</h3>
+                      <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                        Showing <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}</strong> properties
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Applied Filters Block inside Sidebar */}
+                {activeCount > 0 && (
+                  <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Applied filters</span>
+                      <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        Clear All ✕
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {activeFilters.map(f => (
+                        <span key={f.key} style={{
+                          background: '#0F172A',
+                          color: 'white',
+                          borderRadius: 4,
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
+                        }}>
+                          {f.label}
+                          <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                            <IconX size={11} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Accordion 1: Make / Hospital Type */}
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('type')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Make / Hospital Type</span>
+                    {openAccordions.type ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.type && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {HOSPITAL_TYPES.map(t => {
+                        const isChecked = hospitalType === t.id
+                        return (
+                          <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: isChecked ? 700 : 500 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => setHospitalType(isChecked ? '' : t.id)}
+                              style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                            />
+                            <span>{t.label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 2: Location */}
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
+                    {openAccordions.location ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.location && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {/* Division selector */}
+                      <div>
+                        <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block' }}>বিভাগ (Division)</label>
+                        <select
+                          value={selectedDivision}
+                          onChange={e => { setSelectedDivision(e.target.value); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') }}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, color: '#0F172A', outline: 'none' }}
+                        >
+                          <option value="">সকল বিভাগ</option>
+                          {divisions.map(d => (
+                            <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* District selector */}
+                      <div>
+                        <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block' }}>জেলা (District)</label>
+                        <select
+                          value={selectedDistrict}
+                          onChange={e => { setSelectedDistrict(e.target.value); setSelectedUpazila(''); setSelectedUnion('') }}
+                          disabled={!selectedDivision}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, color: '#0F172A', outline: 'none', background: !selectedDivision ? '#F1F5F9' : 'white' }}
+                        >
+                          <option value="">সকল জেলা</option>
+                          {districts.map(d => (
+                            <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 3: Bed Ranges */}
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('beds')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Beds Range</span>
+                    {openAccordions.beds ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.beds && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {BED_RANGES.map(b => {
+                        const isChecked = selectedBeds === b.id
+                        return (
+                          <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: isChecked ? 700 : 500 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => setSelectedBeds(isChecked ? '' : b.id)}
+                              style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                            />
+                            <span>{b.label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 4: Special Facilities */}
+                <div style={{ marginBottom: 4 }}>
+                  <div onClick={() => toggleAccordion('extras')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Facilities</span>
+                    {openAccordions.extras ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.extras && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: emergencyOnly ? 700 : 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={emergencyOnly}
+                          onChange={() => setEmergencyOnly(v => !v)}
+                          style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                        />
+                        <span>২৪/৭ জরুরি সেবা</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: openTodayOnly ? 700 : 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={openTodayOnly}
+                          onChange={() => setOpenTodayOnly(v => !v)}
+                          style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                        />
+                        <span>আজ খোলা আছে</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Col>
+
+            {/* ── RIGHT COLUMN: LIST / GRID HOSPITAL LISTINGS AREA ── */}
+            <Col xs={12} lg={9}>
+              {loading && <HospitalGridSkeleton count={4} />}
+
+              {error && !loading && (
+                <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 12, padding: 24, textAlign: 'center' }}>
+                  <p style={{ color: '#c53030', marginBottom: 12 }}>⚠️ {error}</p>
+                  <button onClick={refresh} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer' }}>
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {!loading && sortedHospitals.length > 0 && (
+                <>
+                  {viewMode === 'grid' ? (
+                    <Row className="g-3">
+                      {sortedHospitals.map((h, i) => (
+                        <Col key={h.id} xs={12} md={6} xl={4}>
+                          <HospitalCard hospital={h} index={i} viewMode="grid" />
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : (
+                    /* DEFAULT LIST VIEW (Matching screenshot) */
+                    <div>
+                      {sortedHospitals.map((h, i) => (
+                        <HospitalCard key={h.id} hospital={h} index={i} viewMode="list" />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!loading && !error && sortedHospitals.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                  <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <IconBuildingHospital size={36} color="#64748B" />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>No hospitals found</h3>
+                  <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px' }}>No hospital listings matched your selected filters.</p>
+                  <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
+
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} style={{ height: 30, marginTop: 20 }} />
+              {fetchingNext && <div style={{ paddingTop: 10 }}><HospitalGridSkeleton count={2} /></div>}
+            </Col>
+          </Row>
+        )}
+      </Container>
+
+      {/* ── MOBILE FILTER DRAWER BACKDROP ── */}
+      <div className={`filter-drawer-backdrop ${isMobileFilterOpen ? 'open' : ''}`} onClick={() => setIsMobileFilterOpen(false)} />
+
+      {/* ── MOBILE SLIDING FILTER DRAWER ── */}
+      <div className={`filter-drawer ${isMobileFilterOpen ? 'open' : ''}`}>
         {/* Drawer Header */}
-        <div style={{ padding: '20px 24px 12px 24px', borderBottom: '1px solid #F1F5F9', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #F1F5F9', background: 'white' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h5 style={{ fontWeight: 800, fontSize: 18, color: '#1E293B', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                ফিল্টার
-              </h5>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#64748B', margin: '4px 0 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              <h5 style={{ fontWeight: 800, fontSize: 17, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>ফিল্টার সমুহ</h5>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
                 নির্বাচিত ফিল্টার ({activeCount})
               </p>
             </div>
-            <button onClick={() => setIsDrawerOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}>
+            <button onClick={() => setIsMobileFilterOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}>
               <IconX size={22} />
             </button>
           </div>
-
-          {/* Active chips inside drawer header */}
-          {activeCount > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                {activeFilters.map(f => (
-                  <span key={f.key} style={{ background: '#E6F4EA', color: '#008767', borderRadius: 14, padding: '3px 10px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {f.label}
-                    <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#008767', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                      <IconX size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  সব ক্লিয়ার করুন <IconTrash size={14} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Scrollable Accordion Body */}
+        {/* Drawer Scroll Body */}
         <div className="drawer-scroll-body">
-
-          {/* ── ACCORDION: Quick Toggles ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9' }}>
-            <div onClick={() => toggleAccordion('extras')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconStar size={18} color="#475569" />
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>বিশেষ সুবিধা</span>
-              </div>
-              {openAccordions.extras ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
+          {/* Hospital Type */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল ধরন</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {HOSPITAL_TYPES.map(t => {
+                const isChecked = hospitalType === t.id
+                return (
+                  <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => setHospitalType(isChecked ? '' : t.id)}
+                      style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                    />
+                    <span>{t.icon} {t.label}</span>
+                  </label>
+                )
+              })}
             </div>
-            {openAccordions.extras && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 14 }}>
-                <button
-                  type="button"
-                  onClick={() => setEmergencyOnly(v => !v)}
-                  className={`hosp-toggle-pill${emergencyOnly ? ' active' : ''}`}
+          </div>
+
+          {/* Location */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>লোকেশন (Location)</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>বিভাগ (Division)</label>
+                <select
+                  value={selectedDivision}
+                  onChange={e => { setSelectedDivision(e.target.value); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13.5, color: '#0F172A', outline: 'none' }}
                 >
-                  <IconAlertTriangle size={15} />
-                  ২৪/৭ জরুরি সেবা
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenTodayOnly(v => !v)}
-                  className={`hosp-toggle-pill${openTodayOnly ? ' active' : ''}`}
+                  <option value="">সকল বিভাগ</option>
+                  {divisions.map(d => (
+                    <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>জেলা (District)</label>
+                <select
+                  value={selectedDistrict}
+                  onChange={e => { setSelectedDistrict(e.target.value); setSelectedUpazila(''); setSelectedUnion('') }}
+                  disabled={!selectedDivision}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13.5, color: '#0F172A', outline: 'none', background: !selectedDivision ? '#F1F5F9' : 'white' }}
                 >
-                  <IconCalendarCheck size={15} />
-                  আজ খোলা আছে
-                </button>
+                  <option value="">সকল জেলা</option>
+                  {districts.map(d => (
+                    <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                  ))}
+                </select>
               </div>
-            )}
-          </div>
-
-          {/* ── ACCORDION: Hospital Type ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: openAccordions.type ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('type')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconBuildingHospital size={18} color="#475569" />
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল ধরন</span>
-              </div>
-              {openAccordions.type ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
             </div>
-            {openAccordions.type && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 4 }}>
-                {/* All types option */}
-                <div className="accordion-item-row" onClick={() => setHospitalType('')}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', border: !hospitalType ? '2px solid #008767' : '1.5px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                    {!hospitalType && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#008767' }} />}
-                  </div>
-                  <span style={{ fontSize: 13.5, fontWeight: !hospitalType ? 700 : 500, color: !hospitalType ? '#1E293B' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>সব ধরন</span>
-                </div>
-                {HOSPITAL_TYPES.map(t => {
-                  const isSel = hospitalType === t.id
-                  return (
-                    <div key={t.id} className="accordion-item-row" onClick={() => setHospitalType(isSel ? '' : t.id)}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', border: isSel ? '2px solid #008767' : '1.5px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                        {isSel && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#008767' }} />}
-                      </div>
-                      <span style={{ fontSize: 13.5, fontWeight: isSel ? 700 : 500, color: isSel ? '#1E293B' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        {t.icon} {t.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
 
-          {/* ── ACCORDION: Specialty ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: openAccordions.specialty ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('specialty')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconStethoscope size={18} color="#475569" />
-                <div>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>বিশেষজ্ঞ সেবা</span>
-                  {!openAccordions.specialty && getSelectedLabel('specialty') && (
-                    <div style={{ fontSize: 12, color: '#008767', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>{getSelectedLabel('specialty')}</div>
-                  )}
-                </div>
-              </div>
-              {openAccordions.specialty ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
+          {/* Bed Ranges */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>শয্যা সংখ্যা (Beds)</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {BED_RANGES.map(b => {
+                const isChecked = selectedBeds === b.id
+                return (
+                  <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => setSelectedBeds(isChecked ? '' : b.id)}
+                      style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                    />
+                    <span>{b.label}</span>
+                  </label>
+                )
+              })}
             </div>
-            {openAccordions.specialty && (
-              <div style={{ paddingTop: 4 }}>
-                <div style={{ position: 'relative', marginBottom: 8 }}>
-                  <IconSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                  <input
-                    type="text"
-                    placeholder="বিশেষজ্ঞ খুঁজুন..."
-                    value={specialtySearch}
-                    onChange={e => setSpecialtySearch(e.target.value)}
-                    className="specialty-search-input"
-                    style={{ paddingLeft: 30 }}
-                  />
-                </div>
-                <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div className="accordion-item-row" onClick={() => setSelectedSpecialty('')}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', border: !selectedSpecialty ? '2px solid #008767' : '1.5px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                      {!selectedSpecialty && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#008767' }} />}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: !selectedSpecialty ? 700 : 500, color: !selectedSpecialty ? '#1E293B' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>সব বিশেষজ্ঞ</span>
-                  </div>
-                  {filteredSpecialties.map(s => {
-                    const isSel = String(selectedSpecialty) === String(s.id)
-                    return (
-                      <div key={s.id} className="accordion-item-row" onClick={() => setSelectedSpecialty(isSel ? '' : s.id)}>
-                        <div style={{ width: 18, height: 18, borderRadius: 4, border: isSel ? 'none' : '1.5px solid #CBD5E1', background: isSel ? '#008767' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {isSel && <IconCheck size={12} color="white" strokeWidth={3} />}
-                        </div>
-                        <span style={{ fontSize: 13, fontWeight: isSel ? 700 : 500, color: isSel ? '#008767' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          {s.name || s.name_bn}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  {filteredSpecialties.length === 0 && (
-                    <p style={{ color: '#94A3B8', fontSize: 12.5, textAlign: 'center', padding: '8px 0', fontFamily: "'Hind Siliguri', sans-serif" }}>কোনো ফলাফল নেই</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* ── ACCORDION: Division ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: openAccordions.division ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('division')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconMapPin size={18} color="#475569" />
-                <div>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>বিভাগ (Division)</span>
-                  {!openAccordions.division && getSelectedLabel('division') && (
-                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>{getSelectedLabel('division')}</div>
-                  )}
-                </div>
-              </div>
-              {openAccordions.division ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
+          {/* Special Facilities */}
+          <div>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>বিশেষ সুবিধা</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: emergencyOnly ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <input
+                  type="checkbox"
+                  checked={emergencyOnly}
+                  onChange={() => setEmergencyOnly(v => !v)}
+                  style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                />
+                <span>২৪/৭ জরুরি সেবা</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: openTodayOnly ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <input
+                  type="checkbox"
+                  checked={openTodayOnly}
+                  onChange={() => setOpenTodayOnly(v => !v)}
+                  style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                />
+                <span>আজ খোলা আছে</span>
+              </label>
             </div>
-            {openAccordions.division && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 4 }}>
-                {divisions.map(d => {
-                  const isSel = String(selectedDivision) === String(d.id)
-                  const divName = d.name || d.bangla_name
-                  return (
-                    <div key={d.id} className="accordion-item-row" onClick={() => { setSelectedDivision(isSel ? '' : d.id); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 4, border: isSel ? 'none' : '1.5px solid #CBD5E1', background: isSel ? '#008767' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {isSel && <IconCheck size={12} color="white" strokeWidth={3} />}
-                      </div>
-                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: isSel ? 700 : 600, color: isSel ? '#008767' : '#1E293B', fontFamily: 'system-ui, sans-serif' }}>{divName}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
+        </div>
 
-          {/* ── ACCORDION: District ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: openAccordions.district ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('district')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconMapPin size={18} color="#475569" />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>জেলা (District)</div>
-                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {getSelectedLabel('district') || 'সব জেলা'}
-                  </div>
-                </div>
-              </div>
-              {openAccordions.district ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
-            </div>
-            {openAccordions.district && (
-              <div style={{ paddingBottom: 6 }}>
-                {!selectedDivision ? (
-                  <p style={{ color: '#94A3B8', fontSize: 12.5, fontFamily: "'Hind Siliguri', sans-serif", margin: 0 }}>
-                    প্রথমে একটি বিভাগ নির্বাচন করুন।
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {districts.map(d => {
-                      const isSel = String(selectedDistrict) === String(d.id)
-                      return (
-                        <div key={d.id} className="accordion-item-row" onClick={() => { setSelectedDistrict(isSel ? '' : d.id); setSelectedUpazila(''); setSelectedUnion('') }}>
-                          <div style={{ width: 18, height: 18, borderRadius: 4, border: isSel ? 'none' : '1.5px solid #CBD5E1', background: isSel ? '#008767' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {isSel && <IconCheck size={12} color="white" strokeWidth={3} />}
-                          </div>
-                          <span style={{ fontSize: 13.5, fontWeight: isSel ? 700 : 500, color: isSel ? '#008767' : '#1E293B', fontFamily: 'system-ui, sans-serif' }}>
-                            {d.name || d.bangla_name}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── ACCORDION: Upazila ── */}
-          <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: openAccordions.upazila ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('upazila')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconMapPin size={18} color="#475569" />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>উপজেলা (Upazila)</div>
-                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {getSelectedLabel('upazila') || 'সব উপজেলা'}
-                  </div>
-                </div>
-              </div>
-              {openAccordions.upazila ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
-            </div>
-            {openAccordions.upazila && (
-              <div style={{ paddingBottom: 6 }}>
-                {!selectedDistrict ? (
-                  <p style={{ color: '#94A3B8', fontSize: 12.5, fontFamily: "'Hind Siliguri', sans-serif", margin: 0 }}>
-                    প্রথমে একটি জেলা নির্বাচন করুন।
-                  </p>
-                ) : upazilas.length === 0 ? (
-                  <p style={{ color: '#94A3B8', fontSize: 12.5, fontFamily: "'Hind Siliguri', sans-serif", margin: 0 }}>
-                    কোনো উপজেলা পাওয়া যায়নি।
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {upazilas.map(u => {
-                      const isSel = String(selectedUpazila) === String(u.id)
-                      return (
-                        <div key={u.id} className="accordion-item-row" onClick={() => { setSelectedUpazila(isSel ? '' : u.id); setSelectedUnion('') }}>
-                          <div style={{ width: 18, height: 18, borderRadius: 4, border: isSel ? 'none' : '1.5px solid #CBD5E1', background: isSel ? '#008767' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {isSel && <IconCheck size={12} color="white" strokeWidth={3} />}
-                          </div>
-                          <span style={{ fontSize: 13.5, fontWeight: isSel ? 700 : 500, color: isSel ? '#008767' : '#1E293B', fontFamily: 'system-ui, sans-serif' }}>
-                            {u.name || u.bangla_name}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── ACCORDION: Bed Range ── */}
-          <div style={{ paddingBottom: openAccordions.beds ? 14 : 0 }}>
-            <div onClick={() => toggleAccordion('beds')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <IconHeadset size={18} color="#475569" />
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>শয্যা সংখ্যা (Beds)</span>
-              </div>
-              {openAccordions.beds ? <IconChevronUp size={18} color="#64748B" /> : <IconChevronDown size={18} color="#64748B" />}
-            </div>
-            {openAccordions.beds && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 4 }}>
-                <div className="accordion-item-row" onClick={() => setSelectedBeds('')}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', border: !selectedBeds ? '2px solid #008767' : '1.5px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                    {!selectedBeds && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#008767' }} />}
-                  </div>
-                  <span style={{ fontSize: 13.5, fontWeight: !selectedBeds ? 700 : 500, color: !selectedBeds ? '#1E293B' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>যেকোনো সংখ্যা</span>
-                </div>
-                {BED_RANGES.map(b => {
-                  const isSel = selectedBeds === b.id
-                  return (
-                    <div key={b.id} className="accordion-item-row" onClick={() => setSelectedBeds(isSel ? '' : b.id)}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', border: isSel ? '2px solid #008767' : '1.5px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                        {isSel && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#008767' }} />}
-                      </div>
-                      <span style={{ fontSize: 13.5, fontWeight: isSel ? 700 : 500, color: isSel ? '#1E293B' : '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>{b.label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-        </div>{/* end drawer-scroll-body */}
-
-        {/* ── Drawer Footer Buttons ── */}
-        <div style={{ display: 'flex', gap: 12, padding: '16px 24px calc(16px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
-          <button type="button" onClick={handleClearAllFilters}
-            style={{ flex: 1, height: 46, borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
+        {/* Drawer Footer */}
+        <div style={{ display: 'flex', gap: 10, padding: '14px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
+          <button type="button" onClick={handleClearAllFilters} style={{ flex: 1, height: 44, borderRadius: 8, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
             রিসেট
           </button>
-          <button type="button" onClick={handleApplyFilters}
-            style={{ flex: 2, height: 46, borderRadius: 10, background: '#008767', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", boxShadow: '0 4px 12px rgba(0,135,103,0.25)' }}>
-            প্রয়োগ করুন {total ? `(${total})` : ''}
+          <button type="button" onClick={() => setIsMobileFilterOpen(false)} style={{ flex: 2, height: 44, borderRadius: 8, background: '#0B192C', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            প্রয়োগ করুন ({sortedHospitals.length})
           </button>
         </div>
       </div>
-    </>
-  )
-}
-
-/* ─── MAIN PAGE ───────────────────────── */
-function HospitalsPage() {
-  const [searchParams] = useSearchParams()
-  const [appliedFilters, setAppliedFilters] = useState(() => {
-    const p = {}
-    if (searchParams.get('division_id'))  p.division_id  = searchParams.get('division_id')
-    if (searchParams.get('district_id'))  p.district_id  = searchParams.get('district_id')
-    if (searchParams.get('upazila_id'))   p.upazila_id   = searchParams.get('upazila_id')
-    if (searchParams.get('union_id'))     p.union_id     = searchParams.get('union_id')
-    if (searchParams.get('type'))         p.type         = searchParams.get('type')
-    if (searchParams.get('specialty_id')) p.specialty_id = searchParams.get('specialty_id')
-    if (searchParams.get('search'))       p.search       = searchParams.get('search')
-    return p
-  })
-
-  const [sortBy, setSortBy] = useState('relevance')
-
-  const activeCount = Object.keys(appliedFilters).filter(k => appliedFilters[k]).length
-
-  const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
-
-  const sortedHospitals = useMemo(() => {
-    const list = [...hospitals]
-    if (sortBy === 'name_asc') return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    if (sortBy === 'name_desc') return list.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
-    return list
-  }, [hospitals, sortBy])
-
-  // Infinite scroll sentinel
-  const sentinelRef = useRef(null)
-  useEffect(() => {
-    if (!sentinelRef.current) return
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && hasMore && !fetchingNext) fetchMore() },
-      { threshold: 0.1 }
-    )
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [hasMore, fetchingNext, fetchMore])
-
-  const handleSearch = useCallback((params) => {
-    setAppliedFilters(params)
-  }, [])
-
-  const handleClearFilters = () => setAppliedFilters({})
-
-  return (
-    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
-      <HospitalHero
-        onSearch={handleSearch}
-        total={total}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-      />
-
-      {/* RESULTS */}
-      <Container style={{ paddingBottom: 80 }}>
-        <div style={{ marginTop: 20 }}>
-          {/* Results header (desktop) */}
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 results-header-row">
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1E293B', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল</h2>
-            <div className="d-flex align-items-center gap-3">
-              <p style={{ color: '#64748B', fontSize: 14, marginBottom: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                {loading ? 'লোড হচ্ছে...' : <><strong>{hospitals.length}</strong> হাসপাতাল দেখানো হচ্ছে {total ? `মোট ${total} এর মধ্যে` : ''}</>}
-              </p>
-              {activeCount > 0 && (
-                <button onClick={handleClearFilters} style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 8, padding: '5px 14px', color: '#64748B', fontSize: 13, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  ✕ ফিল্টার মুছুন
-                </button>
-              )}
-            </div>
-          </div>
-
-          {loading && <HospitalGridSkeleton count={6} />}
-          {error && !loading && (
-            <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 12, padding: 24, textAlign: 'center' }}>
-              <p style={{ color: '#c53030', marginBottom: 12 }}>⚠️ {error}</p>
-              <button onClick={refresh} style={{ background: '#00A88C', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer' }}>আবার চেষ্টা করুন</button>
-            </div>
-          )}
-          {!loading && sortedHospitals.length > 0 && (
-            <Row className="g-4">
-              {sortedHospitals.map((h, i) => (
-                <Col key={h.id} xs={12} md={6} xl={4}>
-                  <HospitalCard hospital={h} index={i} />
-                </Col>
-              ))}
-            </Row>
-          )}
-          {!loading && !error && sortedHospitals.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 16, border: '1px solid #E2E8F0', marginTop: 20 }}>
-              <div style={{ width: 80, height: 80, background: '#FDF4FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <IconBuildingHospital size={40} color="#D946EF" />
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1E293B', marginBottom: 10, fontFamily: "'Hind Siliguri', sans-serif" }}>কোনো হাসপাতাল পাওয়া যায়নি</h3>
-              <p style={{ color: '#64748B', fontSize: 15, maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>আপনার নির্বাচিত ফিল্টার অনুযায়ী কোনো হাসপাতাল খুঁজে পাওয়া যায়নি।</p>
-              <button onClick={handleClearFilters} style={{ background: '#FDF4FF', color: '#A21CAF', border: '1px solid #F5D0FE', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>ফিল্টার মুছুন</button>
-            </div>
-          )}
-
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} style={{ height: 40, marginTop: 20 }} />
-          {fetchingNext && <div style={{ paddingTop: 10 }}><HospitalGridSkeleton count={3} /></div>}
-          {!hasMore && !loading && sortedHospitals.length > 0 && (
-            <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 14, marginTop: 24, fontFamily: "'Hind Siliguri', sans-serif" }}>
-              সকল হাসপাতাল দেখানো হয়েছে ✓
-            </p>
-          )}
-        </div>
-
-        {/* FEATURES BANNER */}
-        <div style={{ background: '#F0FDF4', borderRadius: 24, padding: '40px', marginTop: 60, border: '1px solid #DCFCE7' }}>
-          <Row className="g-4">
-            {[
-              { icon: <IconShieldCheck size={30} color="#00A88C" />, title: 'যাচাইকৃত হাসপাতাল', desc: 'আমাদের সকল হাসপাতাল যাচাইকৃত' },
-              { icon: <IconLock size={30} color="#00A88C" />,        title: 'নিরাপদ সেবা',       desc: 'রোগীর তথ্যের সর্বোচ্চ নিরাপত্তা' },
-              { icon: <IconClock size={30} color="#00A88C" />,       title: '২৪/৭ জরুরি সেবা',  desc: 'জরুরি প্রয়োজনে আমরা আপনার পাশে' },
-              { icon: <IconHeadset size={30} color="#00A88C" />,     title: 'সাপোর্ট সেবা',     desc: 'যেকোনো প্রয়োজনে সাপোর্ট টিম আছে' },
-            ].map((f, i) => (
-              <Col key={i} xs={12} md={6} lg={3}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                  <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #00A88C' }}>{f.icon}</div>
-                  <div>
-                    <h6 style={{ fontWeight: 800, color: '#065F46', marginBottom: 4, fontSize: 16, fontFamily: "'Hind Siliguri', sans-serif" }}>{f.title}</h6>
-                    <p style={{ color: '#64748B', fontSize: 13, margin: 0, lineHeight: 1.4, fontFamily: "'Hind Siliguri', sans-serif" }}>{f.desc}</p>
-                  </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-        </div>
-      </Container>
     </div>
   )
 }

@@ -610,71 +610,94 @@ function WhyChooseUs() {
 }
 
 // ─── REGISTRATION CARDS (PIC 1 EXECUTIVE STYLE) ──────────────────────────────
+// ─── REGISTRATION / STEP-BY-STEP CARDS (MADE SIMPLE DESIGN) ──────────────────────
 function RegistrationCards() {
   const navigate = useNavigate()
 
   const steps = [
     {
       stepNum: 'STEP 01',
-      title: 'ডাক্তার হিসেবে যুক্ত হোন',
-      subTitle: 'Doctor Registration',
-      desc: 'আপনার প্র্যাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
-      link: '/register?role=doctor',
-      icon: <IconStethoscope size={42} stroke={1.5} color="#F59E0B" />,
+      title: 'Search Doctors',
+      subTitle: 'ডাক্তার খুঁজুন',
+      desc: 'Browse verified doctors filtered by specialty, hospital, and area across Bangladesh.',
+      link: '/doctors',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="14" rx="2" />
+          <line x1="3" y1="8" x2="21" y2="8" />
+          <circle cx="6" cy="6" r="0.5" fill="#F59E0B" />
+          <circle cx="8" cy="6" r="0.5" fill="#F59E0B" />
+          <circle cx="10" cy="6" r="0.5" fill="#F59E0B" />
+          <circle cx="13" cy="13" r="2.5" />
+          <line x1="15" y1="15" x2="18" y2="18" />
+        </svg>
+      ),
     },
     {
       stepNum: 'STEP 02',
-      title: 'হাসপাতাল পার্টনার হোন',
-      subTitle: 'Hospital Registration',
-      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
-      link: '/register?role=hospital',
-      icon: <IconBuildingHospital size={42} stroke={1.5} color="#F59E0B" />,
+      title: 'Connect Directly',
+      subTitle: 'সরাসরি যোগাযোগ',
+      desc: 'Contact & select suitable visiting hours directly. No middlemen, no extra fees — transparent healthcare.',
+      link: '/doctors',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="8" r="2.5" />
+          <circle cx="16" cy="8" r="2.5" />
+          <path d="M5 17c0-2.5 2.5-4 4-4s4 1.5 4 4" />
+          <path d="M12 17c0-2.5 2.5-4 4-4s4 1.5 4 4" />
+          <line x1="11.5" y1="8" x2="13.5" y2="8" strokeDasharray="1 1" />
+        </svg>
+      ),
     },
     {
       stepNum: 'STEP 03',
-      title: 'পেশেন্ট হিসেবে যুক্ত হোন',
-      subTitle: 'Patient Registration',
-      desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
-      link: '/register?role=patient',
-      icon: <IconUsers size={42} stroke={1.5} color="#F59E0B" />,
+      title: 'Book & Visit',
+      subTitle: 'অ্যাপয়েন্টমেন্ট নিন',
+      desc: 'Finalize your appointment on your terms and visit your preferred doctor. Simple as that.',
+      link: '/doctors',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10z" />
+          <path d="M9 21V13h6v8" />
+          <circle cx="18" cy="6" r="2" />
+          <path d="M19.5 4.5l2 2" />
+          <polyline points="8 12 10.5 14.5 15 10" />
+        </svg>
+      ),
     }
   ]
 
   return (
-    <section className="registration-section" style={{ padding: '28px 0', background: 'transparent' }}>
+    <section className="registration-section" style={{ padding: '36px 0 28px', background: '#F8FAFC' }}>
       <Container>
         {/* Title Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#D1FAE5', color: '#065F46', fontSize: 12, fontWeight: 800, padding: '5px 14px', borderRadius: 0, marginBottom: 12 }}>
-            <IconUsers size={15} stroke={2.5} />
-            <span>REGISTRATION / নিবন্ধন</span>
-          </div>
           <h2 style={{
-            fontSize: 'clamp(24px, 3.5vw, 36px)',
-            fontWeight: 900,
+            fontSize: 'clamp(26px, 3.8vw, 36px)',
+            fontWeight: 800,
             color: '#0F172A',
             marginBottom: 8,
-            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+            fontFamily: "'Inter', sans-serif"
           }}>
-            সহজ ৩টি ধাপে নিবন্ধন করুন
+            Booking Made Simple
           </h2>
           <p style={{
-            fontSize: 14.5,
+            fontSize: 15,
             color: '#64748B',
-            fontWeight: 500,
-            maxWidth: 540,
+            fontWeight: 400,
+            maxWidth: 560,
             margin: '0 auto',
-            fontFamily: "'Hind Siliguri', sans-serif"
+            fontFamily: "'Inter', sans-serif"
           }}>
-            ডাক্তার, হাসপাতাল এবং রোগী — সবার জন্য ডিজিটাল স্বাস্থ্যসেবা এখন এক জায়গায়
+            Three steps to your healthcare — no brokers, no hidden fees
           </p>
         </div>
 
-        {/* Pic 1 Style Dark Navy Box Container */}
+        {/* Dark Navy Box Container */}
         <div style={{
           background: '#0B192C',
-          borderRadius: 0,
-          boxShadow: '0 20px 45px -10px rgba(11, 25, 44, 0.25)',
+          borderRadius: 8,
+          boxShadow: '0 20px 45px -10px rgba(11, 25, 44, 0.3)',
           overflow: 'hidden',
           position: 'relative'
         }}>
@@ -686,7 +709,7 @@ function RegistrationCards() {
                 onClick={() => navigate(item.link)}
                 style={{
                   cursor: 'pointer',
-                  padding: '36px 28px',
+                  padding: '42px 32px 38px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -697,46 +720,48 @@ function RegistrationCards() {
               >
                 {/* Step Tag */}
                 <span style={{
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: 800,
                   color: '#F59E0B',
-                  letterSpacing: '1.8px',
-                  marginBottom: 20,
-                  textTransform: 'uppercase'
+                  letterSpacing: '2px',
+                  marginBottom: 24,
+                  textTransform: 'uppercase',
+                  fontFamily: "'Inter', sans-serif"
                 }}>
                   {item.stepNum}
                 </span>
 
                 {/* Icon Box */}
                 <div style={{
-                  marginBottom: 20,
+                  marginBottom: 24,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  height: 54,
+                  height: 56,
                   transition: 'transform 0.3s ease'
                 }} className="pic1-icon-wrap">
                   {item.icon}
                 </div>
 
-                {/* Title */}
+                {/* English Title */}
                 <h3 style={{
                   fontSize: 18,
                   fontWeight: 800,
                   color: '#FFFFFF',
                   marginBottom: 4,
-                  fontFamily: "'Hind Siliguri', sans-serif"
+                  fontFamily: "'Inter', sans-serif"
                 }}>
                   {item.title}
                 </h3>
 
-                {/* Subtitle */}
+                {/* Bangla Subtitle */}
                 <span style={{
-                  fontSize: 12.5,
+                  fontSize: 13,
                   fontWeight: 600,
                   color: '#F59E0B',
-                  marginBottom: 12,
-                  display: 'block'
+                  marginBottom: 14,
+                  display: 'block',
+                  fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
                   {item.subTitle}
                 </span>
@@ -748,7 +773,7 @@ function RegistrationCards() {
                   lineHeight: 1.6,
                   margin: 0,
                   fontWeight: 400,
-                  fontFamily: "'Hind Siliguri', sans-serif"
+                  fontFamily: "'Inter', sans-serif"
                 }}>
                   {item.desc}
                 </p>
@@ -765,15 +790,15 @@ function RegistrationCards() {
         </div>
 
         {/* Primary CTA Button Below Box */}
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
+        <div style={{ textAlign: 'center', marginTop: 28 }}>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/doctors')}
             style={{
               background: '#F59E0B',
               color: '#0F172A',
               border: 'none',
-              borderRadius: 0,
-              padding: '14px 38px',
+              borderRadius: 8,
+              padding: '14px 42px',
               fontWeight: 800,
               fontSize: 15,
               cursor: 'pointer',
@@ -782,12 +807,12 @@ function RegistrationCards() {
               gap: 8,
               boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
               transition: 'all 0.3s ease',
-              fontFamily: "'Hind Siliguri', sans-serif"
+              fontFamily: "'Inter', sans-serif"
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#D97706' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#EAB308' }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
           >
-            <span>এখনই নিবন্ধন শুরু করুন</span>
+            <span>Start Searching</span>
             <IconArrowRight size={18} stroke={2.5} />
           </button>
         </div>
@@ -812,14 +837,14 @@ function RegistrationCards() {
         }
         .pic1-step-connector {
           position: absolute;
-          right: -13px;
+          right: -14px;
           top: 50%;
           transform: translateY(-50%);
-          width: 26px;
-          height: 26px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: #0B192C;
-          border: 1px solid rgba(245, 158, 11, 0.4);
+          border: 1px solid rgba(245, 158, 11, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -832,7 +857,7 @@ function RegistrationCards() {
           .pic1-step-col {
             border-right: none;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 28px 20px;
+            padding: 32px 20px;
           }
           .pic1-step-col:last-child {
             border-bottom: none;
@@ -912,8 +937,8 @@ function DigitalDashboardBanner() {
               <Col key={i} xs={12} md={6} lg={4}>
                 <div style={{
                   background: 'rgba(15, 30, 52, 0.75)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: 0,
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: 6,
                   padding: '16px 20px',
                   display: 'flex',
                   alignItems: 'center',
@@ -927,7 +952,7 @@ function DigitalDashboardBanner() {
                     height: 38,
                     background: '#F59E0B',
                     color: '#0B192C',
-                    borderRadius: 0,
+                    borderRadius: 6,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -964,8 +989,23 @@ function DigitalDashboardBanner() {
         </div>
 
         {/* Sub-label below cards */}
-        <div style={{ textAlign: 'center', marginBottom: 24, fontSize: 13, color: '#64748B', fontWeight: 600 }}>
-          doctorbooklet.com Owner Dashboard
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{
+            display: 'inline-block',
+            padding: '4px 14px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 4,
+            fontSize: 12,
+            color: '#64748B',
+            fontFamily: "'Inter', monospace",
+            marginBottom: 6
+          }}>
+            doctorbooklet.com/dashboard
+          </div>
+          <div style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            doctorbooklet.com Owner Dashboard
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -1431,6 +1471,260 @@ function PatientTestimonialsSection() {
   )
 }
 
+// ─── REGISTRATION SECTION (1ST IMAGE CONTENT IN 2ND IMAGE DARK STEP DESIGN) ──────
+function DarkRegistrationSection() {
+  const navigate = useNavigate()
+
+  const steps = [
+    {
+      stepNum: 'STEP 01',
+      title: 'Doctor Registration',
+      subTitle: 'ডাক্তার হিসেবে যুক্ত হোন',
+      desc: 'আপনার প্র্যাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
+      link: '/register?role=doctor',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="7" r="4" />
+          <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
+          <path d="M16 11l2 2 4-4" stroke="#F59E0B" strokeWidth="1.5" />
+          <path d="M12 11v4" stroke="#F59E0B" strokeWidth="1.5" />
+        </svg>
+      ),
+    },
+    {
+      stepNum: 'STEP 02',
+      title: 'Hospital Registration',
+      subTitle: 'হাসপাতাল পার্টনার হোন',
+      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
+      link: '/register?role=hospital',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M9 12h6M12 9v6" stroke="#F59E0B" strokeWidth="1.5" />
+          <path d="M8 4v-1h8v1" />
+        </svg>
+      ),
+    },
+    {
+      stepNum: 'STEP 03',
+      title: 'Patient Registration',
+      subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
+      desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
+      link: '/register?role=patient',
+      icon: (
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="7" r="3" />
+          <path d="M3 21v-2a5 5 0 0 1 10 0v2" />
+          <polyline points="16 11 18 13 22 9" stroke="#F59E0B" strokeWidth="1.5" />
+        </svg>
+      ),
+    }
+  ]
+
+  return (
+    <section className="registration-section" style={{ padding: '42px 0 32px', background: '#F8FAFC' }}>
+      <Container>
+        {/* Header Title & Subtitle */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <h2 style={{
+            fontSize: 'clamp(26px, 3.8vw, 36px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            marginBottom: 8,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+          }}>
+            সহজ ৩টি ধাপে নিবন্ধন করুন
+          </h2>
+          <p style={{
+            fontSize: 15,
+            color: '#64748B',
+            fontWeight: 500,
+            maxWidth: 580,
+            margin: '0 auto',
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            ডাক্তার, হাসপাতাল এবং রোগী — সবার জন্য ডিজিটাল স্বাস্থ্যসেবা
+          </p>
+        </div>
+
+        {/* Dark Navy 3-Column Container */}
+        <div style={{
+          background: '#0B192C',
+          borderRadius: 8,
+          boxShadow: '0 20px 45px -10px rgba(11, 25, 44, 0.3)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div className="pic1-steps-grid">
+            {steps.map((item, i) => (
+              <div
+                key={i}
+                className="pic1-step-col"
+                onClick={() => navigate(item.link)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '42px 32px 38px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  position: 'relative',
+                  transition: 'background 0.3s ease'
+                }}
+              >
+                {/* Step Label */}
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#F59E0B',
+                  letterSpacing: '2px',
+                  marginBottom: 24,
+                  textTransform: 'uppercase',
+                  fontFamily: "'Inter', sans-serif"
+                }}>
+                  {item.stepNum}
+                </span>
+
+                {/* Yellow Icon */}
+                <div style={{
+                  marginBottom: 22,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 56,
+                  transition: 'transform 0.3s ease'
+                }} className="pic1-icon-wrap">
+                  {item.icon}
+                </div>
+
+                {/* English Title */}
+                <h3 style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  marginBottom: 4,
+                  fontFamily: "'Inter', sans-serif"
+                }}>
+                  {item.title}
+                </h3>
+
+                {/* Bangla Subtitle */}
+                <span style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#F59E0B',
+                  marginBottom: 14,
+                  display: 'block',
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  {item.subTitle}
+                </span>
+
+                {/* Description */}
+                <p style={{
+                  fontSize: 13,
+                  color: '#94A3B8',
+                  lineHeight: 1.6,
+                  margin: 0,
+                  fontWeight: 400,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  {item.desc}
+                </p>
+
+                {/* Arrow connector between columns (desktop only) */}
+                {i < steps.length - 1 && (
+                  <div className="pic1-step-connector">
+                    <IconChevronRight size={14} color="#F59E0B" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Yellow Action Button */}
+        <div style={{ textAlign: 'center', marginTop: 28 }}>
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              background: '#F59E0B',
+              color: '#0F172A',
+              border: 'none',
+              borderRadius: 8,
+              padding: '14px 42px',
+              fontWeight: 800,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
+              transition: 'all 0.3s ease',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#EAB308' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+          >
+            <span>এখনই নিবন্ধন শুরু করুন</span>
+            <IconArrowRight size={18} stroke={2.5} />
+          </button>
+        </div>
+      </Container>
+
+      <style>{`
+        .pic1-steps-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .pic1-step-col {
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .pic1-step-col:last-child {
+          border-right: none;
+        }
+        .pic1-step-col:hover {
+          background: rgba(255, 255, 255, 0.03);
+        }
+        .pic1-step-col:hover .pic1-icon-wrap {
+          transform: translateY(-4px) scale(1.08);
+        }
+        .pic1-step-connector {
+          position: absolute;
+          right: -14px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #0B192C;
+          border: 1px solid rgba(245, 158, 11, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+        }
+        @media (max-width: 860px) {
+          .pic1-steps-grid {
+            grid-template-columns: 1fr;
+          }
+          .pic1-step-col {
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 32px 20px;
+          }
+          .pic1-step-col:last-child {
+            border-bottom: none;
+          }
+          .pic1-step-connector {
+            display: none;
+          }
+        }
+      `}</style>
+    </section>
+  )
+}
+
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 function HomePage() {
   // SINGLE API CALL: Fetches top doctors, top hospitals, specialties, and stats
@@ -1458,6 +1752,14 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <TopHospitals hospitals={data?.top_hospitals} loading={isLoading} />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <DarkRegistrationSection />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <DigitalDashboardBanner />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>

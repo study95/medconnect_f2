@@ -1,5 +1,6 @@
 // PurchaseReportPage.jsx — Admin Purchase Income Report
 import { useState, useEffect, useRef } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getPurchaseReport, getDoctors, getHospitals } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
@@ -108,6 +109,7 @@ export default function PurchaseReportPage() {
   const [data, setData] = useState([])
   const [summary, setSummary] = useState({})
   const [loading, setLoading] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   
   const [doctors, setDoctors] = useState([])
   const [hospitals, setHospitals] = useState([])
@@ -121,6 +123,8 @@ export default function PurchaseReportPage() {
     month: '', 
     year: new Date().getFullYear().toString() 
   })
+
+  const hasFilters = Boolean(filters.subscriber_id || filters.plan_name || filters.month || filters.date_from || filters.date_to)
 
   useEffect(() => { 
     loadOptions()
@@ -151,7 +155,7 @@ export default function PurchaseReportPage() {
       setData(reportData)
       setSummary(reportSummary)
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -186,14 +190,25 @@ export default function PurchaseReportPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Subscription purchase analytics and financial overview</p>
         </div>
-        <button 
-          className="admin-btn admin-btn-outline" 
-          onClick={fetchReport}
-          disabled={loading}
-          style={{ background: 'var(--admin-card-bg)' }}
-        >
-          {loading ? '...' : '🔄 Refresh'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <button 
+            className="admin-btn admin-btn-outline" 
+            onClick={fetchReport}
+            disabled={loading}
+            style={{ background: 'var(--admin-card-bg)' }}
+          >
+            {loading ? '...' : '🔄 Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -224,52 +239,54 @@ export default function PurchaseReportPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="admin-card" style={{ marginBottom: 28, overflow: 'visible', borderTop: '4px solid var(--admin-primary)' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            
-            <SearchableSelect 
-              label="Select Doctor" 
-              options={doctors} 
-              value={filters.subscriber_id} 
-              onChange={val => setFilters({ ...filters, subscriber_id: val, subscriber_role: val ? 'doctor' : '' })} 
-              placeholder="All Doctors" 
-            />
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, overflow: 'visible', borderTop: '4px solid var(--admin-primary)' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              
+              <SearchableSelect 
+                label="Select Doctor" 
+                options={doctors} 
+                value={filters.subscriber_id} 
+                onChange={val => setFilters({ ...filters, subscriber_id: val, subscriber_role: val ? 'doctor' : '' })} 
+                placeholder="All Doctors" 
+              />
 
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Package Name</label>
-              <select className="admin-form-select" value={filters.plan_name} onChange={e => handleFilter('plan_name', e.target.value)} style={{ height: 42 }}>
-                <option value="">All Packages</option>
-                {uniquePlans.map(plan => <option key={plan} value={plan}>{plan}</option>)}
-              </select>
-            </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Package Name</label>
+                <select className="admin-form-select" value={filters.plan_name} onChange={e => handleFilter('plan_name', e.target.value)} style={{ height: 42 }}>
+                  <option value="">All Packages</option>
+                  {uniquePlans.map(plan => <option key={plan} value={plan}>{plan}</option>)}
+                </select>
+              </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Month</label>
-              <select className="admin-form-select" value={filters.month} onChange={e => handleFilter('month', e.target.value)} style={{ height: 42 }}>
-                <option value="">All Months</option>
-                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Month</label>
+                <select className="admin-form-select" value={filters.month} onChange={e => handleFilter('month', e.target.value)} style={{ height: 42 }}>
+                  <option value="">All Months</option>
+                  {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Year</label>
-              <input type="number" className="admin-form-input" value={filters.year} onChange={e => handleFilter('year', e.target.value)} style={{ height: 42 }} />
-            </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Year</label>
+                <input type="number" className="admin-form-input" value={filters.year} onChange={e => handleFilter('year', e.target.value)} style={{ height: 42 }} />
+              </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, flex: 1 }}>Filter</button>
-              <button 
-                className="admin-btn admin-btn-outline" 
-                onClick={() => setFilters({ subscriber_id: '', subscriber_role: '', plan_name: '', date_from: '', date_to: '', month: '', year: new Date().getFullYear().toString() })}
-                style={{ height: 42 }}
-              >
-                Reset
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, flex: 1 }}>Filter</button>
+                <button 
+                  className="admin-btn admin-btn-outline" 
+                  onClick={() => setFilters({ subscriber_id: '', subscriber_role: '', plan_name: '', date_from: '', date_to: '', month: '', year: new Date().getFullYear().toString() })}
+                  style={{ height: 42 }}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Data Table */}
       <div className="admin-card">

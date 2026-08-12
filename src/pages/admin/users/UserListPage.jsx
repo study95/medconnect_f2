@@ -1,5 +1,6 @@
 // UserListPage.jsx — User management (Admin only)
 import { useState, useEffect } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -39,12 +40,15 @@ export default function UserListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [changingRole, setChangingRole] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
   
   // Permissions State
   const [availablePermissions, setAvailablePermissions] = useState([])
   const [selectedUserForPerms, setSelectedUserForPerms] = useState(null)
   const [userPermissions, setUserPermissions] = useState([]) 
   const [savingPerms, setSavingPerms] = useState(false)
+
+  const hasFilters = Boolean(search || roleFilter || typeFilter || dateFrom || dateTo)
 
   useEffect(() => { 
     fetchUsers()
@@ -67,7 +71,7 @@ export default function UserListPage() {
       setLoading(true)
       const params = {}
       if (roleFilter) params.role = roleFilter
-      if (typeFilter) params.registration_type = typeFilter
+      if (typeFilter) params.user_type = typeFilter
       if (dateFrom) params.date_from = dateFrom
       if (dateTo) params.date_to = dateTo
       if (search) params.search = search
@@ -92,8 +96,7 @@ export default function UserListPage() {
     setChangingRole(userId)
     try {
       await updateUserRole(userId, newRole)
-      
-      fetchUsers()
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
     } catch (err) {
 } finally {
       setChangingRole(null)
@@ -116,7 +119,8 @@ export default function UserListPage() {
 
   const handleOpenPerms = (user) => {
     setSelectedUserForPerms(user)
-    setUserPermissions(user.permissions?.map(p => p.name) || [])
+    const activeNames = (user.permissions || []).map(p => typeof p === 'string' ? p : p.name)
+    setUserPermissions(activeNames)
   }
 
   const togglePermission = (permName) => {
@@ -153,53 +157,64 @@ export default function UserListPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>👤 User Directory</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Manage system access, roles, and administrative permissions</p>
         </div>
+        <button
+          type="button"
+          className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+          onClick={() => setShowFilters(p => !p)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+          {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
       </div>
 
-      <div className="admin-filters-bar">
-        <div className="admin-filters-grid">
-          <div className="admin-form-group">
-            <label className="admin-form-label">Search Identity</label>
-            <input 
-              type="text" 
-              className="admin-form-input" 
-              placeholder="Name, email or phone..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            />
-          </div>
-          <div className="admin-form-group">
-            <label className="admin-form-label">System Role</label>
-            <select 
-              className="admin-form-select" 
-              value={roleFilter} 
-              onChange={e => setRoleFilter(e.target.value)}
-              style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            >
-              <option value="">All Roles</option>
-              {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
-            </select>
-          </div>
-          <div className="admin-form-group">
-            <label className="admin-form-label">Entity Type</label>
-            <select 
-              className="admin-form-select" 
-              value={typeFilter} 
-              onChange={e => setTypeFilter(e.target.value)}
-              style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-            >
-              <option value="">All Types</option>
-              <option value="doctor">Doctor</option>
-              <option value="hospital">Hospital</option>
-              <option value="patient">Patient/User</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button className="admin-btn admin-btn-primary" onClick={fetchUsers} style={{ flex: 1 }}>Filter</button>
-            <button className="admin-btn admin-btn-outline" onClick={clearFilters}>Reset</button>
+      {showFilters && (
+        <div className="admin-filters-bar">
+          <div className="admin-filters-grid">
+            <div className="admin-form-group">
+              <label className="admin-form-label">Search Identity</label>
+              <input 
+                type="text" 
+                className="admin-form-input" 
+                placeholder="Name, email or phone..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              />
+            </div>
+            <div className="admin-form-group">
+              <label className="admin-form-label">System Role</label>
+              <select 
+                className="admin-form-select" 
+                value={roleFilter} 
+                onChange={e => setRoleFilter(e.target.value)}
+                style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              >
+                <option value="">All Roles</option>
+                {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
+              </select>
+            </div>
+            <div className="admin-form-group">
+              <label className="admin-form-label">Entity Type</label>
+              <select 
+                className="admin-form-select" 
+                value={typeFilter} 
+                onChange={e => setTypeFilter(e.target.value)}
+                style={{ background: 'var(--admin-card-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+              >
+                <option value="">All Types</option>
+                <option value="doctor">Doctor</option>
+                <option value="hospital">Hospital</option>
+                <option value="patient">Patient/User</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="admin-btn admin-btn-primary" onClick={fetchUsers} style={{ flex: 1 }}>Filter</button>
+              <button className="admin-btn admin-btn-outline" onClick={clearFilters}>Reset</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="admin-card">
         <div className="admin-card-header">

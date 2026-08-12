@@ -1,5 +1,6 @@
 // ServiceEnablementPage.jsx — Admin Commission & Service Management with deep location filters
 import { useState, useEffect, useRef } from 'react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import {
   getServiceEnablements, updateServiceEnablement,
@@ -195,6 +196,7 @@ function DoctorServiceTab() {
   const [doctorsOptions, setDoctorsOptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
   
   const [search, setSearch] = useState('')
   const [doctorFilter, setDoctorFilter] = useState('')
@@ -271,7 +273,7 @@ function DoctorServiceTab() {
       const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
       setDoctorsData(list)
     } catch (err) {
-setDoctorsData([])
+      setDoctorsData([])
     } finally {
       setLoading(false)
     }
@@ -280,7 +282,6 @@ setDoctorsData([])
   const handleUpdate = async (doctorId, field, value) => {
     const doctor = (Array.isArray(doctorsData) ? doctorsData : []).find(d => d.id === doctorId)
     if (doctor?.has_active_access && field !== 'is_enabled') {
-      
       return
     }
 
@@ -298,10 +299,9 @@ setDoctorsData([])
     setSaving(doctorId)
     try {
       await updateServiceEnablement(doctorId, payload)
-      
       fetchData()
     } catch (err) {
-} finally {
+    } finally {
       setSaving(null)
     }
   }
@@ -334,55 +334,69 @@ setDoctorsData([])
 
   return (
     <>
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 240px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  className="admin-form-input" 
-                  placeholder="Name or BMDC..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40 }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button
+          type="button"
+          className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+          onClick={() => setShowFilters(p => !p)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+          {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+      </div>
+
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 240px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="admin-form-input" 
+                    placeholder="Name or BMDC..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40 }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
-            <SearchableSelect label="Division" options={divisions} value={divisionId} onChange={setDivisionId} placeholder="All Divisions" />
-            <SearchableSelect label="District" options={districts} value={districtId} onChange={setDistrictId} placeholder="All Districts" disabled={!divisionId} />
-            <SearchableSelect label="Upazila" options={upazilas} value={upazilaId} onChange={setUpazilaId} placeholder="All Upazilas" disabled={!districtId} />
-            <SearchableSelect label="Union" options={unions} value={unionId} onChange={setUnionId} placeholder="All Unions" disabled={!upazilaId} />
-            <SearchableSelect label="Doctor Name" options={doctorsOptions} value={doctorFilter} onChange={setDoctorFilter} placeholder="Search Doctor" />
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-              <select className="admin-form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42 }}>
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Service Type</label>
-              <select className="admin-form-select" value={serviceTypeFilter} onChange={e => setServiceTypeFilter(e.target.value)} style={{ width: '100%', height: 42 }}>
-                <option value="">All Types</option>
-                <option value="package">📦 Package</option>
-                <option value="percentage">📊 Percentage</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchData} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
-              {hasFilters && (
-                <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                  Reset
-                </button>
-              )}
+              <SearchableSelect label="Division" options={divisions} value={divisionId} onChange={setDivisionId} placeholder="All Divisions" />
+              <SearchableSelect label="District" options={districts} value={districtId} onChange={setDistrictId} placeholder="All Districts" disabled={!divisionId} />
+              <SearchableSelect label="Upazila" options={upazilas} value={upazilaId} onChange={setUpazilaId} placeholder="All Upazilas" disabled={!districtId} />
+              <SearchableSelect label="Union" options={unions} value={unionId} onChange={setUnionId} placeholder="All Unions" disabled={!upazilaId} />
+              <SearchableSelect label="Doctor Name" options={doctorsOptions} value={doctorFilter} onChange={setDoctorFilter} placeholder="Search Doctor" />
+              <div style={{ flex: '1 1 140px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
+                <select className="admin-form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42 }}>
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div style={{ flex: '1 1 140px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Service Type</label>
+                <select className="admin-form-select" value={serviceTypeFilter} onChange={e => setServiceTypeFilter(e.target.value)} style={{ width: '100%', height: 42 }}>
+                  <option value="">All Types</option>
+                  <option value="package">📦 Package</option>
+                  <option value="percentage">📊 Percentage</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchData} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
+                {hasFilters && (
+                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="admin-card">
         <div className="admin-card-header" style={{ background: 'var(--admin-bg)' }}>
           <h3 className="admin-card-title">Doctor Service Controls</h3>

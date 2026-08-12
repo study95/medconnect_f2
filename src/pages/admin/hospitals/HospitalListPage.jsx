@@ -3,6 +3,7 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import {
   getHospitals, deleteHospital, updateHospital,
@@ -114,6 +115,7 @@ export default function HospitalListPage() {
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -251,59 +253,72 @@ export default function HospitalListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>{hospitals.length} total facilities registered</p>
         </div>
-        {isAdmin && (
-          <Link to="/admin/hospitals/create" className="admin-btn admin-btn-primary" style={{ borderRadius: 12, padding: '10px 24px', fontWeight: 800 }}>
-            + Add Hospital
-          </Link>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
+            onClick={() => setShowFilters(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
+            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          {isAdmin && (
+            <Link to="/admin/hospitals/create" className="admin-btn admin-btn-primary">
+              + Add Hospital
+            </Link>
+          )}
+        </div>
       </div>
 
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #10B981', overflow: 'visible' }}>
-        <div className="admin-card-body" style={{ overflow: 'visible' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
+      {showFilters && (
+        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #10B981', overflow: 'visible' }}>
+          <div className="admin-card-body" style={{ overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
 
-            <div style={{ flex: '1 1 240px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  className="status-select"
-                  placeholder="Facility name or email..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                />
-                <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+              <div style={{ flex: '1 1 240px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    className="status-select"
+                    placeholder="Facility name or email..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                  />
+                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
+                </div>
               </div>
-            </div>
 
-            <SearchableSelect label="Division" options={divisions} value={divisionId} onChange={setDivisionId} placeholder="All Divisions" />
-            <SearchableSelect label="District" options={districts} value={districtId} onChange={setDistrictId} placeholder="All Districts" disabled={!divisionId} />
-            <SearchableSelect label="Upazila" options={upazilas} value={upazilaId} onChange={setUpazilaId} placeholder="All Upazilas" disabled={!districtId} />
-            <SearchableSelect label="Union" options={unions} value={unionId} onChange={setUnionId} placeholder="All Unions" disabled={!upazilaId} />
+              <SearchableSelect label="Division" options={divisions} value={divisionId} onChange={setDivisionId} placeholder="All Divisions" />
+              <SearchableSelect label="District" options={districts} value={districtId} onChange={setDistrictId} placeholder="All Districts" disabled={!divisionId} />
+              <SearchableSelect label="Upazila" options={upazilas} value={upazilaId} onChange={setUpazilaId} placeholder="All Upazilas" disabled={!districtId} />
+              <SearchableSelect label="Union" options={unions} value={unionId} onChange={setUnionId} placeholder="All Unions" disabled={!upazilaId} />
 
-            <SearchableSelect label="Select Hospital" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} placeholder="All Facilities" />
+              <SearchableSelect label="Select Hospital" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} placeholder="All Facilities" />
 
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-              <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+              <div style={{ flex: '1 1 140px' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
+                <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="admin-btn admin-btn-primary" onClick={fetchHospitals} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
-              {hasFilters && (
-                <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                  Reset
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="admin-btn admin-btn-primary" onClick={fetchHospitals} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
+                {hasFilters && (
+                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="admin-card">
         <div className="admin-card-header">
