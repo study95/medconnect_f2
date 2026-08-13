@@ -14,6 +14,11 @@ export default function FloatingBottomNav() {
   const location = useLocation();
   const { isLoggedIn } = useAuth();
 
+  // Hide floating bottom nav on doctor detail pages (/doctors/:id)
+  if (location.pathname.startsWith('/doctors/') && location.pathname !== '/doctors') {
+    return null;
+  }
+
   // Sequence: Home -> Doctor -> Hospital -> Service -> Login
   const navItems = [
     { id: 'home', icon: <IconHome size={22} stroke={1.8} />, path: '/', label: 'হোম' },

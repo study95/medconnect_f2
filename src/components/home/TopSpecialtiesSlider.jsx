@@ -158,58 +158,18 @@ function SpecCard({ spec, language, t, navigate }) {
   return (
     <div
       onClick={() => navigate(`/doctors?specialty_id=${spec.id}`)}
-      className="tss-card"
-      style={{
-        background: '#FFFFFF',
-        borderRadius: 0,
-        padding: '24px 16px 20px',
-        border: '1.5px solid #E2E8F0',
-        height: '100%',
-        minHeight: 145,
-        cursor: 'pointer',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-      }}
+      className="tss-green-card"
     >
-      {/* Icon Circle Container (Image 1 Style) */}
-      <div
-        className="tss-icon-box"
-        style={{
-          width: 54,
-          height: 54,
-          borderRadius: '50%',
-          background: '#F0FDFA',
-          color: '#00A88C',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 14,
-          transition: 'all 0.3s ease',
-          border: '1px solid rgba(0,168,140,0.15)'
-        }}
-      >
-        {getIcon(spec.name, 28)}
+      {/* Corner to Corner Diagonal Light Effect Overlay (Pic 3 Match) */}
+      <div className="tss-light-sheen" />
+
+      {/* Icon Box Container (Square Translucent like Image 3 Nephrology) */}
+      <div className="tss-icon-wrap">
+        {getIcon(spec.name, 30)}
       </div>
 
       {/* Specialty Title */}
-      <h4 style={{
-        fontSize: 14,
-        fontWeight: 800,
-        color: '#0F172A',
-        margin: 0,
-        lineHeight: 1.35,
-        textAlign: 'center',
-        fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden'
-      }}>
+      <h4 className="tss-title">
         {translateMetadata(spec.name, language, t)}
       </h4>
     </div>
@@ -357,33 +317,88 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
         </Modal.Body>
       </Modal>
 
-      {/* ── CSS ── */}
       <style>{`
-        .tss-nav-btn:hover {
-          background: #00A88C !important;
-          border-color: #00A88C !important;
-          color: white !important;
+        .tss-green-card {
+          background: linear-gradient(150deg, #02382B 0%, #064E3B 55%, #046C51 100%);
+          border-radius: 12px;
+          padding: 24px 14px 18px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          height: 100%;
+          min-height: 145px;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 8px 20px rgba(2, 44, 34, 0.25);
         }
-        .tss-card:hover {
-          border-color: #00A88C !important;
-          box-shadow: 0 8px 24px rgba(0,168,140,0.12) !important;
-          transform: translateY(-4px);
+
+        /* Corner to Corner Light Effect Overlay */
+        .tss-light-sheen {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 75%);
+          opacity: 0.35;
+          transition: opacity 0.4s ease, background 0.4s ease;
+          pointer-events: none;
         }
-        .tss-card:hover .tss-icon-box {
-          background: #00A88C !important;
-          color: #FFFFFF !important;
-          border-color: #00A88C !important;
+
+        /* Icon Container Box (Square Translucent like Image 3 Nephrology) */
+        .tss-icon-wrap {
+          width: 56px;
+          height: 56px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          color: #FFFFFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 12px;
+          transition: all 0.4s ease;
+          position: relative;
+          z-index: 2;
+        }
+
+        .tss-title {
+          font-size: 14px;
+          font-weight: 800;
+          color: #FFFFFF;
+          margin: 0;
+          line-height: 1.35;
+          text-align: center;
+          font-family: 'Hind Siliguri', 'Inter', sans-serif;
+          position: relative;
+          z-index: 2;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 🌟 HOVER MOUSE CORNER-TO-CORNER LIGHT EFFECT & GLOW (IMAGE 3 MATCH) */
+        .tss-green-card:hover {
+          background: linear-gradient(150deg, #004D38 0%, #007A55 55%, #00B875 100%) !important;
+          border-color: rgba(255, 255, 255, 0.4) !important;
+          transform: translateY(-5px) scale(1.02);
+          box-shadow: 0 14px 35px rgba(0, 184, 117, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+        }
+
+        .tss-green-card:hover .tss-light-sheen {
+          opacity: 1 !important;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 50%, transparent 100%) !important;
+        }
+
+        .tss-green-card:hover .tss-icon-wrap {
+          background: rgba(255, 255, 255, 0.25) !important;
+          border-color: rgba(255, 255, 255, 0.5) !important;
           transform: scale(1.08);
-        }
-        .tss-card:hover .tss-arrow {
-          background: #00A88C !important;
-          color: white !important;
-        }
-        .tss-show-all-card:hover {
-          background: #DCFCE7 !important;
-          border-style: solid !important;
-          transform: translateY(-4px);
-          box-shadow: 0 8px 24px rgba(0,168,140,0.1) !important;
+          box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
         }
       `}</style>
     </section>

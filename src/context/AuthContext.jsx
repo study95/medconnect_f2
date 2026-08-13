@@ -152,10 +152,10 @@ export function AuthProvider({ children }) {
   const registerDoctor = async (formData) => {
     try {
       if (formData instanceof FormData) {
-        formData.append('role', 'user')
+        formData.append('role', 'doctor')
         formData.append('type', 'doctor')
       } else {
-        formData.role = 'user'
+        formData.role = 'doctor'
         formData.type = 'doctor'
       }
  
@@ -175,10 +175,10 @@ export function AuthProvider({ children }) {
   const registerHospital = async (formData) => {
     try {
       if (formData instanceof FormData) {
-        formData.append('role', 'user')
+        formData.append('role', 'hospital')
         formData.append('type', 'hospital')
       } else {
-        formData.role = 'user'
+        formData.role = 'hospital'
         formData.type = 'hospital'
       }
  
@@ -209,7 +209,7 @@ export function AuthProvider({ children }) {
     if (!user) return []
     
     let roles = []
-    const rawRoles = user.roles || user.role || user.type || user.user_type
+    const rawRoles = user.roles || user.role
     
     if (Array.isArray(rawRoles)) {
       roles = rawRoles
@@ -229,18 +229,17 @@ export function AuthProvider({ children }) {
   
   const isAdmin = 
     hasRole('admin') || user?.role_id === 1 || String(user?.role_id) === 'admin' || 
-    Boolean(user?.is_admin) || Boolean(user?.isAdmin) || userType === 'admin';
+    Boolean(user?.is_admin) || Boolean(user?.isAdmin);
     
   const isDoctor = 
     hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 
-    Boolean(user?.is_doctor) || Boolean(user?.isDoctor) || userType === 'doctor';
-  
-  const isPatient =
-    hasRole('patient') || hasRole('user') || userType === 'patient';
+    Boolean(user?.is_doctor) || Boolean(user?.isDoctor);
     
   const isManager = 
-    hasRole('manager') || user?.role_id === 3 || String(user?.role_id) === 'manager' || 
-    Boolean(user?.is_manager) || Boolean(user?.isManager) || userType === 'hospital' || userType === 'manager';
+    hasRole('manager') || hasRole('hospital') || user?.role_id === 3 || String(user?.role_id) === 'manager' || 
+    Boolean(user?.is_manager) || Boolean(user?.isManager);
+
+  const isPatient = !isAdmin && !isDoctor && !isManager;
     
   const isStaff = isAdmin || isDoctor || isManager
 

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo-Only Preloader Demo</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    /* Fullscreen Preloader Container */
+    #website-preloader {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    #website-preloader.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Ambient Soft Radial Glow */
+    .preloader-glow {
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 230, 153, 0.16) 0%, rgba(5, 19, 37, 0.03) 60%, transparent 75%);
+      animation: ambientPulse 3s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    .preloader-logo-box {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    /* SVG Vector Logo */
+    .preloader-svg {
+      width: 120px;
+      height: 120px;
+      overflow: visible;
+    }
+
+    /* Base Dark 'D' Track */
+    .svg-d-base {
+      stroke: #051325;
+      stroke-width: 26;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 8px 20px rgba(5, 19, 37, 0.15));
+    }
+
+    /* Animated Light Beam Sweep */
+    .svg-d-light-beam {
+      stroke: #00FFB0;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 90 220;
+      stroke-dashoffset: 310;
+      filter: drop-shadow(0 0 8px #00FFB0) drop-shadow(0 0 14px rgba(0, 255, 176, 0.8));
+      animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    /* Soft Outer Light Glow Trail */
+    .svg-d-light-glow {
+      stroke: rgba(0, 255, 176, 0.4);
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 100 210;
+      stroke-dashoffset: 310;
+      filter: blur(4px);
+      animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    /* Inner Green '+' Cross with Glow & Pulse */
+    .svg-plus-cross {
+      filter: drop-shadow(0 0 12px rgba(0, 230, 153, 0.75)) drop-shadow(0 0 20px rgba(0, 230, 153, 0.4));
+      animation: crossGlowPulse 2.2s ease-in-out infinite alternate;
+      transform-origin: 88px 100px;
+    }
+
+    .svg-plus-arm {
+      stroke: #00B875;
+      stroke-width: 18;
+      stroke-linecap: round;
+    }
+
+    /* KEYFRAME ANIMATIONS */
+    @keyframes lightBeamSweep {
+      0% {
+        stroke-dashoffset: 310;
+        opacity: 0.2;
+      }
+      15% {
+        opacity: 1;
+      }
+      85% {
+        opacity: 1;
+      }
+      100% {
+        stroke-dashoffset: -310;
+        opacity: 0.2;
+      }
+    }
+
+    @keyframes crossGlowPulse {
+      0% {
+        transform: scale(0.97);
+        filter: drop-shadow(0 0 6px rgba(0, 230, 153, 0.4));
+      }
+      100% {
+        transform: scale(1.04);
+        filter: drop-shadow(0 0 16px rgba(0, 230, 153, 0.95)) drop-shadow(0 0 24px rgba(0, 255, 176, 0.6));
+      }
+    }
+
+    @keyframes ambientPulse {
+      0% {
+        transform: scale(0.92);
+        opacity: 0.4;
+      }
+      100% {
+        transform: scale(1.15);
+        opacity: 0.9;
+      }
+    }
+
+    /* Page Demo Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .demo-content {
+      max-width: 800px;
+      margin: 80px auto;
+      padding: 40px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+
+    .btn-replay {
+      padding: 12px 24px;
+      background: #00b875;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-replay:hover {
+      background: #00965e;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGO-ONLY PRELOADER HTML -->
+  <div id="website-preloader">
+    <div class="preloader-glow"></div>
+    <div class="preloader-logo-box">
+      <svg class="preloader-svg" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="svg-d-base" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+        <path class="svg-d-light-glow" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+        <path class="svg-d-light-beam" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+        <g class="svg-plus-cross">
+          <line class="svg-plus-arm" x1="88" y1="76" x2="88" y2="124" />
+          <line class="svg-plus-arm" x1="64" y1="100" x2="112" y2="100" />
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Main Website Content -->
+  <div class="demo-content">
+    <h1>Clean Logo Preloader Active</h1>
+    <p>Pure animated logo without text or progress bar.</p>
+    <button class="btn-replay" onclick="replayPreloader()">Replay Preloader</button>
+  </div>
+
+  <script>
+    window.addEventListener('load', function() {
+      const preloader = document.getElementById('website-preloader');
+      if (preloader) {
+        setTimeout(function() {
+          preloader.classList.add('fade-out');
+          setTimeout(function() {
+            preloader.style.display = 'none';
+          }, 500);
+        }, 500);
+      }
+    });
+
+    function replayPreloader() {
+      const preloader = document.getElementById('website-preloader');
+      if (preloader) {
+        preloader.style.display = 'flex';
+        void preloader.offsetWidth;
+        preloader.classList.remove('fade-out');
+        
+        setTimeout(function() {
+          preloader.classList.add('fade-out');
+          setTimeout(function() {
+            preloader.style.display = 'none';
+          }, 500);
+        }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>

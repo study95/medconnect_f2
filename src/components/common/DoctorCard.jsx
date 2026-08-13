@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare
+  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent
 } from '@tabler/icons-react'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import OptimizedImage from './OptimizedImage'
@@ -12,10 +12,10 @@ const DEMO_AVATAR = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-
 const enToBn = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
 const toBnNum = (str) => str ? String(str).replace(/\d/g, d => enToBn[d]) : '';
 
-// Verified Badge Icon (Blue)
+// Verified Badge Icon (Green)
 const VerifiedBlueBadge = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path fillRule="evenodd" clipRule="evenodd" d="M10.374 2.378c.95-.504 2.102-.504 3.052 0l1.107.587c.453.24.966.35 1.478.318l1.247-.078c1.074-.067 2.072.51 2.52 1.487l.52 1.139c.212.467.553.858.986 1.133l1.054.67c.907.577 1.348 1.666 1.114 2.704l-.271 1.22c-.11.498-.07 1.016.117 1.49l.455 1.168c.394 1.012.046 2.167-.879 2.793l-1.071.724c-.439.297-.76.712-.927 1.199l-.409 1.185c-.352 1.026-1.378 1.684-2.457 1.579l-1.248-.121c-.512-.05-1.026.04-1.488.261l-1.127.549c-.968.472-2.12.472-3.088 0l-1.127-.549c-.462-.221-.976-.311-1.488-.261l-1.248.121c-1.079.105-2.105-.553-2.457-1.579l-.409-1.185c-.167-.487-.488-.902-.927-1.199l-1.071-.724c-.925-.626-1.273-1.781-.879-2.793l.455-1.168c.187-.474.227-.992.117-1.49l-.271-1.22c-.234-1.038.207-2.127 1.114-2.704l1.054-.67c.433-.275.774-.666.986-1.133l.52-1.139c.448-.977 1.446-1.554 2.52-1.487l1.247.078c.512.032 1.025-.078 1.478-.318l1.107-.587z" fill="#2563EB"/>
+    <path fillRule="evenodd" clipRule="evenodd" d="M10.374 2.378c.95-.504 2.102-.504 3.052 0l1.107.587c.453.24.966.35 1.478.318l1.247-.078c1.074-.067 2.072.51 2.52 1.487l.52 1.139c.212.467.553.858.986 1.133l1.054.67c.907.577 1.348 1.666 1.114 2.704l-.271 1.22c-.11.498-.07 1.016.117 1.49l.455 1.168c.394 1.012.046 2.167-.879 2.793l-1.071.724c-.439.297-.76.712-.927 1.199l-.409 1.185c-.352 1.026-1.378 1.684-2.457 1.579l-1.248-.121c-.512-.05-1.026.04-1.488.261l-1.127.549c-.968.472-2.12.472-3.088 0l-1.127-.549c-.462-.221-.976-.311-1.488-.261l-1.248.121c-1.079.105-2.105-.553-2.457-1.579l-.409-1.185c-.167-.487-.488-.902-.927-1.199l-1.071-.724c-.925-.626-1.273-1.781-.879-2.793l.455-1.168c.187-.474.227-.992.117-1.49l-.271-1.22c-.234-1.038.207-2.127 1.114-2.704l1.054-.67c.433-.275.774-.666.986-1.133l.52-1.139c.448-.977 1.446-1.554 2.52-1.487l1.247.078c.512.032 1.025-.078 1.478-.318l1.107-.587z" fill="#00B875"/>
     <path fillRule="evenodd" clipRule="evenodd" d="M16.707 8.293a1 1 0 010 1.414l-5.5 5.5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 111.414-1.414L10.5 13.086l4.793-4.793a1 1 0 011.414 0z" fill="white"/>
   </svg>
 )
@@ -183,11 +183,11 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     {doctor.name}
                   </h3>
 
-                  {/* 2. Specialty with Blue Background Badge */}
+                  {/* 2. Specialty with Green Background Badge */}
                   <div style={{ marginTop: 4, marginBottom: 4 }}>
                     <span style={{
                       display: 'inline-block',
-                      background: '#2563EB',
+                      background: '#00B875',
                       color: 'white',
                       fontSize: 11.5,
                       fontWeight: 700,
@@ -310,37 +310,52 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                   style={{
                     flex: 1,
                     background: 'white',
-                    color: '#0B192C',
-                    border: '1.5px solid #0B192C',
-                    borderRadius: 6,
-                    padding: '8px 14px',
-                    fontSize: 12.5,
+                    color: '#0F172A',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: 8,
+                    padding: '8px 16px',
+                    fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
                 >
-                  View Details
+                  <IconEye size={16} />
+                  <span>বিস্তারিত দেখুন</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleBook}
                   style={{
                     flex: 1,
-                    background: '#2563EB',
+                    background: '#00B875',
                     color: 'white',
                     border: 'none',
-                    borderRadius: 6,
-                    padding: '8px 16px',
-                    fontSize: 12.5,
-                    fontWeight: 700,
+                    borderRadius: 8,
+                    padding: '8px 18px',
+                    fontSize: 13,
+                    fontWeight: 800,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
                 >
-                  Book Appointment
+                  <IconCalendarEvent size={16} color="#FFFFFF" />
+                  <span>অ্যাপয়েন্টমেন্ট নিন</span>
                 </button>
               </div>
             </div>
@@ -436,7 +451,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           <div style={{ marginTop: 2, marginBottom: 2 }}>
             <span style={{
               display: 'inline-block',
-              background: '#2563EB',
+              background: '#00B875',
               color: 'white',
               fontSize: 11,
               fontWeight: 700,
@@ -483,23 +498,54 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           type="button"
           onClick={handleDetails}
           style={{
-            flex: 1, height: 36, borderRadius: 6, border: '1px solid #E2E8F0',
-            background: 'white', color: '#475569', fontWeight: 700, fontSize: 12.5,
-            cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif"
+            flex: 1,
+            height: 38,
+            borderRadius: 8,
+            border: '1.5px solid #CBD5E1',
+            background: 'white',
+            color: '#0F172A',
+            fontWeight: 700,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            fontFamily: "'Hind Siliguri', sans-serif"
           }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
         >
-          View Details
+          <IconEye size={15} />
+          <span>বিস্তারিত দেখুন</span>
         </button>
         <button
           type="button"
           onClick={handleBook}
           style={{
-            flex: 1, height: 36, borderRadius: 6, border: 'none',
-            background: '#2563EB', color: 'white', fontWeight: 700, fontSize: 12.5,
-            cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif"
+            flex: 1,
+            height: 38,
+            borderRadius: 8,
+            border: 'none',
+            background: '#00B875',
+            color: 'white',
+            fontWeight: 800,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
+            fontFamily: "'Hind Siliguri', sans-serif"
           }}
+          onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
+          onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
         >
-          Book Appointment
+          <IconCalendarEvent size={15} color="#FFFFFF" />
+          <span>অ্যাপয়েন্টমেন্ট নিন</span>
         </button>
       </div>
     </div>

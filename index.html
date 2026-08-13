@@ -8,134 +8,180 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;600;700;800;900&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
+    
+    <!-- PRELOADER STYLES -->
     <style>
-      #initial-preloader {
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #website-preloader {
         position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: radial-gradient(circle at center, #FFFFFF 0%, #F8FAFC 100%);
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
         z-index: 999999;
-        font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+        background: #FFFFFF;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+        user-select: none;
       }
-      .init-glow {
+
+      .preloader-glow {
         position: absolute;
-        width: 320px;
-        height: 320px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 340px;
+        height: 340px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(0, 168, 140, 0.12) 0%, rgba(0, 168, 140, 0) 70%);
-        filter: blur(30px);
-        animation: init-pulse 3s ease-in-out infinite;
+        background: radial-gradient(circle, rgba(0, 230, 153, 0.16) 0%, rgba(5, 19, 37, 0.03) 60%, transparent 75%);
+        animation: ambientPulse 3s ease-in-out infinite alternate;
+        pointer-events: none;
       }
-      .init-logo-box {
-        position: relative;
-        width: 140px;
-        height: 140px;
+
+      .preloader-logo-box {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 120px;
+        height: 120px;
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-      .init-ring-outer {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        border: 2px dashed rgba(0, 168, 140, 0.25);
-        animation: init-spin 12s linear infinite;
-      }
-      .init-ring-spin {
-        position: absolute;
-        width: 90%;
-        height: 90%;
-        border-radius: 50%;
-        border: 2.5px solid transparent;
-        border-top-color: #00A88C;
-        border-right-color: rgba(0, 168, 140, 0.3);
-        animation: init-spin-fast 1.2s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
-      }
-      .init-card {
-        width: 72px;
-        height: 72px;
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.95);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 14px 35px rgba(0, 168, 140, 0.18), 0 0 0 1px rgba(0, 168, 140, 0.1);
-        z-index: 2;
-        padding: 10px;
-        animation: init-breathe 2.4s ease-in-out infinite;
-      }
-      .init-card img {
-        max-height: 44px;
-        max-width: 44px;
-        object-fit: contain;
-      }
-      .init-title {
-        margin-top: 28px;
-        font-size: 24px;
-        font-weight: 900;
-        color: #0F172A;
-        letter-spacing: -0.8px;
-        text-align: center;
         z-index: 2;
       }
-      .init-title span { color: #00A88C; }
-      .init-sub {
-        font-size: 12px;
-        color: #64748B;
-        font-weight: 700;
-        margin-top: 6px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        text-align: center;
-        z-index: 2;
+
+      .preloader-svg {
+        width: 120px;
+        height: 120px;
+        display: block;
+        overflow: visible;
       }
-      .init-bar {
-        width: 140px;
-        height: 4px;
-        background: rgba(0, 168, 140, 0.12);
-        border-radius: 10px;
-        margin: 12px auto 0;
-        overflow: hidden;
-        position: relative;
-        z-index: 2;
+
+      .svg-d-base {
+        stroke: #051325;
+        stroke-width: 26;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 8px 20px rgba(5, 19, 37, 0.15));
       }
-      .init-bar-fill {
-        position: absolute;
-        top: 0; left: 0; bottom: 0;
-        width: 45%;
-        background: linear-gradient(90deg, #00A88C, #00D4AF);
-        border-radius: 10px;
-        animation: init-bar-slide 1.5s ease-in-out infinite;
+
+      .svg-d-light-beam {
+        stroke: #00FFB0;
+        stroke-width: 5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 90 220;
+        stroke-dashoffset: 310;
+        filter: drop-shadow(0 0 8px #00FFB0) drop-shadow(0 0 14px rgba(0, 255, 176, 0.8));
+        animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       }
-      @keyframes init-spin { to { transform: rotate(360deg); } }
-      @keyframes init-spin-fast { to { transform: rotate(360deg); } }
-      @keyframes init-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-      @keyframes init-pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
-      @keyframes init-bar-slide { 0% { left: -45%; } 50% { left: 100%; } 100% { left: -45%; } }
+
+      .svg-d-light-glow {
+        stroke: rgba(0, 255, 176, 0.4);
+        stroke-width: 12;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 100 210;
+        stroke-dashoffset: 310;
+        filter: blur(4px);
+        animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      .svg-plus-cross {
+        filter: drop-shadow(0 0 12px rgba(0, 230, 153, 0.75)) drop-shadow(0 0 20px rgba(0, 230, 153, 0.4));
+        animation: crossGlowPulse 2.2s ease-in-out infinite alternate;
+        transform-origin: 88px 100px;
+      }
+
+      .svg-plus-arm {
+        stroke: #00B875;
+        stroke-width: 18;
+        stroke-linecap: round;
+      }
+
+      @keyframes lightBeamSweep {
+        0% { stroke-dashoffset: 310; opacity: 0.2; }
+        15% { opacity: 1; }
+        85% { opacity: 1; }
+        100% { stroke-dashoffset: -310; opacity: 0.2; }
+      }
+
+      @keyframes crossGlowPulse {
+        0% { transform: scale(0.97); filter: drop-shadow(0 0 6px rgba(0, 230, 153, 0.4)); }
+        100% { transform: scale(1.04); filter: drop-shadow(0 0 16px rgba(0, 230, 153, 0.95)) drop-shadow(0 0 24px rgba(0, 255, 176, 0.6)); }
+      }
+
+      @keyframes ambientPulse {
+        0% { transform: scale(0.92); opacity: 0.4; }
+        100% { transform: scale(1.15); opacity: 0.9; }
+      }
     </style>
   </head>
   <body>
-    <div id="root">
-      <div id="initial-preloader">
-        <div class="init-glow"></div>
-        <div class="init-logo-box">
-          <div class="init-ring-outer"></div>
-          <div class="init-ring-spin"></div>
-          <div class="init-card">
-            <img src="/doctorBookletLogo.png" alt="Doctor Booklet Logo" />
-          </div>
-        </div>
-        <div class="init-title">Doctor <span>Booklet</span></div>
-        <div class="init-sub">LOADING EXCELLENCE...</div>
-        <div class="init-bar">
-          <div class="init-bar-fill"></div>
-        </div>
+    <!-- PRELOADER OVERLAY -->
+    <div id="website-preloader">
+      <div class="preloader-glow"></div>
+      <div class="preloader-logo-box">
+        <svg class="preloader-svg" viewBox="16 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path class="svg-d-base" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <path class="svg-d-light-glow" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <path class="svg-d-light-beam" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <g class="svg-plus-cross">
+            <line class="svg-plus-arm" x1="88" y1="76" x2="88" y2="124" />
+            <line class="svg-plus-arm" x1="64" y1="100" x2="112" y2="100" />
+          </g>
+        </svg>
       </div>
     </div>
+
+    <!-- MAIN REACT ROOT -->
+    <div id="root"></div>
+
+    <!-- MAIN ENTRY POINT -->
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- AUTOMATIC SMOOTH FADE-OUT SCRIPT -->
+    <script>
+      (function() {
+        var dismissed = false;
+        function dismissPreloader() {
+          if (dismissed) return;
+          dismissed = true;
+          var p = document.getElementById('website-preloader');
+          if (!p) return;
+          p.style.transition = 'opacity 0.5s ease, visibility 0.5s ease';
+          p.style.opacity = '0';
+          p.style.visibility = 'hidden';
+          p.style.pointerEvents = 'none';
+          setTimeout(function() {
+            if (p && p.parentNode) p.parentNode.removeChild(p);
+          }, 550);
+        }
+
+        // Wait until React has actually rendered content into #root
+        function checkReactReady() {
+          var root = document.getElementById('root');
+          if (root && root.children.length > 0) {
+            // React has mounted — give it a tiny moment to paint, then dismiss
+            setTimeout(dismissPreloader, 150);
+          } else {
+            // Not ready yet, check again in 50ms
+            setTimeout(checkReactReady, 50);
+          }
+        }
+
+        // Start checking after a brief initial delay (let scripts load)
+        setTimeout(checkReactReady, 200);
+
+        // Safety fallback: dismiss after 4 seconds no matter what
+        setTimeout(dismissPreloader, 4000);
+      })();
+    </script>
   </body>
 </html>

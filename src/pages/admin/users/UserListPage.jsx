@@ -109,10 +109,15 @@ export default function UserListPage() {
   }
 
   const getUserRole = (u) => {
-    if (u.role) return u.role
-    if (Array.isArray(u.roles) && u.roles.length > 0) return u.roles[0]
-    if (u.registration_type === 'hospital') return 'manager'
-    if (u.registration_type === 'doctor') return 'doctor'
+    let roles = []
+    if (Array.isArray(u.roles) && u.roles.length > 0) {
+      roles = u.roles.map(r => typeof r === 'string' ? r : (r.name || 'user'))
+    } else if (u.role) {
+      roles = [u.role]
+    }
+    if (roles.includes('admin')) return 'admin'
+    if (roles.includes('doctor')) return 'doctor'
+    if (roles.includes('manager') || roles.includes('hospital')) return 'manager'
     return 'user'
   }
 

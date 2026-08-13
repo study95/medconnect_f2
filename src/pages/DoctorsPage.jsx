@@ -265,11 +265,15 @@ function DoctorsPage() {
           z-index: 29999;
           opacity: 0;
           visibility: hidden;
+          pointer-events: none;
+          display: none;
           transition: all 0.3s ease;
         }
         .filter-drawer-backdrop.open {
           opacity: 1;
           visibility: visible;
+          pointer-events: auto;
+          display: block;
         }
         .filter-drawer {
           position: fixed;
@@ -356,7 +360,7 @@ function DoctorsPage() {
               height: 42,
               padding: '0 14px',
               borderRadius: 8,
-              background: '#0B192C',
+              background: '#00B875',
               color: 'white',
               border: 'none',
               fontWeight: 700,
@@ -397,9 +401,9 @@ function DoctorsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
               <span key={f.key} style={{
-                background: '#0F172A',
+                background: '#00B875',
                 color: 'white',
-                border: '1px solid #0F172A',
+                border: '1px solid #00B875',
                 borderRadius: 4,
                 padding: '4px 10px',
                 fontSize: 12,
@@ -409,7 +413,7 @@ function DoctorsPage() {
                 gap: 6
               }}>
                 {f.label}
-                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
                   <IconX size={12} />
                 </button>
               </span>
@@ -482,7 +486,7 @@ function DoctorsPage() {
             </button>
           )}
           <button style={{
-            background: '#0B192C',
+            background: '#00B875',
             color: 'white',
             border: 'none',
             borderRadius: 6,
@@ -508,9 +512,9 @@ function DoctorsPage() {
                 type="button"
                 onClick={() => setSelectedSpecialty(isSelected ? '' : specId)}
                 style={{
-                  background: isSelected ? '#0B192C' : 'white',
+                  background: isSelected ? '#00B875' : 'white',
                   color: isSelected ? 'white' : '#334155',
-                  border: isSelected ? '1px solid #0B192C' : '1px solid #E2E8F0',
+                  border: isSelected ? '1px solid #00B875' : '1px solid #E2E8F0',
                   borderRadius: 20,
                   padding: '6px 14px',
                   fontSize: 12.5,
@@ -572,7 +576,7 @@ function DoctorsPage() {
                 title="List View"
                 style={{
                   padding: '6px 10px',
-                  background: viewMode === 'list' ? '#0B192C' : 'white',
+                  background: viewMode === 'list' ? '#00B875' : 'white',
                   color: viewMode === 'list' ? 'white' : '#64748B',
                   border: 'none',
                   cursor: 'pointer',
@@ -588,7 +592,7 @@ function DoctorsPage() {
                 title="Grid View"
                 style={{
                   padding: '6px 10px',
-                  background: viewMode === 'grid' ? '#0B192C' : 'white',
+                  background: viewMode === 'grid' ? '#00B875' : 'white',
                   color: viewMode === 'grid' ? 'white' : '#64748B',
                   border: 'none',
                   borderLeft: '1px solid #CBD5E1',
@@ -642,7 +646,7 @@ function DoctorsPage() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {activeFilters.map(f => (
                       <span key={f.key} style={{
-                        background: '#0F172A',
+                        background: '#00B875',
                         color: 'white',
                         borderRadius: 4,
                         padding: '3px 8px',
@@ -653,7 +657,7 @@ function DoctorsPage() {
                         gap: 5
                       }}>
                         {f.label}
-                        <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                        <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
                           <IconX size={11} />
                         </button>
                       </span>
@@ -686,7 +690,7 @@ function DoctorsPage() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
-                              style={{ width: 15, height: 15, accentColor: '#0F172A', borderRadius: 4 }}
+                              style={{ width: 15, height: 15, accentColor: '#00B875', borderRadius: 4 }}
                             />
                             <span>{s.name_bn || s.name}</span>
                           </label>
@@ -753,7 +757,7 @@ function DoctorsPage() {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => setSelectedFee(isChecked ? '' : f.id)}
-                            style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4 }}
+                            style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                           />
                           <span>{f.label}</span>
                         </label>
@@ -779,7 +783,7 @@ function DoctorsPage() {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => setSelectedExp(isChecked ? '' : e.id)}
-                            style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4 }}
+                            style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                           />
                           <span>{e.label}</span>
                         </label>
@@ -802,7 +806,7 @@ function DoctorsPage() {
                         type="checkbox"
                         checked={telemedicineOnly}
                         onChange={() => setTelemedicineOnly(v => !v)}
-                        style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4 }}
+                        style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                       />
                       <span>অনলাইন ভিডিও কনসালটেশন</span>
                     </label>
@@ -811,7 +815,7 @@ function DoctorsPage() {
                         type="checkbox"
                         checked={availableToday}
                         onChange={() => setAvailableToday(v => !v)}
-                        style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4 }}
+                        style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                       />
                       <span>আজ উপলব্ধ</span>
                     </label>
@@ -905,7 +909,7 @@ function DoctorsPage() {
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
-                      style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                      style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                     />
                     <span>{s.name_bn || s.name}</span>
                   </label>

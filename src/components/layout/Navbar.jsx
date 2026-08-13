@@ -88,14 +88,14 @@ function AppNavbar() {
         }
 
         .db-topbar {
-          background-color: #003820;
+          background-color: #00B875;
           color: #ffffff;
           font-size: 13px;
           font-weight: 500;
           height: 40px;
           display: flex;
           align-items: center;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
 
@@ -115,7 +115,7 @@ function AppNavbar() {
         }
 
         .db-topbar-auth-btn {
-          background-color: #0d5c3a;
+          background-color: rgba(255, 255, 255, 0.2);
           color: #ffffff;
           padding: 4px 14px;
           border-radius: 6px;
@@ -128,7 +128,7 @@ function AppNavbar() {
           transition: background-color 0.2s ease;
         }
         .db-topbar-auth-btn:hover {
-          background-color: #09472d;
+          background-color: rgba(255, 255, 255, 0.3);
           color: #ffffff;
         }
 
@@ -157,17 +157,17 @@ function AppNavbar() {
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
         .db-nav-item:hover {
-          color: #003820;
-          background-color: #f1f8f4;
+          color: #00B875;
+          background-color: rgba(0, 184, 117, 0.08);
         }
         .db-nav-item.active-item {
-          background-color: #eaf6ed !important;
-          color: #084d2f !important;
+          background-color: rgba(0, 184, 117, 0.12) !important;
+          color: #00B875 !important;
           font-weight: 700;
         }
 
         .db-btn-primary {
-          background-color: #003820;
+          background-color: #00B875;
           color: #ffffff;
           border: none;
           padding: 9px 18px;
@@ -179,20 +179,20 @@ function AppNavbar() {
           align-items: center;
           gap: 8px;
           transition: all 0.2s ease;
-          box-shadow: 0 2px 8px rgba(0, 56, 32, 0.15);
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
         .db-btn-primary:hover {
-          background-color: #002917;
+          background-color: #009E64;
           color: #ffffff;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 56, 32, 0.25);
+          box-shadow: 0 6px 18px rgba(0, 184, 117, 0.35);
         }
 
         .db-btn-outline {
           background-color: #ffffff;
-          color: #003820;
-          border: 1.5px solid #003820;
+          color: #00B875;
+          border: 1.5px solid #00B875;
           padding: 8px 18px;
           border-radius: 8px;
           font-size: 14px;
@@ -205,9 +205,9 @@ function AppNavbar() {
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
         .db-btn-outline:hover {
-          background-color: #f1f8f4;
-          color: #003820;
-          border-color: #003820;
+          background-color: rgba(0, 184, 117, 0.08);
+          color: #00B875;
+          border-color: #00B875;
           transform: translateY(-1px);
         }
 
@@ -218,12 +218,12 @@ function AppNavbar() {
           left: 0;
           width: 100%;
           height: 3px;
-          background: rgba(0, 56, 32, 0.05);
+          background: rgba(0, 184, 117, 0.1);
           z-index: 10001;
         }
         .scroll-progress-bar {
           height: 100%;
-          background: #003820;
+          background: #00B875;
           width: 0%;
           transition: width 0.15s ease;
         }
@@ -399,12 +399,8 @@ function AppNavbar() {
 
             {/* Mobile Actions & Menu Toggle */}
             <div className="d-flex align-items-center gap-2">
-              <Link to="/doctors" className="db-btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                <CalendarCheck size={15} />
-                <span>অ্যাপয়েন্টমেন্ট</span>
-              </Link>
-
               <button 
+                type="button"
                 onClick={() => setExpanded(!expanded)}
                 style={{
                   background: 'none',

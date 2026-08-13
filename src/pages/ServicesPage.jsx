@@ -88,7 +88,7 @@ export default function ServicesPage() {
                 letterSpacing: '-0.5px'
               }}>
                 আপনার স্বাস্থ্যসেবা ব্যবস্থাপনা{' '}
-                <span style={{ color: '#2563EB', display: 'block' }}>এখন ডিজিটাল</span>
+                <span style={{ color: '#00B875', display: 'block' }}>এখন ডিজিটাল</span>
               </h1>
 
               {/* Subtitle */}
@@ -108,7 +108,7 @@ export default function ServicesPage() {
                 <button
                   onClick={() => navigate('/register')}
                   style={{
-                    background: '#0066FF',
+                    background: '#00B875',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: 0,
@@ -119,11 +119,11 @@ export default function ServicesPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 10,
-                    boxShadow: '0 10px 25px rgba(0, 102, 255, 0.3)',
+                    boxShadow: '0 10px 25px rgba(0, 184, 117, 0.3)',
                     transition: 'all 0.3s ease'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#0052CC' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#0066FF' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
                 >
                   <span>ফ্রি অ্যাকাউন্ট খুলুন</span>
                   <IconArrowRight size={18} stroke={2.5} />
@@ -145,15 +145,15 @@ export default function ServicesPage() {
                 paddingTop: 20
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#475569' }}>
-                  <IconActivity size={16} color="#0066FF" />
+                  <IconActivity size={16} color="#00B875" />
                   <span>অটো সলিউশন</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#475569' }}>
-                  <IconClock size={16} color="#0066FF" />
+                  <IconClock size={16} color="#00B875" />
                   <span>২ মিনিটে সেটআপ</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#475569' }}>
-                  <IconDeviceMobile size={16} color="#0066FF" />
+                  <IconDeviceMobile size={16} color="#00B875" />
                   <span>মোবাইলে চলবে</span>
                 </div>
               </div>
@@ -214,7 +214,7 @@ export default function ServicesPage() {
                       <h4 style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0 }}>Welcome back, Dr. Kazi</h4>
                       <span style={{ fontSize: 12, color: '#64748B' }}>Here's your clinic overview today</span>
                     </div>
-                    <span style={{ background: '#2563EB', color: '#FFFFFF', padding: '6px 14px', fontSize: 12, fontWeight: 800 }}>
+                    <span style={{ background: '#00B875', color: '#FFFFFF', padding: '6px 14px', fontSize: 12, fontWeight: 800 }}>
                       + Patient Entry
                     </span>
                   </div>
@@ -229,7 +229,7 @@ export default function ServicesPage() {
                     </Col>
                     <Col xs={4} md={2}>
                       <div style={{ background: '#FFFFFF', padding: '12px 10px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                        <div style={{ fontSize: 18, fontWeight: 900, color: '#2563EB' }}>২০</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: '#00B875' }}>২০</div>
                         <div style={{ fontSize: 11, color: '#64748B' }}>বুকিং</div>
                       </div>
                     </Col>
@@ -253,7 +253,7 @@ export default function ServicesPage() {
                     </Col>
                     <Col xs={4} md={2}>
                       <div style={{ background: '#FFFFFF', padding: '12px 10px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                        <div style={{ fontSize: 16, fontWeight: 900, color: '#2563EB' }}>৳৪,২০,৫০০</div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: '#00B875' }}>৳৪,২০,৫০০</div>
                         <div style={{ fontSize: 11, color: '#64748B' }}>মোট আয়</div>
                       </div>
                     </Col>
@@ -338,14 +338,14 @@ export default function ServicesPage() {
           </div>
 
           {/* Role Tabs */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
+          <div className="role-switcher-tabs" style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
             <button
               onClick={() => setActiveTab('doctor')}
               style={{
-                background: activeTab === 'doctor' ? '#0F172A' : '#F1F5F9',
-                color: activeTab === 'doctor' ? '#FFFFFF' : '#475569',
-                border: 'none',
-                borderRadius: 0,
+                background: activeTab === 'doctor' ? '#00B875' : '#F0FDF4',
+                color: activeTab === 'doctor' ? '#FFFFFF' : '#0F172A',
+                border: activeTab === 'doctor' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
                 fontSize: 14,
@@ -353,6 +353,7 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                boxShadow: activeTab === 'doctor' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
@@ -363,10 +364,10 @@ export default function ServicesPage() {
             <button
               onClick={() => setActiveTab('hospital')}
               style={{
-                background: activeTab === 'hospital' ? '#0F172A' : '#F1F5F9',
-                color: activeTab === 'hospital' ? '#FFFFFF' : '#475569',
-                border: 'none',
-                borderRadius: 0,
+                background: activeTab === 'hospital' ? '#00B875' : '#F0FDF4',
+                color: activeTab === 'hospital' ? '#FFFFFF' : '#0F172A',
+                border: activeTab === 'hospital' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
                 fontSize: 14,
@@ -374,6 +375,7 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                boxShadow: activeTab === 'hospital' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
@@ -384,10 +386,10 @@ export default function ServicesPage() {
             <button
               onClick={() => setActiveTab('patient')}
               style={{
-                background: activeTab === 'patient' ? '#0F172A' : '#F1F5F9',
-                color: activeTab === 'patient' ? '#FFFFFF' : '#475569',
-                border: 'none',
-                borderRadius: 0,
+                background: activeTab === 'patient' ? '#00B875' : '#F0FDF4',
+                color: activeTab === 'patient' ? '#FFFFFF' : '#0F172A',
+                border: activeTab === 'patient' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
                 fontSize: 14,
@@ -395,6 +397,7 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                boxShadow: activeTab === 'patient' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
@@ -419,7 +422,7 @@ export default function ServicesPage() {
                   <div style={{
                     width: 38,
                     height: 38,
-                    background: '#2563EB',
+                    background: '#00B875',
                     color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
@@ -446,7 +449,7 @@ export default function ServicesPage() {
 
 
       {/* ─── FREE QR POSTER FEATURE SECTION (REPLACING BOTTOM AREA) ──────────── */}
-      <section style={{ background: '#0066FF', padding: '72px 0', color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ background: '#00B875', padding: '72px 0', color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
         <Container>
           <Row className="align-items-center g-5">
             {/* Left Column: QR Poster Mockup Card */}
@@ -465,7 +468,7 @@ export default function ServicesPage() {
               className="qr-poster-card"
               >
                 {/* Poster Top Dark Banner */}
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <div className="qr-poster-header" style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
                   <span style={{ fontSize: 10, letterSpacing: 1.5, color: '#94A3B8', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 2 }}>
                     AVAILABLE FOR BOOKING
                   </span>
@@ -476,9 +479,9 @@ export default function ServicesPage() {
                 </div>
 
                 {/* Poster White Main Body */}
-                <div style={{ background: '#FFFFFF', padding: '24px 20px', color: '#0F172A' }}>
+                <div className="qr-poster-body" style={{ background: '#FFFFFF', padding: '24px 20px', color: '#0F172A' }}>
                   {/* Large Graphic QR Code Placeholder / SVG */}
-                  <div style={{
+                  <div className="qr-poster-box" style={{
                     width: 170,
                     height: 170,
                     margin: '0 auto 16px',
@@ -526,7 +529,7 @@ export default function ServicesPage() {
                   </span>
 
                   {/* 3 Step Instruction Box */}
-                  <div style={{ background: '#F8FAFC', padding: '10px 12px', border: '1px solid #E2E8F0', textAlign: 'left', fontSize: 11, color: '#475569', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="qr-poster-steps" style={{ background: '#F8FAFC', padding: '10px 12px', border: '1px solid #E2E8F0', textAlign: 'left', fontSize: 11, color: '#475569', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#0F172A', color: 'white', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
                       <span>ফোনের ক্যামেরা নিয়ে QR স্ক্যান করুন</span>
@@ -606,7 +609,7 @@ export default function ServicesPage() {
                 onClick={() => navigate('/register')}
                 style={{
                   background: '#FFFFFF',
-                  color: '#0066FF',
+                  color: '#00B875',
                   border: 'none',
                   borderRadius: 0,
                   padding: '15px 36px',
@@ -663,9 +666,9 @@ export default function ServicesPage() {
               {[
                 {
                   num: 1,
-                  numColor: '#2563EB',
-                  bgLight: '#EFF6FF',
-                  icon: <IconDeviceMobile size={32} color="#2563EB" stroke={1.8} />,
+                  numColor: '#00B875',
+                  bgLight: '#F0FDF4',
+                  icon: <IconDeviceMobile size={32} color="#00B875" stroke={1.8} />,
                   title: 'ফ্রি অ্যাকাউন্ট খুলুন',
                   subtitle: 'মোবাইল নম্বর দিয়ে ১ মিনিটে'
                 },
@@ -814,14 +817,14 @@ export default function ServicesPage() {
                 height: 68,
                 borderRadius: 16,
                 background: '#FFFFFF',
-                border: '2px solid #2563EB',
+                border: '2px solid #00B875',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(37,99,235,0.12)',
+                boxShadow: '0 4px 14px rgba(0, 184, 117, 0.15)',
                 marginBottom: 10
               }}>
-                <IconSearch size={28} color="#2563EB" stroke={2} />
+                <IconSearch size={28} color="#00B875" stroke={2} />
               </div>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>
                 ডিজিটাল ডিরেক্টরি
@@ -860,7 +863,7 @@ export default function ServicesPage() {
             <button
               onClick={() => navigate('/register')}
               style={{
-                background: '#0066FF',
+                background: '#00B875',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 0,
@@ -871,12 +874,12 @@ export default function ServicesPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: '0 8px 24px rgba(0, 102, 255, 0.25)',
+                boxShadow: '0 8px 24px rgba(0, 184, 117, 0.25)',
                 transition: 'all 0.3s ease',
                 fontFamily: "'Hind Siliguri', sans-serif"
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#0052CC' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#0066FF' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
             >
               <span>ফ্রি লিস্টিং দিন</span>
               <IconArrowRight size={17} stroke={2.5} />
@@ -911,7 +914,7 @@ export default function ServicesPage() {
             }}>
               বিশ্বস্ত ও নির্ভরযোগ্য সেবার অঙ্গীকার
             </h2>
-            <div style={{ width: 60, height: 4, background: '#00A88C', margin: '0 auto' }} />
+            <div style={{ width: 60, height: 4, background: '#00B875', margin: '0 auto' }} />
           </div>
 
           {/* 5 Feature Cards Row */}
@@ -927,10 +930,10 @@ export default function ServicesPage() {
                 <div style={{
                   textAlign: 'center',
                   background: '#FFFFFF',
-                  border: '1.5px solid rgba(0, 168, 140, 0.18)',
+                  border: '1.5px solid rgba(0, 184, 117, 0.18)',
                   borderRadius: 0,
                   padding: '32px 20px',
-                  boxShadow: '0 8px 24px rgba(0, 168, 140, 0.04)',
+                  boxShadow: '0 8px 24px rgba(0, 184, 117, 0.04)',
                   height: '100%',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease'
@@ -939,8 +942,8 @@ export default function ServicesPage() {
                     width: 72,
                     height: 72,
                     borderRadius: '50%',
-                    background: '#F0FDFA',
-                    color: '#00A88C',
+                    background: '#F0FDF4',
+                    color: '#00B875',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -965,7 +968,7 @@ export default function ServicesPage() {
             <button
               onClick={() => navigate('/register')}
               style={{
-                background: '#00A88C',
+                background: '#00B875',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 0,
@@ -976,12 +979,12 @@ export default function ServicesPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 10,
-                boxShadow: '0 10px 25px rgba(0, 168, 140, 0.25)',
+                boxShadow: '0 10px 25px rgba(0, 184, 117, 0.25)',
                 transition: 'all 0.3s ease',
                 fontFamily: "'Hind Siliguri', sans-serif"
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#00796B' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00A88C' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
             >
               <span>এখনই নিবন্ধন করুন</span>
               <IconArrowRight size={18} stroke={2.5} />
@@ -994,6 +997,57 @@ export default function ServicesPage() {
           .services-hero-section {
             padding-top: calc(var(--header-height, 72px) + 24px) !important;
             padding-bottom: 40px !important;
+          }
+        }
+        @media (max-width: 767px) {
+          .role-switcher-tabs {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 6px !important;
+            width: 100% !important;
+            padding: 0 4px !important;
+          }
+          .role-switcher-tabs button {
+            width: 100% !important;
+            padding: 10px 3px !important;
+            font-size: 11.5px !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            gap: 4px !important;
+          }
+          .role-switcher-tabs button svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+          
+          /* 📱 Compact QR Poster Card on Mobile */
+          .qr-poster-card {
+            max-width: 240px !important;
+            transform: none !important;
+            margin: 0 auto 20px !important;
+          }
+          .qr-poster-header {
+            padding: 10px 12px !important;
+          }
+          .qr-poster-header h4 {
+            font-size: 14px !important;
+          }
+          .qr-poster-body {
+            padding: 14px 12px !important;
+          }
+          .qr-poster-box {
+            width: 110px !important;
+            height: 110px !important;
+            margin-bottom: 10px !important;
+            padding: 6px !important;
+          }
+          .qr-poster-body h5 {
+            font-size: 12px !important;
+          }
+          .qr-poster-steps {
+            padding: 6px 8px !important;
+            font-size: 9.5px !important;
+            gap: 4px !important;
           }
         }
       `}</style>

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Container, Row, Col, Card, Button } from 'react-bootstrap'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -47,7 +47,7 @@ const ICON_MAP = {
 }
 
 const CARD_THEMES = {
-  diagnostic: { primary: '#00A88C', secondary: '#F0FDF4', text: '#065F46', border: 'rgba(0, 168, 140, 0.12)', glow: 'rgba(0, 168, 140, 0.15)' },
+  diagnostic: { primary: '#00B875', secondary: '#F0FDF4', text: '#065F46', border: 'rgba(0, 184, 117, 0.12)', glow: 'rgba(0, 184, 117, 0.15)' },
   clinical: { primary: '#0EA5E9', secondary: '#F0F9FF', text: '#0369A1', border: 'rgba(14, 165, 233, 0.12)', glow: 'rgba(14, 165, 233, 0.15)' },
   surgical: { primary: '#6366F1', secondary: '#EEF2FF', text: '#3730A3', border: 'rgba(99, 102, 241, 0.12)', glow: 'rgba(99, 102, 241, 0.15)' },
   check: { primary: '#F43F5E', secondary: '#FFF1F2', text: '#9F1239', border: 'rgba(244, 63, 94, 0.12)', glow: 'rgba(244, 63, 94, 0.15)' },
@@ -55,10 +55,10 @@ const CARD_THEMES = {
   dental: { primary: '#14B8A6', secondary: '#F0FDFA', text: '#0F766E', border: 'rgba(20, 184, 166, 0.12)', glow: 'rgba(20, 184, 166, 0.15)' },
   eye: { primary: '#8B5CF6', secondary: '#F5F3FF', text: '#5B21B6', border: 'rgba(139, 92, 246, 0.12)', glow: 'rgba(139, 92, 246, 0.15)' },
   mental: { primary: '#EC4899', secondary: '#FDF2F8', text: '#9D174D', border: 'rgba(236, 72, 153, 0.12)', glow: 'rgba(236, 72, 153, 0.15)' },
-  physio: { primary: '#22C55E', secondary: '#F0FDF4', text: '#166534', border: 'rgba(34, 197, 94, 0.12)', glow: 'rgba(34, 197, 94, 0.15)' },
+  physio: { primary: '#00B875', secondary: '#F0FDF4', text: '#166534', border: 'rgba(0, 184, 117, 0.12)', glow: 'rgba(0, 184, 117, 0.15)' },
 }
 
-const DEFAULT_THEME = { primary: '#00A88C', secondary: '#F0FDF4', text: '#065F46', border: 'rgba(0, 168, 140, 0.12)', glow: 'rgba(0, 168, 140, 0.15)' }
+const DEFAULT_THEME = { primary: '#00B875', secondary: '#F0FDF4', text: '#065F46', border: 'rgba(0, 184, 117, 0.12)', glow: 'rgba(0, 184, 117, 0.15)' }
 
 const SERVICE_DETAILS = {
   1: {

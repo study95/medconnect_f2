@@ -10,7 +10,7 @@ import ScrollReveal from '../components/common/ScrollReveal'
 
 import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
-  IconChevronLeft, IconChevronRight, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
+  IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
   IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight
 } from '@tabler/icons-react'
@@ -618,51 +618,42 @@ function RegistrationCards() {
   const steps = [
     {
       stepNum: 'STEP 01',
-      title: 'Search Doctors',
-      subTitle: 'ডাক্তার খুঁজুন',
-      desc: 'Browse verified doctors filtered by specialty, hospital, and area across Bangladesh.',
-      link: '/doctors',
+      title: 'Doctor Registration',
+      subTitle: 'ডাক্তার হিসেবে যুক্ত হোন',
+      desc: 'আপনার প্রাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
+      link: '/register-doctor',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="14" rx="2" />
-          <line x1="3" y1="8" x2="21" y2="8" />
-          <circle cx="6" cy="6" r="0.5" fill="#F59E0B" />
-          <circle cx="8" cy="6" r="0.5" fill="#F59E0B" />
-          <circle cx="10" cy="6" r="0.5" fill="#F59E0B" />
-          <circle cx="13" cy="13" r="2.5" />
-          <line x1="15" y1="15" x2="18" y2="18" />
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="7" r="4" />
+          <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
         </svg>
       ),
     },
     {
       stepNum: 'STEP 02',
-      title: 'Connect Directly',
-      subTitle: 'সরাসরি যোগাযোগ',
-      desc: 'Contact & select suitable visiting hours directly. No middlemen, no extra fees — transparent healthcare.',
-      link: '/doctors',
+      title: 'Hospital Registration',
+      subTitle: 'হাসপাতাল পার্টনার হোন',
+      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
+      link: '/register-hospital',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="9" cy="8" r="2.5" />
-          <circle cx="16" cy="8" r="2.5" />
-          <path d="M5 17c0-2.5 2.5-4 4-4s4 1.5 4 4" />
-          <path d="M12 17c0-2.5 2.5-4 4-4s4 1.5 4 4" />
-          <line x1="11.5" y1="8" x2="13.5" y2="8" strokeDasharray="1 1" />
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
         </svg>
       ),
     },
     {
       stepNum: 'STEP 03',
-      title: 'Book & Visit',
-      subTitle: 'অ্যাপয়েন্টমেন্ট নিন',
-      desc: 'Finalize your appointment on your terms and visit your preferred doctor. Simple as that.',
-      link: '/doctors',
+      title: 'Patient Registration',
+      subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
+      desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
+      link: '/register',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10z" />
-          <path d="M9 21V13h6v8" />
-          <circle cx="18" cy="6" r="2" />
-          <path d="M19.5 4.5l2 2" />
-          <polyline points="8 12 10.5 14.5 15 10" />
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="10" cy="7" r="4" />
+          <path d="M3.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
+          <polyline points="16 11 18 13 22 9" />
         </svg>
       ),
     }
@@ -680,7 +671,7 @@ function RegistrationCards() {
             marginBottom: 8,
             fontFamily: "'Inter', sans-serif"
           }}>
-            Booking Made Simple
+            সহজ ৩টি ধাপে যুক্ত হোন
           </h2>
           <p style={{
             fontSize: 15,
@@ -688,9 +679,9 @@ function RegistrationCards() {
             fontWeight: 400,
             maxWidth: 560,
             margin: '0 auto',
-            fontFamily: "'Inter', sans-serif"
+            fontFamily: "'Hind Siliguri', sans-serif"
           }}>
-            Three steps to your healthcare — no brokers, no hidden fees
+            ডাক্তার, হাসপাতাল এবং রোগী — সবার জন্য ডিজিটাল স্বাস্থ্যসেবা
           </p>
         </div>
 
@@ -723,7 +714,7 @@ function RegistrationCards() {
                 <span style={{
                   fontSize: 11,
                   fontWeight: 800,
-                  color: '#F59E0B',
+                  color: '#00B875',
                   letterSpacing: '2px',
                   marginBottom: 24,
                   textTransform: 'uppercase',
@@ -749,19 +740,22 @@ function RegistrationCards() {
                   fontSize: 18,
                   fontWeight: 800,
                   color: '#FFFFFF',
-                  marginBottom: 4,
+                  marginBottom: 8,
                   fontFamily: "'Inter', sans-serif"
                 }}>
                   {item.title}
                 </h3>
 
-                {/* Bangla Subtitle */}
+                {/* Bangla Subtitle Pill */}
                 <span style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#F59E0B',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  background: '#00B875',
+                  padding: '4px 14px',
+                  borderRadius: 4,
                   marginBottom: 14,
-                  display: 'block',
+                  display: 'inline-block',
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
                   {item.subTitle}
@@ -774,16 +768,21 @@ function RegistrationCards() {
                   lineHeight: 1.6,
                   margin: 0,
                   fontWeight: 400,
-                  fontFamily: "'Inter', sans-serif"
+                  fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
                   {item.desc}
                 </p>
 
-                {/* Arrow connector between columns (desktop only) */}
+                {/* Arrow connector between columns (desktop horizontal / mobile vertical) */}
                 {i < steps.length - 1 && (
-                  <div className="pic1-step-connector">
-                    <IconChevronRight size={14} color="#F59E0B" />
-                  </div>
+                  <>
+                    <div className="pic1-step-connector d-none d-md-flex">
+                      <IconChevronRight size={14} color="#00B875" />
+                    </div>
+                    <div className="pic1-step-connector-mobile d-flex d-md-none">
+                      <IconChevronDown size={16} color="#00B875" />
+                    </div>
+                  </>
                 )}
               </div>
             ))}
@@ -791,12 +790,12 @@ function RegistrationCards() {
         </div>
 
         {/* Primary CTA Button Below Box */}
-        <div style={{ textAlign: 'center', marginTop: 28 }}>
+        <div className="reg-cta-btn-wrapper" style={{ textAlign: 'center', marginTop: 28, marginBottom: 20 }}>
           <button
-            onClick={() => navigate('/doctors')}
+            onClick={() => navigate('/register')}
             style={{
-              background: '#F59E0B',
-              color: '#0F172A',
+              background: '#00B875',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: 8,
               padding: '14px 42px',
@@ -806,14 +805,14 @@ function RegistrationCards() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
+              boxShadow: '0 8px 24px rgba(0, 184, 117, 0.3)',
               transition: 'all 0.3s ease',
-              fontFamily: "'Inter', sans-serif"
+              fontFamily: "'Hind Siliguri', sans-serif"
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#EAB308' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
           >
-            <span>Start Searching</span>
+            <span>এখনই নিবন্ধন শুরু করুন</span>
             <IconArrowRight size={18} stroke={2.5} />
           </button>
         </div>
@@ -823,6 +822,15 @@ function RegistrationCards() {
         .pic1-steps-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
+        }
+        @media (max-width: 767px) {
+          .reg-cta-btn-wrapper {
+            margin-bottom: 32px !important;
+            margin-top: 24px !important;
+          }
+          .registration-section {
+            padding-bottom: 44px !important;
+          }
         }
         .pic1-step-col {
           border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -845,7 +853,7 @@ function RegistrationCards() {
           height: 28px;
           border-radius: 50%;
           background: #0B192C;
-          border: 1px solid rgba(245, 158, 11, 0.5);
+          border: 1px solid rgba(0, 184, 117, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -857,14 +865,31 @@ function RegistrationCards() {
           }
           .pic1-step-col {
             border-right: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 32px 20px;
+            border-bottom: 1.5px dashed rgba(0, 184, 117, 0.35);
+            padding: 34px 20px 42px;
           }
           .pic1-step-col:last-child {
             border-bottom: none;
+            padding-bottom: 34px;
           }
           .pic1-step-connector {
             display: none;
+          }
+          .pic1-step-connector-mobile {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #0B192C;
+            border: 1.5px solid #00B875;
+            box-shadow: 0 4px 14px rgba(0, 184, 117, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
           }
         }
       `}</style>
@@ -947,12 +972,12 @@ function DigitalDashboardBanner() {
                   transition: 'all 0.3s ease',
                   height: '100%'
                 }} className="dashboard-feature-card">
-                  {/* Gold Square Icon Badge */}
+                  {/* Green Square Icon Badge */}
                   <div style={{
                     width: 38,
                     height: 38,
-                    background: '#F59E0B',
-                    color: '#0B192C',
+                    background: '#00B875',
+                    color: '#FFFFFF',
                     borderRadius: 6,
                     display: 'flex',
                     alignItems: 'center',
@@ -1009,15 +1034,15 @@ function DigitalDashboardBanner() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
+        {/* Action Buttons (1 Row on Mobile) */}
+        <div className="dash-banner-btns-row" style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
           <button
             onClick={() => navigate('/services')}
             style={{
-              background: '#F59E0B',
-              color: '#0B192C',
+              background: '#00B875',
+              color: '#FFFFFF',
               border: 'none',
-              borderRadius: 0,
+              borderRadius: 6,
               padding: '13px 32px',
               fontWeight: 800,
               fontSize: 15,
@@ -1025,12 +1050,12 @@ function DigitalDashboardBanner() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.25)',
+              boxShadow: '0 8px 24px rgba(0, 184, 117, 0.25)',
               transition: 'all 0.3s ease',
               fontFamily: "'Hind Siliguri', sans-serif"
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#D97706' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
           >
             <span>সব ফিচার দেখুন</span>
             <IconArrowRight size={17} stroke={2.5} />
@@ -1042,7 +1067,7 @@ function DigitalDashboardBanner() {
               background: 'transparent',
               color: '#FFFFFF',
               border: '1px solid rgba(255, 255, 255, 0.25)',
-              borderRadius: 0,
+              borderRadius: 6,
               padding: '13px 28px',
               fontWeight: 700,
               fontSize: 15,
@@ -1064,7 +1089,7 @@ function DigitalDashboardBanner() {
       <style>{`
         .dashboard-feature-card:hover {
           background: rgba(15, 30, 52, 0.95) !important;
-          border-color: rgba(245, 158, 11, 0.4) !important;
+          border-color: rgba(0, 184, 117, 0.4) !important;
           transform: translateY(-3px);
         }
       `}</style>
@@ -1484,11 +1509,11 @@ function DarkRegistrationSection() {
       desc: 'আপনার প্র্যাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
       link: '/register?role=doctor',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="7" r="4" />
           <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
-          <path d="M16 11l2 2 4-4" stroke="#F59E0B" strokeWidth="1.5" />
-          <path d="M12 11v4" stroke="#F59E0B" strokeWidth="1.5" />
+          <path d="M16 11l2 2 4-4" stroke="#00B875" strokeWidth="1.5" />
+          <path d="M12 11v4" stroke="#00B875" strokeWidth="1.5" />
         </svg>
       ),
     },
@@ -1499,9 +1524,9 @@ function DarkRegistrationSection() {
       desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
       link: '/register?role=hospital',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="4" y="4" width="16" height="16" rx="2" />
-          <path d="M9 12h6M12 9v6" stroke="#F59E0B" strokeWidth="1.5" />
+          <path d="M9 12h6M12 9v6" stroke="#00B875" strokeWidth="1.5" />
           <path d="M8 4v-1h8v1" />
         </svg>
       ),
@@ -1513,10 +1538,10 @@ function DarkRegistrationSection() {
       desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
       link: '/register?role=patient',
       icon: (
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="7" r="3" />
           <path d="M3 21v-2a5 5 0 0 1 10 0v2" />
-          <polyline points="16 11 18 13 22 9" stroke="#F59E0B" strokeWidth="1.5" />
+          <polyline points="16 11 18 13 22 9" stroke="#00B875" strokeWidth="1.5" />
         </svg>
       ),
     }
@@ -1577,7 +1602,7 @@ function DarkRegistrationSection() {
                 <span style={{
                   fontSize: 11,
                   fontWeight: 800,
-                  color: '#F59E0B',
+                  color: '#00B875',
                   letterSpacing: '2px',
                   marginBottom: 24,
                   textTransform: 'uppercase',
@@ -1586,7 +1611,7 @@ function DarkRegistrationSection() {
                   {item.stepNum}
                 </span>
 
-                {/* Yellow Icon */}
+                {/* Icon */}
                 <div style={{
                   marginBottom: 22,
                   display: 'flex',
@@ -1603,19 +1628,22 @@ function DarkRegistrationSection() {
                   fontSize: 18,
                   fontWeight: 800,
                   color: '#FFFFFF',
-                  marginBottom: 4,
+                  marginBottom: 8,
                   fontFamily: "'Inter', sans-serif"
                 }}>
                   {item.title}
                 </h3>
 
-                {/* Bangla Subtitle */}
+                {/* Bangla Subtitle Pill */}
                 <span style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#F59E0B',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  background: '#00B875',
+                  padding: '4px 14px',
+                  borderRadius: 4,
                   marginBottom: 14,
-                  display: 'block',
+                  display: 'inline-block',
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
                   {item.subTitle}
@@ -1636,7 +1664,7 @@ function DarkRegistrationSection() {
                 {/* Arrow connector between columns (desktop only) */}
                 {i < steps.length - 1 && (
                   <div className="pic1-step-connector">
-                    <IconChevronRight size={14} color="#F59E0B" />
+                    <IconChevronRight size={14} color="#00B875" />
                   </div>
                 )}
               </div>
@@ -1644,13 +1672,13 @@ function DarkRegistrationSection() {
           </div>
         </div>
 
-        {/* Bottom Yellow Action Button */}
+        {/* Bottom Green Action Button */}
         <div style={{ textAlign: 'center', marginTop: 28 }}>
           <button
             onClick={() => navigate('/register')}
             style={{
-              background: '#F59E0B',
-              color: '#0F172A',
+              background: '#00B875',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: 8,
               padding: '14px 42px',
@@ -1660,12 +1688,12 @@ function DarkRegistrationSection() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
+              boxShadow: '0 8px 24px rgba(0, 184, 117, 0.3)',
               transition: 'all 0.3s ease',
               fontFamily: "'Hind Siliguri', sans-serif"
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#EAB308' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#F59E0B' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
           >
             <span>এখনই নিবন্ধন শুরু করুন</span>
             <IconArrowRight size={18} stroke={2.5} />
@@ -1846,6 +1874,93 @@ function HospitalPartnersSection({ hospitals = [] }) {
   )
 }
 
+// ─── DOCTOR BOOKING PROMO BANNER (FULL WIDTH BLURRED DESIGN) ────────────
+function DoctorBookingPromoBanner() {
+  const navigate = useNavigate()
+  return (
+    <section style={{
+      width: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+      padding: '70px 20px',
+      margin: '24px 0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+    }}>
+      {/* Background Image Container (Crystal Clear & Sharp) */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundImage: `url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1600&auto=format&fit=crop&q=85')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'none',
+        transform: 'none',
+        zIndex: 1
+      }} />
+
+      {/* Subtle Transparent Green Overlay to Keep Image Clear */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'linear-gradient(90deg, rgba(11, 25, 44, 0.58) 0%, rgba(0, 110, 75, 0.45) 50%, rgba(0, 140, 95, 0.52) 100%)',
+        zIndex: 2
+      }} />
+
+      {/* Foreground Content */}
+      <div style={{
+        position: 'relative',
+        zIndex: 3,
+        textAlign: 'center',
+        maxWidth: 900,
+        margin: '0 auto'
+      }}>
+        <h2 style={{
+          fontSize: 'clamp(24px, 4vw, 40px)',
+          fontWeight: 900,
+          color: '#FFFFFF',
+          lineHeight: 1.4,
+          marginBottom: 24,
+          textShadow: '0 2px 12px rgba(0, 0, 0, 0.4)',
+          fontFamily: "'Hind Siliguri', sans-serif"
+        }}>
+          আপনার পছন্দের ডাক্তারের অ্যাপয়েন্টমেন্ট <br />
+          বুক করুন
+        </h2>
+
+        <button
+          onClick={() => navigate('/doctors')}
+          style={{
+            background: '#00B875',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: 99,
+            padding: '14px 44px',
+            fontSize: 17,
+            fontWeight: 800,
+            cursor: 'pointer',
+            boxShadow: '0 8px 25px rgba(0, 184, 117, 0.4)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.03)'; e.currentTarget.style.background = '#009E64'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 184, 117, 0.5)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875'; e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 184, 117, 0.4)'; }}
+        >
+          অ্যাপয়েন্টমেন্ট নিন
+        </button>
+      </div>
+    </section>
+  )
+}
+
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 function HomePage() {
   // SINGLE API CALL: Fetches top doctors, top hospitals, specialties, and stats
@@ -1857,6 +1972,10 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <ImageBannerSlider />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <DoctorBookingPromoBanner />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
@@ -1897,8 +2016,23 @@ function HomePage() {
 
       <style>{`
         @media (max-width: 768px) {
-          section { padding: 10px 0 !important; }
-          .registration-section { padding: 6px 0 0px !important; }
+          section { padding: 16px 0 !important; }
+          .registration-section { padding: 24px 0 40px !important; }
+          .dash-banner-btns-row {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            width: 100% !important;
+            padding: 0 8px !important;
+          }
+          .dash-banner-btns-row button {
+            width: 100% !important;
+            padding: 11px 4px !important;
+            font-size: 12px !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            gap: 4px !important;
+          }
           .registration-card { text-align: center !important; }
           .registration-card-icon { margin: 0 auto !important; }
           .service-swiper { padding: 10px 0 30px !important; }
@@ -1983,25 +2117,27 @@ function HomePage() {
             opacity: 0.08 !important;
           }
             
-          /* 📱 Why Choose Us Dotted Borders Mobile Overrides */
-          .why-choose-row {
-            gap: 20px !important;
+          /* 📱 Global Homepage Mobile View Fine-Tuning */
+          @media (max-width: 767px) {
+            .appointment-cta-container {
+              border-radius: 24px !important;
+              padding: 28px 16px !important;
+              min-height: auto !important;
+            }
+            .doc-promo-banner {
+              border-radius: 16px !important;
+              padding: 24px 16px !important;
+              text-align: center !important;
+            }
+            .doc-promo-banner button {
+              width: 100% !important;
+              max-width: 260px !important;
+              margin: 0 auto !important;
+            }
+            .hero-search-form {
+              margin-bottom: 24px !important;
+            }
           }
-          .why-choose-col {
-            padding: 0 16px !important;
-          }
-          .why-choose-card {
-            background: #FFFFFF !important;
-            border: 2.5px dotted rgba(0, 168, 140, 0.35) !important;
-            border-radius: 24px !important;
-            padding: 32px 24px !important;
-            box-shadow: 0 10px 30px rgba(0, 168, 140, 0.02) !important;
-            margin: 0 auto !important;
-            max-width: 320px !important;
-            transition: all 0.3s ease !important;
-          }
-            
-
         }
       `}</style>
     </div>

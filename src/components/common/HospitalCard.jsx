@@ -1,11 +1,138 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl } from '../../utils/mediaUtils'
-import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera } from '@tabler/icons-react'
+import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent } from '@tabler/icons-react'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 
 const DEMO_HOSPITAL = 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80'
+
+const DEFAULT_HOSPITAL_GALLERY = [
+  'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80',
+  'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=600&q=80',
+  'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
+  'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=600&q=80'
+]
+
+function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
+  const photos = hospital.photos && hospital.photos.length > 0
+    ? hospital.photos.map(p => getMediaUrl(p))
+    : hospital.photo_url
+      ? [getMediaUrl(hospital.photo_url), ...DEFAULT_HOSPITAL_GALLERY.slice(1)]
+      : DEFAULT_HOSPITAL_GALLERY
+
+  const [activeIdx, setActiveIdx] = useState(0)
+
+  const handlePrev = (e) => {
+    e.stopPropagation()
+    setActiveIdx(prev => (prev === 0 ? photos.length - 1 : prev - 1))
+  }
+
+  const handleNext = (e) => {
+    e.stopPropagation()
+    setActiveIdx(prev => (prev === photos.length - 1 ? 0 : prev + 1))
+  }
+
+  return (
+    <div className="hosp-list-image-box" style={{
+      width,
+      minWidth: width,
+      height,
+      position: 'relative',
+      background: '#F1F5F9',
+      flexShrink: 0,
+      overflow: 'hidden'
+    }}>
+      <OptimizedImage
+        src={photos[activeIdx]}
+        fallback={DEFAULT_HOSPITAL_GALLERY[0]}
+        alt={hospital.name}
+        width={width}
+        height={height}
+        borderRadius={0}
+        style={{ objectFit: 'cover', width: '100%', height: '100%', transition: 'all 0.3s ease' }}
+      />
+
+      {/* Prev Arrow Button */}
+      <button
+        type="button"
+        onClick={handlePrev}
+        style={{
+          position: 'absolute',
+          left: 6,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: 24,
+          height: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 6,
+          fontSize: 14,
+          backdropFilter: 'blur(4px)'
+        }}
+        title="আগের ছবি"
+      >
+        ‹
+      </button>
+
+      {/* Next Arrow Button */}
+      <button
+        type="button"
+        onClick={handleNext}
+        style={{
+          position: 'absolute',
+          right: 6,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: 24,
+          height: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 6,
+          fontSize: 14,
+          backdropFilter: 'blur(4px)'
+        }}
+        title="পরের ছবি"
+      >
+        ›
+      </button>
+
+      {/* Photo Count Badge (Bottom Right of Image) */}
+      <div style={{
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        background: 'rgba(15, 23, 42, 0.75)',
+        color: 'white',
+        borderRadius: 4,
+        padding: '3px 7px',
+        fontSize: 11,
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        zIndex: 5,
+        backdropFilter: 'blur(4px)'
+      }}>
+        <IconCamera size={13} />
+        <span>{photos.length}</span>
+      </div>
+    </div>
+  )
+}
 
 function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
   const navigate = useNavigate()
@@ -144,45 +271,8 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
           }}
         >
-          {/* Featured Image Box */}
-          <div className="hosp-list-image-box" style={{
-            width: 250,
-            minWidth: 250,
-            height: 180,
-            position: 'relative',
-            background: '#F1F5F9',
-            flexShrink: 0
-          }}>
-            <OptimizedImage
-              src={getMediaUrl(hospital.photo_url)}
-              fallback={DEMO_HOSPITAL}
-              alt={hospital.name}
-              width={250}
-              height={180}
-              borderRadius={0}
-              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-            />
-
-            {/* Photo Count Badge (Bottom Right of Image) */}
-            <div style={{
-              position: 'absolute',
-              bottom: 8,
-              right: 8,
-              background: 'rgba(15, 23, 42, 0.75)',
-              color: 'white',
-              borderRadius: 4,
-              padding: '3px 7px',
-              fontSize: 11,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              backdropFilter: 'blur(4px)'
-            }}>
-              <IconCamera size={13} />
-              <span>5</span>
-            </div>
-          </div>
+          {/* Featured Image Box with Interactive Slider */}
+          <HospitalCardImageSlider hospital={hospital} width={250} height={180} />
 
           {/* Right Details Box */}
           <div style={{
@@ -321,35 +411,50 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                   type="button"
                   onClick={() => navigate(`/hospitals/${hospital.id}`)}
                   style={{
-                    background: '#0B192C',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '8px 18px',
+                    background: 'white',
+                    color: '#0F172A',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: 8,
+                    padding: '8px 16px',
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
                 >
-                  View details
+                  <IconEye size={16} />
+                  <span>বিস্তারিত দেখুন</span>
                 </button>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); navigate(`/doctors?hospital_id=${hospital.id}`) }}
                   style={{
-                    background: 'white',
-                    color: '#0B192C',
-                    border: '1.5px solid #0B192C',
-                    borderRadius: 6,
+                    background: '#00B875',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
                     padding: '8px 18px',
                     fontSize: 13,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
                 >
-                  Contact
+                  <IconCalendarEvent size={16} color="#FFFFFF" />
+                  <span>অ্যাপয়েন্টমেন্ট নিন</span>
                 </button>
               </div>
             </div>
@@ -442,22 +547,51 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
         <button
           onClick={() => navigate(`/hospitals/${hospital.id}`)}
           style={{
-            flex: 1, height: 36, borderRadius: 6, border: '1px solid #E2E8F0',
-            background: 'white', color: '#475569', fontWeight: 700, fontSize: 13,
-            cursor: 'pointer'
+            flex: 1,
+            height: 38,
+            borderRadius: 8,
+            border: '1.5px solid #CBD5E1',
+            background: 'white',
+            color: '#0F172A',
+            fontWeight: 700,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            fontFamily: "'Hind Siliguri', sans-serif"
           }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
         >
-          View details
+          <IconEye size={15} />
+          <span>বিস্তারিত দেখুন</span>
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/doctors?hospital_id=${hospital.id}`) }}
           style={{
-            flex: 1, height: 36, borderRadius: 6, border: 'none',
-            background: '#0B192C', color: 'white', fontWeight: 700, fontSize: 13,
-            cursor: 'pointer'
+            flex: 1,
+            height: 38,
+            borderRadius: 8,
+            border: 'none',
+            background: '#00B875',
+            color: 'white',
+            fontWeight: 800,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
+            fontFamily: "'Hind Siliguri', sans-serif"
           }}
+          onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
+          onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
         >
-          Contact
+          <IconCalendarEvent size={15} color="#FFFFFF" />
+          <span>অ্যাপয়েন্টমেন্ট নিন</span>
         </button>
       </div>
     </div>

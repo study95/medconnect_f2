@@ -18,7 +18,7 @@ import {
   IconSchool, IconUsers, IconAward, IconCheck, IconChevronRight,
   IconHistory, IconDiscountCheckFilled, IconCalendarEvent,
   IconLock, IconSend, IconUserCheck, IconStethoscope, IconPhone, IconSparkles,
-  IconWallet, IconBuildingHospital, IconShieldCheck, IconUser
+  IconWallet, IconBuildingHospital, IconShieldCheck, IconUser, IconArrowLeft
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -108,15 +108,21 @@ function DoctorDetailPageContent() {
     // Smoothly focus/align the top of right card when menu item is clicked
     const rightCard = document.querySelector('.right-main-card')
     if (rightCard) {
-      const isMobile = window.innerWidth < 992
-      const offset = isMobile ? 70 : 90
+      const topbar = document.querySelector('.db-topbar')
+      const mainHeader = document.querySelector('.db-main-header') || document.querySelector('.navbar')
+      let totalHeaderHeight = 0
+      if (topbar) totalHeaderHeight += topbar.offsetHeight
+      if (mainHeader) totalHeaderHeight += mainHeader.offsetHeight
+      if (totalHeaderHeight === 0) totalHeaderHeight = 135
+
+      const offset = totalHeaderHeight + 20
       const bodyRect = document.body.getBoundingClientRect().top
       const elementRect = rightCard.getBoundingClientRect().top
       const elementPosition = elementRect - bodyRect
       const offsetPosition = elementPosition - offset
 
       window.scrollTo({
-        top: offsetPosition,
+        top: Math.max(0, offsetPosition),
         behavior: 'smooth'
       })
     }
@@ -204,9 +210,9 @@ function DoctorDetailPageContent() {
 
   const specialtyName = translateMetadata(doctor?.specialty?.name || doctor?.specialty_name || (t ? t('general_physician') : 'সাধারণ চিকিৎসক'), language, t)
 
-  // Design tokens aligned with sample reference
-  const primaryGreen = '#00A88C'
-  const lightGreenBg = '#E6F6F4'
+  // Design tokens aligned with main website brand green
+  const primaryGreen = '#00B875'
+  const lightGreenBg = '#D1FAE5'
   const darkTextColor = '#1A1D2E'
   const mutedTextColor = '#6B7280'
   const cardBorderColor = '#E5EAF0'
@@ -215,8 +221,34 @@ function DoctorDetailPageContent() {
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
       
-      {/* 1. Top Breadcrumb Line */}
-      <div style={{ background: '#FFFFFF', borderBottom: `1px solid ${cardBorderColor}`, padding: '12px 0' }}>
+      {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
+      <div className="d-flex d-lg-none align-items-center justify-content-between px-3 py-3 bg-white border-bottom sticky-top" style={{ zIndex: 1020 }}>
+        <button 
+          type="button"
+          onClick={() => navigate(-1)} 
+          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: '#0F172A', display: 'flex', alignItems: 'center' }}
+        >
+          <IconArrowLeft size={22} />
+        </button>
+        <h1 style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0, fontFamily: 'inherit' }}>
+          Profile
+        </h1>
+        <button 
+          type="button"
+          onClick={() => doctor && triggerShare({
+            title: doctor.name,
+            text: `${specialtyName} | Doctor Booklet`,
+            url: window.location.href,
+            image: doctor.photo || DEMO_AVATAR
+          })}
+          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: '#0F172A', display: 'flex', alignItems: 'center' }}
+        >
+          <IconShare size={20} />
+        </button>
+      </div>
+
+      {/* 1. Top Breadcrumb Line (Desktop Only) */}
+      <div className="doc-detail-breadcrumb d-none d-lg-block" style={{ background: '#FFFFFF', borderBottom: `1px solid ${cardBorderColor}`, padding: '12px 0' }}>
         <Container>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/')}>হোম</span>
@@ -229,11 +261,107 @@ function DoctorDetailPageContent() {
       </div>
 
       {/* 2. Main Page Center Container (Left & Right Split) */}
-      <Container className="py-4 py-lg-5">
+      <Container className="py-0 py-lg-5 doc-detail-container">
+
+        {/* MOBILE COMPACT DOCTOR PROFILE CARD (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2 EXACTLY) */}
+        <div className="d-block d-lg-none bg-white p-3 mb-2 doc-detail-mobile-card-inner">
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
+            {/* Square Avatar with Appointment Badge Tag */}
+            <div style={{ position: 'relative', width: 90, height: 98, flexShrink: 0, borderRadius: 12, overflow: 'hidden', background: '#F1F5F9' }}>
+              <img
+                src={doctor?.photo || DEMO_AVATAR}
+                alt={doctor?.name || 'Doctor'}
+                onError={(e) => { e.target.src = DEMO_AVATAR }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: '#00B875',
+                color: 'white',
+                fontSize: 10.5,
+                fontWeight: 800,
+                textAlign: 'center',
+                padding: '2px 0'
+              }}>
+                Appointment
+              </div>
+            </div>
+
+            {/* Info Column */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 900, color: darkTextColor, margin: '0 0 3px 0', lineHeight: 1.3 }}>
+                {doctor?.name}
+              </h2>
+              <div style={{ fontSize: 12, fontWeight: 600, color: mutedTextColor, marginBottom: 8, lineHeight: 1.4 }}>
+                {doctor?.degree || 'MBBS, MCPS (Gynae & Obs), MS (Gynae & Obs), FCPS (Gynae & Obs)'}
+              </div>
+
+              {/* Specialty Ribbon Tag */}
+              <div>
+                <span style={{
+                  background: '#00B875',
+                  color: 'white',
+                  padding: '3px 10px 3px 8px',
+                  borderRadius: '4px 2px 2px 4px',
+                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: 'inline-block',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {specialtyName}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Stats Columns with Vertical Dotted/Light Dividers (Matching Image 2) */}
+          <div style={{
+            borderTop: '1px solid #F1F5F9',
+            borderBottom: '1px solid #F1F5F9',
+            padding: '10px 0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12
+          }}>
+            <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Experience</span>
+              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{doctor?.experience || '15'}+ Years</span>
+            </div>
+            <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>BMDC Number</span>
+              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{doctor?.bmdc_number || doctor?.bmdc_no || '51550'}</span>
+            </div>
+            <div style={{ textAlign: 'center', flex: 1, padding: '0 4px' }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Rating</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyCenter: 'center', gap: 3 }}>
+                <IconStar size={14} color="#F59E0B" fill="#F59E0B" />
+                <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{averageRating}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: mutedTextColor }}>({(reviews || []).length * 100 + 51})</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Working Location Row */}
+          <div style={{ fontSize: 11, color: mutedTextColor, fontWeight: 600 }}>
+            Working in
+            <div style={{ fontSize: 13, fontWeight: 800, color: darkTextColor, marginTop: 2 }}>
+              {sortedChambers?.[0]?.hospital?.name || doctor?.hospital?.name || 'Dhaka medical college hospital'}
+            </div>
+          </div>
+        </div>
+
         <Row className="g-4 align-items-start">
-          
-          {/* ================= LEFT SIDE PROFILE SIDEBAR ================= */}
-          <Col lg={4} xl={4}>
+
+          {/* ================= LEFT SIDE PROFILE SIDEBAR (DESKTOP ONLY) ================= */}
+          <Col lg={4} xl={4} className="d-none d-lg-block">
             <div className="left-profile-card" style={{
               background: '#FFFFFF',
               borderRadius: 20,
@@ -260,7 +388,7 @@ function DoctorDetailPageContent() {
                   }}
                 />
                 
-                {/* Verified Blue Badge on Top Right of Rectangular Image */}
+                {/* Verified Badge on Top Right of Rectangular Image */}
                 <div style={{
                   position: 'absolute',
                   top: 12,
@@ -268,12 +396,12 @@ function DoctorDetailPageContent() {
                   width: 28,
                   height: 28,
                   borderRadius: '50%',
-                  background: '#1D4ED8',
+                  background: '#00B875',
                   color: 'white',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                  boxShadow: '0 4px 10px rgba(0, 184, 117, 0.35)',
                   border: '2px solid white'
                 }} title="ভেরিফাইড ডাক্তার">
                   <IconCheck size={16} stroke={3.5} />
@@ -473,45 +601,51 @@ function DoctorDetailPageContent() {
               boxShadow: '0 8px 30px rgba(0, 0, 0, 0.03)'
             }}>
               
-              {/* Top Menu Tabs (Inside Right Box Top) */}
+              {/* Top Menu Tabs (Inside Right Box Top — Pill Container Design Matching Screenshot) */}
               <div className="top-menu-tabs-wrapper" style={{
-                borderBottom: `1px solid ${cardBorderColor}`,
-                marginBottom: 28,
+                background: '#F1F5F9',
+                borderRadius: 99,
+                padding: '5px',
+                marginBottom: 24,
                 position: 'sticky',
-                top: 80,
-                background: 'white',
+                top: 'calc(var(--header-height, 135px) + 10px)',
                 zIndex: 9,
-                paddingTop: 4
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
               }}>
-                <Nav className="flex-nowrap overflow-auto" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 32 }}>
+                <Nav className="flex-nowrap align-items-center justify-content-between" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 4 }}>
                   {[
-                    { key: 'about', label: 'About Doctor', icon: <IconUser size={18} /> },
-                    { key: 'chamber', label: 'Chamber', icon: <IconBuildingHospital size={18} /> },
-                    { key: 'experience', label: 'Experience', icon: <IconBriefcase size={18} /> },
-                    { key: 'reviews', label: 'Reviews', icon: <IconStar size={18} /> }
-                  ].map(tab => (
-                    <Nav.Item key={tab.key}>
-                      <Nav.Link 
-                        eventKey={tab.key}
-                        style={{ 
-                          padding: '12px 4px 16px',
-                          fontSize: 15,
-                          fontWeight: 900,
-                          color: activeTab === tab.key ? primaryGreen : mutedTextColor,
-                          borderBottom: `3px solid ${activeTab === tab.key ? primaryGreen : 'transparent'}`,
-                          borderRadius: 0,
-                          transition: 'all 0.2s ease',
-                          background: 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {tab.icon} {tab.label}
-                      </Nav.Link>
-                    </Nav.Item>
-                  ))}
+                    { key: 'about', label: 'About', icon: <IconUser size={16} /> },
+                    { key: 'chamber', label: 'Chamber', icon: <IconBuildingHospital size={16} /> },
+                    { key: 'experience', label: 'Experience', icon: <IconBriefcase size={16} /> },
+                    { key: 'reviews', label: 'Reviews', icon: <IconStar size={16} /> }
+                  ].map(tab => {
+                    const isActive = activeTab === tab.key
+                    return (
+                      <Nav.Item key={tab.key} style={{ flex: 1, textAlign: 'center' }}>
+                        <Nav.Link 
+                          eventKey={tab.key}
+                          style={{ 
+                            padding: '10px 8px',
+                            fontSize: 14,
+                            fontWeight: isActive ? 800 : 600,
+                            color: isActive ? primaryGreen : '#64748B',
+                            borderRadius: 99,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            background: isActive ? '#FFFFFF' : 'transparent',
+                            boxShadow: isActive ? '0 2px 10px rgba(0, 0, 0, 0.08)' : 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap',
+                            border: 'none'
+                          }}
+                        >
+                          {tab.icon} <span>{tab.label}</span>
+                        </Nav.Link>
+                      </Nav.Item>
+                    )
+                  })}
                 </Nav>
               </div>
 
@@ -834,6 +968,50 @@ function DoctorDetailPageContent() {
         </Row>
       </Container>
 
+      {/* STICKY MOBILE BOTTOM BAR (CRISP CARD STYLING & BENGALI TEXT) */}
+      <div className="d-block d-lg-none" style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        background: '#FFFFFF',
+        borderTop: '1px solid #E2E8F0',
+        padding: '12px 18px',
+        boxShadow: '0 -6px 25px rgba(0, 0, 0, 0.12)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#475569', display: 'block', marginBottom: 2 }}>চেম্বার ফি</span>
+            <span style={{ fontSize: 20, fontWeight: 950, color: primaryGreen }}>৳{lowestFee || doctor?.fee || '৫০০'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleBook()}
+            style={{
+              flex: 1,
+              maxWidth: 220,
+              background: primaryGreen,
+              color: 'white',
+              border: 'none',
+              borderRadius: 12,
+              padding: '12px 20px',
+              fontSize: 15,
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+              fontFamily: 'inherit'
+            }}
+          >
+            <IconCalendarEvent size={19} color="white" />
+            <span>অ্যাপয়েন্টমেন্ট নিন</span>
+          </button>
+        </div>
+      </div>
+
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeInTab {
           from { opacity: 0; transform: translateY(8px); }
@@ -848,20 +1026,65 @@ function DoctorDetailPageContent() {
         .top-menu-tabs-wrapper .nav {
           -ms-overflow-style: none !important;
           scrollbar-width: none !important;
+          display: flex !important;
+          flex-wrap: nowrap !important;
         }
         .btn-share-profile:hover {
-          background: #E6F6F4 !important;
+          background: #D1FAE5 !important;
         }
         .btn-book-now:hover {
-          background: #008a74 !important;
+          background: #009E64 !important;
         }
         @media (max-width: 991px) {
-          .left-profile-card {
-            position: static !important;
-            margin-bottom: 20px;
+          .db-topbar, .db-main-header, .navbar, .doc-detail-breadcrumb, footer {
+            display: none !important;
+          }
+          .doc-detail-container {
+            padding-top: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            padding-bottom: 85px !important;
+          }
+          .doc-detail-mobile-card-inner {
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            margin-bottom: 8px !important;
+          }
+          .right-main-card {
+            padding: 16px 14px !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           .top-menu-tabs-wrapper {
-            top: 60px !important;
+            top: 52px !important;
+            margin: 0 12px 18px 12px !important;
+            padding: 4px !important;
+            background: #F8FAFC !important;
+            border-radius: 99px !important;
+          }
+          .top-menu-tabs-wrapper .nav {
+            gap: 2px !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+          }
+          .top-menu-tabs-wrapper .nav-item {
+            flex: 1 1 0px !important;
+            min-width: 0 !important;
+          }
+          .top-menu-tabs-wrapper .nav-link {
+            font-size: 13px !important;
+            padding: 8px 4px !important;
+            gap: 4px !important;
+          }
+          .top-menu-tabs-wrapper .nav-link svg {
+            display: none !important;
+          }
+          .top-menu-tabs-wrapper .nav-link span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
         }
       ` }} />

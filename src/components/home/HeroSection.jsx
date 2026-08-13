@@ -305,8 +305,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const cms = getContent()
   const hero = cms.hero || {}
 
-  const fullTitle = hero.title || (hero.title_line1 ? (hero.title_line2 ? `${hero.title_line1} ${hero.title_line2}` : hero.title_line1) : 'স্বাগত ডক্টর বুকলেটে- বিশ্বস্ত ডাক্তার খুঁজুন, সহজে অ্যাপয়েন্টমেন্ট নিন')
-  const [typedTitle, setTypedTitle] = useState('')
+  const line2Text = 'ডাক্তার বুকিং, আরো সহজ'
+  const [typedLine2, setTypedLine2] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -318,19 +318,19 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       if (!isMounted) return
 
       if (!isDeleting) {
-        setTypedTitle(fullTitle.slice(0, charIndex))
-        if (charIndex < fullTitle.length) {
+        setTypedLine2(line2Text.slice(0, charIndex))
+        if (charIndex < line2Text.length) {
           charIndex++
-          timeoutId = setTimeout(typeLoop, 80) // Medium typing speed
+          timeoutId = setTimeout(typeLoop, 85) // Smooth writing speed
         } else {
           isDeleting = true
-          timeoutId = setTimeout(typeLoop, 2800)
+          timeoutId = setTimeout(typeLoop, 3200) // Stay visible for 3.2s
         }
       } else {
-        setTypedTitle(fullTitle.slice(0, charIndex))
+        setTypedLine2(line2Text.slice(0, charIndex))
         if (charIndex > 0) {
           charIndex--
-          timeoutId = setTimeout(typeLoop, 35)
+          timeoutId = setTimeout(typeLoop, 40)
         } else {
           isDeleting = false
           timeoutId = setTimeout(typeLoop, 500)
@@ -344,7 +344,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       isMounted = false
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [fullTitle])
+  }, [line2Text])
 
   const [showLocationPopup, setShowLocationPopup] = useState(false)
   const [locationLabel, setLocationLabel] = useState('')
@@ -412,19 +412,18 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
   const handleScrollDown = () => {
     const heroSec = document.querySelector('.hero-section-main')
-    const nextSec = heroSec?.nextElementSibling
-    if (nextSec) {
+    if (heroSec) {
       const topbar = document.querySelector('.db-topbar')
       const mainHeader = document.querySelector('.db-main-header') || document.querySelector('.navbar')
       let totalHeaderHeight = 0
       if (topbar) totalHeaderHeight += topbar.offsetHeight
       if (mainHeader) totalHeaderHeight += mainHeader.offsetHeight
-      if (totalHeaderHeight === 0) {
-        const cssVar = getComputedStyle(document.documentElement).getPropertyValue('--header-height')
-        totalHeaderHeight = parseInt(cssVar) || 110
-      }
-      const targetTop = nextSec.getBoundingClientRect().top + window.scrollY - totalHeaderHeight
+      if (totalHeaderHeight === 0) totalHeaderHeight = 90
+      
+      const targetTop = heroSec.offsetTop + heroSec.offsetHeight - totalHeaderHeight
       window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+    } else {
+      window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' })
     }
   }
 
@@ -494,8 +493,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         {/* Hero Title */}
         <ScrollReveal direction="up" distance={20} duration={600}>
           <div className="text-center mx-auto hero-title-wrapper" style={{ maxWidth: 980, marginBottom: 36 }}>
-            <h1 className="hero-title-h1" style={{ fontSize: 'clamp(22px, 3.6vw, 44px)', fontWeight: 900, color: '#22C55E', lineHeight: 1.3, letterSpacing: '-0.01em', marginBottom: 16, textShadow: '0 2px 14px rgba(0, 0, 0, 0.5)', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-              {typedTitle}
+            <h1 className="hero-title-h1" style={{ fontSize: 'clamp(24px, 3.8vw, 46px)', fontWeight: 900, color: '#00B875', lineHeight: 1.35, letterSpacing: '-0.01em', marginBottom: 16, textShadow: '0 2px 14px rgba(0, 0, 0, 0.6)', whiteSpace: 'normal', wordBreak: 'break-word', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              <div style={{ display: 'block', color: '#00B875' }}>স্বাগত ডক্টর বুকলেটে</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: '1.3em', marginTop: 4 }}>
+                <span style={{ color: '#FFFFFF' }}>{typedLine2}</span>
+                <span style={{ display: 'inline-block', color: '#00B875', fontWeight: 300, animation: 'cursorBlink 0.8s infinite', marginLeft: 2 }}>|</span>
+              </div>
             </h1>
             <p className="hero-subtitle-p" style={{ fontSize: 'clamp(14px, 1.6vw, 18px)', color: 'rgba(241, 245, 249, 0.94)', fontWeight: 400, lineHeight: 1.65, margin: '0 auto', maxWidth: 880 }}>
               {hero.subtitle || 'বাংলাদেশের অভিজ্ঞ ও যাচাইকৃত বিশেষজ্ঞ ডাক্তার, হাসপাতাল এবং চেম্বার খুঁজে মাত্র কয়েক ক্লিকেই অ্যাপয়েন্টমেন্ট বুক করুন—দ্রুত, নিরাপদ এবং সম্পূর্ণ ঝামেলামুক্তভাবে।'}
@@ -615,7 +618,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         /* ── Search Bar ───────────────────────── */
         .hero-search-bar {
           background: #FFFFFF;
-          border-radius: 0;
+          border-radius: 5px;
+          overflow: hidden;
           box-shadow: 0 15px 40px rgba(0,0,0,0.3);
           display: flex;
           align-items: stretch;
@@ -993,6 +997,11 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           transform: scale(1.1);
         }
 
+        @keyframes cursorBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+
         @media (min-width: 992px) {
           .hero-section-main {
             min-height: 100vh !important;
@@ -1034,7 +1043,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             height: auto;
             padding: 16px !important;
             gap: 12px !important;
-            border-radius: 0 !important;
+            border-radius: 5px !important;
             background: #F1F5F9 !important;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.22) !important;
           }
@@ -1043,7 +1052,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             height: 56px !important;
             border-right: none !important;
             border: 1px solid #CBD5E1 !important;
-            border-radius: 0 !important;
+            border-radius: 5px !important;
             background: #FFFFFF !important;
             display: flex !important;
             align-items: center !important;
@@ -1092,7 +1101,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             width: 100%;
             height: 50px !important;
             padding: 0 16px;
-            border-radius: 0 !important;
+            border-radius: 5px !important;
             margin-top: 2px !important;
             background: #0B8039 !important;
             box-shadow: none !important;

@@ -206,11 +206,15 @@ function HospitalsPage() {
           z-index: 29999;
           opacity: 0;
           visibility: hidden;
+          pointer-events: none;
+          display: none;
           transition: all 0.3s ease;
         }
         .filter-drawer-backdrop.open {
           opacity: 1;
           visibility: visible;
+          pointer-events: auto;
+          display: block;
         }
         .filter-drawer {
           position: fixed;
@@ -297,7 +301,7 @@ function HospitalsPage() {
               height: 42,
               padding: '0 14px',
               borderRadius: 8,
-              background: '#0B192C',
+              background: '#00B875',
               color: 'white',
               border: 'none',
               fontWeight: 700,
@@ -338,9 +342,9 @@ function HospitalsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
               <span key={f.key} style={{
-                background: '#0F172A',
+                background: '#00B875',
                 color: 'white',
-                border: '1px solid #0F172A',
+                border: '1px solid #00B875',
                 borderRadius: 4,
                 padding: '4px 10px',
                 fontSize: 12,
@@ -350,7 +354,7 @@ function HospitalsPage() {
                 gap: 6
               }}>
                 {f.label}
-                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
                   <IconX size={12} />
                 </button>
               </span>
@@ -423,7 +427,7 @@ function HospitalsPage() {
             </button>
           )}
           <button style={{
-            background: '#0B192C',
+            background: '#00B875',
             color: 'white',
             border: 'none',
             borderRadius: 6,
@@ -476,7 +480,7 @@ function HospitalsPage() {
                 title="List View"
                 style={{
                   padding: '6px 10px',
-                  background: viewMode === 'list' ? '#0B192C' : 'white',
+                  background: viewMode === 'list' ? '#00B875' : 'white',
                   color: viewMode === 'list' ? 'white' : '#64748B',
                   border: 'none',
                   cursor: 'pointer',
@@ -492,7 +496,7 @@ function HospitalsPage() {
                 title="Grid View"
                 style={{
                   padding: '6px 10px',
-                  background: viewMode === 'grid' ? '#0B192C' : 'white',
+                  background: viewMode === 'grid' ? '#00B875' : 'white',
                   color: viewMode === 'grid' ? 'white' : '#64748B',
                   border: 'none',
                   borderLeft: '1px solid #CBD5E1',
@@ -509,7 +513,7 @@ function HospitalsPage() {
                 title="Map View"
                 style={{
                   padding: '6px 10px',
-                  background: viewMode === 'map' ? '#0B192C' : 'white',
+                  background: viewMode === 'map' ? '#00B875' : 'white',
                   color: viewMode === 'map' ? 'white' : '#64748B',
                   border: 'none',
                   borderLeft: '1px solid #CBD5E1',
@@ -571,13 +575,13 @@ function HospitalsPage() {
                         position: 'absolute',
                         top: pos.top,
                         left: pos.left,
-                        background: '#0B192C',
+                        background: '#00B875',
                         color: 'white',
                         padding: '5px 12px',
                         borderRadius: 20,
                         fontSize: 12,
                         fontWeight: 700,
-                        boxShadow: '0 4px 14px rgba(11, 25, 44, 0.35)',
+                        boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
                         border: '2px solid white',
                         cursor: 'pointer',
                         zIndex: 10,
@@ -594,7 +598,7 @@ function HospitalsPage() {
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.transform = 'scale(1)'
-                        e.currentTarget.style.background = '#0B192C'
+                        e.currentTarget.style.background = '#00B875'
                       }}
                     >
                       <span>🏥</span>
@@ -676,7 +680,7 @@ function HospitalsPage() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {activeFilters.map(f => (
                         <span key={f.key} style={{
-                          background: '#0F172A',
+                          background: '#00B875',
                           color: 'white',
                           borderRadius: 4,
                           padding: '3px 8px',
@@ -687,7 +691,7 @@ function HospitalsPage() {
                           gap: 5
                         }}>
                           {f.label}
-                          <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: '#94A3B8', cursor: 'pointer', display: 'flex' }}>
+                          <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
                             <IconX size={11} />
                           </button>
                         </span>
@@ -712,7 +716,7 @@ function HospitalsPage() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => setHospitalType(isChecked ? '' : t.id)}
-                              style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
                             />
                             <span>{t.label}</span>
                           </label>
@@ -780,7 +784,7 @@ function HospitalsPage() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => setSelectedBeds(isChecked ? '' : b.id)}
-                              style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
                             />
                             <span>{b.label}</span>
                           </label>
@@ -803,7 +807,7 @@ function HospitalsPage() {
                           type="checkbox"
                           checked={emergencyOnly}
                           onChange={() => setEmergencyOnly(v => !v)}
-                          style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
                         />
                         <span>২৪/৭ জরুরি সেবা</span>
                       </label>
@@ -812,7 +816,7 @@ function HospitalsPage() {
                           type="checkbox"
                           checked={openTodayOnly}
                           onChange={() => setOpenTodayOnly(v => !v)}
-                          style={{ width: 16, height: 16, accentColor: '#0F172A', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
                         />
                         <span>আজ খোলা আছে</span>
                       </label>
@@ -911,7 +915,7 @@ function HospitalsPage() {
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => setHospitalType(isChecked ? '' : t.id)}
-                      style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
+                      style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                     />
                     <span>{t.icon} {t.label}</span>
                   </label>

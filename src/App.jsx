@@ -103,183 +103,103 @@ const AdminMessagesPage      = lazy(() => import('./pages/admin/subscription/Adm
 
 // Commission & Service Management
 const ServiceEnablementPage  = lazy(() => import('./pages/admin/commission/ServiceEnablementPage'))
+
+// Reports
 const CommissionReportPage   = lazy(() => import('./pages/admin/reports/CommissionReportPage'))
 const PurchaseReportPage     = lazy(() => import('./pages/admin/reports/PurchaseReportPage'))
 
-// Profile & Password
+// Admin Profile & Password
 const AdminProfilePage       = lazy(() => import('./pages/admin/AdminProfilePage'))
 const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPage'))
+
+// Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
+
 
 function PageLoader() {
   return (
-    <div style={{ 
-      position: 'fixed',
-      inset: 0,
-      display: 'flex', 
-      flexDirection: 'column',
-      alignItems: 'center', 
+    <div style={{
+      display: 'flex',
+      minHeight: '70vh',
+      width: '100%',
+      alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at center, #FFFFFF 0%, #F8FAFC 100%)',
-      zIndex: 99999
+      padding: '80px 0',
+      userSelect: 'none',
+      position: 'relative'
     }}>
-      {/* Ambient background glow */}
       <div style={{
         position: 'absolute',
-        width: '320px',
-        height: '320px',
+        width: 340,
+        height: 340,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(0, 168, 140, 0.12) 0%, rgba(0, 168, 140, 0) 70%)',
-        filter: 'blur(30px)',
-        pointerEvents: 'none',
-        animation: 'loader-pulse-glow 3s ease-in-out infinite'
+        background: 'radial-gradient(circle, rgba(0, 230, 153, 0.16) 0%, rgba(5, 19, 37, 0.03) 60%, transparent 75%)',
+        animation: 'ambientPulse 3s ease-in-out infinite alternate',
+        pointerEvents: 'none'
       }} />
-
-      <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Animated Outer Orbit Rings */}
-        <div className="loader-ring-outer" style={{ 
-          position: 'absolute', width: '100%', height: '100%', 
-          borderRadius: '50%', 
-          border: '2px dashed rgba(0, 168, 140, 0.25)',
-          animation: 'loader-spin 12s linear infinite'
-        }} />
-
-        <div className="loader-ring-spin" style={{ 
-          position: 'absolute', width: '90%', height: '90%', 
-          borderRadius: '50%', 
-          border: '2.5px solid transparent',
-          borderTopColor: '#00A88C',
-          borderRightColor: 'rgba(0, 168, 140, 0.3)',
-          animation: 'loader-spin-fast 1.2s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite'
-        }} />
-
-        <div className="loader-ring-inner" style={{ 
-          position: 'absolute', width: '74%', height: '74%', 
-          borderRadius: '50%', 
-          border: '2px solid transparent',
-          borderBottomColor: '#00C9A7',
-          animation: 'loader-spin-reverse 1.8s linear infinite'
-        }} />
-
-        {/* Center Logo Container */}
-        <div style={{
-          width: 72, 
-          height: 72, 
-          borderRadius: 22,
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          boxShadow: '0 14px 35px rgba(0, 168, 140, 0.18), 0 0 0 1px rgba(0, 168, 140, 0.1)',
-          animation: 'loader-breathe 2.4s ease-in-out infinite',
-          zIndex: 2,
-          padding: '10px'
-        }}>
-          <img 
-            src="/doctorBookletLogo.png" 
-            alt="Doctor Booklet Logo" 
-            style={{ 
-              maxHeight: '44px', 
-              maxWidth: '44px', 
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 6px rgba(0, 168, 140, 0.25))'
-            }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          <div style={{
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 900,
-            fontSize: '22px',
-            color: '#00A88C',
-            fontFamily: "'Outfit', sans-serif"
-          }}>
-            DB
-          </div>
-        </div>
-      </div>
-
-      {/* Brand Text & Status Indicator */}
-      <div style={{ marginTop: 28, textAlign: 'center', zIndex: 2 }}>
-        <h2 style={{ 
-          fontSize: 24, 
-          fontWeight: 900, 
-          color: '#0F172A', 
-          margin: 0, 
-          letterSpacing: '-0.8px', 
-          fontFamily: "'Outfit', 'Inter', sans-serif",
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px'
-        }}>
-          Doctor <span style={{ color: '#00A88C' }}>Booklet</span>
-        </h2>
-        
-        <p style={{ 
-          fontSize: 12, 
-          color: '#64748B', 
-          fontWeight: 700, 
-          marginTop: 6, 
-          letterSpacing: '1.5px', 
-          textTransform: 'uppercase',
-          fontFamily: "'Inter', sans-serif"
-        }}>
-          Loading Excellence...PP
-        </p>
-
-        {/* Dynamic Progress Line */}
-        <div style={{
-          width: 140,
-          height: 4,
-          background: 'rgba(0, 168, 140, 0.12)',
-          borderRadius: 10,
-          margin: '12px auto 0',
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: '45%',
-            background: 'linear-gradient(90deg, #00A88C, #00D4AF)',
-            borderRadius: 10,
-            animation: 'preloader-bar-slide 1.5s ease-in-out infinite'
-          }} />
-        </div>
+      <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+        <svg style={{ width: 120, height: 120, display: 'block', overflow: 'visible' }} viewBox="16 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path className="svg-d-base" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <path className="svg-d-light-glow" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <path className="svg-d-light-beam" d="M 56 44 H 120 A 56 56 0 0 1 120 156 H 56" />
+          <g className="svg-plus-cross">
+            <line className="svg-plus-arm" x1="88" y1="76" x2="88" y2="124" />
+            <line className="svg-plus-arm" x1="64" y1="100" x2="112" y2="100" />
+          </g>
+        </svg>
       </div>
 
       <style>{`
-        @keyframes loader-spin {
-          to { transform: rotate(360deg); }
+        .svg-d-base {
+          stroke: #051325;
+          stroke-width: 26;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          filter: drop-shadow(0 8px 20px rgba(5, 19, 37, 0.15));
         }
-        @keyframes loader-spin-fast {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        .svg-d-light-beam {
+          stroke: #00FFB0;
+          stroke-width: 5;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-dasharray: 90 220;
+          stroke-dashoffset: 310;
+          filter: drop-shadow(0 0 8px #00FFB0) drop-shadow(0 0 14px rgba(0, 255, 176, 0.8));
+          animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
-        @keyframes loader-spin-reverse {
-          0% { transform: rotate(360deg); }
-          100% { transform: rotate(0deg); }
+        .svg-d-light-glow {
+          stroke: rgba(0, 255, 176, 0.4);
+          stroke-width: 12;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-dasharray: 100 210;
+          stroke-dashoffset: 310;
+          filter: blur(4px);
+          animation: lightBeamSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
-        @keyframes loader-breathe {
-          0%, 100% { transform: scale(1); filter: brightness(1); }
-          50% { transform: scale(1.06); filter: brightness(1.08); }
+        .svg-plus-cross {
+          filter: drop-shadow(0 0 12px rgba(0, 230, 153, 0.75)) drop-shadow(0 0 20px rgba(0, 230, 153, 0.4));
+          animation: crossGlowPulse 2.2s ease-in-out infinite alternate;
+          transform-origin: 88px 100px;
         }
-        @keyframes loader-pulse-glow {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.15); }
+        .svg-plus-arm {
+          stroke: #00B875;
+          stroke-width: 18;
+          stroke-linecap: round;
         }
-        @keyframes preloader-bar-slide {
-          0% { left: -45%; }
-          50% { left: 100%; }
-          100% { left: -45%; }
+        @keyframes lightBeamSweep {
+          0% { stroke-dashoffset: 310; opacity: 0.2; }
+          15% { opacity: 1; }
+          85% { opacity: 1; }
+          100% { stroke-dashoffset: -310; opacity: 0.2; }
+        }
+        @keyframes crossGlowPulse {
+          0% { transform: scale(0.97); filter: drop-shadow(0 0 6px rgba(0, 230, 153, 0.4)); }
+          100% { transform: scale(1.04); filter: drop-shadow(0 0 16px rgba(0, 230, 153, 0.95)) drop-shadow(0 0 24px rgba(0, 255, 176, 0.6)); }
+        }
+        @keyframes ambientPulse {
+          0% { transform: scale(0.92); opacity: 0.4; }
+          100% { transform: scale(1.15); opacity: 0.9; }
         }
       `}</style>
     </div>
