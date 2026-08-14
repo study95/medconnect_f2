@@ -48,7 +48,7 @@ const ABOUT_STYLES = `
   .about-hero-section {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #004D3E 0%, #007A64 45%, #00A88C 100%);
+    background: linear-gradient(135deg, #02382B 0%, #064E3B 45%, #00B875 100%);
     padding: 36px 0 48px;
     margin-bottom: 0;
   }
@@ -57,7 +57,7 @@ const ABOUT_STYLES = `
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 85% 20%, rgba(0, 201, 167, 0.25) 0%, transparent 50%),
+      radial-gradient(circle at 85% 20%, rgba(0, 184, 117, 0.25) 0%, transparent 50%),
       radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.08) 0%, transparent 45%);
     pointer-events: none;
   }
@@ -132,8 +132,8 @@ const ABOUT_STYLES = `
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--mc-primary-light);
-    color: var(--mc-primary);
+    background: #F0FDF4;
+    color: #00B875;
     font-size: 11px;
     font-weight: 800;
     padding: 5px 14px;
@@ -141,12 +141,13 @@ const ABOUT_STYLES = `
     letter-spacing: 0.08em;
     text-transform: uppercase;
     margin-bottom: 12px;
+    border: 1px solid #DCFCE7;
   }
   .about-section-badge .dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--mc-primary);
+    background: #00B875;
   }
 
   .about-section-heading {
@@ -193,13 +194,13 @@ const ABOUT_STYLES = `
   .about-value-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--mc-shadow-hover);
-    border-color: rgba(0, 168, 140, 0.3);
+    border-color: rgba(0, 184, 117, 0.35);
   }
   .about-value-card:hover::before { opacity: 1; }
-  .about-value-card.green::before  { background: linear-gradient(90deg, #00A88C, #00C9A7); }
-  .about-value-card.blue::before   { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-  .about-value-card.purple::before { background: linear-gradient(90deg, #8B5CF6, #A78BFA); }
-  .about-value-card.amber::before  { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
+  .about-value-card.green::before  { background: linear-gradient(90deg, #00B875, #10B981); }
+  .about-value-card.blue::before   { background: linear-gradient(90deg, #059669, #34D399); }
+  .about-value-card.purple::before { background: linear-gradient(90deg, #047857, #059669); }
+  .about-value-card.amber::before  { background: linear-gradient(90deg, #00B875, #059669); }
 
   .about-icon-ring {
     width: 48px;
@@ -221,7 +222,7 @@ const ABOUT_STYLES = `
     position: absolute;
     left: 9px; top: 6px; bottom: 6px;
     width: 2px;
-    background: linear-gradient(to bottom, #00A88C, rgba(0, 168, 140, 0.15));
+    background: linear-gradient(to bottom, #00B875, rgba(0, 184, 117, 0.15));
     border-radius: 2px;
   }
   .about-timeline-item {
@@ -237,9 +238,9 @@ const ABOUT_STYLES = `
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--mc-primary);
+    background: #00B875;
     border: 3px solid var(--mc-bg);
-    box-shadow: 0 0 0 2px var(--mc-primary);
+    box-shadow: 0 0 0 2px #00B875;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -248,7 +249,7 @@ const ABOUT_STYLES = `
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.1em;
-    color: var(--mc-primary);
+    color: #00B875;
     text-transform: uppercase;
     margin-bottom: 3px;
   }
@@ -278,7 +279,7 @@ const ABOUT_STYLES = `
   .about-team-card:hover {
     transform: translateY(-5px);
     box-shadow: var(--mc-shadow-hover);
-    border-color: rgba(0, 168, 140, 0.3);
+    border-color: rgba(0, 184, 117, 0.35);
   }
   .about-team-avatar {
     width: 68px;
@@ -300,7 +301,7 @@ const ABOUT_STYLES = `
     right: -1px;
     width: 18px;
     height: 18px;
-    background: #00A88C;
+    background: #00B875;
     border-radius: 50%;
     color: #fff;
     display: flex;
@@ -317,7 +318,7 @@ const ABOUT_STYLES = `
   .about-team-role {
     font-size: 12px;
     font-weight: 700;
-    color: var(--mc-primary);
+    color: #00B875;
     margin-bottom: 8px;
   }
   .about-team-desc {
@@ -328,12 +329,12 @@ const ABOUT_STYLES = `
   }
 
   .about-cta-section {
-    background: linear-gradient(135deg, #007A64 0%, #00A88C 100%);
+    background: linear-gradient(135deg, #02382B 0%, #064E3B 45%, #00B875 100%);
     border-radius: 20px;
     padding: 36px 28px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 12px 36px rgba(0, 168, 140, 0.18);
+    box-shadow: 0 12px 36px rgba(0, 184, 117, 0.22);
   }
   .about-cta-section::before {
     content: '';
@@ -346,7 +347,7 @@ const ABOUT_STYLES = `
   }
   .about-cta-btn {
     background: white;
-    color: #007A64;
+    color: #064E3B;
     border: none;
     border-radius: 12px;
     padding: 12px 24px;
@@ -362,8 +363,8 @@ const ABOUT_STYLES = `
   .about-cta-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-    background: #F0FDF9;
-    color: #004D3E;
+    background: #F0FDF4;
+    color: #02382B;
   }
   .about-cta-btn-outline {
     background: transparent;
@@ -409,8 +410,8 @@ const ABOUT_STYLES = `
     transition: all 0.2s ease;
   }
   .about-partner-logo:hover {
-    border-color: var(--mc-primary);
-    color: var(--mc-primary);
+    border-color: #00B875;
+    color: #00B875;
   }
 
   /* ─── Mobile Specific Enhancements ────────────────────────────────────────── */
@@ -515,32 +516,32 @@ const VALUES = {
     {
       icon: ShieldCheck,
       color: 'green',
-      bg: 'rgba(0,168,140,0.1)',
-      iconColor: '#00A88C',
+      bg: 'rgba(0,184,117,0.1)',
+      iconColor: '#00B875',
       title: 'Verified Credentials',
       desc: 'Every doctor undergoes BMDC registration verification and credential checks.',
     },
     {
       icon: Lock,
       color: 'blue',
-      bg: 'rgba(59,130,246,0.1)',
-      iconColor: '#3B82F6',
+      bg: 'rgba(5,150,105,0.1)',
+      iconColor: '#059669',
       title: 'Patient Data Security',
       desc: 'End-to-end encrypted health records. We never share your medical data with third parties.',
     },
     {
       icon: Zap,
       color: 'amber',
-      bg: 'rgba(245,158,11,0.1)',
-      iconColor: '#F59E0B',
+      bg: 'rgba(16,185,129,0.1)',
+      iconColor: '#10B981',
       title: 'Instant Booking',
       desc: 'Real-time appointment availability with instant serial confirmation, eliminating wait queues.',
     },
     {
       icon: Building2,
       color: 'purple',
-      bg: 'rgba(139,92,246,0.1)',
-      iconColor: '#8B5CF6',
+      bg: 'rgba(4,120,87,0.1)',
+      iconColor: '#047857',
       title: 'Network of Excellence',
       desc: "Partnered with Bangladesh's top accredited hospitals and specialist chambers nationwide.",
     },
@@ -549,32 +550,32 @@ const VALUES = {
     {
       icon: ShieldCheck,
       color: 'green',
-      bg: 'rgba(0,168,140,0.1)',
-      iconColor: '#00A88C',
+      bg: 'rgba(0,184,117,0.1)',
+      iconColor: '#00B875',
       title: 'যাচাইকৃত সনদপত্র',
       desc: 'প্রতিটি ডাক্তার বিএমডিসি নিবন্ধন যাচাই ও পরীক্ষা-নিরীক্ষার পর প্ল্যাটফর্মে যোগ দেন।',
     },
     {
       icon: Lock,
       color: 'blue',
-      bg: 'rgba(59,130,246,0.1)',
-      iconColor: '#3B82F6',
+      bg: 'rgba(5,150,105,0.1)',
+      iconColor: '#059669',
       title: 'রোগীর তথ্য নিরাপত্তা',
       desc: 'এন্ড-টু-এন্ড এনক্রিপ্টেড রেকর্ড। আপনার চিকিৎসা তথ্য কখনোই তৃতীয় পক্ষের সাথে শেয়ার করা হয় না।',
     },
     {
       icon: Zap,
       color: 'amber',
-      bg: 'rgba(245,158,11,0.1)',
-      iconColor: '#F59E0B',
+      bg: 'rgba(16,185,129,0.1)',
+      iconColor: '#10B981',
       title: 'তাৎক্ষণিক বুকিং',
       desc: 'রিয়েল-টাইম প্রাপ্যতা ও তাৎক্ষণিক সিরিয়াল নিশ্চিতকরণ — দীর্ঘ লাইন এড়ান।',
     },
     {
       icon: Building2,
       color: 'purple',
-      bg: 'rgba(139,92,246,0.1)',
-      iconColor: '#8B5CF6',
+      bg: 'rgba(4,120,87,0.1)',
+      iconColor: '#047857',
       title: 'শ্রেষ্ঠত্বের নেটওয়ার্ক',
       desc: 'সারাদেশে বাংলাদেশের শীর্ষ স্বীকৃত হাসপাতাল ও বিশেষজ্ঞ চেম্বারের সাথে অংশীদারিত্ব।',
     },
@@ -600,16 +601,16 @@ const TIMELINE = {
 
 const TEAM = {
   en: [
-    { initials: 'AR', bg: 'linear-gradient(135deg, #00A88C, #007A64)', name: 'Dr. Arman Rahman', role: 'Founder & CEO', desc: 'MBBS, MPH. Visionary leader with 15+ years in health tech and clinical management.' },
-    { initials: 'SK', bg: 'linear-gradient(135deg, #2563EB, #1D4ED8)', name: 'Sumaiya Khan', role: 'Chief Medical Officer', desc: 'MD, Cardiology. Oversees clinical quality and doctor credential verification.' },
-    { initials: 'RH', bg: 'linear-gradient(135deg, #7C3AED, #6D28D9)', name: 'Rafiq Hossain', role: 'CTO & Co-Founder', desc: "MSc. Computer Science. Architect of secure infrastructure and health APIs." },
-    { initials: 'NA', bg: 'linear-gradient(135deg, #D97706, #B45309)', name: 'Nadia Ahmed', role: 'Head of Partnerships', desc: 'MBA, Healthcare. Manages relationships with 200+ hospitals nationwide.' },
+    { initials: 'AR', bg: 'linear-gradient(135deg, #00B875, #064E3B)', name: 'Dr. Arman Rahman', role: 'Founder & CEO', desc: 'MBBS, MPH. Visionary leader with 15+ years in health tech and clinical management.' },
+    { initials: 'SK', bg: 'linear-gradient(135deg, #059669, #02382B)', name: 'Sumaiya Khan', role: 'Chief Medical Officer', desc: 'MD, Cardiology. Oversees clinical quality and doctor credential verification.' },
+    { initials: 'RH', bg: 'linear-gradient(135deg, #10B981, #047857)', name: 'Rafiq Hossain', role: 'CTO & Co-Founder', desc: "MSc. Computer Science. Architect of secure infrastructure and health APIs." },
+    { initials: 'NA', bg: 'linear-gradient(135deg, #00B875, #059669)', name: 'Nadia Ahmed', role: 'Head of Partnerships', desc: 'MBA, Healthcare. Manages relationships with 200+ hospitals nationwide.' },
   ],
   bn: [
-    { initials: 'AR', bg: 'linear-gradient(135deg, #00A88C, #007A64)', name: 'ডাঃ আরমান রহমান', role: 'প্রতিষ্ঠাতা ও সিইও', desc: 'MBBS, MPH। স্বাস্থ্য প্রযুক্তি ও ক্লিনিকাল ম্যানেজমেন্টে ১৫+ বছরের অভিজ্ঞ দূরদৃষ্টিসম্পন্ন নেতা।' },
-    { initials: 'SK', bg: 'linear-gradient(135deg, #2563EB, #1D4ED8)', name: 'সুমাইয়া খান', role: 'চিফ মেডিকেল অফিসার', desc: 'MD, কার্ডিওলজি। ক্লিনিকাল মান ও ডাক্তার সনদপত্র যাচাই প্রোটোকল তত্ত্বাবধান করেন।' },
-    { initials: 'RH', bg: 'linear-gradient(135deg, #7C3AED, #6D28D9)', name: 'রফিক হোসেন', role: 'সিটিও ও সহ-প্রতিষ্ঠাতা', desc: 'MSc. কম্পিউটার বিজ্ঞান। প্ল্যাটফর্মের নিরাপদ অবকাঠামো ও এপিআই স্থপতি।' },
-    { initials: 'NA', bg: 'linear-gradient(135deg, #D97706, #B45309)', name: 'নাদিয়া আহমেদ', role: 'অংশীদারিত্ব প্রধান', desc: 'MBA, হেলথকেয়ার। ২০০+ হাসপাতাল ও চিকিৎসা প্রতিষ্ঠানের সাথে সম্পর্ক পরিচালনা করেন।' },
+    { initials: 'AR', bg: 'linear-gradient(135deg, #00B875, #064E3B)', name: 'ডাঃ আরমান রহমান', role: 'প্রতিষ্ঠাতা ও সিইও', desc: 'MBBS, MPH। স্বাস্থ্য প্রযুক্তি ও ক্লিনিকাল ম্যানেজমেন্টে ১৫+ বছরের অভিজ্ঞ দূরদৃষ্টিসম্পন্ন নেতা।' },
+    { initials: 'SK', bg: 'linear-gradient(135deg, #059669, #02382B)', name: 'সুমাইয়া খান', role: 'চিফ মেডিকেল অফিসার', desc: 'MD, কার্ডিওলজি। ক্লিনিকাল মান ও ডাক্তার সনদপত্র যাচাই প্রোটোকল তত্ত্বাবধান করেন।' },
+    { initials: 'RH', bg: 'linear-gradient(135deg, #10B981, #047857)', name: 'রফিক হোসেন', role: 'সিটিও ও সহ-প্রতিষ্ঠাতা', desc: 'MSc. কম্পিউটার বিজ্ঞান। প্ল্যাটফর্মের নিরাপদ অবকাঠামো ও এপিআই স্থপতি।' },
+    { initials: 'NA', bg: 'linear-gradient(135deg, #00B875, #059669)', name: 'নাদিয়া আহমেদ', role: 'অংশীদারিত্ব প্রধান', desc: 'MBA, হেলথকেয়ার। ২০০+ হাসপাতাল ও চিকিৎসা প্রতিষ্ঠানের সাথে সম্পর্ক পরিচালনা করেন।' },
   ],
 }
 
@@ -808,19 +809,19 @@ export default function AboutPage() {
 
               {/* Mission Box */}
               <div style={{
-                background: isDark ? 'rgba(0,168,140,0.1)' : 'linear-gradient(135deg, #F0FDF9 0%, #E6F6F4 100%)',
+                background: isDark ? 'rgba(0,184,117,0.1)' : 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
                 borderRadius: 14, padding: '16px 18px',
-                border: '1px solid rgba(0,168,140,0.25)',
+                border: '1px solid rgba(0,184,117,0.25)',
                 display: 'flex', gap: 12, alignItems: 'flex-start'
               }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 10, background: 'rgba(0,168,140,0.15)',
+                  width: 36, height: 36, borderRadius: 10, background: 'rgba(0,184,117,0.15)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
-                  <Target size={20} color="#00A88C" />
+                  <Target size={20} color="#00B875" />
                 </div>
                 <div>
-                  <p style={{ fontSize: 10.5, fontWeight: 800, color: '#00A88C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+                  <p style={{ fontSize: 10.5, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
                     {t('our_mission')}
                   </p>
                   <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--mc-text)', lineHeight: 1.55, margin: 0 }}>
@@ -837,8 +838,8 @@ export default function AboutPage() {
               <div>
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <Activity size={17} color="#00A88C" />
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#00A88C', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <Activity size={17} color="#00B875" />
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                       {isEn ? 'Our Vision' : 'আমাদের দৃষ্টিভঙ্গি'}
                     </span>
                   </div>
@@ -964,10 +965,10 @@ export default function AboutPage() {
               </p>
 
               <div style={{
-                background: 'linear-gradient(135deg, #007A64, #00A88C)',
+                background: 'linear-gradient(135deg, #064E3B, #00B875)',
                 borderRadius: 14, padding: '16px 18px',
                 display: 'flex', gap: 14, alignItems: 'center',
-                boxShadow: '0 6px 20px rgba(0,168,140,0.15)'
+                boxShadow: '0 6px 20px rgba(0,184,117,0.2)'
               }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <TrendingUp size={20} color="#fff" />
@@ -994,8 +995,8 @@ export default function AboutPage() {
                   <div style={{
                     background: 'var(--mc-white)', border: '1px solid var(--mc-border)',
                     borderRadius: 14, padding: '16px 18px',
-                    boxShadow: i === timeline.length - 1 ? '0 4px 18px rgba(0,168,140,0.1)' : 'var(--mc-shadow)',
-                    borderLeft: i === timeline.length - 1 ? '3px solid #00A88C' : '1px solid var(--mc-border)',
+                    boxShadow: i === timeline.length - 1 ? '0 4px 18px rgba(0,184,117,0.15)' : 'var(--mc-shadow)',
+                    borderLeft: i === timeline.length - 1 ? '3px solid #00B875' : '1px solid var(--mc-border)',
                   }}>
                     <div className="about-timeline-year">{item.year}</div>
                     <div className="about-timeline-title">{item.title}</div>

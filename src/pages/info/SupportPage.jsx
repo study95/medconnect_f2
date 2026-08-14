@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react'
 import { Container, Row, Col, Modal } from 'react-bootstrap'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getContent } from '../../utils/contentService'
 import { 
   Phone, Mail, HelpCircle, MessageSquare, Clock, ShieldCheck, 
-  Search, ChevronDown, ChevronUp, ArrowRight, LifeBuoy, Sparkles,
+  ChevronDown, ChevronUp, ArrowRight, LifeBuoy, Sparkles,
   CheckCircle2, AlertTriangle, Send, RefreshCw, ThumbsUp, ThumbsDown,
-  Ticket, FileText, CheckCircle, Headphones, User, PhoneCall, Filter,
-  ExternalLink, Copy
+  Ticket, FileText, Headphones, PhoneCall, Copy, Search
 } from 'lucide-react'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
 
@@ -21,7 +20,6 @@ export default function SupportPage() {
   // Active state tabs: 'faq' | 'ticket' | 'status'
   const [activeMainTab, setActiveMainTab] = useState('faq')
   const [activeCategory, setActiveCategory] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
   const [openFaqId, setOpenFaqId] = useState(1)
   const [votedFaqs, setVotedFaqs] = useState({})
   const [copiedText, setCopiedText] = useState(null)
@@ -58,7 +56,7 @@ export default function SupportPage() {
     { id: 'services', label: 'ডিজিটাল সেবা', icon: '🩺' },
   ]
 
-  // Default master FAQ items (with robust fallbacks)
+  // Master FAQ items
   const rawItems = useMemo(() => {
     const defaultList = [
       { id: 1, category: 'account', q: 'Doctor Booklet-এ কীভাবে অ্যাকাউন্ট তৈরি করব?', a: 'রেজিস্টার পেজে গিয়ে রোগী বা ডাক্তার হিসেবে প্রয়োজনীয় তথ্য পূরণ করুন। মোবাইল নম্বর ও ইমেইলে প্রাপ্ত ওটিপি যাচাই করলেই অ্যাকাউন্ট সক্রিয় হবে।' },
@@ -74,7 +72,6 @@ export default function SupportPage() {
     const cmsItems = faqData.items || []
     if (cmsItems.length === 0) return defaultList
 
-    // Normalize & attach fallback categories & IDs
     return cmsItems.map((item, idx) => {
       const id = item.id || idx + 1
       let cat = item.category
@@ -96,15 +93,12 @@ export default function SupportPage() {
     })
   }, [faqData.items])
 
-  // Filter FAQs by Search Query & Category
+  // Filter FAQs by Category
   const filteredFaqs = useMemo(() => {
     return rawItems.filter(item => {
-      const matchCategory = activeCategory === 'all' || item.category === activeCategory
-      const query = searchQuery.trim().toLowerCase()
-      const matchSearch = !query || item.q.toLowerCase().includes(query) || item.a.toLowerCase().includes(query)
-      return matchCategory && matchSearch
+      return activeCategory === 'all' || item.category === activeCategory
     })
-  }, [rawItems, activeCategory, searchQuery])
+  }, [rawItems, activeCategory])
 
   const toggleFaq = (id) => {
     setOpenFaqId(prev => (prev === id ? null : id))
@@ -112,13 +106,11 @@ export default function SupportPage() {
 
   const handleVote = (id, type) => {
     setVotedFaqs(prev => ({ ...prev, [id]: type }))
-    
   }
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text)
     setCopiedText(field)
-    
     setTimeout(() => setCopiedText(null), 2000)
   }
 
@@ -126,11 +118,10 @@ export default function SupportPage() {
   const handleTicketSubmit = async (e) => {
     e.preventDefault()
     if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) {
-      
       return
     }
     setTicketSubmitting(true)
-    await new Promise(r => setTimeout(r, 1000))
+    await new Promise(r => setTimeout(r, 800))
     const ticketId = 'TK-' + Math.floor(100000 + Math.random() * 900000)
     const newTicket = {
       id: ticketId,
@@ -141,7 +132,6 @@ export default function SupportPage() {
     }
     setSubmittedTicket(newTicket)
     setTicketSubmitting(false)
-    
     setTicketForm({ name: '', contact: '', category: 'অ্যাপয়েন্টমেন্ট সমস্যা', priority: 'সাধারণ', subject: '', message: '' })
   }
 
@@ -149,15 +139,11 @@ export default function SupportPage() {
   const handleSearchTicket = (e) => {
     e.preventDefault()
     setStatusError('')
-    if (!statusSearchId.trim()) {
-      
-      return
-    }
+    if (!statusSearchId.trim()) return
     const cleanId = statusSearchId.trim().toUpperCase()
     if (submittedTicket && submittedTicket.id.toUpperCase() === cleanId) {
       setSearchedTicketResult(submittedTicket)
     } else {
-      // Mock result for demo check
       if (cleanId.startsWith('TK-')) {
         setSearchedTicketResult({
           id: cleanId,
@@ -179,180 +165,394 @@ export default function SupportPage() {
   // Handle Callback Form Submit
   const handleCallbackSubmit = async (e) => {
     e.preventDefault()
-    if (!callbackPhone) {
-      
-      return
-    }
+    if (!callbackPhone) return
     setCallbackSubmitting(true)
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise(r => setTimeout(r, 600))
     setCallbackSubmitting(false)
     setShowCallbackModal(false)
-    
     setCallbackPhone('')
   }
 
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 100 }}>
-      {/* ── HERO SECTION ── */}
-      <section style={{ 
-        background: 'linear-gradient(135deg, #004D40 0%, #00796B 50%, #00A88C 100%)', 
-        padding: '0 0 110px', 
+      {/* ── CSS FOR RESPONSIVE COMPACT MOBILE VIEW ── */}
+      <style>{`
+        @media (max-width: 768px) {
+          .support-hero-section {
+            padding: 0 0 42px !important;
+          }
+          .support-hero-title {
+            font-size: 21px !important;
+            margin-bottom: 8px !important;
+          }
+          .support-hero-desc {
+            font-size: 13px !important;
+            line-height: 1.5 !important;
+          }
+          .support-quick-cards-container {
+            margin-top: -24px !important;
+          }
+          .support-quick-card {
+            padding: 12px 14px !important;
+            border-radius: 14px !important;
+            gap: 12px !important;
+          }
+          .support-quick-card-icon {
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 10px !important;
+          }
+          .support-quick-card-icon svg {
+            width: 18px !important;
+            height: 18px !important;
+          }
+          .support-quick-card-label {
+            font-size: 10px !important;
+          }
+          .support-quick-card-value {
+            font-size: 13.5px !important;
+          }
+          .support-tabs-container {
+            margin-top: 20px !important;
+          }
+          .support-tabs-nav {
+            padding: 4px !important;
+            border-radius: 14px !important;
+            margin-bottom: 16px !important;
+            gap: 4px !important;
+          }
+          .support-tab-btn {
+            padding: 8px 10px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+          }
+          .support-tab-btn svg {
+            width: 14px !important;
+            height: 14px !important;
+          }
+          .support-content-card {
+            padding: 20px 16px !important;
+            border-radius: 16px !important;
+          }
+          .support-cat-chip {
+            padding: 5px 12px !important;
+            font-size: 12px !important;
+          }
+          .support-faq-q-btn {
+            padding: 14px 14px !important;
+          }
+          .support-faq-q-text {
+            font-size: 13.5px !important;
+          }
+          .support-faq-answer {
+            padding: 0 14px 14px 44px !important;
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
+
+      {/* ── HERO SECTION (ELEGANT & NO SEARCHBAR) ── */}
+      <section className="support-hero-section" style={{ 
+        background: 'linear-gradient(135deg, #013A28 0%, #006644 50%, #00B875 100%)', 
+        padding: '0 0 85px', 
         color: 'white',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Background Ambient Spheres */}
-        <div style={{ position: 'absolute', top: -120, right: -120, width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -140, left: -140, width: 550, height: 550, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,201,167,0.22) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none' }} />
+        {/* Background Ambient Glows */}
+        <div style={{ position: 'absolute', top: -120, right: -120, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -120, left: -120, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,184,117,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <BreadcrumbHUD links={[{ label: 'সাপোর্ট ও সাহায্য কেন্দ্র' }]} variant="light" />
 
-        <Container style={{ position: 'relative', zIndex: 2, marginTop: 20 }}>
+        <Container style={{ position: 'relative', zIndex: 2, marginTop: 16 }}>
           <Row className="justify-content-center text-center">
-            <Col lg={9} md={11}>
+            <Col lg={8} md={10}>
               <div style={{ 
-                background: 'rgba(255,255,255,0.16)', 
+                background: 'rgba(255, 255, 255, 0.15)', 
                 backdropFilter: 'blur(12px)',
-                padding: '6px 22px', 
+                padding: '6px 20px', 
                 borderRadius: 99, 
-                fontSize: 13, 
+                fontSize: 12.5, 
                 fontWeight: 800,
-                marginBottom: 20,
+                marginBottom: 16,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                border: '1px solid rgba(255,255,255,0.28)',
-                color: '#E6FFFA'
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#DCFCE7'
               }}>
-                <LifeBuoy size={16} />
-                <span>২৪/৭ অফিসিয়াল কাস্টমার সাপোর্ট কেয়ার</span>
+                <Sparkles size={15} color="#34D399" />
+                <span>২৪/৭ অফিসিয়াল কাস্টমার কেয়ার ও হেল্প ডেসক</span>
               </div>
 
-              <h1 style={{ 
-                fontSize: 'clamp(32px, 5.2vw, 54px)', 
+              <h1 className="support-hero-title" style={{ 
+                fontSize: 'clamp(28px, 4.5vw, 48px)', 
                 fontWeight: 900, 
-                marginBottom: 16, 
+                marginBottom: 14, 
                 lineHeight: 1.25,
                 letterSpacing: '-0.5px' 
               }}>
-                {support.title || 'আমরা আপনাকে কীভাবে সাহায্য করতে পারি?'}
+                {support.title || 'আপনার স্বাস্থ্যসেবায় আমাদের সার্বক্ষণিক সহায়তা'}
               </h1>
 
-              <p style={{ 
-                fontSize: 'clamp(15px, 2vw, 18px)', 
+              <p className="support-hero-desc" style={{ 
+                fontSize: 'clamp(14.5px, 1.8vw, 17px)', 
                 opacity: 0.92, 
-                lineHeight: 1.7, 
-                maxWidth: 680, 
-                margin: '0 auto 36px',
+                lineHeight: 1.65, 
+                maxWidth: 640, 
+                margin: '0 auto',
                 fontWeight: 400 
               }}>
-                {faqData.subtitle || 'Doctor Booklet সম্পর্কিত সাধারণ জিজ্ঞাসা খুঁজুন, নতুন সাপোর্ট টিকিট তৈরি করুন অথবা সরাসরি আমাদের প্রতিনিধির সাথে যোগাযোগ করুন।'}
+                {faqData.subtitle || 'Doctor Booklet অ্যাপয়েন্টমেন্ট, পেমেন্ট, ও ডিজিটাল সেবা সংক্রান্ত যেকোনো তথ্যের জন্য সচরাচর প্রশ্নাবলী দেখুন অথবা সাপোর্ট টিকিট জমা দিন।'}
               </p>
-
-              {/* LIVE FAQ SEARCH INPUT */}
-              <div style={{ maxWidth: 660, margin: '0 auto 24px', position: 'relative' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'white',
-                  borderRadius: 22,
-                  padding: '8px 12px 8px 24px',
-                  boxShadow: '0 20px 45px rgba(0,0,0,0.2)',
-                  border: '2px solid rgba(255,255,255,0.85)'
-                }}>
-                  <Search size={22} color="#00A88C" style={{ marginRight: 12, flexShrink: 0 }} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value)
-                      if (activeMainTab !== 'faq') setActiveMainTab('faq')
-                    }}
-                    placeholder="প্রশ্ন লিখুন (উদাঃ অ্যাপয়েন্টমেন্ট বাতিল, পেমেন্ট, ওটিপি, ভিডিও কল)..."
-                    style={{
-                      border: 'none',
-                      outline: 'none',
-                      width: '100%',
-                      fontSize: 15,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      color: '#0F172A',
-                      background: 'transparent',
-                      fontWeight: 600
-                    }}
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      style={{
-                        border: 'none',
-                        background: '#F1F5F9',
-                        color: '#64748B',
-                        borderRadius: '50%',
-                        width: 30,
-                        height: 30,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justify: 'center',
-                        fontSize: 13,
-                        cursor: 'pointer',
-                        marginRight: 8
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                  <div style={{
-                    background: 'linear-gradient(135deg, #00796B, #00A88C)',
-                    color: 'white',
-                    padding: '12px 24px',
-                    borderRadius: 16,
-                    fontSize: 15,
-                    fontWeight: 800,
-                    whiteSpace: 'nowrap'
-                  }}>
-                    খুঁজুন
-                  </div>
-                </div>
-              </div>
-
             </Col>
           </Row>
         </Container>
       </section>
 
-      {/* ── MAIN CONTENT AREA (SUPPORT TABS & PANELS) ── */}
-      <Container id="support-tabs-container" style={{ marginTop: 60 }}>
+      {/* ── 3 QUICK CONTACT CHANNELS (FLOATING OVER HERO) ── */}
+      <Container className="support-quick-cards-container" style={{ marginTop: -45, position: 'relative', zIndex: 10 }}>
+        <Row className="g-2 g-md-3 justify-content-center">
+          {/* Card 1: Helpline */}
+          <Col md={4} xs={12}>
+            <div className="support-quick-card" style={{
+              background: 'white',
+              borderRadius: 20,
+              padding: '22px 20px',
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              height: '100%',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
+            >
+              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DCFCE7' }}>
+                <PhoneCall size={22} />
+              </div>
+              <div style={{ flexGrow: 1 }}>
+                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>২৪/৭ ফোন হেল্পলাইন</div>
+                <a href={`tel:${site.phone || '017XXXXXXXX'}`} className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 16, textDecoration: 'none', display: 'block', lineHeight: 1.2 }}>
+                  {site.phone || '017 XXXX XXXX'}
+                </a>
+              </div>
+            </div>
+          </Col>
 
+          {/* Card 2: Create Ticket */}
+          <Col md={4} xs={6}>
+            <div 
+              onClick={() => setActiveMainTab('ticket')}
+              className="support-quick-card"
+              style={{
+                background: 'white',
+                borderRadius: 20,
+                padding: '22px 20px',
+                border: activeMainTab === 'ticket' ? '2px solid #00B875' : '1px solid rgba(226, 232, 240, 0.8)',
+                boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                height: '100%',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; if (activeMainTab !== 'ticket') e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
+            >
+              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DBEAFE' }}>
+                <Ticket size={22} />
+              </div>
+              <div style={{ flexGrow: 1 }}>
+                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>অনলাইন সাপোর্ট টিকিট</div>
+                <div className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 15, lineHeight: 1.2 }}>
+                  টিকিট তৈরি করুন ➔
+                </div>
+              </div>
+            </div>
+          </Col>
 
-        <Row className="g-5">
-          {/* MAIN LEFT PANEL */}
+          {/* Card 3: Call Back Request */}
+          <Col md={4} xs={6}>
+            <div 
+              onClick={() => setShowCallbackModal(true)}
+              className="support-quick-card"
+              style={{
+                background: 'white',
+                borderRadius: 20,
+                padding: '22px 20px',
+                border: '1px solid rgba(226, 232, 240, 0.8)',
+                boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                height: '100%',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
+            >
+              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FDE68A' }}>
+                <Headphones size={22} />
+              </div>
+              <div style={{ flexGrow: 1 }}>
+                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>কল ব্যাক সুবিধা</div>
+                <div className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 15, lineHeight: 1.2 }}>
+                  কল ব্যাক রিকোয়েস্ট 📞
+                </div>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+
+      {/* ── MAIN CONTENT AREA (CLEAN TABS & GRID LAYOUT) ── */}
+      <Container className="support-tabs-container" id="support-tabs-container" style={{ marginTop: 36 }}>
+        
+        {/* TAB NAVIGATION HEADER BAR */}
+        <div className="support-tabs-nav" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: 'white',
+          padding: '8px',
+          borderRadius: 18,
+          border: '1px solid #E2E8F0',
+          marginBottom: 28,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+          overflowX: 'auto'
+        }}>
+          <button
+            onClick={() => setActiveMainTab('faq')}
+            className="support-tab-btn"
+            style={{
+              flex: 1,
+              padding: '12px 20px',
+              borderRadius: 14,
+              border: 'none',
+              background: activeMainTab === 'faq' ? '#00B875' : 'transparent',
+              color: activeMainTab === 'faq' ? 'white' : '#64748B',
+              fontWeight: 800,
+              fontSize: 14.5,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.25s ease',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <HelpCircle size={18} /> সচরাচর জিজ্ঞাসা (FAQ)
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('ticket')}
+            className="support-tab-btn"
+            style={{
+              flex: 1,
+              padding: '12px 20px',
+              borderRadius: 14,
+              border: 'none',
+              background: activeMainTab === 'ticket' ? '#00B875' : 'transparent',
+              color: activeMainTab === 'ticket' ? 'white' : '#64748B',
+              fontWeight: 800,
+              fontSize: 14.5,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.25s ease',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Ticket size={18} /> নতুন সাপোর্ট টিকিট জমা
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('status')}
+            className="support-tab-btn"
+            style={{
+              flex: 1,
+              padding: '12px 20px',
+              borderRadius: 14,
+              border: 'none',
+              background: activeMainTab === 'status' ? '#00B875' : 'transparent',
+              color: activeMainTab === 'status' ? 'white' : '#64748B',
+              fontWeight: 800,
+              fontSize: 14.5,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.25s ease',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Search size={18} /> টিকিট স্ট্যাটাস ট্র্যাক
+          </button>
+        </div>
+
+        <Row className="g-4">
+          {/* MAIN LEFT CONTENT */}
           <Col lg={8}>
+            
             {/* ── TAB 1: FAQ ACCORDION HUB ── */}
             {activeMainTab === 'faq' && (
-              <div style={{
+              <div className="support-content-card" style={{
                 background: 'white',
-                borderRadius: 32,
-                padding: '40px 36px',
-                border: '1.5px solid #E2E8F0',
-                boxShadow: '0 12px 35px rgba(0,0,0,0.04)'
+                borderRadius: 24,
+                padding: '32px 28px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.03)'
               }}>
                 {/* Header & Filter Row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
-                  <div>
-                    <span style={{ background: '#E6FFFA', color: '#00796B', fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8 }}>
-                      {faqData.badge || 'সচরাচর জিজ্ঞাসা'}
-                    </span>
-                    <h3 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 26, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <HelpCircle color="#00A88C" size={28} />
-                      <span>{faqData.title || 'সচরাচর জিজ্ঞাসা (FAQ)'}</span>
-                    </h3>
-                  </div>
-                  <span style={{ fontSize: 13, color: '#64748B', fontWeight: 700, background: '#F1F5F9', padding: '6px 14px', borderRadius: 99 }}>
-                    মোট {filteredFaqs.length} টি উত্তর পাওয়া গেছে
+                <div style={{ marginBottom: 20 }}>
+                  <span style={{ background: '#F0FDF4', color: '#064E3B', fontSize: 12, fontWeight: 800, padding: '4px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8, border: '1px solid #DCFCE7' }}>
+                    {faqData.badge || 'সচরাচর জিজ্ঞাসা'}
                   </span>
+                  <h3 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span>{faqData.title || 'সাধারণ প্রশ্নাবলী ও সমাধান'}</span>
+                  </h3>
                 </div>
 
-
+                {/* CATEGORY FILTER CHIPS */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                  {categories.map(cat => {
+                    const isActive = activeCategory === cat.id
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setActiveCategory(cat.id)}
+                        className="support-cat-chip"
+                        style={{
+                          background: isActive ? '#00B875' : '#F8FAFC',
+                          color: isActive ? 'white' : '#475569',
+                          border: isActive ? '1px solid #00B875' : '1px solid #E2E8F0',
+                          padding: '7px 16px',
+                          borderRadius: 99,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
 
                 {/* FAQ List Render */}
                 {filteredFaqs.length > 0 ? (
@@ -367,11 +567,11 @@ export default function SupportPage() {
                           key={id}
                           style={{
                             borderRadius: 16,
-                            border: isOpen ? '1.5px solid #00A88C' : '1.5px solid #E8EDF2',
+                            border: isOpen ? '1.5px solid #00B875' : '1px solid #E8EDF2',
                             background: 'white',
                             overflow: 'hidden',
                             transition: 'all 0.25s ease',
-                            boxShadow: isOpen ? '0 4px 20px rgba(0,168,140,0.10)' : '0 1px 4px rgba(0,0,0,0.04)'
+                            boxShadow: isOpen ? '0 4px 20px rgba(0,184,117,0.12)' : '0 1px 4px rgba(0,0,0,0.03)'
                           }}
                         >
                           {/* Question Row */}
@@ -379,8 +579,8 @@ export default function SupportPage() {
                             onClick={() => toggleFaq(id)}
                             style={{
                               width: '100%',
-                              padding: '18px 22px',
-                              background: isOpen ? 'linear-gradient(135deg, #F0FDF9 0%, #E6FFFA 100%)' : 'white',
+                              padding: '16px 20px',
+                              background: isOpen ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' : 'white',
                               border: 'none',
                               textAlign: 'left',
                               display: 'flex',
@@ -392,32 +592,31 @@ export default function SupportPage() {
                               transition: 'background 0.2s ease'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
                               <div style={{
-                                width: 32,
-                                height: 32,
+                                width: 30,
+                                height: 30,
                                 borderRadius: 10,
-                                background: isOpen ? '#00A88C' : '#F1F5F9',
+                                background: isOpen ? '#00B875' : '#F1F5F9',
                                 color: isOpen ? 'white' : '#64748B',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: 900,
                                 fontSize: 13,
-                                flexShrink: 0,
-                                letterSpacing: '0.5px'
+                                flexShrink: 0
                               }}>
                                 Q
                               </div>
-                              <span style={{ fontWeight: 700, fontSize: 15, color: isOpen ? '#004D40' : '#1E293B', lineHeight: 1.5 }}>
+                              <span style={{ fontWeight: 700, fontSize: 15, color: isOpen ? '#02382B' : '#1E293B', lineHeight: 1.45 }}>
                                 {item.q}
                               </span>
                             </div>
                             <div style={{
-                              width: 30,
-                              height: 30,
+                              width: 28,
+                              height: 28,
                               borderRadius: '50%',
-                              background: isOpen ? '#00A88C' : '#F1F5F9',
+                              background: isOpen ? '#00B875' : '#F1F5F9',
                               color: isOpen ? 'white' : '#94A3B8',
                               display: 'flex',
                               alignItems: 'center',
@@ -432,14 +631,14 @@ export default function SupportPage() {
                           {/* Answer Row */}
                           {isOpen && (
                             <div style={{
-                              padding: '0 22px 20px 68px',
-                              borderTop: '1px solid #E6FFFA'
+                              padding: '0 20px 18px 62px',
+                              borderTop: '1px solid #DCFCE7'
                             }}>
                               <div style={{
-                                paddingTop: 14,
+                                paddingTop: 12,
                                 fontSize: 14,
                                 color: '#475569',
-                                lineHeight: 1.85,
+                                lineHeight: 1.8,
                                 fontWeight: 450
                               }}>
                                 {item.a}
@@ -451,29 +650,16 @@ export default function SupportPage() {
                     })}
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '50px 20px', background: '#FAFAFA', borderRadius: 24, border: '1.5px dashed #CBD5E1' }}>
-                    <HelpCircle size={48} color="#94A3B8" style={{ marginBottom: 12 }} />
-                    <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>কোনো প্রশ্ন পাওয়া যায়নি</h5>
-                    <p style={{ color: '#64748B', fontSize: 14, marginBottom: 20 }}>
-                      "{searchQuery}" ফিল্টারের সমতুল্য কোনো তথ্য নেই।
-                    </p>
+                  <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FAFAFA', borderRadius: 20, border: '1.5px dashed #CBD5E1' }}>
+                    <HelpCircle size={40} color="#94A3B8" style={{ marginBottom: 10 }} />
+                    <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>কোনো তথ্য পাওয়া যায়নি</h5>
                     <button
-                      onClick={() => { setSearchQuery(''); setActiveCategory('all'); }}
+                      onClick={() => setActiveCategory('all')}
                       style={{
-                        background: '#00A88C',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 14,
-                        padding: '12px 24px',
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8
+                        background: '#00B875', color: 'white', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', marginTop: 12
                       }}
                     >
-                      <RefreshCw size={15} /> ফিল্টার রিসেট করুন
+                      ফিল্টার রিসেট করুন
                     </button>
                   </div>
                 )}
@@ -484,20 +670,20 @@ export default function SupportPage() {
             {activeMainTab === 'ticket' && (
               <div style={{
                 background: 'white',
-                borderRadius: 32,
-                padding: '40px 36px',
-                border: '1.5px solid #E2E8F0',
-                boxShadow: '0 12px 35px rgba(0,0,0,0.04)'
+                borderRadius: 24,
+                padding: '36px 30px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.03)'
               }}>
-                <div style={{ marginBottom: 28 }}>
-                  <span style={{ background: '#E6FFFA', color: '#00796B', fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8 }}>
-                    অনলাইন টিকিট সাপোর্ট
+                <div style={{ marginBottom: 24 }}>
+                  <span style={{ background: '#F0FDF4', color: '#064E3B', fontSize: 12, fontWeight: 800, padding: '4px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8, border: '1px solid #DCFCE7' }}>
+                    অনলাইন সাপোর্ট টিকিট
                   </span>
-                  <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 26, margin: '0 0 8px' }}>
-                    নতুন সাপোর্ট টিকিট তৈরি করুন
+                  <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 22, margin: '0 0 6px' }}>
+                    নতুন সাপোর্ট টিকিট জমা দিন
                   </h3>
-                  <p style={{ color: '#64748B', fontSize: 15, margin: 0 }}>
-                    আপনার অ্যাপয়েন্টমেন্ট, পেমেন্ট বা প্রযুক্তিগত সমস্যার কথা জানান। আমাদের বিশেষজ্ঞ সাপোর্ট টিম দ্রুত টিকিট সমাধান করবে।
+                  <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>
+                    আপনার সমস্যার তথ্য নিচে পূরণ করুন। আমাদের কাস্টমার সাপোর্ট টিম ২ ঘণ্টার মধ্যে আপনার টিকিটের উত্তর দেবে।
                   </p>
                 </div>
 
@@ -512,30 +698,31 @@ export default function SupportPage() {
                         value={ticketForm.name}
                         onChange={e => setTicketForm({ ...ticketForm, name: e.target.value })}
                         placeholder="উদাঃ সাকিব হাসান"
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
                       />
                     </Col>
+
                     <Col md={6}>
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
-                        ইমেইল বা মোবাইল নম্বর <span style={{ color: '#EF4444' }}>*</span>
+                        মোবাইল নম্বর / ইমেইল <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input
                         required
                         value={ticketForm.contact}
                         onChange={e => setTicketForm({ ...ticketForm, contact: e.target.value })}
                         placeholder="017XXXXXXXX / email@example.com"
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
                       />
                     </Col>
 
                     <Col md={6}>
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
-                        টিকিট ক্যাটাগরি <span style={{ color: '#EF4444' }}>*</span>
+                        সমস্যার ক্যাটাগরি <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <select
                         value={ticketForm.category}
                         onChange={e => setTicketForm({ ...ticketForm, category: e.target.value })}
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, cursor: 'pointer', background: 'white' }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, cursor: 'pointer', background: 'white' }}
                       >
                         <option value="অ্যাপয়েন্টমেন্ট সমস্যা">অ্যাপয়েন্টমেন্ট সমস্যা</option>
                         <option value="পেমেন্ট ও রিফান্ড">পেমেন্ট ও রিফান্ড</option>
@@ -552,24 +739,24 @@ export default function SupportPage() {
                       <select
                         value={ticketForm.priority}
                         onChange={e => setTicketForm({ ...ticketForm, priority: e.target.value })}
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, cursor: 'pointer', background: 'white' }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, cursor: 'pointer', background: 'white' }}
                       >
                         <option value="সাধারণ">সাধারণ (Normal)</option>
                         <option value="জরুরী">জরুরী (High Priority)</option>
-                        <option value="অত্যন্ত জরুরী">অত্যন্ত জরুরী (Critical Emergency)</option>
+                        <option value="অত্যন্ত জরুরী">অত্যন্ত জরুরী (Critical)</option>
                       </select>
                     </Col>
 
                     <Col md={12}>
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
-                        বিষয়ের সংক্ষিপ্ত বিবরণ <span style={{ color: '#EF4444' }}>*</span>
+                        বিষয়ের শিরোনাম <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input
                         required
                         value={ticketForm.subject}
                         onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })}
-                        placeholder="উদাঃ বিকাশে পেমেন্ট কেটে নিয়েছে কিন্তু অ্যাপয়েন্টমেন্ট কনফার্ম হয়নি"
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                        placeholder="উদাঃ বিকাশ পেমেন্ট সম্পন্ন কিন্তু স্লট কনফার্ম হয়নি"
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
                       />
                     </Col>
 
@@ -583,52 +770,53 @@ export default function SupportPage() {
                         value={ticketForm.message}
                         onChange={e => setTicketForm({ ...ticketForm, message: e.target.value })}
                         placeholder="আপনার সমস্যাটি বিস্তারিত লিখুন..."
-                        style={{ width: '100%', padding: '13px 18px', borderRadius: 14, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, resize: 'vertical' }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, resize: 'vertical' }}
                       />
                     </Col>
 
-                    <Col md={12} className="mt-4">
+                    <Col md={12} className="mt-3">
                       <button
                         type="submit"
                         disabled={ticketSubmitting}
                         style={{
-                          background: 'linear-gradient(135deg, #00796B, #00A88C)',
+                          background: 'linear-gradient(135deg, #064E3B, #00B875)',
                           color: 'white',
                           border: 'none',
-                          borderRadius: 16,
-                          padding: '16px 36px',
+                          borderRadius: 14,
+                          padding: '14px 28px',
                           fontWeight: 800,
-                          fontSize: 16,
+                          fontSize: 15,
                           cursor: 'pointer',
                           width: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 10,
-                          boxShadow: '0 8px 24px rgba(0,168,140,0.35)'
+                          boxShadow: '0 6px 20px rgba(0,184,117,0.25)'
                         }}
                       >
-                        {ticketSubmitting ? 'টিকিট জমা হচ্ছে...' : <><Ticket size={20} /> সাপোর্ট টিকিট সাবমিট করুন</>}
+                        {ticketSubmitting ? 'টিকিট জমা হচ্ছে...' : <><Ticket size={18} /> টিকিট সাবমিট করুন</>}
                       </button>
                     </Col>
                   </Row>
                 </form>
+
                 {submittedTicket && (
-                  <div style={{ marginTop: 32, padding: 24, background: '#F0FDF4', borderRadius: 20, border: '2px solid #22C55E' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <span style={{ fontWeight: 900, color: '#15803D', fontSize: 16 }}>
-                        ✅ সফলভাবে নতুন টিকিট তৈরি হয়েছে!
+                  <div style={{ marginTop: 24, padding: 20, background: '#F0FDF4', borderRadius: 16, border: '1.5px solid #22C55E' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 900, color: '#15803D', fontSize: 15 }}>
+                        ✅ সফলভাবে টিকিট তৈরি হয়েছে!
                       </span>
-                      <span style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800, padding: '4px 12px', borderRadius: 99, fontSize: 13 }}>
+                      <span style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800, padding: '3px 10px', borderRadius: 99, fontSize: 12 }}>
                         আইডি: {submittedTicket.id}
                       </span>
                     </div>
-                    <p style={{ margin: '0 0 12px', fontSize: 14, color: '#166534' }}>
-                      আপনার টিকিট নম্বর <strong>{submittedTicket.id}</strong> ভবিষ্যতের রেফারেন্সের জন্য সংরক্ষণ করুন।
+                    <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#166534' }}>
+                      আপনার টিকিট নম্বর <strong>{submittedTicket.id}</strong> সংরক্ষণ করুন। "টিকিট স্ট্যাটাস ট্র্যাক" ট্যাবে আইডি দিয়ে আপডেট পাবেন।
                     </p>
                     <button
                       onClick={() => handleCopy(submittedTicket.id, 'ticketId')}
-                      style={{ border: 'none', background: '#15803D', color: 'white', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ border: 'none', background: '#15803D', color: 'white', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                     >
                       {copiedText === 'ticketId' ? 'কপি সম্পন্ন!' : 'টিকিট আইডি কপি করুন'}
                     </button>
@@ -637,81 +825,159 @@ export default function SupportPage() {
               </div>
             )}
 
-            {/* Direct Contact Banner */}
-            <div style={{
-              marginTop: 32,
-              padding: 28,
-              background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-              borderRadius: 28,
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 20
-            }}>
-              <div>
-                <h5 style={{ fontWeight: 800, margin: '0 0 6px', fontSize: 18 }}>আপনার প্রশ্নের উত্তর খুঁজে পাননি?</h5>
-                <p style={{ color: '#94A3B8', margin: 0, fontSize: 14 }}>আমাদের সরাসরি মেসেজ পাঠান অথবা সরাসরি সাপোর্ট সেন্টারে যোগাযোগ করুন।</p>
-              </div>
-              <button
-                onClick={() => navigate('/contact')}
-                style={{
-                  background: '#00A88C',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: 14,
-                  fontWeight: 800,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
-                }}
-              >
-                <Send size={16} /> যোগাযোগ পেজ
-              </button>
-            </div>
-          </Col>
-
-          {/* RIGHT SIDEBAR PANEL */}
-          <Col lg={4}>
-            <div style={{ position: 'sticky', top: 100, display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {/* Direct Support Channels */}
+            {/* ── TAB 3: TICKET STATUS TRACKER ── */}
+            {activeMainTab === 'status' && (
               <div style={{
                 background: 'white',
-                borderRadius: 28,
-                padding: 28,
-                border: '1.5px solid #E2E8F0',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.03)'
+                borderRadius: 24,
+                padding: '36px 30px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.03)'
               }}>
-                <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 20, fontSize: 17 }}>
-                  সাপোর্ট যোগাযোগ মাধ্যম
+                <div style={{ marginBottom: 24 }}>
+                  <span style={{ background: '#F0FDF4', color: '#064E3B', fontSize: 12, fontWeight: 800, padding: '4px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8, border: '1px solid #DCFCE7' }}>
+                    লাইব টিকিট ট্র্যাকার
+                  </span>
+                  <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 22, margin: '0 0 6px' }}>
+                    টিকিটের অগ্রগতি যাচাই করুন
+                  </h3>
+                  <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>
+                    আপনার টিকিট আইডি (উদাঃ TK-849201) প্রবেশ করিয়ে বর্তমান স্ট্যাটাস দেখুন।
+                  </p>
+                </div>
+
+                <form onSubmit={handleSearchTicket} style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input
+                      required
+                      value={statusSearchId}
+                      onChange={e => setStatusSearchId(e.target.value)}
+                      placeholder="টিকিট আইডি দিন (উদাঃ TK-123456)..."
+                      style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                    />
+                    <button
+                      type="submit"
+                      style={{
+                        background: '#00B875', color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap'
+                      }}
+                    >
+                      ট্র্যাক করুন
+                    </button>
+                  </div>
+                  {/* Digital Platform Assistance Hotline Box */}
+              <div style={{ 
+                background: 'white', 
+                borderRadius: 24, 
+                padding: '24px 20px', 
+                border: '1.5px solid #FFE4E6',
+                boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
+                textAlign: 'center',
+                marginTop: '20px'
+              }}>
+                <div style={{ 
+                  width: 48, height: 48, borderRadius: 16, 
+                  background: '#FFE4E6', color: '#EF4444', 
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 12
+                }}>
+                  <AlertTriangle size={22} />
+                </div>
+                <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি বুকিং ও তথ্য হেল্পলাইন</h5>
+                <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
+                  Doctor Booklet ডিজিটাল প্ল্যাটফর্ম সম্পর্কিত যেকোনো তথ্য ও বুকিং সহায়তার জন্য কল করুন
+                </p>
+                <a 
+                  href={`tel:${site.phone || '09638649314'}`} 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    background: '#EF4444', 
+                    color: 'white', 
+                    padding: '12px 20px', 
+                    borderRadius: 99, 
+                    fontWeight: 900, 
+                    fontSize: 16,
+                    textDecoration: 'none',
+                    boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Phone size={18} />
+                  <span>{site.phone || '09638649314'}</span>
+                </a>
+              </div>
+                </form>
+
+                {statusError && (
+                  <div style={{ padding: 14, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 13.5, fontWeight: 600 }}>
+                    ⚠️ {statusError}
+                  </div>
+                )}
+
+                {searchedTicketResult && (
+                  <div style={{ padding: 20, background: '#F8FAFC', borderRadius: 16, border: '1.5px solid #E2E8F0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontWeight: 800, color: '#0F172A', fontSize: 15 }}>টিকিট আইডি: {searchedTicketResult.id}</span>
+                      <span style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800, padding: '4px 12px', borderRadius: 99, fontSize: 12 }}>
+                        {searchedTicketResult.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                      বিষয়: {searchedTicketResult.subject}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748B' }}>
+                      তারিখ: {searchedTicketResult.date} | অগ্রাধিকার: {searchedTicketResult.priority}
+                    </div>
+                    {searchedTicketResult.note && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #CBD5E1', fontSize: 13, color: '#0F172A', fontWeight: 600 }}>
+                        গড় আপডেট: {searchedTicketResult.note}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </Col>
+
+          {/* RIGHT SIDEBAR (PROFESSIONAL STATS & HOTLINES) */}
+          <Col lg={4}>
+            <div style={{ position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              
+              {/* Direct Channels Box */}
+              <div style={{
+                background: 'white',
+                borderRadius: 20,
+                padding: '24px 22px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.03)'
+              }}>
+                <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 16, fontSize: 16 }}>
+                  সাপোর্ট চ্যানেলসমূহ
                 </h5>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {/* Phone */}
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00A88C', flexShrink: 0 }}>
-                      <Phone size={20} />
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Phone size={18} />
                     </div>
                     <div style={{ flexGrow: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>২৪/৭ হেল্পলাইন</div>
-                      <a href={`tel:${site.phone || '017XXXXXXXX'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 15, textDecoration: 'none' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>২৪/৭ হেল্পলাইন হটলাইন</div>
+                      <a href={`tel:${site.phone || '017XXXXXXXX'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>
                         {site.phone || '017 XXXX XXXX'}
                       </a>
                     </div>
                   </div>
 
                   {/* Email */}
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 14, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB', flexShrink: 0 }}>
-                      <Mail size={20} />
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={18} />
                     </div>
                     <div style={{ flexGrow: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>অফিসিয়াল সাপোর্ট ইমেইল</div>
-                      <a href={`mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 14, textDecoration: 'none', wordBreak: 'break-all' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>ইমেইল সাপোর্ট</div>
+                      <a href={`mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 13, textDecoration: 'none', wordBreak: 'break-all' }}>
                         {site.email_support || 'support@doctorbooklet.com.bd'}
                       </a>
                     </div>
@@ -719,70 +985,77 @@ export default function SupportPage() {
                 </div>
               </div>
 
-              {/* Office Working Hours */}
+              {/* Office Hours Box */}
               <div style={{ 
                 background: '#0F172A', 
-                borderRadius: 28, 
-                padding: 28, 
+                borderRadius: 20, 
+                padding: '24px 22px', 
                 color: 'white',
-                backgroundImage: 'radial-gradient(circle at top right, rgba(0,168,140,0.25), transparent 70%)',
-                boxShadow: '0 12px 30px rgba(15,23,42,0.15)'
+                backgroundImage: 'radial-gradient(circle at top right, rgba(0,184,117,0.25), transparent 70%)',
+                boxShadow: '0 8px 24px rgba(15,23,42,0.12)'
               }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00C9A7', marginBottom: 16 }}>
-                  <Clock size={22} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <h5 style={{ fontWeight: 800, margin: 0, fontSize: 15 }}>অফিস সময়সূচী</h5>
+                    <span style={{ fontSize: 11, color: '#34D399', fontWeight: 700 }}>● লাইভ সাপোর্ট সক্রিয়</span>
+                  </div>
                 </div>
-                <h5 style={{ fontWeight: 800, marginBottom: 10, fontSize: 18 }}>অফিস সময়সূচী</h5>
-                <p style={{ opacity: 0.85, fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+                <p style={{ opacity: 0.85, fontSize: 12.5, lineHeight: 1.6, marginBottom: 12 }}>
                   {site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: বন্ধ'}
                 </p>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.12)', marginBottom: 16 }} />
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#00C9A7', margin: 0 }}>
-                  ● সাধারণ টিকিট নিষ্পত্তির গড় সময় ২ ঘণ্টা
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', marginBottom: 12 }} />
+                <p style={{ fontSize: 11.5, fontWeight: 700, color: '#34D399', margin: 0 }}>
+                  গড় টিকিট রেসপন্স সময়: ২ ঘণ্টা
                 </p>
               </div>
 
-              {/* Emergency Hotline Box */}
+              {/* Emergency Box matching user screenshot */}
               <div style={{ 
                 background: 'white', 
-                borderRadius: 28, 
-                padding: 28, 
-                border: '1.5px solid #E2E8F0',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.03)',
+                borderRadius: 24, 
+                padding: '24px 20px', 
+                border: '1.5px solid #FFE4E6',
+                boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
                 textAlign: 'center'
               }}>
                 <div style={{ 
                   width: 48, height: 48, borderRadius: 16, 
                   background: '#FFE4E6', color: '#EF4444', 
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 14
+                  marginBottom: 12
                 }}>
                   <AlertTriangle size={24} />
                 </div>
-                <h5 style={{ fontWeight: 800, marginBottom: 6, fontSize: 17, color: '#0F172A' }}>জরুরি চিকিৎসা সার্ভিস</h5>
-                <p style={{ color: '#64748B', fontSize: 13, marginBottom: 18 }}>
-                  জরুরি অ্যাম্বুলেন্স বা তাৎক্ষণিক ডাক্তারের পরামর্শে সরাসরি ডায়াল করুন
+                <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি চিকিৎসা হেল্পলাইন</h5>
+                <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
+                  জরুরি অ্যাম্বুলেন্স বা সরাসরি পরামর্শের জন্য ডায়াল করুন
                 </p>
                 <a 
-                  href={`tel:${site.phone || '999'}`} 
+                  href={`tel:${site.phone || '09638649314'}`} 
                   style={{ 
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
+                    gap: 10,
                     background: '#EF4444', 
                     color: 'white', 
                     padding: '12px 20px', 
-                    borderRadius: 14, 
-                    fontWeight: 800, 
-                    fontSize: 14,
+                    borderRadius: 99, 
+                    fontWeight: 900, 
+                    fontSize: 16,
                     textDecoration: 'none',
-                    boxShadow: '0 6px 18px rgba(239,68,68,0.35)'
+                    boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <Phone size={16} />
-                  <span>{site.phone || '017 XXXX XXXX'}</span>
+                  <Phone size={18} />
+                  <span>{site.phone || '09638649314'}</span>
                 </a>
               </div>
+
             </div>
           </Col>
         </Row>
@@ -791,17 +1064,17 @@ export default function SupportPage() {
       {/* ── CALLBACK REQUEST MODAL ── */}
       <Modal show={showCallbackModal} onHide={() => setShowCallbackModal(false)} centered rounded size="md">
         <Modal.Header closeButton style={{ border: 'none', padding: '24px 28px 0' }}>
-          <Modal.Title style={{ fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
+          <Modal.Title style={{ fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
             📞 কল ব্যাক রিকোয়েস্ট করুন
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ padding: '20px 28px 28px' }}>
-          <p style={{ color: '#64748B', fontSize: 14, marginBottom: 20 }}>
+        <Modal.Body style={{ padding: '16px 28px 28px' }}>
+          <p style={{ color: '#64748B', fontSize: 13.5, marginBottom: 16 }}>
             আপনার ফোন নম্বর প্রদান করুন, আমাদের প্রতিনিধি নির্ধারিত সময়ের মধ্যে আপনাকে কল করবেন।
           </p>
           <form onSubmit={handleCallbackSubmit}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
                 আপনার মোবাইল নম্বর <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <input
@@ -810,17 +1083,17 @@ export default function SupportPage() {
                 value={callbackPhone}
                 onChange={e => setCallbackPhone(e.target.value)}
                 placeholder="017XXXXXXXX"
-                style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
               />
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
                 পছন্দের কল সময়
               </label>
               <select
                 value={callbackTime}
                 onChange={e => setCallbackTime(e.target.value)}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, background: 'white' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, background: 'white' }}
               >
                 <option value="এখনই (Next 15 min)">এখনই (১৫ মিনিটের মধ্যে)</option>
                 <option value="সকাল ১০টা - দুপুর ১২টা">সকাল ১০টা - দুপুর ১২টা</option>
@@ -833,13 +1106,13 @@ export default function SupportPage() {
               disabled={callbackSubmitting}
               style={{
                 width: '100%',
-                background: '#00A88C',
+                background: '#00B875',
                 color: 'white',
                 border: 'none',
-                padding: '14px',
-                borderRadius: 14,
+                padding: '12px',
+                borderRadius: 12,
                 fontWeight: 800,
-                fontSize: 15,
+                fontSize: 14,
                 cursor: 'pointer'
               }}
             >

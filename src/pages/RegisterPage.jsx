@@ -69,25 +69,25 @@ const RegisterPage = () => {
       desc: 'স্বাস্থ্য ব্যবস্থাপনা ও অ্যাপয়েন্টমেন্ট নিন',
       icon: <User size={15} />,
       btnClass: 'patient-btn',
-      color: '#0D9488',
+      color: '#00B875',
     },
     doctor: {
       label: 'ডাক্তার',
       desc: 'রোগী পরিচালনা ও সেবা দিন',
       icon: <ShieldCheck size={15} />,
       btnClass: 'doctor-btn',
-      color: '#2563EB',
+      color: '#00B875',
     },
     hospital: {
       label: 'হাসপাতাল',
       desc: 'আপনার চিকিৎসা প্রতিষ্ঠান পরিচালনা করুন',
       icon: <Hotel size={15} />,
       btnClass: 'hospital-btn',
-      color: '#4F46E5',
+      color: '#00B875',
     }
   }
 
-  const cfg = roleConfigs[role] || { label: '', icon: null, btnClass: 'patient-btn', color: '#94A3B8' }
+  const cfg = roleConfigs[role] || { label: '', icon: null, btnClass: 'patient-btn', color: '#00B875' }
 
   const leftPanelContent = {
     1: {

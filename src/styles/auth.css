@@ -11,9 +11,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  background: linear-gradient(135deg, #f8faff 0%, #E6F6F4 50%, #f0f7ff 100%);
-  padding: 40px 20px 60px;
+  justify-content: center;
+  background: linear-gradient(135deg, #F8FAFC 0%, #F0FDF4 50%, #DCFCE7 100%);
+  padding: 24px 20px;
   position: relative;
   overflow-y: auto;
   box-sizing: border-box;
@@ -23,9 +23,9 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(#00A88C 0.5px, transparent 0.5px);
+  background-image: radial-gradient(#00B875 0.5px, transparent 0.5px);
   background-size: 24px 24px;
-  opacity: 0.05;
+  opacity: 0.06;
   pointer-events: none;
 }
 
@@ -36,7 +36,7 @@
   left: -150px;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(0,201,167,0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(0,184,117,0.08) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }
