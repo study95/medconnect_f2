@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Container, Row, Col, Modal } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { getContent } from '../../utils/contentService'
@@ -12,7 +12,14 @@ import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
 
 export default function SupportPage() {
   const navigate = useNavigate()
-  const cms = getContent()
+  const [cms, setCms] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
   const site = cms.site || {}
   const support = cms.support || {}
   const faqData = cms.faq || {}

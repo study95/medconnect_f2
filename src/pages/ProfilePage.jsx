@@ -8,6 +8,7 @@ import HospitalCard from '../components/common/HospitalCard'
 import { getMyProfile, updateMyProfile } from '../api/authApi'
 import { getAppointments } from '../api/appointmentApi'
 import useLocations from '../hooks/useLocations'
+import useSpecialties from '../hooks/useSpecialties'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../utils/dateUtils'
 import { getColor, getInitials } from '../utils/avatar'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
@@ -79,6 +80,8 @@ function ProfilePage() {
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
     loadingDivisions, loadingDistricts, loadingUpazilas, loadingUnions
   } = useLocations()
+
+  const { specialties, loading: loadingSpecialties } = useSpecialties()
 
   const ageInfo = calculateAge(form.date_of_birth)
 
@@ -197,6 +200,16 @@ function ProfilePage() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSpecialtyChange = (e) => {
+    const val = e.target.value
+    const spec = specialties.find(s => String(s.id) === String(val))
+    setForm({
+      ...form,
+      specialty_id: val,
+      specialty: spec ? (spec.name || spec.name_bn || spec.title) : ''
+    })
   }
 
   const handleDivisionChange = (e) => {
@@ -640,12 +653,26 @@ function ProfilePage() {
               <Col lg={8}>
                 {!editing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* Card 1: Personal Information */}
                     <div style={{ background: 'white', borderRadius: 24, border: '1px solid #E2E8F0', padding: '30px 28px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <IconUser size={22} />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconUser size={22} />
+                          </div>
+                          <h5 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 19 }}>ব্যক্তিগত তথ্য</h5>
                         </div>
-                        <h5 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 19 }}>ব্যক্তিগত তথ্য</h5>
+                        <button
+                          onClick={() => setEditing(true)}
+                          style={{
+                            background: '#F0FDF4', color: '#00B875', border: '1px solid #DCFCE7',
+                            padding: '8px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13.5,
+                            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
+                          }}
+                        >
+                          <IconEdit size={16} />
+                          তথ্য সংশোধন করুন
+                        </button>
                       </div>
 
                       <Row className="g-3">
@@ -657,14 +684,42 @@ function ProfilePage() {
                         </Col>
                         <Col md={6}>
                           <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>ইমেইল ঠিকানা</div>
-                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.email || 'দেওয়া নেই'}</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>মোবাইল নম্বর</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{toBnNum(form.mobile) || 'দেওয়া নেই'}</div>
                           </div>
                         </Col>
                         <Col md={6}>
                           <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>মোবাইল নম্বর</div>
-                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{toBnNum(form.mobile) || 'দেওয়া নেই'}</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>ইমেইল ঠিকানা</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A', wordBreak: 'break-all' }}>{form.email || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        {!isDoctorUser && (
+                          <Col md={6}>
+                            <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>পেশা</div>
+                              <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.occupation || 'দেওয়া নেই'}</div>
+                            </div>
+                          </Col>
+                        )}
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>জন্ম তারিখ ও বয়স</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>
+                              {form.date_of_birth ? `${toBnNum(form.date_of_birth)} ${ageInfo?.ageText ? `(${ageInfo.ageText})` : ''}` : 'দেওয়া নেই'}
+                            </div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>লিঙ্গ</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{GENDER_BN[form.gender] || form.gender || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>রক্তের গ্রুপ</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#EF4444' }}>{form.blood_group || 'দেওয়া নেই'}</div>
                           </div>
                         </Col>
                         <Col md={6}>
@@ -675,29 +730,294 @@ function ProfilePage() {
                         </Col>
                       </Row>
                     </div>
+
+                    {/* Card 2: Address & Location */}
+                    <div style={{ background: 'white', borderRadius: 24, border: '1px solid #E2E8F0', padding: '30px 28px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconMapPin size={22} />
+                        </div>
+                        <h5 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 19 }}>ঠিকানা ও অবস্থান</h5>
+                      </div>
+
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>বিভাগ</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{currentDivName || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>জেলা</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{currentDistName || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>উপজেলা / থানা</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{currentUpzName || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>ইউনিয়ন / এলাকা</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{currentUniName || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                        <Col md={12}>
+                          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>সম্পূর্ণ ঠিকানা</div>
+                            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#00B875' }}>{fullAddress || 'দেওয়া নেই'}</div>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    {/* Card 3: Doctor specific details if doctor user */}
+                    {isDoctorUser && (
+                      <div style={{ background: 'white', borderRadius: 24, border: '1px solid #E2E8F0', padding: '30px 28px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconStethoscope size={22} />
+                          </div>
+                          <h5 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 19 }}>পেশাগত তথ্য</h5>
+                        </div>
+                        <Row className="g-3">
+                          <Col md={6}>
+                            <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>বিশেষজ্ঞতা</div>
+                              <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.specialty || 'দেওয়া নেই'}</div>
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>ডিগ্রি / শিক্ষাগত যোগ্যতা</div>
+                              <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.degree || 'দেওয়া নেই'}</div>
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>কর্মস্থল / চেম্বার</div>
+                              <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.workplace || 'দেওয়া নেই'}</div>
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '16px 18px', border: '1px solid #F1F5F9' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#64748B', marginBottom: 3 }}>পরামর্শ ফি</div>
+                              <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A' }}>{form.fee ? `৳ ${toBnNum(form.fee)}` : 'দেওয়া নেই'}</div>
+                            </div>
+                          </Col>
+                        </Row>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ background: 'white', borderRadius: 24, border: '1px solid #E2E8F0', padding: '32px 28px', boxShadow: '0 10px 35px rgba(0,0,0,0.03)' }}>
-                    <h5 style={{ fontWeight: 900, color: '#0F172A', marginBottom: 20 }}>প্রোফাইল তথ্য সংশোধন</h5>
-                    <Row className="g-3">
-                      <Col md={6}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>পূর্ণ নাম</label>
-                        <input className="form-control" name="name" value={form.name} onChange={handleChange} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
-                      </Col>
-                      <Col md={6}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>ইমেইল</label>
-                        <input className="form-control" name="email" value={form.email} onChange={handleChange} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
-                      </Col>
-                      <Col md={6}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>মোবাইল (পরিবর্তনযোগ্য নয়)</label>
-                        <input className="form-control" name="mobile" value={form.mobile} disabled readOnly style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
-                      </Col>
-                      <Col md={12} className="mt-4">
-                        <button onClick={handleSave} disabled={saving} style={{ background: '#00B875', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-                          {saving ? 'সংরক্ষণ করা হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}
-                        </button>
-                      </Col>
-                    </Row>
+                  <div style={{ background: 'white', borderRadius: 24, border: '1px solid #E2E8F0', padding: '32px 30px', boxShadow: '0 10px 35px rgba(0,0,0,0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconEdit size={22} />
+                        </div>
+                        <div>
+                          <h5 style={{ fontWeight: 900, color: '#0F172A', margin: 0, fontSize: 20 }}>প্রোফাইল তথ্য সংশোধন</h5>
+                          <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>আপনার সঠিক তথ্য প্রদান করে প্রোফাইল আপডেট করুন</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setEditing(false); loadProfile(); }}
+                        style={{
+                          background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#475569',
+                          padding: '8px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13.5,
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
+                        }}
+                      >
+                        <IconX size={16} />
+                        বাতিল
+                      </button>
+                    </div>
+
+                    {/* SECTION 1: Personal & Account Info */}
+                    <div style={{ marginBottom: 28 }}>
+                      <h6 style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B875' }}></span>
+                        ব্যক্তিগত তথ্য
+                      </h6>
+
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>পূর্ণ নাম <span style={{ color: '#EF4444' }}>*</span></label>
+                          <input className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="আপনার নাম লিখুন" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>ইমেইল ঠিকানা</label>
+                          <input className="form-control" name="email" value={form.email} onChange={handleChange} placeholder="example@domain.com" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>মোবাইল নম্বর (পরিবর্তনযোগ্য নয়)</label>
+                          <input className="form-control" name="mobile" value={form.mobile} disabled readOnly style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
+                        </Col>
+                        {!isDoctorUser && (
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>পেশা</label>
+                            <input className="form-control" name="occupation" value={form.occupation} onChange={handleChange} placeholder="আপনার পেশা লিখুন (যেমন: চাকরিজীবী, ছাত্র)" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                        )}
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>
+                            জন্ম তারিখ {ageInfo?.ageText && <span style={{ color: '#00B875', fontWeight: 800, marginLeft: 6 }}>({ageInfo.ageText})</span>}
+                          </label>
+                          <input className="form-control" name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>লিঙ্গ</label>
+                          <select className="form-select" name="gender" value={form.gender} onChange={handleChange} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }}>
+                            <option value="">লিঙ্গ নির্বাচন করুন</option>
+                            <option value="male">পুরুষ (Male)</option>
+                            <option value="female">নারী (Female)</option>
+                            <option value="other">অন্যান্য (Other)</option>
+                          </select>
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>রক্তের গ্রুপ</label>
+                          <select className="form-select" name="blood_group" value={form.blood_group} onChange={handleChange} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }}>
+                            <option value="">রক্তের গ্রুপ নির্বাচন করুন</option>
+                            {BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                          </select>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    {/* SECTION 2: Location & Address */}
+                    <div style={{ marginBottom: 28, paddingTop: 20, borderTop: '1.5px solid #F1F5F9' }}>
+                      <h6 style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563EB' }}></span>
+                        ঠিকানা ও অবস্থান (Location)
+                      </h6>
+
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>বিভাগ (Division)</label>
+                          <select className="form-select" value={form.division_id} onChange={handleDivisionChange} disabled={loadingDivisions} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }}>
+                            <option value="">{loadingDivisions ? 'লোড হচ্ছে...' : 'বিভাগ নির্বাচন করুন'}</option>
+                            {divisions.map(d => <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>)}
+                          </select>
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>জেলা (District)</label>
+                          <select className="form-select" value={form.district_id} onChange={handleDistrictChange} disabled={!form.division_id || loadingDistricts} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: !form.division_id ? '#F1F5F9' : 'white' }}>
+                            <option value="">{loadingDistricts ? 'লোড হচ্ছে...' : 'জেলা নির্বাচন করুন'}</option>
+                            {districts.map(d => <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>)}
+                          </select>
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>উপজেলা / থানা (Upazila)</label>
+                          <select className="form-select" value={form.upazila_id} onChange={handleUpazilaChange} disabled={!form.district_id || loadingUpazilas} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: !form.district_id ? '#F1F5F9' : 'white' }}>
+                            <option value="">{loadingUpazilas ? 'লোড হচ্ছে...' : 'উপজেলা নির্বাচন করুন'}</option>
+                            {upazilas.map(u => <option key={u.id} value={u.id}>{u.name || u.bangla_name}</option>)}
+                          </select>
+                        </Col>
+                        <Col md={6}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>ইউনিয়ন / এলাকা (Union)</label>
+                          <select className="form-select" value={form.union_id} onChange={handleUnionChange} disabled={!form.upazila_id || loadingUnions} style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: !form.upazila_id ? '#F1F5F9' : 'white' }}>
+                            <option value="">{loadingUnions ? 'লোড হচ্ছে...' : 'ইউনিয়ন নির্বাচন করুন'}</option>
+                            {unions.map(u => <option key={u.id} value={u.id}>{u.name || u.bangla_name}</option>)}
+                          </select>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    {/* SECTION 3: Doctor specific fields if Doctor */}
+                    {isDoctorUser && (
+                      <div style={{ marginBottom: 28, paddingTop: 20, borderTop: '1.5px solid #F1F5F9' }}>
+                        <h6 style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B875' }}></span>
+                          পেশাগত তথ্য (Professional Details)
+                        </h6>
+
+                        <Row className="g-3">
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>বিশেষজ্ঞতা (Specialty)</label>
+                            <select
+                              className="form-select"
+                              name="specialty_id"
+                              value={form.specialty_id}
+                              onChange={handleSpecialtyChange}
+                              disabled={loadingSpecialties}
+                              style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }}
+                            >
+                              <option value="">{loadingSpecialties ? 'লোড হচ্ছে...' : 'বিশেষজ্ঞতা নির্বাচন করুন'}</option>
+                              {specialties.map(s => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name || s.name_bn || s.title}
+                                </option>
+                              ))}
+                            </select>
+                          </Col>
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>ডিগ্রি / শিক্ষাগত যোগ্যতা</label>
+                            <input className="form-control" name="degree" value={form.degree} onChange={handleChange} placeholder="যেমন: MBBS, FCPS" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>কর্মস্থল / হাসপাতাল</label>
+                            <input className="form-control" name="workplace" value={form.workplace} onChange={handleChange} placeholder="বর্তমান কর্মস্থল লিখুন" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>পরামর্শ ফি (৳)</label>
+                            <input className="form-control" name="fee" type="number" value={form.fee} onChange={handleChange} placeholder="যেমন: 500" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>অভিজ্ঞতা (বছরে)</label>
+                            <input className="form-control" name="experience" value={form.experience} onChange={handleChange} placeholder="যেমন: 8" style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                          <Col md={6}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>বিএমডিসি নম্বর (পরিবর্তনযোগ্য নয়)</label>
+                            <input className="form-control" name="bmdc_number" value={form.bmdc_number} disabled readOnly style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14, background: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
+                          </Col>
+                          <Col md={12}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>সংক্ষিপ্ত বিবরণ (Bio)</label>
+                            <textarea className="form-control" name="bio" rows={3} value={form.bio} onChange={handleChange} placeholder="ডাক্তার সম্পর্কে সংক্ষিপ্ত পরিচিতি লিখুন..." style={{ padding: '11px 14px', borderRadius: 12, border: '1.5px solid #CBD5E1', fontSize: 14 }} />
+                          </Col>
+                        </Row>
+                      </div>
+                    )}
+
+                    {/* Save & Cancel Action Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 32, paddingTop: 20, borderTop: '1.5px solid #F1F5F9' }}>
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        style={{
+                          background: '#00B875', color: 'white', border: 'none',
+                          padding: '13px 32px', borderRadius: 12, fontWeight: 800, fontSize: 15,
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                          boxShadow: '0 4px 14px rgba(0, 184, 117, 0.25)', transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {saving ? (
+                          <>
+                            <div className="spinner-border spinner-border-sm" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                            <span>সংরক্ষণ করা হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <IconCheck size={18} />
+                            <span>পরিবর্তন সংরক্ষণ করুন</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => { setEditing(false); loadProfile(); }}
+                        disabled={saving}
+                        style={{
+                          background: '#F1F5F9', border: '1.5px solid #CBD5E1', color: '#475569',
+                          padding: '13px 24px', borderRadius: 12, fontWeight: 800, fontSize: 15,
+                          cursor: 'pointer', transition: 'all 0.2s ease'
+                        }}
+                      >
+                        বাতিল করুন
+                      </button>
+                    </div>
                   </div>
                 )}
               </Col>
@@ -1171,10 +1491,12 @@ function ProfilePage() {
                           <input className="form-control" name="email" value={form.email} onChange={handleChange} placeholder="example@domain.com" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
                         </div>
 
-                        <div>
-                          <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>পেশা</label>
-                          <input className="form-control" name="occupation" value={form.occupation} onChange={handleChange} placeholder="আপনার পেশা লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
-                        </div>
+                        {!isDoctorUser && (
+                          <div>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>পেশা</label>
+                            <input className="form-control" name="occupation" value={form.occupation} onChange={handleChange} placeholder="আপনার পেশা লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                          </div>
+                        )}
 
                         <div>
                           <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>জন্ম তারিখ</label>
@@ -1235,7 +1557,21 @@ function ProfilePage() {
                           <>
                             <div>
                               <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>বিশেষজ্ঞতা (Specialty)</label>
-                              <input className="form-control" name="specialty" value={form.specialty} onChange={handleChange} placeholder="বিশেষজ্ঞতা লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                              <select
+                                className="form-select"
+                                name="specialty_id"
+                                value={form.specialty_id}
+                                onChange={handleSpecialtyChange}
+                                disabled={loadingSpecialties}
+                                style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }}
+                              >
+                                <option value="">{loadingSpecialties ? 'লোড হচ্ছে...' : 'বিশেষজ্ঞতা নির্বাচন করুন'}</option>
+                                {specialties.map(s => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name || s.name_bn || s.title}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
 
                             <div>
@@ -1259,8 +1595,8 @@ function ProfilePage() {
                             </div>
 
                             <div>
-                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>বিএমডিসি (BMDC) নম্বর</label>
-                              <input className="form-control" name="bmdc_number" value={form.bmdc_number} onChange={handleChange} placeholder="A-12345" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>বিএমডিসি নম্বর (পরিবর্তনযোগ্য নয়)</label>
+                              <input className="form-control" name="bmdc_number" value={form.bmdc_number} disabled readOnly style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14, background: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
                             </div>
                           </>
                         )}

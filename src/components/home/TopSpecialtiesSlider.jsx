@@ -155,22 +155,38 @@ function getCount(name = '') {
 
 // ─── Specialty Card ───────────────────────────────────────────────────────────
 function SpecCard({ spec, language, t, navigate }) {
+  const [selected, setSelected] = useState(false)
+  const displayName = useMemo(() => {
+    const raw = spec.name_bn && language === 'bn' ? spec.name_bn : (spec.name || '')
+    const cleanRaw = raw.replace(/^spec_/, '')
+    return translateMetadata(cleanRaw, language, t) || translateMetadata(raw, language, t) || cleanRaw
+  }, [spec, language, t])
+
   return (
     <div
-      onClick={() => navigate(`/doctors?specialty_id=${spec.id}`)}
-      className="tss-green-card"
+      onClick={() => {
+        setSelected(true)
+        navigate(`/doctors?specialty_id=${spec.id}`)
+      }}
+      className={`tss-green-card ${selected ? 'active-selected' : ''}`}
     >
-      {/* Corner to Corner Diagonal Light Effect Overlay (Pic 3 Match) */}
+      {/* Top-Left Corner Light Flare */}
+      <div className="tss-corner-flare" />
+
+      {/* Dynamic Diagonal Light Beam Slide (Top-Left to Bottom-Right) */}
+      <div className="tss-light-beam" />
+
+      {/* Corner to Corner Ambient Light Overlay */}
       <div className="tss-light-sheen" />
 
-      {/* Icon Box Container (Square Translucent like Image 3 Nephrology) */}
+      {/* Icon Box Container */}
       <div className="tss-icon-wrap">
         {getIcon(spec.name, 30)}
       </div>
 
       {/* Specialty Title */}
       <h4 className="tss-title">
-        {translateMetadata(spec.name, language, t)}
+        {displayName}
       </h4>
     </div>
   )
@@ -319,7 +335,7 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
 
       <style>{`
         .tss-green-card {
-          background: linear-gradient(150deg, #02382B 0%, #064E3B 55%, #046C51 100%);
+          background: linear-gradient(135deg, #01382A 0%, #064E3B 50%, #022E22 100%);
           border-radius: 12px;
           padding: 24px 14px 18px;
           border: 1px solid rgba(255, 255, 255, 0.12);
@@ -334,20 +350,59 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
           text-align: center;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 8px 20px rgba(2, 44, 34, 0.25);
+          box-shadow: 0 8px 20px rgba(1, 40, 30, 0.25);
+          user-select: none;
         }
 
-        /* Corner to Corner Light Effect Overlay */
+        /* Ambient Top-Left to Bottom-Right Base Sheen */
         .tss-light-sheen {
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 75%);
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 75%);
           opacity: 0.35;
           transition: opacity 0.4s ease, background 0.4s ease;
           pointer-events: none;
+          z-index: 1;
         }
 
-        /* Icon Container Box (Square Translucent like Image 3 Nephrology) */
+        /* 🌟 Top-Left Corner Light Flare on Hover / Select */
+        .tss-corner-flare {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 120px;
+          height: 120px;
+          background: radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.65) 0%, rgba(0, 255, 176, 0.3) 40%, transparent 70%);
+          opacity: 0;
+          transform: scale(0.6);
+          transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        /* 🌟 Dynamic Light Slide Beam (Sweeps from Top-Left to Bottom-Right) */
+        .tss-light-beam {
+          position: absolute;
+          top: -80%;
+          left: -80%;
+          width: 260%;
+          height: 260%;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.06) 38%,
+            rgba(255, 255, 255, 0.45) 50%,
+            rgba(255, 255, 255, 0.06) 62%,
+            rgba(255, 255, 255, 0) 100%
+          );
+          transform: translate(-100%, -100%);
+          transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease;
+          opacity: 0;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        /* Icon Container Box */
         .tss-icon-wrap {
           width: 56px;
           height: 56px;
@@ -381,24 +436,39 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
           text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
-        /* 🌟 HOVER MOUSE CORNER-TO-CORNER LIGHT EFFECT & GLOW (IMAGE 3 MATCH) */
-        .tss-green-card:hover {
-          background: linear-gradient(150deg, #004D38 0%, #007A55 55%, #00B875 100%) !important;
-          border-color: rgba(255, 255, 255, 0.4) !important;
+        /* 🌟 HOVER & ACTIVE SELECTED: SMOOTH LIGHT SLIDE FROM TOP-LEFT TO BOTTOM-RIGHT */
+        .tss-green-card:hover,
+        .tss-green-card.active-selected {
+          background: linear-gradient(135deg, #005F45 0%, #00875A 50%, #00B875 100%) !important;
+          border-color: rgba(255, 255, 255, 0.45) !important;
           transform: translateY(-5px) scale(1.02);
-          box-shadow: 0 14px 35px rgba(0, 184, 117, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+          box-shadow: 0 16px 36px rgba(0, 184, 117, 0.38), 0 0 0 1.5px rgba(255, 255, 255, 0.3) !important;
         }
 
-        .tss-green-card:hover .tss-light-sheen {
+        .tss-green-card:hover .tss-corner-flare,
+        .tss-green-card.active-selected .tss-corner-flare {
           opacity: 1 !important;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 50%, transparent 100%) !important;
+          transform: scale(1) !important;
         }
 
-        .tss-green-card:hover .tss-icon-wrap {
-          background: rgba(255, 255, 255, 0.25) !important;
-          border-color: rgba(255, 255, 255, 0.5) !important;
+        .tss-green-card:hover .tss-light-beam,
+        .tss-green-card.active-selected .tss-light-beam {
+          opacity: 1 !important;
+          transform: translate(50%, 50%) !important;
+        }
+
+        .tss-green-card:hover .tss-light-sheen,
+        .tss-green-card.active-selected .tss-light-sheen {
+          opacity: 1 !important;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.2) 48%, transparent 100%) !important;
+        }
+
+        .tss-green-card:hover .tss-icon-wrap,
+        .tss-green-card.active-selected .tss-icon-wrap {
+          background: rgba(255, 255, 255, 0.28) !important;
+          border-color: rgba(255, 255, 255, 0.6) !important;
           transform: scale(1.08);
-          box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+          box-shadow: 0 8px 22px rgba(255, 255, 255, 0.25);
         }
       `}</style>
     </section>

@@ -71,35 +71,52 @@ function DoctorBannerCard({ doctor }) {
         e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.06)'
       }}
     >
-      {/* Background Image */}
+      {/* Right Side Doctor Photo Container */}
       <div
-        className="doc-banner-bg-img"
+        className="doc-banner-photo-wrap"
         style={{
           position: 'absolute',
           top: 0,
           right: 0,
           bottom: 0,
-          width: '68%',
-          backgroundImage: `url('${photo}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center top',
+          width: '38%',
+          minWidth: '280px',
+          maxWidth: '420px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          overflow: 'hidden',
           zIndex: 1
         }}
-      />
+      >
+        <img
+          src={photo}
+          alt={mainName}
+          className="doc-banner-photo-img"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center 12%',
+            display: 'block'
+          }}
+        />
 
-      {/* Left White Gradient Overlay */}
-      <div
-        className="doc-banner-overlay"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-          background: 'linear-gradient(90deg, #FFFFFF 0%, rgba(255, 255, 255, 0.98) 45%, rgba(255, 255, 255, 0.68) 70%, transparent 100%)',
-          zIndex: 2
-        }}
-      />
+        {/* Subtle Left Fade Gradient — Blends smoothly into the card without obscuring the face */}
+        <div
+          className="doc-banner-left-fade"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: '80px',
+            background: 'linear-gradient(90deg, #FFFFFF 0%, rgba(255, 255, 255, 0.4) 40%, transparent 100%)',
+            pointerEvents: 'none',
+            zIndex: 2
+          }}
+        />
+      </div>
 
       {/* Floating Favorite Heart Icon Top Right */}
       <button
@@ -139,7 +156,7 @@ function DoctorBannerCard({ doctor }) {
           position: 'relative',
           zIndex: 3,
           padding: '24px 28px',
-          maxWidth: '600px',
+          maxWidth: '620px',
           width: '100%'
         }}
       >
@@ -436,18 +453,32 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
         /* Doctor Banner Content Mobile View Overrides */
         @media (max-width: 767px) {
           .doc-banner-card {
-            min-height: 430px !important;
+            min-height: 440px !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-end !important;
           }
-          .doc-banner-bg-img {
+          .doc-banner-photo-wrap {
             width: 100% !important;
-            height: 100% !important;
-            opacity: 1 !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            height: 65% !important;
+            top: 0 !important;
+            bottom: auto !important;
+            left: 0 !important;
+            right: 0 !important;
           }
-          .doc-banner-overlay {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.78) 45%, #FFFFFF 85%) !important;
+          .doc-banner-photo-wrap img {
+            object-position: center 15% !important;
+          }
+          .doc-banner-left-fade {
+            width: 100% !important;
+            height: 90px !important;
+            top: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.8) 50%, #FFFFFF 100%) !important;
           }
           .doc-banner-content {
             padding: 20px 16px 24px !important;

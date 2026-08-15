@@ -36,22 +36,25 @@ function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
 
   return (
     <div className="hosp-list-image-box" style={{
-      width,
-      minWidth: width,
-      height,
+      width: width || 250,
+      minWidth: width || 250,
+      alignSelf: 'stretch',
       position: 'relative',
       background: '#F1F5F9',
       flexShrink: 0,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       <OptimizedImage
+        className="hosp-list-img-wrapper"
         src={photos[activeIdx]}
         fallback={DEFAULT_HOSPITAL_GALLERY[0]}
         alt={hospital.name}
-        width={width}
-        height={height}
+        width="100%"
+        height="100%"
         borderRadius={0}
-        style={{ objectFit: 'cover', width: '100%', height: '100%', transition: 'all 0.3s ease' }}
+        style={{ objectFit: 'cover', width: '100%', height: '100%', minHeight: '100%', flex: 1, transition: 'all 0.3s ease' }}
       />
 
       {/* Prev Arrow Button */}
@@ -239,6 +242,28 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             gap: 8px;
             align-items: center;
           }
+          .hosp-list-image-box {
+            width: 250px;
+            min-width: 250px;
+            align-self: stretch;
+            position: relative;
+            background: #F1F5F9;
+            flex-shrink: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+          .hosp-list-image-box .hosp-list-img-wrapper {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            flex: 1 1 auto !important;
+          }
+          .hosp-list-image-box .hosp-list-img-wrapper img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+          }
           .hosp-btn-detail,
           .hosp-btn-book {
             height: 40px;
@@ -283,6 +308,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
               width: 100% !important;
               min-width: 100% !important;
               height: 200px !important;
+              align-self: auto !important;
             }
             .hosp-card-bottom {
               flex-direction: column !important;
@@ -319,6 +345,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'row',
+            alignItems: 'stretch',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             marginBottom: 16
           }}

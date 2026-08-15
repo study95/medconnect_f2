@@ -119,14 +119,20 @@ const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPa
 function PageLoader() {
   return (
     <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: 999999,
+      background: '#FFFFFF',
       display: 'flex',
-      minHeight: '70vh',
-      width: '100%',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '80px 0',
       userSelect: 'none',
-      position: 'relative'
+      overflow: 'hidden'
     }}>
       <div style={{
         position: 'absolute',

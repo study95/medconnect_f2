@@ -342,9 +342,9 @@ export default function ServicesPage() {
             <button
               onClick={() => setActiveTab('doctor')}
               style={{
-                background: activeTab === 'doctor' ? '#00B875' : '#F0FDF4',
-                color: activeTab === 'doctor' ? '#FFFFFF' : '#0F172A',
-                border: activeTab === 'doctor' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                background: activeTab === 'doctor' ? '#0B192C' : '#F1F5F9',
+                color: activeTab === 'doctor' ? '#FFFFFF' : '#334155',
+                border: activeTab === 'doctor' ? '1px solid #0B192C' : '1px solid #E2E8F0',
                 borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
@@ -353,20 +353,20 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: activeTab === 'doctor' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
+                boxShadow: activeTab === 'doctor' ? '0 6px 18px rgba(11, 25, 44, 0.35)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
-              <IconStethoscope size={18} />
+              <IconStethoscope size={18} color={activeTab === 'doctor' ? '#00B875' : '#64748B'} />
               <span>ডাক্তারদের জন্য</span>
             </button>
 
             <button
               onClick={() => setActiveTab('hospital')}
               style={{
-                background: activeTab === 'hospital' ? '#00B875' : '#F0FDF4',
-                color: activeTab === 'hospital' ? '#FFFFFF' : '#0F172A',
-                border: activeTab === 'hospital' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                background: activeTab === 'hospital' ? '#0B192C' : '#F1F5F9',
+                color: activeTab === 'hospital' ? '#FFFFFF' : '#334155',
+                border: activeTab === 'hospital' ? '1px solid #0B192C' : '1px solid #E2E8F0',
                 borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
@@ -375,20 +375,20 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: activeTab === 'hospital' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
+                boxShadow: activeTab === 'hospital' ? '0 6px 18px rgba(11, 25, 44, 0.35)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
-              <IconBuildingHospital size={18} />
+              <IconBuildingHospital size={18} color={activeTab === 'hospital' ? '#00B875' : '#64748B'} />
               <span>হাসপাতালের জন্য</span>
             </button>
 
             <button
               onClick={() => setActiveTab('patient')}
               style={{
-                background: activeTab === 'patient' ? '#00B875' : '#F0FDF4',
-                color: activeTab === 'patient' ? '#FFFFFF' : '#0F172A',
-                border: activeTab === 'patient' ? '1px solid #00B875' : '1px solid #DCFCE7',
+                background: activeTab === 'patient' ? '#0B192C' : '#F1F5F9',
+                color: activeTab === 'patient' ? '#FFFFFF' : '#334155',
+                border: activeTab === 'patient' ? '1px solid #0B192C' : '1px solid #E2E8F0',
                 borderRadius: 4,
                 padding: '12px 28px',
                 fontWeight: 800,
@@ -397,11 +397,11 @@ export default function ServicesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: activeTab === 'patient' ? '0 6px 18px rgba(0, 184, 117, 0.3)' : 'none',
+                boxShadow: activeTab === 'patient' ? '0 6px 18px rgba(11, 25, 44, 0.35)' : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
-              <IconUsers size={18} />
+              <IconUsers size={18} color={activeTab === 'patient' ? '#00B875' : '#64748B'} />
               <span>রোগীদের জন্য</span>
             </button>
           </div>

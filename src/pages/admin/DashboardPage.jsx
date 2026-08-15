@@ -231,7 +231,7 @@ export default function DashboardPage() {
                 transition: 'all 0.25s ease',
                 background: range === opt.key ? 'var(--admin-primary)' : 'transparent',
                 color: range === opt.key ? '#FFFFFF' : 'var(--admin-text-muted)',
-                boxShadow: range === opt.key ? '0 4px 12px rgba(0,168,140,0.2)' : 'none',
+                boxShadow: range === opt.key ? '0 4px 12px rgba(0, 184, 117, 0.25)' : 'none',
               }}
             >
               {opt.label}

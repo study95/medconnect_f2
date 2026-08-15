@@ -45,7 +45,7 @@ export default function AdminLayout() {
           },
           success: {
             iconTheme: {
-              primary: '#00A88C',
+              primary: '#00B875',
               secondary: '#ffffff'
             }
           },
@@ -88,9 +88,7 @@ export default function AdminLayout() {
               <span className="admin-header-role-title" style={{ 
                 fontSize: 16, 
                 fontWeight: 900, 
-                background: 'linear-gradient(135deg, var(--admin-primary), #0ea5e9)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: '#00B875',
                 textTransform: 'uppercase', 
                 letterSpacing: '0.5px',
                 display: 'inline-block',
@@ -130,13 +128,13 @@ export default function AdminLayout() {
                 >
                   <div className="header-user-details" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name || 'User'}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--admin-primary)', textTransform: 'uppercase' }}>{roleName}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#00B875', textTransform: 'uppercase' }}>{roleName}</span>
                   </div>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(0, 168, 140, 0.3)', background: 'rgba(0, 168, 140, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(0, 184, 117, 0.3)', background: 'rgba(0, 184, 117, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {user?.photo ? (
                       <img src={getMediaUrl(user.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ fontWeight: 800, color: 'var(--admin-primary)', fontSize: 14 }}>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+                      <span style={{ fontWeight: 800, color: '#00B875', fontSize: 14 }}>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
                     )}
                   </div>
                   <ChevronDown size={16} color="var(--admin-text-muted)" style={{ transition: '0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />

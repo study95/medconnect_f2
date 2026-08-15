@@ -812,12 +812,29 @@ function DoctorDetailPageContent() {
                     <div className="d-flex flex-column gap-3">
                       {Array.isArray(doctor?.experiences) && doctor.experiences.length > 0 ? (
                         doctor.experiences.map((exp, idx) => (
-                          <div key={exp.id || idx} className="d-flex align-items-start gap-3" style={{ padding: '14px 18px', background: '#F8FAFC', borderRadius: 14, border: `1px solid ${cardBorderColor}` }}>
-                            <IconBriefcase size={20} color={primaryGreen} style={{ marginTop: 2 }} />
-                            <div>
-                              <h5 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, margin: 0 }}>{exp.hospital_name || exp.hospital_name_bn || 'হাসপাতাল / প্রতিষ্ঠান'}</h5>
-                              <p style={{ fontSize: 13, fontWeight: 700, color: primaryGreen, margin: 0 }}>{exp.designation || exp.designation_bn || 'পদবী'}</p>
-                              {exp.period && <p style={{ fontSize: 12, color: mutedTextColor, margin: 0 }}>{exp.period}</p>}
+                          <div key={exp.id || idx} className="d-flex align-items-start gap-3" style={{ padding: '16px 20px', background: '#F8FAFC', borderRadius: 16, border: `1px solid ${cardBorderColor}` }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 12, background: lightGreenBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                              <IconBriefcase size={20} color={primaryGreen} />
+                            </div>
+                            <div className="flex-grow-1">
+                              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                                <h5 style={{ fontSize: 16, fontWeight: 900, color: darkTextColor, margin: 0 }}>
+                                  {exp.designation || 'Specialist Doctor'}
+                                </h5>
+                                {exp.duration && (
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: primaryGreen, background: lightGreenBg, padding: '3px 10px', borderRadius: 20 }}>
+                                    {exp.duration}
+                                  </span>
+                                )}
+                              </div>
+                              <p style={{ fontSize: 14, fontWeight: 700, color: primaryGreen, margin: '0 0 4px' }}>
+                                {exp.hospital_name || 'Hospital / Institute'}
+                                {exp.department ? ` • ${exp.department}` : ''}
+                              </p>
+                              <div className="d-flex align-items-center gap-3 flex-wrap text-muted" style={{ fontSize: 12.5, fontWeight: 600 }}>
+                                {exp.period && <span>📅 {exp.period}</span>}
+                                {exp.address && <span>📍 {exp.address}</span>}
+                              </div>
                             </div>
                           </div>
                         ))

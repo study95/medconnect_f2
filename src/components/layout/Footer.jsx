@@ -15,7 +15,14 @@ function Footer() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 992)
   const [openSection, setOpenSection] = useState(null)
   const currentYear = new Date().getFullYear()
-  const cms = getContent()
+  const [cms, setCms] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
   const site = cms.site || {}
   const copyrightText = (site.copyright || `কপিরাইট © ${currentYear}, Doctor Booklet. সর্বস্বত্ব সংরক্ষিত।`).replace('২০২৪', '২০২৬')
 
@@ -27,6 +34,13 @@ function Footer() {
 
   if (['/login', '/register'].includes(location.pathname)) {
     return null
+  }
+
+  const isLinkActive = (to) => {
+    if (!to) return false
+    if (to === '/' && location.pathname === '/') return true
+    if (to !== '/' && location.pathname.startsWith(to)) return true
+    return false
   }
 
   const QUICK_LINKS = [
@@ -58,29 +72,72 @@ function Footer() {
     { label: 'লিঙ্কডইন', icon: <IconBrandLinkedin size={18} />, url: '#' },
   ]
 
-  const linkStyle = {
-    color: 'rgba(255,255,255,0.6)',
-    textDecoration: 'none',
-    fontSize: 14,
-    fontWeight: 600,
-    transition: 'all 0.3s ease',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
+  const renderFooterLink = (link) => {
+    const active = isLinkActive(link.to)
+    return (
+      <Link 
+        key={link.label} 
+        to={link.to} 
+        style={{
+          color: active ? '#00B875' : 'rgba(255,255,255,0.7)',
+          textDecoration: 'none',
+          fontSize: 14,
+          fontWeight: active ? 700 : 500,
+          transition: 'all 0.25s ease',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+        onMouseEnter={e => { 
+          e.currentTarget.style.color = '#00B875'
+          e.currentTarget.style.transform = 'translateX(6px)' 
+        }}
+        onMouseLeave={e => { 
+          e.currentTarget.style.color = active ? '#00B875' : 'rgba(255,255,255,0.7)'
+          e.currentTarget.style.transform = 'translateX(0)' 
+        }}
+      >
+        <span style={{ 
+          color: '#00B875', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          {link.icon}
+        </span>
+        <span>{link.label}</span>
+      </Link>
+    )
   }
 
-  const mobileLinkStyle = {
-    color: 'rgba(255,255,255,0.7)',
-    textDecoration: 'none',
-    fontSize: 15,
-    fontWeight: 500,
-    display: 'flex',
-    alignItems: 'center',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    transition: 'all 0.3s ease',
-    marginBottom: '4px',
-    fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
+  const renderMobileLink = (link) => {
+    const active = isLinkActive(link.to)
+    return (
+      <Link 
+        key={link.label} 
+        to={link.to} 
+        style={{
+          color: active ? '#00B875' : 'rgba(255,255,255,0.75)',
+          background: active ? 'rgba(0, 184, 117, 0.12)' : 'transparent',
+          textDecoration: 'none',
+          fontSize: 15,
+          fontWeight: active ? 700 : 500,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '12px 16px',
+          borderRadius: '12px',
+          transition: 'all 0.3s ease',
+          marginBottom: '4px',
+          fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
+        }}
+      >
+        <span style={{ color: '#00B875', marginRight: 10, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {link.icon}
+        </span>
+        <span>{link.label}</span>
+      </Link>
+    )
   }
 
   const AccordionItem = ({ id, title, children }) => {
@@ -104,12 +161,12 @@ function Footer() {
           {title}
           <div style={{ 
             width: 28, height: 28, borderRadius: '50%', 
-            background: isOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
+            background: isOpen ? 'rgba(0, 184, 117, 0.15)' : 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.3s ease'
           }}>
             <span style={{ 
-              fontSize: 22, fontWeight: 300, color: isOpen ? 'white' : 'rgba(255,255,255,0.5)',
+              fontSize: 22, fontWeight: 300, color: isOpen ? '#00B875' : 'rgba(255,255,255,0.5)',
               transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               lineHeight: 1
@@ -139,83 +196,71 @@ function Footer() {
   if (isMobile) {
     return (
       <footer style={{ 
-        background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)', // Deep premium royal/slate blue
+        background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
         color: 'white',
         fontFamily: "'Inter', 'Hind Siliguri', sans-serif",
         position: 'relative',
         overflow: 'hidden'
       }}>
         {/* Soft Glassmorphism Glows */}
-        <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(0,168,140,0.15) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.15) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.1) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', position: 'relative', zIndex: 2 }}>
           <AccordionItem id="brand" title="মেডকানেক্ট (আমাদের সম্পর্কে)">
-            {LEGAL_LINKS.slice(0, 1).map(link => (
-              <Link key={link.label} to={link.to} style={mobileLinkStyle}>
-                <span style={{ color: '#00D4AF', marginRight: 10 }}>{link.icon}</span> {link.label}
-              </Link>
-            ))}
-            {QUICK_LINKS.slice(3, 5).map(link => (
-              <Link key={link.label} to={link.to} style={mobileLinkStyle}>
-                <span style={{ color: '#00D4AF', marginRight: 10 }}>{link.icon}</span> {link.label}
-              </Link>
-            ))}
-            <Link to="/contact" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconMessage size={16} /></span> যোগাযোগ করুন
-            </Link>
+            {LEGAL_LINKS.slice(0, 1).map(link => renderMobileLink(link))}
+            {QUICK_LINKS.slice(3, 5).map(link => renderMobileLink(link))}
           </AccordionItem>
 
           <AccordionItem id="patients" title="রোগীদের জন্য">
-            {QUICK_LINKS.slice(0, 3).map(link => (
-              <Link key={link.label} to={link.to} style={mobileLinkStyle}>
-                <span style={{ color: '#00D4AF', marginRight: 10 }}>{link.icon}</span> {link.label}
-              </Link>
-            ))}
+            {QUICK_LINKS.slice(0, 3).map(link => renderMobileLink(link))}
           </AccordionItem>
 
           <AccordionItem id="doctors" title="ডাক্তারদের জন্য">
-            <Link to="/register-doctor" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconUserPlus size={16} /></span> আপনি কি ডাক্তার?
-            </Link>
-            <Link to="/login" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconDashboard size={16} /></span> ডাক্তার ড্যাশবোর্ড
-            </Link>
+            {renderMobileLink({ label: 'আপনি কি ডাক্তার?', to: '/register-doctor', icon: <IconUserPlus size={16} /> })}
+            {renderMobileLink({ label: 'ডাক্তার ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> })}
           </AccordionItem>
 
           <AccordionItem id="hospitals" title="হাসপাতালের জন্য">
-            <Link to="/register-hospital" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconBuildingHospital size={16} /></span> আপনার কি হাসপাতাল আছে?
-            </Link>
-            <Link to="/login" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconDashboard size={16} /></span> হাসপাতাল ড্যাশবোর্ড
-            </Link>
+            {renderMobileLink({ label: 'আপনার কি হাসপাতাল আছে?', to: '/register-hospital', icon: <IconBuildingHospital size={16} /> })}
+            {renderMobileLink({ label: 'হাসপাতাল ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> })}
           </AccordionItem>
 
           <AccordionItem id="more" title="আরও জানুন">
-            {LEGAL_LINKS.slice(1).map(link => (
-              <Link key={link.label} to={link.to} style={mobileLinkStyle}>
-                <span style={{ color: '#00D4AF', marginRight: 10 }}>{link.icon}</span> {link.label}
-              </Link>
-            ))}
-            <Link to="/support" style={mobileLinkStyle}>
-              <span style={{ color: '#00D4AF', marginRight: 10 }}><IconHelp size={16} /></span> সাহায্য কেন্দ্র (FAQ)
-            </Link>
+            {LEGAL_LINKS.slice(1).map(link => renderMobileLink(link))}
+            {renderMobileLink({ label: 'সাহায্য কেন্দ্র (FAQ)', to: '/support', icon: <IconHelp size={16} /> })}
           </AccordionItem>
 
           <AccordionItem id="social" title="সোশ্যাল মিডিয়া">
             {SOCIAL_LINKS.map(link => (
-              <a key={link.label} href={link.url} style={{ ...mobileLinkStyle, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ color: '#00A88C', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <a 
+                key={link.label} 
+                href={link.url} 
+                style={{
+                  color: 'rgba(255,255,255,0.8)',
+                  textDecoration: 'none',
+                  fontSize: 15,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  transition: 'all 0.3s ease',
+                  marginBottom: '4px',
+                  gap: 10,
+                  fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
+                }}
+              >
+                <span style={{ color: '#00B875', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                   {link.icon}
                 </span>
-                <span style={{ color: 'rgba(255,255,255,0.8)' }}>{link.label}</span>
+                <span>{link.label}</span>
               </a>
             ))}
           </AccordionItem>
         </div>
 
-        {/* Centered Logo & Brand Area — Single Line Alignment with Logo Image */}
+        {/* Centered Logo & Brand Area */}
         <div style={{ padding: '40px 20px 80px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
             <img 
@@ -225,7 +270,7 @@ function Footer() {
                 height: '46px', 
                 width: 'auto', 
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 4px 12px rgba(0, 212, 175, 0.3))' 
+                filter: 'drop-shadow(0 4px 12px rgba(0, 184, 117, 0.3))' 
               }} 
             />
           </Link>
@@ -250,8 +295,8 @@ function Footer() {
       borderTop: '1px solid rgba(255,255,255,0.05)'
     }}>
       {/* Aesthetic Background Glows */}
-      <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0,168,140,0.1) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0,201,167,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.1) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       <Container>
         <Row className="g-5">
@@ -265,7 +310,7 @@ function Footer() {
                   height: '52px', 
                   width: 'auto', 
                   objectFit: 'contain',
-                  filter: 'drop-shadow(0 4px 12px rgba(0, 212, 175, 0.3))' 
+                  filter: 'drop-shadow(0 4px 12px rgba(0, 184, 117, 0.3))' 
                 }} 
               />
             </Link>
@@ -274,9 +319,32 @@ function Footer() {
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               {SOCIAL_LINKS.map((link, i) => (
-                <a key={i} href={link.url} style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', transition: '0.3s' }}
-                   onMouseEnter={e => { e.currentTarget.style.background = '#00A88C'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'translateY(-3px)' }}
-                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <a 
+                  key={i} 
+                  href={link.url} 
+                  style={{ 
+                    width: 38, 
+                    height: 38, 
+                    borderRadius: 10, 
+                    background: 'rgba(255,255,255,0.03)', 
+                    border: '1px solid rgba(255,255,255,0.08)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    color: '#00B875', 
+                    transition: '0.3s' 
+                  }}
+                  onMouseEnter={e => { 
+                    e.currentTarget.style.background = '#00B875'
+                    e.currentTarget.style.color = 'white'
+                    e.currentTarget.style.transform = 'translateY(-3px)' 
+                  }}
+                  onMouseLeave={e => { 
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                    e.currentTarget.style.color = '#00B875'
+                    e.currentTarget.style.transform = 'translateY(0)' 
+                  }}
+                >
                   {link.icon}
                 </a>
               ))}
@@ -289,17 +357,11 @@ function Footer() {
               color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00A88C', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
               দ্রুত লিঙ্ক
             </h6>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {QUICK_LINKS.map(link => (
-                <Link key={link.label} to={link.to} style={linkStyle}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#00C9A7'; e.currentTarget.style.transform = 'translateX(6px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)' }}>
-                  <span style={{ color: 'rgba(0,212,175,0.6)' }}>{link.icon}</span> {link.label}
-                </Link>
-              ))}
+              {QUICK_LINKS.map(link => renderFooterLink(link))}
             </div>
           </Col>
 
@@ -309,17 +371,11 @@ function Footer() {
               color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00A88C', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
               পার্টনারশিপ
             </h6>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {PARTNER_LINKS.map(link => (
-                <Link key={link.label} to={link.to} style={linkStyle}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#00C9A7'; e.currentTarget.style.transform = 'translateX(6px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)' }}>
-                  <span style={{ color: 'rgba(0,212,175,0.6)' }}>{link.icon}</span> {link.label}
-                </Link>
-              ))}
+              {PARTNER_LINKS.map(link => renderFooterLink(link))}
             </div>
           </Col>
 
@@ -329,17 +385,11 @@ function Footer() {
               color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00A88C', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
               আইনি ও সহায়তা
             </h6>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
-              {LEGAL_LINKS.map(link => (
-                <Link key={link.label} to={link.to} style={linkStyle}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#00C9A7'; e.currentTarget.style.transform = 'translateX(6px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)' }}>
-                  <span style={{ color: 'rgba(0,212,175,0.6)' }}>{link.icon}</span> {link.label}
-                </Link>
-              ))}
+              {LEGAL_LINKS.map(link => renderFooterLink(link))}
             </div>
             
             <div className="d-lg-none" style={{ 
@@ -350,17 +400,17 @@ function Footer() {
                
                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,168,140,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00C9A7' }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
                         <IconPhone size={18} />
                      </div>
                      <div>
                         <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>হেল্পলাইন</p>
-                        <p style={{ margin: 0, color: '#00C9A7', fontSize: 15, fontWeight: 900 }}>{site.phone || '017 XXXX XXXX'}</p>
+                        <p style={{ margin: 0, color: '#00B875', fontSize: 15, fontWeight: 900 }}>{site.phone || '017 XXXX XXXX'}</p>
                      </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,168,140,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00C9A7' }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
                         <IconMail size={18} />
                      </div>
                      <div>
@@ -370,7 +420,7 @@ function Footer() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875', marginTop: 2 }}>
                         <IconMapPin size={18} />
                      </div>
                      <div>
@@ -394,13 +444,13 @@ function Footer() {
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#00C9A7'}
+                  onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
               ব্যবহারের শর্তাবলী (Terms)
             </Link>
             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>•</span>
             <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#00C9A7'}
+                  onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
               গোপনীয়তা নীতি (Privacy)
             </Link>
@@ -412,4 +462,3 @@ function Footer() {
 }
 
 export default Footer
-

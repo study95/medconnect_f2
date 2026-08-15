@@ -12,7 +12,7 @@ import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
-  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight
+  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus
 } from '@tabler/icons-react'
 import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -1101,7 +1101,7 @@ function DigitalDashboardBanner() {
 function BrowseByLocationSection() {
   const navigate = useNavigate()
 
-  const divisions = [
+  const mainDivisions = [
     {
       bnName: 'ঢাকা বিভাগ',
       enName: 'Dhaka Division',
@@ -1122,65 +1122,31 @@ function BrowseByLocationSection() {
       count: '২৫+ হাসপাতাল',
       searchKey: 'Chattogram',
       img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600&auto=format&fit=crop&q=70'
-    },
-    {
-      bnName: 'রাজশাহী সিটি',
-      enName: 'Rajshahi City',
-      count: '১৫+ হাসপাতাল',
-      searchKey: 'Rajshahi',
-      img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=70'
     }
   ]
 
   return (
     <section style={{ background: '#F8FAFC', padding: '56px 0 52px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
       <Container>
-        {/* Title & Top Right Button Header (Matching Image 1) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <h2 style={{
-              fontSize: 'clamp(22px, 3.5vw, 32px)',
-              fontWeight: 900,
-              color: '#0F172A',
-              margin: 0,
-              fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
-            }}>
-              বিভাগ অনুযায়ী হাসপাতাল খুঁজুন
-            </h2>
-            <p style={{ fontSize: 13.5, color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-              বাংলাদেশের জনপ্রিয় বিভাগ ও এলাকার সেরা হাসপাতাল এবং ল্যাব সেন্টার
-            </p>
-          </div>
-
-          <button
-            onClick={() => navigate('/hospitals')}
-            style={{
-              background: '#FFFFFF',
-              color: '#0F172A',
-              border: '1.5px solid #E2E8F0',
-              borderRadius: 0,
-              padding: '10px 20px',
-              fontWeight: 800,
-              fontSize: 14,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              transition: 'all 0.3s ease',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0F172A'; e.currentTarget.style.background = '#F8FAFC' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#FFFFFF' }}
-          >
-            <span>সব এলাকা দেখুন</span>
-            <IconArrowRight size={16} color="#16A34A" stroke={2.5} />
-          </button>
+        {/* Title Header */}
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{
+            fontSize: 'clamp(22px, 3.5vw, 32px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            margin: 0,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+          }}>
+            বিভাগ অনুযায়ী হাসপাতাল খুঁজুন
+          </h2>
+          <p style={{ fontSize: 13.5, color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            বাংলাদেশের জনপ্রিয় বিভাগ ও এলাকার সেরা হাসপাতাল এবং ল্যাব সেন্টার
+          </p>
         </div>
 
-        {/* 4 Image Division Cards Grid (Matching Image 1) */}
+        {/* 4 Cards Grid: 3 Division Cards + 1 Center Plus More-View Card */}
         <Row className="g-3">
-          {divisions.map((div, i) => (
+          {mainDivisions.map((div, i) => (
             <Col key={i} xs={12} sm={6} lg={3}>
               <div
                 onClick={() => navigate(`/hospitals?search=${encodeURIComponent(div.searchKey)}`)}
@@ -1262,6 +1228,98 @@ function BrowseByLocationSection() {
               </div>
             </Col>
           ))}
+
+          {/* 4th (Last) Card: Center "+" More View Button */}
+          <Col xs={12} sm={6} lg={3}>
+            <div
+              onClick={() => navigate('/hospitals')}
+              style={{
+                position: 'relative',
+                height: 230,
+                borderRadius: 0,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center'
+              }}
+              className="division-image-card division-more-card"
+            >
+              {/* Background Image */}
+              <img
+                src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=70"
+                alt="সকল এলাকা"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'absolute',
+                  inset: 0,
+                  objectFit: 'cover',
+                  transition: 'transform 0.5s ease'
+                }}
+                className="division-card-img"
+              />
+
+              {/* Dark Gradient Overlay */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(11, 25, 44, 0.94) 100%)',
+                backdropFilter: 'blur(2px)'
+              }} />
+
+              {/* Center Content: "+" Button & Text */}
+              <div style={{
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px'
+              }}>
+                <div
+                  className="division-center-plus-btn"
+                  style={{
+                    width: 54,
+                    height: 54,
+                    borderRadius: '50%',
+                    background: '#00B875',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 6px 20px rgba(0, 184, 117, 0.45)',
+                    transition: 'all 0.35s ease',
+                    marginBottom: 12
+                  }}
+                >
+                  <IconPlus size={28} stroke={3} />
+                </div>
+
+                <h4 style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: '#FFFFFF',
+                  margin: '0 0 4px 0',
+                  fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
+                  lineHeight: 1.3
+                }}>
+                  সব এলাকা দেখুন
+                </h4>
+                <span style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  সকল বিভাগ ও হাসপাতাল
+                </span>
+              </div>
+            </div>
+          </Col>
         </Row>
       </Container>
 
@@ -1274,6 +1332,11 @@ function BrowseByLocationSection() {
           color: #0F172A !important;
           transform: scale(1.1) rotate(45deg);
         }
+        .division-more-card:hover .division-center-plus-btn {
+          transform: scale(1.15) rotate(90deg);
+          background: #009E64 !important;
+          box-shadow: 0 8px 25px rgba(0, 184, 117, 0.65) !important;
+        }
       `}</style>
     </section>
   )
@@ -1281,7 +1344,18 @@ function BrowseByLocationSection() {
 
 // ─── PATIENT TESTIMONIALS SECTION (EXACT REFERENCE DESIGN) ─────────────────
 function PatientTestimonialsSection() {
-  const testimonials = [
+  const [cms, setCms] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
+  const sec = cms?.testimonials || {}
+  const title = sec.title || 'হাজারো রোগীর ভরসা ও সন্তুষ্টি'
+  const subtitle = sec.subtitle || 'আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।'
+  const testimonials = (sec.items && sec.items.length > 0) ? sec.items : [
     {
       name: 'ঐশী খান',
       role: 'রোগী (ঢাকা)',
@@ -1324,7 +1398,7 @@ function PatientTestimonialsSection() {
             marginBottom: 10,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
-            হাজারো রোগীর ভরসা ও সন্তুষ্টি
+            {title}
           </h2>
           <p style={{
             fontSize: 14.5,
@@ -1334,7 +1408,7 @@ function PatientTestimonialsSection() {
             fontWeight: 500,
             fontFamily: "'Hind Siliguri', sans-serif"
           }}>
-            আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।
+            {subtitle}
           </p>
         </div>
 
@@ -1745,16 +1819,29 @@ function DarkRegistrationSection() {
 
 // ─── OUR HOSPITAL PARTNERS (CONTINUOUS MARQUEE SLOW SCROLLING) ───────────────
 function HospitalPartnersSection({ hospitals = [] }) {
-  // Static fallback partners with logos if backend photo is not set
-  const DEFAULT_PARTNERS = [
-    { name: 'Bangladesh Specialized Hospital', photo_url: '/images/hospital.png' },
-    { name: 'Chevron Clinical Laboratory', photo_url: '/images/care.png' },
-    { name: 'Popular Diagnostic Center', photo_url: '/images/doctor.png' },
-    { name: 'Praava Health', photo_url: '/images/doctor-hero-centered.png' },
-    { name: 'York Hospital', photo_url: '/images/doctor-premium.png' }
+  const [cms, setCms] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
+  const sec = cms?.partners || {}
+  const title = sec.title || 'আমাদের সহযোগী হাসপাতালসমূহ'
+  const subtitle = sec.subtitle || 'দেশজুড়ে নির্ভরযোগ্য হাসপাতাল ও ক্লিনিক্যাল সেন্টারসমূহ'
+
+  const customItems = (sec.items && sec.items.length > 0) ? sec.items : null
+  const fallbackPartners = [
+    { name: 'Bangladesh Specialized Hospital', logo_url: 'https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg' },
+    { name: 'Chevron Clinical Laboratory', logo_url: 'https://img.freepik.com/free-vector/cross-medical-health-care-logo_23987-136.jpg' },
+    { name: 'Popular Diagnostic Center', logo_url: 'https://img.freepik.com/free-vector/hospital-clinic-logo-design_23-2149544607.jpg' },
+    { name: 'Praava Health', logo_url: 'https://img.freepik.com/free-vector/medical-care-logo-vector_53876-136744.jpg' },
+    { name: 'York Hospital', logo_url: 'https://img.freepik.com/free-vector/medical-cross-logo-vector_53876-136742.jpg' },
+    { name: 'Ibn Sina Hospital', logo_url: 'https://img.freepik.com/free-vector/gradient-medical-logo-template_23-2148995383.jpg' }
   ]
 
-  const items = (hospitals && hospitals.length > 0) ? hospitals : DEFAULT_PARTNERS
+  const items = customItems || (hospitals && hospitals.length > 0 ? hospitals : fallbackPartners)
 
   // Multiply array elements to guarantee seamless infinite loop animation
   const marqueeItems = [...items, ...items, ...items, ...items]
@@ -1771,10 +1858,10 @@ function HospitalPartnersSection({ hospitals = [] }) {
             marginBottom: 6,
             fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif"
           }}>
-            আমাদের সহযোগী হাসপাতালসমূহ
+            {title}
           </h2>
           <p style={{ fontSize: 13.5, color: '#64748B', fontWeight: 500, margin: 0, fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
-            দেশজুড়ে নির্ভরযোগ্য হাসপাতাল ও ক্লিনিক্যাল সেন্টারসমূহ
+            {subtitle}
           </p>
         </div>
       </Container>

@@ -20,21 +20,24 @@
         position: fixed;
         top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
         width: 100vw;
         height: 100vh;
         z-index: 999999;
         background: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         opacity: 1;
         visibility: visible;
         transition: opacity 0.5s ease, visibility 0.5s ease;
         user-select: none;
+        overflow: hidden;
       }
 
       .preloader-glow {
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
         width: 340px;
         height: 340px;
         border-radius: 50%;
@@ -44,10 +47,7 @@
       }
 
       .preloader-logo-box {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        position: relative;
         width: 120px;
         height: 120px;
         display: flex;

@@ -1,55 +1,44 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { 
   MapPin, Phone, Mail, Globe, Clock, Send, ShieldCheck, 
-  MessageSquare, Headset, CheckCircle2, Copy, ExternalLink,
-  Sparkles, AlertCircle, Building2, User, HelpCircle, ArrowRight
+  Headset, CheckCircle2, Copy, ExternalLink,
+  Building2, ArrowRight
 } from 'lucide-react'
 import { getContent } from '../utils/contentService'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 
 export default function ContactPage() {
-  const cms = getContent()
+  const [cms, setCms] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
   const site = cms.site || {}
   const contact = cms.contact || {}
-  const nl = cms.newsletter || {}
+  const helplines = cms.helplines?.items || []
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: 'সাধারণ জিজ্ঞাসা', message: '' })
   const [loading, setLoading] = useState(false)
   const [copiedField, setCopiedField] = useState(null)
-  const [nlEmail, setNlEmail] = useState('')
-  const [nlLoading, setNlLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.phone || !form.message) {
-      
       return
     }
     setLoading(true)
     await new Promise(r => setTimeout(r, 800))
-    
     setForm({ name: '', email: '', phone: '', subject: 'সাধারণ জিজ্ঞাসা', message: '' })
     setLoading(false)
-  }
-
-  const handleNewsletter = async (e) => {
-    e.preventDefault()
-    if (!nlEmail || !nlEmail.includes('@')) {
-      
-      return
-    }
-    setNlLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    
-    setNlEmail('')
-    setNlLoading(false)
   }
 
   const handleCopy = (text, fieldName) => {
     navigator.clipboard.writeText(text)
     setCopiedField(fieldName)
-    
     setTimeout(() => setCopiedField(null), 2000)
   }
 
@@ -80,7 +69,7 @@ export default function ContactPage() {
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
       {/* ── HERO SECTION ── */}
       <section style={{ 
-        background: 'linear-gradient(135deg, #004D40 0%, #00796B 50%, #00A88C 100%)', 
+        background: 'linear-gradient(135deg, #013A28 0%, #064E3B 50%, #00B875 100%)', 
         padding: '0 0 110px', 
         position: 'relative', 
         overflow: 'hidden',
@@ -88,7 +77,7 @@ export default function ContactPage() {
       }}>
         {/* Background Decorative Rings */}
         <div style={{ position: 'absolute', right: -80, top: -80, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', left: -100, bottom: -100, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,201,167,0.2) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', left: -100, bottom: -100, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0, 184, 117, 0.25) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none' }} />
 
         <BreadcrumbHUD links={[{ label: 'যোগাযোগ' }]} variant="light" />
 
@@ -107,7 +96,7 @@ export default function ContactPage() {
                 fontSize: 13,
                 fontWeight: 700,
                 marginBottom: 20,
-                color: '#E6FFFA'
+                color: '#F0FDF4'
               }}>
                 <Headset size={16} /> 
                 <span>২৪/৭ কাস্টমার সাপোর্ট সেন্টার</span>
@@ -198,7 +187,7 @@ export default function ContactPage() {
                   gap: 14,
                   border: '1px solid #E2E8F0'
                 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00A88C' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
                     <CheckCircle2 size={24} />
                   </div>
                   <div style={{ textAlign: 'left' }}>
@@ -212,7 +201,7 @@ export default function ContactPage() {
         </Container>
       </section>
 
-      {/* ── CONTACT CHANNELS SUMMARY STRIP (OVERLAPPING GREEN BG TO CARD MIDDLE) ── */}
+      {/* ── CONTACT CHANNELS SUMMARY STRIP ── */}
       <Container style={{ marginTop: -100, position: 'relative', zIndex: 10 }}>
         <Row className="g-4 justify-content-center">
           {[
@@ -224,7 +213,7 @@ export default function ContactPage() {
               actionText: 'কল করুন',
               actionHref: `tel:${site.phone}`,
               bgColor: '#F0FDF4',
-              iconColor: '#00A88C'
+              iconColor: '#00B875'
             },
             {
               icon: <Mail size={22} />,
@@ -310,7 +299,7 @@ export default function ContactPage() {
                 boxShadow: '0 12px 35px rgba(0,0,0,0.04)'
               }}>
                 <div style={{ marginBottom: 32 }}>
-                  <span style={{ background: '#E6FFFA', color: '#00796B', fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 10 }}>
+                  <span style={{ background: '#F0FDF4', color: '#00B875', fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 10 }}>
                     মেসেজ পাঠান
                   </span>
                   <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 26, marginBottom: 8 }}>
@@ -334,7 +323,7 @@ export default function ContactPage() {
                         onChange={e => setForm({ ...form, subject: e.target.value })}
                         required
                         style={{ ...inputStyle, cursor: 'pointer' }}
-                        onFocus={e => { e.target.style.borderColor = '#00A88C'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 168, 140, 0.1)'; }}
+                        onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 184, 117, 0.15)'; }}
                         onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#FAFAFA'; e.target.style.boxShadow = 'none'; }}
                       >
                         <option value="">বিষয় নির্বাচন করুন</option>
@@ -359,7 +348,7 @@ export default function ContactPage() {
                           required
                           placeholder="উদাঃ মোঃ রহিম আহমেদ"
                           style={inputStyle}
-                          onFocus={e => { e.target.style.borderColor = '#00A88C'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 168, 140, 0.1)'; }}
+                          onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 184, 117, 0.15)'; }}
                           onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#FAFAFA'; e.target.style.boxShadow = 'none'; }}
                         />
                       </div>
@@ -378,7 +367,7 @@ export default function ContactPage() {
                         required
                         placeholder="rahim@example.com"
                         style={inputStyle}
-                        onFocus={e => { e.target.style.borderColor = '#00A88C'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 168, 140, 0.1)'; }}
+                        onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 184, 117, 0.15)'; }}
                         onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#FAFAFA'; e.target.style.boxShadow = 'none'; }}
                       />
                     </Col>
@@ -395,7 +384,7 @@ export default function ContactPage() {
                         required
                         placeholder="017XXXXXXXX"
                         style={inputStyle}
-                        onFocus={e => { e.target.style.borderColor = '#00A88C'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 168, 140, 0.1)'; }}
+                        onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 184, 117, 0.15)'; }}
                         onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#FAFAFA'; e.target.style.boxShadow = 'none'; }}
                       />
                     </Col>
@@ -416,7 +405,7 @@ export default function ContactPage() {
                         rows={5}
                         placeholder="আপনার প্রশ্ন বা মতামত সম্পর্কে বিস্তারিত লিখুন..."
                         style={{ ...inputStyle, resize: 'vertical', minHeight: 120 }}
-                        onFocus={e => { e.target.style.borderColor = '#00A88C'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 168, 140, 0.1)'; }}
+                        onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.background = '#FFFFFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0, 184, 117, 0.15)'; }}
                         onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#FAFAFA'; e.target.style.boxShadow = 'none'; }}
                       />
                     </Col>
@@ -428,7 +417,7 @@ export default function ContactPage() {
                         type="submit"
                         disabled={loading}
                         style={{
-                          background: 'linear-gradient(135deg, #00796B 0%, #00A88C 100%)',
+                          background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
                           color: 'white',
                           border: 'none',
                           borderRadius: 16,
@@ -443,7 +432,7 @@ export default function ContactPage() {
                           textAlign: 'center',
                           gap: 10,
                           fontFamily: "'Hind Siliguri', sans-serif",
-                          boxShadow: '0 8px 25px rgba(0,168,140,0.35)',
+                          boxShadow: '0 8px 25px rgba(0, 184, 117, 0.35)',
                           transition: 'all 0.3s ease',
                           opacity: loading ? 0.8 : 1
                         }}
@@ -500,7 +489,7 @@ export default function ContactPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                     {/* Address */}
                     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00A88C', flexShrink: 0 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875', flexShrink: 0 }}>
                         <Building2 size={20} />
                       </div>
                       <div>
@@ -582,7 +571,7 @@ export default function ContactPage() {
                       />
                     ) : (
                       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', color: '#64748B' }}>
-                        <MapPin size={36} color="#00A88C" style={{ marginBottom: 8 }} />
+                        <MapPin size={36} color="#00B875" style={{ marginBottom: 8 }} />
                         <span style={{ fontWeight: 700, fontSize: 14 }}>ধানমন্ডি, ঢাকা-১২০৫</span>
                       </div>
                     )}
@@ -593,7 +582,7 @@ export default function ContactPage() {
                       href="https://maps.google.com/?q=Dhanmondi,Dhaka" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      style={{ color: '#00A88C', fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                      style={{ color: '#00B875', fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <span>গুগল ম্যাপে খুলুন</span>
                       <ExternalLink size={14} />
@@ -610,7 +599,7 @@ export default function ContactPage() {
                   boxShadow: '0 12px 30px rgba(15,23,42,0.15)',
                   display: 'flex',
                   alignItems: 'center',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   gap: 16,
                   flexWrap: 'wrap'
                 }}>
@@ -624,7 +613,7 @@ export default function ContactPage() {
                   <a 
                     href={`tel:${site.phone || '999'}`}
                     style={{
-                      background: '#00A88C',
+                      background: '#00B875',
                       color: 'white',
                       padding: '12px 20px',
                       borderRadius: 14,
@@ -634,7 +623,7 @@ export default function ContactPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
-                      boxShadow: '0 6px 15px rgba(0,168,140,0.4)'
+                      boxShadow: '0 6px 15px rgba(0, 184, 117, 0.4)'
                     }}
                   >
                     <Phone size={16} /> 

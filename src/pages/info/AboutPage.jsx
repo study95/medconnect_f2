@@ -624,14 +624,21 @@ const ACCREDITATIONS = [
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export default function AboutPage() {
-  const [data] = useState(getContent())
+  const [data, setData] = useState(getContent())
+
+  useEffect(() => {
+    const handleUpdate = () => setData(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
   const { theme } = useTheme()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const lang = i18n.language
   const isEn = lang === 'en'
 
-  const content = data[lang]?.about_us || data['en']?.about_us || data.about_us
+  const content = data[lang]?.about_us || data['en']?.about_us || data.about_us || {}
   const values   = isEn ? VALUES.en   : VALUES.bn
   const timeline = isEn ? TIMELINE.en : TIMELINE.bn
   const team     = isEn ? TEAM.en     : TEAM.bn

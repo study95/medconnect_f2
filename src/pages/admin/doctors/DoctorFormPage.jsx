@@ -104,6 +104,72 @@ function SearchableSelect({ id, label, options, value, onChange, placeholder, di
   )
 }
 
+function calculateExperienceDuration(fromDate, toDate, isCurrent) {
+  if (!fromDate) return ''
+
+  let startYear, startMonth
+  if (fromDate.includes('-')) {
+    const parts = fromDate.split('-')
+    startYear = parseInt(parts[0], 10)
+    startMonth = parts[1] ? parseInt(parts[1], 10) : 1
+  } else {
+    startYear = parseInt(fromDate, 10)
+    startMonth = 1
+  }
+  if (isNaN(startYear)) return ''
+
+  let endYear, endMonth
+  if (isCurrent) {
+    const now = new Date()
+    endYear = now.getFullYear()
+    endMonth = now.getMonth() + 1
+  } else if (toDate) {
+    if (toDate.includes('-')) {
+      const parts = toDate.split('-')
+      endYear = parseInt(parts[0], 10)
+      endMonth = parts[1] ? parseInt(parts[1], 10) : 12
+    } else {
+      endYear = parseInt(toDate, 10)
+      endMonth = 12
+    }
+  } else {
+    return ''
+  }
+  if (isNaN(endYear)) return ''
+
+  let totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth)
+  if (totalMonths < 0) totalMonths = 0
+  if (totalMonths === 0) totalMonths = 1
+
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+
+  const parts = []
+  if (years > 0) parts.push(`${years} ${years === 1 ? 'Year' : 'Years'}`)
+  if (months > 0) parts.push(`${months} ${months === 1 ? 'Month' : 'Months'}`)
+
+  return parts.length > 0 ? parts.join(' ') : '1 Month'
+}
+
+function formatExperiencePeriod(fromDate, toDate, isCurrent) {
+  if (!fromDate) return ''
+  const formatM = (str) => {
+    if (!str) return ''
+    if (str.includes('-')) {
+      const [y, m] = str.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const mIdx = parseInt(m, 10) - 1
+      return (monthNames[mIdx] ? `${monthNames[mIdx]} ` : '') + y
+    }
+    return str
+  }
+  const fromStr = formatM(fromDate)
+  if (isCurrent) return `${fromStr} - Present`
+  if (!toDate) return fromStr
+  const toStr = formatM(toDate)
+  return `${fromStr} - ${toStr}`
+}
+
 export default function DoctorFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -123,9 +189,36 @@ export default function DoctorFormPage() {
     division_id: '', district_id: '', upazila_id: '', union_id: ''
   })
 
-  const emptyExperience = { hospital_name: '', hospital_name_bn: '', designation: '', designation_bn: '', department: '', department_bn: '', address: '', address_bn: '', period: '', period_bn: '', duration: '', duration_bn: '' }
+  const emptyExperience = { 
+    hospital_name: '', 
+    designation: '', 
+    department: '', 
+    address: '', 
+    from_date: '', 
+    to_date: '', 
+    is_current: false, 
+    period: '', 
+    duration: '' 
+  }
   const [experiences, setExperiences] = useState([])
   
+  const updateExperience = (idx, field, value) => {
+    const updated = [...experiences]
+    const currentItem = { ...updated[idx], [field]: value }
+
+    if (field === 'from_date' || field === 'to_date' || field === 'is_current') {
+      const from = field === 'from_date' ? value : currentItem.from_date
+      const to = field === 'to_date' ? value : currentItem.to_date
+      const curr = field === 'is_current' ? value : currentItem.is_current
+
+      currentItem.duration = calculateExperienceDuration(from, to, curr)
+      currentItem.period = formatExperiencePeriod(from, to, curr)
+    }
+
+    updated[idx] = currentItem
+    setExperiences(updated)
+  }
+
   const [media, setMedia] = useState({
     photo: null, signature: null,
     photoPreview: null, signaturePreview: null
@@ -231,18 +324,15 @@ export default function DoctorFormPage() {
       // Load experiences
       if (d.experiences && Array.isArray(d.experiences)) {
         setExperiences(d.experiences.map(exp => ({
-          hospital_name: exp.hospital_name || '',
-          hospital_name_bn: exp.hospital_name_bn || '',
-          designation: exp.designation || '',
-          designation_bn: exp.designation_bn || '',
-          department: exp.department || '',
-          department_bn: exp.department_bn || '',
-          address: exp.address || '',
-          address_bn: exp.address_bn || '',
-          period: exp.period || '',
-          period_bn: exp.period_bn || '',
-          duration: exp.duration || '',
-          duration_bn: exp.duration_bn || ''
+          hospital_name: exp.hospital_name || exp.hospital_name_bn || '',
+          designation: exp.designation || exp.designation_bn || '',
+          department: exp.department || exp.department_bn || '',
+          address: exp.address || exp.address_bn || '',
+          from_date: exp.from_date || '',
+          to_date: exp.to_date || '',
+          is_current: Boolean(exp.is_current),
+          period: exp.period || exp.period_bn || '',
+          duration: exp.duration || exp.duration_bn || calculateExperienceDuration(exp.from_date, exp.to_date, exp.is_current) || ''
         })))
       }
       
@@ -616,73 +706,133 @@ export default function DoctorFormPage() {
         {/* Work History / Experiences */}
         <div className="admin-card" style={{ borderTop: '4px solid #8B5CF6' }}>
           <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="admin-card-title" style={{ color: '#8B5CF6' }}>🏥 Work History / Experiences</h3>
-            <button type="button" onClick={() => setExperiences([...experiences, { ...emptyExperience }])} className="admin-btn admin-btn-outline" style={{ borderRadius: 10, fontSize: 13, padding: '8px 18px', borderColor: '#8B5CF6', color: '#8B5CF6' }}>
+            <div>
+              <h3 className="admin-card-title" style={{ color: '#8B5CF6' }}>🏥 Work History / Experiences</h3>
+              <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '2px 0 0' }}>Add past and current hospital appointments, designations, and dynamic duration</p>
+            </div>
+            <button type="button" onClick={() => setExperiences([{ ...emptyExperience }, ...experiences])} className="admin-btn admin-btn-outline" style={{ borderRadius: 10, fontSize: 13, padding: '8px 18px', borderColor: '#8B5CF6', color: '#8B5CF6' }}>
               + Add Experience
             </button>
           </div>
-          <div className="admin-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div className="admin-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {experiences.length === 0 && (
               <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--admin-text-muted)', fontSize: 14 }}>
                 No work history added yet. Click "+ Add Experience" to begin.
               </div>
             )}
             {experiences.map((exp, idx) => (
-              <div key={idx} style={{ background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 16, padding: 24, position: 'relative' }}>
+              <div key={idx} style={{ background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 16, padding: 22, position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#8B5CF6' }}>Experience #{idx + 1}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#8B5CF6', background: 'rgba(139,92,246,0.1)', padding: '4px 10px', borderRadius: 8 }}>
+                      Experience #{idx + 1}
+                    </span>
+                    {exp.duration && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#00B875', background: 'rgba(0, 184, 117, 0.1)', padding: '3px 8px', borderRadius: 6 }}>
+                        ⏱️ {exp.duration}
+                      </span>
+                    )}
+                  </div>
                   <button type="button" onClick={() => setExperiences(experiences.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
                     ✕ Remove
                   </button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+                  {/* Hospital / Institute */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Hospital / Institute (EN)</label>
-                    <input className="admin-form-input" value={exp.hospital_name} onChange={e => { const v = [...experiences]; v[idx].hospital_name = e.target.value; setExperiences(v) }} placeholder="Dhaka Medical College" />
+                    <label className="admin-form-label">Hospital / Institute</label>
+                    <input 
+                      className="admin-form-input" 
+                      value={exp.hospital_name || ''} 
+                      onChange={e => updateExperience(idx, 'hospital_name', e.target.value)} 
+                      placeholder="e.g. Dhaka Medical College & Hospital" 
+                    />
                   </div>
+
+                  {/* Designation */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Hospital / Institute (BN)</label>
-                    <input className="admin-form-input" value={exp.hospital_name_bn} onChange={e => { const v = [...experiences]; v[idx].hospital_name_bn = e.target.value; setExperiences(v) }} placeholder="ঢাকা মেডিকেল কলেজ" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                    <label className="admin-form-label">Designation</label>
+                    <input 
+                      className="admin-form-input" 
+                      value={exp.designation || ''} 
+                      onChange={e => updateExperience(idx, 'designation', e.target.value)} 
+                      placeholder="e.g. Senior Consultant / Assistant Professor" 
+                    />
                   </div>
+
+                  {/* Department */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Designation (EN)</label>
-                    <input className="admin-form-input" value={exp.designation} onChange={e => { const v = [...experiences]; v[idx].designation = e.target.value; setExperiences(v) }} placeholder="Senior Consultant" />
+                    <label className="admin-form-label">Department</label>
+                    <input 
+                      className="admin-form-input" 
+                      value={exp.department || ''} 
+                      onChange={e => updateExperience(idx, 'department', e.target.value)} 
+                      placeholder="e.g. Cardiology / Internal Medicine" 
+                    />
                   </div>
+
+                  {/* Address / Location */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Designation (BN)</label>
-                    <input className="admin-form-input" value={exp.designation_bn} onChange={e => { const v = [...experiences]; v[idx].designation_bn = e.target.value; setExperiences(v) }} placeholder="সিনিয়র কনসালট্যান্ট" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                    <label className="admin-form-label">Address / Location</label>
+                    <input 
+                      className="admin-form-input" 
+                      value={exp.address || ''} 
+                      onChange={e => updateExperience(idx, 'address', e.target.value)} 
+                      placeholder="e.g. Ramna, Dhaka, Bangladesh" 
+                    />
                   </div>
+
+                  {/* Time (From) */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Department (EN)</label>
-                    <input className="admin-form-input" value={exp.department} onChange={e => { const v = [...experiences]; v[idx].department = e.target.value; setExperiences(v) }} placeholder="Cardiology" />
+                    <label className="admin-form-label">Time (From)</label>
+                    <input 
+                      type="month"
+                      className="admin-form-input" 
+                      value={exp.from_date || ''} 
+                      onChange={e => updateExperience(idx, 'from_date', e.target.value)} 
+                    />
                   </div>
+
+                  {/* Time (To / Continue) */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Department (BN)</label>
-                    <input className="admin-form-input" value={exp.department_bn} onChange={e => { const v = [...experiences]; v[idx].department_bn = e.target.value; setExperiences(v) }} placeholder="কার্ডিওলজি" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                    <label className="admin-form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Time (To / Continue)</span>
+                      {exp.is_current && <span style={{ color: '#00B875', fontWeight: 800, fontSize: 11 }}>Present</span>}
+                    </label>
+                    <input 
+                      type="month"
+                      className="admin-form-input" 
+                      value={exp.is_current ? '' : (exp.to_date || '')} 
+                      disabled={exp.is_current}
+                      onChange={e => updateExperience(idx, 'to_date', e.target.value)} 
+                      placeholder={exp.is_current ? 'Present' : 'Select end date'}
+                      style={{ opacity: exp.is_current ? 0.6 : 1 }}
+                    />
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, fontWeight: 700, color: '#8B5CF6', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ accentColor: '#8B5CF6' }}
+                        checked={Boolean(exp.is_current)} 
+                        onChange={e => updateExperience(idx, 'is_current', e.target.checked)} 
+                      />
+                      Currently Working Here (Continue)
+                    </label>
                   </div>
+
+                  {/* Total Duration / Experience (Dynamic Count) */}
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Address (EN)</label>
-                    <input className="admin-form-input" value={exp.address} onChange={e => { const v = [...experiences]; v[idx].address = e.target.value; setExperiences(v) }} placeholder="Dhaka, Bangladesh" />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Address (BN)</label>
-                    <input className="admin-form-input" value={exp.address_bn} onChange={e => { const v = [...experiences]; v[idx].address_bn = e.target.value; setExperiences(v) }} placeholder="ঢাকা, বাংলাদেশ" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Time Period (EN)</label>
-                    <input className="admin-form-input" value={exp.period} onChange={e => { const v = [...experiences]; v[idx].period = e.target.value; setExperiences(v) }} placeholder="Jan 2018 - Dec 2022" />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Time Period (BN)</label>
-                    <input className="admin-form-input" value={exp.period_bn} onChange={e => { const v = [...experiences]; v[idx].period_bn = e.target.value; setExperiences(v) }} placeholder="জানুয়ারি ২০১৮ - ডিসেম্বর ২০২২" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Total Duration (EN)</label>
-                    <input className="admin-form-input" value={exp.duration} onChange={e => { const v = [...experiences]; v[idx].duration = e.target.value; setExperiences(v) }} placeholder="4 Years" />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Total Duration (BN)</label>
-                    <input className="admin-form-input" value={exp.duration_bn} onChange={e => { const v = [...experiences]; v[idx].duration_bn = e.target.value; setExperiences(v) }} placeholder="৪ বছর" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                    <label className="admin-form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Total Duration / Experience</span>
+                      <span style={{ fontSize: 11, color: '#00B875', fontWeight: 800 }}>⚡ Dynamic Count</span>
+                    </label>
+                    <input 
+                      className="admin-form-input" 
+                      value={exp.duration || ''} 
+                      onChange={e => updateExperience(idx, 'duration', e.target.value)} 
+                      placeholder="e.g. 4 Years 2 Months" 
+                      style={{ fontWeight: 700, color: 'var(--admin-text)' }}
+                    />
                   </div>
                 </div>
               </div>

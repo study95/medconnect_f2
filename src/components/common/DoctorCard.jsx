@@ -68,6 +68,27 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             gap: 8px;
             align-items: center;
           }
+          .doc-list-image-box {
+            width: 240px;
+            min-width: 240px;
+            align-self: stretch;
+            position: relative;
+            background: #F1F5F9;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+          }
+          .doc-list-image-box .doc-list-img-wrapper {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            flex: 1 1 auto !important;
+          }
+          .doc-list-image-box .doc-list-img-wrapper img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+          }
           .doc-btn-detail,
           .doc-btn-book {
             height: 40px;
@@ -113,6 +134,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               width: 100% !important;
               min-width: 100% !important;
               height: 200px !important;
+              align-self: auto !important;
             }
             .doc-card-bottom {
               width: 100% !important;
@@ -150,6 +172,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'row',
+            alignItems: 'stretch',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             marginBottom: 16
           }}
@@ -166,19 +189,22 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           <div className="doc-list-image-box" style={{
             width: 240,
             minWidth: 240,
-            height: 190,
+            alignSelf: 'stretch',
             position: 'relative',
             background: '#F1F5F9',
-            flexShrink: 0
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <OptimizedImage
+              className="doc-list-img-wrapper"
               src={getMediaUrl(doctor.photo_url)}
               fallback={DEMO_AVATAR}
               alt={doctor.name}
-              width={240}
-              height={190}
+              width="100%"
+              height="100%"
               borderRadius={0}
-              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+              style={{ objectFit: 'cover', width: '100%', height: '100%', minHeight: '100%', flex: 1 }}
             />
 
             {/* Verified Blue Badge Icon (Top Right of Doctor Image) */}

@@ -56,6 +56,62 @@ const INITIAL_CONTENT = {
     ],
   },
 
+  // ── PATIENT TESTIMONIALS (Home page) ────────
+  testimonials: {
+    badge: 'রোগীদের রিভিউ',
+    title: 'হাজারো রোগীর ভরসা ও সন্তুষ্টি',
+    subtitle: 'আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।',
+    items: [
+      {
+        id: 1,
+        name: 'ঐশী খান',
+        role: 'রোগী (ঢাকা)',
+        rating: 5,
+        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        comment: 'ঘরে বসেই মাত্র কয়েক ক্লিকে ধানমন্ডির সেরা শিশু বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করতে পেরেছি! সময় বেঁচেছে অনেক এবং সিরিয়ালও সঠিক সময়ে পেয়েছি।'
+      },
+      {
+        id: 2,
+        name: 'মনিরুল ইসলাম',
+        role: 'রোগী (সিলেট)',
+        rating: 5,
+        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        comment: 'জরুরি প্রয়োজনে অভিজ্ঞ হৃদরোগ বিশেষজ্ঞ ডাক্তার খুঁজে পাওয়া ছিল কঠিন। কিন্তু এই প্ল্যাটফর্মের মাধ্যমে সরাসরি সিরিয়াল ও ডিজিটাল টিকিট পেয়ে খুব উপকার হয়েছে।'
+      },
+      {
+        id: 3,
+        name: 'তানজিলা রহমান',
+        role: 'রোগী (চট্টগ্রাম)',
+        rating: 5,
+        image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+        comment: 'হাসপাতালে ঘণ্টার পর ঘণ্টা সিরিয়ালের লাইনে দাঁড়িয়ে থাকার দিন শেষ! এখন স্মার্টফোন থেকেই সিরিয়াল দেওয়া যায় আর নোটিফিকেশনও পাওয়া যায়।'
+      },
+      {
+        id: 4,
+        name: 'মোঃ আরিফ হোসেন',
+        role: 'রোগী (রাজশাহী)',
+        rating: 5,
+        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        comment: 'যাচাইকৃত বিএমডিসি নিবন্ধিত বিশেষজ্ঞ ডাক্তারদের সরাসরি চেম্বার ঠিকানা ও সিরিয়াল নম্বর সহজে জানা যায়। প্ল্যাটফর্মটির সেবা সত্যি প্রশংসনীয়।'
+      }
+    ]
+  },
+
+  // ── PARTNER HOSPITALS (Home page) ───────────
+  partners: {
+    badge: 'পার্টনার নেটওয়ার্ক',
+    title: 'আমাদের সহযোগী হাসপাতালসমূহ',
+    subtitle: 'দেশজুড়ে নির্ভরযোগ্য হাসপাতাল ও ক্লিনিক্যাল সেন্টারসমূহ',
+    items: [
+      { id: 1, name: 'Bangladesh Specialized Hospital', logo_url: 'https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg' },
+      { id: 2, name: 'Chevron Clinical Laboratory', logo_url: 'https://img.freepik.com/free-vector/cross-medical-health-care-logo_23987-136.jpg' },
+      { id: 3, name: 'Popular Diagnostic Center', logo_url: 'https://img.freepik.com/free-vector/hospital-clinic-logo-design_23-2149544607.jpg' },
+      { id: 4, name: 'Praava Health', logo_url: 'https://img.freepik.com/free-vector/medical-care-logo-vector_53876-136744.jpg' },
+      { id: 5, name: 'York Hospital', logo_url: 'https://img.freepik.com/free-vector/medical-cross-logo-vector_53876-136742.jpg' },
+      { id: 6, name: 'Ibn Sina Hospital', logo_url: 'https://img.freepik.com/free-vector/gradient-medical-logo-template_23-2148995383.jpg' }
+    ]
+  },
+
   // ── NEWSLETTER ──────────────────────────────
   newsletter: {
     title: 'স্বাস্থ্য সম্পর্কিত সর্বশেষ তথ্য ও টিপস পেতে আমাদের সাথে থাকুন',

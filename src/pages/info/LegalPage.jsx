@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
 import { useTheme } from '../../context/ThemeContext'
+import { getContent } from '../../utils/contentService'
 import { 
   IconShieldCheck, 
   IconLock, 
@@ -15,7 +16,14 @@ import {
 
 export default function LegalPage() {
   const [activeTab, setActiveTab] = useState('terms')
+  const [cms, setCms] = useState(getContent())
   const { theme } = useTheme()
+
+  useEffect(() => {
+    const handleUpdate = () => setCms(getContent())
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
 
   const tabs = [
     { 
