@@ -15,3 +15,7 @@ export const getAppointmentById = (id) =>
 // PUT /api/appointments/:id  (user cancels their own via status update)
 export const cancelAppointment = (id) =>
   axiosInstance.put(`/appointments/${id}`, { status: 'cancelled' })
+
+// GET /api/doctors/:id/booked-slots
+export const getBookedSlots = (doctorId, params) =>
+  axiosInstance.get(`/doctors/${doctorId}/booked-slots`, { params })

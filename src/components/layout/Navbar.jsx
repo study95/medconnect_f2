@@ -20,6 +20,17 @@ function AppNavbar() {
   const isAuthPage = ['/login', '/register'].includes(location.pathname)
 
   useEffect(() => {
+    if (expanded) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [expanded])
+
+  useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 20
       setScrolled(prev => prev !== isScrolled ? isScrolled : prev)
@@ -219,7 +230,7 @@ function AppNavbar() {
           width: 100%;
           height: 3px;
           background: rgba(0, 184, 117, 0.1);
-          z-index: 10001;
+          z-index: 10;
         }
         .scroll-progress-bar {
           height: 100%;
@@ -228,18 +239,103 @@ function AppNavbar() {
           transition: width 0.15s ease;
         }
 
+        /* Custom Dropdown Styling */
+        #topbar-user-dropdown + .dropdown-menu,
+        .dropdown-menu {
+          border-radius: 14px !important;
+          border: 1px solid #E2E8F0 !important;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          min-width: 210px !important;
+        }
+
+        .user-dropdown-item,
+        .dropdown-menu .dropdown-item {
+          font-size: 13.5px !important;
+          font-weight: 700 !important;
+          color: #1E293B !important;
+          padding: 9px 14px !important;
+          border-radius: 8px !important;
+          display: flex !important;
+          align-items: center !important;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          margin-bottom: 2px !important;
+          font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif !important;
+        }
+
+        /* Hover: Dream Green */
+        .user-dropdown-item:hover,
+        .dropdown-menu .dropdown-item:hover {
+          background-color: #E8F8F2 !important; /* Dream Green */
+          color: #008A58 !important;
+          transform: translateX(2px) !important;
+        }
+        .user-dropdown-item:hover svg,
+        .dropdown-menu .dropdown-item:hover svg {
+          color: #00B875 !important;
+        }
+
+        /* Selected / Active / Focused: Solid Green */
+        .user-dropdown-item:active,
+        .user-dropdown-item.active,
+        .user-dropdown-item:focus,
+        .dropdown-menu .dropdown-item:active,
+        .dropdown-menu .dropdown-item.active,
+        .dropdown-menu .dropdown-item:focus {
+          background-color: #00B875 !important; /* Green */
+          background-image: linear-gradient(135deg, #00B875 0%, #00966D 100%) !important;
+          color: #FFFFFF !important;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25) !important;
+        }
+        .user-dropdown-item:active svg,
+        .user-dropdown-item.active svg,
+        .user-dropdown-item:focus svg,
+        .dropdown-menu .dropdown-item:active svg,
+        .dropdown-menu .dropdown-item.active svg,
+        .dropdown-menu .dropdown-item:focus svg {
+          color: #FFFFFF !important;
+        }
+
+        /* Logout Item */
+        .user-dropdown-logout {
+          color: #EF4444 !important;
+          font-size: 13.5px !important;
+          font-weight: 700 !important;
+          padding: 9px 14px !important;
+          border-radius: 8px !important;
+          display: flex !important;
+          align-items: center !important;
+          transition: all 0.2s ease !important;
+          font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif !important;
+        }
+        .user-dropdown-logout:hover {
+          background-color: #FEF2F2 !important;
+          color: #DC2626 !important;
+          transform: translateX(2px) !important;
+        }
+        .user-dropdown-logout:active,
+        .user-dropdown-logout:focus {
+          background-color: #EF4444 !important;
+          color: #FFFFFF !important;
+        }
+
         /* Mobile Drawer */
         @media (max-width: 991px) {
           .mobile-drawer {
-            position: fixed; top: 0; right: 0; width: 300px; height: 100vh;
+            position: fixed; top: 0; left: 0; right: 0; width: 100%; max-width: 100vw; height: 100vh; height: 100dvh;
             background: white; z-index: 2000;
             transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
-            padding: 24px; display: flex; flex-direction: column;
-            box-shadow: -10px 0 40px rgba(0,0,0,0.12);
+            padding: 20px 24px;
+            padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+            display: flex; flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            box-shadow: 0 0 40px rgba(0,0,0,0.15);
           }
           .mobile-drawer.open { transform: translateX(0); }
           .drawer-backdrop {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
             background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
             z-index: 1999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
           }
@@ -293,25 +389,25 @@ function AppNavbar() {
                   }
                   id="topbar-user-dropdown"
                 >
-                  <div style={{ padding: '12px 16px', background: '#003820', color: 'white' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>{user?.name}</div>
-                    <div style={{ fontSize: 11, opacity: 0.8 }}>{getUserTypeLabel()}</div>
+                  <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, #003820 0%, #005A34 100%)', color: 'white' }}>
+                    <div style={{ fontWeight: 800, fontSize: 14.5 }}>{user?.name}</div>
+                    <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>{getUserTypeLabel()}</div>
                   </div>
                   <div style={{ padding: '6px' }}>
-                    <NavDropdown.Item as={Link} to="/profile" style={{ fontSize: 13, fontWeight: 700, padding: '8px 12px' }}>
-                      <User size={14} className="me-2" /> প্রোফাইল
+                    <NavDropdown.Item as={Link} to="/profile" className="user-dropdown-item">
+                      <User size={15} className="me-2" /> প্রোফাইল
                     </NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to="/my-appointments" style={{ fontSize: 13, fontWeight: 700, padding: '8px 12px' }}>
-                      <Calendar size={14} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
+                    <NavDropdown.Item as={Link} to="/my-appointments" className="user-dropdown-item">
+                      <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
                     </NavDropdown.Item>
                     {isStaff && (
-                      <NavDropdown.Item as={Link} to="/admin" style={{ fontSize: 13, fontWeight: 800, color: '#003820', padding: '8px 12px' }}>
-                        <LayoutGrid size={14} className="me-2" /> {getAdminLinkLabel()}
+                      <NavDropdown.Item as={Link} to="/admin" className="user-dropdown-item">
+                        <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
                       </NavDropdown.Item>
                     )}
-                    <NavDropdown.Divider />
-                    <NavDropdown.Item onClick={handleLogout} className="text-danger" style={{ fontSize: 13, fontWeight: 700, padding: '8px 12px' }}>
-                      <LogOut size={14} className="me-2" /> সাইন আউট
+                    <NavDropdown.Divider style={{ margin: '4px 0' }} />
+                    <NavDropdown.Item onClick={handleLogout} className="user-dropdown-logout">
+                      <LogOut size={15} className="me-2" /> সাইন আউট
                     </NavDropdown.Item>
                   </div>
                 </NavDropdown>
@@ -422,14 +518,14 @@ function AppNavbar() {
         {/* MOBILE DRAWER */}
         <div className={`drawer-backdrop ${expanded ? 'show' : ''} d-lg-none`} onClick={closeMenu} />
         <div className={`mobile-drawer ${expanded ? 'open' : ''} d-lg-none`}>
-          <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+          <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-shrink-0">
             <img src="/doctorBookletLogo.png" alt="Doctor Booklet" style={{ height: '34px', width: 'auto' }} />
             <button onClick={closeMenu} style={{ background: 'none', border: 'none', color: '#64748B' }}>
               <X size={22} />
             </button>
           </div>
 
-          <Nav className="flex-column gap-1 mb-3">
+          <Nav className="flex-column gap-1 mb-3 flex-shrink-0">
             {NAV_LINKS.map(item => (
               <Nav.Link
                 key={item.path}
@@ -445,9 +541,9 @@ function AppNavbar() {
             ))}
           </Nav>
 
-          <div style={{ height: '1px', background: '#eef2f6', margin: '12px 0' }} />
+          <div style={{ height: '1px', background: '#eef2f6', margin: '12px 0' }} className="flex-shrink-0" />
 
-          <div className="d-flex flex-column gap-2 mb-4">
+          <div className="d-flex flex-column gap-2 mb-4 flex-shrink-0">
             <Link to="/doctors" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
               <ShieldCheck size={16} /> <span>ডাক্তার পরামর্শ?</span>
             </Link>
@@ -459,7 +555,7 @@ function AppNavbar() {
             </Link>
           </div>
 
-          <div className="mt-auto pt-3 border-top">
+          <div className="mt-auto pt-3 border-top flex-shrink-0" style={{ paddingBottom: '16px' }}>
             {isLoggedIn ? (
               <div>
                 <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px', marginBottom: 12 }}>
@@ -477,7 +573,7 @@ function AppNavbar() {
                     <LayoutGrid size={16} className="me-2" /> {getAdminLinkLabel()}
                   </Nav.Link>
                 )}
-                <Button variant="link" onClick={handleLogout} className="text-danger p-0 fw-bold text-decoration-none mt-2">
+                <Button variant="link" onClick={handleLogout} className="text-danger p-0 fw-bold text-decoration-none mt-2 d-flex align-items-center">
                   <LogOut size={16} className="me-2" /> সাইন আউট
                 </Button>
               </div>

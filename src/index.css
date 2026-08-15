@@ -690,5 +690,46 @@ a:hover {
   margin-inline-end: 12px !important;
 }
 
+/* ===================================================
+   GLOBAL BOOTSTRAP DROPDOWN OVERRIDES
+   Hover: Dream Green (#E8F8F2)
+   Selected / Active: Solid Green (#00B875)
+=================================================== */
+.dropdown-menu {
+  border-radius: 14px !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dropdown-item {
+  color: #1E293B !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hover: Dream Green */
+.dropdown-item:hover {
+  background-color: #E8F8F2 !important; /* Dream Green */
+  color: #008A58 !important;
+}
+.dropdown-item:hover svg {
+  color: #00B875 !important;
+}
+
+/* Selected / Active / Focus: Solid Green */
+.dropdown-item:active,
+.dropdown-item.active,
+.dropdown-item:focus {
+  background-color: #00B875 !important; /* Solid Green */
+  background-image: linear-gradient(135deg, #00B875 0%, #00966D 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25) !important;
+}
+.dropdown-item:active svg,
+.dropdown-item.active svg,
+.dropdown-item:focus svg {
+  color: #FFFFFF !important;
+}
+
 
 

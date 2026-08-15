@@ -1281,8 +1281,6 @@ function BrowseByLocationSection() {
 
 // ─── PATIENT TESTIMONIALS SECTION (EXACT REFERENCE DESIGN) ─────────────────
 function PatientTestimonialsSection() {
-  const swiperRef = React.useRef(null)
-
   const testimonials = [
     {
       name: 'ঐশী খান',
@@ -1341,25 +1339,28 @@ function PatientTestimonialsSection() {
         </div>
 
         {/* Swiper Slider Wrapper */}
-        <div style={{ position: 'relative', padding: '0 16px' }}>
+        <div className="testimonial-slider-wrapper">
           <Swiper
-            onSwiper={(swiper) => { swiperRef.current = swiper }}
-            modules={[Autoplay]}
+            modules={[Autoplay, Pagination]}
             spaceBetween={24}
             slidesPerView={1}
             autoplay={{ delay: 4000, disableOnInteraction: false }}
             loop={true}
+            pagination={{
+              clickable: true,
+              el: '.testimonial-custom-pagination',
+            }}
             breakpoints={{
               768: { slidesPerView: 2 },
             }}
-            style={{ padding: '4px 2px' }}
+            className="testimonial-swiper"
           >
             {testimonials.map((item, index) => (
               <SwiperSlide key={index} style={{ height: 'auto' }}>
                 <div style={{
                   background: '#FFFFFF',
                   border: '1.5px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 16,
                   padding: '28px 24px 24px',
                   height: '100%',
                   display: 'flex',
@@ -1424,80 +1425,68 @@ function PatientTestimonialsSection() {
             ))}
           </Swiper>
 
-          {/* Left Side Navigation Button */}
-          <button
-            onClick={() => swiperRef.current?.slidePrev()}
-            aria-label="Previous Testimonial"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: -14,
-              transform: 'translateY(-50%)',
-              zIndex: 30,
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: '#FFFFFF',
-              border: '1.5px solid #E2E8F0',
-              color: '#0F172A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
-            }}
-            className="testimonial-prev"
-          >
-            <IconChevronLeft size={22} stroke={2.5} />
-          </button>
-
-          {/* Right Side Navigation Button */}
-          <button
-            onClick={() => swiperRef.current?.slideNext()}
-            aria-label="Next Testimonial"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              right: -14,
-              transform: 'translateY(-50%)',
-              zIndex: 30,
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: '#FFFFFF',
-              border: '1.5px solid #E2E8F0',
-              color: '#0F172A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
-            }}
-            className="testimonial-next"
-          >
-            <IconChevronRight size={22} stroke={2.5} />
-          </button>
+          {/* Bottom Moving Circle / Pill Pagination */}
+          <div className="testimonial-custom-pagination"></div>
         </div>
-      </Container>
 
-      <style>{`
-        .testimonial-card:hover {
-          border-color: #00A88C !important;
-          box-shadow: 0 8px 24px rgba(0,168,140,0.08) !important;
-        }
-        .testimonial-prev:hover, .testimonial-next:hover {
-          background: #0F172A !important;
-          color: #FFFFFF !important;
-          border-color: #0F172A !important;
-        }
-      `}</style>
+        <style>{`
+          .testimonial-slider-wrapper {
+            position: relative;
+          }
+
+          .testimonial-swiper {
+            padding-top: 4px !important;
+            padding-bottom: 6px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+          }
+
+          .testimonial-card:hover {
+            border-color: #00B875 !important;
+            box-shadow: 0 8px 24px rgba(0, 184, 117, 0.08) !important;
+            transform: translateY(-3px);
+          }
+
+          .testimonial-custom-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            z-index: 10;
+          }
+
+          .testimonial-custom-pagination .swiper-pagination-bullet {
+            width: 10px;
+            height: 10px;
+            background: #CBD5E1;
+            opacity: 0.8;
+            border-radius: 99px;
+            margin: 0 !important;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+          }
+
+          .testimonial-custom-pagination .swiper-pagination-bullet:hover {
+            background: #94A3B8;
+            opacity: 1;
+          }
+
+          .testimonial-custom-pagination .swiper-pagination-bullet-active {
+            width: 28px;
+            height: 10px;
+            background: #00B875;
+            border-radius: 99px;
+            opacity: 1;
+            box-shadow: 0 2px 8px rgba(0, 184, 117, 0.4);
+          }
+        `}</style>
+      </Container>
     </section>
   )
 }
 
-// ─── REGISTRATION SECTION (1ST IMAGE CONTENT IN 2ND IMAGE DARK STEP DESIGN) ──────
+// ─────────────────────────────────────────────────────────────────────────────
 function DarkRegistrationSection() {
   const navigate = useNavigate()
 

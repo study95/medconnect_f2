@@ -33,7 +33,7 @@ export default function FloatingBottomNav() {
     },
   ];
 
-  const activeColor = '#00A88C'; // Dark Green
+  const activeColor = '#00B875'; // Brand Green
   const mutedColor = '#64748B';
 
   const isActive = (item) => {
@@ -51,15 +51,20 @@ export default function FloatingBottomNav() {
       <style>{`
         .nav-pill { 
           position: relative; 
-          transition: all 0.3s ease; 
-          width: 20%; 
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+          padding: 6px 12px;
+          border-radius: 12px;
           display: flex; 
           flex-direction: column; 
           align-items: center; 
           justify-content: center; 
-          gap: 3px; 
+          gap: 2px; 
           z-index: 2; 
           cursor: pointer;
+        }
+        .nav-pill.active {
+          background-color: #E8F8F2 !important; /* Dream Light Green */
+          color: ${activeColor} !important;
         }
         .nav-pill .icon-container { 
           display: flex; 
@@ -79,7 +84,7 @@ export default function FloatingBottomNav() {
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(25px)', WebkitBackdropFilter: 'blur(25px)',
-          padding: '8px 0', paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+          padding: '6px 8px', paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
           minHeight: '62px',
           display: 'flex', justifyContent: 'space-around', alignItems: 'center',
           boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.08)', borderTop: '1px solid rgba(0, 0, 0, 0.06)', zIndex: 1049,

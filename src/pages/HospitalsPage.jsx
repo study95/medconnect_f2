@@ -16,11 +16,15 @@ import {
 } from '@tabler/icons-react'
 
 const HOSPITAL_TYPES = [
-  { id: 'private',    label: 'প্রাইভেট হাসপাতাল',   icon: '🏥' },
-  { id: 'government', label: 'সরকারি হাসপাতাল',      icon: '🏛️' },
-  { id: 'diagnostic', label: 'ডায়াগনস্টিক সেন্টার', icon: '🔬' },
-  { id: 'clinic',     label: 'ক্লিনিক',               icon: '💉' },
-  { id: 'maternity',  label: 'মাতৃসদন / মাতৃস্বাস্থ্য', icon: '👶' },
+  { id: 'Private Hospital', label: 'বেসরকারি হাসপাতাল (Private)', icon: '🏥' },
+  { id: 'Govt Hospital', label: 'সরকারি হাসপাতাল (Govt)', icon: '🏛️' },
+  { id: 'Clinic', label: 'ক্লিনিক (Clinic)', icon: '💉' },
+  { id: 'Diagnostic Center', label: 'ডায়াগনস্টিক সেন্টার (Diagnostic)', icon: '🔬' },
+  { id: 'Specialized Hospital (Maa-O-Shishu)', label: 'মা ও শিশু হাসপাতাল (Maa-O-Shishu)', icon: '👶' },
+  { id: 'Specialized Hospital (Eye)', label: 'চক্ষু হাসপাতাল (Eye Hospital)', icon: '👁️' },
+  { id: 'Specialized Hospital (Cancer)', label: 'ক্যান্সার হাসপাতাল (Cancer Hospital)', icon: '🎗️' },
+  { id: 'Specialized Hospital (Dental)', label: 'ডেন্টাল হাসপাতাল (Dental Hospital)', icon: '🦷' },
+  { id: 'Specialized Hospital (Other)', label: 'অন্যান্য বিশেষায়িত হাসপাতাল', icon: '🏥' }
 ]
 
 const BED_RANGES = [
@@ -33,7 +37,7 @@ const BED_RANGES = [
 function HospitalsPage() {
   const [searchParams] = useSearchParams()
   const {
-    divisions, districts, upazilas,
+    divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
   } = useLocations()
@@ -101,20 +105,33 @@ function HospitalsPage() {
     return list
   }, [hospitals, sortBy])
 
+  // Helper for location display name
+  const getLocName = (item, fallback) => {
+    if (!item) return fallback
+    if (typeof item.name === 'object' && item.name !== null) {
+      return item.name.bn || item.name.en || fallback
+    }
+    return item.name || item.name_bn || item.bangla_name || fallback
+  }
+
   // Active filters list
   const activeFilters = useMemo(() => {
     const list = []
     if (selectedDivision) {
       const item = divisions.find(d => String(d.id) === String(selectedDivision))
-      list.push({ key: 'division', label: item ? item.name || item.bangla_name : 'Division', clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({ key: 'division', label: getLocName(item, 'Division'), clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
     }
     if (selectedDistrict) {
       const item = districts.find(d => String(d.id) === String(selectedDistrict))
-      list.push({ key: 'district', label: item ? item.name || item.bangla_name : 'District', clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({ key: 'district', label: getLocName(item, 'District'), clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
     }
     if (selectedUpazila) {
       const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      list.push({ key: 'upazila', label: item ? item.name || item.bangla_name : 'Upazila', clear: () => { setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({ key: 'upazila', label: getLocName(item, 'Upazila'), clear: () => { setSelectedUpazila(''); setSelectedUnion('') } })
+    }
+    if (selectedUnion) {
+      const item = unions.find(u => String(u.id) === String(selectedUnion))
+      list.push({ key: 'union', label: getLocName(item, 'Union'), clear: () => setSelectedUnion('') })
     }
     if (hospitalType) {
       const item = HOSPITAL_TYPES.find(t => t.id === hospitalType)
@@ -138,7 +155,11 @@ function HospitalsPage() {
       list.push({ key: 'search', label: `"${searchText.trim()}"`, clear: () => setSearchText('') })
     }
     return list
-  }, [selectedDivision, selectedDistrict, selectedUpazila, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText, divisions, districts, upazilas, specialties])
+  }, [
+    selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
+    hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText,
+    divisions, districts, upazilas, unions, specialties
+  ])
 
   const activeCount = activeFilters.length
 
@@ -170,20 +191,24 @@ function HospitalsPage() {
   // Dynamic location title for heading
   const locationHeadingText = useMemo(() => {
     const parts = []
+    if (selectedUnion) {
+      const uniObj = unions.find(u => String(u.id) === String(selectedUnion))
+      if (uniObj) parts.push(getLocName(uniObj, ''))
+    }
     if (selectedUpazila) {
       const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      if (upaObj) parts.push(upaObj.name || upaObj.bangla_name)
+      if (upaObj) parts.push(getLocName(upaObj, ''))
     }
     if (selectedDistrict) {
       const distObj = districts.find(d => String(d.id) === String(selectedDistrict))
-      if (distObj) parts.push(distObj.name || distObj.bangla_name)
+      if (distObj) parts.push(getLocName(distObj, ''))
     }
     if (selectedDivision) {
       const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
-      if (divObj) parts.push(divObj.name || divObj.bangla_name)
+      if (divObj) parts.push(getLocName(divObj, ''))
     }
-    return parts.join(', ')
-  }, [selectedDivision, selectedDistrict, selectedUpazila, divisions, districts, upazilas])
+    return parts.filter(Boolean).join(', ')
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, divisions, districts, upazilas, unions])
 
   // Filtered specialties list for search inside drawer
   const filteredSpecialties = useMemo(() => {
@@ -744,7 +769,7 @@ function HospitalsPage() {
                         >
                           <option value="">সকল বিভাগ</option>
                           {divisions.map(d => (
-                            <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                            <option key={d.id} value={d.id}>{getLocName(d, d.id)}</option>
                           ))}
                         </select>
                       </div>
@@ -760,7 +785,39 @@ function HospitalsPage() {
                         >
                           <option value="">সকল জেলা</option>
                           {districts.map(d => (
-                            <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                            <option key={d.id} value={d.id}>{getLocName(d, d.id)}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Upazila selector */}
+                      <div>
+                        <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block' }}>উপজেলা (Upazila)</label>
+                        <select
+                          value={selectedUpazila}
+                          onChange={e => { setSelectedUpazila(e.target.value); setSelectedUnion('') }}
+                          disabled={!selectedDistrict}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, color: '#0F172A', outline: 'none', background: !selectedDistrict ? '#F1F5F9' : 'white' }}
+                        >
+                          <option value="">সকল উপজেলা</option>
+                          {upazilas.map(u => (
+                            <option key={u.id} value={u.id}>{getLocName(u, u.id)}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Union selector */}
+                      <div>
+                        <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block' }}>ইউনিয়ন (Union)</label>
+                        <select
+                          value={selectedUnion}
+                          onChange={e => setSelectedUnion(e.target.value)}
+                          disabled={!selectedUpazila}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, color: '#0F172A', outline: 'none', background: !selectedUpazila ? '#F1F5F9' : 'white' }}
+                        >
+                          <option value="">সকল ইউনিয়ন</option>
+                          {unions.map(u => (
+                            <option key={u.id} value={u.id}>{getLocName(u, u.id)}</option>
                           ))}
                         </select>
                       </div>
@@ -937,7 +994,7 @@ function HospitalsPage() {
                 >
                   <option value="">সকল বিভাগ</option>
                   {divisions.map(d => (
-                    <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                    <option key={d.id} value={d.id}>{getLocName(d, d.id)}</option>
                   ))}
                 </select>
               </div>
@@ -952,7 +1009,37 @@ function HospitalsPage() {
                 >
                   <option value="">সকল জেলা</option>
                   {districts.map(d => (
-                    <option key={d.id} value={d.id}>{d.name || d.bangla_name}</option>
+                    <option key={d.id} value={d.id}>{getLocName(d, d.id)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>উপজেলা (Upazila)</label>
+                <select
+                  value={selectedUpazila}
+                  onChange={e => { setSelectedUpazila(e.target.value); setSelectedUnion('') }}
+                  disabled={!selectedDistrict}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13.5, color: '#0F172A', outline: 'none', background: !selectedDistrict ? '#F1F5F9' : 'white' }}
+                >
+                  <option value="">সকল উপজেলা</option>
+                  {upazilas.map(u => (
+                    <option key={u.id} value={u.id}>{getLocName(u, u.id)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>ইউনিয়ন (Union)</label>
+                <select
+                  value={selectedUnion}
+                  onChange={e => setSelectedUnion(e.target.value)}
+                  disabled={!selectedUpazila}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13.5, color: '#0F172A', outline: 'none', background: !selectedUpazila ? '#F1F5F9' : 'white' }}
+                >
+                  <option value="">সকল ইউনিয়ন</option>
+                  {unions.map(u => (
+                    <option key={u.id} value={u.id}>{getLocName(u, u.id)}</option>
                   ))}
                 </select>
               </div>

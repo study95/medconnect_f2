@@ -234,6 +234,47 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
     return (
       <>
         <style>{`
+          .hosp-card-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .hosp-btn-detail,
+          .hosp-btn-book {
+            height: 40px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            font-family: 'Hind Siliguri', sans-serif;
+            transition: all 0.2s ease;
+          }
+          .hosp-btn-detail {
+            background: #FFFFFF;
+            color: #0F172A;
+            border: 1.5px solid #CBD5E1;
+            padding: 0 16px;
+          }
+          .hosp-btn-detail:hover {
+            border-color: #00B875;
+            color: #00B875;
+          }
+          .hosp-btn-book {
+            background: #00B875;
+            color: #FFFFFF;
+            border: none;
+            padding: 0 18px;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(0, 184, 117, 0.25);
+          }
+          .hosp-btn-book:hover {
+            background: #009E64;
+          }
           @media (max-width: 767px) {
             .hosp-list-card {
               flex-direction: column !important;
@@ -241,7 +282,26 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             .hosp-list-image-box {
               width: 100% !important;
               min-width: 100% !important;
-              height: 180px !important;
+              height: 200px !important;
+            }
+            .hosp-card-bottom {
+              flex-direction: column !important;
+              align-items: stretch !important;
+              gap: 12px !important;
+              margin-top: 14px !important;
+            }
+            .hosp-card-actions {
+              width: 100% !important;
+              display: flex !important;
+              gap: 8px !important;
+            }
+            .hosp-btn-detail,
+            .hosp-btn-book {
+              flex: 1 !important;
+              padding: 0 4px !important;
+              font-size: 12.5px !important;
+              height: 40px !important;
+              white-space: nowrap !important;
             }
           }
         `}</style>
@@ -370,7 +430,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                   padding: '2px 8px',
                   borderRadius: 4
                 }}>
-                  {hospital.type === 'private' ? 'প্রাইভেট' : hospital.type === 'government' ? 'সরকারি' : 'হাসপাতাল'}
+                  {hospital.hospital_type || (hospital.type === 'private' ? 'প্রাইভেট' : hospital.type === 'government' ? 'সরকারি' : 'হাসপাতাল')}
                 </span>
                 <span style={{
                   background: '#F1F5F9',
@@ -398,7 +458,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             </div>
 
             {/* Subtext & Bottom Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, flexWrap: 'wrap', gap: 12 }}>
+            <div className="hosp-card-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>
                   ১৫+ বিশেষায়িত বিভাগ
@@ -406,27 +466,11 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="hosp-card-actions">
                 <button
                   type="button"
                   onClick={() => navigate(`/hospitals/${hospital.id}`)}
-                  style={{
-                    background: 'white',
-                    color: '#0F172A',
-                    border: '1.5px solid #CBD5E1',
-                    borderRadius: 8,
-                    padding: '8px 16px',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
+                  className="hosp-btn-detail"
                 >
                   <IconEye size={16} />
                   <span>বিস্তারিত দেখুন</span>
@@ -434,24 +478,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); navigate(`/doctors?hospital_id=${hospital.id}`) }}
-                  style={{
-                    background: '#00B875',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '8px 18px',
-                    fontSize: 13,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
+                  className="hosp-btn-book"
                 >
                   <IconCalendarEvent size={16} color="#FFFFFF" />
                   <span>অ্যাপয়েন্টমেন্ট নিন</span>
@@ -554,12 +581,13 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             background: 'white',
             color: '#0F172A',
             fontWeight: 700,
-            fontSize: 12.5,
+            fontSize: 12,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
+            gap: 4,
+            whiteSpace: 'nowrap',
             fontFamily: "'Hind Siliguri', sans-serif"
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
@@ -578,12 +606,13 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             background: '#00B875',
             color: 'white',
             fontWeight: 800,
-            fontSize: 12.5,
+            fontSize: 12,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
+            gap: 4,
+            whiteSpace: 'nowrap',
             boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
             fontFamily: "'Hind Siliguri', sans-serif"
           }}

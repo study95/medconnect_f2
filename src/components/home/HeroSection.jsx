@@ -438,15 +438,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     <section
       className="hero-section-main"
       style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.82)), url('/images/city_hero_bg.jpg')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
         paddingTop: 'calc(var(--header-height, 90px) + 16px)',
         paddingBottom: '20px',
         position: 'relative',
         zIndex: 1,
-        color: '#FFFFFF'
+        color: '#FFFFFF',
+        overflow: 'hidden'
       }}
     >
       {/* Location Popup */}
@@ -517,14 +514,16 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 onClick={() => setShowLocationPopup(true)}
                 title="লোকেশন নির্বাচন করুন"
               >
-                <IconMapPin size={20} style={{ color: '#000000', flexShrink: 0 }} />
-                <span className="hero-field-text" style={{ color: locationLabel ? '#000000' : '#64748B', fontWeight: locationLabel ? 700 : 500 }}>
+                <div className="hero-field-icon-bg">
+                  <IconMapPin size={18} style={{ color: '#00B875', flexShrink: 0 }} />
+                </div>
+                <span className="hero-field-text" style={{ color: locationLabel ? '#1E293B' : '#64748B', fontWeight: locationLabel ? 700 : 500 }}>
                   {locationLabel || 'লোকেশন নির্বাচন করুন'}
                 </span>
                 {locationLabel ? (
                   <IconX
                     size={16}
-                    style={{ color: '#000000', marginLeft: 'auto', cursor: 'pointer' }}
+                    style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
                     onClick={(e) => { e.stopPropagation(); setLocationLabel(''); setLocationParams({}) }}
                   />
                 ) : (
@@ -538,12 +537,14 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 onClick={() => setShowSpecialtyPopup(true)}
                 title="বিশেষজ্ঞতা নির্বাচন করুন"
               >
-                <IconStethoscope size={20} style={{ color: '#000000', flexShrink: 0 }} />
-                <span className="hero-field-text" style={{ color: specialtyLabel ? '#000000' : '#64748B', fontWeight: specialtyLabel ? 700 : 500 }}>
+                <div className="hero-field-icon-bg">
+                  <IconStethoscope size={18} style={{ color: '#00B875', flexShrink: 0 }} />
+                </div>
+                <span className="hero-field-text" style={{ color: specialtyLabel ? '#1E293B' : '#64748B', fontWeight: specialtyLabel ? 700 : 500 }}>
                   {specialtyLabel || 'বিশেষজ্ঞতা নির্বাচন করুন'}
                 </span>
                 {specialtyLabel ? (
-                  <IconX size={16} style={{ color: '#000000', marginLeft: 'auto', cursor: 'pointer' }}
+                  <IconX size={16} style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
                     onClick={(e) => { e.stopPropagation(); setSpecialtyLabel(''); setSelectedSpecialty('') }} />
                 ) : (
                   <IconChevronDown size={16} style={{ color: '#94A3B8', marginLeft: 'auto' }} />
@@ -556,12 +557,14 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 onClick={() => setShowHospitalPopup(true)}
                 title="হাসপাতাল নির্বাচন করুন"
               >
-                <IconBuildingHospital size={20} style={{ color: '#000000', flexShrink: 0 }} />
-                <span className="hero-field-text" style={{ color: hospitalLabel ? '#000000' : '#64748B', fontWeight: hospitalLabel ? 700 : 500 }}>
+                <div className="hero-field-icon-bg">
+                  <IconBuildingHospital size={18} style={{ color: '#00B875', flexShrink: 0 }} />
+                </div>
+                <span className="hero-field-text" style={{ color: hospitalLabel ? '#1E293B' : '#64748B', fontWeight: hospitalLabel ? 700 : 500 }}>
                   {hospitalLabel || 'হাসপাতাল নির্বাচন করুন'}
                 </span>
                 {hospitalLabel ? (
-                  <IconX size={16} style={{ color: '#000000', marginLeft: 'auto', cursor: 'pointer' }}
+                  <IconX size={16} style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
                     onClick={(e) => { e.stopPropagation(); setHospitalLabel(''); setSelectedHospital('') }} />
                 ) : (
                   <IconChevronDown size={16} style={{ color: '#94A3B8', marginLeft: 'auto' }} />
@@ -570,7 +573,9 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
               {/* 4. Keyword */}
               <div className="hero-field-col">
-                <IconWriting size={20} style={{ color: '#000000', flexShrink: 0 }} />
+                <div className="hero-field-icon-bg">
+                  <IconWriting size={18} style={{ color: '#00B875', flexShrink: 0 }} />
+                </div>
                 <input
                   type="text"
                   placeholder="ডাক্তার / হাসপাতাল / বিশেষজ্ঞতা লিখুন"
@@ -615,18 +620,59 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       </Container>
 
       <style>{`
+        /* ── Hero Section Background Layers ──── */
+        .hero-section-main {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .hero-section-main::before {
+          content: '';
+          position: absolute;
+          inset: -14px;
+          background-image: url('/images/city_hero_bg.jpg');
+          background-size: cover;
+          background-position: center 36%;
+          background-repeat: no-repeat;
+          filter: blur(2.5px) brightness(0.88) contrast(1.05);
+          transform: scale(1.05);
+          z-index: -2;
+          pointer-events: none;
+        }
+
+        .hero-section-main::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.75) 45%, rgba(11, 25, 44, 0.82) 100%);
+          z-index: -1;
+          pointer-events: none;
+        }
+
         /* ── Search Bar ───────────────────────── */
         .hero-search-bar {
           background: #FFFFFF;
-          border-radius: 5px;
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+          box-shadow: 0 20px 45px rgba(0,0,0,0.22);
           display: flex;
           align-items: stretch;
           width: 100%;
           max-width: 1160px;
           margin: 0 auto;
-          height: 56px;
+          height: 60px;
+        }
+
+        .hero-field-icon-bg {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: #E8F8F2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
         }
 
         .hero-field-col {
@@ -638,6 +684,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           padding: 0 16px;
           border-right: 1px solid #E2E8F0;
           overflow: hidden;
+          transition: background 0.2s ease;
         }
 
         .hero-field-location {
@@ -645,7 +692,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           user-select: none;
         }
         .hero-field-location:hover {
-          background: #F7FAFC;
+          background: #F8FAFC;
+        }
+        .hero-field-location:hover .hero-field-icon-bg {
+          transform: scale(1.05);
         }
 
         .hero-field-text {
@@ -656,20 +706,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           flex: 1;
         }
 
-        .hero-select {
-          border: none;
-          background: transparent;
-          outline: none;
-          width: 100%;
-          font-size: 13.5px;
-          font-weight: 700;
-          color: #000000;
-          cursor: pointer;
-          appearance: none;
-          -webkit-appearance: none;
-          padding-right: 20px;
-        }
-
         .hero-text-input {
           border: none;
           background: transparent;
@@ -677,28 +713,31 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           width: 100%;
           font-size: 13.5px;
           font-weight: 700;
-          color: #000000;
+          color: #1E293B;
         }
         .hero-text-input::placeholder { color: #64748B; opacity: 1; font-weight: 500; }
 
         .hero-search-btn {
-          background: #00803D;
+          background: linear-gradient(135deg, #00B875 0%, #008A58 100%);
           color: #FFFFFF;
           border: none;
           border-radius: 0;
           padding: 0 32px;
           font-size: 15px;
-          font-weight: 700;
+          font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           cursor: pointer;
-          transition: background 0.2s ease;
+          transition: all 0.2s ease;
           flex-shrink: 0;
           height: 100%;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
         }
-        .hero-search-btn:hover { background: #006630; }
+        .hero-search-btn:hover {
+          background: linear-gradient(135deg, #00A368 0%, #00774C 100%);
+        }
 
         /* ── Location Popup ─────────────────── */
         .loc-popup-overlay {
@@ -1041,44 +1080,51 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           .hero-search-bar {
             flex-direction: column;
             height: auto;
-            padding: 16px !important;
-            gap: 12px !important;
-            border-radius: 5px !important;
-            background: #F1F5F9 !important;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.22) !important;
+            padding: 22px 18px !important;
+            gap: 14px !important;
+            border-radius: 24px !important;
+            background: #FFFFFF !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
           }
           .hero-field-col {
             width: 100%;
-            height: 56px !important;
+            height: 54px !important;
             border-right: none !important;
-            border: 1px solid #CBD5E1 !important;
-            border-radius: 5px !important;
-            background: #FFFFFF !important;
+            border: 1.5px solid #E2E8F0 !important;
+            border-radius: 14px !important;
+            background: #F8FAFC !important;
             display: flex !important;
             align-items: center !important;
-            padding: 8px 16px !important;
-            gap: 12px !important;
+            padding: 0 16px !important;
+            gap: 14px !important;
             transition: all 0.2s ease;
+          }
+          .hero-field-icon-bg {
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 10px !important;
+            background: #E8F8F2 !important;
           }
           .hero-field-text {
             height: auto !important;
             display: inline-flex !important;
             align-items: center !important;
-            font-size: 15px !important;
+            font-size: 14px !important;
             line-height: 1.4 !important;
             margin: 0 !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             white-space: nowrap !important;
+            color: #1E293B !important;
             -webkit-font-smoothing: antialiased !important;
           }
           .hero-text-input {
             height: auto !important;
             display: inline-flex !important;
             align-items: center !important;
-            font-size: 15px !important;
-            font-weight: 700 !important;
-            color: #000000 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            color: #1E293B !important;
             line-height: 1.4 !important;
             margin: 0 !important;
             overflow: hidden !important;
@@ -1095,23 +1141,25 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           .hero-field-col:active,
           .hero-field-col:focus-within {
             background: #FFFFFF !important;
-            border-color: #CBD5E1 !important;
+            border-color: #00B875 !important;
+            box-shadow: 0 2px 10px rgba(0, 184, 117, 0.15) !important;
           }
           .hero-search-btn {
             width: 100%;
-            height: 50px !important;
+            height: 54px !important;
             padding: 0 16px;
-            border-radius: 5px !important;
-            margin-top: 2px !important;
-            background: #0B8039 !important;
-            box-shadow: none !important;
-            font-size: 16.5px !important;
-            font-weight: 700 !important;
+            border-radius: 14px !important;
+            margin-top: 6px !important;
+            background: linear-gradient(135deg, #00B875 0%, #008A58 100%) !important;
+            box-shadow: 0 8px 20px rgba(0, 184, 117, 0.35) !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
             letter-spacing: 0.3px;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             gap: 8px !important;
+            color: #FFFFFF !important;
           }
           .hero-search-btn:active {
             transform: scale(0.98);

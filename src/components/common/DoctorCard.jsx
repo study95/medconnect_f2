@@ -63,6 +63,48 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     return (
       <>
         <style>{`
+          .doc-card-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .doc-btn-detail,
+          .doc-btn-book {
+            height: 40px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            font-family: 'Hind Siliguri', sans-serif;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+          }
+          .doc-btn-detail {
+            background: #FFFFFF;
+            color: #0F172A;
+            border: 1.5px solid #CBD5E1;
+            padding: 0 16px;
+          }
+          .doc-btn-detail:hover {
+            border-color: #00B875;
+            color: #00B875;
+          }
+          .doc-btn-book {
+            background: #00B875;
+            color: #FFFFFF;
+            border: none;
+            padding: 0 18px;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(0, 184, 117, 0.25);
+          }
+          .doc-btn-book:hover {
+            background: #009E64;
+          }
           @media (max-width: 767px) {
             .doc-list-card {
               flex-direction: column !important;
@@ -72,9 +114,25 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               min-width: 100% !important;
               height: 200px !important;
             }
+            .doc-card-bottom {
+              width: 100% !important;
+              display: flex !important;
+              margin-top: 14px !important;
+            }
             .doc-card-actions {
               width: 100% !important;
-              margin-top: 10px !important;
+              display: flex !important;
+              gap: 8px !important;
+            }
+            .doc-btn-detail,
+            .doc-btn-book {
+              flex: 1 1 0% !important;
+              width: 50% !important;
+              padding: 0 4px !important;
+              font-size: 12.5px !important;
+              height: 40px !important;
+              min-width: 0 !important;
+              white-space: nowrap !important;
             }
           }
         `}</style>
@@ -151,9 +209,10 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               display: 'flex',
               alignItems: 'center',
               gap: 4,
+              zIndex: 5,
               backdropFilter: 'blur(4px)'
             }}>
-              <IconStarFilled size={12} color="#F59E0B" />
+              <IconStarFilled size={12} color="#FBBF24" />
               <span>৪.৯ (১২০)</span>
             </div>
           </div>
@@ -167,41 +226,35 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             justifyContent: 'space-between',
             minWidth: 0
           }}>
-            {/* Top Details Section */}
+            {/* Top Title, Specialty & Hospital Details */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div>
-                  {/* Doctor Name */}
                   <h3 style={{
                     fontSize: 18,
                     fontWeight: 800,
                     color: '#0F172A',
-                    margin: '0 0 2px 0',
+                    margin: '0 0 4px 0',
                     fontFamily: "'Hind Siliguri', sans-serif",
                     lineHeight: 1.3
                   }}>
                     {doctor.name}
                   </h3>
-
-                  {/* 2. Specialty with Green Background Badge */}
-                  <div style={{ marginTop: 4, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                     <span style={{
-                      display: 'inline-block',
                       background: '#00B875',
                       color: 'white',
                       fontSize: 11.5,
                       fontWeight: 700,
-                      padding: '2px 10px 2px 8px',
-                      borderRadius: '4px 2px 2px 4px',
-                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)',
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      width: 'fit-content'
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontFamily: "'Hind Siliguri', sans-serif"
                     }}>
                       {specialtyName}
                     </span>
                   </div>
 
-                  {/* Degree (New Line Below Specialty) */}
+                  {/* Degree */}
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: '#64748B', marginBottom: 3, fontFamily: "'Hind Siliguri', sans-serif" }}>
                     {degrees}
                   </div>
@@ -302,30 +355,12 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             </div>
 
             {/* Bottom Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-              <div className="doc-card-actions" style={{ display: 'flex', gap: 8 }}>
+            <div className="doc-card-bottom" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+              <div className="doc-card-actions">
                 <button
                   type="button"
                   onClick={handleDetails}
-                  style={{
-                    flex: 1,
-                    background: 'white',
-                    color: '#0F172A',
-                    border: '1.5px solid #CBD5E1',
-                    borderRadius: 8,
-                    padding: '8px 16px',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
+                  className="doc-btn-detail"
                 >
                   <IconEye size={16} />
                   <span>বিস্তারিত দেখুন</span>
@@ -333,26 +368,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                 <button
                   type="button"
                   onClick={handleBook}
-                  style={{
-                    flex: 1,
-                    background: '#00B875',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '8px 18px',
-                    fontSize: 13,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
+                  className="doc-btn-book"
                 >
                   <IconCalendarEvent size={16} color="#FFFFFF" />
                   <span>অ্যাপয়েন্টমেন্ট নিন</span>
