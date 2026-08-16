@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import { useSearchParams, Link } from 'react-router-dom'
 
 import DoctorCard from '../components/common/DoctorCard'
+import ErrorState from '../components/common/ErrorState'
 import { DoctorGridSkeleton } from '../components/common/Skeletons'
 import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
@@ -885,12 +886,14 @@ function DoctorsPage() {
             {loading && <DoctorGridSkeleton count={6} />}
 
             {error && !loading && (
-              <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 12, padding: 24, textAlign: 'center' }}>
-                <p style={{ color: '#c53030', marginBottom: 12 }}>⚠️ {error}</p>
-                <button onClick={refresh} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer' }}>
-                  আবার চেষ্টা করুন
-                </button>
-              </div>
+              <ErrorState
+                title="ডাক্তারদের তথ্য লোড করা যায়নি"
+                message={error}
+                onRetry={refresh}
+                retryText="পুনরায় চেষ্টা করুন"
+                onSecondary={handleClearAllFilters}
+                secondaryText="ফিল্টার রিসেট করুন"
+              />
             )}
 
             {!loading && sortedDoctors.length > 0 && (

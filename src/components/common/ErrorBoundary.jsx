@@ -38,34 +38,58 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      // Show a friendly fallback UI
+      // Show a friendly, polished fallback UI
       return (
         <div
           style={{
-            background: '#fff5f5',
-            border: '1px solid #fed7d7',
+            background: '#FFFFFF',
+            border: '1px solid #FEE2E2',
             borderRadius: 16,
-            padding: '32px 24px',
+            padding: '36px 24px',
             textAlign: 'center',
-            margin: '16px 0',
+            margin: '20px auto',
+            maxWidth: 520,
+            boxShadow: '0 4px 20px -2px rgba(239, 68, 68, 0.05)',
+            fontFamily: "'Hind Siliguri', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           }}
         >
-          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-          <h5 style={{ fontWeight: 700, color: '#c53030', marginBottom: 8 }}>
-            Something went wrong
+          <div
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: '50%',
+              background: '#FEF2F2',
+              border: '1px solid #FEE2E2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              fontSize: 24,
+            }}
+          >
+            🛡️
+          </div>
+          <h5 style={{ fontWeight: 700, color: '#1E293B', fontSize: 18, marginBottom: 8 }}>
+            সাময়িক ত্রুটি দেখা দিয়েছে
           </h5>
-          <p style={{ color: '#742a2a', fontSize: 14, marginBottom: 20 }}>
-            {this.props.message || 'This section failed to load. Please try refreshing the page.'}
+          <p style={{ color: '#64748B', fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto 20px' }}>
+            {this.props.message || 'এই সেকশনটি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{
-              background: '#c53030', color: 'white', border: 'none',
-              borderRadius: 8, padding: '8px 20px',
-              fontWeight: 600, cursor: 'pointer', fontSize: 14,
+              background: '#0B192C',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 22px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 14,
+              transition: 'all 0.2s ease',
             }}
           >
-            Try Again
+            আবার চেষ্টা করুন
           </button>
         </div>
       )

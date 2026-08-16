@@ -4,6 +4,7 @@
 
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getHospitals } from '../api/hospitalApi'
+import { getErrorMessage } from '../utils/errorHelper'
 
 function useInfiniteHospitals(filters = {}) {
   const {
@@ -58,7 +59,7 @@ function useInfiniteHospitals(filters = {}) {
     fetchingNext: isFetchingNextPage,
     hasMore:      hasNextPage,
     fetchMore:    fetchNextPage,
-    error:        isError ? (error?.message || 'Failed to load hospitals') : null,
+    error:        isError ? getErrorMessage(error, 'হাসপাতালের তালিকা লোড করা সম্ভব হয়নি।') : null,
     refresh:      refetch,
   }
 }

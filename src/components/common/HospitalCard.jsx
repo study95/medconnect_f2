@@ -210,7 +210,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             </div>
             <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
               <IconMapPin size={12} color="#94A3B8" />
-              <span>@ {locationText || 'uttara'}</span>
+              <span>{locationText || 'ঢাকা'}</span>
             </div>
             <div style={{ fontSize: 11, color: '#475569', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span>🛏️ ২৫০+ শয্যা</span>
@@ -394,7 +394,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}>
                     <IconMapPin size={14} color="#94A3B8" />
-                    <span>@ {locationText || 'uttara, dhaka'}</span>
+                    <span>{locationText || 'ঢাকা'}</span>
                   </div>
                 </div>
 

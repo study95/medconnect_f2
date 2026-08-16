@@ -312,7 +312,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     marginTop: 3
                   }}>
                     <IconMapPin size={14} color="#94A3B8" />
-                    <span>@ {locationText || 'uttara, dhaka'}</span>
+                    <span>{locationText || 'ঢাকা'}</span>
                   </div>
                 </div>
 

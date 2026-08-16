@@ -18,7 +18,7 @@ import {
   IconMapPin, IconEdit, IconLogout, IconX, IconCamera, 
   IconHeart, IconShieldCheck, IconCheck, IconSparkles,
   IconArrowRight, IconArrowLeft, IconActivity, IconBookmark, IconChevronDown, IconChevronUp,
-  IconTicket, IconRefresh
+  IconTicket, IconRefresh, IconLayoutGrid
 } from '@tabler/icons-react'
 import '../styles/auth.css'
 
@@ -1229,6 +1229,41 @@ function ProfilePage() {
                     <IconArrowRight size={16} />
                   </div>
                 </button>
+
+                {/* Admin Panel Button — visible only for admin / doctor / manager */}
+                {(isAdmin || isDoctor || isManager) && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    style={{
+                      width: '100%',
+                      padding: '16px 18px',
+                      borderRadius: 5,
+                      border: '1.5px solid #A7F3D0',
+                      background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
+                      color: '#064E3B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontWeight: 800,
+                      fontSize: 15,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(0, 184, 117, 0.08)',
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 5, background: '#00B875', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(0,184,117,0.3)' }}>
+                        <IconLayoutGrid size={20} />
+                      </div>
+                      <span>
+                        {isAdmin ? 'অ্যাডমিন প্যানেল' : (isDoctor ? 'ডাক্তার প্যানেল' : 'হাসপাতাল প্যানেল')}
+                      </span>
+                    </div>
+                    <div style={{ width: 28, height: 28, borderRadius: 5, background: '#D1FAE5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconArrowRight size={16} />
+                    </div>
+                  </button>
+                )}
 
                 {/* Item 5: Logout Button */}
                 <button

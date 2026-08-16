@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import { useSearchParams, Link } from 'react-router-dom'
 
 import HospitalCard from '../components/common/HospitalCard'
+import ErrorState from '../components/common/ErrorState'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
@@ -888,12 +889,14 @@ function HospitalsPage() {
               {loading && <HospitalGridSkeleton count={4} />}
 
               {error && !loading && (
-                <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 12, padding: 24, textAlign: 'center' }}>
-                  <p style={{ color: '#c53030', marginBottom: 12 }}>⚠️ {error}</p>
-                  <button onClick={refresh} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer' }}>
-                    Try Again
-                  </button>
-                </div>
+                <ErrorState
+                  title="হাসপাতালের তথ্য লোড করা যায়নি"
+                  message={error}
+                  onRetry={refresh}
+                  retryText="পুনরায় চেষ্টা করুন"
+                  onSecondary={handleClearAllFilters}
+                  secondaryText="ফিল্টার রিসেট করুন"
+                />
               )}
 
               {!loading && sortedHospitals.length > 0 && (

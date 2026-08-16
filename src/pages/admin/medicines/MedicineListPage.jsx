@@ -22,131 +22,6 @@ export default function MedicineListPage() {
   const navigate = useNavigate()
   const { isAdmin, hasPermission } = useAuth()
   const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [dosageFilter, setDosageFilter] = useState('ALL')
-  const [companyFilter, setCompanyFilter] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
-  const searchTimeout = useRef(null)
-
-  useEffect(() => { fetchData(1) }, [])
-
-  const fetchData = async (page = 1, searchTerm = search, dosage = dosageFilter, company = companyFilter) => {
-    try {
-      setLoading(true)
-      const params = { page, per_page: 15 }
-      if (searchTerm.trim()) params.search = searchTerm.trim()
-      if (dosage && dosage !== 'ALL') params.dosage_type = dosage
-      if (company.trim()) params.company_name = company.trim()
-
-      const res = await getMedicines(params)
-      const data = res.data
-
-      // Handle both paginated and non-paginated response
-      if (data?.data && Array.isArray(data.data)) {
-        setItems(data.data)
-        setPagination({
-          current_page: data.current_page || 1,
-          last_page: data.last_page || 1,
-          total: data.total || data.data.length
-        })
-      } else if (Array.isArray(data)) {
-        setItems(data)
-        setPagination({ current_page: 1, last_page: 1, total: data.length })
-      } else if (data?.data?.data && Array.isArray(data.data.data)) {
-        setItems(data.data.data)
-        setPagination({
-          current_page: data.data.current_page || 1,
-          last_page: data.data.last_page || 1,
-          total: data.data.total || data.data.data.length
-        })
-      } else {
-        setItems([])
-        setPagination({ current_page: 1, last_page: 1, total: 0 })
-      }
-    } catch (err) {
-} finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSearch = (val) => {
-    setSearch(val)
-    if (searchTimeout.current) clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      fetchData(1, val, dosageFilter, companyFilter)
-    }, 300)
-  }
-
-  const handleDosageFilter = (val) => {
-    setDosageFilter(val)
-    fetchData(1, search, val, companyFilter)
-  }
-
-  const handleCompanyFilter = (val) => {
-    setCompanyFilter(val)
-    if (searchTimeout.current) clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      fetchData(1, search, dosageFilter, val)
-    }, 300)
-  }
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try {
-      await deleteMedicine(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
-    } catch (err) {
-} finally {
-      setDeleting(false)
-      setDeleteTarget(null)
-    }
-  }
-
-  const goToPage = (page) => {
-    if (page < 1 || page > pagination.last_page) return
-    fetchData(page, search, dosageFilter, companyFilter)
-  }
-
-  const getFullName = (med) => {
-    const parts = [med.dosage_type, med.medicine_name, med.strength].filter(Boolean)
-    return parts.join(' ')
-  }
-
-  const renderPagination = () => {
-    if (pagination.last_page <= 1) return null
-    const pages = []
-    for (let i = 1; i <= pagination.last_page; i++) {
-      if (i === 1 || i === pagination.last_page || (i >= pagination.current_page - 2 && i <= pagination.current_page + 2)) {
-        pages.push(i)
-      } else if (pages[pages.length - 1] !== '...') {
-        pages.push('...')
-      }
-    }
-    return (
-      <div className="admin-pagination">
-        <span className="admin-pagination-info">
-          Showing page {pagination.current_page} of {pagination.last_page} ({pagination.total} total)
-        </span>
-        <div className="admin-pagination-btns">
-          <button onClick={() => goToPage(pagination.current_page - 1)} disabled={pagination.current_page === 1}>←</button>
-          {pages.map((p, idx) =>
-            p === '...' ? (
-              <button key={`dots-${idx}`} disabled>...</button>
-            ) : (
-              <button key={p} className={p === pagination.current_page ? 'active' : ''} onClick={() => goToPage(p)}>{p}</button>
-            )
-          )}
-          <button onClick={() => goToPage(pagination.current_page + 1)} disabled={pagination.current_page === pagination.last_page}>→</button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div>
       <div className="admin-page-header">
@@ -157,6 +32,24 @@ export default function MedicineListPage() {
         {(isAdmin || hasPermission('medicine.create')) && (
           <Link to="/admin/medicines/create" className="admin-btn admin-btn-primary">+ Add Medicine</Link>
         )}
+      </div>
+
+      {/* Show Entries Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
+          Show
+          <select
+            value={perPage}
+            onChange={e => { const n = Number(e.target.value); setPerPage(n); fetchData(1, search, dosageFilter, companyFilter, n) }}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}
+          >
+            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          entries
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
+          Showing <strong>{pagination.total === 0 ? 0 : ((pagination.current_page - 1) * perPage + 1)}</strong>–<strong>{Math.min(pagination.current_page * perPage, pagination.total)}</strong> of <strong>{pagination.total}</strong> entries
+        </div>
       </div>
 
       <div className="admin-card">
@@ -266,7 +159,50 @@ export default function MedicineListPage() {
                 </tbody>
               </table>
             </div>
-            {renderPagination()}
+            {/* Bottom Pagination */}
+            {(() => {
+              const totalPages = pagination.last_page
+              if (pagination.total === 0) return null
+              const pages = []
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i)
+              } else {
+                pages.push(1)
+                if (pagination.current_page > 3) pages.push('...')
+                const start = Math.max(2, pagination.current_page - 1)
+                const end = Math.min(totalPages - 1, pagination.current_page + 1)
+                for (let i = start; i <= end; i++) pages.push(i)
+                if (pagination.current_page < totalPages - 2) pages.push('...')
+                pages.push(totalPages)
+              }
+              const btnBase = {
+                height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8,
+                border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)',
+                color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s'
+              }
+              const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
+              const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
+                    Showing <strong>{pagination.total === 0 ? 0 : ((pagination.current_page - 1) * perPage + 1)}</strong>–<strong>{Math.min(pagination.current_page * perPage, pagination.total)}</strong> of <strong>{pagination.total}</strong> entries
+                  </div>
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button onClick={() => pagination.current_page > 1 && fetchData(1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === 1 ? btnDisabled : btnBase} title="First">«</button>
+                      <button onClick={() => pagination.current_page > 1 && fetchData(pagination.current_page - 1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === 1 ? btnDisabled : btnBase} title="Previous">‹</button>
+                      {pages.map((p, i) => p === '...'
+                        ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span>
+                        : <button key={p} onClick={() => fetchData(p, search, dosageFilter, companyFilter, perPage)} style={p === pagination.current_page ? btnActive : btnBase}>{p}</button>
+                      )}
+                      <button onClick={() => pagination.current_page < totalPages && fetchData(pagination.current_page + 1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === totalPages ? btnDisabled : btnBase} title="Next">›</button>
+                      <button onClick={() => pagination.current_page < totalPages && fetchData(totalPages, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === totalPages ? btnDisabled : btnBase} title="Last">»</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </>
         )}
       </div>

@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getDoctorById, getDoctorChambers } from '../api/doctorApi'
+import { getErrorMessage } from '../utils/errorHelper'
 
 export default function useDoctorDetail(id) {
   // Fetch doctor profile
@@ -39,7 +40,7 @@ export default function useDoctorDetail(id) {
     loading: doctorQuery.isLoading,
     loadingChambers: chambersQuery.isLoading,
     error: doctorQuery.isError
-      ? (doctorQuery.error?.message || 'Failed to load doctor')
+      ? getErrorMessage(doctorQuery.error, 'ডাক্তারের তথ্য লোড করা সম্ভব হয়নি।')
       : null,
     refetch: () => {
       doctorQuery.refetch()

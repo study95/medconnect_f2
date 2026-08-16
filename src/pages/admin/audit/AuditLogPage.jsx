@@ -137,7 +137,7 @@ export default function AuditLogPage() {
 
   const [filters, setFilters] = useState({
     search: '', module: '', action: '', risk_level: '',
-    ip_address: '', date_from: '', date_to: '', per_page: 50, page: 1,
+    ip_address: '', date_from: '', date_to: '', per_page: 10, page: 1,
   })
 
   const debounceRef = useRef(null)
@@ -178,7 +178,7 @@ export default function AuditLogPage() {
   }
 
   const clearFilters = () => {
-    const reset = { search: '', module: '', action: '', risk_level: '', ip_address: '', date_from: '', date_to: '', per_page: 50, page: 1 }
+    const reset = { search: '', module: '', action: '', risk_level: '', ip_address: '', date_from: '', date_to: '', per_page: 10, page: 1 }
     setFilters(reset)
     fetchLogs(reset)
   }
@@ -322,6 +322,37 @@ export default function AuditLogPage() {
         )}
       </div>
 
+      {/* ── Table Toolbar: Show Entries ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 10, flexWrap: 'wrap', gap: 8
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
+          Show
+          <select
+            value={filters.per_page}
+            onChange={e => handleFilterChange('per_page', Number(e.target.value))}
+            style={{
+              padding: '5px 10px', borderRadius: 8,
+              border: '1.5px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)', color: 'var(--admin-text)',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none',
+              minWidth: 70
+            }}
+          >
+            {[10, 25, 50, 100, 500].map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          entries
+        </div>
+        {pagination.total != null && (
+          <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
+            Showing <strong>{pagination.from ?? 0}</strong>–<strong>{pagination.to ?? 0}</strong> of <strong>{pagination.total ?? 0}</strong> entries
+          </div>
+        )}
+      </div>
+
       {/* ── Table ── */}
       <div style={{
         background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)',
@@ -452,31 +483,94 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {/* ── Pagination ── */}
-      {pagination.last_page > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-            Showing {pagination.from}–{pagination.to} of {pagination.total} entries
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {Array.from({ length: pagination.last_page }, (_, i) => i + 1).slice(
-              Math.max(0, pagination.current_page - 3),
-              Math.min(pagination.last_page, pagination.current_page + 2)
-            ).map(p => (
-              <button key={p} onClick={() => changePage(p)}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  border: p === pagination.current_page ? 'none' : '1px solid var(--admin-border)',
-                  background: p === pagination.current_page ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'var(--admin-card-bg)',
-                  color: p === pagination.current_page ? '#fff' : 'var(--admin-text)',
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                }}>
-                {p}
-              </button>
-            ))}
-          </div>
+      {/* ── Bottom Pagination ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: 16, flexWrap: 'wrap', gap: 10
+      }}>
+        {/* Info */}
+        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
+          {pagination.total != null
+            ? <>Showing <strong>{pagination.from ?? 0}</strong>–<strong>{pagination.to ?? 0}</strong> of <strong>{pagination.total ?? 0}</strong> entries</>
+            : 'Loading...'}
         </div>
-      )}
+
+        {/* Page Controls */}
+        {pagination.last_page > 1 && (() => {
+          const cur = pagination.current_page || 1
+          const last = pagination.last_page || 1
+
+          // Build page number array with ellipsis markers
+          const pages = []
+          if (last <= 7) {
+            for (let i = 1; i <= last; i++) pages.push(i)
+          } else {
+            pages.push(1)
+            if (cur > 3) pages.push('...')
+            const start = Math.max(2, cur - 1)
+            const end   = Math.min(last - 1, cur + 1)
+            for (let i = start; i <= end; i++) pages.push(i)
+            if (cur < last - 2) pages.push('...')
+            pages.push(last)
+          }
+
+          const btnBase = {
+            height: 34, minWidth: 34, padding: '0 10px',
+            borderRadius: 8, border: '1.5px solid var(--admin-border)',
+            background: 'var(--admin-card-bg)', color: 'var(--admin-text)',
+            fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.15s', lineHeight: 1
+          }
+          const btnActive = {
+            ...btnBase,
+            border: 'none',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(99,102,241,0.35)'
+          }
+          const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
+
+          return (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* « First */}
+              <button
+                onClick={() => cur > 1 && changePage(1)}
+                style={cur === 1 ? btnDisabled : btnBase}
+                title="First page"
+              >«</button>
+              {/* ‹ Prev */}
+              <button
+                onClick={() => cur > 1 && changePage(cur - 1)}
+                style={cur === 1 ? btnDisabled : btnBase}
+                title="Previous page"
+              >‹</button>
+
+              {/* Numbered pages + ellipsis */}
+              {pages.map((p, i) =>
+                p === '...' ? (
+                  <span key={`dot-${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 700 }}>…</span>
+                ) : (
+                  <button key={p} onClick={() => changePage(p)} style={p === cur ? btnActive : btnBase}>{p}</button>
+                )
+              )}
+
+              {/* › Next */}
+              <button
+                onClick={() => cur < last && changePage(cur + 1)}
+                style={cur === last ? btnDisabled : btnBase}
+                title="Next page"
+              >›</button>
+              {/* » Last */}
+              <button
+                onClick={() => cur < last && changePage(last)}
+                style={cur === last ? btnDisabled : btnBase}
+                title="Last page"
+              >»</button>
+            </div>
+          )
+        })()}
+      </div>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

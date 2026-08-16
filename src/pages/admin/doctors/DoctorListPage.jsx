@@ -251,6 +251,11 @@ export default function DoctorListPage() {
 
   const myProfile = isDoctorOnly ? allowedDoctors[0] : null
 
+  const [perPage, setPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  useEffect(() => { setCurrentPage(1) }, [filtered.length])
+
   if (isDoctorOnly) {
     if (loading) return <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading profile...</div>
 
@@ -357,6 +362,8 @@ export default function DoctorListPage() {
       </div>
     )
   }
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
   return (
     <div className="admin-container">
@@ -494,6 +501,20 @@ export default function DoctorListPage() {
         </div>
       )}
 
+      {/* Show Entries Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
+          Show
+          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }} style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}>
+            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          entries
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
+          Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
+        </div>
+      </div>
+
       <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">All Registered Doctors</h3>
@@ -525,7 +546,7 @@ export default function DoctorListPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(doctor => (
+                {paginatedData.map(doctor => (
                   <tr key={doctor.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <div style={{
@@ -655,6 +676,42 @@ export default function DoctorListPage() {
           </div>
         )}
       </div>
+
+      {/* Bottom Pagination */}
+      {(() => {
+        const totalPages = Math.ceil(filtered.length / perPage)
+        if (filtered.length === 0) return null
+        const pages = []
+        if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
+        else {
+          pages.push(1)
+          if (currentPage > 3) pages.push('...')
+          const start = Math.max(2, currentPage - 1)
+          const end = Math.min(totalPages - 1, currentPage + 1)
+          for (let i = start; i <= end; i++) pages.push(i)
+          if (currentPage < totalPages - 2) pages.push('...')
+          pages.push(totalPages)
+        }
+        const btnBase = { height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }
+        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
+        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
+              Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase} title="First">«</button>
+                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase} title="Prev">‹</button>
+                {pages.map((p, i) => p === '...' ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span> : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>)}
+                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Next">›</button>
+                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Last">»</button>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       <style dangerouslySetInnerHTML={{
         __html: `

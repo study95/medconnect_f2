@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getSpecialties } from '../api/doctorApi'
+import { getErrorMessage } from '../utils/errorHelper'
 
 export default function useSpecialties() {
   const { data, isLoading, isError, error } = useQuery({
@@ -20,6 +21,6 @@ export default function useSpecialties() {
   return {
     specialties: data || [],
     loading: isLoading,
-    error: isError ? (error?.message || 'Failed to load specialties') : null,
+    error: isError ? getErrorMessage(error, 'বিশেষজ্ঞ বিভাগের তথ্য লোড করা সম্ভব হয়নি।') : null,
   }
 }

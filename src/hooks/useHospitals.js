@@ -5,6 +5,7 @@
 
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getHospitals } from '../api/hospitalApi'
+import { getErrorMessage } from '../utils/errorHelper'
 
 function useHospitals(params = {}) {
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -52,7 +53,7 @@ function useHospitals(params = {}) {
     hospitals: data?.hospitals || [],
     loading: isLoading,
     fetching: isFetching,
-    error: isError ? (error?.message || 'Failed to load hospitals') : null,
+    error: isError ? getErrorMessage(error, 'হাসপাতালের তথ্য লোড করা সম্ভব হয়নি।') : null,
     pagination: data?.pagination || null,
     refresh: refetch,
   }

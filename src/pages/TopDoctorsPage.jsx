@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import DoctorCard from '../components/common/DoctorCard'
+import ErrorState from '../components/common/ErrorState'
 import { DoctorGridSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import { useTranslation } from 'react-i18next'
@@ -134,11 +135,14 @@ function TopDoctorsPage() {
         {loading && <DoctorGridSkeleton count={6} />}
 
         {error && !loading && (
-          <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 12, padding: 40, textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-            <h4 style={{ color: '#c53030', marginBottom: 12 }}>{error}</h4>
-            <button onClick={refresh} style={{ background: '#00A88C', color: 'white', border: 'none', borderRadius: 10, padding: '12px 30px', fontWeight: 600 }}>{t('try_again')}</button>
-          </div>
+          <ErrorState
+            title="সেরা ডাক্তারদের তালিকা লোড করা যায়নি"
+            message={error}
+            onRetry={refresh}
+            retryText={t('try_again') || 'আবার চেষ্টা করুন'}
+            onSecondary={() => setDistrictId('')}
+            secondaryText="ফিল্টার রিসেট করুন"
+          />
         )}
 
         {!loading && !error && doctors.length === 0 && (

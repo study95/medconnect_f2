@@ -10,6 +10,7 @@
 
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getDoctors } from '../api/doctorApi'
+import { getErrorMessage } from '../utils/errorHelper'
 
 function useDoctors(params = {}) {
   // Stable key: TanStack Query deep-compares objects,
@@ -44,7 +45,7 @@ function useDoctors(params = {}) {
     doctors: data?.doctors || [],
     loading: isLoading,
     fetching: isFetching,  // true during background refetch (page switch)
-    error: isError ? (error?.message || 'Failed to load doctors') : null,
+    error: isError ? getErrorMessage(error, 'ডাক্তারদের তথ্য লোড করা সম্ভব হয়নি।') : null,
     pagination: data?.pagination || null,
     refresh: refetch,
   }
