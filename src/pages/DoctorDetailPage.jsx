@@ -147,6 +147,36 @@ function DoctorDetailPageContent() {
     return [...(chambers || [])].sort((a, b) => getDayIndex(a?.day) - getDayIndex(b?.day))
   }, [chambers])
 
+  const dayNamesBn = {
+    'Saturday': 'শনিবার',
+    'Sunday': 'রবিবার',
+    'Monday': 'সোমবার',
+    'Tuesday': 'মঙ্গলবার',
+    'Wednesday': 'বুধবার',
+    'Thursday': 'বৃহস্পতিবার',
+    'Friday': 'শুক্রবার'
+  }
+
+  const groupedChambers = useMemo(() => {
+    if (!sortedChambers || sortedChambers.length === 0) return []
+    const map = new Map()
+    sortedChambers.forEach((chamber) => {
+      const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.hospital_name || chamber.address || 'default'
+      if (!map.has(hospId)) {
+        map.set(hospId, {
+          hospitalId: chamber.hospital_id || chamber.hospital?.id,
+          hospitalName: chamber.hospital?.name || chamber.hospital_name || 'চেম্বার',
+          address: chamber.address || chamber.hospital?.address || 'ঠিকানা উপলব্ধ নয়',
+          phone: chamber.hospital?.phone || chamber.phone || '',
+          photoUrl: chamber.hospital?.photo_url || chamber.hospital?.photo || null,
+          schedules: []
+        })
+      }
+      map.get(hospId).schedules.push(chamber)
+    })
+    return Array.from(map.values())
+  }, [sortedChambers])
+
   const lowestFee = useMemo(() => {
     if (!sortedChambers || sortedChambers.length === 0) return doctor?.fee || 0
     const validFees = sortedChambers.map(c => Number(c?.fee)).filter(f => !isNaN(f) && f > 0)
@@ -537,10 +567,11 @@ function DoctorDetailPageContent() {
                   justifyContent: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'inherit'
                 }}
               >
-                <IconShare size={18} /> Share Profile
+                <IconShare size={18} /> প্রোফাইল শেয়ার করুন
               </button>
 
               {/* Secondary Actions (Book & Favorite) */}
@@ -557,7 +588,8 @@ function DoctorDetailPageContent() {
                     fontWeight: 950,
                     fontSize: 14,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0,168,140,0.2)'
+                    boxShadow: '0 4px 12px rgba(0,168,140,0.2)',
+                    fontFamily: 'inherit'
                   }}
                 >
                   অ্যাপয়েন্টমেন্ট নিন
@@ -578,7 +610,7 @@ function DoctorDetailPageContent() {
                     cursor: 'pointer',
                     flexShrink: 0
                   }}
-                  title={isFav ? 'সেভড' : 'সেভ করুন'}
+                  title={isFav ? 'সংরক্ষিত' : 'সংরক্ষণ করুন'}
                 >
                   <IconHeart 
                     size={20} 
@@ -601,7 +633,7 @@ function DoctorDetailPageContent() {
               boxShadow: '0 8px 30px rgba(0, 0, 0, 0.03)'
             }}>
               
-              {/* Top Menu Tabs (Inside Right Box Top — Pill Container Design Matching Screenshot) */}
+              {/* Top Menu Tabs (Inside Right Box Top — Pill Container Design) */}
               <div className="top-menu-tabs-wrapper" style={{
                 background: '#F1F5F9',
                 borderRadius: 99,
@@ -614,10 +646,10 @@ function DoctorDetailPageContent() {
               }}>
                 <Nav className="flex-nowrap align-items-center justify-content-between" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 4 }}>
                   {[
-                    { key: 'about', label: 'About', icon: <IconUser size={16} /> },
-                    { key: 'chamber', label: 'Chamber', icon: <IconBuildingHospital size={16} /> },
-                    { key: 'experience', label: 'Experience', icon: <IconBriefcase size={16} /> },
-                    { key: 'reviews', label: 'Reviews', icon: <IconStar size={16} /> }
+                    { key: 'about', label: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} /> },
+                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', icon: <IconBuildingHospital size={16} /> },
+                    { key: 'experience', label: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} /> },
+                    { key: 'reviews', label: 'রিভিউ', icon: <IconStar size={16} /> }
                   ].map(tab => {
                     const isActive = activeTab === tab.key
                     return (
@@ -626,7 +658,7 @@ function DoctorDetailPageContent() {
                           eventKey={tab.key}
                           style={{ 
                             padding: '10px 8px',
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: isActive ? 800 : 600,
                             color: isActive ? primaryGreen : '#64748B',
                             borderRadius: 99,
@@ -638,7 +670,8 @@ function DoctorDetailPageContent() {
                             justifyContent: 'center',
                             gap: 6,
                             whiteSpace: 'nowrap',
-                            border: 'none'
+                            border: 'none',
+                            fontFamily: 'inherit'
                           }}
                         >
                           {tab.icon} <span>{tab.label}</span>
@@ -658,15 +691,15 @@ function DoctorDetailPageContent() {
                     <div className="d-flex align-items-center gap-2 mb-3">
                       <IconUser size={22} color={primaryGreen} />
                       <h3 style={{ fontSize: 19, fontWeight: 950, color: darkTextColor, margin: 0 }}>
-                        About Doctor
+                        ডাক্তার সম্পর্কে
                       </h3>
                     </div>
 
                     <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.8, marginBottom: 24, textAlign: 'justify' }}>
-                      {doctor?.bio || `Dr. ${doctor?.name || 'H.Ahasan Habib Khan'} is a highly skilled and experienced Allergy & Immunology / Cardiology specialist in Bangladesh. He has been working in this field for more than 10 years. He is dedicated to providing the best possible care to his patients.`}
+                      {doctor?.bio || `ডাঃ ${doctor?.name || ''} একজন দক্ষ ও অভিজ্ঞ বিশেষজ্ঞ চিকিৎসক। তিনি দীর্ঘ দিন ধরে রোগীদের উন্নত স্বাস্থ্যসেবা ও সঠিক পরামর্শ প্রদানে নিরলসভাবে কাজ করে যাচ্ছেন।`}
                     </p>
 
-                    {/* NOTE REQUIREMENT: বিশেষ দক্ষতা: content add dr about section */}
+                    {/* NOTE REQUIREMENT: বিশেষ দক্ষতা */}
                     <div style={{
                       background: lightGreenBg,
                       borderRadius: 16,
@@ -712,10 +745,10 @@ function DoctorDetailPageContent() {
                     {/* Educational background */}
                     <div>
                       <h4 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <IconSchool size={18} color={primaryGreen} /> Education & Credentials
+                        <IconSchool size={18} color={primaryGreen} /> শিক্ষাগত যোগ্যতা ও সনদ
                       </h4>
                       <div className="d-flex flex-column gap-2">
-                        {['MBBS - Dhaka Medical College', 'MD (Cardiology / Specialty) - BSMMU', 'FCPS - BCPS Bangladesh'].map((edu, i) => (
+                        {['MBBS - ঢাকা মেডিকেল কলেজ', 'MD (কার্ডিওলজি / বিশেষজ্ঞ)', 'FCPS - বিসিপিএস বাংলাদেশ'].map((edu, i) => (
                           <div key={i} className="d-flex align-items-center gap-2" style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: `1px solid ${cardBorderColor}` }}>
                             <IconCheck size={16} color={primaryGreen} />
                             <span style={{ fontSize: 14, fontWeight: 800, color: '#334155' }}>{edu}</span>
@@ -726,75 +759,181 @@ function DoctorDetailPageContent() {
                   </div>
                 )}
 
-                {/* 2. Chamber & Visiting Hour Section */}
+                {/* 2. Chamber & Visiting Hour Section (GROUPED BY HOSPITAL) */}
                 {activeTab === 'chamber' && (
                   <div id="section-chamber" className="tab-body-section animate-tab-view">
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                      <IconMapPin size={22} color={primaryGreen} />
-                      <h3 style={{ fontSize: 19, fontWeight: 950, color: darkTextColor, margin: 0 }}>
-                        Chamber & Visiting Hour
-                      </h3>
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                      <div className="d-flex align-items-center gap-2">
+                        <IconBuildingHospital size={22} color={primaryGreen} />
+                        <h3 style={{ fontSize: 19, fontWeight: 950, color: darkTextColor, margin: 0 }}>
+                          চেম্বার ও সাক্ষাতের সময়সূচি
+                        </h3>
+                      </div>
+                      {groupedChambers.length > 0 && (
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#007A65', background: lightGreenBg, padding: '4px 12px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
+                          {groupedChambers.length}টি চেম্বার লোকেশন
+                        </span>
+                      )}
                     </div>
 
                     <div className="d-flex flex-column gap-3">
-                      {sortedChambers.map((chamber, idx) => (
+                      {groupedChambers.map((group, idx) => (
                         <div 
-                          key={chamber?.id || idx}
+                          key={group.hospitalId || idx}
                           style={{
-                            padding: 20,
+                            padding: '20px 22px',
                             borderRadius: 16,
                             background: '#FFFFFF',
-                            border: `1px solid ${cardBorderColor}`,
-                            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+                            border: `1.5px solid ${cardBorderColor}`,
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+                            transition: 'all 0.25s ease'
                           }}
                         >
-                          <Row className="align-items-center g-3">
-                            <Col md={8}>
-                              <h4 style={{ fontSize: 16, fontWeight: 950, color: darkTextColor, marginBottom: 4 }}>
-                                {chamber?.hospital?.name || chamber?.hospital_name || 'Popular Diagnostic Center, Dhanmondi'}
-                              </h4>
-                              <p style={{ fontSize: 13, color: mutedTextColor, margin: 0, fontWeight: 600, marginBottom: 12 }}>
-                                {chamber?.address || chamber?.hospital?.address || 'Road-12, Dhanmondi, Dhaka-1209'}
-                              </p>
-
-                              <div className="d-inline-flex align-items-center gap-2" style={{
-                                padding: '8px 14px',
-                                background: lightGreenBg,
-                                borderRadius: 10,
-                                fontSize: 13,
-                                fontWeight: 800,
-                                color: primaryGreen
+                          {/* Hospital Header */}
+                          <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+                            <div className="d-flex align-items-start gap-3">
+                              <div style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 12,
+                                background: '#E8F8F2',
+                                color: primaryGreen,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                border: '1px solid #A7F3D0'
                               }}>
-                                <IconClock size={16} />
-                                <span>
-                                  {chamber?.day ? translateMetadata(chamber.day, language, t) : 'Saturday - Thursday'}: {chamber?.start_time ? `${formatTimeBn(chamber.start_time)} - ${formatTimeBn(chamber.end_time)}` : '5:00 PM - 9:00 PM'}
-                                </span>
+                                <IconBuildingHospital size={22} />
                               </div>
-                            </Col>
+                              <div>
+                                <h4 style={{ fontSize: 16.5, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
+                                  {group.hospitalName}
+                                </h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: mutedTextColor, fontSize: 13, fontWeight: 600 }}>
+                                  <IconMapPin size={14} color={primaryGreen} style={{ flexShrink: 0 }} />
+                                  <span>{group.address}</span>
+                                </div>
+                              </div>
+                            </div>
 
-                            <Col md={4} className="text-md-end">
-                              <button 
-                                onClick={() => handleBook(chamber?.id)}
-                                style={{
-                                  padding: '10px 20px',
-                                  borderRadius: 10,
-                                  border: `1.5px solid ${primaryGreen}`,
-                                  background: 'white',
-                                  color: primaryGreen,
-                                  fontSize: 14,
-                                  fontWeight: 900,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6
-                                }}
-                              >
-                                <IconMapPin size={16} /> View & Book
-                              </button>
-                            </Col>
-                          </Row>
+                            {group.schedules.length > 1 && (
+                              <span style={{
+                                background: '#F1F5F9',
+                                color: '#334155',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                padding: '3px 10px',
+                                borderRadius: 6,
+                                border: '1px solid #E2E8F0'
+                              }}>
+                                {group.schedules.length}টি সময়সূচি
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Visiting Schedules list */}
+                          <div className="d-flex flex-column gap-2">
+                            {group.schedules.map((sch, sIdx) => {
+                              const fee = sch?.fee || doctor?.fee || doctor?.consultation_fee
+                              const dayBn = dayNamesBn[sch?.day] || (sch?.day ? translateMetadata(sch.day, language, t) : 'সাপ্তাহিক দিন')
+                              return (
+                                <div
+                                  key={sch?.id || sIdx}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8,
+                                    padding: '12px 14px',
+                                    borderRadius: 12,
+                                    background: '#FAFBFD',
+                                    border: '1px solid #EEF1F6'
+                                  }}
+                                >
+                                  {/* Row 1: Day + Time */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    {/* Day Badge */}
+                                    <span style={{
+                                      background: '#FFFFFF',
+                                      color: '#0F172A',
+                                      border: '1.5px solid #CBD5E1',
+                                      borderRadius: 8,
+                                      padding: '4px 10px',
+                                      fontSize: 12.5,
+                                      fontWeight: 800,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 5,
+                                      flexShrink: 0
+                                    }}>
+                                      <IconCalendarEvent size={14} color={primaryGreen} />
+                                      <span>{dayBn}</span>
+                                    </span>
+
+                                    {/* Time */}
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 13, fontWeight: 700 }}>
+                                      <IconClock size={14} color={primaryGreen} />
+                                      <span>
+                                        {sch?.start_time ? `${formatTimeBn(sch.start_time)} - ${formatTimeBn(sch.end_time)}` : 'বিকাল ৫:০০ - রাত ৯:০০'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Row 2: Fee + Book Button */}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    {/* Fee Tag */}
+                                    {fee ? (
+                                      <span style={{
+                                        background: '#E8F8F2',
+                                        color: primaryGreen,
+                                        borderRadius: 6,
+                                        padding: '3px 10px',
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        border: '1px solid #A7F3D0'
+                                      }}>
+                                        ৳{fee} ফি
+                                      </span>
+                                    ) : <span />}
+
+                                    {/* Booking Button */}
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleBook(sch?.id)}
+                                      style={{
+                                        padding: '8px 16px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: primaryGreen,
+                                        color: 'white',
+                                        fontSize: 13,
+                                        fontWeight: 900,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)',
+                                        transition: 'all 0.2s ease',
+                                        fontFamily: 'inherit',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      <IconCalendarEvent size={15} color="white" />
+                                      <span>অ্যাপয়েন্টমেন্ট নিন</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       ))}
+                      {groupedChambers.length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '36px 20px', background: '#F8FAFC', borderRadius: 16, border: '1px dashed #CBD5E1', color: '#64748B' }}>
+                          <IconBuildingHospital size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>ডাক্তারের কোনো চেম্বার তথ্য পাওয়া যায়নি</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -959,9 +1098,9 @@ function DoctorDetailPageContent() {
 
                           <button
                             type="submit"
-                            style={{ padding: '8px 20px', borderRadius: 10, border: 'none', background: primaryGreen, color: 'white', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}
+                            style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: primaryGreen, color: 'white', fontWeight: 900, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
                           >
-                            Submit Review
+                            রিভিউ জমা দিন
                           </button>
                         </form>
                       ) : (
@@ -969,7 +1108,7 @@ function DoctorDetailPageContent() {
                           <span style={{ fontSize: 14, fontWeight: 700, color: darkTextColor }}>রিভিউ দিতে চান?</span>
                           <button
                             onClick={() => navigate('/login', { state: { from: `/doctor/${id}` } })}
-                            style={{ padding: '6px 18px', borderRadius: 8, border: `1px solid ${primaryGreen}`, background: 'white', color: primaryGreen, fontWeight: 900, fontSize: 13, cursor: 'pointer' }}
+                            style={{ padding: '6px 18px', borderRadius: 8, border: `1px solid ${primaryGreen}`, background: 'white', color: primaryGreen, fontWeight: 900, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
                           >
                             লগইন করুন
                           </button>

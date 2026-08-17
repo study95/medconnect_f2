@@ -1,67 +1,40 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Container } from 'react-bootstrap'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay } from 'swiper/modules'
 import { useNavigate } from 'react-router-dom'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { getContent } from '../../utils/contentService'
 import 'swiper/css'
 import 'swiper/css/navigation'
+
+const FALLBACK_BANNERS = [
+    { id: 1, image: '/images/banner_telemedicine_1786196938449.jpg', alt: 'Telemedicine & Doctor Booking Banner', link: '/doctors' },
+    { id: 2, image: '/images/banner_emergency_1786196953227.jpg', alt: 'Emergency Ambulance & Hospitals Banner', link: '/hospitals' },
+    { id: 3, image: '/images/banner_checkup_1786196968047.jpg', alt: 'Full Body Health Checkup & Lab Test Banner', link: '/services' },
+    { id: 4, image: '/images/banner_mother_child_1786196984755.jpg', alt: 'Mother and Child Care Package Banner', link: '/services' },
+    { id: 5, image: '/images/banner_ai_health_1786197001799.jpg', alt: 'AI Health Assistant Banner', link: '/contact' },
+    { id: 6, image: '/images/banner_health_card_1786197020544.jpg', alt: 'Digital Health Card VIP Membership Banner', link: '/services' },
+    { id: 7, image: '/images/promotion/doctor.png', alt: 'Specialist Consultation Banner', link: '/doctors' },
+    { id: 8, image: '/images/promotion/hospital.png', alt: 'Hospital Directory & ICU Banner', link: '/hospitals' }
+]
 
 export default function ImageBannerSlider() {
   const navigate = useNavigate()
   const prevRef = useRef(null)
   const nextRef = useRef(null)
 
-  const banners = [
-    {
-      id: 1,
-      image: '/images/banner_telemedicine_1786196938449.jpg',
-      alt: 'Telemedicine & Doctor Booking Banner',
-      link: '/doctors'
-    },
-    {
-      id: 2,
-      image: '/images/banner_emergency_1786196953227.jpg',
-      alt: 'Emergency Ambulance & Hospitals Banner',
-      link: '/hospitals'
-    },
-    {
-      id: 3,
-      image: '/images/banner_checkup_1786196968047.jpg',
-      alt: 'Full Body Health Checkup & Lab Test Banner',
-      link: '/services'
-    },
-    {
-      id: 4,
-      image: '/images/banner_mother_child_1786196984755.jpg',
-      alt: 'Mother and Child Care Package Banner',
-      link: '/services'
-    },
-    {
-      id: 5,
-      image: '/images/banner_ai_health_1786197001799.jpg',
-      alt: 'AI Health Assistant Banner',
-      link: '/contact'
-    },
-    {
-      id: 6,
-      image: '/images/banner_health_card_1786197020544.jpg',
-      alt: 'Digital Health Card VIP Membership Banner',
-      link: '/services'
-    },
-    {
-      id: 7,
-      image: '/images/promotion/doctor.png',
-      alt: 'Specialist Consultation Banner',
-      link: '/doctors'
-    },
-    {
-      id: 8,
-      image: '/images/promotion/hospital.png',
-      alt: 'Hospital Directory & ICU Banner',
-      link: '/hospitals'
-    }
-  ]
+  const [cms, setCms] = useState(getContent())
+  useEffect(() => {
+    const update = () => setCms(getContent())
+    window.addEventListener('cms-updated', update)
+    return () => window.removeEventListener('cms-updated', update)
+  }, [])
+
+  const banners = (cms.banners?.items && cms.banners.items.length > 0)
+    ? cms.banners.items
+    : FALLBACK_BANNERS
+
 
   return (
     <section className="image-banner-slider-section" style={{ padding: '16px 0 24px', position: 'relative', overflow: 'hidden' }}>

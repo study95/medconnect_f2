@@ -8,6 +8,7 @@ import { HospitalGridSkeleton } from '../components/common/Skeletons'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
+import useDebounce from '../hooks/useDebounce'
 import {
   IconBuildingHospital, IconShieldCheck, IconSearch,
   IconChevronRight, IconChevronLeft, IconClock, IconHeadset, IconLock,
@@ -45,13 +46,14 @@ function HospitalsPage() {
 
   const { specialties } = useSpecialties()
 
-  const [hospitalType, setHospitalType]       = useState(searchParams.get('type') || '')
+  const [hospitalType, setHospitalType]           = useState(searchParams.get('type') || '')
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
-  const [selectedBeds, setSelectedBeds]       = useState(searchParams.get('beds') || '')
-  const [emergencyOnly, setEmergencyOnly]     = useState(false)
-  const [openTodayOnly, setOpenTodayOnly]     = useState(false)
-  const [searchText, setSearchText]           = useState(searchParams.get('search') || '')
-  const [specialtySearch, setSpecialtySearch] = useState('')
+  const [selectedBeds, setSelectedBeds]           = useState(searchParams.get('beds') || '')
+  const [emergencyOnly, setEmergencyOnly]         = useState(false)
+  const [openTodayOnly, setOpenTodayOnly]         = useState(false)
+  const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
+  const debouncedSearchText                       = useDebounce(searchText, 400)
+  const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [sortBy, setSortBy]   = useState('newest')
   const [viewMode, setViewMode] = useState('list') // 'list' | 'grid' | 'map'
@@ -72,30 +74,36 @@ function HospitalsPage() {
   }
 
   useEffect(() => {
-    const divId  = searchParams.get('division_id')
-    const distId = searchParams.get('district_id')
-    const upaId  = searchParams.get('upazila_id')
-    const uniId  = searchParams.get('union_id')
+    const divId   = searchParams.get('division_id')
+    const distId  = searchParams.get('district_id')
+    const upaId   = searchParams.get('upazila_id')
+    const uniId   = searchParams.get('union_id')
+    const qSearch = searchParams.get('search')
+    const type    = searchParams.get('type')
+    const specId  = searchParams.get('specialty_id')
     if (divId)  setSelectedDivision(divId)
     if (distId) setSelectedDistrict(distId)
     if (upaId)  setSelectedUpazila(upaId)
     if (uniId)  setSelectedUnion(uniId)
+    if (qSearch !== null && qSearch !== undefined) setSearchText(qSearch)
+    if (type) setHospitalType(type)
+    if (specId) setSelectedSpecialty(specId)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
 
   const appliedFilters = useMemo(() => {
     const p = {}
-    if (selectedDivision)  p.division_id  = selectedDivision
-    if (selectedDistrict)  p.district_id  = selectedDistrict
-    if (selectedUpazila)   p.upazila_id   = selectedUpazila
-    if (selectedUnion)     p.union_id     = selectedUnion
-    if (hospitalType)      p.type         = hospitalType
-    if (selectedSpecialty) p.specialty_id = selectedSpecialty
-    if (selectedBeds)      p.beds         = selectedBeds
-    if (emergencyOnly)     p.emergency    = true
-    if (openTodayOnly)     p.open_today   = true
-    if (searchText.trim()) p.search       = searchText.trim()
+    if (selectedDivision)          p.division_id  = selectedDivision
+    if (selectedDistrict)          p.district_id  = selectedDistrict
+    if (selectedUpazila)           p.upazila_id   = selectedUpazila
+    if (selectedUnion)             p.union_id     = selectedUnion
+    if (hospitalType)              p.type         = hospitalType
+    if (selectedSpecialty)         p.specialty_id = selectedSpecialty
+    if (selectedBeds)              p.beds         = selectedBeds
+    if (emergencyOnly)             p.emergency    = true
+    if (openTodayOnly)             p.open_today   = true
+    if (debouncedSearchText.trim()) p.search       = debouncedSearchText.trim()
     return p
-  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText])
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, debouncedSearchText])
 
   const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
 

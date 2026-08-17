@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { getContent } from '../../utils/contentService'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'

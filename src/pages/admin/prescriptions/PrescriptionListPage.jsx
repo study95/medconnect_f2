@@ -27,7 +27,8 @@ export default function PrescriptionListPage() {
       const res = await getPrescriptions()
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+      alert(getErrorMessage(err, 'Failed to fetch prescriptions'))
+    } finally {
       setLoading(false)
     }
   }
@@ -38,8 +39,30 @@ export default function PrescriptionListPage() {
     try {
       await deletePrescription(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
-      
+      setDeleteTarget(null)
     } catch (err) {
+      alert(getErrorMessage(err, 'Failed to delete prescription'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const filtered = items.filter(rx => {
+    const q = search.toLowerCase()
+    return (
+      (rx.patient_name || '').toLowerCase().includes(q) ||
+      (rx.doctor_name || '').toLowerCase().includes(q) ||
+      (rx.diagnosis || '').toLowerCase().includes(q)
+    )
+  })
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  return (
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <h2 className="admin-page-title">Prescriptions</h2>
           <p className="admin-page-subtitle">{items.length} prescription(s)</p>
         </div>
         {(isDoctorOnly || isAdmin) && (

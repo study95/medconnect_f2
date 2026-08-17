@@ -299,10 +299,15 @@ function SearchablePopup({ title, placeholder, items, getLabel, onClose, onSelec
   )
 }
 
-// ── Main Hero Section ───────────────────────────────────────────────────────
+// ── Main Hero Section ───────────────────────────────────────────────
 const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const navigate = useNavigate()
-  const cms = getContent()
+  const [cms, setCms] = useState(getContent())
+  useEffect(() => {
+    const update = () => setCms(getContent())
+    window.addEventListener('cms-updated', update)
+    return () => window.removeEventListener('cms-updated', update)
+  }, [])
   const hero = cms.hero || {}
 
   const line2Text = 'ডাক্তার বুকিং, আরো সহজ'
@@ -434,6 +439,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     { icon: <IconHeadset size={26} color="#15803D" />, title: '২৪/৭ সহায়তা', desc: 'যেকোনো প্রয়োজনে যেকোনো সময় পাশে আছি' }
   ]
 
+  const heroBgImage = hero.bg_image_url || '/images/city_hero_bg.jpg'
+
   return (
     <section
       className="hero-section-main"
@@ -446,6 +453,28 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         overflow: 'hidden'
       }}
     >
+      {/* Dynamic Background Layer */}
+      <div style={{
+        position: 'absolute',
+        inset: -14,
+        backgroundImage: `url('${heroBgImage}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 36%',
+        backgroundRepeat: 'no-repeat',
+        filter: 'blur(2.5px) brightness(0.88) contrast(1.05)',
+        transform: 'scale(1.05)',
+        zIndex: -2,
+        pointerEvents: 'none',
+        transition: 'background-image 0.5s ease'
+      }} />
+      {/* Dark overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.75) 45%, rgba(11, 25, 44, 0.82) 100%)',
+        zIndex: -1,
+        pointerEvents: 'none'
+      }} />
       {/* Location Popup */}
       {showLocationPopup && (
         <LocationPopup
@@ -626,28 +655,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           overflow: hidden;
         }
 
-        .hero-section-main::before {
-          content: '';
-          position: absolute;
-          inset: -14px;
-          background-image: url('/images/city_hero_bg.jpg');
-          background-size: cover;
-          background-position: center 36%;
-          background-repeat: no-repeat;
-          filter: blur(2.5px) brightness(0.88) contrast(1.05);
-          transform: scale(1.05);
-          z-index: -2;
-          pointer-events: none;
-        }
 
-        .hero-section-main::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.75) 45%, rgba(11, 25, 44, 0.82) 100%);
-          z-index: -1;
-          pointer-events: none;
-        }
+
 
         /* ── Search Bar ───────────────────────── */
         .hero-search-bar {

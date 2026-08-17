@@ -5,6 +5,7 @@ import Footer        from './components/layout/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import ScrollToTop   from './components/common/ScrollToTop'
 import BackToTop     from './components/common/BackToTop'
+import WelcomeModal  from './components/common/WelcomeModal'
 import FloatingBottomNav from './components/layout/FloatingBottomNav'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import AdminRoute    from './components/admin/AdminRoute'
@@ -346,6 +347,7 @@ function App() {
             element={
               <>
                 <AppNavbar />
+                <WelcomeModal />
                 <Routes>
                   <Route path="/"           element={<HomePage />} />
                   <Route path="/doctors"    element={<DoctorsPage />} />

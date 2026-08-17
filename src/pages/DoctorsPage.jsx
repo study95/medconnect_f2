@@ -9,6 +9,7 @@ import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useHospitals from '../hooks/useHospitals'
+import useDebounce from '../hooks/useDebounce'
 import {
   IconSearch, IconStethoscope, IconHeart, IconEye, IconBone,
   IconMoodSmile, IconBabyCarriage, IconDroplet, IconShieldCheck,
@@ -58,6 +59,7 @@ function DoctorsPage() {
   const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
+  const debouncedSearchText                       = useDebounce(searchText, 400)
   const [availableToday, setAvailableToday]       = useState(false)
   const [telemedicineOnly, setTelemedicineOnly]   = useState(false)
   const [specialtySearch, setSpecialtySearch]     = useState('')
@@ -82,31 +84,37 @@ function DoctorsPage() {
   }
 
   useEffect(() => {
-    const divId  = searchParams.get('division_id')
-    const distId = searchParams.get('district_id')
-    const upaId  = searchParams.get('upazila_id')
-    const uniId  = searchParams.get('union_id')
+    const divId   = searchParams.get('division_id')
+    const distId  = searchParams.get('district_id')
+    const upaId   = searchParams.get('upazila_id')
+    const uniId   = searchParams.get('union_id')
+    const qSearch = searchParams.get('search')
+    const specId  = searchParams.get('specialty_id')
+    const hospId  = searchParams.get('hospital_id')
     if (divId)  setSelectedDivision(divId)
     if (distId) setSelectedDistrict(distId)
     if (upaId)  setSelectedUpazila(upaId)
     if (uniId)  setSelectedUnion(uniId)
+    if (qSearch !== null && qSearch !== undefined) setSearchText(qSearch)
+    if (specId) setSelectedSpecialty(specId)
+    if (hospId) setSelectedHospital(hospId)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
 
   const appliedFilters = useMemo(() => {
     const p = {}
-    if (selectedDivision)  p.division_id  = selectedDivision
-    if (selectedDistrict)  p.district_id  = selectedDistrict
-    if (selectedUpazila)   p.upazila_id   = selectedUpazila
-    if (selectedUnion)     p.union_id     = selectedUnion
-    if (selectedSpecialty) p.specialty_id = selectedSpecialty
-    if (selectedHospital)  p.hospital_id  = selectedHospital
-    if (selectedFee)       p.fee_range    = selectedFee
-    if (selectedExp)       p.exp_range    = selectedExp
-    if (telemedicineOnly)  p.telemedicine = true
-    if (availableToday)    p.available_today = true
-    if (searchText.trim()) p.search       = searchText.trim()
+    if (selectedDivision)          p.division_id  = selectedDivision
+    if (selectedDistrict)          p.district_id  = selectedDistrict
+    if (selectedUpazila)           p.upazila_id   = selectedUpazila
+    if (selectedUnion)             p.union_id     = selectedUnion
+    if (selectedSpecialty)         p.specialty_id = selectedSpecialty
+    if (selectedHospital)          p.hospital_id  = selectedHospital
+    if (selectedFee)               p.fee_range    = selectedFee
+    if (selectedExp)               p.exp_range    = selectedExp
+    if (telemedicineOnly)          p.telemedicine = true
+    if (availableToday)            p.available_today = true
+    if (debouncedSearchText.trim()) p.search       = debouncedSearchText.trim()
     return p
-  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, searchText])
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, debouncedSearchText])
 
   const { doctors, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteDoctors(appliedFilters)
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+﻿import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Container, Row, Col, Nav } from 'react-bootstrap'
 import { createAppointment, getBookedSlots } from '../api/appointmentApi'
@@ -87,6 +87,8 @@ export default function BookAppointmentPage() {
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
+  const [bookingForDropdownOpen, setBookingForDropdownOpen] = useState(false)
+  const [reasonDropdownOpen, setReasonDropdownOpen] = useState(false)
 
   // Professional Warning Modal State
   const [warningModal, setWarningModal] = useState({
@@ -133,6 +135,24 @@ export default function BookAppointmentPage() {
     if (!chamberFilter) return chambers;
     return chambers.filter(c => c.hospital?.name === chamberFilter);
   }, [chambers, chamberFilter]);
+
+  const groupedChambers = useMemo(() => {
+    if (!filteredChambers || filteredChambers.length === 0) return []
+    const map = new Map()
+    filteredChambers.forEach((chamber) => {
+      const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.hospital?.name || chamber.address || 'default'
+      if (!map.has(hospId)) {
+        map.set(hospId, {
+          hospitalId: chamber.hospital_id || chamber.hospital?.id,
+          hospitalName: chamber.hospital?.name || 'চেম্বার',
+          address: chamber.hospital?.address || chamber.address || chamber.hospital?.location || 'ঢাকা, বাংলাদেশ',
+          schedules: []
+        })
+      }
+      map.get(hospId).schedules.push(chamber)
+    })
+    return Array.from(map.values())
+  }, [filteredChambers])
   
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -145,6 +165,25 @@ export default function BookAppointmentPage() {
   const [otpSending, setOtpSending] = useState(false)
   const [otpVerifying, setOtpVerifying] = useState(false)
   const otpInputRefs = useRef([])
+
+  // Translate raw API error messages to user-friendly Bengali
+  const translateApiError = (msg) => {
+    if (!msg) return null
+    const lower = msg.toLowerCase()
+    if (lower.includes('too many requests') || lower.includes('slow down') || lower.includes('rate limit') || lower.includes('throttl')) {
+      return 'আপনি অনেকবার চেষ্টা করেছেন। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।'
+    }
+    if (lower.includes('already registered') || lower.includes('already exist')) {
+      return 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত। অনুগ্রহ করে সরাসরি লগইন করুন।'
+    }
+    if (lower.includes('invalid otp') || lower.includes('wrong otp') || lower.includes('otp expired') || lower.includes('incorrect otp')) {
+      return 'OTP কোডটি ভুল বা মেয়াদ শেষ হয়ে গেছে। আবার চেষ্টা করুন।'
+    }
+    if (lower.includes('network') || lower.includes('connection') || lower.includes('timeout')) {
+      return 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
+    }
+    return null
+  }
 
   // Check if mobile number is already registered in patient table
   useEffect(() => {
@@ -584,7 +623,7 @@ export default function BookAppointmentPage() {
     } catch (err) {
       console.error(err)
       if (err.response?.data?.already_registered) {
-        setMobileWarning(err.response?.data?.message || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।')
+        setMobileWarning(translateApiError(err.response?.data?.message) || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।')
       } else {
         setMobileWarning(err.response?.data?.message || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
       }
@@ -613,7 +652,8 @@ export default function BookAppointmentPage() {
       }
     } catch (err) {
       console.error(err)
-      const errorMsg = err.response?.data?.message || 'ভুল OTP কোড। অনুগ্রহ করে সঠিক কোড দিন।'
+      const rawMsg = err.response?.data?.message || ''
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'ভুল OTP কোড। অনুগ্রহ করে সঠিক কোড দিন।'
       setOtpError(errorMsg)
     } finally {
       setOtpVerifying(false)
@@ -1579,18 +1619,16 @@ export default function BookAppointmentPage() {
                   )}
                   
                   <div className="chamber-grid">
-                    {filteredChambers.map(c => {
-                      const hospitalAddress = c.hospital?.address || c.address || c.hospital?.location || 'ঢাকা, বাংলাদেশ'
-                      const isSelected = selectedChamberId === c.id
-                      const fee = c.fee || doctor?.fee || doctor?.consultation_fee
+                    {groupedChambers.map(group => {
+                      const isGroupSelected = group.schedules.some(s => s.id === selectedChamberId)
                       return (
                         <div 
-                          key={c.id} 
-                          onClick={() => handleChamberSelect(c.id)}
-                          className={`chamber-card ${isSelected ? 'selected' : 'unselected'}`}
+                          key={group.hospitalId || group.hospitalName} 
+                          className={`chamber-card ${isGroupSelected ? 'selected' : 'unselected'}`}
+                          style={{ cursor: 'default' }}
                         >
                           <div>
-                            {/* Card Top: Icon, Hospital Name & Fee */}
+                            {/* Card Top: Icon, Hospital Name & Badge */}
                             <div className="chamber-card-top">
                               <div className="chamber-title-wrap">
                                 <div className="chamber-icon-box">
@@ -1598,46 +1636,120 @@ export default function BookAppointmentPage() {
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <h6 className="chamber-hospital-name">
-                                    {c.hospital?.name || 'চেম্বার'}
+                                    {group.hospitalName}
                                   </h6>
                                 </div>
                               </div>
-
-                              {/* Fee Badge & Selection Indicator */}
-                              <div className="chamber-top-right">
-                                {fee && (
-                                  <span className="chamber-fee-badge">
-                                    ৳{toBnNum(fee)} ফি
-                                  </span>
-                                )}
-                                {isSelected && (
-                                  <span className="chamber-check-badge">
-                                    <IconCheck size={13} stroke={3} />
-                                  </span>
-                                )}
-                              </div>
+                              {group.schedules.length > 1 && (
+                                <span style={{
+                                  background: '#F1F5F9',
+                                  color: '#334155',
+                                  padding: '2px 8px',
+                                  borderRadius: 12,
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  border: '1px solid #E2E8F0',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {toBnNum(group.schedules.length)}টি শিডিউল
+                                </span>
+                              )}
                             </div>
 
                             {/* Address Row */}
-                            <div className="chamber-address-row">
+                            <div className="chamber-address-row" style={{ marginBottom: 10 }}>
                               <IconMapPin size={13} color="#00B875" style={{ flexShrink: 0 }} />
-                              <span className="chamber-address-text">{hospitalAddress}</span>
+                              <span className="chamber-address-text">{group.address}</span>
                             </div>
                           </div>
 
-                          {/* Schedule Bar */}
-                          <div className="chamber-schedule-bar">
-                            <span className="chamber-day-badge">
-                              <IconCalendarEvent size={14} /> {dayToBn[c.day] || c.day}
-                            </span>
-                            <span className="chamber-time-badge">
-                              <IconClock size={13} color="#00B875" /> {formatTimeBn(c.start_time)} - {formatTimeBn(c.end_time)}
-                            </span>
+                          {/* Schedules list in this hospital */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                            {group.schedules.map(sch => {
+                              const isSchSelected = selectedChamberId === sch.id
+                              const fee = sch.fee || doctor?.fee || doctor?.consultation_fee
+                              return (
+                                <div
+                                  key={sch.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleChamberSelect(sch.id)
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8,
+                                    padding: '10px 12px',
+                                    borderRadius: 10,
+                                    border: isSchSelected ? '2px solid #00B875' : '1px solid #E2E8F0',
+                                    background: isSchSelected ? '#E8F8F2' : '#F8FAFC',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  {/* Row 1: Day + Time */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{
+                                      fontWeight: 800,
+                                      fontSize: 13,
+                                      color: isSchSelected ? '#007A65' : '#1E293B',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      flexShrink: 0
+                                    }}>
+                                      <IconCalendarEvent size={14} color="#00B875" />
+                                      {dayToBn[sch.day] || sch.day}
+                                    </span>
+                                    <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <IconClock size={13} color="#00B875" />
+                                      {formatTimeBn(sch.start_time)} - {formatTimeBn(sch.end_time)}
+                                    </span>
+                                  </div>
+
+                                  {/* Row 2: Fee + Select Button */}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    {fee ? (
+                                      <span style={{
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        color: isSchSelected ? '#007A65' : '#00B875',
+                                        background: isSchSelected ? '#FFFFFF' : '#E8F8F2',
+                                        padding: '3px 10px',
+                                        borderRadius: 6,
+                                        border: '1px solid #A7F3D0'
+                                      }}>
+                                        ৳{toBnNum(fee)}
+                                      </span>
+                                    ) : <span />}
+
+                                    {isSchSelected ? (
+                                      <span className="chamber-check-badge" style={{ width: 24, height: 24 }}>
+                                        <IconCheck size={14} stroke={3} />
+                                      </span>
+                                    ) : (
+                                      <span style={{
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: '#00B875',
+                                        background: 'white',
+                                        border: '1px solid #00B875',
+                                        borderRadius: 6,
+                                        padding: '3px 10px',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        নির্বাচন করুন
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )
                     })}
-                    {filteredChambers.length === 0 && <p style={{color: '#6B7280'}}>ডাক্তারের কোনো চেম্বার নেই</p>}
+                    {groupedChambers.length === 0 && <p style={{color: '#6B7280'}}>ডাক্তারের কোনো চেম্বার নেই</p>}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
@@ -1890,36 +2002,104 @@ export default function BookAppointmentPage() {
                     <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 8, display: 'block' }}>
                       কার জন্য অ্যাপয়েন্টমেন্ট নিতে চাচ্ছেন? <span style={{ color: '#EF4444' }}>*</span>
                     </label>
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <select 
-                        name="booking_for" 
-                        value={form.booking_for || 'myself'} 
-                        onChange={handleChange} 
-                        style={{
-                          ...inputStyle,
-                          paddingRight: 44,
-                          appearance: 'none',
-                          WebkitAppearance: 'none',
-                          MozAppearance: 'none',
-                          cursor: 'pointer',
-                          height: 48,
-                          fontWeight: 700,
-                          color: '#1E293B',
-                          background: '#F8FAFC',
-                          border: '1.5px solid #E2E8F0',
-                          borderRadius: 12
-                        }}
-                      >
-                        <option value="myself">নিজের জন্য</option>
-                        <option value="family">পরিবারের জন্য</option>
-                        <option value="relative">আত্মীয়-স্বজনের জন্য</option>
-                        <option value="friend">বন্ধু-বান্ধবের জন্য</option>
-                        <option value="other">অন্যান্য পরিচিতের জন্য</option>
-                      </select>
-                      <div style={{ position: 'absolute', right: 16, pointerEvents: 'none', color: '#00B875', display: 'flex', alignItems: 'center' }}>
-                        <IconChevronDown size={18} stroke={2.5} />
-                      </div>
-                    </div>
+                    {/* Custom Dropdown */}
+                    {(() => {
+                      const bookingOptions = [
+                        { value: 'myself', label: 'নিজের জন্য' },
+                        { value: 'family', label: 'পরিবারের জন্য' },
+                        { value: 'relative', label: 'আত্মীয়-স্বজনের জন্য' },
+                        { value: 'friend', label: 'বন্ধু-বান্ধবের জন্য' },
+                        { value: 'other', label: 'অন্যান্য পরিচিতের জন্য' },
+                      ]
+                      const selectedOption = bookingOptions.find(o => o.value === (form.booking_for || 'myself'))
+                      return (
+                        <div style={{ position: 'relative', userSelect: 'none' }}>
+                          {/* Trigger */}
+                          <div
+                            onClick={() => setBookingForDropdownOpen(prev => !prev)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '13px 16px',
+                              borderRadius: 12,
+                              border: bookingForDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              cursor: 'pointer',
+                              boxShadow: bookingForDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.1)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#1E293B' }}>{selectedOption?.label}</span>
+                            <span style={{
+                              color: '#00B875',
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'transform 0.2s ease',
+                              transform: bookingForDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                            }}>
+                              <IconChevronDown size={18} stroke={2.5} />
+                            </span>
+                          </div>
+
+                          {/* Options Panel */}
+                          {bookingForDropdownOpen && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 'calc(100% + 6px)',
+                              left: 0,
+                              right: 0,
+                              background: '#FFFFFF',
+                              borderRadius: 14,
+                              border: '1.5px solid #E2E8F0',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+                              zIndex: 200,
+                              overflow: 'hidden'
+                            }}>
+                              {bookingOptions.map((opt, i) => {
+                                const isSelected = (form.booking_for || 'myself') === opt.value
+                                return (
+                                  <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                      setForm(prev => ({ ...prev, booking_for: opt.value }))
+                                      setBookingForDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '13px 16px',
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? 800 : 600,
+                                      color: isSelected ? '#007A65' : '#374151',
+                                      background: isSelected ? '#E8F8F2' : '#FFFFFF',
+                                      cursor: 'pointer',
+                                      borderBottom: i < bookingOptions.length - 1 ? '1px solid #F1F5F9' : 'none',
+                                      transition: 'background 0.15s ease'
+                                    }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F8FAFC' }}
+                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#FFFFFF' }}
+                                  >
+                                    <span>{opt.label}</span>
+                                    {isSelected && (
+                                      <span style={{
+                                        width: 20, height: 20, borderRadius: '50%',
+                                        background: '#00B875', color: 'white',
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0
+                                      }}>
+                                        <IconCheck size={12} stroke={3} />
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* অন্যান্যদের জন্য রোগীর তথ্য */}
@@ -1994,35 +2174,103 @@ export default function BookAppointmentPage() {
                   
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 8, display: 'block' }}>পরামর্শের কারণ</label>
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <select 
-                        name="reason_type" 
-                        value={form.reason_type} 
-                        onChange={handleChange} 
-                        style={{
-                          ...inputStyle,
-                          paddingRight: 44,
-                          appearance: 'none',
-                          WebkitAppearance: 'none',
-                          MozAppearance: 'none',
-                          cursor: 'pointer',
-                          height: 48,
-                          fontWeight: 600,
-                          color: '#1E293B',
-                          background: '#F8FAFC',
-                          border: '1.5px solid #E2E8F0',
-                          borderRadius: 12
-                        }}
-                      >
-                        <option value="">পরামর্শের কারণ নির্বাচন করুন</option>
-                        <option value="new_consult">নতুন পরামর্শ</option>
-                        <option value="follow_up">ফলো-আপ</option>
-                        <option value="report_show">রিপোর্ট দেখানো</option>
-                      </select>
-                      <div style={{ position: 'absolute', right: 16, pointerEvents: 'none', color: '#00B875', display: 'flex', alignItems: 'center' }}>
-                        <IconChevronDown size={18} stroke={2.5} />
-                      </div>
-                    </div>
+                    {(() => {
+                      const reasonOptions = [
+                        { value: 'new_consult', label: 'নতুন পরামর্শ' },
+                        { value: 'follow_up', label: 'ফলো-আপ' },
+                        { value: 'report_show', label: 'রিপোর্ট দেখানো' },
+                      ]
+                      const selectedReason = reasonOptions.find(o => o.value === form.reason_type)
+                      return (
+                        <div style={{ position: 'relative', userSelect: 'none' }}>
+                          {/* Trigger */}
+                          <div
+                            onClick={() => setReasonDropdownOpen(prev => !prev)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '13px 16px',
+                              borderRadius: 12,
+                              border: reasonDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              cursor: 'pointer',
+                              boxShadow: reasonDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.1)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <span style={{ fontSize: 14, fontWeight: selectedReason ? 700 : 500, color: selectedReason ? '#1E293B' : '#94A3B8' }}>
+                              {selectedReason ? selectedReason.label : 'পরামর্শের কারণ নির্বাচন করুন'}
+                            </span>
+                            <span style={{
+                              color: '#00B875',
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'transform 0.2s ease',
+                              transform: reasonDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                            }}>
+                              <IconChevronDown size={18} stroke={2.5} />
+                            </span>
+                          </div>
+
+                          {/* Options Panel */}
+                          {reasonDropdownOpen && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 'calc(100% + 6px)',
+                              left: 0,
+                              right: 0,
+                              background: '#FFFFFF',
+                              borderRadius: 14,
+                              border: '1.5px solid #E2E8F0',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+                              zIndex: 200,
+                              overflow: 'hidden'
+                            }}>
+                              {reasonOptions.map((opt, i) => {
+                                const isSelected = form.reason_type === opt.value
+                                return (
+                                  <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                      setForm(prev => ({ ...prev, reason_type: opt.value }))
+                                      setReasonDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '13px 16px',
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? 800 : 600,
+                                      color: isSelected ? '#007A65' : '#374151',
+                                      background: isSelected ? '#E8F8F2' : '#FFFFFF',
+                                      cursor: 'pointer',
+                                      borderBottom: i < reasonOptions.length - 1 ? '1px solid #F1F5F9' : 'none',
+                                      transition: 'background 0.15s ease'
+                                    }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F8FAFC' }}
+                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#FFFFFF' }}
+                                  >
+                                    <span>{opt.label}</span>
+                                    {isSelected && (
+                                      <span style={{
+                                        width: 20, height: 20, borderRadius: '50%',
+                                        background: '#00B875', color: 'white',
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0
+                                      }}>
+                                        <IconCheck size={12} stroke={3} />
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                   
                   <div style={{ marginBottom: 24 }}>

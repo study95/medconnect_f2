@@ -27,9 +27,23 @@ const INITIAL_CONTENT = {
     title_line1: 'স্বাগত ডক্টর বুকলেটে- বিশ্বস্ত ডাক্তার খুঁজুন, সহজে অ্যাপয়েন্টমেন্ট নিন',
     title_line2: '',
     subtitle: 'বাংলাদেশের অভিজ্ঞ ও যাচাইকৃত বিশেষজ্ঞ ডাক্তার, হাসপাতাল এবং চেম্বার খুঁজে মাত্র কয়েক ক্লিকেই অ্যাপয়েন্টমেন্ট বুক করুন—দ্রুত, নিরাপদ এবং সম্পূর্ণ ঝামেলামুক্তভাবে।',
+    bg_image_url: '',
     btn_primary: 'ডাক্তার খুঁজুন',
     btn_secondary: 'হাসপাতাল দেখুন',
-    image_url: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=700&q=80',
+  },
+
+  // ── IMAGE BANNER SLIDER (Home page) ─────────
+  banners: {
+    items: [
+      { id: 1, image: '/images/banner_telemedicine_1786196938449.jpg', alt: 'টেলিমেডিসিন ও ডাক্তার বুকিং', link: '/doctors' },
+      { id: 2, image: '/images/banner_emergency_1786196953227.jpg', alt: 'জরুরি অ্যাম্বুলেন্স ও হাসপাতাল', link: '/hospitals' },
+      { id: 3, image: '/images/banner_checkup_1786196968047.jpg', alt: 'ফুল বডি হেলথ চেকআপ', link: '/services' },
+      { id: 4, image: '/images/banner_mother_child_1786196984755.jpg', alt: 'মা ও শিশু সেবা', link: '/services' },
+      { id: 5, image: '/images/banner_ai_health_1786197001799.jpg', alt: 'এআই স্বাস্থ্য সহকারী', link: '/contact' },
+      { id: 6, image: '/images/banner_health_card_1786197020544.jpg', alt: 'ডিজিটাল হেলথ কার্ড', link: '/services' },
+      { id: 7, image: '/images/promotion/doctor.png', alt: 'বিশেষজ্ঞ পরামর্শ', link: '/doctors' },
+      { id: 8, image: '/images/promotion/hospital.png', alt: 'হাসপাতাল ডিরেক্টরি', link: '/hospitals' },
+    ]
   },
 
   // ── STATS (Home page) ───────────────────────
@@ -215,9 +229,19 @@ export const fetchContentFromBackend = async () => {
   try {
     const res = await axiosInstance.get('/cms-content')
     if (res.data && typeof res.data === 'object' && !res.data.status) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data))
-      window.dispatchEvent(new Event('cms-updated'))
-      return deepMerge(INITIAL_CONTENT, res.data)
+      // ── FIX: local data takes PRIORITY over backend ──────────────────
+      // Backend data only fills keys that are missing locally.
+      // It must never overwrite image URLs / banners the user saved locally.
+      const localRaw = (() => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
+      })()
+      // deepMerge(backend, local) → local wins on every key
+      const merged = deepMerge(res.data, localRaw)
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+        window.dispatchEvent(new Event('cms-updated'))
+      } catch (_quota) { /* localStorage full — keep existing */ }
+      return deepMerge(INITIAL_CONTENT, merged)
     }
   } catch (e) {
     // Silently fall back to cached / initial content
@@ -228,17 +252,47 @@ export const fetchContentFromBackend = async () => {
 // Auto-trigger background fetch on module load
 fetchContentFromBackend()
 
+// ── Strip base64 data-URLs from content before sending to backend ────────────
+// Base64 images can be megabytes — backends & PHP limits reject them.
+// We keep them in localStorage but send clean URLs to the API.
+function stripBase64ForBackend(obj) {
+  if (Array.isArray(obj)) return obj.map(stripBase64ForBackend)
+  if (obj && typeof obj === 'object') {
+    const out = {}
+    for (const k of Object.keys(obj)) {
+      const v = obj[k]
+      if (typeof v === 'string' && v.startsWith('data:')) {
+        out[k] = '' // replace base64 blob with empty string for backend
+      } else {
+        out[k] = stripBase64ForBackend(v)
+      }
+    }
+    return out
+  }
+  return obj
+}
+
 export const saveContent = async (newContent) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(newContent))
+  // ── 1. Save FULL content (including base64 images) to localStorage ──
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newContent))
+  } catch (e) {
+    // QuotaExceededError — try saving without base64 blobs as fallback
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stripBase64ForBackend(newContent)))
+    } catch (_) { /* storage completely full, skip */ }
+  }
   window.dispatchEvent(new Event('cms-updated'))
 
+  // ── 2. Send stripped content (no base64) to backend ──────────────────
+  const backendPayload = stripBase64ForBackend(newContent)
   try {
-    await axiosInstance.post('/admin/cms-content', newContent)
+    await axiosInstance.post('/admin/cms-content', backendPayload)
   } catch (e) {
     try {
-      await axiosInstance.post('/cms-content', newContent)
+      await axiosInstance.post('/cms-content', backendPayload)
     } catch (err) {
-      // Local storage saved
+      // Backend unavailable — local storage already saved above
     }
   }
 }
@@ -268,3 +322,4 @@ function deepMerge(base, override) {
   }
   return result
 }
+

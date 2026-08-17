@@ -3,20 +3,16 @@ import { Row, Col, Form } from 'react-bootstrap'
 import { getContent, saveContent } from '../../../utils/contentService'
 import {
   IconStar, IconTrash, IconPlus, IconUpload, IconDeviceFloppy,
-  IconCheck, IconMessage, IconBuildingHospital,
-  IconMail, IconHelp, IconPhone, IconMapPin, IconInfoCircle, IconFileText, IconLock
+  IconCheck, IconMessage, IconBuildingHospital, IconHelp,
+  IconHome, IconPhoto, IconLink, IconExternalLink
 } from '@tabler/icons-react'
 
 const TABS = [
+  { key: 'hero', label: 'হোম পেজ হিরো সেকশন', icon: <IconHome size={18} /> },
+  { key: 'banners', label: 'স্লাইডার ব্যানার', icon: <IconPhoto size={18} /> },
   { key: 'testimonials', label: 'রোগীর রিভিউ (Testimonials)', icon: <IconMessage size={18} /> },
   { key: 'partners', label: 'সহযোগী হাসপাতাল (Partners)', icon: <IconBuildingHospital size={18} /> },
   { key: 'faq', label: 'সচরাচর জিজ্ঞাসা (FAQ)', icon: <IconHelp size={18} /> },
-  { key: 'helplines', label: 'জরুরি হেল্পলাইন নম্বরসমূহ', icon: <IconPhone size={18} /> },
-  { key: 'contact', label: 'যোগাযোগ পেজ (Contact)', icon: <IconMapPin size={18} /> },
-  { key: 'about_us', label: 'আমাদের সম্পর্কে (About Us)', icon: <IconInfoCircle size={18} /> },
-  { key: 'terms', label: 'ব্যবহারের শর্তাবলী (Terms)', icon: <IconFileText size={18} /> },
-  { key: 'privacy', label: 'গোপনীয়তা নীতি (Privacy)', icon: <IconLock size={18} /> },
-  { key: 'newsletter', label: 'নিউজলেটার (Newsletter)', icon: <IconMail size={18} /> },
 ]
 
 function FieldInput({ label, value, onChange, multiline = false, rows = 3, placeholder = '' }) {
@@ -564,6 +560,242 @@ function SimpleTextTab({ data, onChange, fields }) {
   )
 }
 
+/* ── 6. HERO SECTION TAB ── */
+function HeroTab({ data, onChange }) {
+  const inputStyle = {
+    background: '#FFFFFF', color: '#0F172A', border: '1.5px solid #E2E8F0',
+    borderRadius: 8, padding: '10px 14px', fontSize: 14, width: '100%', outline: 'none'
+  }
+
+  const handleBgUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => onChange('bg_image_url', reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 18px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <IconHome size={18} color="#2563EB" style={{ flexShrink: 0, marginTop: 2 }} />
+        <div style={{ fontSize: 13, color: '#1E40AF', lineHeight: 1.6 }}>
+          <strong>হোম পেজ হিরো সেকশন:</strong> এখানে যা পরিবর্তন করবেন তা হোমপেজের মূল ব্যানার অংশে সরাসরি প্রতিফলিত হবে। সাবটাইটেল পরিবর্তন করা যাবে। ব্যাকগ্রাউন্ড ছবি URL বা আপলোডের মাধ্যমে পরিবর্তন করুন।
+        </div>
+      </div>
+
+      <Row className="g-3">
+        <Col md={12}>
+          <FieldInput
+            label="সাব-টাইটেল (বিবরণ)"
+            value={data.subtitle || ''}
+            onChange={v => onChange('subtitle', v)}
+            multiline rows={3}
+            placeholder="বাংলাদেশের অভিজ্ঞ ও যাচাইকৃত বিশেষজ্ঞ ডাক্তার খুঁজুন..."
+          />
+        </Col>
+        <Col md={6}>
+          <FieldInput label="প্রাথমিক বাটন টেক্সট" value={data.btn_primary || ''} onChange={v => onChange('btn_primary', v)} placeholder="ডাক্তার খুঁজুন" />
+        </Col>
+        <Col md={6}>
+          <FieldInput label="দ্বিতীয় বাটন টেক্সট" value={data.btn_secondary || ''} onChange={v => onChange('btn_secondary', v)} placeholder="হাসপাতাল দেখুন" />
+        </Col>
+      </Row>
+
+      {/* Background Image Control */}
+      <div style={{ marginTop: 24, padding: '20px', background: '#F8FAFC', borderRadius: 12, border: '1.5px solid #E2E8F0' }}>
+        <div style={{ fontWeight: 800, color: '#0F172A', marginBottom: 14, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconPhoto size={18} color="#00B875" /> ব্যাকগ্রাউন্ড ছবি নিয়ন্ত্রণ
+        </div>
+        <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: 12 }}>ডিফল্ট ব্যাকগ্রাউন্ড: <code>/images/city_hero_bg.jpg</code> — URL বা ফাইল আপলোড করে পরিবর্তন করুন।</div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input
+              type="text"
+              value={data.bg_image_url || ''}
+              onChange={e => onChange('bg_image_url', e.target.value)}
+              placeholder="https://example.com/hero-bg.jpg অথবা /images/city_hero_bg.jpg"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ position: 'relative' }}>
+            <input type="file" accept="image/*" onChange={handleBgUpload}
+              style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 5 }} />
+            <button type="button" style={{ background: '#F0FDF4', border: '1.5px dashed #00B875', color: '#00B875', padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              <IconUpload size={16} /> ফাইল আপলোড
+            </button>
+          </div>
+          {data.bg_image_url && (
+            <button type="button" onClick={() => onChange('bg_image_url', '')}
+              style={{ background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: 8, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              ডিফল্টে ফিরুন
+            </button>
+          )}
+        </div>
+
+        {data.bg_image_url && (
+          <div style={{ marginTop: 12, borderRadius: 10, overflow: 'hidden', border: '1.5px solid #E2E8F0', height: 140, position: 'relative' }}>
+            <img src={data.bg_image_url} alt="Hero BG Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={e => e.target.style.display = 'none'} />
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>ব্যাকগ্রাউন্ড প্রিভিউ</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── 7. BANNER SLIDER TAB ── */
+function BannerSliderTab({ data, onChange }) {
+  const items = data.items || []
+
+  const updateItem = (i, key, val) => {
+    const updated = [...items]
+    updated[i] = { ...updated[i], [key]: val }
+    onChange('items', updated)
+  }
+
+  const addItem = () => {
+    onChange('items', [...items, { id: Date.now(), image: '', alt: 'নতুন ব্যানার', link: '/' }])
+  }
+
+  const removeItem = (i) => {
+    onChange('items', items.filter((_, idx) => idx !== i))
+  }
+
+  const moveItem = (i, dir) => {
+    const arr = [...items]
+    const j = i + dir
+    if (j < 0 || j >= arr.length) return
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    onChange('items', arr)
+  }
+
+  const handleImageUpload = (i, e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => updateItem(i, 'image', reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const LINK_OPTIONS = [
+    { value: '/', label: 'হোমপেজ' },
+    { value: '/doctors', label: 'ডাক্তার পাতা' },
+    { value: '/hospitals', label: 'হাসপাতাল পাতা' },
+    { value: '/services', label: 'সেবা পাতা' },
+    { value: '/contact', label: 'যোগাযোগ পাতা' },
+  ]
+
+  const inputStyle = { background: '#FFFFFF', color: '#0F172A', border: '1.5px solid #E2E8F0', borderRadius: 8, padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none' }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <h6 style={{ fontWeight: 800, margin: 0, color: '#0F172A', fontSize: 16 }}>স্লাইডার ব্যানার ({items.length}টি)</h6>
+          <span style={{ fontSize: 12.5, color: '#64748B' }}>হোমপেজে ইমেজ স্লাইডার আকারে প্রদর্শিত হবে — ↑↓ দিয়ে সর্ট করতে পারবেন</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {items.map((item, i) => (
+          <div key={item.id || i} style={{ background: '#FFFFFF', borderRadius: 12, padding: '18px 20px', border: '1.5px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#F0FDF4', color: '#00B875', borderRadius: 6, padding: '4px 10px', fontWeight: 800, fontSize: 12 }}>ব্যানার #{i + 1}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0}
+                    style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, padding: '4px 8px', cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1, fontSize: 12 }}>↑</button>
+                  <button type="button" onClick={() => moveItem(i, 1)} disabled={i === items.length - 1}
+                    style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, padding: '4px 8px', cursor: i === items.length - 1 ? 'not-allowed' : 'pointer', opacity: i === items.length - 1 ? 0.4 : 1, fontSize: 12 }}>↓</button>
+                </div>
+              </div>
+              <button type="button" onClick={() => removeItem(i)}
+                style={{ background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: 6, padding: '6px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <IconTrash size={14} /> মুছুন
+              </button>
+            </div>
+
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>ব্যানার ছবি (URL অথবা ফাইল আপলোড)</Form.Label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <input type="text" value={item.image || ''} onChange={e => updateItem(i, 'image', e.target.value)}
+                      placeholder="https://... অথবা /images/banner.jpg"
+                      style={inputStyle} />
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input type="file" accept="image/*" onChange={e => handleImageUpload(i, e)}
+                      style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 5 }} />
+                    <button type="button" style={{ background: '#F0FDF4', border: '1.5px dashed #00B875', color: '#00B875', padding: '9px 14px', borderRadius: 8, fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                      <IconUpload size={16} /> আপলোড
+                    </button>
+                  </div>
+                </div>
+              </Col>
+
+              <Col md={6}>
+                <Form.Label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>বিদ্যমান লিঙ্ক (ক্লিক করলে যাবে)</Form.Label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select value={item.link || '/'} onChange={e => updateItem(i, 'link', e.target.value)}
+                    style={{ ...inputStyle, flex: 1 }}>
+                    {LINK_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    {!LINK_OPTIONS.find(o => o.value === item.link) && (
+                      <option value={item.link}>{item.link} (কাস্টম)</option>
+                    )}
+                  </select>
+                  <input type="text" value={item.link || ''} onChange={e => updateItem(i, 'link', e.target.value)}
+                    placeholder="/custom-path"
+                    style={{ ...inputStyle, width: 130 }} />
+                </div>
+              </Col>
+
+              <Col md={6}>
+                <Form.Label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>বিদ্যমান Alt টেক্সট (SEO)</Form.Label>
+                <input type="text" value={item.alt || ''} onChange={e => updateItem(i, 'alt', e.target.value)}
+                  placeholder="ছবির বিবরণ লিখুন"
+                  style={inputStyle} />
+              </Col>
+
+              {item.image && (
+                <Col md={12}>
+                  <div style={{ height: 100, borderRadius: 8, overflow: 'hidden', border: '1px solid #E2E8F0', background: '#1E293B' }}>
+                    <img src={item.image} alt={item.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={e => { e.target.style.display = 'none' }} />
+                  </div>
+                </Col>
+              )}
+            </Row>
+          </div>
+        ))}
+
+        {items.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8', border: '2px dashed #E2E8F0', borderRadius: 12 }}>
+            <IconPhoto size={40} style={{ marginBottom: 12, opacity: 0.4 }} />
+            <div style={{ fontWeight: 700 }}>নিচের বাটন থেকে প্রথম ব্যানার যোগ করুন</div>
+          </div>
+        )}
+
+        {/* Add button at bottom — new banners appear after previous ones */}
+        <button type="button" onClick={addItem}
+          style={{ background: '#F0FDF4', color: '#00B875', border: '2px dashed #00B875', borderRadius: 10, padding: '14px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#00B875'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#F0FDF4'; e.currentTarget.style.color = '#00B875' }}>
+          <IconPlus size={20} /> নতুন ব্যানার যোগ করুন (শেষে যোগ হবে)
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
 /* ── MAIN CONTENT MANAGER PAGE COMPONENT ── */
 export default function ContentManagerPage() {
   const [content, setContent] = useState(getContent())
@@ -591,50 +823,11 @@ export default function ContentManagerPage() {
     const upd = (k, v) => updateSection(activeTab, k, v)
 
     switch (activeTab) {
+      case 'hero': return <HeroTab data={sec} onChange={upd} />
+      case 'banners': return <BannerSliderTab data={sec} onChange={upd} />
       case 'testimonials': return <TestimonialsTab data={sec} onChange={upd} />
       case 'partners': return <PartnersTab data={sec} onChange={upd} />
       case 'faq': return <FaqTab data={sec} onChange={upd} />
-      case 'helplines': return <HelplinesTab data={sec} onChange={upd} />
-      case 'contact': return (
-        <SimpleTextTab data={sec} onChange={upd} fields={[
-          { key: 'hero_title', label: 'হিরো শিরোনাম', full: true },
-          { key: 'hero_subtitle', label: 'হিরো সাব-টাইটেল', full: true, multiline: true },
-          { key: 'emergency_title', label: 'জরুরি সহায়তা কার্ড শিরোনাম' },
-          { key: 'emergency_subtitle', label: 'জরুরি সহায়তা সাব-টাইটেল' },
-          { key: 'map_embed', label: 'Google Map Embed URL (iframe src)', full: true },
-        ]} />
-      )
-      case 'about_us': return (
-        <SimpleTextTab data={sec} onChange={upd} fields={[
-          { key: 'title', label: 'প্রধান শিরোনাম', full: true },
-          { key: 'subtitle', label: 'সাব-টাইটেল', full: true, multiline: true, rows: 2 },
-          { key: 'description', label: 'বিস্তারিত বিবরণ', full: true, multiline: true, rows: 5 },
-          { key: 'mission', label: 'আমাদের মিশন (লক্ষ্য)', full: true, multiline: true, rows: 2 },
-          { key: 'vision', label: 'আমাদের ভিশন (দৃষ্টিভঙ্গি)', full: true, multiline: true, rows: 2 },
-        ]} />
-      )
-      case 'terms': return (
-        <SimpleTextTab data={sec} onChange={upd} fields={[
-          { key: 'title', label: 'শর্তাবলী শিরোনাম', full: true },
-          { key: 'content', label: 'মূল শর্তাবলী কন্টেন্ট', full: true, multiline: true, rows: 8 },
-          { key: 'cancellation', label: 'বাতিল ও রিফান্ড নীতি', full: true, multiline: true, rows: 3 },
-        ]} />
-      )
-      case 'privacy': return (
-        <SimpleTextTab data={sec} onChange={upd} fields={[
-          { key: 'title', label: 'গোপনীয়তা নীতি শিরোনাম', full: true },
-          { key: 'content', label: 'মূল কন্টেন্ট', full: true, multiline: true, rows: 8 },
-          { key: 'cookies', label: 'কুকি ব্যবহারের নীতি', full: true, multiline: true, rows: 3 },
-        ]} />
-      )
-      case 'newsletter': return (
-        <SimpleTextTab data={sec} onChange={upd} fields={[
-          { key: 'title', label: 'শিরোনাম', full: true, multiline: true, rows: 2 },
-          { key: 'subtitle', label: 'সাব-টাইটেল', full: true },
-          { key: 'placeholder', label: 'ইমেইল প্লেসহোল্ডার টেক্সট' },
-          { key: 'btn_label', label: 'সাবস্ক্রাইব বাটন টেক্সট' },
-        ]} />
-      )
       default: return <div style={{ color: '#64748B', padding: 40, textAlign: 'center' }}>কন্টেন্ট লোড হচ্ছে...</div>
     }
   }
