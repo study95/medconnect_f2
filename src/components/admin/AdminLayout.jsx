@@ -208,6 +208,12 @@ export default function AdminLayout() {
           <ExpiryWarningBanner />
           <Outlet />
         </main>
+
+        {/* Fixed White Copyright Footer (Always in bottom just like header) */}
+        <footer className="admin-footer">
+          <span>© {new Date().getFullYear()} Doctor Booklet. All Rights Reserved.</span>
+          <span>Made with ❤️ by <strong style={{ color: '#00B875' }}>Doctor Booklet</strong></span>
+        </footer>
       </div>
 
       {/* Notification Popup — shows on login for unread popup notifications */}
