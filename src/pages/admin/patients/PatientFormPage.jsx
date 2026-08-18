@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useAuth } from '../../../context/AuthContext'
 import {
   getAdminPatient, createAdminPatient, updateAdminPatient,
   getDivisions, getDistricts, getUpazilas, getUnions
@@ -100,7 +101,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function PatientFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const isEdit = !!id
+  const canEditPhone = isAdmin || !isEdit
 
   const [form, setForm] = useState({
     name: '', email: '', phone: '', occupation: '', date_of_birth: '',
@@ -368,8 +371,20 @@ if (err.response?.data?.errors) setErrors(err.response.data.errors)
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div className="admin-form-group">
-              <label className="admin-form-label">Phone Number *</label>
-              <input className="admin-form-input" name="phone" value={form.phone} onChange={handleChange} placeholder="01XXXXXXXXX" style={{ height: 48 }} />
+              <label className="admin-form-label">
+                Phone Number * {(!canEditPhone) && <span style={{ fontSize: 11, fontWeight: 600, color: '#00B875', marginLeft: 4 }}>✓ (OTP Verified — Non-editable)</span>}
+              </label>
+              <input 
+                className="admin-form-input" 
+                name="phone" 
+                value={form.phone} 
+                onChange={handleChange} 
+                placeholder="01XXXXXXXXX" 
+                disabled={!canEditPhone}
+                readOnly={!canEditPhone}
+                title={!canEditPhone ? "Verified phone number cannot be changed" : ""}
+                style={{ height: 48, ...(!canEditPhone ? { background: 'rgba(0,0,0,0.04)', cursor: 'not-allowed', color: 'var(--admin-text-muted)' } : {}) }} 
+              />
               {errors.phone && <div className="admin-form-error">{errors.phone}</div>}
             </div>
             <div className="admin-form-group">

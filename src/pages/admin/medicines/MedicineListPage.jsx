@@ -22,6 +22,97 @@ export default function MedicineListPage() {
   const navigate = useNavigate()
   const { isAdmin, hasPermission } = useAuth()
   const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [dosageFilter, setDosageFilter] = useState('ALL')
+  const [companyFilter, setCompanyFilter] = useState('')
+  const [perPage, setPerPage] = useState(25)
+  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const searchTimeout = useRef(null)
+
+  const fetchData = async (page = 1, q = search, dosage = dosageFilter, company = companyFilter, limit = perPage) => {
+    setLoading(true)
+    try {
+      const params = { page, per_page: limit }
+      if (q) params.search = q
+      if (dosage && dosage !== 'ALL') params.dosage_type = dosage
+      if (company) params.company = company
+      const res = await getMedicines(params)
+      const data = res.data?.data || res.data
+      setItems(Array.isArray(data) ? data : (data?.data || []))
+      if (data?.current_page) {
+        setPagination({
+          current_page: data.current_page,
+          last_page: data.last_page || 1,
+          total: data.total || 0
+        })
+      } else if (res.data?.current_page) {
+        setPagination({
+          current_page: res.data.current_page,
+          last_page: res.data.last_page || 1,
+          total: res.data.total || 0
+        })
+      } else {
+        setPagination({
+          current_page: page,
+          last_page: 1,
+          total: Array.isArray(data) ? data.length : 0
+        })
+      }
+    } catch (err) {
+      console.error('Error loading medicines:', err)
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData(1)
+  }, [])
+
+  const handleSearch = (val) => {
+    setSearch(val)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      fetchData(1, val, dosageFilter, companyFilter, perPage)
+    }, 400)
+  }
+
+  const handleDosageFilter = (val) => {
+    setDosageFilter(val)
+    fetchData(1, search, val, companyFilter, perPage)
+  }
+
+  const handleCompanyFilter = (val) => {
+    setCompanyFilter(val)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      fetchData(1, search, dosageFilter, val, perPage)
+    }, 400)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteMedicine(deleteTarget.id)
+      setDeleteTarget(null)
+      fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const getFullName = (med) => {
+    if (med.full_name) return med.full_name
+    return [med.dosage_type, med.medicine_name, med.strength].filter(Boolean).join(' ') || med.medicine_name || '—'
+  }
+
   return (
     <div>
       <div className="admin-page-header">

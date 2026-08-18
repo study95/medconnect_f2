@@ -144,7 +144,7 @@
   flex-direction: column;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  border-right: 1px solid var(--admin-sidebar-border);
+  border-right: none;
 }
 
 /* ONLY APPLY COLLAPSED WIDTH ON DESKTOP */
@@ -161,7 +161,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--admin-sidebar-border);
+  border-bottom: 1px solid var(--admin-border);
+  border-right: 1px solid var(--admin-border);
   transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   flex-shrink: 0;
@@ -439,7 +440,7 @@
   height: var(--admin-header-height);
   background: var(--admin-card-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--admin-border);
+  border-bottom: none;
 
   display: flex;
   align-items: center;
@@ -450,7 +451,7 @@
   right: 0;
   left: var(--admin-sidebar-width);
   z-index: 1020;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, border-color 0.2s ease;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
 }
 
 @media (min-width: 993px) {
@@ -469,7 +470,7 @@
 .admin-footer {
   height: var(--admin-footer-height);
   background: var(--admin-card-bg, #FFFFFF);
-  border-top: 1px solid var(--admin-border);
+  border-top: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -479,11 +480,10 @@
   right: 0;
   left: var(--admin-sidebar-width);
   z-index: 1020;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, border-color 0.2s ease;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
   font-size: 12px;
   color: var(--admin-text-muted);
   font-weight: 500;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03);
 }
 
 @media (min-width: 993px) {

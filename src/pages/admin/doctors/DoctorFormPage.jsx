@@ -173,7 +173,9 @@ function formatExperiencePeriod(fromDate, toDate, isCurrent) {
 export default function DoctorFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const isEdit = !!id
+  const canEditPhone = isAdmin || !isEdit
 
   const [form, setForm] = useState({
     name: '', name_bn: '', slug: '', slug_bn: '', 
@@ -699,11 +701,23 @@ export default function DoctorFormPage() {
              </div>
 
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Phone *</label>
-                  <input className={`admin-form-input ${errors.phone ? 'has-error' : ''}`} name="phone" value={form.phone} onChange={handleChange} placeholder="+880..." />
-                  {renderFieldError('phone')}
-                </div>
+                 <div className="admin-form-group">
+                   <label className="admin-form-label">
+                     Phone * {(!canEditPhone) && <span style={{ fontSize: 11, fontWeight: 600, color: '#00B875', marginLeft: 4 }}>✓ (OTP Verified — Non-editable)</span>}
+                   </label>
+                   <input 
+                     className={`admin-form-input ${errors.phone ? 'has-error' : ''}`} 
+                     name="phone" 
+                     value={form.phone} 
+                     onChange={handleChange} 
+                     placeholder="+880..." 
+                     disabled={!canEditPhone}
+                     readOnly={!canEditPhone}
+                     title={!canEditPhone ? "Verified phone number cannot be changed" : ""}
+                     style={!canEditPhone ? { background: 'rgba(0,0,0,0.04)', cursor: 'not-allowed', color: 'var(--admin-text-muted)' } : {}}
+                   />
+                   {renderFieldError('phone')}
+                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Email *</label>
                   <input className={`admin-form-input ${errors.email ? 'has-error' : ''}`} type="email" name="email" value={form.email} onChange={handleChange} placeholder="doctor@doctorbooklet.com" />

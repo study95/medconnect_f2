@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useAuth } from '../../../context/AuthContext'
 import {
   getHospital, createHospital, updateHospital,
   getDivisions, getDistricts, getUpazilas, getUnions
@@ -113,7 +114,9 @@ function SearchableSelect({ id, label, options, value, onChange, placeholder, di
 export default function HospitalFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const isEdit = Boolean(id)
+  const canEditPhone = isAdmin || !isEdit
 
   const [form, setForm] = useState({
     name: '', hospital_type: '', license_number: '',
@@ -488,13 +491,19 @@ export default function HospitalFormPage() {
             </div>
             <div className="admin-card-body" style={{ display: 'grid', gap: 20 }}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Mobile / Phone Number *</label>
+                <label className="admin-form-label">
+                  Mobile / Phone Number * {(!canEditPhone) && <span style={{ fontSize: 11, fontWeight: 600, color: '#00B875', marginLeft: 4 }}>✓ (OTP Verified — Non-editable)</span>}
+                </label>
                 <input
                   className={`admin-form-input ${errors.phone ? 'has-error' : ''}`}
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
                   placeholder="017XXXXXXXX"
+                  disabled={!canEditPhone}
+                  readOnly={!canEditPhone}
+                  title={!canEditPhone ? "Verified phone number cannot be changed" : ""}
+                  style={!canEditPhone ? { background: 'rgba(0,0,0,0.04)', cursor: 'not-allowed', color: 'var(--admin-text-muted)' } : {}}
                 />
                 {errors.phone && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.phone}</div>}
               </div>

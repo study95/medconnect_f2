@@ -96,7 +96,7 @@ export default function AdminLayout() {
                 display: 'inline-block',
                 whiteSpace: 'nowrap'
               }}>
-                {roleName === 'admin' ? 'Admin Panel' : roleName === 'manager' ? 'Manager Panel' : roleName === 'doctor' ? 'Doctor Panel' : 'User Panel'}
+                {roleName === 'admin' ? 'Admin Panel' : (roleName === 'manager' || roleName === 'hospital') ? 'Hospital Panel' : roleName === 'doctor' ? 'Doctor Panel' : 'User Panel'}
               </span>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function AdminLayout() {
                 >
                   <div className="header-user-details" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name || 'User'}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#00B875', textTransform: 'uppercase' }}>{roleName}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#00B875', textTransform: 'uppercase' }}>{roleName === 'manager' ? 'hospital' : roleName}</span>
                   </div>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(0, 184, 117, 0.3)', background: 'rgba(0, 184, 117, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {user?.photo ? (

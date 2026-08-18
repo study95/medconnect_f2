@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Container, Row, Col, Nav } from 'react-bootstrap'
 import { createAppointment, getBookedSlots } from '../api/appointmentApi'
@@ -15,7 +15,7 @@ import {
   IconArrowRight, IconCheck, IconX, IconStethoscope,
   IconCalendarPlus, IconNotes, IconLoader2, IconChevronLeft, IconChevronRight,
   IconChevronDown, IconInfoCircle, IconCircleCheck, IconPlus, IconMinus, IconBuildingHospital,
-  IconEye, IconEyeOff, IconMail, IconAlertTriangle
+  IconEye, IconEyeOff, IconMail, IconAlertTriangle, IconRefresh
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -164,7 +164,24 @@ export default function BookAppointmentPage() {
   const [otpError, setOtpError] = useState('')
   const [otpSending, setOtpSending] = useState(false)
   const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpTimer, setOtpTimer] = useState(0)
   const otpInputRefs = useRef([])
+
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    if (otpTimer <= 0) return
+    const interval = setInterval(() => {
+      setOtpTimer(prev => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [otpTimer])
+
+  const formatOtpTimer = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    const str = `${mins}:${secs < 10 ? '0' : ''}${secs}`
+    return toBnNum(str)
+  }
 
   // Translate raw API error messages to user-friendly Bengali
   const translateApiError = (msg) => {
@@ -620,6 +637,8 @@ export default function BookAppointmentPage() {
     try {
       await sendOtp({ mobile: trimmed, type: 'registration' })
       setAuthMode('otp-verify')
+      setOtpTimer(60)
+      setOtpDigits(['', '', '', '', '', ''])
     } catch (err) {
       console.error(err)
       if (err.response?.data?.already_registered) {
@@ -627,6 +646,30 @@ export default function BookAppointmentPage() {
       } else {
         setMobileWarning(err.response?.data?.message || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
       }
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (otpTimer > 0 || otpSending) return
+    const trimmed = (mobileNumber || '').trim()
+    if (!trimmed || trimmed.length < 11) {
+      setOtpError('অনুগ্রহ করে সঠিক মোবাইল নম্বর দিন।')
+      return
+    }
+    setOtpSending(true)
+    setOtpError('')
+    try {
+      await sendOtp({ mobile: trimmed, type: 'registration' })
+      setOtpTimer(60)
+      setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+    } catch (err) {
+      console.error(err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+      setOtpError(errorMsg)
     } finally {
       setOtpSending(false)
     }
@@ -1122,9 +1165,53 @@ export default function BookAppointmentPage() {
                 </div>
               )}
 
-              <button onClick={handleVerifyOtp} disabled={otpVerifying} style={{width: '100%', padding: '14px', background: '#00B875', color: 'white', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s'}}>
+              <button onClick={handleVerifyOtp} disabled={otpVerifying} style={{width: '100%', padding: '14px', background: '#00B875', color: 'white', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: otpVerifying ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)'}}>
                 {otpVerifying ? <IconLoader2 size={20} className="spin-icon" /> : <IconCheck size={20} />} যাচাই করুন
               </button>
+
+              {/* Resend OTP with Live Countdown Timer */}
+              <div style={{ marginTop: 18, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {otpTimer > 0 ? (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#64748B',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: '#F8FAFC',
+                    padding: '8px 16px',
+                    borderRadius: 99,
+                    border: '1px solid #E2E8F0'
+                  }}>
+                    <IconRefresh size={15} style={{ opacity: 0.6 }} />
+                    <span>পুনরায় OTP পাঠান <strong style={{ color: '#00B875', fontWeight: 800 }}>({formatOtpTimer(otpTimer)})</strong></span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={otpSending}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#00B875',
+                      fontWeight: 700,
+                      fontSize: 13.5,
+                      cursor: otpSending ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderRadius: 99,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <IconRefresh size={16} className={otpSending ? 'spin-icon' : ''} />
+                    <span>কোড পাননি? <strong style={{ textDecoration: 'underline' }}>আবার OTP পাঠান</strong></span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {authMode === 'account-details' && (

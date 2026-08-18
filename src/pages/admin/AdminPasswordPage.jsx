@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { updatePasswordApi } from '../../api/authApi'
 import { Lock, Save, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 export default function AdminPasswordPage() {
   const [loading, setLoading] = useState(false)
@@ -9,29 +10,68 @@ export default function AdminPasswordPage() {
     new_password: '',
     new_password_confirmation: ''
   })
+  const [errors, setErrors] = useState({})
   
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+    if (errors[name] || errors.general) {
+      setErrors(prev => ({ ...prev, [name]: '', general: '' }))
+    }
   }
 
   const handleSave = async (e) => {
     e.preventDefault()
-    if (form.new_password !== form.new_password_confirmation) {
-      return 
+    const newErrors = {}
+
+    if (!form.current_password) {
+      newErrors.current_password = 'বর্তমান পাসওয়ার্ড দেওয়া বাধ্যতামূলক।'
+    }
+    if (!form.new_password) {
+      newErrors.new_password = 'নতুন পাসওয়ার্ড দেওয়া বাধ্যতামূলক।'
+    } else if (form.new_password.length < 6) {
+      newErrors.new_password = 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'
+    }
+    if (!form.new_password_confirmation) {
+      newErrors.new_password_confirmation = 'পাসওয়ার্ড নিশ্চিতকরণ দেওয়া বাধ্যতামূলক।'
+    } else if (form.new_password && form.new_password !== form.new_password_confirmation) {
+      newErrors.new_password_confirmation = 'নতুন পাসওয়ার্ড ও নিশ্চিতকরণ পাসওয়ার্ড মিলছে না।'
     }
 
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      const firstErrMsg = Object.values(newErrors)[0]
+      toast.error(firstErrMsg, { id: 'admin-password-val-error' })
+      return
+    }
+
+    setErrors({})
     setLoading(true)
     try {
       await updatePasswordApi(form)
-      
+      // Success toast is automatically triggered once by axiosInstance with server message
       setForm({ current_password: '', new_password: '', new_password_confirmation: '' })
+      setErrors({})
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to update password'
+      const backendErrors = err.response?.data?.errors
+      const msg = err.response?.data?.message || err.response?.data?.error || 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে'
       
+      if (backendErrors) {
+        setErrors({
+          current_password: backendErrors.current_password?.[0] || '',
+          new_password: backendErrors.new_password?.[0] || '',
+          new_password_confirmation: backendErrors.new_password_confirmation?.[0] || ''
+        })
+      } else if (msg.includes('বর্তমান') || msg.toLowerCase().includes('current password')) {
+        setErrors({ current_password: msg })
+      } else {
+        setErrors({ general: msg })
+      }
+      toast.error(msg, { id: 'admin-password-error' })
     } finally {
       setLoading(false)
     }
@@ -50,9 +90,16 @@ export default function AdminPasswordPage() {
       </div>
 
       <div style={{ background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', borderRadius: 16, padding: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <form onSubmit={handleSave} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {errors.general && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', color: '#EF4444', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              {errors.general}
+            </div>
+          )}
+
+          {/* Current Password */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>Current Password</label>
             <div style={{ position: 'relative' }}>
               <input 
@@ -61,8 +108,13 @@ export default function AdminPasswordPage() {
                 value={form.current_password}
                 onChange={handleChange}
                 placeholder="Enter current password"
-                style={{ width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, border: '1.5px solid var(--admin-border)', background: 'var(--admin-bg-alt)', outline: 'none', color: 'var(--admin-text)', fontSize: 14 }}
-                required
+                style={{ 
+                  width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, 
+                  border: errors.current_password ? '1.5px solid #EF4444' : '1.5px solid var(--admin-border)', 
+                  background: errors.current_password ? '#FFF5F5' : 'var(--admin-bg-alt)', 
+                  outline: 'none', color: 'var(--admin-text)', fontSize: 14,
+                  transition: 'border-color 0.2s'
+                }}
               />
               <button 
                 type="button" 
@@ -72,9 +124,15 @@ export default function AdminPasswordPage() {
                 {showCurrent ? <EyeOff size={18} color="#6B7280" /> : <Eye size={18} color="#6B7280" />}
               </button>
             </div>
+            {errors.current_password && (
+              <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                ⚠️ {errors.current_password}
+              </span>
+            )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* New Password */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>New Password</label>
             <div style={{ position: 'relative' }}>
               <input 
@@ -83,9 +141,13 @@ export default function AdminPasswordPage() {
                 value={form.new_password}
                 onChange={handleChange}
                 placeholder="Enter new password"
-                style={{ width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, border: '1.5px solid var(--admin-border)', background: 'var(--admin-bg-alt)', outline: 'none', color: 'var(--admin-text)', fontSize: 14 }}
-                required
-                minLength={12}
+                style={{ 
+                  width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, 
+                  border: errors.new_password ? '1.5px solid #EF4444' : '1.5px solid var(--admin-border)', 
+                  background: errors.new_password ? '#FFF5F5' : 'var(--admin-bg-alt)', 
+                  outline: 'none', color: 'var(--admin-text)', fontSize: 14,
+                  transition: 'border-color 0.2s'
+                }}
               />
               <button 
                 type="button" 
@@ -95,12 +157,19 @@ export default function AdminPasswordPage() {
                 {showNew ? <EyeOff size={18} color="#6B7280" /> : <Eye size={18} color="#6B7280" />}
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', margin: 0 }}>
-              Must be at least 12 characters, including uppercase, lowercase, number, and special character.
-            </p>
+            {errors.new_password ? (
+              <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                ⚠️ {errors.new_password}
+              </span>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', margin: '2px 0 0' }}>
+                Must be at least 6 characters.
+              </p>
+            )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Confirm New Password */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>Confirm New Password</label>
             <div style={{ position: 'relative' }}>
               <input 
@@ -109,9 +178,13 @@ export default function AdminPasswordPage() {
                 value={form.new_password_confirmation}
                 onChange={handleChange}
                 placeholder="Confirm new password"
-                style={{ width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, border: '1.5px solid var(--admin-border)', background: 'var(--admin-bg-alt)', outline: 'none', color: 'var(--admin-text)', fontSize: 14 }}
-                required
-                minLength={12}
+                style={{ 
+                  width: '100%', padding: '12px 16px', paddingRight: 40, borderRadius: 10, 
+                  border: errors.new_password_confirmation ? '1.5px solid #EF4444' : '1.5px solid var(--admin-border)', 
+                  background: errors.new_password_confirmation ? '#FFF5F5' : 'var(--admin-bg-alt)', 
+                  outline: 'none', color: 'var(--admin-text)', fontSize: 14,
+                  transition: 'border-color 0.2s'
+                }}
               />
               <button 
                 type="button" 
@@ -121,6 +194,11 @@ export default function AdminPasswordPage() {
                 {showConfirm ? <EyeOff size={18} color="#6B7280" /> : <Eye size={18} color="#6B7280" />}
               </button>
             </div>
+            {errors.new_password_confirmation && (
+              <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                ⚠️ {errors.new_password_confirmation}
+              </span>
+            )}
           </div>
 
           <button 
