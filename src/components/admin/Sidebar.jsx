@@ -453,46 +453,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           )}
         </nav>
 
-        {/* ===== ZONE 3: Controls (Fixed Bottom) ===== */}
-        <div className="sidebar-controls" style={{
-          display: 'flex',
-          flexDirection: isCollapsed ? 'column' : 'row',
-          gap: 8, padding: '16px 20px',
-          borderTop: '1px solid var(--admin-sidebar-border)',
-          flexShrink: 0,
-          background: 'rgba(0,0,0,0.05)'
-        }}>
-          <button
-            className="sidebar-control-btn"
-            onClick={handleToggleTheme}
-            title={isCollapsed ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : undefined}
-            style={{
-              flex: 1, height: 38, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 8, background: 'var(--admin-sidebar-user-bg)', border: '1px solid var(--admin-sidebar-border)',
-              color: 'var(--admin-sidebar-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: '0.2s'
-            }}
-            onMouseEnter={(e) => e.target.style.background = 'var(--admin-sidebar-hover)'}
-            onMouseLeave={(e) => e.target.style.background = 'var(--admin-sidebar-user-bg)'}
-          >
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            <span className="control-text">{theme === 'dark' ? 'Light' : 'Dark'}</span>
-          </button>
-          <button
-            className="sidebar-control-btn"
-            onClick={handleLogout}
-            title={isCollapsed ? 'Logout' : undefined}
-            style={{
-              flex: 1, height: 38, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 8, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: '0.2s'
-            }}
-            onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
-            onMouseLeave={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
-          >
-            <LogOut size={14} />
-            <span className="control-text">Logout</span>
-          </button>
-        </div>
       </aside>
     </>
   )

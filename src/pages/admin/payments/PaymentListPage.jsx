@@ -49,15 +49,15 @@ export default function PaymentListPage() {
     }
   }, [dateFilter, monthFilter, yearFilter, search])
 
-  useEffect(() => { fetchData() }, [fetchData])
-
-  useEffect(() => { setCurrentPage(1) }, [filtered.length])
-
   // Client side filter (payment_status since backend doesn't filter by it)
   const filtered = items.filter(a => {
     if (paymentFilter && a.payment_status !== paymentFilter) return false
     return true
   })
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => { setCurrentPage(1) }, [filtered.length])
 
   const years = [...new Set(items.map(a => a.date ? new Date(a.date).getFullYear() : null).filter(Boolean))].sort((a, b) => b - a)
 

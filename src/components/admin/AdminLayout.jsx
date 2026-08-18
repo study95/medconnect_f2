@@ -6,8 +6,9 @@ import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
 import NotificationPopup from './NotificationPopup'
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconExternalLink } from '@tabler/icons-react'
-import { Bell, ChevronDown, User, Lock, LogOut } from 'lucide-react'
+import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon } from 'lucide-react'
 import { useSubscription } from '../../context/SubscriptionContext'
+import { useTheme } from '../../context/ThemeContext'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import '../../styles/admin.css'
 
@@ -26,6 +27,7 @@ export default function AdminLayout() {
   const { user, getRoles, logout } = useAuth()
   const roleName = getRoles()[0] || 'user'
   const { unreadCount } = useSubscription()
+  const { theme, toggleTheme } = useTheme()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   return (
@@ -101,6 +103,27 @@ export default function AdminLayout() {
 
           <div className="admin-header-right">
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Dark / Light Toggle Switch */}
+              <button
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 34, height: 34,
+                  background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  border: '1.5px solid var(--admin-border)',
+                  borderRadius: '50%',
+                  cursor: 'pointer', transition: '0.2s'
+                }}
+              >
+                {theme === 'dark'
+                  ? <Sun size={16} color="#F59E0B" />
+                  : <Moon size={16} color="#6366F1" />
+                }
+              </button>
+
+              <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
+
               {/* Notification Bell */}
               <Link to="/admin/notifications" style={{ position: 'relative', color: 'var(--admin-text)', display: 'flex', alignItems: 'center' }}>
                 <Bell size={20} />
