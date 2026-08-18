@@ -27,16 +27,50 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const isFavorite = isDoctorFavorite(doctor.id)
 
   const specialtyName = doctor.specialty_name || doctor.specialty?.name_bn || doctor.specialty?.name || 'বিশেষজ্ঞ'
-  const experience = toBnNum(doctor.experience || '১০')
+  const experience = (() => {
+    const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
+    let totalMonths = 0
+    exps.forEach(exp => {
+      const d = (exp.duration || '').toLowerCase()
+      const yr = d.match(/(\d+)\s*year/)
+      const mo = d.match(/(\d+)\s*month/)
+      if (yr) totalMonths += parseInt(yr[1]) * 12
+      if (mo) totalMonths += parseInt(mo[1])
+    })
+    if (totalMonths === 0) return toBnNum(doctor.experience || '১০')
+    const yrs = Math.floor(totalMonths / 12)
+    const mos = totalMonths % 12
+    // If there are remaining months beyond whole years, show "X+" format
+    if (mos > 0 && yrs > 0) return toBnNum(String(yrs)) + '+'
+    if (yrs === 0) return toBnNum(String(mos)) + ' মাস '  // edge: only months
+    return toBnNum(String(yrs)) + '+'
+  })()
   const degrees = doctor.degree || doctor.qualifications || 'MBBS, MD'
   const fee = toBnNum(doctor.fee || '৫০০')
 
-  const locationText = [
-    doctor.upazila?.name_bn || doctor.upazila?.name,
-    doctor.district?.name_bn || doctor.district?.name || doctor.hospital?.district?.name_bn || 'ঢাকা'
-  ].filter(Boolean).join(', ')
+  // Find the currently-working experience entry
+  const currentExp = (() => {
+    const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
+    return exps.find(exp =>
+      exp?.is_current ||
+      exp?.currently_working ||
+      (typeof exp?.period === 'string' && /present|বর্তমান/i.test(exp.period)) ||
+      (typeof exp?.end_date === 'string' && /present|বর্তমান/i.test(exp.end_date))
+    ) || null
+  })()
 
-  const primaryHospital = doctor.hospital?.name || doctor.chambers?.[0]?.hospital_name || doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'
+  const locationText = (() => {
+    if (currentExp?.address) return currentExp.address
+    return [
+      doctor.upazila?.name_bn || doctor.upazila?.name,
+      doctor.district?.name_bn || doctor.district?.name || doctor.hospital?.district?.name_bn || 'ঢাকা'
+    ].filter(Boolean).join(', ')
+  })()
+
+  const primaryHospital = currentExp?.hospital_name ||
+    doctor.workplace || doctor.workplace_bn ||
+    doctor.hospital?.name || doctor.chambers?.[0]?.hospital_name ||
+    doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()

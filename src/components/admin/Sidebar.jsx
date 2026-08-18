@@ -344,10 +344,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     to="/admin/services"
                     className={`sidebar-nav-item ${isActive('/admin/services') ? 'active' : ''}`}
                     onClick={onClose}
-                    title={isCollapsed ? 'Services' : undefined}
+                    title={isCollapsed ? 'Support Ticket' : undefined}
                   >
-                    <span className="nav-icon"><BriefcaseMedical size={18} /></span>
-                    <span className="nav-text">Services</span>
+                    <span className="nav-icon"><Ticket size={18} /></span>
+                    <span className="nav-text">Support Ticket</span>
                   </NavLink>
                 </>
               )}

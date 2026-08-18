@@ -640,7 +640,7 @@ export default function AboutPage() {
 
   const content = data[lang]?.about_us || data['en']?.about_us || data.about_us || {}
   const values   = isEn ? VALUES.en   : VALUES.bn
-  const timeline = isEn ? TIMELINE.en : TIMELINE.bn
+  const timeline = (content.timeline && content.timeline.length > 0) ? content.timeline : (isEn ? TIMELINE.en : TIMELINE.bn)
   const team     = isEn ? TEAM.en     : TEAM.bn
 
   const isDark = theme === 'dark'
@@ -662,11 +662,13 @@ export default function AboutPage() {
               <div>
                 <div className="about-hero-badge">
                   <Sparkles size={13} color="#ADFCE9" />
-                  {isEn ? 'Our Story & Mission' : 'আমাদের গল্প ও লক্ষ্য'}
+                  {content.badge || (isEn ? 'Our Story & Mission' : 'আমাদের গল্প ও লক্ষ্য')}
                 </div>
 
                 <h1 className="about-hero-title">
-                  {isEn ? (
+                  {content.title ? (
+                    content.title
+                  ) : isEn ? (
                     <>Bridging Patients to <br className="d-none d-md-block" /><span style={{ color: '#ADFCE9' }}>Expert Healthcare</span></>
                   ) : (
                     <>রোগী ও বিশেষজ্ঞের <br className="d-none d-md-block" /><span style={{ color: '#ADFCE9' }}>মধ্যে সেতুবন্ধন</span></>
@@ -674,10 +676,10 @@ export default function AboutPage() {
                 </h1>
 
                 <p className="about-hero-desc">
-                  {isEn
+                  {content.subtitle || (isEn
                     ? 'Doctor Booklet Bangladesh is the country\'s trusted digital healthcare platform — connecting patients with BMDC-verified specialists, accredited hospitals, and seamless appointment scheduling across all 8 divisions.'
                     : 'Doctor Booklet Bangladesh দেশের সবচেয়ে বিশ্বস্ত ডিজিটাল স্বাস্থ্যসেবা প্ল্যাটফর্ম — সকল ৮টি বিভাগে বিএমডিসি-যাচাইকৃত বিশেষজ্ঞ, স্বীকৃত হাসপাতাল ও নিরবচ্ছিন্ন অ্যাপয়েন্টমেন্টের সংযোগ স্থাপন করছে।'
-                  }
+                  )}
                 </p>
 
                 {/* Responsive Mobile Badges */}
@@ -747,10 +749,10 @@ export default function AboutPage() {
           {/* ─── Key Stats Grid ─── */}
           <Row className="g-2 g-md-3" style={{ marginTop: 24 }}>
             {[
-              { num: '1,000+', label: isEn ? 'Verified Doctors' : 'যাচাইকৃত ডাক্তার' },
-              { num: '500+',   label: isEn ? 'Partner Hospitals' : 'পার্টনার হাসপাতাল' },
-              { num: '1M+',    label: isEn ? 'Patients Served' : 'সেবিত রোগী' },
-              { num: '8',      label: isEn ? 'Divisions Covered' : 'বিভাগ কভার করা হয়' },
+              { num: content.stat_doctors || '1,000+', label: isEn ? 'Verified Doctors' : 'যাচাইকৃত ডাক্তার' },
+              { num: content.stat_hospitals || '500+',   label: isEn ? 'Partner Hospitals' : 'পার্টনার হাসপাতাল' },
+              { num: content.stat_patients || '10 লাখ+',    label: isEn ? 'Patients Served' : 'সেবিত রোগী' },
+              { num: content.stat_coverage || '৮টি বিভাগ',      label: isEn ? 'Divisions Covered' : 'বিভাগ কভার করা হয়' },
             ].map((s, i) => (
               <Col xs={6} md={3} key={i}>
                 <div className="about-stat-card">

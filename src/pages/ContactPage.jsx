@@ -208,28 +208,28 @@ export default function ContactPage() {
             {
               icon: <Phone size={22} />,
               title: 'টেলিফোন / হেল্পলাইন',
-              primary: site.phone || '017 XXXX XXXX',
+              primary: contact.phone || site.phone || '017 XXXX XXXX',
               secondary: '২৪/৭ সাপোর্ট উপলব্ধ',
               actionText: 'কল করুন',
-              actionHref: `tel:${site.phone}`,
+              actionHref: `tel:${contact.phone || site.phone || '017XXXXXXXX'}`,
               bgColor: '#F0FDF4',
               iconColor: '#00B875'
             },
             {
               icon: <Mail size={22} />,
               title: 'ইমেইল সহায়তা',
-              primary: site.email_support || 'support@doctorbooklet.com.bd',
+              primary: contact.email || site.email_support || site.email || 'info@doctorbooklet.com.bd',
               secondary: '২ ঘণ্টার মধ্যে উত্তর দেওয়া হয়',
               actionText: 'ইমেইল পাঠান',
-              actionHref: `mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`,
+              actionHref: `mailto:${contact.email || site.email_support || site.email || 'info@doctorbooklet.com.bd'}`,
               bgColor: '#EFF6FF',
               iconColor: '#2563EB'
             },
             {
               icon: <MapPin size={22} />,
-              title: 'প্রধান কার্যালয়',
-              primary: 'ধানমন্ডি, ঢাকা-১২০৫',
-              secondary: 'শনিবার - বৃহস্পতিবার (৯টা - ৮টা)',
+              title: contact.office_title || 'প্রধান কার্যালয়',
+              primary: contact.address || site.address || 'ধানমন্ডি, ঢাকা-১২০৫',
+              secondary: contact.office_hours || site.office_hours || 'শনিবার - বৃহস্পতিবার (৯টা - ৮টা)',
               actionText: 'ম্যাপে দেখুন',
               actionHref: '#office-map',
               bgColor: '#FEF3C7',
@@ -495,7 +495,7 @@ export default function ContactPage() {
                       <div>
                         <div style={{ fontWeight: 800, color: '#0F172A', fontSize: 14, marginBottom: 2 }}>ঠিকানা</div>
                         <div style={{ color: '#64748B', fontSize: 13, lineHeight: 1.6 }}>
-                          {site.address || 'মেডকানেক্ট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫'}
+                          {contact.address || site.address || 'মেডকানেক্ট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫'}
                         </div>
                       </div>
                     </div>
@@ -508,11 +508,11 @@ export default function ContactPage() {
                       <div style={{ flexGrow: 1 }}>
                         <div style={{ fontWeight: 800, color: '#0F172A', fontSize: 14, marginBottom: 2 }}>অফিসিয়াল ইমেইল</div>
                         <div style={{ color: '#64748B', fontSize: 13, lineHeight: 1.6 }}>
-                          {site.email || 'info@doctorbooklet.com.bd'}
+                          {contact.email || site.email || 'info@doctorbooklet.com.bd'}
                         </div>
                       </div>
                       <button 
-                        onClick={() => handleCopy(site.email || 'info@doctorbooklet.com.bd', 'email')}
+                        onClick={() => handleCopy(contact.email || site.email || 'info@doctorbooklet.com.bd', 'email')}
                         style={{ border: 'none', background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                         title="ইমেইল কপি করুন"
                       >
@@ -528,7 +528,7 @@ export default function ContactPage() {
                       <div>
                         <div style={{ fontWeight: 800, color: '#0F172A', fontSize: 14, marginBottom: 2 }}>কার্যক্রমের সময়সূচী</div>
                         <div style={{ color: '#64748B', fontSize: 13, lineHeight: 1.6 }}>
-                          {site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা'}
+                          {contact.office_hours || site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা'}
                         </div>
                       </div>
                     </div>

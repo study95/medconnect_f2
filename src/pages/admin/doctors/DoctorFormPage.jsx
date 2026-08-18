@@ -433,6 +433,17 @@ export default function DoctorFormPage() {
       return
     }
 
+    // Auto-compute total experience from experience entries
+    let totalExpMonths = 0
+    experiences.forEach(exp => {
+      const d = (exp.duration || '').toLowerCase()
+      const yr = d.match(/(\d+)\s*year/)
+      const mo = d.match(/(\d+)\s*month/)
+      if (yr) totalExpMonths += parseInt(yr[1]) * 12
+      if (mo) totalExpMonths += parseInt(mo[1])
+    })
+    const computedExpYears = totalExpMonths > 0 ? Math.floor(totalExpMonths / 12) || 1 : (form.experience || 0)
+
     setSaving(true)
     const formData = new FormData()
     
@@ -440,6 +451,9 @@ export default function DoctorFormPage() {
     Object.keys(form).forEach(key => {
       let value = form[key]
       
+      // Override experience with auto-computed value from experiences entries
+      if (key === 'experience') value = computedExpYears
+
       // Convert boolean to 1/0 for consistent Laravel handling via FormData
       if (key === 'is_active') value = value ? '1' : '0'
       
@@ -599,9 +613,31 @@ export default function DoctorFormPage() {
                   {renderFieldError('fee')}
                 </div>
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Experience (Years)</label>
-                  <input type="number" className="admin-form-input" name="experience" value={form.experience} onChange={handleChange} placeholder="10" />
-                  {renderFieldError('experience')}
+                  <label className="admin-form-label">Experience (Auto-Calculated)</label>
+                  <input
+                    type="text"
+                    className="admin-form-input"
+                    readOnly
+                    value={(() => {
+                      let totalMonths = 0
+                      experiences.forEach(exp => {
+                        const d = (exp.duration || '').toLowerCase()
+                        const yr = d.match(/(\d+)\s*year/)
+                        const mo = d.match(/(\d+)\s*month/)
+                        if (yr) totalMonths += parseInt(yr[1]) * 12
+                        if (mo) totalMonths += parseInt(mo[1])
+                      })
+                      if (totalMonths === 0) return form.experience || '—'
+                      const yrs = Math.floor(totalMonths / 12)
+                      const mos = totalMonths % 12
+                      if (yrs === 0) return `${mos} Month${mos !== 1 ? 's' : ''}`
+                      if (mos === 0) return `${yrs} Year${yrs !== 1 ? 's' : ''}`
+                      return `${yrs} Year${yrs !== 1 ? 's' : ''} ${mos} Month${mos !== 1 ? 's' : ''}`
+                    })()}
+                    style={{ background: '#F1FFF8', color: '#065F46', fontWeight: 700, cursor: 'not-allowed', border: '1.5px solid #A7F3D0' }}
+                    placeholder="Auto-calculated from experience entries"
+                  />
+                  <small style={{ color: '#6B7280', fontSize: 11 }}>Auto-calculated from Work History entries below</small>
                 </div>
               </div>
             </div>

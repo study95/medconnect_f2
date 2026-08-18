@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Container, Row, Col, Modal } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { getContent } from '../../utils/contentService'
+import axiosInstance from '../../api/axiosInstance'
 import { 
   Phone, Mail, HelpCircle, MessageSquare, Clock, ShieldCheck, 
   ChevronDown, ChevronUp, ArrowRight, LifeBuoy, Sparkles,
   CheckCircle2, AlertTriangle, Send, RefreshCw, ThumbsUp, ThumbsDown,
-  Ticket, FileText, Headphones, PhoneCall, Copy, Search
+  Ticket, FileText, Headphones, PhoneCall, Copy, Search, X
 } from 'lucide-react'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
 
@@ -42,6 +43,10 @@ export default function SupportPage() {
   })
   const [ticketSubmitting, setTicketSubmitting] = useState(false)
   const [submittedTicket, setSubmittedTicket] = useState(null)
+  const [autoDismissSeconds, setAutoDismissSeconds] = useState(120)
+  const [contactWarning, setContactWarning] = useState('')
+  const [contactSuccess, setContactSuccess] = useState('')
+  const [contactChecking, setContactChecking] = useState(false)
 
   // Ticket Status Search State
   const [statusSearchId, setStatusSearchId] = useState('')
@@ -121,51 +126,124 @@ export default function SupportPage() {
     setTimeout(() => setCopiedText(null), 2000)
   }
 
-  // Handle Ticket Submission
-  const handleTicketSubmit = async (e) => {
-    e.preventDefault()
-    if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) {
+  // 2-Minute Auto-Dismiss Timer for Submitted Ticket Success Message
+  useEffect(() => {
+    if (!submittedTicket) return
+    const interval = setInterval(() => {
+      setAutoDismissSeconds(prev => {
+        if (prev <= 1) {
+          setSubmittedTicket(null)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [submittedTicket])
+
+  // Live check if mobile number or email is registered
+  const checkContactRegistration = async (contact) => {
+    if (!contact || contact.trim().length < 5) {
+      setContactWarning('')
+      setContactSuccess('')
       return
     }
-    setTicketSubmitting(true)
-    await new Promise(r => setTimeout(r, 800))
-    const ticketId = 'TK-' + Math.floor(100000 + Math.random() * 900000)
-    const newTicket = {
-      id: ticketId,
-      ...ticketForm,
-      status: 'প্রক্রিয়াধীন (In Progress)',
-      date: new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
-      estimatedTime: '২ ঘণ্টা'
+    setContactChecking(true)
+    try {
+      const res = await axiosInstance.post('/services/check-contact', { contact: contact.trim() })
+      if (res.data?.registered) {
+        setContactWarning('')
+        setContactSuccess(`নিবন্ধিত অ্যাকাউন্ট: ${res.data.name || 'সক্রিয় ব্যবহারকারী'}`)
+      } else {
+        setContactSuccess('')
+        setContactWarning(res.data?.message || 'এই মোবাইল নম্বর বা ইমেইলটি সিস্টেমে নিবন্ধিত নেই।')
+      }
+    } catch {
+      // Don't interrupt offline typing
+    } finally {
+      setContactChecking(false)
     }
-    setSubmittedTicket(newTicket)
-    setTicketSubmitting(false)
-    setTicketForm({ name: '', contact: '', category: 'অ্যাপয়েন্টমেন্ট সমস্যা', priority: 'সাধারণ', subject: '', message: '' })
   }
 
-  // Handle Ticket Search
-  const handleSearchTicket = (e) => {
+  // Handle Ticket Submission — validates registered contact and creates unique TID- ticket
+  const handleTicketSubmit = async (e) => {
+    e.preventDefault()
+    if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) return
+    setTicketSubmitting(true)
+    setContactWarning('')
+
+    try {
+      const payload = {
+        name: ticketForm.name.trim(),
+        contact: ticketForm.contact.trim(),
+        category: ticketForm.category,
+        priority: ticketForm.priority,
+        subject: ticketForm.subject.trim(),
+        message: ticketForm.message.trim(),
+      }
+      
+      const res = await axiosInstance.post('/services', payload)
+      const ticketId = res.data?.ticket_number || ('TID-' + Math.floor(100000 + Math.random() * 900000))
+      
+      const newTicket = {
+        id: ticketId,
+        ...ticketForm,
+        status: 'অপেক্ষমাণ (Pending)',
+        date: new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
+        estimatedTime: cms.support_ticket?.response_estimate || '২ ঘণ্টা'
+      }
+      
+      setSubmittedTicket(newTicket)
+      setAutoDismissSeconds(120) // Reset 2 minutes countdown
+      setTicketForm({ name: '', contact: '', category: 'অ্যাপয়েন্টমেন্ট সমস্যা', priority: 'সাধারণ', subject: '', message: '' })
+      setContactWarning('')
+      setContactSuccess('')
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'টিকিট সাবমিট করা সম্ভব হয়নি।'
+      setContactWarning(errorMsg)
+    } finally {
+      setTicketSubmitting(false)
+    }
+  }
+
+  // Handle Ticket Search — live API lookup with TID- support
+  const handleSearchTicket = async (e) => {
     e.preventDefault()
     setStatusError('')
     if (!statusSearchId.trim()) return
     const cleanId = statusSearchId.trim().toUpperCase()
+
     if (submittedTicket && submittedTicket.id.toUpperCase() === cleanId) {
       setSearchedTicketResult(submittedTicket)
-    } else {
-      if (cleanId.startsWith('TK-')) {
+      return
+    }
+
+    try {
+      const res = await axiosInstance.get(`/services/track/${cleanId}`)
+      if (res.data) {
+        const d = res.data
+        const statusMap = {
+          pending: 'অপেক্ষমাণ (Pending)',
+          processing: 'প্রক্রিয়াধীন (In Progress)',
+          resolved: 'সমাধান সম্পন্ন (Resolved)',
+          closed: 'বন্ধ (Closed)'
+        }
         setSearchedTicketResult({
-          id: cleanId,
-          subject: 'অ্যাপয়েন্টমেন্ট সময় পরিবর্তন সমস্যা',
-          category: 'অ্যাপয়েন্টমেন্ট',
-          priority: 'জরুরী',
-          status: 'সমাধান সম্পন্ন (Resolved)',
-          date: '২৫ জুলাই, ২০২৬',
-          estimatedTime: 'সম্পন্ন',
-          note: 'আপনার ডাক্তারের সাথে কথা বলে সিরিয়াল সময় পুনরায় নিশ্চিত করা হয়েছে।'
+          id: d.ticket_number || cleanId,
+          subject: d.subject,
+          category: d.category || 'সাধারণ',
+          priority: d.priority || 'সাধারণ',
+          status: statusMap[d.status] || d.status,
+          date: d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }) : '—',
+          estimatedTime: d.status === 'resolved' ? 'সম্পন্ন' : (cms.support_ticket?.response_estimate || '২ ঘণ্টা'),
+          note: d.admin_note || 'আপনার টিকিটটি আমাদের কাস্টমার সাপোর্ট টিমের নিকট পর্যালোচনায় রয়েছে।'
         })
-      } else {
-        setSearchedTicketResult(null)
-        setStatusError(`টিকিট আইডি "${cleanId}" সিস্টেমের রেকর্ডে পাওয়া যায়নি। অনুগ্ৰহ করে সঠিক আইডি প্রদান করুন।`)
+        return
       }
+    } catch {
+      setSearchedTicketResult(null)
+      setStatusError(`টিকিট আইডি "${cleanId}" সিস্টেমের রেকর্ডে পাওয়া যায়নি। অনুগ্রহ করে সঠিক আইডি প্রদান করুন।`)
     }
   }
 
@@ -239,7 +317,7 @@ export default function SupportPage() {
           }
           .support-content-card {
             padding: 20px 16px !important;
-            border-radius: 16px !important;
+            border-radius: 18px !important;
           }
           .support-cat-chip {
             padding: 5px 12px !important;
@@ -254,6 +332,23 @@ export default function SupportPage() {
           .support-faq-answer {
             padding: 0 14px 14px 44px !important;
             font-size: 13px !important;
+          }
+          .tracker-search-wrap {
+            display: flex !important;
+            gap: 8px !important;
+          }
+          .tracker-search-input {
+            padding: 11px 14px !important;
+            font-size: 13.5px !important;
+          }
+          .tracker-search-btn {
+            padding: 11px 16px !important;
+            font-size: 13.5px !important;
+            white-space: nowrap !important;
+          }
+          .tracker-result-card {
+            padding: 16px 14px !important;
+            border-radius: 14px !important;
           }
         }
       `}</style>
@@ -290,7 +385,7 @@ export default function SupportPage() {
                 color: '#DCFCE7'
               }}>
                 <Sparkles size={15} color="#34D399" />
-                <span>২৪/৭ অফিসিয়াল কাস্টমার কেয়ার ও হেল্প ডেসক</span>
+                <span>{support.badge || '২৪/৭ অফিসিয়াল কাস্টমার কেয়ার ও হেল্প ডেসক'}</span>
               </div>
 
               <h1 className="support-hero-title" style={{ 
@@ -311,7 +406,7 @@ export default function SupportPage() {
                 margin: '0 auto',
                 fontWeight: 400 
               }}>
-                {faqData.subtitle || 'Doctor Booklet অ্যাপয়েন্টমেন্ট, পেমেন্ট, ও ডিজিটাল সেবা সংক্রান্ত যেকোনো তথ্যের জন্য সচরাচর প্রশ্নাবলী দেখুন অথবা সাপোর্ট টিকিট জমা দিন।'}
+                {support.subtitle || faqData.subtitle || 'Doctor Booklet অ্যাপয়েন্টমেন্ট, পেমেন্ট, ও ডিজিটাল সেবা সংক্রান্ত যেকোনো তথ্যের জন্য সচরাচর প্রশ্নাবলী দেখুন অথবা সাপোর্ট টিকিট জমা দিন।'}
               </p>
             </Col>
           </Row>
@@ -675,7 +770,7 @@ export default function SupportPage() {
 
             {/* ── TAB 2: SUPPORT TICKET SUBMISSION FORM ── */}
             {activeMainTab === 'ticket' && (
-              <div style={{
+              <div className="support-content-card" style={{
                 background: 'white',
                 borderRadius: 24,
                 padding: '36px 30px',
@@ -684,13 +779,13 @@ export default function SupportPage() {
               }}>
                 <div style={{ marginBottom: 24 }}>
                   <span style={{ background: '#F0FDF4', color: '#064E3B', fontSize: 12, fontWeight: 800, padding: '4px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8, border: '1px solid #DCFCE7' }}>
-                    অনলাইন সাপোর্ট টিকিট
+                    {cms.support_ticket?.badge || 'অনলাইন সাপোর্ট টিকিট ও অভিযোগ'}
                   </span>
                   <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 22, margin: '0 0 6px' }}>
-                    নতুন সাপোর্ট টিকিট জমা দিন
+                    {cms.support_ticket?.title || 'নতুন সাপোর্ট টিকিট / অভিযোগ জমা দিন'}
                   </h3>
                   <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>
-                    আপনার সমস্যার তথ্য নিচে পূরণ করুন। আমাদের কাস্টমার সাপোর্ট টিম ২ ঘণ্টার মধ্যে আপনার টিকিটের উত্তর দেবে।
+                    {cms.support_ticket?.subtitle || 'আপনার সমস্যার তথ্য নিচে পূরণ করুন। আমাদের কাস্টমার সাপোর্ট টিম ২ ঘণ্টার মধ্যে আপনার টিকিটের উত্তর দেবে।'}
                   </p>
                 </div>
 
@@ -713,13 +808,38 @@ export default function SupportPage() {
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
                         মোবাইল নম্বর / ইমেইল <span style={{ color: '#EF4444' }}>*</span>
                       </label>
-                      <input
-                        required
-                        value={ticketForm.contact}
-                        onChange={e => setTicketForm({ ...ticketForm, contact: e.target.value })}
-                        placeholder="017XXXXXXXX / email@example.com"
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          required
+                          value={ticketForm.contact}
+                          onChange={e => {
+                            setTicketForm({ ...ticketForm, contact: e.target.value })
+                            if (contactWarning) setContactWarning('')
+                            if (contactSuccess) setContactSuccess('')
+                          }}
+                          onBlur={e => checkContactRegistration(e.target.value)}
+                          placeholder="017XXXXXXXX / email@example.com"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: 12,
+                            border: contactWarning ? '1.5px solid #EF4444' : contactSuccess ? '1.5px solid #10B981' : '1.5px solid #E2E8F0',
+                            outline: 'none',
+                            fontSize: 14,
+                            background: contactWarning ? '#FEF2F2' : contactSuccess ? '#F0FDF4' : 'white'
+                          }}
+                        />
+                        {contactChecking && (
+                          <div style={{ position: 'absolute', right: 12, top: 13, fontSize: 12, color: '#64748B' }}>
+                            যাচাই হচ্ছে...
+                          </div>
+                        )}
+                      </div>
+                      {contactSuccess && (
+                        <div style={{ marginTop: 6, fontSize: 12.5, color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <CheckCircle2 size={14} /> {contactSuccess}
+                        </div>
+                      )}
                     </Col>
 
                     <Col md={6}>
@@ -731,11 +851,15 @@ export default function SupportPage() {
                         onChange={e => setTicketForm({ ...ticketForm, category: e.target.value })}
                         style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, cursor: 'pointer', background: 'white' }}
                       >
-                        <option value="অ্যাপয়েন্টমেন্ট সমস্যা">অ্যাপয়েন্টমেন্ট সমস্যা</option>
-                        <option value="পেমেন্ট ও রিফান্ড">পেমেন্ট ও রিফান্ড</option>
-                        <option value="ভিডিও কল সমস্যা">ভিডিও কল সমস্যা</option>
-                        <option value="ডাক্তার সম্পর্কিত তথ্য">ডাক্তার সম্পর্কিত তথ্য</option>
-                        <option value="অন্যান্য জিজ্ঞাসা">অন্যান্য জিজ্ঞাসা</option>
+                        {(cms.support_ticket?.categories || [
+                          'অ্যাপয়েন্টমেন্ট সমস্যা',
+                          'পেমেন্ট ও রিফান্ড',
+                          'ভিডিও কল সমস্যা',
+                          'ডাক্তার সম্পর্কিত তথ্য',
+                          'অন্যান্য জিজ্ঞাসা'
+                        ]).map((cat, idx) => (
+                          <option key={idx} value={cat}>{cat}</option>
+                        ))}
                       </select>
                     </Col>
 
@@ -781,6 +905,21 @@ export default function SupportPage() {
                       />
                     </Col>
 
+                    {/* Unregistered Warning Message Banner */}
+                    {contactWarning && (
+                      <Col md={12}>
+                        <div style={{ padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 14, color: '#991B1B', fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                          <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2, color: '#EF4444' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ lineHeight: 1.5 }}>{contactWarning}</div>
+                            <div style={{ marginTop: 8, fontSize: 13, color: '#B91C1C' }}>
+                              অ্যাকাউন্ট নেই? <a href="/patient/register" style={{ color: '#00B875', fontWeight: 800, textDecoration: 'underline' }}>এখানে ক্লিক করে বিনামূল্যে অ্যাকাউন্ট তৈরি করুন</a>
+                            </div>
+                          </div>
+                        </div>
+                      </Col>
+                    )}
+
                     <Col md={12} className="mt-3">
                       <button
                         type="submit"
@@ -802,31 +941,65 @@ export default function SupportPage() {
                           boxShadow: '0 6px 20px rgba(0,184,117,0.25)'
                         }}
                       >
-                        {ticketSubmitting ? 'টিকিট জমা হচ্ছে...' : <><Ticket size={18} /> টিকিট সাবমিট করুন</>}
+                        {ticketSubmitting ? 'যাচাই ও টিকিট জমা হচ্ছে...' : <><Ticket size={18} /> টিকিট সাবমিট করুন</>}
                       </button>
                     </Col>
                   </Row>
                 </form>
 
+                {/* Submitted Ticket Success Card with Close Icon & 2-Minute Auto Dismiss */}
                 {submittedTicket && (
-                  <div style={{ marginTop: 24, padding: 20, background: '#F0FDF4', borderRadius: 16, border: '1.5px solid #22C55E' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontWeight: 900, color: '#15803D', fontSize: 15 }}>
-                        ✅ সফলভাবে টিকিট তৈরি হয়েছে!
-                      </span>
-                      <span style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800, padding: '3px 10px', borderRadius: 99, fontSize: 12 }}>
-                        আইডি: {submittedTicket.id}
-                      </span>
+                  <div style={{ marginTop: 28, borderRadius: 20, overflow: 'hidden', border: '1.5px solid #22C55E', boxShadow: '0 8px 32px rgba(0,184,117,0.12)', position: 'relative' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)', padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CheckCircle2 size={24} color="white" />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 900, color: 'white', fontSize: 16, lineHeight: 1.2 }}>সফলভাবে টিকিট জমা হয়েছে!</div>
+                          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 3 }}>
+                            ২ মিনিট পর বার্তাটি লুকানো হবে ({Math.floor(autoDismissSeconds / 60)}:{String(autoDismissSeconds % 60).padStart(2, '0')})
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSubmittedTicket(null)}
+                        title="বন্ধ করুন"
+                        style={{
+                          background: 'rgba(255,255,255,0.2)',
+                          border: 'none',
+                          color: 'white',
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                    <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#166534' }}>
-                      আপনার টিকিট নম্বর <strong>{submittedTicket.id}</strong> সংরক্ষণ করুন। "টিকিট স্ট্যাটাস ট্র্যাক" ট্যাবে আইডি দিয়ে আপডেট পাবেন।
-                    </p>
-                    <button
-                      onClick={() => handleCopy(submittedTicket.id, 'ticketId')}
-                      style={{ border: 'none', background: '#15803D', color: 'white', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      {copiedText === 'ticketId' ? 'কপি সম্পন্ন!' : 'টিকিট আইডি কপি করুন'}
-                    </button>
+                    <div style={{ background: '#F0FDF4', padding: '20px 22px' }}>
+                      <div style={{ fontSize: 12, color: '#059669', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>আপনার ইউনিক টিকিট নম্বর (TICKET ID)</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, background: 'white', border: '2px solid #22C55E', borderRadius: 12, padding: '12px 18px', fontFamily: 'monospace', fontSize: 22, fontWeight: 900, color: '#064E3B', letterSpacing: '0.06em', minWidth: 0 }}>
+                          {submittedTicket.id}
+                        </div>
+                        <button
+                          onClick={() => handleCopy(submittedTicket.id, 'ticketId')}
+                          style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: copiedText === 'ticketId' ? '#059669' : '#00B875', color: 'white', padding: '12px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s ease', flexShrink: 0 }}
+                        >
+                          <Copy size={16} />
+                          {copiedText === 'ticketId' ? 'কপি হয়েছে ✓' : 'আইডি কপি করুন'}
+                        </button>
+                      </div>
+                      <p style={{ margin: '12px 0 0', fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
+                        এই আইডিটি সংরক্ষণ করুন। <strong>"টিকিট স্ট্যাটাস ট্র্যাক"</strong> ট্যাবে <strong>{submittedTicket.id}</strong> প্রবেশ করিয়ে যেকোনো সময় বর্তমান আপডেট জানতে পারবেন।
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -834,7 +1007,7 @@ export default function SupportPage() {
 
             {/* ── TAB 3: TICKET STATUS TRACKER ── */}
             {activeMainTab === 'status' && (
-              <div style={{
+              <div className="support-content-card" style={{
                 background: 'white',
                 borderRadius: 24,
                 padding: '36px 30px',
@@ -843,107 +1016,220 @@ export default function SupportPage() {
               }}>
                 <div style={{ marginBottom: 24 }}>
                   <span style={{ background: '#F0FDF4', color: '#064E3B', fontSize: 12, fontWeight: 800, padding: '4px 14px', borderRadius: 99, display: 'inline-block', marginBottom: 8, border: '1px solid #DCFCE7' }}>
-                    লাইব টিকিট ট্র্যাকার
+                    লাইভ টিকিট ট্র্যাকার
                   </span>
                   <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 22, margin: '0 0 6px' }}>
                     টিকিটের অগ্রগতি যাচাই করুন
                   </h3>
                   <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>
-                    আপনার টিকিট আইডি (উদাঃ TK-849201) প্রবেশ করিয়ে বর্তমান স্ট্যাটাস দেখুন।
+                    আপনার টিকিট আইডি (উদাঃ TID-130707) প্রবেশ করিয়ে বর্তমান স্ট্যাটাস দেখুন।
                   </p>
                 </div>
 
-                <form onSubmit={handleSearchTicket} style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', gap: 10 }}>
+                {/* Search Bar Form */}
+                <form onSubmit={handleSearchTicket} style={{ marginBottom: 20 }}>
+                  <div className="tracker-search-wrap" style={{ display: 'flex', gap: 10 }}>
                     <input
                       required
                       value={statusSearchId}
                       onChange={e => setStatusSearchId(e.target.value)}
-                      placeholder="টিকিট আইডি দিন (উদাঃ TK-123456)..."
+                      placeholder="টিকিট আইডি লিখুন (উদাঃ TID-130707)..."
+                      className="tracker-search-input"
                       style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
                     />
                     <button
                       type="submit"
+                      className="tracker-search-btn"
                       style={{
-                        background: '#00B875', color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap'
+                        background: '#00B875', color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
                       }}
                     >
                       ট্র্যাক করুন
                     </button>
                   </div>
-                  {/* Digital Platform Assistance Hotline Box */}
-              <div style={{ 
-                background: 'white', 
-                borderRadius: 24, 
-                padding: '24px 20px', 
-                border: '1.5px solid #FFE4E6',
-                boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
-                textAlign: 'center',
-                marginTop: '20px'
-              }}>
-                <div style={{ 
-                  width: 48, height: 48, borderRadius: 16, 
-                  background: '#FFE4E6', color: '#EF4444', 
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 12
-                }}>
-                  <AlertTriangle size={22} />
-                </div>
-                <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি বুকিং ও তথ্য হেল্পলাইন</h5>
-                <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
-                  Doctor Booklet ডিজিটাল প্ল্যাটফর্ম সম্পর্কিত যেকোনো তথ্য ও বুকিং সহায়তার জন্য কল করুন
-                </p>
-                <a 
-                  href={`tel:${site.phone || '09638649314'}`} 
-                  style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    background: '#EF4444', 
-                    color: 'white', 
-                    padding: '12px 20px', 
-                    borderRadius: 99, 
-                    fontWeight: 900, 
-                    fontSize: 16,
-                    textDecoration: 'none',
-                    boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Phone size={18} />
-                  <span>{site.phone || '09638649314'}</span>
-                </a>
-              </div>
                 </form>
 
+                {/* Search Error Notice */}
                 {statusError && (
-                  <div style={{ padding: 14, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 13.5, fontWeight: 600 }}>
-                    ⚠️ {statusError}
+                  <div style={{ padding: '12px 16px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 13.5, fontWeight: 600, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle size={17} style={{ flexShrink: 0, color: '#EF4444' }} />
+                    <span>{statusError}</span>
                   </div>
                 )}
 
+                {/* Search Ticket Result Card (Mobile-Optimized & Perfectly Aligned) */}
                 {searchedTicketResult && (
-                  <div style={{ padding: 20, background: '#F8FAFC', borderRadius: 16, border: '1.5px solid #E2E8F0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontWeight: 800, color: '#0F172A', fontSize: 15 }}>টিকিট আইডি: {searchedTicketResult.id}</span>
-                      <span style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800, padding: '4px 12px', borderRadius: 99, fontSize: 12 }}>
+                  <div className="tracker-result-card" style={{ 
+                    padding: '22px 20px', 
+                    background: '#F8FAFC', 
+                    borderRadius: 18, 
+                    border: '1.5px solid #E2E8F0', 
+                    marginBottom: 24, 
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.03)', 
+                    position: 'relative' 
+                  }}>
+                    {/* Top Row: Ticket ID Header (Left) & Close Icon Button (Right) */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 10 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                          টিকিট আইডি
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 900, color: '#0F172A', fontSize: 16, letterSpacing: '0.04em' }}>
+                            {searchedTicketResult.id}
+                          </span>
+                          <button
+                            onClick={() => handleCopy(searchedTicketResult.id, 'searchedId')}
+                            title="আইডি কপি করুন"
+                            style={{ border: 'none', background: '#E2E8F0', color: copiedText === 'searchedId' ? '#00B875' : '#475569', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}
+                          >
+                            <Copy size={11} />
+                            {copiedText === 'searchedId' ? 'কপি হয়েছে' : 'কপি'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Close Button - Fixed Top Right */}
+                      <button
+                        onClick={() => setSearchedTicketResult(null)}
+                        title="বন্ধ করুন"
+                        style={{
+                          background: '#E2E8F0',
+                          border: 'none',
+                          color: '#475569',
+                          width: 30,
+                          height: 30,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Status & Priority Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                      <span style={{ 
+                        background: '#DCFCE7', 
+                        color: '#15803D', 
+                        fontWeight: 800, 
+                        padding: '4px 12px', 
+                        borderRadius: 99, 
+                        fontSize: 12,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5
+                      }}>
+                        <CheckCircle2 size={13} />
                         {searchedTicketResult.status}
                       </span>
+                      {searchedTicketResult.priority && (
+                        <span style={{ 
+                          background: '#FEF3C7', 
+                          color: '#B45309', 
+                          fontWeight: 700, 
+                          padding: '4px 10px', 
+                          borderRadius: 99, 
+                          fontSize: 11.5 
+                        }}>
+                          অগ্রাধিকার: {searchedTicketResult.priority}
+                        </span>
+                      )}
+                      {searchedTicketResult.category && (
+                        <span style={{ 
+                          background: '#F1F5F9', 
+                          color: '#475569', 
+                          fontWeight: 700, 
+                          padding: '4px 10px', 
+                          borderRadius: 99, 
+                          fontSize: 11.5 
+                        }}>
+                          {searchedTicketResult.category}
+                        </span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                      বিষয়: {searchedTicketResult.subject}
+
+                    {/* Subject */}
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: '#1E293B', marginBottom: 6, lineHeight: 1.4 }}>
+                      বিষয়: <span style={{ color: '#0F172A' }}>{searchedTicketResult.subject}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: '#64748B' }}>
-                      তারিখ: {searchedTicketResult.date} | অগ্রাধিকার: {searchedTicketResult.priority}
+
+                    {/* Date */}
+                    <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: searchedTicketResult.note ? 12 : 0 }}>
+                      জমার তারিখ: {searchedTicketResult.date}
                     </div>
+
+                    {/* Latest Admin Note / Status Update */}
                     {searchedTicketResult.note && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #CBD5E1', fontSize: 13, color: '#0F172A', fontWeight: 600 }}>
-                        গড় আপডেট: {searchedTicketResult.note}
+                      <div style={{ 
+                        marginTop: 12, 
+                        padding: '12px 14px', 
+                        background: '#FFFFFF', 
+                        border: '1px solid #E2E8F0', 
+                        borderRadius: 12, 
+                        fontSize: 13, 
+                        color: '#0F172A', 
+                        fontWeight: 600,
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#00B875', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          সর্বশেষ আপডেট
+                        </div>
+                        {searchedTicketResult.note}
                       </div>
                     )}
                   </div>
                 )}
+
+                {/* Digital Platform Assistance Hotline Box */}
+                <div style={{ 
+                  background: 'white', 
+                  borderRadius: 24, 
+                  padding: '24px 20px', 
+                  border: '1.5px solid #FFE4E6',
+                  boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
+                  textAlign: 'center',
+                  marginTop: searchedTicketResult ? 0 : '16px'
+                }}>
+                  <div style={{ 
+                    width: 48, height: 48, borderRadius: 16, 
+                    background: '#FFE4E6', color: '#EF4444', 
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 12
+                  }}>
+                    <AlertTriangle size={22} />
+                  </div>
+                  <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি বুকিং ও তথ্য হেল্পলাইন</h5>
+                  <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
+                    Doctor Booklet ডিজিটাল প্ল্যাটফর্ম সম্পর্কিত যেকোনো তথ্য ও বুকিং সহায়তার জন্য কল করুন
+                  </p>
+                  <a 
+                    href={`tel:${site.phone || '09638649314'}`} 
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      background: '#EF4444', 
+                      color: 'white', 
+                      padding: '12px 20px', 
+                      borderRadius: 99, 
+                      fontWeight: 900, 
+                      fontSize: 16,
+                      textDecoration: 'none',
+                      boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Phone size={18} />
+                    <span>{site.phone || '09638649314'}</span>
+                  </a>
+                </div>
               </div>
             )}
           </Col>

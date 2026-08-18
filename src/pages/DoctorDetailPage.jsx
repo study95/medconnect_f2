@@ -103,6 +103,25 @@ function DoctorDetailPageContent() {
     return (sum / reviews.length).toFixed(1)
   }, [reviews])
 
+  // Compute total experience from all experience durations
+  const totalExpLabel = (() => {
+    const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
+    let totalMonths = 0
+    exps.forEach(exp => {
+      const d = (exp.duration || '').toLowerCase()
+      const yr = d.match(/(\d+)\s*year/)
+      const mo = d.match(/(\d+)\s*month/)
+      if (yr) totalMonths += parseInt(yr[1]) * 12
+      if (mo) totalMonths += parseInt(mo[1])
+    })
+    if (totalMonths === 0) return (doctor?.experience || '১০') + '+ বছর'
+    const yrs = Math.floor(totalMonths / 12)
+    const mos = totalMonths % 12
+    if (yrs === 0) return mos + ' মাস'
+    if (mos === 0) return yrs + '+ বছর'
+    return yrs + ' বছর ' + mos + ' মাস'
+  })()
+
   const handleTabChange = (tabKey) => {
     setActiveTab(tabKey)
     // Smoothly focus/align the top of right card when menu item is clicked
@@ -540,7 +559,7 @@ function DoctorDetailPageContent() {
                   <span style={{ fontSize: 13, fontWeight: 800, color: '#007A65' }}>অভিজ্ঞতা</span>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 950, color: primaryGreen }}>
-                  {doctor?.experience || '১০'}+ বছর
+                  {totalExpLabel}
                 </span>
               </div>
 
@@ -840,83 +859,46 @@ function DoctorDetailPageContent() {
                               return (
                                 <div
                                   key={sch?.id || sIdx}
-                                  style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 8,
-                                    padding: '12px 14px',
-                                    borderRadius: 12,
-                                    background: '#FAFBFD',
-                                    border: '1px solid #EEF1F6'
-                                  }}
+                                  className="doc-schedule-card"
                                 >
-                                  {/* Row 1: Day + Time */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  {/* Top / Left Group: Day + Time + Desktop Fee */}
+                                  <div className="doc-schedule-left">
                                     {/* Day Badge */}
-                                    <span style={{
-                                      background: '#FFFFFF',
-                                      color: '#0F172A',
-                                      border: '1.5px solid #CBD5E1',
-                                      borderRadius: 8,
-                                      padding: '4px 10px',
-                                      fontSize: 12.5,
-                                      fontWeight: 800,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 5,
-                                      flexShrink: 0
-                                    }}>
+                                    <span className="doc-schedule-day">
                                       <IconCalendarEvent size={14} color={primaryGreen} />
                                       <span>{dayBn}</span>
                                     </span>
 
                                     {/* Time */}
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 13, fontWeight: 700 }}>
+                                    <div className="doc-schedule-time">
                                       <IconClock size={14} color={primaryGreen} />
                                       <span>
                                         {sch?.start_time ? `${formatTimeBn(sch.start_time)} - ${formatTimeBn(sch.end_time)}` : 'বিকাল ৫:০০ - রাত ৯:০০'}
                                       </span>
                                     </div>
-                                  </div>
 
-                                  {/* Row 2: Fee + Book Button */}
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                    {/* Fee Tag */}
-                                    {fee ? (
-                                      <span style={{
-                                        background: '#E8F8F2',
-                                        color: primaryGreen,
-                                        borderRadius: 6,
-                                        padding: '3px 10px',
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        border: '1px solid #A7F3D0'
-                                      }}>
+                                    {/* Fee Tag on Desktop */}
+                                    {fee && (
+                                      <span className="doc-schedule-fee d-none d-sm-inline-flex">
                                         ৳{fee} ফি
                                       </span>
-                                    ) : <span />}
+                                    )}
+                                  </div>
+
+                                  {/* Bottom / Right Group: Mobile Fee + Booking Button */}
+                                  <div className="doc-schedule-right">
+                                    {/* Fee Tag on Mobile */}
+                                    {fee ? (
+                                      <span className="doc-schedule-fee d-inline-flex d-sm-none">
+                                        ৳{fee} ফি
+                                      </span>
+                                    ) : <div className="d-sm-none" />}
 
                                     {/* Booking Button */}
                                     <button 
                                       type="button"
                                       onClick={() => handleBook(sch?.id)}
-                                      style={{
-                                        padding: '8px 16px',
-                                        borderRadius: 10,
-                                        border: 'none',
-                                        background: primaryGreen,
-                                        color: 'white',
-                                        fontSize: 13,
-                                        fontWeight: 900,
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)',
-                                        transition: 'all 0.2s ease',
-                                        fontFamily: 'inherit',
-                                        whiteSpace: 'nowrap'
-                                      }}
+                                      className="doc-schedule-btn"
                                     >
                                       <IconCalendarEvent size={15} color="white" />
                                       <span>অ্যাপয়েন্টমেন্ট নিন</span>
@@ -950,33 +932,105 @@ function DoctorDetailPageContent() {
 
                     <div className="d-flex flex-column gap-3">
                       {Array.isArray(doctor?.experiences) && doctor.experiences.length > 0 ? (
-                        doctor.experiences.map((exp, idx) => (
-                          <div key={exp.id || idx} className="d-flex align-items-start gap-3" style={{ padding: '16px 20px', background: '#F8FAFC', borderRadius: 16, border: `1px solid ${cardBorderColor}` }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 12, background: lightGreenBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                              <IconBriefcase size={20} color={primaryGreen} />
-                            </div>
-                            <div className="flex-grow-1">
-                              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-                                <h5 style={{ fontSize: 16, fontWeight: 900, color: darkTextColor, margin: 0 }}>
-                                  {exp.designation || 'Specialist Doctor'}
-                                </h5>
-                                {exp.duration && (
-                                  <span style={{ fontSize: 12, fontWeight: 800, color: primaryGreen, background: lightGreenBg, padding: '3px 10px', borderRadius: 20 }}>
-                                    {exp.duration}
-                                  </span>
+                        doctor.experiences.map((exp, idx) => {
+                          const isPresent = Boolean(
+                            exp?.is_current ||
+                            exp?.currently_working ||
+                            (typeof exp?.period === 'string' && /present|বর্তমান/i.test(exp.period)) ||
+                            (typeof exp?.end_date === 'string' && /present|বর্তমান/i.test(exp.end_date)) ||
+                            (typeof exp?.to_date === 'string' && /present|বর্তমান/i.test(exp.to_date))
+                          )
+
+                          return (
+                            <div
+                              key={exp.id || idx}
+                              style={{
+                                padding: '18px 20px 16px',
+                                background: isPresent ? '#F0FDF4' : '#F8FAFC',
+                                borderRadius: 16,
+                                border: isPresent ? '1.5px solid #00B875' : `1px solid ${cardBorderColor}`,
+                                boxShadow: isPresent ? '0 4px 14px rgba(0, 184, 117, 0.08)' : 'none',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 14
+                              }}
+                            >
+                              {/* Top Right Floating Badge (Exact same style as 'প্রস্তাবিত') */}
+                              {isPresent && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-10px',
+                                    right: '20px',
+                                    background: '#00B875',
+                                    color: '#FFFFFF',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    padding: '2px 10px',
+                                    borderRadius: '6px',
+                                    boxShadow: '0 2px 6px rgba(0, 184, 117, 0.25)',
+                                    fontFamily: "'Hind Siliguri', sans-serif"
+                                  }}
+                                >
+                                  বর্তমানে কর্মরত আছেন
+                                </div>
+                              )}
+
+                              <div style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 12,
+                                background: isPresent ? '#FFFFFF' : lightGreenBg,
+                                border: isPresent ? '1px solid #A7F3D0' : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                marginTop: 2,
+                                color: primaryGreen
+                              }}>
+                                <IconBriefcase size={20} />
+                              </div>
+
+                              <div className="flex-grow-1">
+                                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                                  <h5 style={{ fontSize: 16, fontWeight: 600, color: darkTextColor, margin: 0 }}>
+                                    {exp.designation || 'Specialist Doctor'}
+                                  </h5>
+                                  {exp.duration && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, color: primaryGreen, background: isPresent ? '#DCFCE7' : lightGreenBg, padding: '3px 10px', borderRadius: 20 }}>
+                                      {exp.duration}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 14, fontWeight: 500, color: primaryGreen, margin: '0 0 4px' }}>
+                                  {exp.hospital_name || 'Hospital / Institute'}
+                                </div>
+                                {exp.department && (
+                                  <div style={{ margin: '0 0 6px 0' }}>
+                                    <span style={{
+                                      background: '#00B875',
+                                      color: 'white',
+                                      fontSize: 11.5,
+                                      fontWeight: 400,
+                                      padding: '2px 8px',
+                                      borderRadius: 4,
+                                      display: 'inline-block',
+                                      fontFamily: "'Hind Siliguri', sans-serif"
+                                    }}>
+                                      {exp.department}
+                                    </span>
+                                  </div>
                                 )}
-                              </div>
-                              <p style={{ fontSize: 14, fontWeight: 700, color: primaryGreen, margin: '0 0 4px' }}>
-                                {exp.hospital_name || 'Hospital / Institute'}
-                                {exp.department ? ` • ${exp.department}` : ''}
-                              </p>
-                              <div className="d-flex align-items-center gap-3 flex-wrap text-muted" style={{ fontSize: 12.5, fontWeight: 600 }}>
-                                {exp.period && <span>📅 {exp.period}</span>}
-                                {exp.address && <span>📍 {exp.address}</span>}
+                                <div className="d-flex align-items-center gap-3 flex-wrap text-muted" style={{ fontSize: 12.5, fontWeight: 400 }}>
+                                  {exp.period && <span>📅 {exp.period}</span>}
+                                  {exp.address && <span>📍 {exp.address}</span>}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          )
+                        })
                       ) : (
                         [
                           '10+ Years of experience in Allergy & Immunology / Cardiology',
@@ -1004,51 +1058,32 @@ function DoctorDetailPageContent() {
                       </h3>
                     </div>
 
-                    {/* Rating Breakdown & Sample Review */}
-                    <Row className="g-3 mb-4">
-                      <Col md={6}>
-                        <div style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}`, height: '100%' }}>
-                          <div className="d-flex align-items-center gap-3 mb-3">
-                            <IconStar size={32} color="#F59E0B" fill="#F59E0B" />
-                            <div>
-                              <span style={{ fontSize: 36, fontWeight: 950, color: darkTextColor, lineHeight: 1 }}>{averageRating}</span>
-                              <span style={{ fontSize: 13, color: mutedTextColor, fontWeight: 700, display: 'block' }}>({(reviews || []).length} Reviews)</span>
+                    {/* Rating Breakdown */}
+                    <div className="mb-4" style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}` }}>
+                      <div className="d-flex align-items-center gap-3 mb-3">
+                        <IconStar size={32} color="#F59E0B" fill="#F59E0B" />
+                        <div>
+                          <span style={{ fontSize: 36, fontWeight: 950, color: darkTextColor, lineHeight: 1 }}>{averageRating}</span>
+                          <span style={{ fontSize: 13, color: mutedTextColor, fontWeight: 700, display: 'block' }}>({(reviews || []).length} Reviews)</span>
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-column gap-1">
+                        {[5, 4, 3, 2, 1].map(stars => {
+                          const count = (reviews || []).filter(r => r.rating === stars).length
+                          const percent = (reviews || []).length > 0 ? (count / reviews.length) * 100 : 0
+                          return (
+                            <div key={stars} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
+                              <span style={{ width: 16, fontWeight: 700 }}>{stars}★</span>
+                              <div className="flex-grow-1" style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${percent}%`, height: '100%', background: primaryGreen }} />
+                              </div>
+                              <span style={{ width: 30, color: mutedTextColor, textAlign: 'right' }}>{Math.round(percent)}%</span>
                             </div>
-                          </div>
-
-                          <div className="d-flex flex-column gap-1">
-                            {[5, 4, 3, 2, 1].map(stars => {
-                              const count = (reviews || []).filter(r => r.rating === stars).length
-                              const percent = (reviews || []).length > 0 ? (count / reviews.length) * 100 : 0
-                              return (
-                                <div key={stars} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
-                                  <span style={{ width: 16, fontWeight: 700 }}>{stars}★</span>
-                                  <div className="flex-grow-1" style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
-                                    <div style={{ width: `${percent}%`, height: '100%', background: primaryGreen }} />
-                                  </div>
-                                  <span style={{ width: 30, color: mutedTextColor, textAlign: 'right' }}>{Math.round(percent)}%</span>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </Col>
-
-                      <Col md={6}>
-                        <div style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}`, height: '100%' }}>
-                          <div className="d-flex gap-1 mb-2">
-                            {[1, 2, 3, 4, 5].map(s => (
-                              <IconStar key={s} size={16} color="#F59E0B" fill="#F59E0B" />
-                            ))}
-                            <span style={{ fontSize: 12, color: mutedTextColor, marginLeft: 'auto', fontWeight: 700 }}>2 days ago</span>
-                          </div>
-                          <p style={{ fontSize: 14, color: '#374151', fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
-                            "Very friendly and explained everything clearly. Highly recommended."
-                          </p>
-                          <span style={{ fontSize: 13, fontWeight: 900, color: primaryGreen }}>— Rahim Uddin</span>
-                        </div>
-                      </Col>
-                    </Row>
+                          )
+                        })}
+                      </div>
+                    </div>
 
                     {/* Add Review Form for Logged In Users */}
                     <div style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}` }}>
@@ -1169,6 +1204,105 @@ function DoctorDetailPageContent() {
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        .doc-schedule-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          background: #FAFBFD;
+          border: 1px solid #EEF1F6;
+          transition: all 0.2s ease;
+        }
+        .doc-schedule-card:hover {
+          border-color: #CBD5E1;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .doc-schedule-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .doc-schedule-day {
+          background: #FFFFFF;
+          color: #0F172A;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 4px 10px;
+          fontSize: 12.5px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex-shrink: 0;
+        }
+        .doc-schedule-time {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: #334155;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .doc-schedule-fee {
+          background: #E8F8F2;
+          color: #00B875;
+          border-radius: 6px;
+          padding: 4px 10px;
+          font-size: 12px;
+          font-weight: 800;
+          border: 1px solid #A7F3D0;
+          align-items: center;
+        }
+        .doc-schedule-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .doc-schedule-btn {
+          padding: 8px 18px;
+          border-radius: 10px;
+          border: none;
+          background: #00B875;
+          color: white;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
+          transition: all 0.2s ease;
+          font-family: inherit;
+          white-space: nowrap;
+        }
+        .doc-schedule-btn:hover {
+          background: #059669;
+          transform: translateY(-1px);
+        }
+
+        @media (max-width: 576px) {
+          .doc-schedule-card {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 12px 14px;
+          }
+          .doc-schedule-left {
+            justify-content: flex-start;
+            gap: 8px;
+          }
+          .doc-schedule-right {
+            justify-content: space-between;
+            width: 100%;
+            padding-top: 6px;
+            border-top: 1px dashed #E2E8F0;
+          }
+        }
+
         @keyframes fadeInTab {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -18,8 +18,9 @@ import {
   IconMapPin, IconEdit, IconLogout, IconX, IconCamera, 
   IconHeart, IconShieldCheck, IconCheck, IconSparkles,
   IconArrowRight, IconArrowLeft, IconActivity, IconBookmark, IconChevronDown, IconChevronUp,
-  IconTicket, IconRefresh, IconLayoutGrid
+  IconTicket, IconRefresh, IconLayoutGrid, IconCopy, IconAlertTriangle
 } from '@tabler/icons-react'
+import axiosInstance from '../api/axiosInstance'
 import '../styles/auth.css'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
@@ -46,6 +47,13 @@ function ProfilePage() {
 
   // Mobile Sub-Page Screen State: null (main menu) | 'profile' | 'fav_doctors' | 'fav_hospitals'
   const [mobileSubView, setMobileSubView] = useState(searchParams.get('tab') === 'favorites' ? 'fav_doctors' : null)
+
+  // Support ticket tracker state (mobile profile sub-page)
+  const [profileTrackId, setProfileTrackId] = useState('')
+  const [profileTrackResult, setProfileTrackResult] = useState(null)
+  const [profileTrackError, setProfileTrackError] = useState('')
+  const [profileTrackLoading, setProfileTrackLoading] = useState(false)
+  const [showTrackerBox, setShowTrackerBox] = useState(false)
 
   const [appointments, setAppointments] = useState([])
   const [loadingAppointments, setLoadingAppointments] = useState(false)
@@ -84,6 +92,154 @@ function ProfilePage() {
   const { specialties, loading: loadingSpecialties } = useSpecialties()
 
   const ageInfo = calculateAge(form.date_of_birth)
+
+  // Mobile support ticket form state
+  const [ticketForm, setTicketForm] = useState({
+    name: '',
+    contact: '',
+    category: 'অ্যাপয়েন্টমেন্ট সমস্যা',
+    priority: 'সাধারণ',
+    subject: '',
+    message: ''
+  })
+  const [ticketSubmitting, setTicketSubmitting] = useState(false)
+  const [submittedTicket, setSubmittedTicket] = useState(null)
+  const [contactWarning, setContactWarning] = useState('')
+  const [contactSuccess, setContactSuccess] = useState('')
+  const [contactChecking, setContactChecking] = useState(false)
+  const [copiedTicketId, setCopiedTicketId] = useState(false)
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false)
+  const [supportView, setSupportView] = useState(null) // null=landing, 'new_ticket', 'tracking', 'list'
+  const [userTickets, setUserTickets] = useState([])
+  const [loadingUserTickets, setLoadingUserTickets] = useState(false)
+  const [userTicketsError, setUserTicketsError] = useState('') // null=landing, 'new_ticket', 'tracking', 'list'
+
+  useEffect(() => {
+    const contactVal = form.mobile || form.email || user?.mobile || user?.email || ''
+    const nameVal = form.name || user?.name || ''
+    if (nameVal || contactVal) {
+      setTicketForm(prev => ({
+        ...prev,
+        name: prev.name || nameVal,
+        contact: prev.contact || contactVal
+      }))
+    }
+  }, [form.name, form.mobile, form.email, user])
+
+  const checkContactRegistration = async (contactVal) => {
+    if (!contactVal || contactVal.trim().length < 3) {
+      setContactWarning('')
+      setContactSuccess('')
+      return
+    }
+    setContactChecking(true)
+    try {
+      const res = await axiosInstance.post('/services/check-contact', { contact: contactVal.trim() })
+      if (res.data?.registered) {
+        setContactWarning('')
+        setContactSuccess(`নিবন্ধিত অ্যাকাউন্ট: ${res.data.name || 'সক্রিয় ব্যবহারকারী'}`)
+      } else {
+        setContactSuccess('')
+        setContactWarning(res.data?.message || 'এই মোবাইল নম্বর বা ইমেইলটি সিস্টেমে নিবন্ধিত নেই।')
+      }
+    } catch {
+      // ignore
+    } finally {
+      setContactChecking(false)
+    }
+  }
+
+  const handleSupportTicketSubmit = async (e) => {
+    e.preventDefault()
+    if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) return
+    setTicketSubmitting(true)
+    setContactWarning('')
+
+    try {
+      const payload = {
+        name: ticketForm.name.trim(),
+        contact: ticketForm.contact.trim(),
+        category: ticketForm.category,
+        priority: ticketForm.priority,
+        subject: ticketForm.subject.trim(),
+        message: ticketForm.message.trim(),
+      }
+      
+      const res = await axiosInstance.post('/services', payload)
+      const ticketId = res.data?.ticket_number || ('TID-' + Math.floor(100000 + Math.random() * 900000))
+      
+      const newTicket = {
+        id: ticketId,
+        ...ticketForm,
+        status: 'অপেক্ষমাণ (Pending)',
+        date: new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
+        estimatedTime: '২ ঘণ্টা'
+      }
+      
+      setSubmittedTicket(newTicket)
+      setTicketForm({
+        name: form.name || user?.name || '',
+        contact: form.mobile || form.email || user?.mobile || user?.email || '',
+        category: 'অ্যাপয়েন্টমেন্ট সমস্যা',
+        priority: 'সাধারণ',
+        subject: '',
+        message: ''
+      })
+      setContactWarning('')
+      setContactSuccess('')
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'টিকিট সাবমিট করা সম্ভব হয়নি।'
+      setContactWarning(errorMsg)
+    } finally {
+      setTicketSubmitting(false)
+    }
+  }
+
+  const handleCopyTicketId = (text) => {
+    navigator.clipboard.writeText(text)
+    setCopiedTicketId(true)
+    setTimeout(() => setCopiedTicketId(false), 2000)
+  }
+
+  const loadUserTickets = async () => {
+    const contactVal = form.mobile || form.email || user?.phone || user?.email || user?.mobile || ''
+    const userIdVal = user?.id || null
+    setLoadingUserTickets(true)
+    setUserTicketsError('')
+    try {
+      const res = await axiosInstance.post('/services/my-tickets', {
+        contact: contactVal,
+        user_id: userIdVal
+      })
+      const list = Array.isArray(res.data?.data) ? res.data.data : []
+      setUserTickets(list)
+    } catch (err) {
+      setUserTicketsError(err.response?.data?.message || 'টিকিট তালিকা লোড করা যায়নি।')
+    } finally {
+      setLoadingUserTickets(false)
+    }
+  }
+
+  const handleTrackTicket = async () => {
+    if (!profileTrackId || !profileTrackId.trim()) return
+    setProfileTrackLoading(true)
+    setProfileTrackError('')
+    setProfileTrackResult(null)
+    try {
+      const cleanId = profileTrackId.trim()
+      const res = await axiosInstance.get(`/services/track/${cleanId}`)
+      if (res.data && res.data.data) {
+        setProfileTrackResult(res.data.data)
+      } else if (res.data) {
+        setProfileTrackResult(res.data)
+      }
+    } catch (err) {
+      setProfileTrackError(err.response?.data?.message || 'টিকিট খুঁজে পাওয়া যায়নি। আইডিটি সঠিক কিনা যাচাই করুন।')
+    } finally {
+      setProfileTrackLoading(false)
+    }
+  }
 
   useEffect(() => {
     loadProfile()
@@ -461,7 +617,7 @@ function ProfilePage() {
                   }}
                 >
                   <IconStethoscope size={20} />
-                  সেভ করা ডাক্তার ({toBnNum(favoriteDoctors.length)})
+                    পছন্দের ডাক্তার ({toBnNum(favoriteDoctors.length)})
                 </button>
                 <button
                   onClick={() => setFavSubTab('hospitals')}
@@ -1192,7 +1348,7 @@ function ProfilePage() {
                     <div style={{ width: 38, height: 38, borderRadius: 5, background: '#FEF2F2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <IconStethoscope size={20} />
                     </div>
-                    <span>পছন্দের ডাক্তার তালিকা ({toBnNum(favoriteDoctors.length)})</span>
+                    পছন্দের ডাক্তার ({toBnNum(favoriteDoctors.length)})
                   </div>
                   <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <IconArrowRight size={16} />
@@ -1226,6 +1382,40 @@ function ProfilePage() {
                     <span>পছন্দের হাসপাতাল তালিকা ({toBnNum(favoriteHospitals.length)})</span>
                   </div>
                   <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconArrowRight size={16} />
+                  </div>
+                </button>
+
+                {/* Item 5: Support Ticket / অভিযোগ পোর্টাল */}
+                <button
+                  onClick={() => setMobileSubView('support')}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    borderRadius: 5,
+                    border: '1.5px solid #FEF3C7',
+                    background: 'linear-gradient(135deg, #FFFBEB 0%, #FEFCE8 100%)',
+                    color: '#0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: 800,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(245,158,11,0.08)',
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 5, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconTicket size={20} />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <div>সাপোর্ট / অভিযোগ পোর্টাল</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: '#92400E', marginTop: 1 }}>টিকিট ট্র্যাক ও জমা দিন</div>
+                    </div>
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: 5, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <IconArrowRight size={16} />
                   </div>
                 </button>
@@ -1301,21 +1491,21 @@ function ProfilePage() {
           ) : (
             /* DEDICATED FULL MOBILE SUB-PAGE SCREEN */
             <div>
-              {/* STICKY NAVIGATION HEADER (EXACT SAME STYLE AS USER IMAGE) */}
+              {/* STICKY NAVIGATION HEADER */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-start',
-                gap: 16,
+                gap: 12,
                 marginBottom: 16,
                 background: 'white',
-                padding: '12px 18px',
+                padding: '12px 16px',
                 borderRadius: 14,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
               }}>
                 <button
-                  onClick={() => { setMobileSubView(null); setEditing(false); }}
+                  onClick={() => { setMobileSubView(null); setEditing(false); setSupportView(null); }}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1323,22 +1513,25 @@ function ProfilePage() {
                     background: '#F0FDF4',
                     color: '#00B875',
                     border: '1px solid #DCFCE7',
-                    padding: '8px 18px',
-                    borderRadius: 12,
+                    padding: '8px 14px',
+                    borderRadius: 10,
                     fontWeight: 800,
-                    fontSize: 14,
+                    fontSize: 13.5,
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                     transition: 'all 0.2s ease'
                   }}
                 >
                   <IconArrowLeft size={18} />
-                  ফিরে যান
+                  <span>ফিরে যান</span>
                 </button>
 
-                <h5 style={{ margin: 0, fontWeight: 900, fontSize: 17, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <h5 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {mobileSubView === 'profile' && 'প্রোফাইল বিবরণ'}
                   {mobileSubView === 'fav_doctors' && 'পছন্দের ডাক্তার'}
                   {mobileSubView === 'fav_hospitals' && 'পছন্দের হাসপাতাল'}
+                  {mobileSubView === 'support' && 'সাপোর্ট / অভিযোগ'}
                 </h5>
               </div>
 
@@ -1616,53 +1809,39 @@ function ProfilePage() {
 
                             <div>
                               <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>কর্মস্থল / চেম্বার</label>
-                              <input className="form-control" name="workplace" value={form.workplace} onChange={handleChange} placeholder="চেম্বার বা কর্মস্থল লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                              <input className="form-control" name="workplace" value={form.workplace} onChange={handleChange} placeholder="চেম্বার বা কর্মস্থল লিখুন" style={{ padding: '11px 14px', borderRadius: 14, fontSize: 14 }} />
                             </div>
 
                             <div>
-                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>ভিজিট ফি (টাকা)</label>
-                              <input className="form-control" name="fee" type="number" value={form.fee} onChange={handleChange} placeholder="৮০০" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>কনসাল্টেশন ফি (৳)</label>
+                              <input className="form-control" name="fee" type="number" value={form.fee} onChange={handleChange} placeholder="ফি লিখুন..." style={{ padding: '11px 14px', borderRadius: 14, fontSize: 14 }} />
                             </div>
 
                             <div>
                               <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>অভিজ্ঞতা (বছর)</label>
-                              <input className="form-control" name="experience" type="number" value={form.experience} onChange={handleChange} placeholder="১০" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
+                              <input className="form-control" name="experience" value={form.experience} onChange={handleChange} placeholder="অভিজ্ঞতার বছর লিখুন" style={{ padding: '11px 14px', borderRadius: 14, fontSize: 14 }} />
                             </div>
 
                             <div>
-                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>বিএমডিসি নম্বর (পরিবর্তনযোগ্য নয়)</label>
-                              <input className="form-control" name="bmdc_number" value={form.bmdc_number} disabled readOnly style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14, background: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
+                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>প্রফেশনাল বিবরণ (Bio)</label>
+                              <textarea className="form-control" name="bio" rows={3} value={form.bio} onChange={handleChange} placeholder="আপনার সম্পর্কে সংক্ষিপ্ত বিবরণ লিখুন..." style={{ padding: '11px 14px', borderRadius: 14, fontSize: 14 }} />
                             </div>
                           </>
                         )}
 
-                        {isManager && (
-                          <>
-                            <div>
-                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>হাসপাতালের নাম</label>
-                              <input className="form-control" name="hospital_name" value={form.hospital_name} onChange={handleChange} placeholder="হাসপাতালের নাম লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
-                            </div>
-
-                            <div>
-                              <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>হাসপাতালের ঠিকানা</label>
-                              <input className="form-control" name="address" value={form.address} onChange={handleChange} placeholder="ঠিকানা লিখুন" style={{ padding: '11px 14px', borderRadius: 5, fontSize: 14 }} />
-                            </div>
-                          </>
-                        )}
-
-                        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
                           <button
                             onClick={handleSave}
                             disabled={saving}
-                            style={{ flex: 1, padding: '13px', borderRadius: 5, background: '#00B875', color: 'white', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}
+                            style={{
+                              flex: 1,
+                              background: '#00B875', color: 'white', border: 'none',
+                              padding: '12px', borderRadius: 14, fontWeight: 800, fontSize: 14,
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                              boxShadow: '0 4px 12px rgba(0, 184, 117, 0.2)'
+                            }}
                           >
-                            {saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
-                          </button>
-                          <button
-                            onClick={() => setEditing(false)}
-                            style={{ flex: 1, padding: '13px', borderRadius: 5, background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}
-                          >
-                            বাতিল
+                            {saving ? 'সংরক্ষণ হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}
                           </button>
                         </div>
                       </div>
@@ -1671,11 +1850,12 @@ function ProfilePage() {
                 </div>
               )}
 
-              {/* ── SUB-PAGE 2: SAVED DOCTORS ── */}
+              {/* â”€â”€ SUB-PAGE 2: SAVED DOCTORS â”€â”€ */}
               {mobileSubView === 'fav_doctors' && (
                 <div style={{ background: 'white', borderRadius: 24, border: '1.5px solid #E2E8F0', padding: '24px 20px', boxShadow: '0 8px 25px rgba(0,0,0,0.04)' }}>
-                  <h5 style={{ fontWeight: 900, color: '#0F172A', fontSize: 18, marginBottom: 20 }}>
-                    👨‍⚕️ পছন্দের ডাক্তার তালিকা ({toBnNum(favoriteDoctors.length)})
+                  <h5 style={{ fontWeight: 900, color: '#0F172A', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontSize: 18 }}>
+                    <IconHeart size={22} color="#EF4444" />
+                    পছন্দের ডাক্তার ({toBnNum(favoriteDoctors.length)})
                   </h5>
 
                   {favoriteDoctors.length > 0 ? (
@@ -1693,6 +1873,629 @@ function ProfilePage() {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* SUB-PAGE 4: SUPPORT TICKET PORTAL */}
+              {mobileSubView === 'support' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                  {/* ── LANDING PAGE ── */}
+                  {supportView === null && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      
+                      {/* Button 1: Ticket List */}
+                      <button
+                        onClick={() => setSupportView('list')}
+                        style={{
+                          width: '100%',
+                          padding: '16px 18px',
+                          borderRadius: 16,
+                          border: '1.5px solid #E2E8F0',
+                          background: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 14,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+                          transition: 'all 0.2s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#EFF6FF', color: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <IconBookmark size={22} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 2 }}>জমা দেওয়া টিকিট লিস্ট</div>
+                          <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>পূর্ববর্তী সকল টিকিট দেখুন</div>
+                        </div>
+                        <IconArrowRight size={18} color="#94A3B8" />
+                      </button>
+
+                      {/* Button 2: New Ticket */}
+                      <button
+                        onClick={() => setSupportView('new_ticket')}
+                        style={{
+                          width: '100%',
+                          padding: '16px 18px',
+                          borderRadius: 16,
+                          border: '1.5px solid #E2E8F0',
+                          background: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 14,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+                          transition: 'all 0.2s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <IconTicket size={22} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 2 }}>নতুন টিকিট / অভিযোগ</div>
+                          <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>নতুন সমস্যা জমা দিন</div>
+                        </div>
+                        <IconArrowRight size={18} color="#94A3B8" />
+                      </button>
+
+                      {/* Button 3: Track Ticket */}
+                      <button
+                        onClick={() => setSupportView('tracking')}
+                        style={{
+                          width: '100%',
+                          padding: '16px 18px',
+                          borderRadius: 16,
+                          border: '1.5px solid #E2E8F0',
+                          background: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 14,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+                          transition: 'all 0.2s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <IconActivity size={22} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 2 }}>টিকিট ট্র্যাকিং</div>
+                          <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>টিকিট আইডি দিয়ে স্ট্যাটাস দেখুন</div>
+                        </div>
+                        <IconArrowRight size={18} color="#94A3B8" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── NEW TICKET FORM ── */}
+                  {supportView === 'new_ticket' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                      {/* Success Card */}
+                      {submittedTicket && (
+                        <div style={{ background: 'white', borderRadius: 20, border: '2px solid #00B875', padding: '28px 20px 24px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,184,117,0.15)' }}>
+                          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #00B875, #10B981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 8px 24px rgba(0,184,117,0.3)' }}>
+                            <IconCheck size={36} color="white" strokeWidth={3} />
+                          </div>
+                          <div style={{ fontSize: 20, fontWeight: 900, color: '#064E3B', marginBottom: 6 }}>টিকিট সফলভাবে জমা হয়েছে!</div>
+                          <div style={{ fontSize: 13.5, color: '#047857', fontWeight: 600, marginBottom: 20, lineHeight: 1.5 }}>আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।</div>
+                          <div style={{ background: '#F0FDF4', borderRadius: 14, border: '1.5px dashed #86EFAC', padding: '14px 16px', marginBottom: 20, textAlign: 'left' }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>আপনার টিকিট আইডি</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#00B875', letterSpacing: '0.06em' }}>{submittedTicket.id}</div>
+                              <button onClick={() => handleCopyTicketId(submittedTicket.id)} style={{ background: '#00B875', border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                <IconCopy size={14} />
+                                {copiedTicketId ? '✓ কপি হয়েছে' : 'আইডি কপি'}
+                              </button>
+                            </div>
+                            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid #D1FAE5', paddingTop: 10 }}>
+                              <div style={{ fontSize: 12.5, color: '#475569', fontWeight: 600 }}><span style={{ color: '#334155', fontWeight: 700 }}>বিষয়:</span> {submittedTicket.subject}</div>
+                              <div style={{ fontSize: 12.5, color: '#475569', fontWeight: 600 }}><span style={{ color: '#334155', fontWeight: 700 }}>ক্যাটাগরি:</span> {submittedTicket.category}</div>
+                              <div style={{ fontSize: 12.5, color: '#475569', fontWeight: 600 }}><span style={{ color: '#334155', fontWeight: 700 }}>জরুরি মাত্রা:</span> {submittedTicket.priority}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <button onClick={() => { setSupportView('tracking'); setProfileTrackId(submittedTicket.id); }} style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#00B875', color: 'white', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 18px rgba(0,184,117,0.25)' }}>
+                              টিকিট স্ট্যাটাস দেখুন →
+                            </button>
+                            <button onClick={() => setSubmittedTicket(null)} style={{ width: '100%', padding: '12px', borderRadius: 14, background: 'white', color: '#475569', border: '1.5px solid #E2E8F0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                              নতুন টিকিট জমা দিন
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Form */}
+                      {!submittedTicket && (
+                        <div style={{ background: 'white', borderRadius: 18, border: '1.5px solid #E2E8F0', padding: '20px 16px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
+                          <div style={{ marginBottom: 16, padding: '10px 14px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 15 }}>📝</span>
+                            <p style={{ color: '#475569', fontSize: 12.5, margin: 0, fontWeight: 600, lineHeight: 1.4 }}>আপনার যেকোনো সমস্যা বা জিজ্ঞাসা নিচে জমা দিন। আমাদের সাপোর্ট টিম দ্রুত সহায়তা করবে।</p>
+                          </div>
+
+                          <form onSubmit={handleSupportTicketSubmit}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                              {/* Name */}
+                              <div>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>আপনার নাম <span style={{ color: '#EF4444' }}>*</span></label>
+                                <input required value={ticketForm.name} onChange={e => setTicketForm({ ...ticketForm, name: e.target.value })} placeholder="উদাঃ সাকিব হাসান" style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: '1.5px solid #CBD5E1', outline: 'none', fontSize: 14.5, fontWeight: 600, color: '#0F172A', background: '#FFFFFF', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box' }} />
+                              </div>
+
+                              {/* Contact */}
+                              <div>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>মোবাইল নম্বর / ইমেইল <span style={{ color: '#EF4444' }}>*</span></label>
+                                <div style={{ position: 'relative' }}>
+                                  <input required value={ticketForm.contact} onChange={e => { setTicketForm({ ...ticketForm, contact: e.target.value }); if (contactWarning) setContactWarning(''); if (contactSuccess) setContactSuccess(''); }} onBlur={e => checkContactRegistration(e.target.value)} placeholder="017XXXXXXXX / email@example.com" style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: contactWarning ? '1.5px solid #EF4444' : contactSuccess ? '1.5px solid #10B981' : '1.5px solid #CBD5E1', outline: 'none', fontSize: 14.5, fontWeight: 600, color: '#0F172A', background: contactWarning ? '#FEF2F2' : contactSuccess ? '#F0FDF4' : '#FFFFFF', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box' }} />
+                                  {contactChecking && (<div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#64748B' }}>যাচাই হচ্ছে...</div>)}
+                                </div>
+                                {contactSuccess && (<div style={{ marginTop: 6, fontSize: 12.5, color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><IconCheck size={15} /> {contactSuccess}</div>)}
+                              </div>
+
+                              {/* Category */}
+                              <div style={{ position: 'relative' }}>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>সমস্যার ক্যাটাগরি <span style={{ color: '#EF4444' }}>*</span></label>
+                                <div onClick={() => { setCategoryDropdownOpen(!categoryDropdownOpen); setPriorityDropdownOpen(false); }} style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: categoryDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #CBD5E1', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14.5, fontWeight: 600, color: '#0F172A', cursor: 'pointer', boxShadow: categoryDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.12)' : '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box', userSelect: 'none' }}>
+                                  <span>{ticketForm.category || 'অ্যাপয়েন্টমেন্ট সমস্যা'}</span>
+                                  <IconChevronDown size={19} color="#64748B" style={{ transform: categoryDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', flexShrink: 0 }} />
+                                </div>
+                                {categoryDropdownOpen && (
+                                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: '#FFFFFF', borderRadius: 14, border: '1.5px solid #E2E8F0', boxShadow: '0 10px 25px rgba(0,0,0,0.12)', zIndex: 60, overflow: 'hidden' }}>
+                                    {['অ্যাপয়েন্টমেন্ট সমস্যা', 'পেমেন্ট ও রিফান্ড', 'ভিডিও কল সমস্যা', 'ডাক্তার সম্পর্কিত তথ্য', 'অন্যান্য জিজ্ঞাসা'].map((cat, idx, arr) => {
+                                      const isSelected = ticketForm.category === cat;
+                                      return (<div key={cat} onClick={() => { setTicketForm({ ...ticketForm, category: cat }); setCategoryDropdownOpen(false); }} style={{ padding: '12px 16px', fontSize: 14, fontWeight: isSelected ? 800 : 600, color: isSelected ? '#00B875' : '#1E293B', background: isSelected ? '#F0FDF4' : '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: idx !== arr.length - 1 ? '1px solid #F1F5F9' : 'none' }}><span>{cat}</span>{isSelected && <IconCheck size={16} color="#00B875" />}</div>);
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Priority */}
+                              <div style={{ position: 'relative' }}>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>জরুরি মাত্রা (Priority) <span style={{ color: '#EF4444' }}>*</span></label>
+                                <div onClick={() => { setPriorityDropdownOpen(!priorityDropdownOpen); setCategoryDropdownOpen(false); }} style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: priorityDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #CBD5E1', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14.5, fontWeight: 600, color: '#0F172A', cursor: 'pointer', boxShadow: priorityDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.12)' : '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box', userSelect: 'none' }}>
+                                  <span>{ticketForm.priority === 'অত্যন্ত জরুরী' ? 'অত্যন্ত জরুরী (Critical)' : ticketForm.priority === 'জরুরী' ? 'জরুরী (High Priority)' : 'সাধারণ (Normal)'}</span>
+                                  <IconChevronDown size={19} color="#64748B" style={{ transform: priorityDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', flexShrink: 0 }} />
+                                </div>
+                                {priorityDropdownOpen && (
+                                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: '#FFFFFF', borderRadius: 14, border: '1.5px solid #E2E8F0', boxShadow: '0 10px 25px rgba(0,0,0,0.12)', zIndex: 60, overflow: 'hidden' }}>
+                                    {[{ value: 'সাধারণ', label: 'সাধারণ (Normal)' }, { value: 'জরুরী', label: 'জরুরী (High Priority)' }, { value: 'অত্যন্ত জরুরী', label: 'অত্যন্ত জরুরী (Critical)' }].map((p, idx, arr) => {
+                                      const isSelected = ticketForm.priority === p.value;
+                                      return (<div key={p.value} onClick={() => { setTicketForm({ ...ticketForm, priority: p.value }); setPriorityDropdownOpen(false); }} style={{ padding: '12px 16px', fontSize: 14, fontWeight: isSelected ? 800 : 600, color: isSelected ? '#00B875' : '#1E293B', background: isSelected ? '#F0FDF4' : '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: idx !== arr.length - 1 ? '1px solid #F1F5F9' : 'none' }}><span>{p.label}</span>{isSelected && <IconCheck size={16} color="#00B875" />}</div>);
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Subject */}
+                              <div>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>বিষয়ের শিরোনাম <span style={{ color: '#EF4444' }}>*</span></label>
+                                <input required value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} placeholder="উদাঃ বিকাশ পেমেন্ট সম্পন্ন কিন্তু স্লট কনফার্ম হয়নি" style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: '1.5px solid #CBD5E1', outline: 'none', fontSize: 14.5, fontWeight: 600, color: '#0F172A', background: '#FFFFFF', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box' }} />
+                              </div>
+
+                              {/* Message */}
+                              <div>
+                                <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>সমস্যার বিস্তারিত বিবরণ <span style={{ color: '#EF4444' }}>*</span></label>
+                                <textarea required rows={4} value={ticketForm.message} onChange={e => setTicketForm({ ...ticketForm, message: e.target.value })} placeholder="আপনার সমস্যাটি বিস্তারিত লিখুন..." style={{ width: '100%', padding: '13px 16px', borderRadius: 14, border: '1.5px solid #CBD5E1', outline: 'none', fontSize: 14.5, lineHeight: 1.5, color: '#0F172A', background: '#FFFFFF', resize: 'vertical', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', boxSizing: 'border-box' }} />
+                              </div>
+
+                              {contactWarning && (<div style={{ padding: '12px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 13, fontWeight: 600 }}>⚠️ {contactWarning}</div>)}
+
+                              <button type="submit" disabled={ticketSubmitting} style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#00B875', color: 'white', border: 'none', fontWeight: 800, fontSize: 15.5, cursor: ticketSubmitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 18px rgba(0,184,117,0.25)', marginTop: 4 }}>
+                                <IconTicket size={20} />
+                                {ticketSubmitting ? 'জমা হচ্ছে...' : 'টিকিট সাবমিট করুন'}
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── TRACKING VIEW ── */}
+                  {supportView === 'tracking' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <div style={{ background: 'white', borderRadius: 18, border: '1.5px solid #E2E8F0', padding: '20px 16px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconActivity size={18} /></div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A' }}>টিকিট ট্র্যাকিং</div>
+                            <div style={{ fontSize: 12, color: '#64748B' }}>আপনার টিকিট আইডি দিয়ে স্ট্যাটাস জানুন</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <input
+                              value={profileTrackId}
+                              onChange={e => {
+                                setProfileTrackId(e.target.value.toUpperCase());
+                                if (profileTrackError) setProfileTrackError('');
+                              }}
+                              placeholder="TID-XXXXXX"
+                              style={{
+                                width: '100%',
+                                height: 48,
+                                padding: '0 14px',
+                                borderRadius: 14,
+                                border: '1.5px solid #CBD5E1',
+                                outline: 'none',
+                                fontSize: 14.5,
+                                fontWeight: 700,
+                                fontFamily: 'monospace',
+                                color: '#0F172A',
+                                background: '#FFFFFF',
+                                boxSizing: 'border-box',
+                                letterSpacing: '0.04em'
+                              }}
+                            />
+                            {profileTrackId && (
+                              <button
+                                onClick={() => {
+                                  setProfileTrackId('');
+                                  setProfileTrackResult(null);
+                                  setProfileTrackError('');
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  right: 10,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  background: '#E2E8F0',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: 20,
+                                  height: 20,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: '#64748B'
+                                }}
+                              >
+                                <IconX size={12} />
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={handleTrackTicket}
+                            disabled={profileTrackLoading || !profileTrackId.trim()}
+                            style={{
+                              height: 48,
+                              minWidth: 105,
+                              padding: '0 16px',
+                              borderRadius: 14,
+                              background: '#00B875',
+                              color: 'white',
+                              border: 'none',
+                              fontWeight: 800,
+                              fontSize: 14,
+                              cursor: (profileTrackLoading || !profileTrackId.trim()) ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                              boxShadow: '0 4px 12px rgba(0,184,117,0.25)',
+                              opacity: (profileTrackLoading || !profileTrackId.trim()) ? 0.75 : 1
+                            }}
+                          >
+                            {profileTrackLoading ? (
+                              <>
+                                <div className="spinner-border spinner-border-sm" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                <span>খুঁজছি...</span>
+                              </>
+                            ) : (
+                              <>
+                                <IconRefresh size={16} />
+                                <span>খুঁজুন</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {profileTrackError && (
+                          <div style={{ marginTop: 12, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>⚠️ {profileTrackError}</span>
+                            <button onClick={() => setProfileTrackError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B' }}>
+                              <IconX size={14} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Result Output Card with Dismiss / Close Icon */}
+                        {profileTrackResult && (
+                          <div style={{
+                            marginTop: 14,
+                            padding: '16px',
+                            background: '#F8FAFC',
+                            borderRadius: 14,
+                            border: '1.5px solid #E2E8F0',
+                            position: 'relative'
+                          }}>
+                            {/* Close Button at Top-Right of Out Card */}
+                            <button
+                              onClick={() => setProfileTrackResult(null)}
+                              style={{
+                                position: 'absolute',
+                                top: 12,
+                                right: 12,
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                background: '#E2E8F0',
+                                border: 'none',
+                                color: '#475569',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              title="বন্ধ করুন"
+                            >
+                              <IconX size={16} />
+                            </button>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, paddingRight: 32 }}>
+                              <span style={{
+                                background: profileTrackResult.status === 'সমাধান হয়েছে' || profileTrackResult.status === 'resolved' ? '#DCFCE7' : '#FEF3C7',
+                                color: profileTrackResult.status === 'সমাধান হয়েছে' || profileTrackResult.status === 'resolved' ? '#15803D' : '#B45309',
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 99,
+                                fontSize: 12
+                              }}>
+                                {profileTrackResult.status || 'অপেক্ষমাণ (Pending)'}
+                              </span>
+                              <span style={{
+                                background: '#EFF6FF',
+                                color: '#1D4ED8',
+                                fontWeight: 700,
+                                padding: '4px 10px',
+                                borderRadius: 99,
+                                fontSize: 11.5
+                              }}>
+                                অগ্রাধিকার: {profileTrackResult.priority || 'সাধারণ'}
+                              </span>
+                            </div>
+
+                            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
+                              <span style={{ color: '#64748B' }}>বিষয়:</span> {profileTrackResult.subject}
+                            </div>
+                            <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: profileTrackResult.note ? 10 : 0 }}>
+                              তারিখ: {profileTrackResult.date || 'আজ'}
+                            </div>
+
+                            {profileTrackResult.note && (
+                              <div style={{ marginTop: 10, padding: '10px 12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 13, color: '#0F172A', fontWeight: 600, lineHeight: 1.5 }}>
+                                <div style={{ fontSize: 10.5, fontWeight: 800, color: '#00B875', marginBottom: 2, textTransform: 'uppercase' }}>সাপোর্ট নোট</div>
+                                {profileTrackResult.note}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── TICKET LIST VIEW ── */}
+                  {supportView === 'list' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      
+                      {/* Header with Stats & Reload */}
+                      <div style={{
+                        background: 'white',
+                        borderRadius: 18,
+                        border: '1.5px solid #E2E8F0',
+                        padding: '16px 18px',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 12, background: '#EFF6FF', color: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconBookmark size={20} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: 16, color: '#0F172A' }}>আমার টিকিটসমূহ</div>
+                            <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>
+                              মোট: {toBnNum(userTickets.length)}টি টিকিট
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={loadUserTickets}
+                          disabled={loadingUserTickets}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            background: '#F1F5F9',
+                            border: '1px solid #E2E8F0',
+                            color: '#475569',
+                            fontWeight: 700,
+                            fontSize: 12.5,
+                            cursor: loadingUserTickets ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5
+                          }}
+                        >
+                          <IconRefresh size={14} className={loadingUserTickets ? 'spinner-border spinner-border-sm' : ''} />
+                          <span>রিফ্রেশ</span>
+                        </button>
+                      </div>
+
+                      {/* Loading State */}
+                      {loadingUserTickets && (
+                        <div style={{ textAlign: 'center', padding: '36px 16px', background: 'white', borderRadius: 18, border: '1.5px solid #E2E8F0' }}>
+                          <div className="spinner-border text-success" style={{ width: 32, height: 32, borderWidth: 3, marginBottom: 12 }} />
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>টিকিট লোড হচ্ছে...</div>
+                        </div>
+                      )}
+
+                      {/* Error State */}
+                      {!loadingUserTickets && userTicketsError && (
+                        <div style={{ padding: '14px 16px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 16, color: '#991B1B', fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span>⚠️ {userTicketsError}</span>
+                          <button onClick={loadUserTickets} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>পুনরায় চেষ্টা করুন</button>
+                        </div>
+                      )}
+
+                      {/* Cards List */}
+                      {!loadingUserTickets && !userTicketsError && userTickets.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {userTickets.map((t, idx) => {
+                            const isResolved = t.status === 'resolved' || t.status === 'সমাধান হয়েছে';
+                            const isProcessing = t.status === 'processing' || t.status === 'প্রক্রিয়াধীন';
+                            const isClosed = t.status === 'closed' || t.status === 'বাতিল';
+                            
+                            const statusBg = isResolved ? '#DCFCE7' : isProcessing ? '#EFF6FF' : isClosed ? '#F1F5F9' : '#FEF3C7';
+                            const statusColor = isResolved ? '#15803D' : isProcessing ? '#1D4ED8' : isClosed ? '#475569' : '#B45309';
+                            const statusLabel = isResolved ? 'সমাধান হয়েছে' : isProcessing ? 'প্রক্রিয়াধীন' : isClosed ? 'বন্ধ/বাতিল' : 'অপেক্ষমাণ';
+
+                            return (
+                              <div
+                                key={t.id || idx}
+                                style={{
+                                  background: 'white',
+                                  borderRadius: 18,
+                                  border: '1.5px solid #E2E8F0',
+                                  padding: '16px',
+                                  boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 10
+                                }}
+                              >
+                                {/* Top Badges & TID */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 900, fontFamily: 'monospace', color: '#00B875', background: '#F0FDF4', padding: '4px 10px', borderRadius: 8, border: '1px solid #BBF7D0' }}>
+                                      {t.ticket_number || ('TID-' + t.id)}
+                                    </span>
+                                    <button
+                                      onClick={() => handleCopyTicketId(t.ticket_number || ('TID-' + t.id))}
+                                      style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2 }}
+                                      title="আইডি কপি করুন"
+                                    >
+                                      <IconCopy size={15} />
+                                    </button>
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <span style={{ background: statusBg, color: statusColor, fontWeight: 800, padding: '3px 10px', borderRadius: 99, fontSize: 11.5 }}>
+                                      {statusLabel}
+                                    </span>
+                                    {t.priority && (
+                                      <span style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 700, padding: '3px 8px', borderRadius: 99, fontSize: 11 }}>
+                                        {t.priority}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Subject & Category */}
+                                <div>
+                                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 3 }}>
+                                    {t.subject}
+                                  </div>
+                                  <div style={{ fontSize: 12.5, color: '#00B875', fontWeight: 700 }}>
+                                    📂 {t.category || 'সাধারণ'}
+                                  </div>
+                                </div>
+
+                                {/* Message */}
+                                {t.message && (
+                                  <div style={{ fontSize: 13, color: '#475569', background: '#F8FAFC', padding: '10px 12px', borderRadius: 10, border: '1px solid #F1F5F9', lineHeight: 1.45 }}>
+                                    {t.message}
+                                  </div>
+                                )}
+
+                                {/* Admin Response / Support Note */}
+                                {t.admin_note && (
+                                  <div style={{ padding: '10px 12px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 10, fontSize: 13, color: '#064E3B', fontWeight: 600, lineHeight: 1.5 }}>
+                                    <div style={{ fontSize: 10.5, fontWeight: 900, color: '#059669', marginBottom: 2, textTransform: 'uppercase' }}>
+                                      ✓ সাপোর্ট টিম নোট:
+                                    </div>
+                                    {t.admin_note}
+                                  </div>
+                                )}
+
+                                {/* Card Footer with Date & Action */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #F1F5F9', marginTop: 2 }}>
+                                  <span style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
+                                    📅 {t.created_at ? new Date(t.created_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' }) : 'আজ'}
+                                  </span>
+
+                                  <button
+                                    onClick={() => {
+                                      setProfileTrackId(t.ticket_number || ('TID-' + t.id));
+                                      setSupportView('tracking');
+                                    }}
+                                    style={{
+                                      background: '#00B875',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '6px 12px',
+                                      borderRadius: 8,
+                                      fontWeight: 800,
+                                      fontSize: 12,
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 4
+                                    }}
+                                  >
+                                    <IconActivity size={13} />
+                                    <span>ট্র্যাক করুন</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Empty State */}
+                      {!loadingUserTickets && !userTicketsError && userTickets.length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '36px 16px', background: 'white', borderRadius: 18, border: '1.5px dashed #CBD5E1' }}>
+                          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                            <IconTicket size={26} color="#94A3B8" />
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: 15.5, color: '#1E293B', marginBottom: 4 }}>কোনো টিকিট পাওয়া যায়নি</div>
+                          <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600, marginBottom: 16 }}>আপনি পূর্বে কোনো সাপোর্ট টিকিট জমা দেননি।</div>
+                          <button
+                            onClick={() => setSupportView('new_ticket')}
+                            style={{
+                              padding: '11px 20px',
+                              borderRadius: 12,
+                              background: '#00B875',
+                              color: 'white',
+                              border: 'none',
+                              fontWeight: 800,
+                              fontSize: 13.5,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              boxShadow: '0 4px 12px rgba(0,184,117,0.25)'
+                            }}
+                          >
+                            <IconTicket size={16} />
+                            <span>নতুন টিকিট জমা দিন</span>
+                          </button>
+                        </div>
+                      )}
+
+                    </div>
+                  )}
+
                 </div>
               )}
 
