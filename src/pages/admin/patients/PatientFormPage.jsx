@@ -124,6 +124,12 @@ export default function PatientFormPage() {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  useEffect(() => {
+    if (!isAdmin) {
+      navigate('/admin/patients')
+    }
+  }, [isAdmin, navigate])
+
   const ageInfo = calculateAge(form.date_of_birth)
 
   useEffect(() => {

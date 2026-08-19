@@ -42,6 +42,13 @@ const getAvatarColor = (name = '') => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
+const getInitials = (name = '') => {
+  if (!name) return 'D'
+  const parts = name.replace(/ডা\.|Dr\./g, '').trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (parts[0]?.[0] || 'D').toUpperCase()
+}
+
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBnNum = (str) => str !== null && str !== undefined ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
 
@@ -325,7 +332,8 @@ function MyAppointmentsPage() {
               const doctorName = appt.doctor_name || appt.doctor?.name || appt.doctor?.name_bn || 'ডা. অজানা'
               const specialty  = appt.specialty || appt.doctor?.specialty?.name_bn || appt.doctor?.specialty?.name || appt.doctor?.specialty || 'সাধারণ চিকিৎসক'
               const degree     = appt.degree || appt.doctor?.degree || appt.qualifications || 'MBBS'
-              const location   = appt.hospital_name || appt.hospital?.name || appt.chamber?.hospital?.name || appt.chamber_address || 'চেম্বার / হাসপাতাল'
+              const hospitalName = appt.hospital_name || appt.hospital?.name || appt.chamber?.hospital?.name || appt.hospital_name_bn || 'চেম্বার / হাসপাতাল'
+              const hospitalAddr = appt.hospital_address || appt.hospital?.address || appt.chamber?.hospital?.address || appt.chamber_address || appt.chamber?.address || ''
 
               // Doctor image — resolve storage path
               const BASE = import.meta.env.VITE_APP_URL || 'http://127.0.0.1:8000'
@@ -493,16 +501,20 @@ function MyAppointmentsPage() {
                         {degree}
                       </div>
 
-                      {/* Location */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <MapPin size={12} color="#94A3B8" style={{ flexShrink: 0 }} />
-                        <span style={{
-                          fontSize: '0.75rem', color: '#94A3B8',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      {/* Location: Hospital Name & Address */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, marginTop: 4 }}>
+                        <MapPin size={13} color="#00966D" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div style={{
+                          fontSize: '0.78rem',
+                          color: '#475569',
+                          lineHeight: 1.35,
                           fontFamily: "'Hind Siliguri', sans-serif",
                         }}>
-                          {location}
-                        </span>
+                          <span style={{ fontWeight: 700, color: '#1E293B' }}>{hospitalName}</span>
+                          {hospitalAddr && (
+                            <span style={{ color: '#64748B' }}>, {hospitalAddr}</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Patient for badge if booked for someone else */}
@@ -526,75 +538,84 @@ function MyAppointmentsPage() {
                     </div>
                   </div>
 
-                  {/* ── Footer: Date chip + Time chip + Arrow in ONE single row ── */}
+                  {/* ── Schedule & Serial Information Card ── */}
                   <div style={{
+                    background: '#F8FAFC',
+                    borderRadius: 12,
+                    border: '1px solid #E2E8F0',
+                    padding: '10px 12px',
+                    marginTop: 10,
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
                     gap: 8,
-                    flexWrap: 'nowrap',
-                    paddingTop: 10,
-                    borderTop: '1px solid #F1F5F9'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', minWidth: 0, flex: 1 }}>
-                      {/* Serial chip */}
+                    {/* Top Row: Serial Badge & View Details CTA */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        background: '#ECFDF5',
-                        border: '1px solid #A7F3D0',
-                        padding: '5px 9px',
-                        borderRadius: 8,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        color: '#EF4444',
+                        padding: '3px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        fontFamily: "'Hind Siliguri', sans-serif",
                       }}>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          {serialDisplay}
-                        </span>
+                        সিরিয়াল নং - {toBnNum(serialNum)}
                       </div>
 
-                      {/* Date chip */}
                       <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
-                        padding: '5px 9px',
-                        borderRadius: 8,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        color: '#00966D',
+                        fontFamily: "'Hind Siliguri', sans-serif",
                       }}>
-                        <Calendar size={13} color="#00B875" strokeWidth={2} style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          {dateDisplay}
-                        </span>
-                      </div>
-
-                      {/* Time chip */}
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
-                        padding: '5px 9px',
-                        borderRadius: 8,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}>
-                        <Clock size={13} color="#00B875" strokeWidth={2} style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          {timeDisplay}
-                        </span>
+                        <span>বিস্তারিত দেখুন</span>
+                        <ChevronRight size={14} color="#00966D" />
                       </div>
                     </div>
 
-                    {/* Arrow CTA */}
+                    {/* Bottom Row: Date & Time */}
                     <div style={{
-                      width: 32, height: 32,
-                      borderRadius: 8,
-                      background: '#F0FDF4',
-                      border: '1px solid #DCFCE7',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      paddingTop: 6,
+                      borderTop: '1px dashed #E2E8F0'
                     }}>
-                      <ChevronRight size={17} color="#00966D" strokeWidth={2.5} />
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: '#334155',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                      }}>
+                        <Calendar size={14} color="#00B875" />
+                        <span>{dateDisplay}</span>
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: '#047857',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                      }}>
+                        <Clock size={14} color="#00B875" />
+                        <span>{timeDisplay}</span>
+                      </div>
                     </div>
                   </div>
 

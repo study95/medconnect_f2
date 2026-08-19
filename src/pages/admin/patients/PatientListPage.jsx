@@ -216,7 +216,7 @@ export default function PatientListPage() {
             <Filter size={14} /> Filters {hasFilters ? '●' : ''}
             {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
-          {(isAdmin || isManager) && (
+          {isAdmin && (
             <Link to="/admin/patients/create" className="admin-btn admin-btn-primary">
               + Register New Patient
             </Link>
@@ -381,9 +381,11 @@ export default function PatientListPage() {
                         >
                           👁️ View
                         </button>
-                        <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/patients/edit/${p.id}`)}>
-                          ✏️ Edit
-                        </button>
+                        {isAdmin && (
+                          <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/patients/edit/${p.id}`)}>
+                            ✏️ Edit
+                          </button>
+                        )}
                         {isAdmin && (
                           <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(p)}>
                             🗑️

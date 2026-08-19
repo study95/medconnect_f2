@@ -48,6 +48,10 @@ import {
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBn = (str) => str !== null && str !== undefined ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
+const formatSerial3 = (num) => {
+  if (num === null || num === undefined) return '000'
+  return String(num).padStart(3, '0')
+}
 
 const dayMapBn = {
   'Sunday': 'রবিবার',
@@ -348,7 +352,7 @@ export default function SerialDisplayManagerPage() {
       const patient = res.data?.data
 
       if (patient) {
-        toast.success(`সিরিয়াল #${toBn(patient.serial_number)} (${patient.patient_name || 'রোগী'}) কে ডাকা হয়েছে`)
+        toast.success(`সিরিয়াল ${formatSerial3(patient.serial_number)} (${patient.patient_name || 'রোগী'}) কে ডাকা হয়েছে`)
         if (soundEnabled) {
           soundService.announceSerial({
             serialNumber: patient.serial_number,
@@ -956,7 +960,7 @@ export default function SerialDisplayManagerPage() {
                           <span style={{ color: dq.chamber?.is_on_break ? '#D97706' : (isServing ? '#00B875' : (isTodaySession ? '#3B82F6' : 'var(--admin-text-muted)')) }}>
                             {dq.chamber?.is_on_break 
                               ? `⏸️ বিরতি (${dq.chamber.break_reason || 'বিরতি'})` 
-                              : (isServing ? `চলছে: #${toBn(dq.currently_serving.serial_number)}` : (isTodaySession ? 'আজকের সেশন' : `শিডিউল: ${chamberDayBn}`))}
+                              : (isServing ? `চলছে: ${formatSerial3(dq.currently_serving.serial_number)}` : (isTodaySession ? 'আজকের সেশন' : `শিডিউল: ${chamberDayBn}`))}
                           </span>
                         </div>
                         <span style={{ color: '#F59E0B' }}>
@@ -1161,7 +1165,7 @@ export default function SerialDisplayManagerPage() {
                         চলতি টোকেন / সিরিয়াল
                       </div>
                       <div style={{ fontSize: '4.5rem', fontWeight: 900, color: '#34D399', lineHeight: 1.1, margin: '6px 0', textShadow: '0 4px 20px rgba(52,211,153,0.35)' }}>
-                        #{toBn(currentlyServing.serial_number)}
+                        {formatSerial3(currentlyServing.serial_number)}
                       </div>
                       <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FFFFFF' }}>
                         {currentlyServing.patient_name || 'রোগীর নাম'}
@@ -1255,7 +1259,7 @@ export default function SerialDisplayManagerPage() {
                         opacity: waitingPatients.length === 0 || currentChamberQueue.chamber?.is_on_break ? 0.6 : 1
                       }}
                     >
-                      <Play size={17} fill="#FFFFFF" /> পরবর্তী সিরিয়াল ডাকুন {nextInLine ? `(#${toBn(nextInLine.serial_number)})` : ''}
+                      <Play size={17} fill="#FFFFFF" /> পরবর্তী সিরিয়াল ডাকুন {nextInLine ? `(${formatSerial3(nextInLine.serial_number)})` : ''}
                     </button>
 
                     <button
@@ -1293,7 +1297,7 @@ export default function SerialDisplayManagerPage() {
                           পরবর্তী অপেক্ষমাণ রোগী (NEXT IN LINE)
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text)', marginTop: 4 }}>
-                          সিরিয়াল #{toBn(nextInLine.serial_number)} — {nextInLine.patient_name}
+                          সিরিয়াল {formatSerial3(nextInLine.serial_number)} — {nextInLine.patient_name}
                         </div>
                       </div>
                       <button
@@ -1346,9 +1350,10 @@ export default function SerialDisplayManagerPage() {
                                   display: 'inline-block', padding: '4px 10px', borderRadius: 8,
                                   background: idx === 0 ? 'rgba(0, 184, 117, 0.15)' : 'var(--admin-bg)',
                                   color: idx === 0 ? '#00B875' : 'var(--admin-text)',
-                                  fontWeight: 800, fontSize: 13
+                                  fontWeight: 800, fontSize: 13,
+                                  fontFamily: 'monospace'
                                 }}>
-                                  #{toBn(p.serial_number)}
+                                  {formatSerial3(p.serial_number)}
                                 </span>
                               </td>
                               <td>
@@ -1400,7 +1405,7 @@ export default function SerialDisplayManagerPage() {
                         {completedPatients.map((p) => (
                           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--admin-border)' }}>
                             <div>
-                              <span style={{ fontWeight: 800, color: '#10B981', marginRight: 8 }}>#{toBn(p.serial_number)}</span>
+                              <span style={{ fontWeight: 800, color: '#10B981', marginRight: 8, fontFamily: 'monospace' }}>{formatSerial3(p.serial_number)}</span>
                               <span style={{ fontSize: 13, color: 'var(--admin-text)' }}>{p.patient_name}</span>
                             </div>
                             <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
@@ -1426,7 +1431,7 @@ export default function SerialDisplayManagerPage() {
                         {noShowPatients.map((p) => (
                           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid var(--admin-border)' }}>
                             <div>
-                              <span style={{ fontWeight: 800, color: 'var(--admin-text)', marginRight: 8 }}>#{toBn(p.serial_number)}</span>
+                              <span style={{ fontWeight: 800, color: 'var(--admin-text)', marginRight: 8, fontFamily: 'monospace' }}>{formatSerial3(p.serial_number)}</span>
                               <span style={{ fontSize: 13, color: 'var(--admin-text)' }}>{p.patient_name}</span>
                             </div>
                             <button
@@ -1544,8 +1549,8 @@ export default function SerialDisplayManagerPage() {
                         <div style={{ fontSize: 11, fontWeight: 800, color: isServing ? '#00B875' : 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
                           {isServing ? 'বর্তমান সিরিয়াল' : (isTodaySession ? 'সেশন স্ট্যাটাস' : `শিডিউল: ${chamberDayBn}`)}
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: isServing ? '#00B875' : 'var(--admin-text-muted)', margin: '4px 0' }}>
-                          {isServing ? `#${toBn(serving.serial_number)}` : (isTodaySession ? 'বিশ্রামে' : 'অফ-ডে')}
+                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: isServing ? '#00B875' : 'var(--admin-text-muted)', margin: '4px 0', fontFamily: 'monospace' }}>
+                          {isServing ? formatSerial3(serving.serial_number) : (isTodaySession ? 'বিশ্রামে' : 'অফ-ডে')}
                         </div>
                         {serving && (
                           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>

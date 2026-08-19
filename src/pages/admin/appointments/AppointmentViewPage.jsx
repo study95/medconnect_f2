@@ -126,7 +126,7 @@ export default function AppointmentViewPage() {
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Serial Number</label>
                   <p style={{ fontSize: 16, fontWeight: 800, color: '#00A88C', margin: '4px 0' }}>
-                    {appt.serial_number ? `Serial #${appt.serial_number}` : '—'}
+                    {appt.serial_number ? `Serial-${appt.serial_number}` : '—'}
                   </p>
                 </div>
               </div>

@@ -43,6 +43,27 @@ const formatSerial3 = (num) => {
   return String(num).padStart(3, '0')
 }
 
+const getInitials = (name = '') => {
+  const parts = name.replace(/ডা\.|Dr\./g, '').trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (parts[0]?.[0] || 'D').toUpperCase()
+}
+
+const formatTime12h = (timeStr) => {
+  if (!timeStr) return ''
+  try {
+    const parts = timeStr.split(':')
+    let hour = parseInt(parts[0], 10)
+    const min = parts[1] || '00'
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    hour = hour % 12 || 12
+    const hourStr = String(hour).padStart(2, '0')
+    return `${toBn(hourStr)}:${toBn(min)} ${ampm}`
+  } catch (e) {
+    return timeStr
+  }
+}
+
 export default function PublicDisplayBoardPage() {
   const { token, hospitalId } = useParams()
   const isHospitalMaster = Boolean(hospitalId)
@@ -203,6 +224,11 @@ export default function PublicDisplayBoardPage() {
   const BASE = import.meta.env.VITE_APP_URL || 'http://127.0.0.1:8000'
   const rawHospLogo = hospital.logo || hospital.hospital_logo || hospital.logo_url || hospital.photo || hospital.photo_url || hospital.image || chamber.hospital_logo || chamber.hospital_photo
   const hospitalLogo = rawHospLogo ? (rawHospLogo.startsWith('http') ? rawHospLogo : `${BASE}/storage/${rawHospLogo}`) : '/doctorBookletLogo.png'
+
+  const rawDocPhoto = doctor.photo || doctor.photo_url || doctor.image || doctor.avatar
+  const doctorPhoto = rawDocPhoto ? (rawDocPhoto.startsWith('http') ? rawDocPhoto : `${BASE}/storage/${rawDocPhoto}`) : null
+  const doctorUrl = doctor.id ? `${window.location.origin}/doctors/${doctor.id}` : `${window.location.origin}/doctors`
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(doctorUrl)}&margin=0`
 
   const totalPatientsCount = stats.total_patients || (waitingPatients.length + (stats.total_completed || 0) + (currentlyServing ? 1 : 0)) || 0
   const completedCount = stats.total_completed || 0
@@ -423,57 +449,139 @@ export default function PublicDisplayBoardPage() {
         alignItems: 'stretch'
       }}>
 
-        {/* ── LEFT COLUMN: DOCTOR INFO & HELPLINE CARD ── */}
+        {/* ── LEFT COLUMN: DOCTOR INFO & DYNAMIC QR CODE CARD ── */}
         <div style={{
           background: '#0E1422',
           borderRadius: 18,
           border: '1px solid #1E293B',
-          padding: '20px',
+          padding: '18px 16px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          boxShadow: '0 8px 25px rgba(0,0,0,0.35)'
+          boxShadow: '0 8px 25px rgba(0,0,0,0.35)',
+          gap: 12
         }}>
           <div>
-            {/* Header Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#00B875', fontSize: '0.92rem', fontWeight: 800, marginBottom: 12 }}>
-              <User size={18} />
-              <span>ডাক্তারের তথ্য</span>
+            {/* 1. Centered Doctor Image with Green Ring & Presence Badge */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ position: 'relative', width: 92, height: 92 }}>
+                <div style={{
+                  width: 92, height: 92,
+                  borderRadius: '50%',
+                  border: `3px solid ${isOnBreak ? '#F59E0B' : '#10B981'}`,
+                  padding: 3,
+                  background: '#080C14',
+                  boxShadow: isOnBreak ? '0 0 20px rgba(245,158,11,0.35)' : '0 0 20px rgba(16,185,129,0.35)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {doctorPhoto ? (
+                    <img 
+                      src={doctorPhoto} 
+                      alt={doctor.name_bn || doctor.name}
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                    />
+                  ) : null}
+                  <div style={{
+                    width: '100%', height: '100%',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #00B875, #047857)',
+                    color: '#FFFFFF',
+                    display: doctorPhoto ? 'none' : 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 32,
+                    fontWeight: 900
+                  }}>
+                    {getInitials(doctor.name_bn || doctor.name)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Badge below photo */}
+              <div style={{
+                marginTop: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: isOnBreak ? '#78350F' : '#044E38',
+                color: isOnBreak ? '#FDE68A' : '#A7F3D0',
+                border: `1px solid ${isOnBreak ? '#B45309' : '#059669'}`,
+                padding: '3px 12px',
+                borderRadius: 999,
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: isOnBreak ? '#F59E0B' : '#10B981',
+                  boxShadow: isOnBreak ? '0 0 6px #F59E0B' : '0 0 6px #10B981'
+                }} />
+                <span>{isOnBreak ? 'বিরতিতে রয়েছেন' : 'আজ উপস্থিত'}</span>
+              </div>
             </div>
 
-            {/* Doctor Name & Degree */}
-            <h2 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px 0', lineHeight: 1.25 }}>
-              {doctor.name_bn || doctor.name || 'ডা. প্রিয়তোষ'}
-            </h2>
-            <div style={{ fontSize: '1.02rem', fontWeight: 700, color: '#00B875', marginBottom: 2 }}>
-              {doctor.specialty?.name_bn || doctor.specialty?.name || 'কার্ডিওলজি বিশেষজ্ঞ'}
-            </div>
-            <div style={{ fontSize: '0.85rem', color: '#00966D', fontWeight: 600, marginBottom: 20 }}>
-              {doctor.specialty?.name || doctor.degree || 'Cardiology Specialist'}
+            {/* 2. Centered Doctor Title, Name, Degree, Specialty */}
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: '0.82rem', color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>
+                {doctor.designation || 'সহযোগী অধ্যাপক ডা.'}
+              </div>
+              <h2 style={{
+                fontSize: '1.45rem',
+                fontWeight: 900,
+                color: '#FFFFFF',
+                margin: '0 0 3px 0',
+                lineHeight: 1.25,
+                letterSpacing: '0.2px'
+              }}>
+                {doctor.name_bn || doctor.name || 'ডা. প্রিয়তোষ'}
+              </h2>
+              <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#00E699', marginBottom: 3 }}>
+                {doctor.specialty?.name_bn || doctor.specialty?.name || 'কার্ডিওলজি বিশেষজ্ঞ'}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#94A3B8', fontWeight: 500, lineHeight: 1.35, padding: '0 4px' }}>
+                {doctor.degree || 'এমবিবিএস, এফসিপিএস (কার্ডিওলজি)'}
+              </div>
             </div>
 
-            {/* Doctor Chamber Metadata List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Chamber No */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94A3B8', fontSize: '0.92rem', fontWeight: 600 }}>
-                  <Building2 size={17} color="#00B875" />
+            {/* 3. Chamber Key-Value Info List (5 Rows Matching Image 1) */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: 14,
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              marginBottom: 12
+            }}>
+              {/* 1. Chamber No */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
+                  <Building2 size={15} color="#00B875" />
                   <span>চেম্বার নং</span>
                 </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#00E699', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#00E699', fontFamily: 'monospace' }}>
                   {formatSerial3(chamber.room_number || '003')}
                 </div>
               </div>
 
-              {/* Current Status */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94A3B8', fontSize: '0.92rem', fontWeight: 600 }}>
-                  <User size={17} color="#00B875" />
+              {/* 2. Current Status */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
+                  <User size={15} color="#00B875" />
                   <span>বর্তমান অবস্থা</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.92rem', fontWeight: 800, color: isOnBreak ? '#F59E0B' : '#34D399' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.86rem', fontWeight: 800, color: isOnBreak ? '#F59E0B' : '#34D399' }}>
                   <span style={{
-                    width: 8, height: 8, borderRadius: '50%',
+                    width: 7, height: 7, borderRadius: '50%',
                     background: isOnBreak ? '#F59E0B' : '#10B981',
                     display: 'inline-block',
                     boxShadow: isOnBreak ? '0 0 8px #F59E0B' : '0 0 8px #10B981'
@@ -482,66 +590,80 @@ export default function PublicDisplayBoardPage() {
                 </div>
               </div>
 
-              {/* Total Patients Today */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94A3B8', fontSize: '0.92rem', fontWeight: 600 }}>
-                  <Users size={17} color="#00B875" />
+              {/* 3. Total Patients Today */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
+                  <Users size={15} color="#00B875" />
                   <span>আজকের মোট রোগী</span>
                 </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#00E699' }}>
+                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#00E699' }}>
                   {toBn(totalPatientsCount)} জন
                 </div>
               </div>
 
-              {/* Completed Count */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94A3B8', fontSize: '0.92rem', fontWeight: 600 }}>
-                  <CheckCircle size={17} color="#00B875" />
+              {/* 4. Completed Patients */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
+                  <CheckCircle size={15} color="#00B875" />
                   <span>সম্পন্ন হয়েছে</span>
                 </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#00E699' }}>
+                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#00E699' }}>
                   {toBn(completedCount)} জন
                 </div>
               </div>
 
-              {/* Avg Time */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94A3B8', fontSize: '0.92rem', fontWeight: 600 }}>
-                  <Clock size={17} color="#FB923C" />
+              {/* 5. Avg Time */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
+                  <Clock size={15} color="#FB923C" />
                   <span>গড় সময়</span>
                 </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#FB923C' }}>
+                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#FB923C' }}>
                   {toBn(avgTimeMinutes)} মিনিট
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Helpline Box */}
+          {/* 4. DYNAMIC QR CODE BOX */}
           <div style={{
-            background: 'rgba(0, 184, 117, 0.06)',
+            background: '#FFFFFF',
             borderRadius: 14,
-            border: '1px solid rgba(0, 184, 117, 0.2)',
-            padding: '12px 16px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            marginTop: 16
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            border: '1.5px solid #E2E8F0'
           }}>
+            {/* QR Code Image */}
             <div style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: 'rgba(0, 184, 117, 0.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#00E699', flexShrink: 0
+              width: 62, height: 62,
+              borderRadius: 8,
+              overflow: 'hidden',
+              flexShrink: 0,
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}>
-              <Headphones size={22} />
+              <img 
+                src={qrCodeUrl} 
+                alt="Doctor Profile QR Code"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </div>
+
+            {/* QR Code Text Description */}
             <div>
-              <div style={{ fontSize: '0.78rem', color: '#94A3B8', fontWeight: 700 }}>
-                সহায়তার জন্য কল করুন
+              <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.25 }}>
+                ডাক্তারের প্রোফাইল
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#00E699', letterSpacing: '0.5px' }}>
-                {supportPhone}
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', lineHeight: 1.2, marginTop: 1 }}>
+                ও অ্যাপয়েন্টমেন্ট নিতে
+              </div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#00966D', marginTop: 3 }}>
+                QR কোড স্ক্যান করুন
               </div>
             </div>
           </div>
@@ -554,38 +676,38 @@ export default function PublicDisplayBoardPage() {
             background: 'linear-gradient(145deg, #05261C 0%, #031711 100%)',
             borderRadius: 20,
             border: '2px solid #059669',
-            padding: '24px 20px',
+            padding: '20px',
             display: 'flex',
             flexDirection: 'column',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            justifyContent: 'center',
             textAlign: 'center',
             boxShadow: '0 12px 40px rgba(5, 150, 105, 0.25)',
             position: 'relative',
             overflow: 'hidden',
             flex: 1
           }}>
-            {/* Top Badge */}
+            {/* Top Header Badge */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
               background: '#047857',
               color: '#A7F3D0',
-              padding: '6px 18px',
+              padding: '6px 20px',
               borderRadius: 999,
-              fontSize: '0.9rem',
+              fontSize: '0.92rem',
               fontWeight: 800,
               letterSpacing: 0.5,
-              marginBottom: 8,
-              boxShadow: '0 2px 10px rgba(4,120,87,0.4)'
+              boxShadow: '0 2px 10px rgba(4,120,87,0.4)',
+              marginTop: 2
             }}>
-              <Volume1 size={17} />
-              <span>{isOnBreak ? 'সেশন বিরতি (SESSION BREAK)' : 'এখন দেখা হচ্ছে (NOW SERVING)'}</span>
+              <Volume1 size={18} />
+              <span>{isOnBreak ? 'সেশন বিরতি (SESSION BREAK)' : 'বর্তমান সিরিয়াল (NOW SERVING)'}</span>
             </div>
 
             {isOnBreak ? (
-              <div style={{ padding: '20px 10px', width: '100%' }}>
+              <div style={{ padding: '20px 10px', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#FCD34D', margin: '8px 0', textShadow: '0 0 25px rgba(251,191,36,0.5)' }}>
                   {breakReason}
                 </div>
@@ -611,49 +733,94 @@ export default function PublicDisplayBoardPage() {
                 )}
               </div>
             ) : currentlyServing ? (
-              <div style={{ width: '100%' }}>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, justifyContent: 'space-around', padding: '6px 0' }}>
                 {/* Huge Glowing 3-Digit Serial Number */}
                 <div style={{
-                  fontSize: '6.5rem',
+                  fontSize: '7.5rem',
                   fontWeight: 900,
                   color: '#4ADE80',
                   fontFamily: 'monospace',
                   lineHeight: 1,
-                  margin: '10px 0 6px 0',
-                  letterSpacing: '3px',
-                  textShadow: '0 0 45px rgba(74,222,128,0.65)',
-                  animation: 'pulseGlow 3s ease-in-out infinite'
+                  letterSpacing: '4px',
+                  textShadow: '0 0 45px rgba(74,222,128,0.7)',
+                  animation: 'pulseGlow 3s ease-in-out infinite',
+                  margin: '4px 0'
                 }}>
                   {formatSerial3(currentlyServing.serial_number)}
                 </div>
 
-                {/* Patient Name */}
-                <h3 style={{
-                  fontSize: '2rem',
-                  fontWeight: 900,
-                  color: '#FFFFFF',
-                  margin: '0 0 8px 0',
-                  letterSpacing: '0.3px',
-                  lineHeight: 1.2
-                }}>
-                  {currentlyServing.patient_name || 'রোগীর নাম'}
-                </h3>
-
-                {/* Scheduled Slot Time */}
+                {/* Sub-badge under serial */}
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
-                  color: '#A7F3D0',
-                  fontSize: '0.98rem',
-                  fontWeight: 700
+                  background: '#044E38',
+                  color: '#6EE7B7',
+                  border: '1px solid #059669',
+                  padding: '4px 16px',
+                  borderRadius: 999,
+                  fontSize: '0.86rem',
+                  fontWeight: 800,
+                  marginBottom: 10
                 }}>
-                  <Clock size={16} color="#34D399" />
-                  <span>নির্ধারিত সময়: {currentlyServing.appointment_time || 'চলতি সেশন'}</span>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px #34D399' }} />
+                  <span>এখন চেম্বারে উপস্থিত</span>
+                </div>
+
+                {/* Patient Information Box (Matching Pic 1) */}
+                <div style={{
+                  width: '100%',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  border: '1px solid rgba(52, 211, 153, 0.3)',
+                  borderRadius: 16,
+                  padding: '12px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 14
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: '50%',
+                      background: 'rgba(52, 211, 153, 0.15)',
+                      border: '1.5px solid #34D399',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#34D399', flexShrink: 0
+                    }}>
+                      <User size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>
+                        চেম্বারে রয়েছেন
+                      </div>
+                      <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>
+                        {currentlyServing.patient_name || 'রোগীর নাম'}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#A7F3D0', fontWeight: 600, marginTop: 2 }}>
+                        দয়া করে চেম্বারের সামনে প্রস্তুত থাকুন
+                      </div>
+                    </div>
+                  </div>
+
+                  {currentlyServing.appointment_time && (
+                    <div style={{
+                      background: 'rgba(5, 150, 105, 0.25)',
+                      border: '1px solid #059669',
+                      borderRadius: 10,
+                      padding: '6px 12px',
+                      textAlign: 'center',
+                      flexShrink: 0
+                    }}>
+                      <div style={{ fontSize: '0.7rem', color: '#A7F3D0', fontWeight: 600 }}>নির্ধারিত সময়</div>
+                      <div style={{ fontSize: '0.94rem', fontWeight: 900, color: '#34D399', fontFamily: 'monospace' }}>
+                        {formatTime12h(currentlyServing.appointment_time)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              <div style={{ padding: '40px 10px' }}>
+              <div style={{ padding: '40px 10px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ fontSize: '2.6rem', color: '#6EE7B7', fontWeight: 900, marginBottom: 8 }}>
                   অপেক্ষারত...
                 </div>
@@ -975,7 +1142,7 @@ export default function PublicDisplayBoardPage() {
           flex: 1,
           background: '#0E1422',
           borderRadius: 14,
-          padding: '8px 16px',
+          padding: '6px 14px',
           border: '1px solid #1E293B',
           display: 'flex',
           alignItems: 'center',
@@ -983,21 +1150,39 @@ export default function PublicDisplayBoardPage() {
           overflow: 'hidden',
           boxShadow: '0 4px 18px rgba(0,0,0,0.3)'
         }}>
+          {/* Announcement Badge (Matching Dashboard Green #00B875) */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
-            background: '#044E38',
-            color: '#6EE7B7',
-            padding: '6px 14px',
-            borderRadius: 10,
-            fontSize: '0.9rem',
-            fontWeight: 800,
+            gap: 10,
+            background: '#00B875',
+            borderRadius: 12,
+            padding: '8px 18px',
             flexShrink: 0,
-            border: '1px solid #059669'
+            boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+            border: 'none'
           }}>
-            <Megaphone size={16} />
-            <span>ঘোষণা</span>
+            <div style={{
+              width: 30, height: 30,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#00B875',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+            }}>
+              <Megaphone size={17} />
+            </div>
+            <span style={{
+              fontSize: '1.05rem',
+              fontWeight: 900,
+              color: '#FFFFFF',
+              fontFamily: '"Hind Siliguri", sans-serif',
+              letterSpacing: '0.3px'
+            }}>
+              ঘোষণা
+            </span>
           </div>
 
           <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -1012,30 +1197,35 @@ export default function PublicDisplayBoardPage() {
           </div>
         </div>
 
-        {/* Right Phone Contact Button */}
+        {/* Right Phone Contact Button (Matching Dashboard Green #00B875) */}
         <div style={{
-          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-          borderRadius: 14,
-          padding: '8px 20px',
+          background: '#00B875',
+          borderRadius: 12,
+          padding: '8px 22px',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          boxShadow: '0 4px 18px rgba(5, 150, 105, 0.35)',
+          boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+          border: 'none',
           flexShrink: 0
         }}>
           <div style={{
-            width: 38, height: 38, borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#FFFFFF'
+            width: 42, height: 42,
+            borderRadius: '50%',
+            background: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#00B875',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
           }}>
-            <Phone size={20} />
+            <Phone size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#D1FAE5', fontWeight: 700 }}>
+            <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 700, lineHeight: 1.2, opacity: 0.95 }}>
               সিরিয়ালের জন্য কল করুন
             </div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.5px', lineHeight: 1.2 }}>
               {supportPhone}
             </div>
           </div>

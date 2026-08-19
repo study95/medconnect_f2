@@ -311,11 +311,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           )}
 
           {/* System Admin Section */}
-          {(isAdmin || isManager || hasPermission('user.view') || hasPermission('payment.view') || hasPermission('content.update') || hasPermission('patient.view')) && (
+          {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('payment.view') || hasPermission('content.update') || hasPermission('patient.view')) && (
             <>
               <div className="sidebar-section-title">System</div>
 
-              {(isAdmin || isManager || hasPermission('patient.view')) && (
+              {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
                 <NavLink
                   to="/admin/patients"
                   className={`sidebar-nav-item ${isActive('/admin/patients') ? 'active' : ''}`}

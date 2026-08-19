@@ -425,7 +425,7 @@ export default function AppointmentListPage() {
                               padding: '1px 6px',
                               borderRadius: 6
                             }}>
-                              Serial #{appt.serial_number}
+                              Serial-{appt.serial_number}
                             </span>
                           )}
                         </div>
