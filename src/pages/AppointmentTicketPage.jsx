@@ -291,6 +291,66 @@ export default function AppointmentTicketPage() {
   const apptTime = apptData.time || apptData.appointment_time
   const apptNumber = apptData.tracking_id || `#MED-${String(apptData.id || 1).padStart(6, '0')}`
 
+  const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+  const toBnNum = (str) => str !== null && str !== undefined ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
+
+  const bnMonths = [
+    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+  ]
+
+  const bnDays = [
+    'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'
+  ]
+
+  const formatDateBn = (dateStr) => {
+    if (!dateStr) return 'N/A'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      const dayName = bnDays[d.getDay()]
+      const dayNum = toBnNum(d.getDate())
+      const monthName = bnMonths[d.getMonth()]
+      const yearNum = toBnNum(d.getFullYear())
+      return `${dayName}, ${dayNum} ${monthName} ${yearNum}`
+    } catch {
+      return dateStr
+    }
+  }
+
+  const formatTimeBn = (timeStr) => {
+    if (!timeStr) return 'N/A'
+    try {
+      let timeUpper = String(timeStr).toUpperCase()
+      let isPM = timeUpper.includes('PM')
+      let isAM = timeUpper.includes('AM')
+      let cleanStr = timeStr.replace(/[a-zA-Z\s]/g, '').trim()
+      let parts = cleanStr.split(':')
+      let h = parseInt(parts[0], 10)
+      let m = parseInt(parts[1] || '0', 10)
+      
+      if (isPM && h < 12) h += 12
+      if (isAM && h === 12) h = 0
+
+      let periodBn = ''
+      if (h >= 4 && h < 12) periodBn = 'সকাল'
+      else if (h >= 12 && h < 15) periodBn = 'দুপুর'
+      else if (h >= 15 && h < 18) periodBn = 'বিকাল'
+      else if (h >= 18 && h < 20) periodBn = 'সন্ধ্যা'
+      else periodBn = 'রাত'
+      
+      let h12 = h % 12 || 12
+      let timeBn = `${toBnNum(String(h12).padStart(2, '0'))}:${toBnNum(String(m).padStart(2, '0'))}`
+      
+      return `${periodBn} ${timeBn} মিনিট`
+    } catch {
+      return timeStr
+    }
+  }
+
+  const serialNum = apptData.serial_number || apptData.serial_no || apptData.serial || apptData.id || 1
+  const serialDisplay = language === 'bn' ? `সিরিয়াল নম্বর-${toBnNum(serialNum)}` : `Serial No-${serialNum}`
+
   const status = (apptData.status || 'pending').toLowerCase()
   let statusText = 'আসন্ন অ্যাপয়েন্টমেন্ট'
   let statusColor = '#047857'
@@ -430,12 +490,23 @@ export default function AppointmentTicketPage() {
               </span>
             </div>
 
-            {/* Serial / Tracking ID */}
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>সিরিয়াল নম্বর</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
-                {apptNumber}
-              </div>
+            {/* Serial Number Display */}
+            <div>
+              <span style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: '#EF4444',
+                fontFamily: "'Hind Siliguri', sans-serif",
+                background: '#FEF2F2',
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: '1px solid #FECACA',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                সিরিয়াল নং - {toBnNum(serialNum)}
+              </span>
             </div>
           </div>
 
@@ -500,7 +571,7 @@ export default function AppointmentTicketPage() {
                 <span style={{ fontSize: 13.5, color: '#64748B', fontWeight: 600 }}>তারিখ</span>
               </div>
               <span style={{ fontSize: 13.5, color: '#0F172A', fontWeight: 700 }}>
-                {apptDate ? new Date(apptDate).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                {formatDateBn(apptDate)}
               </span>
             </div>
 
@@ -513,7 +584,7 @@ export default function AppointmentTicketPage() {
                 <span style={{ fontSize: 13.5, color: '#64748B', fontWeight: 600 }}>সময়</span>
               </div>
               <span style={{ fontSize: 13.5, color: '#0F172A', fontWeight: 700 }}>
-                {apptTime || 'N/A'}
+                {formatTimeBn(apptTime)}
               </span>
             </div>
 
@@ -558,19 +629,32 @@ export default function AppointmentTicketPage() {
                 <User size={16} color="#00966D" />
                 <span style={{ fontSize: 14, fontWeight: 800, color: '#00966D' }}>রোগীর তথ্য</span>
               </div>
-              {isOther && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: 700,
-                  color: '#0284C7',
-                  background: '#F0F9FF',
-                  border: '1px solid #BAE6FD',
+                  color: '#64748B',
+                  background: '#F1F5F9',
                   padding: '2px 8px',
-                  borderRadius: 20
+                  borderRadius: 6,
+                  fontFamily: 'monospace'
                 }}>
-                  অন্যের জন্য বুকিং {patientRelation ? `(${patientRelation})` : ''}
+                  আইডি: {apptNumber}
                 </span>
-              )}
+                {isOther && (
+                  <span style={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    color: '#0284C7',
+                    background: '#F0F9FF',
+                    border: '1px solid #BAE6FD',
+                    padding: '2px 8px',
+                    borderRadius: 20
+                  }}>
+                    অন্যের জন্য {patientRelation ? `(${patientRelation})` : ''}
+                  </span>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1, borderRight: '1px solid #F1F5F9', paddingRight: 8 }}>

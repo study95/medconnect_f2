@@ -3,9 +3,9 @@ import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-
 import { useSubscription } from '../../context/SubscriptionContext'
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield } from 'lucide-react'
+
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -193,15 +193,27 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           </div>
 
           {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
-            <NavLink
-              to="/admin/appointments"
-              className={`sidebar-nav-item ${isActive('/admin/appointments') ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Appointments' : undefined}
-            >
-              <span className="nav-icon"><CalendarCheck size={18} /></span>
-              <span className="nav-text">Appointments</span>
-            </NavLink>
+            <>
+              <NavLink
+                to="/admin/appointments"
+                className={`sidebar-nav-item ${isActive('/admin/appointments') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Appointments' : undefined}
+              >
+                <span className="nav-icon"><CalendarCheck size={18} /></span>
+                <span className="nav-text">Appointments</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/serial-display"
+                className={`sidebar-nav-item ${isActive('/admin/serial-display') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Serial Display' : undefined}
+              >
+                <span className="nav-icon"><Tv size={18} /></span>
+                <span className="nav-text">Serial Display</span>
+              </NavLink>
+            </>
           )}
 
           {(isAdmin || isManager || isDoctor || hasPermission('payment.view')) && (

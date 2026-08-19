@@ -37,6 +37,7 @@ const RegistrationChoicePage = lazy(() => import('./pages/auth/RegistrationChoic
 const OtpVerificationPage    = lazy(() => import('./pages/auth/OtpVerificationPage'))
 const PatientRegisterPage    = lazy(() => import('./pages/auth/PatientRegisterPage'))
 const DoctorRegisterPage     = lazy(() => import('./pages/auth/DoctorRegisterPage'))
+const PublicDisplayBoardPage = lazy(() => import('./pages/PublicDisplayBoardPage'))
 const LoginChoicePage        = lazy(() => import('./pages/auth/LoginChoicePage'))
 const PatientLoginPage       = lazy(() => import('./pages/auth/PatientLoginPage'))
 const DoctorLoginPage        = lazy(() => import('./pages/auth/DoctorLoginPage'))
@@ -115,6 +116,9 @@ const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPag
 
 // Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
+
+// Serial Display & Live Queue Management
+const SerialDisplayManagerPage = lazy(() => import('./pages/admin/display/SerialDisplayManagerPage'))
 
 
 function PageLoader() {
@@ -273,11 +277,13 @@ function App() {
             <Route path="chambers/create" element={<ChamberFormPage />} />
             <Route path="chambers/edit/:id" element={<ChamberFormPage />} />
 
-            {/* Appointments */}
+            {/* Appointments & Live Serial Queue */}
             <Route path="appointments" element={<AppointmentListPage />} />
             <Route path="appointments/create" element={<AppointmentFormPage />} />
             <Route path="appointments/edit/:id" element={<AppointmentFormPage />} />
             <Route path="appointments/view/:id" element={<AppointmentViewPage />} />
+            <Route path="serial-display" element={<SerialDisplayManagerPage />} />
+            <Route path="queue-display" element={<SerialDisplayManagerPage />} />
 
             {/* Prescriptions */}
             <Route path="prescriptions" element={<SubscriptionGate moduleName="Prescriptions"><PrescriptionListPage /></SubscriptionGate>} />
@@ -338,8 +344,12 @@ function App() {
             <Route path="audit-logs" element={<AuditLogPage />} />
           </Route>
 
-          {/* ===== AUTH ROUTES (No navbar/footer) ===== */}
+          {/* ===== AUTH & TV DISPLAY ROUTES (No navbar/footer) ===== */}
           <Route path="/admin-secure-access" element={<AdminSecureLoginPage />} />
+          <Route path="/display/:token" element={<PublicDisplayBoardPage />} />
+          <Route path="/display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
+          <Route path="/queue-display/:token" element={<PublicDisplayBoardPage />} />
+          <Route path="/queue-display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
 
           {/* ===== PUBLIC / PATIENT ROUTES ===== */}
           <Route

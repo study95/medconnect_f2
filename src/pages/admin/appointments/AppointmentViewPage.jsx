@@ -112,16 +112,22 @@ export default function AppointmentViewPage() {
               <h3 className="admin-card-title">📅 Consultation Schedule</h3>
             </div>
             <div className="admin-card-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 20 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Visit Date</label>
-                  <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>
-                    {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                  <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>
+                    {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                   </p>
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Arrival Time</label>
-                  <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>{appt.time || '—'}</p>
+                  <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>{appt.time || '—'}</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Serial Number</label>
+                  <p style={{ fontSize: 16, fontWeight: 800, color: '#00A88C', margin: '4px 0' }}>
+                    {appt.serial_number ? `Serial #${appt.serial_number}` : '—'}
+                  </p>
                 </div>
               </div>
 

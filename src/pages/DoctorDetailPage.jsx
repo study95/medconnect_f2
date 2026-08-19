@@ -12,6 +12,7 @@ import ShareModal from '../components/common/ShareModal'
 
 import ErrorBoundary from '../components/common/ErrorBoundary'
 import { translateMetadata } from '../utils/translationUtils'
+import { getMediaUrl } from '../utils/mediaUtils'
 import { 
   IconHeart, IconShare, IconMapPin, IconClock, 
   IconBriefcase, IconCertificate, IconStar, 
@@ -318,7 +319,7 @@ function DoctorDetailPageContent() {
             {/* Square Avatar with Appointment Badge Tag */}
             <div style={{ position: 'relative', width: 90, height: 98, flexShrink: 0, borderRadius: 12, overflow: 'hidden', background: '#F1F5F9' }}>
               <img
-                src={doctor?.photo || DEMO_AVATAR}
+                src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)}
                 alt={doctor?.name || 'Doctor'}
                 onError={(e) => { e.target.src = DEMO_AVATAR }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -425,7 +426,7 @@ function DoctorDetailPageContent() {
               {/* RECTANGULAR DOCTOR IMAGE (NO CIRCLE) WITH VERIFIED BADGE */}
               <div style={{ position: 'relative', width: '100%', borderRadius: 16, overflow: 'hidden', marginBottom: 20, background: '#F1F5F9' }}>
                 <img 
-                  src={doctor?.photo || DEMO_AVATAR} 
+                  src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)} 
                   alt={doctor?.name || 'Doctor'}
                   onError={(e) => { e.target.src = DEMO_AVATAR }}
                   style={{

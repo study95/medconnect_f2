@@ -26,6 +26,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
   const isFavorite = isDoctorFavorite(doctor.id)
 
+  const doctorPhoto = doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar || doctor?.profile_image
   const specialtyName = doctor.specialty_name || doctor.specialty?.name_bn || doctor.specialty?.name || 'বিশেষজ্ঞ'
   const experience = (() => {
     const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
@@ -232,7 +233,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           }}>
             <OptimizedImage
               className="doc-list-img-wrapper"
-              src={getMediaUrl(doctor.photo_url)}
+              src={getMediaUrl(doctorPhoto)}
               fallback={DEMO_AVATAR}
               alt={doctor.name}
               width="100%"
@@ -492,7 +493,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
         {/* Avatar Container with Blue Verified Badge on Top Right of Image */}
         <div style={{ flexShrink: 0, position: 'relative' }}>
           <OptimizedImage
-            src={getMediaUrl(doctor.photo_url)}
+            src={getMediaUrl(doctorPhoto)}
             fallback={DEMO_AVATAR}
             alt={doctor.name}
             width={90}

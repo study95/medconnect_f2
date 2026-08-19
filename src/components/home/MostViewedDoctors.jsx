@@ -33,9 +33,7 @@ function DoctorBannerCard({ doctor }) {
   const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
   const isFavorite = isDoctorFavorite ? isDoctorFavorite(doctor?.id) : false
 
-  const photo = doctor?.photo_url
-    ? getMediaUrl(doctor.photo_url)
-    : doctor?.image || doctor?.photo || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=1200&q=80'
+  const photo = getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=1200&q=80')
 
   const specialtyName = doctor?.specialty?.name || doctor?.specialty_name || 'বিশেষজ্ঞ ডাক্তার'
   const mainName = doctor?.name || 'Dr. Ahasan Habib'

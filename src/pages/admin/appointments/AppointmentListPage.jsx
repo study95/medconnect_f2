@@ -411,8 +411,23 @@ export default function AppointmentListPage() {
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
-                          {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
+                            {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          </div>
+                          {appt.serial_number && (
+                            <span style={{
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              color: '#047857',
+                              background: '#ECFDF5',
+                              border: '1px solid #A7F3D0',
+                              padding: '1px 6px',
+                              borderRadius: 6
+                            }}>
+                              Serial #{appt.serial_number}
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500 }}>{appt.time || 'Schedule not set'}</div>
                       </td>

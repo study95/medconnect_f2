@@ -33,7 +33,7 @@ axiosInstance.interceptors.response.use(
     const url = response.config?.url || ''
 
     // Automatically trigger react-hot-toast for admin panel mutations (POST, PUT, PATCH, DELETE)
-    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login') && !url.includes('/register') && !url.includes('/auth/check')) {
+    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login') && !url.includes('/register') && !url.includes('/auth/check') && !response.config?.skipGlobalToast && !response.config?.skipToast) {
       const defaultMsg = method === 'delete' ? 'Item deleted successfully!' : 'Changes saved successfully!'
       const serverMsg = response.data?.message || response.data?.status
       const toastMsg = typeof serverMsg === 'string' && serverMsg.trim() ? serverMsg : defaultMsg

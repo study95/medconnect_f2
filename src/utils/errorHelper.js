@@ -83,8 +83,8 @@ export const translateToBangla = (msg, fallback = 'তথ্য প্রক্�
   // OTP errors
   if (lower.includes('otp') || lower.includes('code') || lower.includes('sms')) {
     if (lower.includes('sent')) return 'OTP সফলভাবে পাঠানো হয়েছে!';
-    if (lower.includes('invalid') || lower.includes('incorrect') || lower.includes('wrong')) return 'OTP কোডটি সঠিক নয়। আবার চেষ্টা করুন।';
-    if (lower.includes('expired')) return 'OTP কোডের মেয়াদ শেষ হয়েছে। পুনরায় পাঠান।';
+    if (lower.includes('invalid') || lower.includes('incorrect') || lower.includes('wrong') || lower.includes('ভুল') || lower.includes('সঠিক নয়') || lower.includes('সঠিক নয়')) return 'ভুল OTP কোড! সঠিক OTP কোডটি লিখুন।';
+    if (lower.includes('expired')) return 'OTP কোডের মেয়াদ শেষ হয়েছে। পুনরায় OTP পাঠান।';
     if (lower.includes('failed') || lower.includes('unable')) return 'OTP পাঠাতে ব্যর্থ হয়েছে। অনুগ্রহ করে মোবাইল নম্বর চেক করে আবার চেষ্টা করুন।';
   }
 

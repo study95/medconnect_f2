@@ -11,6 +11,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 import '../styles/prescription.css'
 
 const STATUS_MAP = {
@@ -41,58 +42,96 @@ const getAvatarColor = (name = '') => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-const getInitials = (name = '') => {
-  const parts = name.replace(/ডা\.|Dr\./g, '').trim().split(/\s+/)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return (parts[0]?.[0] || 'D').toUpperCase()
+const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBnNum = (str) => str !== null && str !== undefined ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
+
+const bnMonths = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+]
+
+const bnDays = [
+  'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'
+]
+
+const formatDateBn = (dateStr) => {
+  if (!dateStr) return '—'
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    const dayName = bnDays[d.getDay()]
+    const dayNum = toBnNum(d.getDate())
+    const monthName = bnMonths[d.getMonth()]
+    const yearNum = toBnNum(d.getFullYear())
+    return `${dayName}, ${dayNum} ${monthName} ${yearNum}`
+  } catch {
+    return dateStr
+  }
+}
+
+const formatTimeBn = (timeStr) => {
+  if (!timeStr) return '—'
+  try {
+    let timeUpper = String(timeStr).toUpperCase()
+    let isPM = timeUpper.includes('PM')
+    let isAM = timeUpper.includes('AM')
+    let cleanStr = timeStr.replace(/[a-zA-Z\s]/g, '').trim()
+    let parts = cleanStr.split(':')
+    let h = parseInt(parts[0], 10)
+    let m = parseInt(parts[1] || '0', 10)
+    
+    if (isPM && h < 12) h += 12
+    if (isAM && h === 12) h = 0
+
+    let periodBn = ''
+    if (h >= 4 && h < 12) periodBn = 'সকাল'
+    else if (h >= 12 && h < 15) periodBn = 'দুপুর'
+    else if (h >= 15 && h < 18) periodBn = 'বিকাল'
+    else if (h >= 18 && h < 20) periodBn = 'সন্ধ্যা'
+    else periodBn = 'রাত'
+    
+    let h12 = h % 12 || 12
+    let timeBn = `${toBnNum(String(h12).padStart(2, '0'))}:${toBnNum(String(m).padStart(2, '0'))}`
+    
+    return `${periodBn} ${timeBn}`
+  } catch {
+    return timeStr
+  }
 }
 
 function MyAppointmentsPage() {
   const navigate = useNavigate()
   const { i18n } = useTranslation()
   const language = i18n.language
+  const { user, isLoggedIn } = useAuth() || {}
 
   const { data: appointments = [], isLoading: loading } = useQuery({
-    queryKey: ['my-appointments'],
+    queryKey: ['my-appointments', user?.id, user?.phone],
     refetchOnMount: 'always',
     staleTime: 0,
     queryFn: async () => {
-      let serverList = []
-      try {
-        const res = await getAppointments()
-        let raw = res.data
-        if (raw && raw.data) raw = raw.data
-        if (raw && raw.data) raw = raw.data
-        if (raw && raw.appointments) raw = raw.appointments
-        if (raw && raw.items) raw = raw.items
-        serverList = Array.isArray(raw) ? raw : []
-      } catch (e) {
-        serverList = []
+      if (isLoggedIn) {
+        try {
+          const res = await getAppointments()
+          let raw = res.data
+          if (raw && raw.data) raw = raw.data
+          if (raw && raw.data) raw = raw.data
+          if (raw && raw.appointments) raw = raw.appointments
+          if (raw && raw.items) raw = raw.items
+          return Array.isArray(raw) ? raw : []
+        } catch (e) {
+          console.error('Failed to load appointments:', e)
+          return []
+        }
       }
 
-      let localList = []
+      // Guest users only
       try {
-        localList = JSON.parse(localStorage.getItem('my_appointments') || '[]')
+        const rawLocal = JSON.parse(localStorage.getItem('my_appointments') || '[]')
+        return Array.isArray(rawLocal) ? rawLocal : []
       } catch (e) {
-        localList = []
+        return []
       }
-
-      const mergedMap = new Map()
-      serverList.forEach((item, idx) => {
-        if (item) {
-          const key = String(item.id || item._id || item.appointment_id || `server_${idx}`)
-          mergedMap.set(key, item)
-        }
-      })
-      localList.forEach((item, idx) => {
-        if (item) {
-          const key = String(item.id || item._id || item.appointment_id || `local_${idx}`)
-          if (!mergedMap.has(key)) mergedMap.set(key, item)
-        }
-      })
-
-      const combined = Array.from(mergedMap.values())
-      return combined.length > 0 ? combined : serverList
     },
   })
 
@@ -299,18 +338,12 @@ function MyAppointmentsPage() {
               const rawDate = appt.appointment_date || appt.date || appt.created_at
               const rawTime = appt.appointment_time || appt.time || appt.schedule_time
 
-              let dateDisplay = '—'
-              if (rawDate) {
-                try {
-                  dateDisplay = new Date(rawDate).toLocaleDateString(
-                    language === 'bn' ? 'bn-BD' : 'en-US',
-                    { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
-                  )
-                } catch { dateDisplay = rawDate }
-              }
-
-              const timeDisplay = rawTime || '—'
+              const dateDisplay = formatDateBn(rawDate)
+              const timeDisplay = formatTimeBn(rawTime)
               const apptId = appt.id || appt._id || appt.appointment_id
+
+              const serialNum = appt.serial_number || appt.serial_no || appt.serial || appt.id || 1
+              const serialDisplay = `সিরিয়াল-${toBnNum(serialNum)}`
 
               return (
                 <div
@@ -504,6 +537,21 @@ function MyAppointmentsPage() {
                     borderTop: '1px solid #F1F5F9'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', minWidth: 0, flex: 1 }}>
+                      {/* Serial chip */}
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        padding: '5px 9px',
+                        borderRadius: 8,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}>
+                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                          {serialDisplay}
+                        </span>
+                      </div>
+
                       {/* Date chip */}
                       <div style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
