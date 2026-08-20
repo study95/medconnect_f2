@@ -278,15 +278,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-text">Highlights</span>
               </NavLink>
 
-              <NavLink
-                to="/admin/commission"
-                className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Commission' : undefined}
-              >
-                <span className="nav-icon"><Receipt size={18} /></span>
-                <span className="nav-text">Commission & Service</span>
-              </NavLink>
+              {isAdmin && (
+                <NavLink
+                  to="/admin/commission"
+                  className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Commission' : undefined}
+                >
+                  <span className="nav-icon"><Receipt size={18} /></span>
+                  <span className="nav-text">Commission & Service</span>
+                </NavLink>
+              )}
 
               <NavLink
                 to="/admin/reports/commission"

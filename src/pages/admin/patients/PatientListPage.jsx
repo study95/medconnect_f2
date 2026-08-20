@@ -377,7 +377,7 @@ export default function PatientListPage() {
                         <button 
                           className="admin-btn admin-btn-outline admin-btn-sm" 
                           style={{ color: '#6366F1', borderColor: 'rgba(99, 102, 241, 0.2)', background: 'rgba(99, 102, 241, 0.05)' }} 
-                          onClick={() => navigate(`/admin/users/${p.user_id || p.id}`)}
+                          onClick={() => navigate(`/admin/patients/view/${p.id}`)}
                         >
                           👁️ View
                         </button>

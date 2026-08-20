@@ -1,10 +1,10 @@
 // PatientProfilePage.jsx — Premium Patient Profile & Clinical History
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getUser, getAppointments, getPrescriptions, getPrescription } from '../../../api/adminApi'
+import { getUser, getAdminPatient, getAppointments, getPrescriptions, getPrescription } from '../../../api/adminApi'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
-import { getErrorMessage } from '../../../utils/errorHelper'
+import { calculateAge } from '../../../utils/dateUtils'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -13,12 +13,12 @@ import '../../../styles/prescription.css'
 export default function PatientProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isDoctorOnly } = useAuth()
+  const { isManager, isDoctor, isAdmin } = useAuth()
   const [patient, setPatient] = useState(null)
   const [appointments, setAppointments] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState('prescriptions')
+  const [activeSection, setActiveSection] = useState('appointments')
   const [exportingId, setExportingId] = useState(null)
   const [exportingRx, setExportingRx] = useState(null)
   const silentPaperRef = useRef(null)
@@ -28,17 +28,61 @@ export default function PatientProfilePage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [userRes, apptRes, pressRes] = await Promise.all([
-        getUser(id),
-        getAppointments({ user_id: id }),
-        getPrescriptions({ patient_id: id })
-      ])
+      let patientData = null
+      let targetUserId = null
+      let targetPatientId = id
 
-      setPatient(userRes.data?.data || userRes.data)
-      setAppointments(apptRes.data?.data?.data || apptRes.data?.data || [])
-      setPrescriptions(pressRes.data?.data?.data || pressRes.data?.data || [])
+      // 1. Try to load from /admin/patients/:id first
+      try {
+        const pRes = await getAdminPatient(id)
+        if (pRes.data?.data || pRes.data) {
+          patientData = pRes.data?.data || pRes.data
+          targetUserId = patientData.user_id || patientData.user?.id || id
+          targetPatientId = patientData.id || id
+        }
+      } catch (pErr) {
+        // Fallback to /users/:id
+        try {
+          const uRes = await getUser(id)
+          patientData = uRes.data?.data || uRes.data
+          targetUserId = patientData?.id
+          targetPatientId = patientData?.patient?.id || patientData?.id
+        } catch (uErr) {
+          console.warn('Could not load user directly', uErr)
+        }
+      }
+
+      if (!patientData) {
+        setPatient(null)
+        setLoading(false)
+        return
+      }
+
+      setPatient(patientData)
+
+      // 2. Fetch appointments
+      try {
+        const apptRes = await getAppointments({ user_id: targetUserId || targetPatientId })
+        const apptList = apptRes.data?.data?.data || apptRes.data?.data || []
+        setAppointments(Array.isArray(apptList) ? apptList : [])
+      } catch (apptErr) {
+        console.warn('Failed to load appointments', apptErr)
+        setAppointments([])
+      }
+
+      // 3. Fetch prescriptions (skip for managers per backend security)
+      if (!isManager) {
+        try {
+          const pressRes = await getPrescriptions({ patient_id: targetUserId || targetPatientId })
+          const pressList = pressRes.data?.data?.data || pressRes.data?.data || []
+          setPrescriptions(Array.isArray(pressList) ? pressList : [])
+        } catch (pressErr) {
+          console.warn('Failed to load prescriptions', pressErr)
+          setPrescriptions([])
+        }
+      }
     } catch (err) {
-navigate('/admin/users')
+      console.error('Error loading patient data:', err)
     } finally {
       setLoading(false)
     }
@@ -69,16 +113,53 @@ navigate('/admin/users')
         const pdf = new jsPDF('p', 'mm', 'a4')
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297)
         pdf.save(`Prescription_${rxId}.pdf`)
-        setExportingId(null); setExportingRx(null)
-        
+        setExportingId(null)
+        setExportingRx(null)
       }, 500)
     } catch (err) {
-       setExportingId(null); setExportingRx(null)
+      setExportingId(null)
+      setExportingRx(null)
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Syncing Patient History...</div>
-  if (!patient) return <div className="admin-empty" style={{ color: 'var(--admin-text)' }}>Patient record not found</div>
+  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Patient History...</div>
+  
+  if (!patient) {
+    return (
+      <div className="admin-container" style={{ maxWidth: 600, margin: '60px auto', textAlign: 'center' }}>
+        <div className="admin-card" style={{ padding: 40 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>👤</div>
+          <h3 style={{ color: 'var(--admin-text)', marginBottom: 8 }}>Patient Record Not Found</h3>
+          <p style={{ color: 'var(--admin-text-muted)', marginBottom: 24 }}>The requested patient information could not be found.</p>
+          <button onClick={() => navigate('/admin/patients')} className="admin-btn admin-btn-primary">
+            ← Back to Patients
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const name = patient.name || patient.user?.name || 'Unknown Patient'
+  const email = patient.email || patient.user?.email || '—'
+  const phone = patient.phone || patient.mobile || patient.user?.phone || '—'
+  const regNumber = patient.registration_number || patient.user?.registration_number || patient.id
+  const gender = patient.gender || patient.patient?.gender || 'N/A'
+  const bloodGroup = patient.blood_group || patient.patient?.blood_group || 'Unknown'
+  const dob = patient.date_of_birth || patient.patient?.date_of_birth
+  const calculatedAge = dob ? calculateAge(dob).display : (patient.age ? `${patient.age} Years` : '—')
+  const occupation = patient.occupation || patient.patient?.occupation || '—'
+  const photo = patient.profile_pic || patient.photo || patient.user?.photo || null
+  const addressParts = [
+    patient.union?.name || patient.patient?.union?.name,
+    patient.upazila?.name || patient.patient?.upazila?.name,
+    patient.district?.name || patient.patient?.district?.name,
+    patient.division?.name || patient.patient?.division?.name
+  ].filter(Boolean)
+  const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '—'
+  const joinedDate = patient.created_at || patient.user?.created_at ? new Date(patient.created_at || patient.user?.created_at).toLocaleDateString() : 'N/A'
+  const height = patient.height || patient.patient?.height || '—'
+  const weight = patient.weight || patient.patient?.weight || '—'
+  const allergies = patient.allergies || patient.patient?.allergies || null
 
   return (
     <div className="admin-container" style={{ maxWidth: 1200, margin: '0 auto', animation: 'fadeIn 0.5s ease-out', paddingBottom: 60 }}>
@@ -89,7 +170,7 @@ navigate('/admin/users')
             Patient Profile
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>
-            Registration: <span style={{ fontWeight: 800, color: 'var(--admin-text)' }}>#{patient.registration_number || patient.id}</span>
+            Registration: <span style={{ fontWeight: 800, color: 'var(--admin-text)' }}>#{regNumber}</span>
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -108,28 +189,36 @@ navigate('/admin/users')
                 width: 80, height: 80, borderRadius: 24, background: 'var(--admin-card-bg)', margin: '0 auto',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', border: '4px solid var(--admin-card-bg)', fontSize: 32, fontWeight: 900, color: '#6366F1',
-                position: 'relative', zIndex: 20
+                position: 'relative', zIndex: 20, overflow: 'hidden'
               }}>
-                {patient.name?.charAt(0)?.toUpperCase()}
+                {photo ? (
+                  <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  name?.charAt(0)?.toUpperCase() || 'P'
+                )}
               </div>
-              <h3 style={{ marginTop: 16, fontWeight: 800, color: 'var(--admin-text)', fontSize: 20 }}>{patient.name}</h3>
-              <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', marginBottom: 24 }}>Official Patient Account</p>
+              <h3 style={{ marginTop: 16, fontWeight: 800, color: 'var(--admin-text)', fontSize: 20 }}>{name}</h3>
+              <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', marginBottom: 24 }}>Registered Patient</p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: !isManager ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 24 }}>
                 <div style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '16px 12px', borderRadius: 16, border: '1px solid rgba(99, 102, 241, 0.1)' }}>
                   <div style={{ fontWeight: 800, color: '#6366F1', fontSize: 20 }}>{appointments.length}</div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#6366F1', textTransform: 'uppercase', marginTop: 2 }}>Visits</div>
                 </div>
-                <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px 12px', borderRadius: 16, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                  <div style={{ fontWeight: 800, color: '#10B981', fontSize: 20 }}>{prescriptions.length}</div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#10B981', textTransform: 'uppercase', marginTop: 2 }}>Rx</div>
-                </div>
+                {!isManager && (
+                  <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px 12px', borderRadius: 16, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                    <div style={{ fontWeight: 800, color: '#10B981', fontSize: 20 }}>{prescriptions.length}</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#10B981', textTransform: 'uppercase', marginTop: 2 }}>Rx</div>
+                  </div>
+                )}
               </div>
 
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid var(--admin-border)' }}>
-                <InfoItem label="Email Address" value={patient.email} icon="✉️" />
-                <InfoItem label="Primary Phone" value={patient.phone} icon="📞" />
-                <InfoItem label="Joined Platform" value={patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'} icon="🗓️" />
+                <InfoItem label="Email Address" value={email} icon="✉️" />
+                <InfoItem label="Primary Phone" value={phone} icon="📞" />
+                <InfoItem label="Occupation" value={occupation} icon="💼" />
+                <InfoItem label="Location" value={fullAddress} icon="📍" />
+                <InfoItem label="Joined Platform" value={joinedDate} icon="🗓️" />
               </div>
             </div>
           </div>
@@ -140,15 +229,15 @@ navigate('/admin/users')
             </div>
             <div className="admin-card-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <VitalItem label="Blood Group" value={patient.patient?.blood_group || 'Unknown'} icon="🩸" color="#EF4444" />
-                <VitalItem label="Gender" value={patient.patient?.gender || 'N/A'} icon="👤" color="#3B82F6" />
-                <VitalItem label="Height" value={patient.patient?.height || '—'} icon="📏" color="#10B981" />
-                <VitalItem label="Weight" value={patient.patient?.weight || '—'} icon="⚖️" color="#F59E0B" />
+                <VitalItem label="Blood Group" value={bloodGroup} icon="🩸" color="#EF4444" />
+                <VitalItem label="Gender" value={gender} icon="👤" color="#3B82F6" />
+                <VitalItem label="Age / DOB" value={calculatedAge} icon="🎂" color="#8B5CF6" />
+                <VitalItem label="Weight" value={weight} icon="⚖️" color="#F59E0B" />
               </div>
-              {patient.patient?.allergies && (
+              {allergies && (
                 <div style={{ marginTop: 20, padding: 12, background: 'rgba(249, 115, 22, 0.05)', borderRadius: 12, border: '1px dashed #F97316' }}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#F97316', textTransform: 'uppercase' }}>Allergies / Risks</span>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{patient.patient.allergies}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{allergies}</p>
                 </div>
               )}
             </div>
@@ -161,17 +250,6 @@ navigate('/admin/users')
           {/* Section Navigation */}
           <div style={{ display: 'flex', gap: 12, background: 'var(--admin-card-bg)', padding: 8, borderRadius: 16, border: '1px solid var(--admin-border)' }}>
             <button
-              onClick={() => setActiveSection('prescriptions')}
-              style={{
-                flex: 1, padding: '12px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer',
-                background: activeSection === 'prescriptions' ? '#6366F1' : 'transparent',
-                color: activeSection === 'prescriptions' ? 'white' : 'var(--admin-text-muted)',
-                transition: 'all 0.2s'
-              }}
-            >
-              📋 Medical Prescriptions
-            </button>
-            <button
               onClick={() => setActiveSection('appointments')}
               style={{
                 flex: 1, padding: '12px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer',
@@ -180,19 +258,72 @@ navigate('/admin/users')
                 transition: 'all 0.2s'
               }}
             >
-              📅 Appointment History
+              📅 Appointment History ({appointments.length})
             </button>
+            {!isManager && (
+              <button
+                onClick={() => setActiveSection('prescriptions')}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                  background: activeSection === 'prescriptions' ? '#6366F1' : 'transparent',
+                  color: activeSection === 'prescriptions' ? 'white' : 'var(--admin-text-muted)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                📋 Medical Prescriptions ({prescriptions.length})
+              </button>
+            )}
           </div>
 
           <div className="admin-card">
             <div className="admin-card-body" style={{ padding: activeSection === 'appointments' ? 0 : 24 }}>
 
-              {activeSection === 'prescriptions' && (
+              {activeSection === 'appointments' && (
+                <div className="admin-table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th style={{ paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Date</th>
+                        <th style={{ color: 'var(--admin-text-muted)' }}>Doctor</th>
+                        <th style={{ color: 'var(--admin-text-muted)' }}>Venue</th>
+                        <th style={{ color: 'var(--admin-text-muted)' }}>Status</th>
+                        <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appointments.length === 0 ? (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 40, color: 'var(--admin-text-muted)' }}>No appointment history found for this patient.</td></tr>
+                      ) : (
+                        appointments.map(a => (
+                          <tr key={a.id}>
+                            <td style={{ paddingLeft: 24 }}>
+                              <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{a.date || a.appointment_date ? new Date(a.date || a.appointment_date).toLocaleDateString() : '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{a.time || a.appointment_time}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600, color: 'var(--admin-primary)' }}>{a.doctor_name || a.doctor?.name || '—'}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: 13, color: 'var(--admin-text)' }}>{a.hospital_name || a.hospital?.name || a.chamber?.hospital?.name || 'Clinic'}</div>
+                            </td>
+                            <td><StatusBadge status={a.status} /></td>
+                            <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                              <Link to={`/admin/appointments/view/${a.id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ borderRadius: 8 }}>👁️ View</Link>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!isManager && activeSection === 'prescriptions' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {prescriptions.length === 0 ? (
                     <div style={{ padding: 40, textAlign: 'center', color: 'var(--admin-text-muted)' }}>No clinical prescriptions recorded.</div>
                   ) : (
-                    prescriptions.map((rx, i) => (
+                    prescriptions.map((rx) => (
                       <div key={rx.id} style={{
                         padding: 24, background: 'rgba(0,0,0,0.02)', borderRadius: 20, border: '1px solid var(--admin-border)',
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
@@ -201,7 +332,7 @@ navigate('/admin/users')
                           <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📄</div>
                           <div>
                             <div style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 15 }}>{rx.diagnosis || 'General Prescription'}</div>
-                            <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>By {rx.doctor_name} • {new Date(rx.created_at).toLocaleDateString()}</div>
+                            <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>By {rx.doctor_name || rx.doctor?.name || 'Doctor'} • {rx.created_at ? new Date(rx.created_at).toLocaleDateString() : '—'}</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 10 }}>
@@ -221,46 +352,6 @@ navigate('/admin/users')
                 </div>
               )}
 
-              {activeSection === 'appointments' && (
-                <div className="admin-table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th style={{ paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Date</th>
-                        <th style={{ color: 'var(--admin-text-muted)' }}>Doctor</th>
-                        <th style={{ color: 'var(--admin-text-muted)' }}>Venue</th>
-                        <th style={{ color: 'var(--admin-text-muted)' }}>Status</th>
-                        <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {appointments.length === 0 ? (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 40, color: 'var(--admin-text-muted)' }}>No appointment history found.</td></tr>
-                      ) : (
-                        appointments.map(a => (
-                          <tr key={a.id}>
-                            <td style={{ paddingLeft: 24 }}>
-                              <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{new Date(a.date).toLocaleDateString()}</div>
-                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{a.time}</div>
-                            </td>
-                            <td>
-                              <div style={{ fontWeight: 600, color: 'var(--admin-primary)' }}>{a.doctor_name}</div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: 13, color: 'var(--admin-text)' }}>{a.hospital_name || 'Clinic'}</div>
-                            </td>
-                            <td><StatusBadge status={a.status} /></td>
-                            <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                              <Link to={`/admin/appointments/view/${a.id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ borderRadius: 8 }}>👁️</Link>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
             </div>
           </div>
         </div>
@@ -277,7 +368,7 @@ navigate('/admin/users')
 }
 
 function InfoItem({ label, value, icon }) {
-  if (!value) return null
+  if (!value || value === '—') return null
   return (
     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
       <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(0,0,0,0.03)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>{icon}</div>
@@ -296,7 +387,7 @@ function VitalItem({ label, value, icon, color }) {
         <span style={{ fontSize: 14 }}>{icon}</span>
         <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
       </div>
-      <div style={{ fontWeight: 900, fontSize: 15, color: value !== 'Unknown' && value !== '—' ? 'var(--admin-text)' : 'var(--admin-text-muted)' }}>{value}</div>
+      <div style={{ fontWeight: 900, fontSize: 15, color: value !== 'Unknown' && value !== '—' && value !== 'N/A' ? 'var(--admin-text)' : 'var(--admin-text-muted)' }}>{value}</div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
-// ServiceEnablementPage.jsx — Admin Commission & Service Management with deep location filters
 import { useState, useEffect, useRef } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import {
   getServiceEnablements, updateServiceEnablement,
@@ -111,7 +112,12 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function ServiceEnablementPage() {
+  const { isAdmin, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('doctor')
+
+  if (!loading && !isAdmin) {
+    return <Navigate to="/admin" replace />
+  }
 
   return (
     <div className="admin-container">

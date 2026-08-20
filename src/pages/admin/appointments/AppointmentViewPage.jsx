@@ -159,7 +159,7 @@ export default function AppointmentViewPage() {
           <div className="admin-card" style={{ overflow: 'hidden' }}>
             <div style={{ height: 60, background: 'linear-gradient(135deg, var(--admin-primary), #00C9A7)' }} />
             <div className="admin-card-body" style={{ marginTop: -40, textAlign: 'center' }}>
-              <Link to={`/admin/users/${appt.user_id}`} style={{ textDecoration: 'none', display: 'block' }}>
+              <Link to={`/admin/patients/view/${appt.user_id}`} style={{ textDecoration: 'none', display: 'block' }}>
                 <div style={{ width: 80, height: 80, borderRadius: 24, background: 'var(--admin-card-bg)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, color: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)', border: '4px solid var(--admin-card-bg)' }}>
                   {appt.user_name?.charAt(0)?.toUpperCase() || 'P'}
                 </div>

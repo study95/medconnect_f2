@@ -296,6 +296,8 @@ function App() {
             <Route path="patients" element={<PatientListPage />} />
             <Route path="patients/create" element={<PatientFormPage />} />
             <Route path="patients/edit/:id" element={<PatientFormPage />} />
+            <Route path="patients/view/:id" element={<PatientProfilePage />} />
+            <Route path="patients/:id" element={<PatientProfilePage />} />
 
             {/* Users */}
             <Route path="users" element={<UserListPage />} />
