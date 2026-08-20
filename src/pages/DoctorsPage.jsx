@@ -44,7 +44,7 @@ const EXP_RANGES = [
 ]
 
 function DoctorsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
@@ -59,7 +59,7 @@ function DoctorsPage() {
   const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
-  const debouncedSearchText                       = useDebounce(searchText, 400)
+  const debouncedSearchText                       = useDebounce(searchText, 350)
   const [availableToday, setAvailableToday]       = useState(false)
   const [telemedicineOnly, setTelemedicineOnly]   = useState(false)
   const [specialtySearch, setSpecialtySearch]     = useState('')
@@ -83,22 +83,54 @@ function DoctorsPage() {
     setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  // Ref to track URL search string to prevent race condition loops
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Update URL helper
+  const updateUrlParams = useCallback((updates) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val) {
+          next.set(key, val)
+        } else {
+          next.delete(key)
+        }
+      })
+      prevParamsRef.current = next.toString()
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
+  // Sync state when URL params change from external navigation
   useEffect(() => {
-    const divId   = searchParams.get('division_id')
-    const distId  = searchParams.get('district_id')
-    const upaId   = searchParams.get('upazila_id')
-    const uniId   = searchParams.get('union_id')
-    const qSearch = searchParams.get('search')
-    const specId  = searchParams.get('specialty_id')
-    const hospId  = searchParams.get('hospital_id')
-    if (divId)  setSelectedDivision(divId)
-    if (distId) setSelectedDistrict(distId)
-    if (upaId)  setSelectedUpazila(upaId)
-    if (uniId)  setSelectedUnion(uniId)
-    if (qSearch !== null && qSearch !== undefined) setSearchText(qSearch)
-    if (specId) setSelectedSpecialty(specId)
-    if (hospId) setSelectedHospital(hospId)
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+
+    const divId   = searchParams.get('division_id') || ''
+    const distId  = searchParams.get('district_id') || ''
+    const upaId   = searchParams.get('upazila_id') || ''
+    const uniId   = searchParams.get('union_id') || ''
+    const qSearch = searchParams.get('search') || ''
+    const specId  = searchParams.get('specialty_id') || ''
+    const hospId  = searchParams.get('hospital_id') || ''
+    const fee     = searchParams.get('fee_range') || ''
+    const exp     = searchParams.get('exp_range') || ''
+
+    setSelectedDivision(divId)
+    setSelectedDistrict(distId)
+    setSelectedUpazila(upaId)
+    setSelectedUnion(uniId)
+    setSearchText(qSearch)
+    setSelectedSpecialty(specId)
+    setSelectedHospital(hospId)
+    setSelectedFee(fee)
+    setSelectedExp(exp)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
+
+  // Effective search keyword: immediately empty when searchText is cleared
+  const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
 
   const appliedFilters = useMemo(() => {
     const p = {}
@@ -112,9 +144,9 @@ function DoctorsPage() {
     if (selectedExp)               p.exp_range    = selectedExp
     if (telemedicineOnly)          p.telemedicine = true
     if (availableToday)            p.available_today = true
-    if (debouncedSearchText.trim()) p.search       = debouncedSearchText.trim()
+    if (effectiveSearch)           p.search       = effectiveSearch
     return p
-  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, debouncedSearchText])
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, effectiveSearch])
 
   const { doctors, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteDoctors(appliedFilters)
 
@@ -172,40 +204,108 @@ function DoctorsPage() {
     return item.name || item.name_bn || item.bangla_name || fallback
   }
 
+  // Clear single search handler
+  const handleClearSearch = () => {
+    setSearchText('')
+    updateUrlParams({ search: '' })
+  }
+
   // Active filters list
   const activeFilters = useMemo(() => {
     const list = []
     if (selectedSpecialty) {
       const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
-      list.push({ key: 'specialty', label: item ? item.name || item.name_bn : 'Specialty', clear: () => setSelectedSpecialty('') })
+      list.push({
+        key: 'specialty',
+        label: item ? item.name || item.name_bn : 'Specialty',
+        clear: () => {
+          setSelectedSpecialty('')
+          updateUrlParams({ specialty_id: '' })
+        }
+      })
     }
     if (selectedDivision) {
       const item = divisions.find(d => String(d.id) === String(selectedDivision))
-      list.push({ key: 'division', label: getLocName(item, 'Division'), clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'division',
+        label: getLocName(item, 'Division'),
+        clear: () => {
+          setSelectedDivision('')
+          setSelectedDistrict('')
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ division_id: '', district_id: '', upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedDistrict) {
       const item = districts.find(d => String(d.id) === String(selectedDistrict))
-      list.push({ key: 'district', label: getLocName(item, 'District'), clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'district',
+        label: getLocName(item, 'District'),
+        clear: () => {
+          setSelectedDistrict('')
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ district_id: '', upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedUpazila) {
       const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      list.push({ key: 'upazila', label: getLocName(item, 'Upazila'), clear: () => { setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'upazila',
+        label: getLocName(item, 'Upazila'),
+        clear: () => {
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedUnion) {
       const item = unions.find(u => String(u.id) === String(selectedUnion))
-      list.push({ key: 'union', label: getLocName(item, 'Union'), clear: () => setSelectedUnion('') })
+      list.push({
+        key: 'union',
+        label: getLocName(item, 'Union'),
+        clear: () => {
+          setSelectedUnion('')
+          updateUrlParams({ union_id: '' })
+        }
+      })
     }
     if (selectedHospital) {
       const item = hospitals.find(h => String(h.id) === String(selectedHospital))
-      list.push({ key: 'hospital', label: item ? item.name || item.name_bn : 'Hospital', clear: () => setSelectedHospital('') })
+      list.push({
+        key: 'hospital',
+        label: item ? item.name || item.name_bn : 'Hospital',
+        clear: () => {
+          setSelectedHospital('')
+          updateUrlParams({ hospital_id: '' })
+        }
+      })
     }
     if (selectedFee) {
       const item = FEE_RANGES.find(f => f.id === selectedFee)
-      list.push({ key: 'fee', label: item ? item.label : selectedFee, clear: () => setSelectedFee('') })
+      list.push({
+        key: 'fee',
+        label: item ? item.label : selectedFee,
+        clear: () => {
+          setSelectedFee('')
+          updateUrlParams({ fee_range: '' })
+        }
+      })
     }
     if (selectedExp) {
       const item = EXP_RANGES.find(e => e.id === selectedExp)
-      list.push({ key: 'exp', label: item ? item.label : selectedExp, clear: () => setSelectedExp('') })
+      list.push({
+        key: 'exp',
+        label: item ? item.label : selectedExp,
+        clear: () => {
+          setSelectedExp('')
+          updateUrlParams({ exp_range: '' })
+        }
+      })
     }
     if (telemedicineOnly) {
       list.push({ key: 'telemedicine', label: 'অনলাইন ভিডিও পরামর্শ', clear: () => setTelemedicineOnly(false) })
@@ -214,13 +314,17 @@ function DoctorsPage() {
       list.push({ key: 'today', label: 'আজ উপলব্ধ', clear: () => setAvailableToday(false) })
     }
     if (searchText.trim()) {
-      list.push({ key: 'search', label: `"${searchText.trim()}"`, clear: () => setSearchText('') })
+      list.push({
+        key: 'search',
+        label: `"${searchText.trim()}"`,
+        clear: handleClearSearch
+      })
     }
     return list
   }, [
     selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, searchText,
-    specialties, divisions, districts, upazilas, unions, hospitals
+    specialties, divisions, districts, upazilas, unions, hospitals, updateUrlParams
   ])
 
   const activeCount = activeFilters.length
@@ -237,6 +341,13 @@ function DoctorsPage() {
     setTelemedicineOnly(false)
     setAvailableToday(false)
     setSearchText('')
+    prevParamsRef.current = ''
+    setSearchParams({}, { replace: true })
+  }
+
+  const handleSearchSubmit = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    updateUrlParams({ search: searchText.trim() })
   }
 
   // Infinite scroll sentinel
@@ -356,7 +467,7 @@ function DoctorsPage() {
         padding: '8px 16px'
       }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+          <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: 1, margin: 0 }}>
             <input
               type="text"
               placeholder="ডাক্তারের নাম বা বিশেষজ্ঞ লিখুন..."
@@ -376,7 +487,7 @@ function DoctorsPage() {
               }}
             />
             {searchText ? (
-              <button type="button" onClick={() => setSearchText('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <button type="button" onClick={handleClearSearch} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 <IconX size={18} />
               </button>
             ) : (
@@ -384,7 +495,7 @@ function DoctorsPage() {
                 <IconSearch size={18} />
               </span>
             )}
-          </div>
+          </form>
 
           {/* Filter Button */}
           <button
@@ -434,26 +545,36 @@ function DoctorsPage() {
         <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
-              <span key={f.key} style={{
-                background: '#00B875',
-                color: 'white',
-                border: '1px solid #00B875',
-                borderRadius: 4,
-                padding: '4px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
+              <span
+                key={f.key}
+                onClick={f.clear}
+                style={{
+                  background: '#00B875',
+                  color: 'white',
+                  border: '1px solid #00B875',
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
                 {f.label}
-                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
-                  <IconX size={12} />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); f.clear() }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
+                >
+                  <IconX size={13} />
                 </button>
               </span>
             ))}
           </div>
-          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Clear All ✕
           </button>
         </div>
@@ -486,7 +607,7 @@ function DoctorsPage() {
         </h1>
 
         {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-        <div className="doc-desktop-search" style={{
+        <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
           background: 'white',
           borderRadius: 8,
           border: '1px solid #CBD5E1',
@@ -515,11 +636,11 @@ function DoctorsPage() {
             }}
           />
           {searchText && (
-            <button onClick={() => setSearchText('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+            <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
               <IconX size={16} />
             </button>
           )}
-          <button style={{
+          <button type="submit" style={{
             background: '#00B875',
             color: 'white',
             border: 'none',
@@ -532,7 +653,7 @@ function DoctorsPage() {
           }}>
             Search
           </button>
-        </div>
+        </form>
 
         {/* ── POPULAR DEPARTMENTS CHIP STRIP ── */}
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16, scrollbarWidth: 'none' }}>
@@ -679,19 +800,29 @@ function DoctorsPage() {
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {activeFilters.map(f => (
-                      <span key={f.key} style={{
-                        background: '#00B875',
-                        color: 'white',
-                        borderRadius: 4,
-                        padding: '3px 8px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5
-                      }}>
+                      <span
+                        key={f.key}
+                        onClick={f.clear}
+                        style={{
+                          background: '#00B875',
+                          color: 'white',
+                          borderRadius: 4,
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
                         {f.label}
-                        <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); f.clear() }}
+                          style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
+                        >
                           <IconX size={11} />
                         </button>
                       </span>

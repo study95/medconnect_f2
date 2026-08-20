@@ -37,7 +37,7 @@ const BED_RANGES = [
 ]
 
 function HospitalsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
@@ -73,22 +73,51 @@ function HospitalsPage() {
     setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  // Ref to track URL search string to prevent race condition loops
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Update URL helper
+  const updateUrlParams = useCallback((updates) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val) {
+          next.set(key, val)
+        } else {
+          next.delete(key)
+        }
+      })
+      prevParamsRef.current = next.toString()
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
   useEffect(() => {
-    const divId   = searchParams.get('division_id')
-    const distId  = searchParams.get('district_id')
-    const upaId   = searchParams.get('upazila_id')
-    const uniId   = searchParams.get('union_id')
-    const qSearch = searchParams.get('search')
-    const type    = searchParams.get('type')
-    const specId  = searchParams.get('specialty_id')
-    if (divId)  setSelectedDivision(divId)
-    if (distId) setSelectedDistrict(distId)
-    if (upaId)  setSelectedUpazila(upaId)
-    if (uniId)  setSelectedUnion(uniId)
-    if (qSearch !== null && qSearch !== undefined) setSearchText(qSearch)
-    if (type) setHospitalType(type)
-    if (specId) setSelectedSpecialty(specId)
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+
+    const divId   = searchParams.get('division_id') || ''
+    const distId  = searchParams.get('district_id') || ''
+    const upaId   = searchParams.get('upazila_id') || ''
+    const uniId   = searchParams.get('union_id') || ''
+    const qSearch = searchParams.get('search') || ''
+    const type    = searchParams.get('type') || ''
+    const specId  = searchParams.get('specialty_id') || ''
+    const beds    = searchParams.get('beds') || ''
+
+    setSelectedDivision(divId)
+    setSelectedDistrict(distId)
+    setSelectedUpazila(upaId)
+    setSelectedUnion(uniId)
+    setSearchText(qSearch)
+    setHospitalType(type)
+    setSelectedSpecialty(specId)
+    setSelectedBeds(beds)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
+
+  // Effective search keyword: immediately empty when searchText is cleared
+  const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
 
   const appliedFilters = useMemo(() => {
     const p = {}
@@ -101,9 +130,9 @@ function HospitalsPage() {
     if (selectedBeds)              p.beds         = selectedBeds
     if (emergencyOnly)             p.emergency    = true
     if (openTodayOnly)             p.open_today   = true
-    if (debouncedSearchText.trim()) p.search       = debouncedSearchText.trim()
+    if (effectiveSearch)           p.search       = effectiveSearch
     return p
-  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, debouncedSearchText])
+  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, effectiveSearch])
 
   const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
 
@@ -123,36 +152,101 @@ function HospitalsPage() {
     return item.name || item.name_bn || item.bangla_name || fallback
   }
 
+  const handleClearSearch = () => {
+    setSearchText('')
+    updateUrlParams({ search: '' })
+  }
+
+  const handleSearchSubmit = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    updateUrlParams({ search: searchText.trim() })
+  }
+
   // Active filters list
   const activeFilters = useMemo(() => {
     const list = []
     if (selectedDivision) {
       const item = divisions.find(d => String(d.id) === String(selectedDivision))
-      list.push({ key: 'division', label: getLocName(item, 'Division'), clear: () => { setSelectedDivision(''); setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'division',
+        label: getLocName(item, 'Division'),
+        clear: () => {
+          setSelectedDivision('')
+          setSelectedDistrict('')
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ division_id: '', district_id: '', upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedDistrict) {
       const item = districts.find(d => String(d.id) === String(selectedDistrict))
-      list.push({ key: 'district', label: getLocName(item, 'District'), clear: () => { setSelectedDistrict(''); setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'district',
+        label: getLocName(item, 'District'),
+        clear: () => {
+          setSelectedDistrict('')
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ district_id: '', upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedUpazila) {
       const item = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      list.push({ key: 'upazila', label: getLocName(item, 'Upazila'), clear: () => { setSelectedUpazila(''); setSelectedUnion('') } })
+      list.push({
+        key: 'upazila',
+        label: getLocName(item, 'Upazila'),
+        clear: () => {
+          setSelectedUpazila('')
+          setSelectedUnion('')
+          updateUrlParams({ upazila_id: '', union_id: '' })
+        }
+      })
     }
     if (selectedUnion) {
       const item = unions.find(u => String(u.id) === String(selectedUnion))
-      list.push({ key: 'union', label: getLocName(item, 'Union'), clear: () => setSelectedUnion('') })
+      list.push({
+        key: 'union',
+        label: getLocName(item, 'Union'),
+        clear: () => {
+          setSelectedUnion('')
+          updateUrlParams({ union_id: '' })
+        }
+      })
     }
     if (hospitalType) {
       const item = HOSPITAL_TYPES.find(t => t.id === hospitalType)
-      list.push({ key: 'type', label: item ? item.label : hospitalType, clear: () => setHospitalType('') })
+      list.push({
+        key: 'type',
+        label: item ? item.label : hospitalType,
+        clear: () => {
+          setHospitalType('')
+          updateUrlParams({ type: '' })
+        }
+      })
     }
     if (selectedSpecialty) {
       const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
-      list.push({ key: 'specialty', label: item ? item.name || item.name_bn : 'Specialty', clear: () => setSelectedSpecialty('') })
+      list.push({
+        key: 'specialty',
+        label: item ? item.name || item.name_bn : 'Specialty',
+        clear: () => {
+          setSelectedSpecialty('')
+          updateUrlParams({ specialty_id: '' })
+        }
+      })
     }
     if (selectedBeds) {
       const item = BED_RANGES.find(b => b.id === selectedBeds)
-      list.push({ key: 'beds', label: item ? item.label : selectedBeds, clear: () => setSelectedBeds('') })
+      list.push({
+        key: 'beds',
+        label: item ? item.label : selectedBeds,
+        clear: () => {
+          setSelectedBeds('')
+          updateUrlParams({ beds: '' })
+        }
+      })
     }
     if (emergencyOnly) {
       list.push({ key: 'emergency', label: '24/7 Emergency', clear: () => setEmergencyOnly(false) })
@@ -161,13 +255,17 @@ function HospitalsPage() {
       list.push({ key: 'open_today', label: 'Open Today', clear: () => setOpenTodayOnly(false) })
     }
     if (searchText.trim()) {
-      list.push({ key: 'search', label: `"${searchText.trim()}"`, clear: () => setSearchText('') })
+      list.push({
+        key: 'search',
+        label: `"${searchText.trim()}"`,
+        clear: handleClearSearch
+      })
     }
     return list
   }, [
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText,
-    divisions, districts, upazilas, unions, specialties
+    divisions, districts, upazilas, unions, specialties, updateUrlParams
   ])
 
   const activeCount = activeFilters.length
@@ -183,6 +281,8 @@ function HospitalsPage() {
     setEmergencyOnly(false)
     setOpenTodayOnly(false)
     setSearchText('')
+    prevParamsRef.current = ''
+    setSearchParams({}, { replace: true })
   }
 
   // Infinite scroll sentinel
@@ -297,7 +397,7 @@ function HospitalsPage() {
         padding: '8px 16px'
       }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+          <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: 1, margin: 0 }}>
             <input
               type="text"
               placeholder="হাসপাতালের নাম লিখুন..."
@@ -317,7 +417,7 @@ function HospitalsPage() {
               }}
             />
             {searchText ? (
-              <button type="button" onClick={() => setSearchText('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <button type="button" onClick={handleClearSearch} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 <IconX size={18} />
               </button>
             ) : (
@@ -325,7 +425,7 @@ function HospitalsPage() {
                 <IconSearch size={18} />
               </span>
             )}
-          </div>
+          </form>
 
           {/* Filter Button */}
           <button
@@ -375,26 +475,36 @@ function HospitalsPage() {
         <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
-              <span key={f.key} style={{
-                background: '#00B875',
-                color: 'white',
-                border: '1px solid #00B875',
-                borderRadius: 4,
-                padding: '4px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
+              <span
+                key={f.key}
+                onClick={f.clear}
+                style={{
+                  background: '#00B875',
+                  color: 'white',
+                  border: '1px solid #00B875',
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
                 {f.label}
-                <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
-                  <IconX size={12} />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); f.clear() }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
+                >
+                  <IconX size={13} />
                 </button>
               </span>
             ))}
           </div>
-          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Clear All ✕
           </button>
         </div>
@@ -427,7 +537,7 @@ function HospitalsPage() {
         </h1>
 
         {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-        <div className="hosp-desktop-search" style={{
+        <form onSubmit={handleSearchSubmit} className="hosp-desktop-search" style={{
           background: 'white',
           borderRadius: 8,
           border: '1px solid #CBD5E1',
@@ -456,11 +566,11 @@ function HospitalsPage() {
             }}
           />
           {searchText && (
-            <button onClick={() => setSearchText('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+            <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
               <IconX size={16} />
             </button>
           )}
-          <button style={{
+          <button type="submit" style={{
             background: '#00B875',
             color: 'white',
             border: 'none',
@@ -473,7 +583,7 @@ function HospitalsPage() {
           }}>
             Search
           </button>
-        </div>
+        </form>
 
         {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
@@ -713,19 +823,29 @@ function HospitalsPage() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {activeFilters.map(f => (
-                        <span key={f.key} style={{
-                          background: '#00B875',
-                          color: 'white',
-                          borderRadius: 4,
-                          padding: '3px 8px',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5
-                        }}>
+                        <span
+                          key={f.key}
+                          onClick={f.clear}
+                          style={{
+                            background: '#00B875',
+                            color: 'white',
+                            borderRadius: 4,
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                          }}
+                        >
                           {f.label}
-                          <button type="button" onClick={f.clear} style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); f.clear() }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
+                          >
                             <IconX size={11} />
                           </button>
                         </span>
