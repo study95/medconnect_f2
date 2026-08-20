@@ -388,6 +388,7 @@ function App() {
                   <Route path="/book-appointment/:doctorId" element={<BookAppointmentPage />} />
                   <Route path="/my-appointments"      element={<ProtectedRoute><MyAppointmentsPage /></ProtectedRoute>} />
                   <Route path="/my-appointments/:id"  element={<ProtectedRoute><AppointmentTicketPage /></ProtectedRoute>} />
+                  <Route path="/appointment-ticket/:id" element={<ProtectedRoute><AppointmentTicketPage /></ProtectedRoute>} />
                   <Route path="/prescriptions/view/:id" element={<ProtectedRoute><PrescriptionViewPage /></ProtectedRoute>} />
                   <Route path="/profile"              element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 

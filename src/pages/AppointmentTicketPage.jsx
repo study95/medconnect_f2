@@ -9,6 +9,7 @@ import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, Arrow
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
+import PatientLiveQueueTracker from '../components/queue/PatientLiveQueueTracker'
 import toast from 'react-hot-toast'
 import '../styles/prescription.css'
 
@@ -509,6 +510,15 @@ export default function AppointmentTicketPage() {
               </span>
             </div>
           </div>
+
+          {/* Real-time Patient Live Queue Tracker */}
+          <PatientLiveQueueTracker
+            appointment={apptData}
+            registration_id={apptData.registration_id || apptNumber}
+            display_token={apptData.chamber?.display_token || apptData.display_token}
+            appointment_date={apptDate}
+            serial_number={serialNum}
+          />
 
           {/* Doctor Info Card */}
           <div style={{

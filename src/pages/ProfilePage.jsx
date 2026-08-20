@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useFavorites } from '../context/FavoritesContext'
 import DoctorCard from '../components/common/DoctorCard'
 import HospitalCard from '../components/common/HospitalCard'
+import PatientLiveQueueSummaryCard from '../components/queue/PatientLiveQueueSummaryCard'
 import { getMyProfile, updateMyProfile } from '../api/authApi'
 import { getAppointments } from '../api/appointmentApi'
 import useLocations from '../hooks/useLocations'
@@ -45,7 +46,7 @@ function ProfilePage() {
   const [mainTab, setMainTab] = useState(initialTab)
   const [favSubTab, setFavSubTab] = useState('doctors')
 
-  // Mobile Sub-Page Screen State: null (main menu) | 'profile' | 'fav_doctors' | 'fav_hospitals'
+    // Mobile Sub-Page Screen State: null (main menu) | 'profile' | 'fav_doctors' | 'fav_hospitals'
   const [mobileSubView, setMobileSubView] = useState(searchParams.get('tab') === 'favorites' ? 'fav_doctors' : null)
 
   // Support ticket tracker state (mobile profile sub-page)
@@ -57,6 +58,21 @@ function ProfilePage() {
 
   const [appointments, setAppointments] = useState([])
   const [loadingAppointments, setLoadingAppointments] = useState(false)
+
+  // Computed today's active appointment for live queue summary
+  const activeTodayAppt = useMemo(() => {
+    if (!isPatient && userType !== 'patient') return null
+    if (!appointments || !Array.isArray(appointments)) return null
+    const today = new Date().toISOString().split('T')[0]
+    return appointments.find(appt => {
+      const rawDate = appt.appointment_date || appt.date || ''
+      const apptDate = String(rawDate).split('T')[0].trim()
+      const status = (appt.status || appt.queue_status || '').toLowerCase()
+      const isCancelled = status === 'cancelled' || status === 'canceled'
+      const isCompleted = status === 'completed'
+      return apptDate === today && !isCancelled && !isCompleted
+    })
+  }, [appointments, isPatient, userType])
 
   useEffect(() => {
     if (searchParams.get('tab') === 'favorites') {
@@ -1257,6 +1273,11 @@ function ProfilePage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Mobile Active Today Live Queue Summary Card */}
+              <div style={{ marginBottom: 18 }}>
+                <PatientLiveQueueSummaryCard appointment={activeTodayAppt} />
               </div>
 
               {/* 4 CLEAN LISTING MENU BUTTONS (NO SERIAL NUMBERS, BORDER-RADIUS: 5PX) */}
