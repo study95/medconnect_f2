@@ -228,7 +228,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </NavLink>
           )}
 
-          {(isAdmin || isDoctor || (isManager && false) || hasPermission('prescription.view')) && (
+          {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (
             <NavLink
               to="/admin/prescriptions"
               className={`sidebar-nav-item ${isActive('/admin/prescriptions') ? 'active' : ''}`}

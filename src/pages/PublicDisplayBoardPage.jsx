@@ -153,8 +153,19 @@ export default function PublicDisplayBoardPage() {
   // Date formatting helpers
   const dayNameBn = bnDays[currentTime.getDay()]
   const dateBn = `${toBn(currentTime.getDate())} ${bnMonths[currentTime.getMonth()]} ${toBn(currentTime.getFullYear())}`
-  const timeFormatted = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const timeBnDigits = toBn(timeFormatted.split(' ')[0]) + ' ' + timeFormatted.split(' ')[1]
+
+  // Real-time live digital clock with hours, minutes, and seconds
+  const hourRaw = currentTime.getHours()
+  const minRaw = currentTime.getMinutes()
+  const secRaw = currentTime.getSeconds()
+  const ampm = hourRaw >= 12 ? 'PM' : 'AM'
+  const hour12 = hourRaw % 12 || 12
+
+  const hourStr = String(hour12).padStart(2, '0')
+  const minStr = String(minRaw).padStart(2, '0')
+  const secStr = String(secRaw).padStart(2, '0')
+
+  const timeBnDigits = `${toBn(hourStr)}:${toBn(minStr)}:${toBn(secStr)} ${ampm}`
 
   if (loading && !data) {
     return (
@@ -219,7 +230,8 @@ export default function PublicDisplayBoardPage() {
 
   const hospitalName = hospital.name_bn || hospital.name || chamber.hospital_name || 'DrBooklet হাসপাতাল'
   const hospitalTagline = hospital.address || 'আপনার স্বাস্থ্য, আমাদের অধিকার'
-  const supportPhone = doctor.phone || hospital.phone || '01743 012219'
+  // Use hospital profile Hot Number (Hotline) ONLY, not the verified personal mobile number
+  const supportPhone = hospital.hotline || hospital.hot_number || chamber.hospital_hotline || ''
 
   const BASE = import.meta.env.VITE_APP_URL || 'http://127.0.0.1:8000'
   const rawHospLogo = hospital.logo || hospital.hospital_logo || hospital.logo_url || hospital.photo || hospital.photo_url || hospital.image || chamber.hospital_logo || chamber.hospital_photo
@@ -1198,38 +1210,40 @@ export default function PublicDisplayBoardPage() {
         </div>
 
         {/* Right Phone Contact Button (Matching Dashboard Green #00B875) */}
-        <div style={{
-          background: '#00B875',
-          borderRadius: 12,
-          padding: '8px 22px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
-          border: 'none',
-          flexShrink: 0
-        }}>
+        {supportPhone ? (
           <div style={{
-            width: 42, height: 42,
-            borderRadius: '50%',
-            background: '#FFFFFF',
+            background: '#00B875',
+            borderRadius: 12,
+            padding: '8px 22px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: '#00B875',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+            gap: 12,
+            boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+            border: 'none',
+            flexShrink: 0
           }}>
-            <Phone size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 700, lineHeight: 1.2, opacity: 0.95 }}>
-              সিরিয়ালের জন্য কল করুন
+            <div style={{
+              width: 42, height: 42,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#00B875',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+            }}>
+              <Phone size={22} />
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.5px', lineHeight: 1.2 }}>
-              {supportPhone}
+            <div>
+              <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 700, lineHeight: 1.2, opacity: 0.95 }}>
+                সিরিয়ালের জন্য কল করুন
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.5px', lineHeight: 1.2 }}>
+                {supportPhone}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   )

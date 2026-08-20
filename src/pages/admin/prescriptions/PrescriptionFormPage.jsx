@@ -1,6 +1,7 @@
 // PrescriptionFormPage.jsx — Doctor writes prescription with enhanced medicine autocomplete
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { createPrescription, updatePrescription, getPrescription, getAppointment, createWalkInPatient, searchMedicines } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
@@ -11,6 +12,7 @@ export default function PrescriptionFormPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const appointmentId = searchParams.get('appointment_id')
+  const returnTo = searchParams.get('return_to') || (searchParams.get('from') === 'serial-display' ? '/admin/serial-display' : null) || '/admin/prescriptions'
   const navigate = useNavigate()
   const { user } = useAuth()
   const isEdit = !!id
@@ -118,8 +120,10 @@ export default function PrescriptionFormPage() {
       })
       if (p.appointment_id) loadAppointment(p.appointment_id)
     } catch (err) {
-}
-    finally { setLoading(false) }
+      console.warn("Failed to load prescription:", err)
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const loadAppointment = async (aId) => {
@@ -127,8 +131,7 @@ export default function PrescriptionFormPage() {
       const res = await getAppointment(aId)
       const data = res.data?.data || res.data
       setAppointmentInfo(data)
-      if (data && data.registration_id) {
-
+      if (data) {
         let calculatedAge = ''
         if (data.patient_dob && data.patient_dob !== '1900-01-01' && data.patient_dob !== '0000-00-00') {
           const birthDate = new Date(data.patient_dob)
@@ -146,21 +149,30 @@ export default function PrescriptionFormPage() {
           } else {
             calculatedAge = 'Newborn'
           }
+        } else if (data.patient_age) {
+          calculatedAge = `${data.patient_age} Years`
         }
+
+        const patientGender = data.patient_gender || data.gender || data.user?.patient?.gender || ''
+        const regNo = data.registration_id || data.registration_no || data.user?.registration_number || (data.user_id ? `USR-${data.user_id}` : '')
 
         setForm(prev => ({
           ...prev,
-          registration_no: data.registration_id,
-          sex: data.patient_gender ? (data.patient_gender.charAt(0).toUpperCase() + data.patient_gender.slice(1)) : '',
+          appointment_id: data.id || aId,
+          registration_no: regNo || prev.registration_no,
+          sex: patientGender ? (patientGender.charAt(0).toUpperCase() + patientGender.slice(1)) : prev.sex,
           age: calculatedAge || prev.age,
-          hospital_name: data.hospital?.name || data.hospital_name || '',
-          hospital_address: data.hospital?.address || data.hospital_address || '',
-          hospital_phone: data.hospital?.phone || data.hospital_phone || '',
-          hospital_email: data.hospital?.email || data.hospital_email || '',
-          chamber_name: data.chamber?.name || data.chamber_name || ''
+          weight: data.patient_weight || data.weight || prev.weight || '',
+          hospital_name: data.hospital?.name || data.hospital_name || prev.hospital_name || '',
+          hospital_address: data.hospital?.address || data.hospital_address || prev.hospital_address || '',
+          hospital_phone: data.hospital?.phone || data.hospital_phone || prev.hospital_phone || '',
+          hospital_email: data.hospital?.email || data.hospital_email || prev.hospital_email || '',
+          chamber_name: data.chamber?.name || data.chamber_name || prev.chamber_name || ''
         }))
       }
-    } catch { }
+    } catch (err) {
+      console.warn("Failed to load appointment details:", err)
+    }
   }
 
   const handleChange = (e) => {
@@ -262,30 +274,39 @@ export default function PrescriptionFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.diagnosis.trim()) {  setActiveTab('clinical'); return; }
+    if (!form.diagnosis.trim()) { 
+      toast.error('অনুগ্রহ করে রোগ নির্ণয় (Diagnosis) লিখুন')
+      setActiveTab('clinical')
+      return 
+    }
 
     const cleanMedicines = form.medicines.filter(m => m.medicine_name.trim())
-    if (cleanMedicines.length === 0) {  setActiveTab('medicines'); return; }
+    if (cleanMedicines.length === 0) { 
+      toast.error('অনুগ্রহ করে অন্তত একটি ওষুধ যোগ করুন')
+      setActiveTab('medicines')
+      return 
+    }
 
     setSaving(true)
     try {
       if (isEdit) {
         await updatePrescription(id, { ...form, medicines: cleanMedicines })
-        
+        toast.success('প্রেসক্রিপশন সফলভাবে আপডেট করা হয়েছে!')
       } else {
         await createPrescription({ ...form, medicines: cleanMedicines })
-        
+        toast.success('প্রেসক্রিপশন সফলভাবে সংরক্ষণ করা হয়েছে!')
       }
-      setTimeout(() => navigate('/admin/prescriptions'), 800)
+      setTimeout(() => navigate(returnTo), 600)
     } catch (err) {
-} finally {
+      toast.error(getErrorMessage(err, 'প্রেসক্রিপশন সংরক্ষণে সমস্যা হয়েছে'))
+    } finally {
       setSaving(false)
     }
   }
 
   const handleWalkInRegister = async () => {
     if (!walkInForm.name) {
-      
+      toast.error('Patient name is required')
       return
     }
 
@@ -295,12 +316,13 @@ export default function PrescriptionFormPage() {
       const data = res.data?.data
       if (data && data.appointment_id) {
         setForm({ ...form, appointment_id: data.appointment_id })
-        
+        toast.success('Walk-in patient registered')
         loadAppointment(data.appointment_id)
         setShowWalkIn(false)
       }
     } catch (err) {
-} finally {
+      toast.error(getErrorMessage(err, 'Failed to register walk-in patient'))
+    } finally {
       setRegistering(false)
     }
   }
@@ -316,10 +338,17 @@ export default function PrescriptionFormPage() {
         <div>
           <h2 className="admin-page-title">{isEdit ? 'Edit Prescription' : '📝 Write Prescription'}</h2>
           <p className="admin-page-subtitle">
-            {appointmentInfo ? `Patient: ${appointmentInfo.user_name} | Date: ${appointmentInfo.date}` : 'Fill in the prescription details'}
+            {appointmentInfo ? `Patient: ${appointmentInfo.patient_name || appointmentInfo.user_name || 'Patient'} | Date: ${appointmentInfo.date || appointmentInfo.appointment_date || 'Today'}` : 'Fill in the prescription details'}
           </p>
         </div>
-        <Link to="/admin/prescriptions" className="admin-btn admin-btn-outline">← Back</Link>
+        <button
+          type="button"
+          onClick={() => navigate(returnTo)}
+          className="admin-btn admin-btn-outline"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          ← {returnTo.includes('serial-display') ? 'সিরিয়াল ডিসপ্লে-তে ফিরে যান (Back to Queue)' : 'Back'}
+        </button>
       </div>
 
       {appointmentInfo && (
@@ -334,13 +363,20 @@ export default function PrescriptionFormPage() {
             color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22, fontWeight: 900
           }}>
-            {appointmentInfo.user_name?.charAt(0)?.toUpperCase() || 'P'}
+            {(appointmentInfo.patient_name || appointmentInfo.user_name)?.charAt(0)?.toUpperCase() || 'P'}
           </div>
           <div>
-            <h4 style={{ margin: '0 0 4px', fontWeight: 800, color: 'var(--admin-text)' }}>{appointmentInfo.user_name}</h4>
+            <h4 style={{ margin: '0 0 4px', fontWeight: 800, color: 'var(--admin-text)' }}>
+              {appointmentInfo.patient_name || appointmentInfo.user_name}
+            </h4>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-text-muted)' }}>
-              📅 {appointmentInfo.date} &nbsp; 🕒 {appointmentInfo.time} &nbsp;
+              📅 {appointmentInfo.date || appointmentInfo.appointment_date} &nbsp; 🕒 {appointmentInfo.time || appointmentInfo.appointment_time} &nbsp;
               <span style={{ color: '#00A88C', fontWeight: 700 }}>#{appointmentInfo.id}</span>
+              {appointmentInfo.serial_number && (
+                <span style={{ marginLeft: 10, background: 'rgba(0, 168, 140, 0.15)', color: '#00A88C', padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>
+                  সিরিয়াল #{String(appointmentInfo.serial_number).padStart(3, '0')}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -420,27 +456,27 @@ export default function PrescriptionFormPage() {
                 <div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">Diagnosis / Final Impression *</label>
-                    <textarea className="admin-form-textarea" name="diagnosis" value={form.diagnosis} onChange={handleChange} rows={2} />
+                    <textarea className="admin-form-textarea" name="diagnosis" value={form.diagnosis} onChange={handleChange} rows={2} placeholder="e.g. Acute Gastritis, Viral Fever..." />
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">C/C (Chief Complaint)</label>
-                    <textarea className="admin-form-textarea" name="cc" value={form.cc} onChange={handleChange} rows={2} />
+                    <textarea className="admin-form-textarea" name="cc" value={form.cc} onChange={handleChange} rows={2} placeholder="e.g. Fever for 3 days, abdominal pain..." />
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">O/E (On Examination)</label>
-                    <textarea className="admin-form-textarea" name="oe" value={form.oe} onChange={handleChange} rows={2} />
+                    <textarea className="admin-form-textarea" name="oe" value={form.oe} onChange={handleChange} rows={2} placeholder="e.g. BP: 120/80, Pulse: 76 bpm..." />
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">O/H (Occupational History)</label>
-                    <input className="admin-form-input" name="oh" value={form.oh} onChange={handleChange} />
+                    <input className="admin-form-input" name="oh" value={form.oh} onChange={handleChange} placeholder="e.g. Desk job, Heavy labour..." />
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">M/H (Medical History)</label>
-                    <input className="admin-form-input" name="mh" value={form.mh} onChange={handleChange} />
+                    <input className="admin-form-input" name="mh" value={form.mh} onChange={handleChange} placeholder="e.g. Diabetes, Hypertension..." />
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">Investigations</label>
-                    <textarea className="admin-form-textarea" name="investigation" value={form.investigation} onChange={handleChange} rows={2} />
+                    <textarea className="admin-form-textarea" name="investigation" value={form.investigation} onChange={handleChange} rows={2} placeholder="e.g. CBC, USG of whole abdomen..." />
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link, useLocation } from 'react-router-dom'
+import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getPrescription } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import html2canvas from 'html2canvas'
@@ -9,6 +9,9 @@ import '../../../styles/prescription.css'
 
 export default function PrescriptionViewPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const returnTo = searchParams.get('return_to') || '/admin/prescriptions'
   const [prescription, setPrescription] = useState(null)
   const [loading, setLoading] = useState(true)
   const [hideAll, setHideAll] = useState(false)
@@ -20,11 +23,11 @@ export default function PrescriptionViewPage() {
 
   // EFFECT: Handle auto-PDF generation for patient 'Download PDF' button
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
     if (params.get('action') === 'download' && !loading && prescription) {
        handleOpenPDF();
     }
-  }, [loading, prescription, location.search]);
+  }, [loading, prescription]);
 
   const handleOpenPDF = async () => {
     if (!paperRef.current) return;
@@ -106,7 +109,6 @@ export default function PrescriptionViewPage() {
       }
     } catch (err) {
       console.error('PDF Error:', err);
-      
       if (newTab) newTab.close();
     }
   };
@@ -117,15 +119,10 @@ export default function PrescriptionViewPage() {
       const res = await getPrescription(id)
       setPrescription(res.data?.data || res.data)
     } catch (err) {
-} finally {
+      console.warn("Failed to load prescription:", err)
+    } finally {
       setLoading(false)
     }
-  }
-
-  const handleOpenPrintTab = () => {
-    // Construct full URL to prevent any routing/auth redirects issues
-    const url = window.location.origin + window.location.pathname + '?mode=print'
-    window.open(url, '_blank')
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
@@ -146,7 +143,7 @@ export default function PrescriptionViewPage() {
             <input type="checkbox" checked={hideAll} onChange={e => setHideAll(e.target.checked)} />
             Hide Header / Footer
           </label>
-          <Link to={`/admin/prescriptions/edit/${id}`} className="admin-btn admin-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Link to={`/admin/prescriptions/edit/${id}?return_to=${encodeURIComponent(returnTo)}`} className="admin-btn admin-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             ✏️ Edit
           </Link>
           <button 
@@ -156,7 +153,14 @@ export default function PrescriptionViewPage() {
           >
             🖨️ Open PDF
           </button>
-          <Link to="/admin/prescriptions" className="admin-btn admin-btn-outline">← Back</Link>
+          <button 
+            type="button" 
+            onClick={() => navigate(returnTo)} 
+            className="admin-btn admin-btn-outline"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            ← {returnTo.includes('serial-display') ? 'সিরিয়াল ডিসপ্লে-তে ফিরে যান (Back)' : 'Back'}
+          </button>
         </div>
       </div>
 

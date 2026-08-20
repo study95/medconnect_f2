@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { getHospitals, getDoctors, getChambers } from '../../../api/adminApi'
@@ -43,7 +44,8 @@ import {
   Pause,
   PlayCircle,
   X,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from 'lucide-react'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
@@ -112,6 +114,7 @@ const getNextDateForDay = (targetDayName) => {
 }
 
 export default function SerialDisplayManagerPage() {
+  const navigate = useNavigate()
   const { user, isAdmin, isManager, isDoctor } = useAuth()
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
 
@@ -1184,35 +1187,109 @@ export default function SerialDisplayManagerPage() {
                       </div>
 
                       {/* Action Buttons for Current Patient */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 18 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleComplete(currentlyServing.id)}
-                          disabled={actionLoading}
-                          className="admin-btn"
-                          style={{
-                            background: '#10B981', color: '#fff', border: 'none',
-                            height: 44, borderRadius: 10, fontWeight: 800, fontSize: 13,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            boxShadow: '0 4px 14px rgba(16,185,129,0.3)', cursor: 'pointer'
-                          }}
-                        >
-                          <CheckCircle size={16} /> সম্পন্ন করুন
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleNoShow(currentlyServing.id)}
-                          disabled={actionLoading}
-                          className="admin-btn"
-                          style={{
-                            background: '#EF4444', color: '#fff', border: 'none',
-                            height: 44, borderRadius: 10, fontWeight: 800, fontSize: 13,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            boxShadow: '0 4px 14px rgba(239,68,68,0.3)', cursor: 'pointer'
-                          }}
-                        >
-                          <UserX size={16} /> অনুপস্থিত (No-Show)
-                        </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+                        {/* Prescription Action Button - Hidden from Hospital Panel */}
+                        {!isManager && (isDoctor || isAdmin) && (
+                          (currentlyServing.has_prescription || currentlyServing.prescription_id) ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/prescriptions/view/${currentlyServing.prescription_id || currentlyServing.id}?return_to=/admin/serial-display`)}
+                              className="admin-btn"
+                              style={{
+                                background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                color: '#FFFFFF',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                height: 46,
+                                borderRadius: 10,
+                                fontWeight: 800,
+                                fontSize: 13,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title="প্রেসক্রিপশন দেখুন (View Prescription)"
+                            >
+                              <CheckCircle size={16} /> ✓ প্রেসক্রিপশন সম্পন্ন (প্রেসক্রিপশন দেখুন)
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/prescriptions/create?appointment_id=${currentlyServing.id}&return_to=/admin/serial-display`)}
+                              className="admin-btn"
+                              style={{
+                                background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+                                color: '#FFFFFF',
+                                border: '1px solid rgba(255, 255, 255, 0.18)',
+                                height: 46,
+                                borderRadius: 10,
+                                fontWeight: 800,
+                                fontSize: 13,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title="এই রোগীর প্রেসক্রিপশন লিখুন"
+                            >
+                              <FileText size={16} /> 📝 প্রেসক্রিপশন লিখুন (Write Prescription)
+                            </button>
+                          )
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleComplete(currentlyServing.id)}
+                            disabled={actionLoading}
+                            className="admin-btn"
+                            style={{
+                              background: '#10B981', color: '#fff', border: 'none',
+                              height: 44, borderRadius: 10, fontWeight: 800, fontSize: 13,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                              boxShadow: '0 4px 14px rgba(16,185,129,0.3)', cursor: 'pointer'
+                            }}
+                          >
+                            <CheckCircle size={16} /> সম্পন্ন করুন
+                          </button>
+                          {(() => {
+                            const hasPrescription = Boolean(currentlyServing.has_prescription || currentlyServing.prescription_id)
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleNoShow(currentlyServing.id)}
+                                disabled={actionLoading || hasPrescription}
+                                className="admin-btn"
+                                style={{
+                                  background: hasPrescription ? 'rgba(255, 255, 255, 0.08)' : '#EF4444',
+                                  color: hasPrescription ? '#94A3B8' : '#fff',
+                                  border: hasPrescription ? '1px solid rgba(255, 255, 255, 0.12)' : 'none',
+                                  height: 44,
+                                  borderRadius: 10,
+                                  fontWeight: 800,
+                                  fontSize: 13,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  boxShadow: hasPrescription ? 'none' : '0 4px 14px rgba(239,68,68,0.3)',
+                                  cursor: hasPrescription ? 'not-allowed' : 'pointer',
+                                  opacity: hasPrescription ? 0.65 : 1,
+                                  transition: 'all 0.2s ease'
+                                }}
+                                title={hasPrescription ? 'প্রেসক্রিপশন তৈরি হওয়ায় অনুপস্থিত মার্ক করা সম্ভব নয়' : 'অনুপস্থিত (No-Show)'}
+                              >
+                                <UserX size={16} /> অনুপস্থিত (No-Show)
+                              </button>
+                            )
+                          })()}
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1408,9 +1485,42 @@ export default function SerialDisplayManagerPage() {
                               <span style={{ fontWeight: 800, color: '#10B981', marginRight: 8, fontFamily: 'monospace' }}>{formatSerial3(p.serial_number)}</span>
                               <span style={{ fontSize: 13, color: 'var(--admin-text)' }}>{p.patient_name}</span>
                             </div>
-                            <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                              {p.serving_completed_at ? new Date(p.serving_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'সম্পন্ন'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                                {p.serving_completed_at ? new Date(p.serving_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'সম্পন্ন'}
+                              </span>
+                              {!isManager && (isDoctor || isAdmin) && (
+                                (p.has_prescription || p.prescription_id) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/admin/prescriptions/view/${p.prescription_id || p.id}?return_to=/admin/serial-display`)}
+                                    className="admin-btn admin-btn-sm"
+                                    style={{
+                                      borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700,
+                                      background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.3)',
+                                      display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                                    }}
+                                    title="প্রেসক্রিপশন দেখুন"
+                                  >
+                                    <CheckCircle size={12} /> Rx (দেখুন)
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/admin/prescriptions/create?appointment_id=${p.id}&return_to=/admin/serial-display`)}
+                                    className="admin-btn admin-btn-sm"
+                                    style={{
+                                      borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700,
+                                      background: 'rgba(59,130,246,0.1)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.25)',
+                                      display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                                    }}
+                                    title="প্রেসক্রিপশন লিখুন"
+                                  >
+                                    <FileText size={12} /> + Rx
+                                  </button>
+                                )
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
