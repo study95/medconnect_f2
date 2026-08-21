@@ -1,7 +1,6 @@
 // AppointmentListPage.jsx — Admin appointment management with premium filters
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getAppointments, updateAppointment, deleteAppointment, getDoctors, getHospitals } from '../../../api/adminApi'
 import StatusBadge from '../../../components/admin/StatusBadge'
@@ -11,7 +10,6 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
-import { getErrorMessage } from '../../../utils/errorHelper'
 
 // Custom Searchable Dropdown Component (Premium Select)
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -135,10 +133,6 @@ export default function AppointmentListPage() {
     fetchAppointments()
   }, [date, month, year, doctorId, hospitalId, roleFilter, activeTab])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [appointments.length])
-
   const loadInitialData = async () => {
     try {
       const [docRes, hospRes] = await Promise.all([
@@ -168,7 +162,8 @@ export default function AppointmentListPage() {
       const res = await getAppointments(params)
       setAppointments(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
-} finally {
+      console.error('Failed to fetch appointments', err)
+    } finally {
       setLoading(false)
     }
   }
@@ -178,9 +173,9 @@ export default function AppointmentListPage() {
     try {
       await updateAppointment(id, { status: newStatus })
       setAppointments(appointments.map(a => a.id === id ? { ...a, status: newStatus } : a))
-      
     } catch (err) {
-} finally {
+      console.error('Failed to update status', err)
+    } finally {
       setChangingStatus(null)
     }
   }
@@ -191,9 +186,9 @@ export default function AppointmentListPage() {
     try {
       await deleteAppointment(deleteTarget.id)
       setAppointments(appointments.filter(a => a.id !== deleteTarget.id))
-      
     } catch (err) {
-} finally {
+      console.error('Failed to delete appointment', err)
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -227,15 +222,37 @@ export default function AppointmentListPage() {
 
   const years = Array.from({ length: 5 }, (_, i) => ({ id: new Date().getFullYear() + i, name: String(new Date().getFullYear() + i) }))
 
-  const stats = {
-    all: appointments.length,
-    pending: appointments.filter(a => a.status === 'pending').length,
-    confirmed: appointments.filter(a => a.status === 'confirmed').length,
-    completed: appointments.filter(a => a.status === 'completed').length,
-    cancelled: appointments.filter(a => a.status === 'cancelled').length,
-  }
+  const filtered = appointments.filter(appt => {
+    if (!search) return true
+    const q = search.toLowerCase().trim()
+    const id = String(appt.public_id || appt.id || '').toLowerCase()
+    const patientName = String(appt.patient_name || appt.patient?.name || appt.user_name || appt.user?.name || '').toLowerCase()
+    const patientPhone = String(appt.patient_phone || appt.patient?.phone || appt.patient?.mobile || appt.user_phone || appt.user?.phone || appt.payment_number || '').toLowerCase()
+    const doctorName = String(appt.doctor_name || appt.doctor?.name || '').toLowerCase()
+    const specialtyName = String(appt.doctor?.specialty?.name || '').toLowerCase()
+    const hospitalName = String(appt.hospital_name || appt.hospital?.name || appt.chamber?.hospital?.name || appt.chamber_name || '').toLowerCase()
+    const serial = String(appt.serial_number || '').toLowerCase()
+    const bookedBy = String(appt.created_by_user?.name || appt.created_by_name || appt.created_by_role || '').toLowerCase()
+    const regId = String(appt.registration_id || '').toLowerCase()
+    const txId = String(appt.transaction_id || '').toLowerCase()
 
-  const paginatedData = appointments.slice((currentPage - 1) * perPage, currentPage * perPage)
+    return id.includes(q) ||
+      patientName.includes(q) ||
+      patientPhone.includes(q) ||
+      doctorName.includes(q) ||
+      specialtyName.includes(q) ||
+      hospitalName.includes(q) ||
+      serial.includes(q) ||
+      bookedBy.includes(q) ||
+      regId.includes(q) ||
+      txId.includes(q)
+  })
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -249,15 +266,15 @@ export default function AppointmentListPage() {
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search appointment by patient name, phone, serial..."
+        searchPlaceholder="Search by ID, patient name, doctor, hospital, serial, phone..."
         onRefresh={fetchAppointments}
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all')}
+        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)}
         onClearFilters={clearFilters}
         activeFilters={[
           date && { key: 'date', label: `Date: ${date}`, onRemove: () => setDate('') },
@@ -291,20 +308,21 @@ export default function AppointmentListPage() {
         <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
         <SearchableSelect label="Role" placeholder="All Roles" options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">Patient Appointments</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
-            {appointments.length} Results
+            {filtered.length} Results
           </span>
         </div>
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '18%', '12%', '16%']} headers={['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
-        ) : appointments.length === 0 ? (
-          <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
-        ) : (
+            <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '18%', '12%', '16%']} headers={['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
+          ) : filtered.length === 0 ? (
+            <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
+          ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -344,59 +362,47 @@ export default function AppointmentListPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                           <div style={{ width: 30, height: 30, borderRadius: 8, overflow: 'hidden', background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                             <span style={{ fontSize: 16 }}>{appt.created_by_role === 'patient' ? '👤' : '👨‍⚕️'}</span>
-                           </div>
-                           <div>
-                             <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--admin-text)' }}>{appt.created_by_name || 'Unknown'}</div>
-                             <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: appt.created_by_role === 'patient' ? '#6366F1' : '#0D9488' }}>
-                               {appt.created_by_role || 'System'}
-                             </div>
-                           </div>
+                          <div style={{ width: 30, height: 30, borderRadius: 8, overflow: 'hidden', background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: 16 }}>{appt.created_by_role === 'patient' ? '👤' : '👨‍⚕️'}</span>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--admin-text)' }}>{appt.created_by_name || 'Unknown'}</div>
+                            <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: appt.created_by_role === 'patient' ? '#6366F1' : '#0D9488' }}>
+                              {appt.created_by_role || 'System'}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
-                            {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            {appt.date ? new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                           </div>
-                          {appt.serial_number && (
-                            <span style={{
-                              fontSize: 10.5,
-                              fontWeight: 800,
-                              color: '#047857',
-                              background: '#ECFDF5',
-                              border: '1px solid #A7F3D0',
-                              padding: '1px 6px',
-                              borderRadius: 6
-                            }}>
-                              Serial-{appt.serial_number}
-                            </span>
-                          )}
+                          <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(0, 168, 140, 0.1)', color: '#00A88C', padding: '2px 6px', borderRadius: 4 }}>
+                            Serial-{appt.serial_number || 1}
+                          </span>
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500 }}>{appt.time || 'Schedule not set'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>{appt.time || '10:00 AM'}</div>
                       </td>
                       <td>
-                        {(isAdmin || isDoctor) ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <select
                             className={`status-select-minimal status-${appt.status}`}
                             value={appt.status}
-                            onChange={(e) => handleStatusChange(appt.id, e.target.value)}
                             disabled={changingStatus === appt.id}
+                            onChange={(e) => handleStatusChange(appt.id, e.target.value)}
                           >
                             <option value="pending">Pending</option>
                             <option value="confirmed">Confirmed</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
-                        ) : (
-                          <StatusBadge status={appt.status} />
-                        )}
+                        </div>
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>
                         <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                          <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/appointments/view/${appt.id}`)} title="View Details">👁️</button>
-                          {(isAdmin || (isManager && new Date(appt.date) >= new Date().setHours(0,0,0,0))) && (
+                          <Link to={`/admin/appointments/view/${appt.id}`} className="admin-btn admin-btn-outline admin-btn-sm">👁️ View</Link>
+                          {isAdmin && (
                             <Link to={`/admin/appointments/edit/${appt.id}`} className="admin-btn admin-btn-outline admin-btn-sm">✏️</Link>
                           )}
                           {(isDoctor || isAdmin) && (
@@ -422,15 +428,15 @@ export default function AppointmentListPage() {
         </div>
       </div>
 
-      
       <TableFooter
-        total={appointments.length}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
         setPerPage={setPerPage}
       />
-<DeleteModal
+
+      <DeleteModal
         show={!!deleteTarget}
         title="Delete Appointment"
         message="Are you sure you want to delete this appointment? This action cannot be undone."

@@ -1,5 +1,5 @@
 // PatientListPage.jsx — Premium Admin patient management (separate table from users)
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
@@ -127,11 +127,15 @@ export default function PatientListPage() {
   const hasFilters = Boolean(search || divisionId || districtId || upazilaId || unionId || dateFrom)
 
   useEffect(() => { 
-    fetchPatients()
     loadInitialLocations()
   }, [])
 
-  useEffect(() => { setCurrentPage(1) }, [patients.length])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPatients()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search, divisionId, districtId, upazilaId, unionId, dateFrom])
 
   const loadInitialLocations = async () => {
     try {
@@ -167,7 +171,7 @@ export default function PatientListPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true)
-      const params = {}
+      const params = { per_page: 500 }
       if (search.trim()) params.search = search.trim()
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
@@ -178,6 +182,7 @@ export default function PatientListPage() {
       const res = await getPatients(params)
       setPatients(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -187,7 +192,6 @@ export default function PatientListPage() {
     setSearch('')
     setDateFrom('')
     setDivisionId(''); setDistrictId(''); setUpazilaId(''); setUnionId('')
-    setTimeout(fetchPatients, 0)
   }
 
   const handleDelete = async () => {
@@ -197,13 +201,54 @@ export default function PatientListPage() {
       await deleteAdminPatient(deleteTarget.id)
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
     } catch (err) {
+      console.error(err)
     } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
-  const paginatedData = patients.slice((currentPage - 1) * perPage, currentPage * perPage)
+  // Client-side real-time filtering
+  const filtered = useMemo(() => {
+    return patients.filter(patient => {
+      const searchLower = search.trim().toLowerCase()
+      if (!searchLower) return true
+
+      const id = String(patient.public_id || patient.id || '').toLowerCase()
+      const regNo = String(patient.registration_number || patient.user?.registration_number || '').toLowerCase()
+      const patientId = String(patient.patient_id || patient.user?.patient_id || '').toLowerCase()
+      const name = String(patient.name || patient.user?.name || '').toLowerCase()
+      const phone = String(patient.phone || patient.mobile || patient.user?.phone || patient.user?.mobile || '').toLowerCase()
+      const email = String(patient.email || patient.user?.email || '').toLowerCase()
+      const blood = String(patient.blood_group || '').toLowerCase()
+      const gender = String(patient.gender || '').toLowerCase()
+      const occupation = String(patient.occupation || '').toLowerCase()
+      const divisionName = String(patient.division?.name || '').toLowerCase()
+      const districtName = String(patient.district?.name || '').toLowerCase()
+      const upazilaName = String(patient.upazila?.name || '').toLowerCase()
+      const unionName = String(patient.union?.name || '').toLowerCase()
+
+      return id.includes(searchLower) ||
+        regNo.includes(searchLower) ||
+        patientId.includes(searchLower) ||
+        name.includes(searchLower) ||
+        phone.includes(searchLower) ||
+        email.includes(searchLower) ||
+        blood.includes(searchLower) ||
+        gender.includes(searchLower) ||
+        occupation.includes(searchLower) ||
+        divisionName.includes(searchLower) ||
+        districtName.includes(searchLower) ||
+        upazilaName.includes(searchLower) ||
+        unionName.includes(searchLower)
+    })
+  }, [patients, search])
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  useEffect(() => { 
+    setCurrentPage(1) 
+  }, [filtered.length])
 
   return (
     <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
@@ -220,12 +265,12 @@ export default function PatientListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search patient by name, phone, email, blood group..."
+        searchPlaceholder="Search by ID, patient name, phone, email, blood group, location..."
         onRefresh={fetchPatients}
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom)}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)}
         onClearFilters={clearFilters}
         activeFilters={[
           divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
@@ -256,98 +301,117 @@ export default function PatientListPage() {
         <div className="admin-card-header">
           <h3 className="admin-card-title">Patient Records</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 12px', borderRadius: 20 }}>
-            {patients.length} Accounts Found
+            {filtered.length} Accounts Found
           </span>
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['120px', '25%', '20%', '15%', '15%', '13%']} headers={['Patient', 'Medical Profile', 'Contact', 'Location', 'Registered Date', 'Actions']} />
-        ) : patients.length === 0 ? (
+          <TableSkeleton rowCount={8} columnWidths={['110px', '20%', '18%', '16%', '20%', '14%', '130px']} headers={['ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions']} />
+        ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 80, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Identity</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Patient Contact</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Clinical Info</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Location Info</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
-                  <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
+                  <th style={{ width: 110, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
+                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Patient</th>
+                  <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
+                  <th style={{ width: '16%', color: 'var(--admin-text-muted)' }}>Clinical Info</th>
+                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Location Profile</th>
+                  <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Registered</th>
+                  <th style={{ width: 130, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(patient => (
-                  <tr key={patient.id} style={{ transition: 'background 0.15s' }}>
-                    <td style={{ paddingLeft: 24 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
-                          {patient.user?.name ? patient.user.name.charAt(0).toUpperCase() : 'P'}
+                {paginatedData.map(patient => {
+                  const displayName = patient.name || patient.user?.name || 'Unnamed'
+                  const displayPhone = patient.phone || patient.mobile || patient.user?.phone || patient.user?.mobile
+                  const displayEmail = patient.email || patient.user?.email
+
+                  return (
+                    <tr key={patient.id} style={{ transition: 'background 0.15s' }}>
+                      <td style={{ paddingLeft: 24 }}>
+                        <CompactUlid value={patient.public_id || patient.id} />
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, overflow: 'hidden', flexShrink: 0 }}>
+                            {patient.profile_pic || patient.photo ? (
+                              <img src={getMediaUrl(patient.profile_pic || patient.photo)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none' }} />
+                            ) : (
+                              displayName.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{displayName}</div>
+                            {patient.occupation && <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{patient.occupation}</div>}
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{patient.user?.name || patient.name || 'Unnamed'}</div>
-                          <CompactUlid value={patient.public_id || patient.id} />
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{displayPhone || '—'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{displayEmail || 'No email registered'}</div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+                            {patient.blood_group || 'N/A'}
+                          </span>
+                          <span style={{ fontSize: 12, color: 'var(--admin-text)' }}>
+                            {patient.gender ? (patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)) : 'Unknown'}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{patient.phone || patient.user?.phone || '—'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{patient.user?.email || 'No email registered'}</div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
-                          {patient.blood_group || 'N/A'}
-                        </span>
-                        <span style={{ fontSize: 12, color: 'var(--admin-text)' }}>
-                          {patient.gender ? (patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)) : 'Unknown'}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 3 }}>
-                        {patient.date_of_birth ? `DOB: ${patient.date_of_birth}` : 'No DOB recorded'}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text)' }}>
-                        {[patient.district?.name, patient.division?.name].filter(Boolean).join(', ') || 'No regional profile'}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                        {[patient.union?.name, patient.upazila?.name].filter(Boolean).join(', ')}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 500 }}>
-                        {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-GB') : '—'}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>
-                        {patient.created_at ? new Date(patient.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          onClick={() => navigate(`/admin/patients/edit/${patient.id}`)}
-                          className="admin-btn admin-btn-outline admin-btn-sm"
-                          style={{ padding: '4px 8px' }}
-                          title="Edit patient profile"
-                        >
-                          ✏️
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => setDeleteTarget(patient)}
-                            className="admin-btn admin-btn-danger admin-btn-sm"
-                            style={{ padding: '4px 8px' }}
-                            title="Delete patient account"
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text)' }}>
+                          {[patient.division?.name, patient.district?.name].filter(Boolean).join(', ') || 'No regional profile'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                          {[patient.upazila?.name, patient.union?.name].filter(Boolean).join(', ')}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 500 }}>
+                          {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-GB') : '—'}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>
+                          {patient.created_at ? new Date(patient.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                        <div className="admin-actions" style={{ justifyContent: 'flex-end', display: 'inline-flex', gap: 6 }}>
+                          <Link
+                            to={`/admin/patients/view/${patient.id}`}
+                            className="admin-btn admin-btn-outline admin-btn-sm"
+                            style={{ padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                            title="View patient details"
                           >
-                            🗑️
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                            👁️ View
+                          </Link>
+                          <Link
+                            to={`/admin/patients/edit/${patient.id}`}
+                            className="admin-btn admin-btn-outline admin-btn-sm"
+                            style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
+                            title="Edit patient profile"
+                          >
+                            ✏️
+                          </Link>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setDeleteTarget(patient)}
+                              className="admin-btn admin-btn-danger admin-btn-sm"
+                              style={{ padding: '4px 8px' }}
+                              title="Delete patient account"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -355,7 +419,7 @@ export default function PatientListPage() {
       </div>
 
       <TableFooter
-        total={patients.length}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

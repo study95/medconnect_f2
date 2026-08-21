@@ -76,16 +76,9 @@ export default function UserListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const hasFilters = Boolean(search || roleFilter || typeFilter)
-
   useEffect(() => { 
     fetchAvailablePermissions()
   }, [])
-
-  // Reset to page 1 whenever filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [search, roleFilter, typeFilter])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,14 +97,15 @@ export default function UserListPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const params = {}
+      const params = { per_page: 500 }
       if (roleFilter) params.role = roleFilter
-      if (typeFilter) params.user_type = typeFilter
+      if (typeFilter) params.registration_type = typeFilter
       if (search) params.search = search
       const res = await getUsers(params)
       const data = res.data?.data?.data || res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : [])
       setUsers(data)
     } catch (err) {
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -259,10 +253,22 @@ export default function UserListPage() {
 
   const filtered = users.filter(u => {
     const searchLower = search.trim().toLowerCase()
+    const id = String(u.public_id || u.id || '').toLowerCase()
+    const name = String(u.name || '').toLowerCase()
+    const email = String(u.email || '').toLowerCase()
+    const phone = String(u.phone || '').toLowerCase()
+    const regNum = String(u.registration_number || '').toLowerCase()
+    const regType = String(u.registration_type || '').toLowerCase()
+    const role = String(getUserRole(u) || '').toLowerCase()
+
     const matchesSearch = !searchLower || 
-      (u.name && u.name.toLowerCase().includes(searchLower)) ||
-      (u.email && u.email.toLowerCase().includes(searchLower)) ||
-      (u.phone && String(u.phone).toLowerCase().includes(searchLower))
+      id.includes(searchLower) ||
+      name.includes(searchLower) ||
+      email.includes(searchLower) ||
+      phone.includes(searchLower) ||
+      regNum.includes(searchLower) ||
+      regType.includes(searchLower) ||
+      role.includes(searchLower)
 
     const matchesType = !typeFilter || 
       (typeFilter === 'patient' 
@@ -277,6 +283,10 @@ export default function UserListPage() {
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtered.length])
+
   return (
     <div className="admin-container">
       <div className="admin-page-header">
@@ -289,12 +299,12 @@ export default function UserListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search profile name, contact info (email, phone)..."
+        searchPlaceholder="Search by ID, name, email, phone, role..."
         onRefresh={fetchUsers}
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(typeFilter || roleFilter)}
+        hasActiveFilters={Boolean(typeFilter || roleFilter || search)}
         onClearFilters={clearFilters}
         activeFilters={[
           typeFilter && { key: 'type', label: `Type: ${typeFilter.toUpperCase()}`, onRemove: () => setTypeFilter('') },
@@ -333,7 +343,8 @@ export default function UserListPage() {
           </select>
         </div>
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">User Accounts</h3>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{filtered.length} total found</span>
@@ -343,7 +354,7 @@ export default function UserListPage() {
           {loading ? (
           <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '18%', '16%', '14%', '10%']} headers={['User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <EmptyState hasFilters={Boolean(roleFilter || statusFilter || divisionFilter || districtFilter || upazilaFilter || unionFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." primaryAction={isAdmin ? { label: '+ Add User', onClick: () => setShowAddModal(true) } : undefined} />
+          <EmptyState hasFilters={Boolean(roleFilter || typeFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." />
         ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
@@ -444,7 +455,6 @@ export default function UserListPage() {
         </div>
       </div>
 
-      
       <TableFooter
         total={filtered.length}
         currentPage={currentPage}
@@ -452,7 +462,86 @@ export default function UserListPage() {
         perPage={perPage}
         setPerPage={setPerPage}
       />
-<DeleteModal 
+
+      {/* Permissions Modal */}
+      {selectedUserForPerms && (
+        <div className="modal-overlay" onClick={() => setSelectedUserForPerms(null)}>
+          <div className="admin-card" style={{ maxWidth: 800, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="admin-card-title">User Permissions: {selectedUserForPerms.name}</h3>
+                <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', margin: 0 }}>Configure granular capability overrides for this user account</p>
+              </div>
+              <button className="admin-btn admin-btn-sm" onClick={() => setSelectedUserForPerms(null)}>✕</button>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--admin-border)', display: 'flex', gap: 12, alignItems: 'center', background: 'var(--admin-bg)' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-muted)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Filter permissions..." 
+                  value={permSearch} 
+                  onChange={e => setPermSearch(e.target.value)}
+                  style={{ width: '100%', height: 36, paddingLeft: 32, paddingRight: 10, borderRadius: 6, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13 }}
+                />
+              </div>
+              <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={selectAllPermissions}>Select All</button>
+              <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={clearAllPermissions}>Clear All</button>
+            </div>
+
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {groupedPermissions.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--admin-text-muted)', padding: 30 }}>No permissions match your filter</div>
+              ) : (
+                groupedPermissions.map(group => (
+                  <div key={group.key} style={{ border: '1px solid var(--admin-border)', borderRadius: 8, padding: 14, background: 'var(--admin-card-bg)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--admin-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{group.icon}</span> {group.title}
+                      </div>
+                      <button 
+                        type="button" 
+                        className="admin-btn admin-btn-sm admin-btn-outline" 
+                        style={{ fontSize: 11, padding: '2px 8px', height: 'auto' }}
+                        onClick={() => toggleSectionPermissions(group.items)}
+                      >
+                        Toggle Group
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                      {group.items.map(p => {
+                        const pName = typeof p === 'string' ? p : p.name
+                        const isChecked = userPermissions.includes(pName)
+                        return (
+                          <label key={pName} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', color: 'var(--admin-text)', userSelect: 'none' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked} 
+                              onChange={() => togglePermission(pName)}
+                              style={{ accentColor: 'var(--admin-primary)', width: 15, height: 15 }}
+                            />
+                            {pName.replace(/[._]/g, ' ')}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="admin-card-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--admin-border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="admin-btn admin-btn-outline" onClick={() => setSelectedUserForPerms(null)} disabled={savingPerms}>Cancel</button>
+              <button className="admin-btn admin-btn-primary" onClick={savePermissions} disabled={savingPerms}>
+                {savingPerms ? 'Saving Changes...' : 'Save Permissions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DeleteModal 
         show={!!deleteTarget} 
         title="Permanently Delete User" 
         message={`Warning: You are about to delete ${deleteTarget?.name}. This will remove all associated data and access credentials. This action is irreversible.`}
