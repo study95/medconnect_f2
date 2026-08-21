@@ -181,7 +181,7 @@ export default function DoctorListPage() {
   const fetchDoctors = async () => {
     try {
       setLoading(true)
-      const params = { per_page: 100 }
+      const params = { per_page: 5000 }
       if (search) params.search = search
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId

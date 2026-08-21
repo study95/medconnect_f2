@@ -149,7 +149,7 @@ export default function AppointmentListPage() {
   const fetchAppointments = async () => {
     try {
       setLoading(true)
-      const params = { per_page: 100 }
+      const params = { per_page: 5000 }
       if (search) params.search = search
       if (date) params.date = date
       if (month) params.month = month
