@@ -4,8 +4,15 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getDivisions, deleteDivision } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 
 export default function DivisionListPage() {
+  const [perPage, setPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,39 +56,24 @@ export default function DivisionListPage() {
     <div className="admin-container">
       <div className="admin-page-header">
         <div>
-          <h2 className="admin-page-title">
-            <span style={{ marginRight: 12 }}>🏢</span>
-            National Divisions
-          </h2>
-          <p className="admin-page-subtitle">Manage top-tier administrative regions for clinical service distribution</p>
-        </div>
-        <Link to="/admin/divisions/create" className="admin-btn admin-btn-primary" style={{ background: '#EF4444', borderRadius: 12 }}>
-          + Add New Division
-        </Link>
-      </div>
-
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #EF4444' }}>
-        <div className="admin-card-body">
-          <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <input 
-                type="text" 
-                className="status-select" 
-                placeholder="Search divisions by name..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: '100%', height: 46, paddingLeft: 44, border: '1px solid #E2E8F0', borderRadius: 12 }}
-              />
-              <span style={{ position: 'absolute', left: 16, top: 13, fontSize: 18 }}>🔍</span>
-            </div>
-            <button className="admin-btn admin-btn-primary" onClick={fetchDivisions} style={{ height: 46, background: '#EF4444', padding: '0 30px', borderRadius: 12 }}>
-              Sync Data
-            </button>
-          </div>
+          <h2 className="admin-page-title">🗺️ Divisions</h2>
+          <p className="admin-page-subtitle">{items.length} administrative division(s)</p>
         </div>
       </div>
 
-      <div className="admin-card">
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search division by name, Bengali name..."
+        onRefresh={fetchItems}
+        refreshing={loading}
+        actions={
+          <Link to="/admin/divisions/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+            + Add Division
+          </Link>
+        }
+      />
+<div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
           <h3 className="admin-card-title">Territorial Database</h3>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444', background: '#FEE2E2', padding: '4px 12px', borderRadius: 20 }}>
@@ -90,13 +82,9 @@ export default function DivisionListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading Territories...</div>
+          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Division Name', 'Bengali Name', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60 }}>
-            <div className="admin-empty-icon">🏢</div>
-            <h4>No Divisions Found</h4>
-            <p>The national territory database is currently empty.</p>
-          </div>
+          <EmptyState searchQuery={search} onClearSearch={() => setSearch('')} icon="🗺️" title="No divisions found" description="Try a different search term or register a new division." primaryAction={{ label: '+ Add Division', to: '/admin/divisions/create' }} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -112,7 +100,7 @@ export default function DivisionListPage() {
                 {filtered.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
-                      <span style={{ fontWeight: 800, color: '#94A3B8', fontSize: 13 }}>#{item.id}</span>
+                      <CompactUlid value={item.public_id || item.id} />
                     </td>
                     <td>
                       <div style={{ fontWeight: 800, color: '#1E293B', fontSize: 16 }}>{item.name}</div>
@@ -145,6 +133,14 @@ export default function DivisionListPage() {
           </div>
         )}
       </div>
+
+      <TableFooter
+        total={items ? items.length : 0}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
 
       <DeleteModal 
         show={!!deleteTarget} 

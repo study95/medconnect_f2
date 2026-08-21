@@ -3,6 +3,11 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getMedicines, deleteMedicine } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
@@ -26,6 +31,7 @@ export default function MedicineListPage() {
   const [search, setSearch] = useState('')
   const [dosageFilter, setDosageFilter] = useState('ALL')
   const [companyFilter, setCompanyFilter] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const [perPage, setPerPage] = useState(25)
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -125,178 +131,121 @@ export default function MedicineListPage() {
         )}
       </div>
 
-      {/* Show Entries Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select
-            value={perPage}
-            onChange={e => { const n = Number(e.target.value); setPerPage(n); fetchData(1, search, dosageFilter, companyFilter, n) }}
-            style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}
-          >
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+      <ListToolbar
+        search={search}
+        onSearchChange={handleSearch}
+        searchPlaceholder="Search medicine or generic name..."
+        onRefresh={() => fetchData(1, search, dosageFilter, companyFilter, perPage)}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(dosageFilter !== 'ALL' || companyFilter)}
+        onClearFilters={() => { setDosageFilter('ALL'); setCompanyFilter(''); fetchData(1, search, 'ALL', '', perPage) }}
+        activeFilters={[
+          dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => { setDosageFilter('ALL'); fetchData(1, search, 'ALL', companyFilter, perPage) } },
+          companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => { setCompanyFilter(''); fetchData(1, search, dosageFilter, '', perPage) } },
+        ].filter(Boolean)}
+        actions={
+          (isAdmin || hasPermission('medicine.create')) && (
+            <Link to="/admin/medicines/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+              + Add Medicine
+            </Link>
+          )
+        }
+      >
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Dosage Type</label>
+          <select className="status-select" value={dosageFilter} onChange={e => handleDosageFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            {DOSAGE_TYPES.map(t => <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>)}
           </select>
-          entries
         </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{pagination.total === 0 ? 0 : ((pagination.current_page - 1) * perPage + 1)}</strong>–<strong>{Math.min(pagination.current_page * perPage, pagination.total)}</strong> of <strong>{pagination.total}</strong> entries
+        <div style={{ minWidth: 180 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Company</label>
+          <input type="text" placeholder="Filter company..." value={companyFilter} onChange={e => handleCompanyFilter(e.target.value)} className="admin-form-input" style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
         </div>
-      </div>
+      </ListToolbar>
 
       <div className="admin-card">
-        <div className="admin-card-header" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <div className="admin-card-header">
           <h3 className="admin-card-title">Medicine Database</h3>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Search */}
-            <div className="admin-table-search">
-              <input
-                type="text"
-                placeholder="Search medicine or generic name..."
-                value={search}
-                onChange={e => handleSearch(e.target.value)}
-                style={{ minWidth: 220 }}
-              />
-            </div>
-            {/* Dosage Type Filter */}
-            <select
-              className="admin-form-select"
-              value={dosageFilter}
-              onChange={e => handleDosageFilter(e.target.value)}
-              style={{ width: 'auto', minWidth: 100, padding: '8px 12px', fontSize: 13 }}
-            >
-              {DOSAGE_TYPES.map(t => (
-                <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>
-              ))}
-            </select>
-            {/* Company Filter */}
-            <input
-              type="text"
-              placeholder="Company..."
-              value={companyFilter}
-              onChange={e => handleCompanyFilter(e.target.value)}
-              className="admin-form-input"
-              style={{ width: 'auto', minWidth: 140, padding: '8px 12px', fontSize: 13 }}
-            />
-          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{pagination.total} records</span>
         </div>
-
         {loading ? (
-          <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+          <TableSkeleton rowCount={8} columnWidths={['80px', '25%', '22%', '12%', '15%', '18%', '8%']} headers={['ID', 'Full Name', 'Generic Name', 'Type', 'Strength', 'Company', 'Actions']} />
         ) : items.length === 0 ? (
-          <div className="admin-empty">
-            <div className="admin-empty-icon">💊</div>
-            <h4>No medicines found</h4>
-            <p>{search ? 'Try a different search term' : 'Add your first medicine'}</p>
-          </div>
+          <EmptyState hasFilters={Boolean(dosageFilter !== 'ALL' || companyFilter || search)} searchQuery={search} onClearFilters={() => { setDosageFilter('ALL'); setCompanyFilter(''); fetchData(1, '', 'ALL', '', perPage) }} onClearSearch={() => handleSearch('')} icon="💊" title="No medicines found" description="Try searching with a generic name or clear dosage filters." primaryAction={(isAdmin || hasPermission('medicine.create')) ? { label: '+ Add Medicine', to: '/admin/medicines/create' } : undefined} />
         ) : (
-          <>
-            <div className="admin-table-wrapper">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Full Name</th>
-                    <th>Generic Name</th>
-                    <th>Type</th>
-                    <th>Strength</th>
-                    <th>Company</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(med => {
-                    const typeColor = dosageColors[med.dosage_type] || { bg: '#F1F5F9', color: '#475569' }
-                    return (
-                      <tr key={med.id}>
-                        <td style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>#{med.id}</td>
-                        <td>
-                          <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{getFullName(med)}</span>
-                        </td>
-                        <td style={{ color: 'var(--admin-text-muted)' }}>{med.generic_name || '—'}</td>
-                        <td>
-                          <span style={{
-                            background: typeColor.bg,
-                            color: typeColor.color,
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            fontWeight: 700,
-                            fontSize: 12,
-                            letterSpacing: 0.5
-                          }}>
-                            {med.dosage_type || '—'}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{med.strength || '—'}</td>
-                        <td style={{ color: 'var(--admin-text-muted)' }}>{med.company_name || '—'}</td>
-                        <td>
-                          <div className="admin-actions">
-                            {(isAdmin || hasPermission('medicine.update')) && (
-                              <button
-                                className="admin-btn admin-btn-outline admin-btn-sm"
-                                onClick={() => navigate(`/admin/medicines/edit/${med.id}`)}
-                              >✏️ Edit</button>
-                            )}
-                            {(isAdmin || hasPermission('medicine.delete')) && (
-                              <button
-                                className="admin-btn admin-btn-danger admin-btn-sm"
-                                onClick={() => setDeleteTarget(med)}
-                              >🗑️</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {/* Bottom Pagination */}
-            {(() => {
-              const totalPages = pagination.last_page
-              if (pagination.total === 0) return null
-              const pages = []
-              if (totalPages <= 7) {
-                for (let i = 1; i <= totalPages; i++) pages.push(i)
-              } else {
-                pages.push(1)
-                if (pagination.current_page > 3) pages.push('...')
-                const start = Math.max(2, pagination.current_page - 1)
-                const end = Math.min(totalPages - 1, pagination.current_page + 1)
-                for (let i = start; i <= end; i++) pages.push(i)
-                if (pagination.current_page < totalPages - 2) pages.push('...')
-                pages.push(totalPages)
-              }
-              const btnBase = {
-                height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8,
-                border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)',
-                color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s'
-              }
-              const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-              const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-                    Showing <strong>{pagination.total === 0 ? 0 : ((pagination.current_page - 1) * perPage + 1)}</strong>–<strong>{Math.min(pagination.current_page * perPage, pagination.total)}</strong> of <strong>{pagination.total}</strong> entries
-                  </div>
-                  {totalPages > 1 && (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button onClick={() => pagination.current_page > 1 && fetchData(1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === 1 ? btnDisabled : btnBase} title="First">«</button>
-                      <button onClick={() => pagination.current_page > 1 && fetchData(pagination.current_page - 1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === 1 ? btnDisabled : btnBase} title="Previous">‹</button>
-                      {pages.map((p, i) => p === '...'
-                        ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span>
-                        : <button key={p} onClick={() => fetchData(p, search, dosageFilter, companyFilter, perPage)} style={p === pagination.current_page ? btnActive : btnBase}>{p}</button>
-                      )}
-                      <button onClick={() => pagination.current_page < totalPages && fetchData(pagination.current_page + 1, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === totalPages ? btnDisabled : btnBase} title="Next">›</button>
-                      <button onClick={() => pagination.current_page < totalPages && fetchData(totalPages, search, dosageFilter, companyFilter, perPage)} style={pagination.current_page === totalPages ? btnDisabled : btnBase} title="Last">»</button>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-          </>
+          <div className="admin-table-wrapper">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Full Name</th>
+                  <th>Generic Name</th>
+                  <th>Type</th>
+                  <th>Strength</th>
+                  <th>Company</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(med => {
+                  const typeColor = dosageColors[med.dosage_type] || { bg: '#F1F5F9', color: '#475569' }
+                  return (
+                    <tr key={med.id}>
+                      <td><CompactUlid value={med.id} /></td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{getFullName(med)}</span>
+                      </td>
+                      <td style={{ color: 'var(--admin-text-muted)' }}>{med.generic_name || '—'}</td>
+                      <td>
+                        <span style={{
+                          background: typeColor.bg,
+                          color: typeColor.color,
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontWeight: 700,
+                          fontSize: 12,
+                          letterSpacing: 0.5
+                        }}>
+                          {med.dosage_type || '—'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{med.strength || '—'}</td>
+                      <td style={{ color: 'var(--admin-text-muted)' }}>{med.company_name || '—'}</td>
+                      <td>
+                        <div className="admin-actions">
+                          {(isAdmin || hasPermission('medicine.update')) && (
+                            <button
+                              className="admin-btn admin-btn-outline admin-btn-sm"
+                              onClick={() => navigate(`/admin/medicines/edit/${med.id}`)}
+                            >✏️ Edit</button>
+                          )}
+                          {(isAdmin || hasPermission('medicine.delete')) && (
+                            <button
+                              className="admin-btn admin-btn-danger admin-btn-sm"
+                              onClick={() => setDeleteTarget(med)}
+                            >🗑️</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      <TableFooter
+        total={pagination.total || 0}
+        currentPage={pagination.current_page || 1}
+        setCurrentPage={(p) => fetchData(p, search, dosageFilter, companyFilter, perPage)}
+        perPage={perPage}
+        setPerPage={(n) => { setPerPage(n); fetchData(1, search, dosageFilter, companyFilter, n) }}
+        perPageOptions={[10, 25, 50, 100, 500]}
+      />
 
       <DeleteModal
         show={!!deleteTarget}

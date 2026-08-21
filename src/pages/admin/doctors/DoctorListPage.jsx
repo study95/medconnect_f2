@@ -6,6 +6,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getDoctors, deleteDoctor, updateDoctor, getDivisions, getDistricts, getUpazilas, getUnions, getHospitals, getSpecialties } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -375,147 +380,104 @@ export default function DoctorListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Manage medical professionals and their clinical associations</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {!isDoctorOnly && (
-            <button
-              type="button"
-              className={`admin-btn ${showFilters || (search || divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId) ? 'admin-btn-primary' : 'admin-btn-outline'}`}
-              onClick={() => setShowFilters(p => !p)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Filter size={14} /> Filters {(search || divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId) ? '●' : ''}
-              {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            </button>
-          )}
-          {isAdmin ? (
-            <Link to="/admin/doctors/create" className="admin-btn admin-btn-primary">
+      </div>
+
+<ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search doctor by name, BMDC, phone, specialty..."
+        onRefresh={fetchDoctors}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '')}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
+          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
+          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
+          unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
+          specialtyId && { key: 'specialty', label: `Specialty: ${specialties.find(s => String(s.id) === String(specialtyId))?.name || specialtyId}`, onRemove: () => setSpecialtyId('') },
+          statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === '1' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
+          top10Filter !== '' && { key: 'top10', label: `Top 10: ${top10Filter === 'yes' ? 'Yes' : 'No'}`, onRemove: () => setTop10Filter('') },
+          telemedicineFilter !== '' && { key: 'tele', label: `Telemedicine: ${telemedicineFilter === 'yes' ? 'Yes' : 'No'}`, onRemove: () => setTelemedicineFilter('') },
+        ].filter(Boolean)}
+        actions={
+          isAdmin ? (
+            <Link to="/admin/doctors/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
               + Add New Doctor
             </Link>
           ) : (isDoctorOnly && !myProfile) && (
-            <Link to="/admin/doctors/create" className="admin-btn admin-btn-primary">
+            <Link to="/admin/doctors/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
               ✨ Create My Profile
             </Link>
-          )}
-        </div>
-      </div>
-
-      {showFilters && (
-        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
-          <div className="admin-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Global Search</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="status-select"
-                    placeholder="Name, BMDC, specialty..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                  />
-                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
-                </div>
-              </div>
-
-              <SearchableSelect
-                label="Division"
-                placeholder="All Divisions"
-                options={divisions}
-                value={divisionId}
-                onChange={setDivisionId}
-              />
-
-              <SearchableSelect
-                label="District"
-                placeholder="All Districts"
-                options={districts}
-                value={districtId}
-                onChange={setDistrictId}
-                disabled={!divisionId}
-              />
-
-              <SearchableSelect
-                label="Upazila"
-                placeholder="All Upazilas"
-                options={upazilas}
-                value={upazilaId}
-                onChange={setUpazilaId}
-                disabled={!districtId}
-              />
-
-              <SearchableSelect
-                label="Union"
-                placeholder="All Unions"
-                options={unions}
-                value={unionId}
-                onChange={setUnionId}
-                disabled={!upazilaId}
-              />
-
-              <SearchableSelect
-                label="Specialty"
-                placeholder="All Specialties"
-                options={specialties}
-                value={specialtyId}
-                onChange={setSpecialtyId}
-              />
-
-              <div style={{ minWidth: 120 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-                <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
-                  <option value="">All Status</option>
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
-                </select>
-              </div>
-              <div style={{ minWidth: 120 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Top 10</label>
-                <select className="status-select" value={top10Filter} onChange={e => setTop10Filter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
-                  <option value="">All</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-
-              <div style={{ minWidth: 120 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telemedicine</label>
-                <select className="status-select" value={telemedicineFilter} onChange={e => setTelemedicineFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
-                  <option value="">All</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="admin-btn admin-btn-primary" onClick={fetchDoctors} style={{ height: 42, padding: '0 20px' }}>Filter</button>
-                {(search || divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId) && (
-                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                    Reset
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Show Entries Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }} style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}>
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+          )
+        }
+      >
+        <SearchableSelect
+          label="Division"
+          placeholder="All Divisions"
+          options={divisions}
+          value={divisionId}
+          onChange={setDivisionId}
+        />
+        <SearchableSelect
+          label="District"
+          placeholder="All Districts"
+          options={districts}
+          value={districtId}
+          onChange={setDistrictId}
+          disabled={!divisionId}
+        />
+        <SearchableSelect
+          label="Upazila"
+          placeholder="All Upazilas"
+          options={upazilas}
+          value={upazilaId}
+          onChange={setUpazilaId}
+          disabled={!districtId}
+        />
+        <SearchableSelect
+          label="Union"
+          placeholder="All Unions"
+          options={unions}
+          value={unionId}
+          onChange={setUnionId}
+          disabled={!upazilaId}
+        />
+        <SearchableSelect
+          label="Specialty"
+          placeholder="All Specialties"
+          options={specialties}
+          value={specialtyId}
+          onChange={setSpecialtyId}
+        />
+        <div style={{ minWidth: 120 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+          <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            <option value="">All Status</option>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
           </select>
-          entries
         </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
+        <div style={{ minWidth: 120 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Top 10</label>
+          <select className="status-select" value={top10Filter} onChange={e => setTop10Filter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            <option value="">All</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
         </div>
-      </div>
-
-      <div className="admin-card">
+        <div style={{ minWidth: 120 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Telemedicine</label>
+          <select className="status-select" value={telemedicineFilter} onChange={e => setTelemedicineFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            <option value="">All</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </ListToolbar>
+<div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">All Registered Doctors</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
@@ -524,13 +486,9 @@ export default function DoctorListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading doctors...</div>
+          <TableSkeleton rowCount={8} columnWidths={['80px', '22%', '20%', '18%', '12%', '14%', '6%']} headers={['Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60 }}>
-            <div className="admin-empty-icon">👨‍⚕️</div>
-            <h4>No doctors found</h4>
-            <p>{search ? 'Try a different search term' : 'No doctors matching your criteria.'}</p>
-          </div>
+          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -574,6 +532,7 @@ export default function DoctorListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 15 }}>{doctor.name}</div>
+                      <CompactUlid value={doctor.public_id || doctor.id} />
                       <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 700, marginTop: 2 }}>BMDC: {doctor.bmdc || 'N/A'}</div>
                       <div style={{ marginTop: 8, padding: '4px 8px', background: 'var(--admin-bg)', borderRadius: 6, display: 'inline-block' }}>
                         <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 12 }}>{doctor.specialty?.name || 'General Physician'}</div>
@@ -677,43 +636,15 @@ export default function DoctorListPage() {
         )}
       </div>
 
-      {/* Bottom Pagination */}
-      {(() => {
-        const totalPages = Math.ceil(filtered.length / perPage)
-        if (filtered.length === 0) return null
-        const pages = []
-        if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
-        else {
-          pages.push(1)
-          if (currentPage > 3) pages.push('...')
-          const start = Math.max(2, currentPage - 1)
-          const end = Math.min(totalPages - 1, currentPage + 1)
-          for (let i = start; i <= end; i++) pages.push(i)
-          if (currentPage < totalPages - 2) pages.push('...')
-          pages.push(totalPages)
-        }
-        const btnBase = { height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }
-        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase} title="First">«</button>
-                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase} title="Prev">‹</button>
-                {pages.map((p, i) => p === '...' ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span> : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>)}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Next">›</button>
-                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Last">»</button>
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      <style dangerouslySetInnerHTML={{
+      
+      <TableFooter
+        total={filtered.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
+<style dangerouslySetInnerHTML={{
         __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
         .profile-info-group { padding: 12px 0; border-bottom: 1px solid var(--admin-border); }

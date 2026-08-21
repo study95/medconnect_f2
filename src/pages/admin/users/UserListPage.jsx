@@ -6,6 +6,11 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getUsers, updateUserRole, deleteUser, getAllPermissions, updateUserPermissions } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const ROLES = ['admin', 'manager', 'doctor', 'user']
@@ -54,6 +59,7 @@ export default function UserListPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const [typeFilter, setTypeFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -280,111 +286,54 @@ export default function UserListPage() {
         </div>
       </div>
 
-      {/* Filter Bar Container — Desktop View One Row */}
-      <div 
-        className="user-directory-filter-card"
-        style={{
-          background: 'var(--admin-card-bg)',
-          border: '1px solid var(--admin-border)',
-          borderRadius: 'var(--admin-radius)',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          boxShadow: 'var(--admin-shadow-sm)'
-        }}
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search profile name, contact info (email, phone)..."
+        onRefresh={fetchUsers}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(typeFilter || roleFilter)}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          typeFilter && { key: 'type', label: `Type: ${typeFilter.toUpperCase()}`, onRemove: () => setTypeFilter('') },
+          roleFilter && { key: 'role', label: `Role: ${ROLE_LABELS[roleFilter] || roleFilter.toUpperCase()}`, onRemove: () => setRoleFilter('') },
+        ].filter(Boolean)}
       >
-        <div className="users-filter-row">
-          {/* Search Bar: Profile Name, Email, Phone */}
-          <div className="filter-item-search">
-            <Search className="filter-search-icon" size={18} />
-            <input 
-              type="text" 
-              className="admin-form-input filter-search-input" 
-              placeholder="Search profile name, contact info (email, phone)..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {search && (
-              <button 
-                type="button" 
-                className="filter-search-clear"
-                onClick={() => setSearch('')}
-                title="Clear search"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Identity Type Dropdown Filter */}
-          <div className="filter-item-select">
-            <select 
-              className="admin-form-select filter-select-input" 
-              value={typeFilter} 
-              onChange={e => setTypeFilter(e.target.value)}
-            >
-              <option value="">All Identity Types</option>
-              <option value="doctor">👨‍⚕️ Doctor</option>
-              <option value="hospital">🏥 Hospital</option>
-              <option value="patient">👤 Patient / User</option>
-            </select>
-          </div>
-
-          {/* Access Role Dropdown Filter */}
-          <div className="filter-item-select">
-            <select 
-              className="admin-form-select filter-select-input" 
-              value={roleFilter} 
-              onChange={e => setRoleFilter(e.target.value)}
-            >
-              <option value="">All Access Roles</option>
-              {ROLES.map(r => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r] || r.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Reset Button */}
-          {hasFilters && (
-            <button 
-              type="button" 
-              className="admin-btn admin-btn-outline filter-reset-btn" 
-              onClick={clearFilters}
-            >
-              <RotateCcw size={14} /> Reset
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Show Entries Toolbar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10, flexWrap: 'wrap', gap: 8
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select
-            value={perPage}
-            onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }}
-            style={{
-              padding: '5px 10px', borderRadius: 8,
-              border: '1.5px solid var(--admin-border)',
-              background: 'var(--admin-card-bg)', color: 'var(--admin-text)',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70
-            }}
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Identity Type</label>
+          <select 
+            className="admin-form-select" 
+            value={typeFilter} 
+            onChange={e => setTypeFilter(e.target.value)}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}
           >
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+            <option value="">All Identity Types</option>
+            <option value="doctor">👨‍⚕️ Doctor</option>
+            <option value="hospital">🏥 Hospital</option>
+            <option value="patient">👤 Patient / User</option>
           </select>
-          entries
         </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
-        </div>
-      </div>
 
-      <div className="admin-card">
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Access Role</label>
+          <select 
+            className="admin-form-select" 
+            value={roleFilter} 
+            onChange={e => setRoleFilter(e.target.value)}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}
+          >
+            <option value="">All Access Roles</option>
+            {ROLES.map(r => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r] || r.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        </div>
+      </ListToolbar>
+<div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">User Accounts</h3>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{filtered.length} total found</span>
@@ -392,10 +341,10 @@ export default function UserListPage() {
         
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <div className="admin-loading"><div className="admin-spinner" /> Loading users...</div>
-          ) : filtered.length === 0 ? (
-            <div className="admin-empty">No users found matching your criteria.</div>
-          ) : (
+          <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '18%', '16%', '14%', '10%']} headers={['User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
+        ) : filtered.length === 0 ? (
+          <EmptyState hasFilters={Boolean(roleFilter || statusFilter || divisionFilter || districtFilter || upazilaFilter || unionFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." primaryAction={isAdmin ? { label: '+ Add User', onClick: () => setShowAddModal(true) } : undefined} />
+        ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -438,7 +387,7 @@ export default function UserListPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{u.name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>ID: #{u.id}</div>
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>ID: <CompactUlid value={u.public_id || u.id} /></div>
                             </div>
                           </div>
                         </td>
@@ -495,332 +444,15 @@ export default function UserListPage() {
         </div>
       </div>
 
-      {/* Bottom Pagination */}
-      {(() => {
-        const totalPages = Math.ceil(filtered.length / perPage)
-        if (filtered.length === 0) return null
-        const pages = []
-        if (totalPages <= 7) {
-          for (let i = 1; i <= totalPages; i++) pages.push(i)
-        } else {
-          pages.push(1)
-          if (currentPage > 3) pages.push('...')
-          const start = Math.max(2, currentPage - 1)
-          const end = Math.min(totalPages - 1, currentPage + 1)
-          for (let i = start; i <= end; i++) pages.push(i)
-          if (currentPage < totalPages - 2) pages.push('...')
-          pages.push(totalPages)
-        }
-        const btnBase = {
-          height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8,
-          border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)',
-          color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s'
-        }
-        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase} title="First">«</button>
-                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase} title="Previous">‹</button>
-                {pages.map((p, i) => p === '...'
-                  ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span>
-                  : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>
-                )}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Next">›</button>
-                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Last">»</button>
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      {/* Permissions Modal */}
-      {selectedUserForPerms && (
-        <div className="modal-overlay" onClick={() => setSelectedUserForPerms(null)}>
-          <div 
-            className="admin-card premium-modal" 
-            style={{ 
-              maxWidth: 720, 
-              width: '95%',
-              maxHeight: 'calc(100vh - 80px)',
-              margin: 'auto 0',
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'var(--admin-card-bg)',
-              borderRadius: 16,
-              overflow: 'hidden',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-            }} 
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div style={{ 
-              padding: '20px 24px', 
-              borderBottom: '1px solid var(--admin-border)',
-              background: 'var(--admin-bg)',
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  background: 'rgba(0, 168, 140, 0.1)',
-                  color: 'var(--admin-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <ShieldCheck size={22} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--admin-text)' }}>Administrative Permissions</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--admin-text-muted)' }}>
-                    Managing access rights for: <strong style={{ color: 'var(--admin-primary)' }}>{selectedUserForPerms.name}</strong> ({getUserRole(selectedUserForPerms).toUpperCase()})
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setSelectedUserForPerms(null)} 
-                style={{ 
-                  background: 'var(--admin-card-bg)', 
-                  border: '1px solid var(--admin-border)', 
-                  width: 32, 
-                  height: 32, 
-                  borderRadius: 8, 
-                  color: 'var(--admin-text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Sub-Header: Search bar & Quick Actions */}
-            <div style={{ padding: '16px 24px 12px', borderBottom: '1px solid var(--admin-border)' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* Search Bar */}
-                <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-muted)' }} />
-                  <input 
-                    type="text"
-                    className="admin-form-input"
-                    placeholder="Search permissions (e.g. doctor, view, create)..."
-                    value={permSearch}
-                    onChange={e => setPermSearch(e.target.value)}
-                    style={{
-                      paddingLeft: 36,
-                      paddingRight: 30,
-                      height: 38,
-                      fontSize: 13,
-                      borderRadius: 8,
-                      background: 'var(--admin-bg)',
-                      color: 'var(--admin-text)',
-                      border: '1px solid var(--admin-border)'
-                    }}
-                  />
-                  {permSearch && (
-                    <button 
-                      onClick={() => setPermSearch('')} 
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--admin-text-muted)', cursor: 'pointer', fontSize: 13 }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Quick Action Buttons */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button 
-                    type="button"
-                    className="admin-btn admin-btn-sm admin-btn-outline"
-                    onClick={selectAllPermissions}
-                    style={{ height: 38, padding: '0 12px', fontSize: 12, borderRadius: 8 }}
-                  >
-                    Select All ({availablePermissions.length})
-                  </button>
-                  <button 
-                    type="button"
-                    className="admin-btn admin-btn-sm admin-btn-outline"
-                    onClick={clearAllPermissions}
-                    style={{ height: 38, padding: '0 12px', fontSize: 12, borderRadius: 8, color: 'var(--admin-danger)' }}
-                  >
-                    Clear All
-                  </button>
-                </div>
-              </div>
-
-              {/* Status summary tag */}
-              <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--admin-text-muted)' }}>
-                <span>Active Permissions Selected: <strong style={{ color: 'var(--admin-primary)' }}>{userPermissions.length}</strong> of {availablePermissions.length}</span>
-                {permSearch && <span>Filtered by: "{permSearch}"</span>}
-              </div>
-            </div>
-            
-            {/* Modal Body: Section Wise Permissions Grid */}
-            <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
-              {groupedPermissions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--admin-text-muted)' }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
-                  No permissions matching "<strong>{permSearch}</strong>"
-                </div>
-              ) : (
-                groupedPermissions.map(group => {
-                  const sectionItemNames = group.items.map(p => typeof p === 'string' ? p : p.name)
-                  const selectedCount = sectionItemNames.filter(name => userPermissions.includes(name)).length
-                  const isAllSectionSelected = selectedCount === sectionItemNames.length && sectionItemNames.length > 0
-
-                  return (
-                    <div 
-                      key={group.key} 
-                      style={{ 
-                        marginBottom: 20, 
-                        background: 'var(--admin-bg)', 
-                        borderRadius: 12, 
-                        border: '1px solid var(--admin-border)',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {/* Section Header */}
-                      <div style={{ 
-                        padding: '10px 16px', 
-                        background: 'rgba(0, 0, 0, 0.02)', 
-                        borderBottom: '1px solid var(--admin-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 16 }}>{group.icon}</span>
-                          <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text)' }}>{group.title}</span>
-                          <span style={{ 
-                            fontSize: 11, 
-                            fontWeight: 700, 
-                            padding: '2px 8px', 
-                            borderRadius: 12, 
-                            background: selectedCount > 0 ? 'rgba(0, 168, 140, 0.12)' : 'var(--admin-card-bg)',
-                            color: selectedCount > 0 ? 'var(--admin-primary)' : 'var(--admin-text-muted)',
-                            border: '1px solid var(--admin-border)'
-                          }}>
-                            {selectedCount} / {sectionItemNames.length}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleSectionPermissions(group.items)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--admin-primary)',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            padding: '2px 6px'
-                          }}
-                        >
-                          {isAllSectionSelected ? 'Deselect Section' : 'Select Section'}
-                        </button>
-                      </div>
-
-                      {/* Section Permission Grid */}
-                      <div style={{ 
-                        padding: 12, 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', 
-                        gap: 8 
-                      }}>
-                        {group.items.map(p => {
-                          const permName = typeof p === 'string' ? p : p.name
-                          const isSelected = userPermissions.includes(permName)
-                          return (
-                            <div 
-                              key={p.id || permName} 
-                              onClick={() => togglePermission(permName)}
-                              style={{ 
-                                padding: '10px 12px', 
-                                borderRadius: 8, 
-                                border: '1.5px solid', 
-                                borderColor: isSelected ? 'var(--admin-primary)' : 'var(--admin-border)',
-                                background: isSelected ? 'rgba(0, 168, 140, 0.06)' : 'var(--admin-card-bg)',
-                                cursor: 'pointer', 
-                                transition: 'all 0.15s ease', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: 10
-                              }}
-                            >
-                              <div style={{ 
-                                width: 18, 
-                                height: 18, 
-                                borderRadius: 5, 
-                                border: '1.5px solid',
-                                borderColor: isSelected ? 'var(--admin-primary)' : 'var(--admin-text-muted)',
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                background: isSelected ? 'var(--admin-primary)' : 'transparent',
-                                flexShrink: 0
-                              }}>
-                                {isSelected && <span style={{ color: 'white', fontSize: 11, fontWeight: 900 }}>✓</span>}
-                              </div>
-                              <span style={{ 
-                                fontSize: 12.5, 
-                                fontWeight: isSelected ? 700 : 500, 
-                                color: isSelected ? 'var(--admin-text)' : 'var(--admin-text-muted)',
-                                wordBreak: 'break-word'
-                              }}>
-                                {permName}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div style={{ 
-              padding: '16px 24px', 
-              borderTop: '1px solid var(--admin-border)',
-              background: 'var(--admin-bg)',
-              display: 'flex', 
-              gap: 12 
-            }}>
-              <button 
-                className="admin-btn admin-btn-primary" 
-                style={{ flex: 1, padding: '10px 16px', height: 42, fontSize: 14, fontWeight: 700, borderRadius: 8 }} 
-                onClick={savePermissions} 
-                disabled={savingPerms}
-              >
-                {savingPerms ? 'Saving Permissions...' : 'Update Permissions'}
-              </button>
-              <button 
-                className="admin-btn admin-btn-outline" 
-                style={{ flex: 1, padding: '10px 16px', height: 42, fontSize: 14, fontWeight: 600, borderRadius: 8 }} 
-                onClick={() => setSelectedUserForPerms(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <DeleteModal 
+      
+      <TableFooter
+        total={filtered.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
+<DeleteModal 
         show={!!deleteTarget} 
         title="Permanently Delete User" 
         message={`Warning: You are about to delete ${deleteTarget?.name}. This will remove all associated data and access credentials. This action is irreversible.`}

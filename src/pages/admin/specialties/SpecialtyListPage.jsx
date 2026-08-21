@@ -4,8 +4,15 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getSpecialties, deleteSpecialty } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 
 export default function SpecialtyListPage() {
+  const [perPage, setPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -48,39 +55,26 @@ export default function SpecialtyListPage() {
     <div className="admin-container">
       <div className="admin-page-header">
         <div>
-          <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
-            <span style={{ marginRight: 12 }}>🏷️</span>
-            Medical Specialties
-          </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Categorize healthcare professionals for optimized patient matching</p>
-        </div>
-        <Link to="/admin/specialties/create" className="admin-btn admin-btn-primary" style={{ background: 'var(--admin-primary)', borderRadius: 12, padding: '12px 24px' }}>
-          + Add Specialty
-        </Link>
-      </div>
-
-      <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)' }}>
-        <div className="admin-card-body">
-          <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <input 
-                type="text" 
-                className="admin-form-input" 
-                placeholder="Search specialties (e.g. Cardiology, Neurology)..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: '100%', height: 46, paddingLeft: 44, borderRadius: 12 }}
-              />
-              <span style={{ position: 'absolute', left: 16, top: 13, fontSize: 18 }}>🔍</span>
-            </div>
-            <button className="admin-btn admin-btn-primary" onClick={fetchData} style={{ height: 46, background: 'var(--admin-primary)', padding: '0 30px', borderRadius: 12 }}>
-              Sync Records
-            </button>
-          </div>
+          <h2 className="admin-page-title">🩺 Specialties</h2>
+          <p className="admin-page-subtitle">{items.length} medical specialty domain(s)</p>
         </div>
       </div>
 
-      <div className="admin-card">
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search specialty by name, Bengali name..."
+        onRefresh={fetchSpecialties}
+        refreshing={loading}
+        actions={
+          isAdmin && (
+            <Link to="/admin/specialties/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+              + Add Specialty
+            </Link>
+          )
+        }
+      />
+<div className="admin-card">
         <div className="admin-card-header" style={{ background: 'rgba(0,0,0,0.02)' }}>
           <h3 className="admin-card-title" style={{ color: 'var(--admin-text)' }}>Professional Categories</h3>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-primary)', background: 'rgba(0, 168, 140, 0.1)', padding: '4px 12px', borderRadius: 20 }}>
@@ -89,13 +83,9 @@ export default function SpecialtyListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Validating Database...</div>
+          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Specialty Name', 'Bengali Title', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60, textAlign: 'center' }}>
-            <div className="admin-empty-icon" style={{ fontSize: 40, marginBottom: 16 }}>🏷️</div>
-            <h4 style={{ color: 'var(--admin-text)' }}>No Categories Found</h4>
-            <p style={{ color: 'var(--admin-text-muted)' }}>You haven't added any medical specialties yet.</p>
-          </div>
+          <EmptyState searchQuery={search} onClearSearch={() => setSearch('')} icon="🩺" title="No specialties found" description="Try a different search term or add a new medical specialty." primaryAction={isAdmin ? { label: '+ Add Specialty', to: '/admin/specialties/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -111,7 +101,7 @@ export default function SpecialtyListPage() {
                 {filtered.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
-                      <span style={{ fontWeight: 800, color: 'var(--admin-text-muted)', fontSize: 13 }}>#{item.id}</span>
+                      <CompactUlid value={item.public_id || item.id} />
                     </td>
                     <td>
                       <div style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 16 }}>{item.name}</div>
@@ -146,6 +136,14 @@ export default function SpecialtyListPage() {
           </div>
         )}
       </div>
+
+      <TableFooter
+        total={items ? items.length : 0}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
 
       <DeleteModal 
         show={!!deleteTarget} 

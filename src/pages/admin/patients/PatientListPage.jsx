@@ -6,6 +6,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getPatients, deleteAdminPatient, getDivisions, getDistricts, getUpazilas, getUnions } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 // Custom Searchable Dropdown Component (Premium Select)
@@ -191,7 +196,11 @@ export default function PatientListPage() {
     try {
       await deleteAdminPatient(deleteTarget.id)
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
-    } catch (err) {  } finally { setDeleting(false); setDeleteTarget(null) }
+    } catch (err) {
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   const paginatedData = patients.slice((currentPage - 1) * perPage, currentPage * perPage)
@@ -206,78 +215,42 @@ export default function PatientListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Manage medical accounts and clinical profiles</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
-            onClick={() => setShowFilters(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
-            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          {isAdmin && (
-            <Link to="/admin/patients/create" className="admin-btn admin-btn-primary">
+      </div>
+
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search patient by name, phone, email, blood group..."
+        onRefresh={fetchPatients}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom)}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
+          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
+          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
+          unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
+          dateFrom && { key: 'date', label: `Registered From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+        ].filter(Boolean)}
+        actions={
+          isAdmin && (
+            <Link to="/admin/patients/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
               + Register New Patient
             </Link>
-          )}
+          )
+        }
+      >
+        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
+        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
+        <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
+        <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
+        <div style={{ minWidth: 150 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Registered From</label>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
         </div>
-      </div>
-
-      {showFilters && (
-        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #6366F1', overflow: 'visible' }}>
-          <div className="admin-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-              
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="text" 
-                    className="status-select" 
-                    placeholder="Name, email, phone..." 
-                    value={search} 
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                  />
-                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
-                </div>
-              </div>
-
-              <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
-              <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
-              <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
-              <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
-
-              <div style={{ minWidth: 140 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Joined From</label>
-                <input type="date" className="status-select" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }} />
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="admin-btn admin-btn-primary" onClick={fetchPatients} style={{ height: 42, padding: '0 20px', background: '#6366F1' }}>Filter</button>
-                {hasFilters && (
-                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>Reset</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Show Entries Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }} style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}>
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-          entries
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{patients.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, patients.length)}</strong> of <strong>{patients.length}</strong> entries
-        </div>
-      </div>
+      </ListToolbar>
 
       <div className="admin-card">
         <div className="admin-card-header">
@@ -288,13 +261,9 @@ export default function PatientListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading registry...</div>
+          <TableSkeleton rowCount={8} columnWidths={['120px', '25%', '20%', '15%', '15%', '13%']} headers={['Patient', 'Medical Profile', 'Contact', 'Location', 'Registered Date', 'Actions']} />
         ) : patients.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60 }}>
-            <div className="admin-empty-icon">👥</div>
-            <h4>No patients found</h4>
-            <p>Try adjusting your search or filters.</p>
-          </div>
+          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -303,91 +272,75 @@ export default function PatientListPage() {
                   <th style={{ width: 80, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Identity</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Patient Contact</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Clinical Info</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Geographic Location</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Joined Date</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Location Info</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
                   <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(p => (
-                  <tr key={p.id}>
+                {paginatedData.map(patient => (
+                  <tr key={patient.id} style={{ transition: 'background 0.15s' }}>
                     <td style={{ paddingLeft: 24 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{
-                          width: 44, height: 44, borderRadius: 12, overflow: 'hidden',
-                          background: 'rgba(99, 102, 241, 0.05)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid var(--admin-border)'
-                        }}>
-                          {p.profile_pic ? (
-                            <img
-                              src={getMediaUrl(p.profile_pic)}
-                              alt={p.name || ''}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.style.display = 'none';
-                                e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'block');
-                              }}
-                            />
-                          ) : null}
-                          <span
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 900,
-                              color: '#6366F1',
-                              display: p.profile_pic ? 'none' : 'block'
-                            }}
-                          >
-                            {p.name?.charAt(0)?.toUpperCase() || 'P'}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
+                          {patient.user?.name ? patient.user.name.charAt(0).toUpperCase() : 'P'}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{p.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>#{p.id}</div>
+                          <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{patient.user?.name || patient.name || 'Unnamed'}</div>
+                          <CompactUlid value={patient.public_id || patient.id} />
                         </div>
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{p.mobile || '—'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{p.email || 'No email'}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{patient.phone || patient.user?.phone || '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{patient.user?.email || 'No email registered'}</div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.05)', color: '#6366F1', textTransform: 'capitalize' }}>
-                          {p.gender || '—'}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+                          {patient.blood_group || 'N/A'}
                         </span>
-                        {p.blood_group && (
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.05)', color: '#DC2626' }}>
-                            🩸 {p.blood_group}
-                          </span>
-                        )}
+                        <span style={{ fontSize: 12, color: 'var(--admin-text)' }}>
+                          {patient.gender ? (patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)) : 'Unknown'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 3 }}>
+                        {patient.date_of_birth ? `DOB: ${patient.date_of_birth}` : 'No DOB recorded'}
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', maxWidth: 180, lineHeight: 1.5 }}>
-                        {[p.division?.name, p.district?.name, p.upazila?.name, p.union?.name].filter(Boolean).join(', ') || '—'}
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text)' }}>
+                        {[patient.district?.name, patient.division?.name].filter(Boolean).join(', ') || 'No regional profile'}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                        {[patient.union?.name, patient.upazila?.name].filter(Boolean).join(', ')}
                       </div>
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>
-                      {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
+                    <td>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 500 }}>
+                        {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-GB') : '—'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>
+                        {patient.created_at ? new Date(patient.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button 
-                          className="admin-btn admin-btn-outline admin-btn-sm" 
-                          style={{ color: '#6366F1', borderColor: 'rgba(99, 102, 241, 0.2)', background: 'rgba(99, 102, 241, 0.05)' }} 
-                          onClick={() => navigate(`/admin/patients/view/${p.id}`)}
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <button
+                          onClick={() => navigate(`/admin/patients/edit/${patient.id}`)}
+                          className="admin-btn admin-btn-outline admin-btn-sm"
+                          style={{ padding: '4px 8px' }}
+                          title="Edit patient profile"
                         >
-                          👁️ View
+                          ✏️
                         </button>
                         {isAdmin && (
-                          <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/patients/edit/${p.id}`)}>
-                            ✏️ Edit
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(p)}>
+                          <button
+                            onClick={() => setDeleteTarget(patient)}
+                            className="admin-btn admin-btn-danger admin-btn-sm"
+                            style={{ padding: '4px 8px' }}
+                            title="Delete patient account"
+                          >
                             🗑️
                           </button>
                         )}
@@ -401,41 +354,13 @@ export default function PatientListPage() {
         )}
       </div>
 
-      {/* Bottom Pagination */}
-      {(() => {
-        const totalPages = Math.ceil(patients.length / perPage)
-        if (patients.length === 0) return null
-        const pages = []
-        if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
-        else {
-          pages.push(1)
-          if (currentPage > 3) pages.push('...')
-          const start = Math.max(2, currentPage - 1)
-          const end = Math.min(totalPages - 1, currentPage + 1)
-          for (let i = start; i <= end; i++) pages.push(i)
-          if (currentPage < totalPages - 2) pages.push('...')
-          pages.push(totalPages)
-        }
-        const btnBase = { height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }
-        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              Showing <strong>{patients.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, patients.length)}</strong> of <strong>{patients.length}</strong> entries
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase}>«</button>
-                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase}>‹</button>
-                {pages.map((p, i) => p === '...' ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span> : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>)}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase}>›</button>
-                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase}>»</button>
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      <TableFooter
+        total={patients.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

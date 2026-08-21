@@ -10,6 +10,11 @@ import {
   getDivisions, getDistricts, getUpazilas, getUnions
 } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 
 // Custom Searchable Dropdown Component
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -259,88 +264,49 @@ export default function HospitalListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>{hospitals.length} total facilities registered</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
-            onClick={() => setShowFilters(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
-            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          {isAdmin && (
-            <Link to="/admin/hospitals/create" className="admin-btn admin-btn-primary">
-              + Add Hospital
+      </div>
+
+<ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search hospital by name, phone, branch, email..."
+        onRefresh={fetchHospitals}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter !== '')}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
+          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
+          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
+          unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
+          hospitalIdFilter && { key: 'hospital', label: `Facility: ${hospitalsOptions.find(h => String(h.id) === String(hospitalIdFilter))?.name || hospitalIdFilter}`, onRemove: () => setHospitalIdFilter('') },
+          statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
+        ].filter(Boolean)}
+        actions={
+          isAdmin && (
+            <Link to="/admin/hospitals/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+              + Add New Hospital
             </Link>
-          )}
-        </div>
-      </div>
-
-      {showFilters && (
-        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #10B981', overflow: 'visible' }}>
-          <div className="admin-card-body" style={{ overflow: 'visible' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-
-              <div style={{ flex: '1 1 240px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="status-select"
-                    placeholder="Facility name or email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                  />
-                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
-                </div>
-              </div>
-
-              <SearchableSelect label="Division" options={divisions} value={divisionId} onChange={setDivisionId} placeholder="All Divisions" />
-              <SearchableSelect label="District" options={districts} value={districtId} onChange={setDistrictId} placeholder="All Districts" disabled={!divisionId} />
-              <SearchableSelect label="Upazila" options={upazilas} value={upazilaId} onChange={setUpazilaId} placeholder="All Upazilas" disabled={!districtId} />
-              <SearchableSelect label="Union" options={unions} value={unionId} onChange={setUnionId} placeholder="All Unions" disabled={!upazilaId} />
-
-              <SearchableSelect label="Select Hospital" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} placeholder="All Facilities" />
-
-              <div style={{ flex: '1 1 140px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</label>
-                <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="admin-btn admin-btn-primary" onClick={fetchHospitals} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
-                {hasFilters && (
-                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                    Reset
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Show Entries Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }} style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}>
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+          )
+        }
+      >
+        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
+        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
+        <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
+        <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
+        <SearchableSelect label="Hospital / Clinic" placeholder="All Facilities" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} />
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+          <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
-          entries
         </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
-        </div>
-      </div>
-
-      <div className="admin-card">
+      </ListToolbar>
+<div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">Registered Facilities</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
@@ -349,13 +315,9 @@ export default function HospitalListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading hospitals...</div>
+          <TableSkeleton rowCount={8} columnWidths={['120px', '30%', '20%', '15%', '15%', '8%']} headers={['Logo', 'Hospital Details', 'Location', 'Branch Info', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60 }}>
-            <div className="admin-empty-icon" style={{ fontSize: 48, marginBottom: 16 }}>🏥</div>
-            <h4>No hospitals matching filters</h4>
-            <p>Try adjusting your location or search terms</p>
-          </div>
+          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -401,6 +363,7 @@ export default function HospitalListPage() {
                         </div>
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{h.name}</div>
+                          <CompactUlid value={h.public_id || h.id} />
                           {(h.top_10_hospital === 'yes' || h.top_10_hospital === true) && (
                             <span style={{ fontSize: 10, fontWeight: 800, color: '#92400E', background: 'rgba(254, 243, 199, 0.2)', padding: '2px 8px', borderRadius: 6, display: 'inline-block', marginTop: 4, border: '1px solid rgba(146, 64, 14, 0.2)' }}>
                               ⭐ TOP 10
@@ -485,43 +448,15 @@ export default function HospitalListPage() {
         )}
       </div>
 
-      {/* Bottom Pagination */}
-      {(() => {
-        const totalPages = Math.ceil(filtered.length / perPage)
-        if (filtered.length === 0) return null
-        const pages = []
-        if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
-        else {
-          pages.push(1)
-          if (currentPage > 3) pages.push('...')
-          const start = Math.max(2, currentPage - 1)
-          const end = Math.min(totalPages - 1, currentPage + 1)
-          for (let i = start; i <= end; i++) pages.push(i)
-          if (currentPage < totalPages - 2) pages.push('...')
-          pages.push(totalPages)
-        }
-        const btnBase = { height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }
-        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              Showing <strong>{filtered.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, filtered.length)}</strong> of <strong>{filtered.length}</strong> entries
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase} title="First">«</button>
-                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase} title="Prev">‹</button>
-                {pages.map((p, i) => p === '...' ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span> : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>)}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Next">›</button>
-                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Last">»</button>
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      <DeleteModal
+      
+      <TableFooter
+        total={filtered.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
+<DeleteModal
         show={!!deleteTarget}
         title="Delete Hospital"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}

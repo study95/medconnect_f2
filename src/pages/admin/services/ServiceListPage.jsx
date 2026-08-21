@@ -7,6 +7,11 @@ import {
 } from '@tabler/icons-react'
 import axiosInstance from '../../../api/axiosInstance'
 import { toast } from 'react-hot-toast'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 
 const STATUS_CONFIG = {
   pending:    { label: 'অপেক্ষমাণ',      color: '#F59E0B', bg: '#FEF3C7', icon: <IconClock size={13} /> },
@@ -58,6 +63,7 @@ export default function ServiceListPage() {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [viewTicket, setViewTicket] = useState(null)
@@ -187,171 +193,143 @@ export default function ServiceListPage() {
         <StatCard label="সমাধান সম্পন্ন (Resolved)" value={stats.resolved} icon={<IconCheck size={24} />} color="#10B981" />
       </div>
 
-      {/* Search & Filters Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-            Show
-            <select
-              value={perPage}
-              onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }}
-              style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--admin-border)', background: 'white', color: '#0f172a', fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70 }}
-            >
-              {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            entries
-          </div>
-
-          <select
-            value={filterStatus}
-            onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1) }}
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none', cursor: 'pointer', background: 'white', fontWeight: 600 }}
-          >
+      <ListToolbar
+        search={search}
+        onSearchChange={val => { setSearch(val); setCurrentPage(1) }}
+        searchPlaceholder="টিকিট নম্বর, নাম, ফোন বা ইমেইল খুঁজুন..."
+        onRefresh={fetchTickets}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(filterStatus !== 'all' || filterPriority !== 'all')}
+        onClearFilters={() => { setFilterStatus('all'); setFilterPriority('all'); setCurrentPage(1) }}
+        activeFilters={[
+          filterStatus !== 'all' && { key: 'status', label: `স্ট্যাটাস: ${STATUS_CONFIG[filterStatus]?.label || filterStatus}`, onRemove: () => { setFilterStatus('all'); setCurrentPage(1) } },
+          filterPriority !== 'all' && { key: 'priority', label: `অগ্রাধিকার: ${filterPriority}`, onRemove: () => { setFilterPriority('all'); setCurrentPage(1) } },
+        ].filter(Boolean)}
+      >
+        <div style={{ minWidth: 160 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>স্ট্যাটাস</label>
+          <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1) }} style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none', cursor: 'pointer', background: 'white', fontWeight: 600, width: '100%' }}>
             <option value="all">সব স্ট্যাটাস</option>
             <option value="pending">অপেক্ষমাণ (Pending)</option>
             <option value="processing">প্রক্রিয়াধীন (Processing)</option>
             <option value="resolved">সমাধান হয়েছে (Resolved)</option>
             <option value="closed">বন্ধ (Closed)</option>
           </select>
-
-          <select
-            value={filterPriority}
-            onChange={e => { setFilterPriority(e.target.value); setCurrentPage(1) }}
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none', cursor: 'pointer', background: 'white', fontWeight: 600 }}
-          >
+        </div>
+        <div style={{ minWidth: 160 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>অগ্রাধিকার</label>
+          <select value={filterPriority} onChange={e => { setFilterPriority(e.target.value); setCurrentPage(1) }} style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none', cursor: 'pointer', background: 'white', fontWeight: 600, width: '100%' }}>
             <option value="all">সব অগ্রাধিকার</option>
             <option value="সাধারণ">সাধারণ</option>
             <option value="জরুরী">জরুরী</option>
             <option value="অত্যন্ত জরুরী">অত্যন্ত জরুরী</option>
           </select>
         </div>
-
-        <div style={{ position: 'relative' }}>
-          <IconSearch size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-          <input
-            type="text"
-            placeholder="টিকিট আইডি, নাম, ফোন নম্বর, বিষয় খুঁজুন..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
-            style={{ padding: '8px 14px 8px 36px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none', minWidth: 280, background: 'white' }}
+      </ListToolbar>
+<div className="admin-card">
+        {loading ? (
+          <TableSkeleton
+            rowCount={6}
+            columnWidths={['120px', '22%', '20%', '16%', '12%', '10%']}
+            headers={['টিকিট নম্বর', 'প্রেরক ও যোগাযোগ', 'বিষয় ও বিভাগ', 'অগ্রাধিকার', 'স্ট্যাটাস', 'তারিখ', 'অ্যাকশন']}
           />
-        </div>
+        ) : tickets.length === 0 ? (
+          <EmptyState
+            hasFilters={Boolean(filterStatus !== 'all' || filterPriority !== 'all' || search)}
+            searchQuery={search}
+            onClearFilters={() => { setFilterStatus('all'); setFilterPriority('all'); setCurrentPage(1) }}
+            onClearSearch={() => { setSearch(''); setCurrentPage(1) }}
+            icon="🎫"
+            title="কোনো সাপোর্ট টিকিট পাওয়া যায়নি"
+            description="আপনার সার্চ বা ফিল্টারের সাথে মিলে এমন কোনো টিকিট ডাটাবেজে নেই।"
+          />
+        ) : (
+          <Table responsive hover className="admin-table" style={{ marginBottom: 0 }}>
+            <thead>
+              <tr>
+                <th>টিকিট নম্বর</th>
+                <th>প্রেরক ও যোগাযোগ</th>
+                <th>অভিযোগের বিষয়</th>
+                <th>ক্যাটাগরি</th>
+                <th>অগ্রাধিকার</th>
+                <th>বর্তমান স্ট্যাটাস</th>
+                <th>তারিখ</th>
+                <th style={{ textAlign: 'center' }}>অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map(ticket => {
+                const sc = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending
+                const pc = PRIORITY_CONFIG[ticket.priority] || PRIORITY_CONFIG['সাধারণ']
+                const ticketNum = ticket.ticket_number || `TK-${ticket.id}`
+                return (
+                  <tr key={ticket.id}>
+                    <td>
+                      <CompactUlid value={ticketNum} />
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 800, fontSize: 13.5, color: '#1E293B' }}>{ticket.name}</div>
+                      <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{ticket.contact}</div>
+                    </td>
+                    <td>
+                      <div style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: '#334155', fontWeight: 600 }} title={ticket.subject}>
+                        {ticket.subject}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 12, color: '#334155', background: '#F1F5F9', padding: '3px 10px', borderRadius: 99, fontWeight: 700 }}>
+                        {ticket.category || 'সাধারণ'}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 12, color: pc.color, background: pc.bg, padding: '3px 10px', borderRadius: 99, fontWeight: 800 }}>
+                        {ticket.priority || 'সাধারণ'}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 12, color: sc.color, background: sc.bg, border: `1px solid ${sc.border}`, padding: '3px 10px', borderRadius: 99, fontWeight: 800 }}>
+                        {sc.label}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 12.5, color: '#64748B', whiteSpace: 'nowrap' }}>
+                      {formatDate(ticket.created_at)}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        <button
+                          onClick={() => setViewTicket(ticket)}
+                          title="বিস্তারিত ও স্ট্যাটাস পরিবর্তন"
+                          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <IconEye size={14} /> দেখুন
+                        </button>
+                        <button
+                          onClick={() => handleDelete(ticket.id)}
+                          disabled={deleting === ticket.id}
+                          title="মুছে ফেলুন"
+                          style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #FEE2E2', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                        >
+                          <IconTrash size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        )}
       </div>
 
-      {/* Tickets Table */}
-      <div className="admin-card">
-        <Table responsive hover className="admin-table" style={{ marginBottom: 0 }}>
-          <thead>
-            <tr>
-              <th>টিকিট নম্বর</th>
-              <th>প্রেরক ও যোগাযোগ</th>
-              <th>অভিযোগের বিষয়</th>
-              <th>ক্যাটাগরি</th>
-              <th>অগ্রাধিকার</th>
-              <th>বর্তমান স্ট্যাটাস</th>
-              <th>তারিখ</th>
-              <th style={{ textAlign: 'center' }}>অ্যাকশন</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="8" className="text-center py-5">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#64748B' }}>
-                    <IconRefresh size={20} style={{ animation: 'spin 1s linear infinite' }} /> ডাটাবেজ থেকে লোড হচ্ছে...
-                  </div>
-                </td>
-              </tr>
-            ) : tickets.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="text-center py-5">
-                  <IconTicket size={40} style={{ color: '#CBD5E1', marginBottom: 10 }} />
-                  <div style={{ color: '#64748B', fontWeight: 700, fontSize: 15 }}>কোনো সাপোর্ট টিকিট বা অভিযোগ পাওয়া যায়নি</div>
-                </td>
-              </tr>
-            ) : tickets.map(ticket => {
-              const sc = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending
-              const pc = PRIORITY_CONFIG[ticket.priority] || PRIORITY_CONFIG['সাধারণ']
-              const ticketNum = ticket.ticket_number || `TK-${ticket.id}`
-              return (
-                <tr key={ticket.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: 13.5, color: '#064E3B', background: '#F0FDF4', padding: '3px 8px', borderRadius: 6, border: '1px solid #DCFCE7' }}>
-                        {ticketNum}
-                      </span>
-                      <button
-                        onClick={() => handleCopy(ticketNum, ticket.id)}
-                        title="টিকিট নম্বর কপি করুন"
-                        style={{ border: 'none', background: 'transparent', padding: 3, cursor: 'pointer', color: copied === ticket.id ? '#00B875' : '#94A3B8', display: 'flex', alignItems: 'center' }}
-                      >
-                        {copied === ticket.id ? <IconCheck size={14} color="#00B875" /> : <IconCopy size={14} />}
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 800, fontSize: 13.5, color: '#1E293B' }}>{ticket.name}</div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>{ticket.contact}</div>
-                  </td>
-                  <td>
-                    <div style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: '#334155', fontWeight: 600 }} title={ticket.subject}>
-                      {ticket.subject}
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ fontSize: 12, color: '#334155', background: '#F1F5F9', padding: '3px 10px', borderRadius: 99, fontWeight: 700 }}>
-                      {ticket.category || 'সাধারণ'}
-                    </span>
-                  </td>
-                  <td>
-                    <span style={{ fontSize: 12, color: pc.color, background: pc.bg, padding: '3px 10px', borderRadius: 99, fontWeight: 800 }}>
-                      {ticket.priority || 'সাধারণ'}
-                    </span>
-                  </td>
-                  <td>
-                    <select
-                      value={ticket.status || 'pending'}
-                      disabled={updatingStatus === ticket.id}
-                      onChange={e => handleStatusChange(ticket.id, e.target.value)}
-                      style={{
-                        fontSize: 12, fontWeight: 800, color: sc.color, background: sc.bg,
-                        border: `1.5px solid ${sc.color}50`, borderRadius: 99,
-                        padding: '4px 10px', cursor: 'pointer', outline: 'none'
-                      }}
-                    >
-                      <option value="pending">অপেক্ষমাণ</option>
-                      <option value="processing">প্রক্রিয়াধীন</option>
-                      <option value="resolved">সমাধান হয়েছে</option>
-                      <option value="closed">বন্ধ</option>
-                    </select>
-                  </td>
-                  <td style={{ fontSize: 12, color: '#64748B', whiteSpace: 'nowrap' }}>
-                    {formatDate(ticket.created_at || ticket.submitted_at)}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                      <button
-                        onClick={() => setViewTicket(ticket)}
-                        title="বিস্তারিত দেখুন"
-                        style={{ border: 'none', background: '#F0FDF4', color: '#00B875', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <IconEye size={16} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(ticket.id)}
-                        title="মুছে ফেলুন"
-                        style={{ border: 'none', background: '#FEF2F2', color: '#EF4444', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <IconTrash size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </Table>
-      </div>
+      <TableFooter
+        total={tickets.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
 
       {/* View Ticket Details Modal */}
       <Modal show={!!viewTicket} onHide={() => setViewTicket(null)} centered size="lg">

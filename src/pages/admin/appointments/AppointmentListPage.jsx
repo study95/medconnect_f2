@@ -6,6 +6,11 @@ import { useAuth } from '../../../context/AuthContext'
 import { getAppointments, updateAppointment, deleteAppointment, getDoctors, getHospitals } from '../../../api/adminApi'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 // Custom Searchable Dropdown Component (Premium Select)
@@ -242,111 +247,51 @@ export default function AppointmentListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Track patient bookings and manage clinical schedules</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button 
-            type="button" 
-            className={`admin-btn ${showFilters || (search || date || month || year || doctorId || hospitalId || roleFilter) ? 'admin-btn-primary' : 'admin-btn-outline'}`} 
-            onClick={() => setShowFilters(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Filter size={14} /> Filters {(search || date || month || year || doctorId || hospitalId || roleFilter) ? '●' : ''}
-            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/appointments/create')}>
-            + New Appointment
-          </button>
-        </div>
       </div>
 
-      {/* Advanced Filter Card */}
-      {showFilters && (
-        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid var(--admin-primary)', overflow: 'visible' }}>
-          <div className="admin-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-              
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="text" 
-                    className="status-select" 
-                    placeholder="Doctor, patient, or date..." 
-                    value={search} 
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', height: 42, paddingLeft: 40, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-                  />
-                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Date</label>
-                <input type="date" className="status-select" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }} />
-              </div>
-
-              <SearchableSelect label="Month" options={months} value={month} onChange={setMonth} placeholder="All Months" />
-              <SearchableSelect label="Year" options={years} value={year} onChange={setYear} placeholder="All" />
-              <SearchableSelect label="Doctor Filter" options={doctors} value={doctorId} onChange={setDoctorId} placeholder="All Doctors" />
-              <SearchableSelect label="Hospital Filter" options={hospitals} value={hospitalId} onChange={setHospitalId} placeholder="All Hospitals" />
-              <SearchableSelect label="Role" options={roleOptions} value={roleFilter} onChange={setRoleFilter} placeholder="All Roles" />
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="admin-btn admin-btn-primary" onClick={fetchAppointments} style={{ height: 42, padding: '0 24px' }}>Refresh</button>
-                {(search || date || month || year || doctorId || hospitalId || roleFilter) && (
-                  <button className="admin-btn admin-btn-outline" onClick={clearFilters} style={{ height: 42, color: 'var(--admin-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Reset</button>
-                )}
-              </div>
-            </div>
-          </div>
+<ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search appointment by patient name, phone, serial..."
+        onRefresh={fetchAppointments}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all')}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          date && { key: 'date', label: `Date: ${date}`, onRemove: () => setDate('') },
+          month && { key: 'month', label: `Month: ${months.find(m => String(m.id) === String(month))?.name || month}`, onRemove: () => setMonth('') },
+          year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
+          doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
+          hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
+          roleFilter && { key: 'role', label: `Role: ${roleFilter}`, onRemove: () => setRoleFilter('') },
+          activeTab !== 'all' && { key: 'status', label: `Status: ${activeTab.toUpperCase()}`, onRemove: () => setActiveTab('all') },
+        ].filter(Boolean)}
+      >
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Date</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
         </div>
-      )}
-
-      {/* Tabs / Counters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
-        <div className={`status-tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')} style={{ '--tab-color': '#00A88C' }}>
-          All <span>{stats.all}</span>
-        </div>
-        <div className={`status-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')} style={{ '--tab-color': '#F59E0B' }}>
-          ⏳ Pending <span>{stats.pending}</span>
-        </div>
-        <div className={`status-tab ${activeTab === 'confirmed' ? 'active' : ''}`} onClick={() => setActiveTab('confirmed')} style={{ '--tab-color': '#10B981' }}>
-          ✅ Confirmed <span>{stats.confirmed}</span>
-        </div>
-        <div className={`status-tab ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')} style={{ '--tab-color': '#6366F1' }}>
-          ✔ Completed <span>{stats.completed}</span>
-        </div>
-        <div className={`status-tab ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')} style={{ '--tab-color': '#EF4444' }}>
-          ❌ Cancelled <span>{stats.cancelled}</span>
-        </div>
-      </div>
-
-      {/* Show Entries Toolbar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10, flexWrap: 'wrap', gap: 8
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-          Show
-          <select
-            value={perPage}
-            onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1) }}
-            style={{
-              padding: '5px 10px', borderRadius: 8,
-              border: '1.5px solid var(--admin-border)',
-              background: 'var(--admin-card-bg)', color: 'var(--admin-text)',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none', minWidth: 70
-            }}
-          >
-            {[10, 25, 50, 100, 500].map(n => <option key={n} value={n}>{n}</option>)}
+        <div style={{ minWidth: 130 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Month</label>
+          <select value={month} onChange={e => setMonth(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}>
+            <option value="">All Months</option>
+            {months.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          entries
         </div>
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>
-          Showing <strong>{appointments.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, appointments.length)}</strong> of <strong>{appointments.length}</strong> entries
+        <div style={{ minWidth: 110 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Year</label>
+          <select value={year} onChange={e => setYear(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}>
+            <option value="">All Years</option>
+            {years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+          </select>
         </div>
-      </div>
-
-      <div className="admin-card">
+        <SearchableSelect label="Doctor" placeholder="All Doctors" options={doctors} value={doctorId} onChange={setDoctorId} />
+        <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
+        <SearchableSelect label="Role" placeholder="All Roles" options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
+      </ListToolbar>
+<div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">Patient Appointments</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
@@ -356,10 +301,10 @@ export default function AppointmentListPage() {
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading records...</div>
-          ) : appointments.length === 0 ? (
-            <div className="admin-empty" style={{ padding: 60 }}>No appointments found.</div>
-          ) : (
+          <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '18%', '12%', '16%']} headers={['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
+        ) : appointments.length === 0 ? (
+          <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
+        ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -377,7 +322,7 @@ export default function AppointmentListPage() {
                 <tbody>
                   {paginatedData.map(appt => (
                     <tr key={appt.id}>
-                      <td style={{ paddingLeft: 24, fontWeight: 700, color: 'var(--admin-text-muted)' }}>#{appt.id}</td>
+                      <td style={{ paddingLeft: 24 }}><CompactUlid value={appt.public_id || appt.id} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--admin-text)' }}>
@@ -477,52 +422,15 @@ export default function AppointmentListPage() {
         </div>
       </div>
 
-      {/* Bottom Pagination */}
-      {(() => {
-        const totalPages = Math.ceil(appointments.length / perPage)
-        if (appointments.length === 0) return null
-        const pages = []
-        if (totalPages <= 7) {
-          for (let i = 1; i <= totalPages; i++) pages.push(i)
-        } else {
-          pages.push(1)
-          if (currentPage > 3) pages.push('...')
-          const start = Math.max(2, currentPage - 1)
-          const end = Math.min(totalPages - 1, currentPage + 1)
-          for (let i = start; i <= end; i++) pages.push(i)
-          if (currentPage < totalPages - 2) pages.push('...')
-          pages.push(totalPages)
-        }
-        const btnBase = {
-          height: 34, minWidth: 34, padding: '0 10px', borderRadius: 8,
-          border: '1.5px solid var(--admin-border)', background: 'var(--admin-card-bg)',
-          color: 'var(--admin-text)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s'
-        }
-        const btnActive = { ...btnBase, border: 'none', background: 'linear-gradient(135deg, #00B875, #009E64)', color: '#fff', boxShadow: '0 2px 8px rgba(0,184,117,0.35)' }
-        const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              Showing <strong>{appointments.length === 0 ? 0 : (currentPage - 1) * perPage + 1}</strong>–<strong>{Math.min(currentPage * perPage, appointments.length)}</strong> of <strong>{appointments.length}</strong> entries
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => currentPage > 1 && setCurrentPage(1)} style={currentPage === 1 ? btnDisabled : btnBase} title="First">«</button>
-                <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} style={currentPage === 1 ? btnDisabled : btnBase} title="Previous">‹</button>
-                {pages.map((p, i) => p === '...'
-                  ? <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span>
-                  : <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? btnActive : btnBase}>{p}</button>
-                )}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Next">›</button>
-                <button onClick={() => currentPage < totalPages && setCurrentPage(totalPages)} style={currentPage === totalPages ? btnDisabled : btnBase} title="Last">»</button>
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      <DeleteModal
+      
+      <TableFooter
+        total={appointments.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
+<DeleteModal
         show={!!deleteTarget}
         title="Delete Appointment"
         message="Are you sure you want to delete this appointment? This action cannot be undone."

@@ -376,3 +376,115 @@ export function HospitalDetailSkeleton() {
     </>
   )
 }
+
+// ─── Enterprise Table Skeleton ───
+export function TableSkeleton({
+  rowCount = 6,
+  columnWidths = ['100px', '30%', '20%', '15%', '15%', '10%'],
+  headers = [],
+}) {
+  return (
+    <div className="table-skeleton-container" style={{ width: '100%', overflow: 'hidden' }}>
+      <ShimmerStyle />
+      {headers && headers.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: columnWidths.map(w => (typeof w === 'number' ? `${w}px` : w)).join(' '),
+            padding: '12px 16px',
+            background: 'var(--admin-table-header-bg, rgba(99,102,241,0.03))',
+            borderBottom: '1px solid var(--admin-border, #e2e8f0)',
+            gap: 12,
+            alignItems: 'center',
+          }}
+        >
+          {headers.map((h, i) => (
+            <div key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {h}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {Array.from({ length: rowCount }).map((_, rIdx) => (
+          <div
+            key={rIdx}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: columnWidths.map(w => (typeof w === 'number' ? `${w}px` : w)).join(' '),
+              padding: '14px 16px',
+              borderBottom: '1px solid var(--admin-border, #e2e8f0)',
+              gap: 12,
+              alignItems: 'center',
+              background: rIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
+            }}
+          >
+            {columnWidths.map((_, cIdx) => (
+              <div
+                key={cIdx}
+                className="skeleton-box"
+                style={{
+                  height: 16,
+                  width: cIdx === 0 ? '60%' : cIdx === columnWidths.length - 1 ? '40%' : `${70 + ((rIdx * 7 + cIdx * 13) % 25)}%`,
+                  borderRadius: 6,
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Card Skeleton ───
+export function CardSkeleton({ count = 3 }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+      <ShimmerStyle />
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ background: 'var(--admin-card-bg, #fff)', border: '1px solid var(--admin-border, #e2e8f0)', borderRadius: 16, padding: 20 }}>
+          <div className="skeleton-box" style={{ height: 20, width: '40%', marginBottom: 12 }} />
+          <div className="skeleton-box" style={{ height: 14, width: '80%', marginBottom: 8 }} />
+          <div className="skeleton-box" style={{ height: 14, width: '60%' }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Detail Skeleton ───
+export function DetailSkeleton() {
+  return (
+    <div style={{ background: 'var(--admin-card-bg, #fff)', border: '1px solid var(--admin-border, #e2e8f0)', borderRadius: 16, padding: 24 }}>
+      <ShimmerStyle />
+      <div className="skeleton-box" style={{ height: 28, width: '30%', marginBottom: 16 }} />
+      <div className="skeleton-box" style={{ height: 16, width: '60%', marginBottom: 24 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i}>
+            <div className="skeleton-box" style={{ height: 12, width: '40%', marginBottom: 6 }} />
+            <div className="skeleton-box" style={{ height: 18, width: '80%' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Form Skeleton ───
+export function FormSkeleton() {
+  return (
+    <div style={{ background: 'var(--admin-card-bg, #fff)', border: '1px solid var(--admin-border, #e2e8f0)', borderRadius: 16, padding: 24 }}>
+      <ShimmerStyle />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i}>
+            <div className="skeleton-box" style={{ height: 14, width: '25%', marginBottom: 8 }} />
+            <div className="skeleton-box" style={{ height: 40, width: '100%', borderRadius: 8 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

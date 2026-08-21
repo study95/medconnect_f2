@@ -1,3 +1,8 @@
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Shield, Search, Download, Trash2, RefreshCw, ChevronDown, ChevronUp, Eye, AlertTriangle, CheckCircle, XCircle, Info, Activity, LogIn, LogOut, FilePlus, FileEdit, Flame, Users, Calendar, Filter, X } from 'lucide-react'
 import { getAuditLogs, getAuditStats, exportAuditLogs, clearOldAuditLogs } from '../../../api/auditApi'
@@ -249,78 +254,51 @@ export default function AuditLogPage() {
         <StatCard icon={<Users size={20}/>} label="Active Users" value={stats?.active_users?.length} color="#06b6d4" sub="Last 7 days"/>
       </div>
 
-      {/* ── Search & Filter Bar ── */}
-      <div style={{
-        background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)',
-        borderRadius: 16, padding: 16, marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search */}
-          <div style={{ flex: '1 1 240px', position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-muted)' }}/>
-            <input
-              value={filters.search}
-              onChange={e => handleFilterChange('search', e.target.value)}
-              placeholder="Search user, email, description, IP..."
-              style={{
-                width: '100%', paddingLeft: 36, paddingRight: 12, paddingTop: 9, paddingBottom: 9,
-                borderRadius: 10, border: '1px solid var(--admin-border)',
-                background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)',
-                fontSize: 13, outline: 'none', boxSizing: 'border-box'
-              }}
-            />
-          </div>
-          {/* Toggle filters */}
-          <button onClick={() => setShowFilters(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid var(--admin-border)', background: hasActiveFilters ? 'rgba(99,102,241,0.1)' : 'var(--admin-card-bg)', color: hasActiveFilters ? '#6366f1' : 'var(--admin-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            <Filter size={14}/> Filters {hasActiveFilters ? '●' : ''}
-            {showFilters ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
-          </button>
-          {hasActiveFilters && (
-            <button onClick={clearFilters}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <X size={13}/> Clear
-            </button>
-          )}
-        </div>
-
-        {showFilters && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--admin-border)' }}>
-            {/* Module */}
-            <select value={filters.module} onChange={e => handleFilterChange('module', e.target.value)}
-              style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
-              <option value="">All Modules</option>
-              {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            {/* Action */}
-            <select value={filters.action} onChange={e => handleFilterChange('action', e.target.value)}
-              style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
-              <option value="">All Actions</option>
-              {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            {/* Risk Level */}
-            <select value={filters.risk_level} onChange={e => handleFilterChange('risk_level', e.target.value)}
-              style={{ flex: '1 1 130px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
-              <option value="">All Risk Levels</option>
-              {RISK_LEVELS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-            </select>
-            {/* IP Address */}
-            <input value={filters.ip_address} onChange={e => handleFilterChange('ip_address', e.target.value)}
-              placeholder="IP Address..."
-              style={{ flex: '1 1 130px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13 }}
-            />
-            {/* Date From */}
-            <input type="date" value={filters.date_from} onChange={e => handleFilterChange('date_from', e.target.value)}
-              style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13 }}
-            />
-            {/* Date To */}
-            <input type="date" value={filters.date_to} onChange={e => handleFilterChange('date_to', e.target.value)}
-              style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-input-bg, #f8fafc)', color: 'var(--admin-text)', fontSize: 13 }}
-            />
-          </div>
-        )}
-      </div>
+      <ListToolbar
+        search={filters.search}
+        onSearchChange={val => handleFilterChange('search', val)}
+        searchPlaceholder="Search user, email, description, IP..."
+        onRefresh={() => fetchLogs()}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+        activeFilters={[
+          filters.module && { key: 'module', label: `Module: ${filters.module}`, onRemove: () => handleFilterChange('module', '') },
+          filters.action && { key: 'action', label: `Action: ${filters.action.toUpperCase()}`, onRemove: () => handleFilterChange('action', '') },
+          filters.risk_level && { key: 'risk', label: `Risk: ${filters.risk_level.toUpperCase()}`, onRemove: () => handleFilterChange('risk_level', '') },
+          filters.ip_address && { key: 'ip', label: `IP: ${filters.ip_address}`, onRemove: () => handleFilterChange('ip_address', '') },
+          filters.date_from && { key: 'from', label: `From: ${filters.date_from}`, onRemove: () => handleFilterChange('date_from', '') },
+          filters.date_to && { key: 'to', label: `To: ${filters.date_to}`, onRemove: () => handleFilterChange('date_to', '') },
+        ].filter(Boolean)}
+      >
+        <select value={filters.module} onChange={e => handleFilterChange('module', e.target.value)}
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
+          <option value="">All Modules</option>
+          {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select value={filters.action} onChange={e => handleFilterChange('action', e.target.value)}
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
+          <option value="">All Actions</option>
+          {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+        </select>
+        <select value={filters.risk_level} onChange={e => handleFilterChange('risk_level', e.target.value)}
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, cursor: 'pointer' }}>
+          <option value="">All Risk Levels</option>
+          {RISK_LEVELS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+        </select>
+        <input value={filters.ip_address} onChange={e => handleFilterChange('ip_address', e.target.value)}
+          placeholder="IP Address..."
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13, width: 120 }}
+        />
+        <input type="date" value={filters.date_from} onChange={e => handleFilterChange('date_from', e.target.value)}
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13 }}
+        />
+        <input type="date" value={filters.date_to} onChange={e => handleFilterChange('date_to', e.target.value)}
+          style={{ height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13 }}
+        />
+      </ListToolbar>
 
       {/* ── Table Toolbar: Show Entries ── */}
       <div style={{
@@ -362,7 +340,7 @@ export default function AuditLogPage() {
         {/* Table Header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '160px 90px 90px 90px 1fr 100px 80px',
+          gridTemplateColumns: '140px 120px 85px 85px 85px 1fr 100px 80px',
           padding: '12px 20px',
           background: 'var(--admin-table-header-bg, rgba(99,102,241,0.05))',
           borderBottom: '1px solid var(--admin-border)',
@@ -370,6 +348,7 @@ export default function AuditLogPage() {
           textTransform: 'uppercase', letterSpacing: 0.5, gap: 8
         }}>
           <span>When</span>
+          <span>ID</span>
           <span>Action</span>
           <span>Module</span>
           <span>Risk</span>
@@ -379,16 +358,21 @@ export default function AuditLogPage() {
         </div>
 
         {loading ? (
-          <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
-            <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: 12, display: 'block', margin: '0 auto 12px' }}/>
-            Loading audit trail...
-          </div>
+          <TableSkeleton
+            rowCount={8}
+            columnWidths={['160px', '90px', '90px', '90px', '30%', '100px', '80px']}
+            headers={['When', 'Action', 'Module', 'Risk', 'Description', 'Who', 'IP']}
+          />
         ) : logs.length === 0 ? (
-          <div style={{ padding: '64px 20px', textAlign: 'center' }}>
-            <Shield size={48} style={{ color: 'var(--admin-text-muted)', opacity: 0.3, marginBottom: 12 }}/>
-            <p style={{ color: 'var(--admin-text-muted)', fontWeight: 600, fontSize: 15 }}>No audit entries found</p>
-            <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>Try adjusting your filters or wait for activity to be logged.</p>
-          </div>
+          <EmptyState
+            hasFilters={hasActiveFilters}
+            searchQuery={filters.search}
+            onClearFilters={clearFilters}
+            onClearSearch={() => handleFilterChange('search', '')}
+            icon="🛡️"
+            title="No audit entries found"
+            description="Try adjusting your filters or wait for activity to be logged."
+          />
         ) : (
           logs.map((log, idx) => {
             const isExpanded = expandedId === log.id
@@ -399,7 +383,7 @@ export default function AuditLogPage() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '160px 90px 90px 90px 1fr 100px 80px',
+                    gridTemplateColumns: '140px 120px 85px 85px 85px 1fr 100px 80px',
                     padding: '12px 20px', gap: 8, alignItems: 'center',
                     background: rowBg, cursor: 'pointer', transition: 'background 0.15s'
                   }}
@@ -410,6 +394,7 @@ export default function AuditLogPage() {
                   {/* When */}
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{formatRelative(log.created_at)}</div>
+                    <CompactUlid value={log.public_id || log.id} />
                     <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : ''}</div>
                   </div>
                   {/* Action */}
@@ -483,96 +468,16 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {/* ── Bottom Pagination ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginTop: 16, flexWrap: 'wrap', gap: 10
-      }}>
-        {/* Info */}
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-          {pagination.total != null
-            ? <>Showing <strong>{pagination.from ?? 0}</strong>–<strong>{pagination.to ?? 0}</strong> of <strong>{pagination.total ?? 0}</strong> entries</>
-            : 'Loading...'}
-        </div>
-
-        {/* Page Controls */}
-        {pagination.last_page > 1 && (() => {
-          const cur = pagination.current_page || 1
-          const last = pagination.last_page || 1
-
-          // Build page number array with ellipsis markers
-          const pages = []
-          if (last <= 7) {
-            for (let i = 1; i <= last; i++) pages.push(i)
-          } else {
-            pages.push(1)
-            if (cur > 3) pages.push('...')
-            const start = Math.max(2, cur - 1)
-            const end   = Math.min(last - 1, cur + 1)
-            for (let i = start; i <= end; i++) pages.push(i)
-            if (cur < last - 2) pages.push('...')
-            pages.push(last)
-          }
-
-          const btnBase = {
-            height: 34, minWidth: 34, padding: '0 10px',
-            borderRadius: 8, border: '1.5px solid var(--admin-border)',
-            background: 'var(--admin-card-bg)', color: 'var(--admin-text)',
-            fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.15s', lineHeight: 1
-          }
-          const btnActive = {
-            ...btnBase,
-            border: 'none',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            color: '#fff',
-            boxShadow: '0 2px 8px rgba(99,102,241,0.35)'
-          }
-          const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
-
-          return (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* « First */}
-              <button
-                onClick={() => cur > 1 && changePage(1)}
-                style={cur === 1 ? btnDisabled : btnBase}
-                title="First page"
-              >«</button>
-              {/* ‹ Prev */}
-              <button
-                onClick={() => cur > 1 && changePage(cur - 1)}
-                style={cur === 1 ? btnDisabled : btnBase}
-                title="Previous page"
-              >‹</button>
-
-              {/* Numbered pages + ellipsis */}
-              {pages.map((p, i) =>
-                p === '...' ? (
-                  <span key={`dot-${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 700 }}>…</span>
-                ) : (
-                  <button key={p} onClick={() => changePage(p)} style={p === cur ? btnActive : btnBase}>{p}</button>
-                )
-              )}
-
-              {/* › Next */}
-              <button
-                onClick={() => cur < last && changePage(cur + 1)}
-                style={cur === last ? btnDisabled : btnBase}
-                title="Next page"
-              >›</button>
-              {/* » Last */}
-              <button
-                onClick={() => cur < last && changePage(last)}
-                style={cur === last ? btnDisabled : btnBase}
-                title="Last page"
-              >»</button>
-            </div>
-          )
-        })()}
-      </div>
-
-      <style>{`
+      
+      <TableFooter
+        total={pagination.total || 0}
+        currentPage={pagination.current_page || 1}
+        setCurrentPage={(p) => changePage(p)}
+        perPage={filters.per_page || 10}
+        setPerPage={(n) => handleFilterChange('per_page', n)}
+        perPageOptions={[10, 25, 50, 100]}
+      />
+<style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>

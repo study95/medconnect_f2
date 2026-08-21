@@ -5,6 +5,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getDistricts, getDivisions, deleteDistrict } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
+import ListToolbar from '../../../components/admin/ListToolbar'
+import { TableSkeleton } from '../../../components/common/Skeletons'
+import EmptyState from '../../../components/common/EmptyState'
+import CompactUlid from '../../../components/common/CompactUlid'
+import TableFooter from '../../../components/admin/TableFooter'
 
 // Premium Searchable Select for Filtering
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -102,6 +107,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function DistrictListPage() {
+  const [perPage, setPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [divisions, setDivisions] = useState([])
@@ -168,68 +175,36 @@ export default function DistrictListPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure major regional boundaries for hospital and clinic networks</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`admin-btn ${showFilters || hasFilters ? 'admin-btn-primary' : 'admin-btn-outline'}`}
-            onClick={() => setShowFilters(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Filter size={14} /> Filters {hasFilters ? '●' : ''}
-            {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          <Link to="/admin/districts/create" className="admin-btn admin-btn-primary" style={{ background: '#F59E0B' }}>
-            + Add New District
-          </Link>
-        </div>
       </div>
 
-      {showFilters && (
-        <div className="admin-card" style={{ marginBottom: 28, borderTop: '4px solid #F59E0B', overflow: 'visible' }}>
-          <div className="admin-card-body" style={{ overflow: 'visible' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, alignItems: 'flex-end' }}>
-              
-              <div style={{ flex: '1 1 300px' }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Search</label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="text" 
-                    className="status-select" 
-                    placeholder="District name..." 
-                    value={search} 
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', height: 42, paddingLeft: 40, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-                  />
-                  <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 16 }}>🔍</span>
-                </div>
-              </div>
-
-              <SearchableSelect 
-                label="Division Filter"
-                placeholder="All Divisions"
-                options={divisions}
-                value={divisionFilter}
-                onChange={setDivisionFilter}
-              />
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="admin-btn admin-btn-primary" onClick={fetchDistricts} style={{ height: 42, background: '#F59E0B', padding: '0 24px' }}>Refresh</button>
-                {hasFilters && (
-                  <button 
-                    className="admin-btn admin-btn-outline" 
-                    onClick={() => { setSearch(''); setDivisionFilter('') }} 
-                    style={{ height: 42, color: '#EF4444', borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="admin-card">
+<ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search district by name, Bengali name..."
+        onRefresh={fetchItems}
+        refreshing={loading}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(p => !p)}
+        hasActiveFilters={Boolean(divisionFilter)}
+        onClearFilters={() => setDivisionFilter('')}
+        activeFilters={[
+          divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => setDivisionFilter('') },
+        ].filter(Boolean)}
+        actions={
+          <Link to="/admin/districts/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+            + Add District
+          </Link>
+        }
+      >
+        <SearchableDivisionSelect
+          label="Division"
+          placeholder="All Divisions"
+          options={divisions}
+          value={divisionFilter}
+          onChange={setDivisionFilter}
+        />
+      </ListToolbar>
+<div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
           <h3 className="admin-card-title">All Registered Districts</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', background: '#E2E8F0', padding: '4px 10px', borderRadius: 20 }}>
@@ -238,13 +213,9 @@ export default function DistrictListPage() {
         </div>
 
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading Records...</div>
+          <TableSkeleton rowCount={6} columnWidths={['100px', '35%', '25%', '25%', '15%']} headers={['ID', 'District Name', 'Bengali Name', 'Division', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <div className="admin-empty" style={{ padding: 60 }}>
-            <div className="admin-empty-icon">🏙️</div>
-            <h4>No Districts Registered</h4>
-            <p>Expand your search or create a new district entry above.</p>
-          </div>
+          <EmptyState hasFilters={Boolean(divisionFilter || search)} searchQuery={search} onClearFilters={() => setDivisionFilter('')} onClearSearch={() => setSearch('')} icon="🏙️" title="No districts found" description="Try changing your search keywords or clear division filters." primaryAction={{ label: '+ Add District', to: '/admin/districts/create' }} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -261,7 +232,7 @@ export default function DistrictListPage() {
                 {filtered.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
-                      <span style={{ fontWeight: 800, color: '#94A3B8', fontSize: 12 }}>#{item.id}</span>
+                      <CompactUlid value={item.public_id || item.id} />
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
@@ -299,6 +270,14 @@ export default function DistrictListPage() {
           </div>
         )}
       </div>
+
+      <TableFooter
+        total={items ? items.length : 0}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+      />
 
       <DeleteModal 
         show={!!deleteTarget} 
