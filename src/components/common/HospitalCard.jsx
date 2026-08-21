@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl } from '../../utils/mediaUtils'
+import { getHospitalUrl } from '../../utils/identifierHelper'
 import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent } from '@tabler/icons-react'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
@@ -145,7 +146,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
 
   const handleShare = (e) => {
     e.stopPropagation()
-    const url = `${window.location.origin}/hospitals/${hospital.id}`
+    const url = `${window.location.origin}${getHospitalUrl(hospital)}`
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url)
       setCopied(true)
@@ -162,7 +163,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
   if (viewMode === 'map-compact') {
     return (
       <div
-        onClick={() => navigate(`/hospitals/${hospital.id}`)}
+        onClick={() => navigate(getHospitalUrl(hospital))}
         style={{
           background: 'white',
           borderRadius: 8,
@@ -332,7 +333,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
           }
         `}</style>
         <div
-          onClick={() => navigate(`/hospitals/${hospital.id}`)}
+          onClick={() => navigate(getHospitalUrl(hospital))}
           className="hosp-list-card"
           style={{
             background: 'white',
@@ -496,7 +497,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
               <div className="hosp-card-actions">
                 <button
                   type="button"
-                  onClick={() => navigate(`/hospitals/${hospital.id}`)}
+                  onClick={() => navigate(getHospitalUrl(hospital))}
                   className="hosp-btn-detail"
                 >
                   <IconEye size={16} />
@@ -521,7 +522,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
   /* ── 3. STANDARD GRID VIEW CARD ── */
   return (
     <div
-      onClick={() => navigate(`/hospitals/${hospital.id}`)}
+      onClick={() => navigate(getHospitalUrl(hospital))}
       style={{
         background: 'white', borderRadius: 8, border: '1px solid #E2E8F0',
         padding: '16px', cursor: 'pointer', transition: '0.3s',
@@ -599,7 +600,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
 
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
         <button
-          onClick={() => navigate(`/hospitals/${hospital.id}`)}
+          onClick={() => navigate(getHospitalUrl(hospital))}
           style={{
             flex: 1,
             height: 38,

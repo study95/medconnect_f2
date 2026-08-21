@@ -3,6 +3,7 @@ import { Container } from 'react-bootstrap'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay, EffectFade } from 'swiper/modules'
 import { useNavigate } from 'react-router-dom'
+import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
 import useDoctors from '../../hooks/useDoctors'
 import DoctorCard from '../common/DoctorCard'
 import { DoctorCardSkeleton } from '../common/Skeletons'
@@ -45,7 +46,7 @@ function DoctorBannerCard({ doctor }) {
 
   return (
     <div
-      onClick={() => navigate(`/doctors/${doctor?.id}`)}
+      onClick={() => navigate(getDoctorUrl(doctor))}
       className="doc-banner-card"
       style={{
         position: 'relative',
@@ -257,7 +258,7 @@ function DoctorBannerCard({ doctor }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/doctors/${doctor?.id}`)
+              navigate(getDoctorUrl(doctor))
             }}
             style={{
               display: 'inline-flex',
@@ -288,7 +289,7 @@ function DoctorBannerCard({ doctor }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/doctors/${doctor?.id}`)
+              navigate(getBookingUrl(doctor))
             }}
             style={{
               display: 'inline-flex',

@@ -7,6 +7,7 @@ import TopSpecialtiesSlider from '../components/home/TopSpecialtiesSlider'
 import TopHospitals from '../components/home/TopHospitals'
 import OptimizedImage from '../components/common/OptimizedImage'
 import ScrollReveal from '../components/common/ScrollReveal'
+import SeoHead from '../components/common/SeoHead'
 
 import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
@@ -2042,8 +2043,27 @@ function HomePage() {
   // SINGLE API CALL: Fetches top doctors, top hospitals, specialties, and stats
   const { data, isLoading } = useHomepage()
 
+  const homeSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalWebPage',
+    'name': 'MedConnect — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি',
+    'description': 'বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য, চেম্বার সময়সূচি এবং অনলাইন অ্যাপয়েন্টমেন্ট বুকিং প্ল্যাটফর্ম।',
+    'url': window.location.origin,
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': `${window.location.origin}/doctors?search={search_term_string}`,
+      'query-input': 'required name=search_term_string'
+    }
+  }
+
   return (
     <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+      <SeoHead
+        title="MedConnect — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি"
+        description="বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য, চেম্বার সময়সূচি এবং সহজে অনলাইন সিরিয়াল ও অ্যাপয়েন্টমেন্ট বুকিং করুন।"
+        canonicalUrl={window.location.origin}
+        schemaData={homeSchema}
+      />
       <HeroSection stats={data?.stats} />
 
       <ScrollReveal direction="up" distance={28} duration={600}>

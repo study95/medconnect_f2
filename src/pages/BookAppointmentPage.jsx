@@ -61,10 +61,9 @@ export default function BookAppointmentPage() {
   const DAY_ORDER = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   const chambers = useMemo(() => {
-    const strictChambers = (Array.isArray(rawChambers) ? rawChambers : [])
-      .filter(c => String(c.doctor_id) === String(doctorId))
-    return strictChambers.sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day))
-  }, [rawChambers, doctorId])
+    const list = Array.isArray(rawChambers) ? rawChambers : []
+    return list.sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day))
+  }, [rawChambers])
 
   // Current selected month state for calendar
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -81,6 +80,12 @@ export default function BookAppointmentPage() {
     reason_type: '',
     notes: ''
   })
+
+  useEffect(() => {
+    if (doctor?.id) {
+      setForm(prev => ({ ...prev, doctor_id: doctor.id }))
+    }
+  }, [doctor?.id])
   
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)

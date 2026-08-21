@@ -6,6 +6,8 @@ import useDoctors from '../hooks/useDoctors'
 import DoctorCard from '../components/common/DoctorCard'
 import { HospitalDetailSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
+import SeoHead from '../components/common/SeoHead'
+import { getMediaUrl } from '../utils/mediaUtils'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useFavorites } from '../context/FavoritesContext'
@@ -35,6 +37,13 @@ function HospitalDetailPage() {
 
   const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail(id)
   const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: id })
+
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID, update URL to canonical seo_slug
+  useEffect(() => {
+    if (hospital?.seo_slug && id !== hospital.seo_slug) {
+      navigate(`/hospitals/${hospital.seo_slug}`, { replace: true })
+    }
+  }, [hospital?.seo_slug, id, navigate])
 
   const [activeTab, setActiveTab] = useState('summary')
   const activeTabRef = useRef('summary')
@@ -127,6 +136,25 @@ function HospitalDetailPage() {
     });
   }, [activeTab]);
 
+  const hospitalSchema = useMemo(() => {
+    if (!hospital) return null
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Hospital',
+      'name': hospital.name,
+      'description': hospital.about || 'আধুনিক স্বাস্থ্যসেবা কেন্দ্র ও হাসপাতাল',
+      'telephone': hospital.phone || hospital.emergency_phone,
+      'url': `${window.location.origin}/hospitals/${hospital.seo_slug || hospital.id}`,
+      'image': hospital.photo_url ? getMediaUrl(hospital.photo_url) : undefined,
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': hospital.address,
+        'addressLocality': hospital.district?.name || 'Dhaka',
+        'addressCountry': 'BD'
+      }
+    }
+  }, [hospital])
+
   if (loadingHeader) return (
     <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh' }}>
        <Container className="py-5">
@@ -152,7 +180,15 @@ function HospitalDetailPage() {
   const borderColor = '#E2E8F0'
 
   return (
-    <div className="page-wrapper" style={{ background: '#F9FAFB', minHeight: '100vh', fontFamily: "'Hind Siliguri', sans-serif" }}>
+    <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh', paddingBottom: 60, fontFamily: "'Hind Siliguri', sans-serif" }}>
+      <SeoHead
+        title={`${hospital?.name || 'হাসপাতাল'} — বিস্তারিত ও ডাক্তার তালিকা | MedConnect`}
+        description={`${hospital?.name} - ${hospital?.address || 'বাংলাদেশ'}। বিশেষজ্ঞ ডাক্তারদের তালিকা, ওপিডি সিরিয়াল ও ইমার্জেন্সি সেবা।`}
+        canonicalUrl={`${window.location.origin}/hospitals/${hospital?.seo_slug || hospital?.id || id}`}
+        ogImage={hospital?.photo_url ? getMediaUrl(hospital.photo_url) : undefined}
+        ogType="business.business"
+        schemaData={hospitalSchema}
+      />
       
       {/* 1. Breadcrumbs */}
       <div style={{ padding: '12px 0' }}>

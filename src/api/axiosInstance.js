@@ -29,17 +29,6 @@ axiosInstance.interceptors.request.use(
 // RESPONSE INTERCEPTOR
 axiosInstance.interceptors.response.use(
   (response) => {
-    const method = response.config?.method?.toLowerCase()
-    const url = response.config?.url || ''
-
-    // Automatically trigger react-hot-toast for admin panel mutations (POST, PUT, PATCH, DELETE)
-    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login') && !url.includes('/register') && !url.includes('/auth/check') && !response.config?.skipGlobalToast && !response.config?.skipToast) {
-      const defaultMsg = method === 'delete' ? 'Item deleted successfully!' : 'Changes saved successfully!'
-      const serverMsg = response.data?.message || response.data?.status
-      const toastMsg = typeof serverMsg === 'string' && serverMsg.trim() ? serverMsg : defaultMsg
-      toast.success(toastMsg, { id: `toast-${method}-${url}` })
-    }
-
     return response
   },
   (error) => {

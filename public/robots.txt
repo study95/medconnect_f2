@@ -1,0 +1,30 @@
+User-agent: *
+Allow: /
+Allow: /doctors
+Allow: /doctors/*
+Allow: /hospitals
+Allow: /hospitals/*
+Allow: /top-10-doctors
+Allow: /top-10-hospitals
+Allow: /services
+Allow: /services/*
+Allow: /about
+Allow: /contact
+
+# Disallow Private, Auth and Admin Areas
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /admin-secure-access
+Disallow: /my-appointments
+Disallow: /my-appointments/*
+Disallow: /appointment-ticket/*
+Disallow: /prescriptions/view/*
+Disallow: /profile
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /display/*
+Disallow: /queue-display/*
+
+Sitemap: https://medconnect.com.bd/sitemap.xml

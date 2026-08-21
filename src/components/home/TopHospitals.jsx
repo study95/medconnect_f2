@@ -3,6 +3,7 @@ import { Container } from 'react-bootstrap'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay, EffectFade } from 'swiper/modules'
 import { useNavigate, Link } from 'react-router-dom'
+import { getHospitalUrl } from '../../utils/identifierHelper'
 import useHospitals from '../../hooks/useHospitals'
 import { HospitalCardSkeleton } from '../common/Skeletons'
 import { useTranslation } from 'react-i18next'
@@ -49,7 +50,7 @@ function HospitalBannerCard({ hospital }) {
 
   return (
     <div
-      onClick={() => navigate(`/hospitals/${hospital?.id}`)}
+      onClick={() => navigate(getHospitalUrl(hospital))}
       className="hosp-banner-card"
       style={{
         position: 'relative',
@@ -248,7 +249,7 @@ function HospitalBannerCard({ hospital }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/hospitals/${hospital?.id}`)
+              navigate(getHospitalUrl(hospital))
             }}
             style={{
               display: 'inline-flex',

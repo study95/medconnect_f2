@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { getMediaUrl } from '../utils/mediaUtils'
+import { getHospitalUrl } from '../utils/identifierHelper'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import useHospitals from '../hooks/useHospitals'
@@ -171,7 +172,7 @@ function TopHospitalsPage() {
             {hospitals.map((h, i) => (
               <Col md={6} lg={4} key={h.id}>
                 <div
-                  onClick={() => navigate(`/hospitals/${h.id}`)}
+                  onClick={() => navigate(getHospitalUrl(h))}
                   style={{
                     background: 'white',
                     border: '1px solid #E2E8F0',

@@ -4,6 +4,7 @@ import {
   IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent
 } from '@tabler/icons-react'
 import { getMediaUrl } from '../../utils/mediaUtils'
+import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 
@@ -75,17 +76,17 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
-    navigate(`/doctors/${doctor.id}`)
+    navigate(getDoctorUrl(doctor))
   }
 
   const handleBook = (e) => {
     if (e) e.stopPropagation()
-    navigate(`/book-appointment/${doctor.id}`)
+    navigate(getBookingUrl(doctor))
   }
 
   const handleShare = (e) => {
     if (e) e.stopPropagation()
-    const url = `${window.location.origin}/doctors/${doctor.id}`
+    const url = `${window.location.origin}${getDoctorUrl(doctor)}`
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url)
       setCopied(true)

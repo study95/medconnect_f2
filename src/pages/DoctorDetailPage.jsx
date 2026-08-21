@@ -11,6 +11,7 @@ import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
 
 import ErrorBoundary from '../components/common/ErrorBoundary'
+import SeoHead from '../components/common/SeoHead'
 import { translateMetadata } from '../utils/translationUtils'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { 
@@ -45,6 +46,13 @@ function DoctorDetailPageContent() {
 
   // Active tab state: 'about', 'chamber', 'experience', 'reviews'
   const [activeTab, setActiveTab] = useState('about')
+
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID, update URL to canonical seo_slug
+  useEffect(() => {
+    if (doctor?.seo_slug && id !== doctor.seo_slug) {
+      navigate(`/doctors/${doctor.seo_slug}`, { replace: true })
+    }
+  }, [doctor?.seo_slug, id, navigate])
 
   const [reviews, setReviews] = useState([
     {
@@ -236,6 +244,26 @@ function DoctorDetailPageContent() {
     }
   }
 
+  const doctorSchema = useMemo(() => {
+    if (!doctor) return null
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Physician',
+      'name': doctor.name,
+      'alternateName': doctor.name_bn,
+      'description': doctor.about || doctor.specialty?.name || 'বিশেষজ্ঞ ডাক্তার',
+      'medicalSpecialty': doctor.specialty?.name || doctor.specialty?.name_bn,
+      'telephone': doctor.phone || doctor.hotline,
+      'url': `${window.location.origin}/doctors/${doctor.seo_slug || doctor.id}`,
+      'image': doctor.photo_url ? getMediaUrl(doctor.photo_url) : undefined,
+      'address': {
+        '@type': 'PostalAddress',
+        'addressLocality': doctor.district?.name || 'Dhaka',
+        'addressCountry': 'BD'
+      }
+    }
+  }, [doctor])
+
   if (loading) return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
        <Container className="py-5">
@@ -270,6 +298,14 @@ function DoctorDetailPageContent() {
 
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
+      <SeoHead
+        title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | MedConnect`}
+        description={`${doctor?.name} (${doctor?.degree || 'MBBS'}) - ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}। চেম্বার ও অ্যাপয়েন্টমেন্টের তথ্য।`}
+        canonicalUrl={`${window.location.origin}/doctors/${doctor?.seo_slug || doctor?.id || id}`}
+        ogImage={doctor?.photo_url ? getMediaUrl(doctor.photo_url) : undefined}
+        ogType="profile"
+        schemaData={doctorSchema}
+      />
       
       {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
       <div className="d-flex d-lg-none align-items-center justify-content-between px-3 py-3 bg-white border-bottom sticky-top" style={{ zIndex: 1020 }}>
