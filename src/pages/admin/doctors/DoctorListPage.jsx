@@ -486,7 +486,7 @@ export default function DoctorListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['80px', '22%', '20%', '18%', '12%', '14%', '6%']} headers={['Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['110px', '80px', '22%', '18%', '16%', '12%', '14%', '6%']} headers={['ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
@@ -494,7 +494,8 @@ export default function DoctorListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 80, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Photo</th>
+                  <th style={{ width: 110, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
+                  <th style={{ width: 80, color: 'var(--admin-text-muted)' }}>Photo</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Professional Details</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Workplace Identity</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Location Profile</th>
@@ -507,6 +508,9 @@ export default function DoctorListPage() {
                 {paginatedData.map(doctor => (
                   <tr key={doctor.id}>
                     <td style={{ paddingLeft: 24 }}>
+                      <CompactUlid value={doctor.public_id || doctor.id} />
+                    </td>
+                    <td>
                       <div style={{
                         width: 48, height: 48, borderRadius: 10, overflow: 'hidden',
                         background: 'rgba(0, 168, 140, 0.05)',
@@ -532,11 +536,9 @@ export default function DoctorListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 15 }}>{doctor.name}</div>
-                      <CompactUlid value={doctor.public_id || doctor.id} />
                       <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 700, marginTop: 2 }}>BMDC: {doctor.bmdc || 'N/A'}</div>
-                      <div style={{ marginTop: 8, padding: '4px 8px', background: 'var(--admin-bg)', borderRadius: 6, display: 'inline-block' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 12 }}>{doctor.specialty?.name || 'General Physician'}</div>
-                        <div style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{doctor.degree || 'MBBS'}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', marginTop: 4 }}>
+                        {doctor.specialty?.name || 'General Physician'}
                       </div>
                     </td>
                     <td>
