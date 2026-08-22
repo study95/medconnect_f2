@@ -26,14 +26,14 @@ import {
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
 
 function DoctorDetailPageContent() {
-  const { id } = useParams()
+  const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const language = i18n?.language || 'bn'
   const { theme } = useTheme() || {}
   const { user, isLoggedIn } = useAuth() || {}
 
-  const { doctor, chambers, loading, error, refetch } = useDoctorDetail(id)
+  const { doctor, chambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
   const favoritesContext = useFavorites() || {}
   const isDoctorFavorite = favoritesContext.isDoctorFavorite || (() => false)
   const toggleFavoriteDoctor = favoritesContext.toggleFavoriteDoctor || (() => {})
@@ -47,12 +47,12 @@ function DoctorDetailPageContent() {
   // Active tab state: 'about', 'chamber', 'experience', 'reviews'
   const [activeTab, setActiveTab] = useState('about')
 
-  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID, update URL to canonical seo_slug
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/doctors/:id), update URL to canonical SEO route
   useEffect(() => {
-    if (doctor?.seo_slug && id !== doctor.seo_slug) {
-      navigate(`/doctors/${doctor.seo_slug}`, { replace: true })
+    if (id && doctor?.slug && doctor?.district_slug && doctor?.upazila_slug) {
+      navigate(`/doctors/${doctor.district_slug}/${doctor.upazila_slug}/${doctor.slug}`, { replace: true })
     }
-  }, [doctor?.seo_slug, id, navigate])
+  }, [id, doctor?.slug, doctor?.district_slug, doctor?.upazila_slug, navigate])
 
   const [reviews, setReviews] = useState([
     {
@@ -275,7 +275,7 @@ function DoctorDetailPageContent() {
       'description': doctor.about || doctor.specialty?.name || 'বিশেষজ্ঞ ডাক্তার',
       'medicalSpecialty': doctor.specialty?.name || doctor.specialty?.name_bn,
       'telephone': doctor.phone || doctor.hotline,
-      'url': `${window.location.origin}/doctors/${doctor.seo_slug || doctor.id}`,
+      'url': `${window.location.origin}/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug || doctor.id}`,
       'image': doctor.photo_url ? getMediaUrl(doctor.photo_url) : undefined,
       'address': {
         '@type': 'PostalAddress',
@@ -317,12 +317,14 @@ function DoctorDetailPageContent() {
   const cardBorderColor = '#E5EAF0'
   const isFav = doctor ? isDoctorFavorite(doctor.id) : false
 
+  const canonicalPath = `/doctors/${doctor?.district_slug || district || 'bangladesh'}/${doctor?.upazila_slug || upazila || 'general'}/${doctor?.slug || slug || doctor?.id}`
+
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
       <SeoHead
         title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | MedConnect`}
         description={`${doctor?.name} (${doctor?.degree || 'MBBS'}) - ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}। চেম্বার ও অ্যাপয়েন্টমেন্টের তথ্য।`}
-        canonicalUrl={`${window.location.origin}/doctors/${doctor?.seo_slug || doctor?.id || id}`}
+        canonicalUrl={`${window.location.origin}${canonicalPath}`}
         ogImage={doctor?.photo_url ? getMediaUrl(doctor.photo_url) : undefined}
         ogType="profile"
         schemaData={doctorSchema}

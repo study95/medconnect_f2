@@ -1,38 +1,48 @@
 // src/hooks/useDoctorDetail.js
-// WHY: Extracts the doctor+chambers fetch from DoctorDetailPage.
-// Cached by doctor ID — revisiting the same doctor = instant render.
-// Uses useQuery for parallel fetching of doctor data and chambers.
+// WHY: Extracts doctor profile + chambers fetching for DoctorDetailPage.
+// Supports both canonical SEO route (/doctors/:district/:upazila/:slug) and legacy route (/doctors/:id).
 
 import { useQuery } from '@tanstack/react-query'
-import { getDoctorById, getDoctorChambers } from '../api/doctorApi'
+import { getDoctorBySlug, getDoctorById, getDoctorChambers } from '../api/doctorApi'
 import { getErrorMessage } from '../utils/errorHelper'
-
 import { useMemo } from 'react'
 
-export default function useDoctorDetail(id) {
-  // Fetch doctor profile
+export default function useDoctorDetail(params) {
+  // Support both object params { district, upazila, slug, id } and legacy single id string/number
+  const { district, upazila, slug, id } = typeof params === 'object' && params !== null
+    ? params
+    : { id: params }
+
+  const isSlugRoute = Boolean(district && upazila && slug)
+  const isIdRoute = Boolean(id && !isSlugRoute)
+  const isEnabled = isSlugRoute || isIdRoute
+
+  // 1. Fetch doctor profile
   const doctorQuery = useQuery({
-    queryKey: ['doctor', id],
+    queryKey: isSlugRoute ? ['doctor', district, upazila, slug] : ['doctor', id],
     queryFn: async () => {
-      const res = await getDoctorById(id)
+      const res = isSlugRoute
+        ? await getDoctorBySlug(district, upazila, slug)
+        : await getDoctorById(id)
       return res.data?.data || res.data
     },
-    enabled: !!id,
+    enabled: isEnabled,
     staleTime: 5 * 60 * 1000,
   })
 
   const doctorData = doctorQuery.data
+  const doctorIdentifier = doctorData?.id || doctorData?.public_id || id
 
-  // Fetch doctor chambers (schedule)
+  // 2. Fetch doctor chambers (schedule)
   const chambersQuery = useQuery({
-    queryKey: ['doctor-chambers', id],
+    queryKey: ['doctor-chambers', doctorIdentifier],
     queryFn: async () => {
-      const res = await getDoctorChambers({ doctor_id: id })
+      const res = await getDoctorChambers({ doctor_id: doctorIdentifier })
       const d = res.data?.data || res.data || []
       const list = Array.isArray(d) ? d : []
       return list.filter(c => c.is_active !== false)
     },
-    enabled: !!id,
+    enabled: Boolean(doctorIdentifier),
     staleTime: 5 * 60 * 1000,
   })
 

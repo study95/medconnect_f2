@@ -12,15 +12,18 @@ export function extractUlid(value) {
 }
 
 /**
- * Generates canonical SEO URL for a doctor
+ * Generates canonical SEO URL for a doctor: /doctors/{district_slug}/{upazila_slug}/{slug}
  */
 export function getDoctorUrl(doctor) {
   if (!doctor) return '/doctors'
-  if (typeof doctor === 'string' || typeof doctor === 'number') {
+  if (typeof doctor === 'string') {
+    if (doctor.startsWith('/doctors/')) return doctor
     return `/doctors/${doctor}`
   }
-  const slug = doctor.seo_slug || doctor.slug || doctor.id
-  return `/doctors/${slug}`
+  const districtSlug = doctor.district_slug || doctor.district?.slug || 'bangladesh'
+  const upazilaSlug = doctor.upazila_slug || doctor.upazila?.slug || 'general'
+  const slug = doctor.slug || doctor.seo_slug || doctor.id
+  return `/doctors/${districtSlug}/${upazilaSlug}/${slug}`
 }
 
 /**

@@ -12,7 +12,11 @@ import axiosInstance from './axiosInstance'
 export const getDoctors = (params = {}) =>
   axiosInstance.get('/doctors', { params })
 
-// GET /api/doctors/:id
+// GET /api/doctors/:district/:upazila/:slug (Canonical SEO Endpoint)
+export const getDoctorBySlug = (district, upazila, slug) =>
+  axiosInstance.get(`/doctors/${district}/${upazila}/${slug}`)
+
+// GET /api/doctors/:id (Legacy / Fallback Endpoint)
 export const getDoctorById = (id) =>
   axiosInstance.get(`/doctors/${id}`)
 
