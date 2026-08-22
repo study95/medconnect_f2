@@ -1,19 +1,30 @@
 // src/hooks/useHospitalDetail.js
-// WHY: Extracts the hospital fetch from HospitalDetailPage.
-// Cached by hospital ID — revisiting the same hospital = instant render.
+// WHY: Extracts the hospital fetch for HospitalDetailPage.
+// Supports both canonical SEO route (/hospitals/:district/:upazila/:slug) and legacy route (/hospitals/:id).
 
 import { useQuery } from '@tanstack/react-query'
-import { getHospitalById } from '../api/hospitalApi'
+import { getHospitalBySlug, getHospitalById } from '../api/hospitalApi'
 import { getErrorMessage } from '../utils/errorHelper'
 
-export default function useHospitalDetail(id) {
+export default function useHospitalDetail(params) {
+  // Support both object params { district, upazila, slug, id } and legacy single id string/number
+  const { district, upazila, slug, id } = typeof params === 'object' && params !== null
+    ? params
+    : { id: params }
+
+  const isSlugRoute = Boolean(district && upazila && slug)
+  const isIdRoute = Boolean(id && !isSlugRoute)
+  const isEnabled = isSlugRoute || isIdRoute
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['hospital', id],
+    queryKey: isSlugRoute ? ['hospital', district, upazila, slug] : ['hospital', id],
     queryFn: async () => {
-      const res = await getHospitalById(id)
+      const res = isSlugRoute
+        ? await getHospitalBySlug(district, upazila, slug)
+        : await getHospitalById(id)
       return res.data?.data || res.data
     },
-    enabled: !!id,
+    enabled: isEnabled,
     staleTime: 5 * 60 * 1000,
   })
 

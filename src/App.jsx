@@ -366,6 +366,7 @@ function App() {
                   <Route path="/doctors/:district/:upazila/:slug" element={<DoctorDetailPage />} />
                   <Route path="/doctors/:id" element={<DoctorDetailPage />} />
                   <Route path="/hospitals"  element={<HospitalsPage />} />
+                  <Route path="/hospitals/:district/:upazila/:slug" element={<HospitalDetailPage />} />
                   <Route path="/hospitals/:id" element={<HospitalDetailPage />} />
                   <Route path="/login"      element={<LoginPage />} />
                   <Route path="/register"   element={<RegisterPage />} />

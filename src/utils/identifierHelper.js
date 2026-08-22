@@ -1,5 +1,6 @@
 /**
  * Identifier & SEO URL Helpers for MedConnect Enterprise
+ * Single source of truth for frontend SEO URL generation across all modules.
  */
 
 /**
@@ -12,30 +13,63 @@ export function extractUlid(value) {
 }
 
 /**
- * Generates canonical SEO URL for a doctor: /doctors/{district_slug}/{upazila_slug}/{slug}
+ * Generic hierarchical location-based SEO URL builder:
+ * /{resource}/{district_slug}/{upazila_slug}/{slug}
+ * Supports Doctors, Hospitals, and future location-scoped entities.
  */
-export function getDoctorUrl(doctor) {
-  if (!doctor) return '/doctors'
-  if (typeof doctor === 'string') {
-    if (doctor.startsWith('/doctors/')) return doctor
-    return `/doctors/${doctor}`
+export function buildLocationSeoUrl(resource, item, defaultDistrict = 'bangladesh', defaultUpazila = 'general') {
+  if (!item) return `/${resource}`
+  if (typeof item === 'string') {
+    if (item.startsWith(`/${resource}/`)) return item
+    return `/${resource}/${item}`
   }
-  const districtSlug = doctor.district_slug || doctor.district?.slug || 'bangladesh'
-  const upazilaSlug = doctor.upazila_slug || doctor.upazila?.slug || 'general'
-  const slug = doctor.slug || doctor.seo_slug || doctor.id
-  return `/doctors/${districtSlug}/${upazilaSlug}/${slug}`
+  const districtSlug = item.district_slug || item.district?.slug || defaultDistrict
+  const upazilaSlug = item.upazila_slug || item.upazila?.slug || defaultUpazila
+  const slug = item.slug || item.seo_slug || item.id
+  return `/${resource}/${districtSlug}/${upazilaSlug}/${slug}`
 }
 
 /**
- * Generates canonical SEO URL for a hospital
+ * Generic standard SEO URL builder:
+ * /{resource}/{slug}
+ * Supports Specialties, Articles, Services, and future non-location scoped entities.
+ */
+export function buildStandardSeoUrl(resource, item) {
+  if (!item) return `/${resource}`
+  if (typeof item === 'string') {
+    if (item.startsWith(`/${resource}/`)) return item
+    return `/${resource}/${item}`
+  }
+  const slug = item.slug || item.seo_slug || item.id
+  return `/${resource}/${slug}`
+}
+
+/**
+ * Generates canonical SEO URL for a doctor: /doctors/{district_slug}/{upazila_slug}/{slug}
+ */
+export function getDoctorUrl(doctor) {
+  return buildLocationSeoUrl('doctors', doctor)
+}
+
+/**
+ * Generates canonical SEO URL for a hospital: /hospitals/{district_slug}/{upazila_slug}/{slug}
  */
 export function getHospitalUrl(hospital) {
-  if (!hospital) return '/hospitals'
-  if (typeof hospital === 'string' || typeof hospital === 'number') {
-    return `/hospitals/${hospital}`
-  }
-  const slug = hospital.seo_slug || hospital.slug || hospital.id
-  return `/hospitals/${slug}`
+  return buildLocationSeoUrl('hospitals', hospital)
+}
+
+/**
+ * Generates canonical SEO URL for a specialty: /specialties/{slug}
+ */
+export function getSpecialtyUrl(specialty) {
+  return buildStandardSeoUrl('specialties', specialty)
+}
+
+/**
+ * Generates canonical SEO URL for an article: /articles/{slug}
+ */
+export function getArticleUrl(article) {
+  return buildStandardSeoUrl('articles', article)
 }
 
 /**

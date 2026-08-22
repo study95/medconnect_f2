@@ -27,7 +27,7 @@ const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003
 const DEMO_LOGO = 'https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=2070&auto=format&fit=crop'
 
 function HospitalDetailPage() {
-  const { id } = useParams()
+  const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
   const { isHospitalFavorite, toggleFavoriteHospital } = useFavorites()
   const { triggerShare, shareModalOpen, shareData, closeShareModal } = useShare()
@@ -35,15 +35,16 @@ function HospitalDetailPage() {
   const language = i18n.language
   const { theme } = useTheme()
 
-  const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail(id)
-  const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: id })
+  const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail({ district, upazila, slug, id })
+  const hospitalIdentifier = hospital?.id || hospital?.public_id || id
+  const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: hospitalIdentifier })
 
-  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID, update URL to canonical seo_slug
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/hospitals/:id), update URL to canonical SEO route
   useEffect(() => {
-    if (hospital?.seo_slug && id !== hospital.seo_slug) {
-      navigate(`/hospitals/${hospital.seo_slug}`, { replace: true })
+    if (id && hospital?.slug && hospital?.district_slug && hospital?.upazila_slug) {
+      navigate(`/hospitals/${hospital.district_slug}/${hospital.upazila_slug}/${hospital.slug}`, { replace: true })
     }
-  }, [hospital?.seo_slug, id, navigate])
+  }, [id, hospital?.slug, hospital?.district_slug, hospital?.upazila_slug, navigate])
 
   const [activeTab, setActiveTab] = useState('summary')
   const activeTabRef = useRef('summary')
@@ -136,24 +137,98 @@ function HospitalDetailPage() {
     });
   }, [activeTab]);
 
+  const canonicalPath = `/hospitals/${hospital?.district_slug || district || 'bangladesh'}/${hospital?.upazila_slug || upazila || 'general'}/${hospital?.slug || slug || hospital?.id}`
+
+  const getHospitalSchemaType = (type) => {
+    const t = String(type || '').toLowerCase()
+    if (t.includes('clinic') || t.includes('diagnostic')) return 'MedicalClinic'
+    if (t.includes('chamber') || t.includes('group')) return 'PhysicianGroup'
+    if (t.includes('business') || t.includes('pharmacy')) return 'MedicalBusiness'
+    return 'Hospital'
+  }
+
   const hospitalSchema = useMemo(() => {
     if (!hospital) return null
-    return {
+    const schemaType = getHospitalSchemaType(hospital.hospital_type)
+    const schema = {
       '@context': 'https://schema.org',
-      '@type': 'Hospital',
+      '@type': schemaType,
       'name': hospital.name,
+      'alternateName': hospital.name_bn || undefined,
       'description': hospital.about || 'আধুনিক স্বাস্থ্যসেবা কেন্দ্র ও হাসপাতাল',
-      'telephone': hospital.phone || hospital.emergency_phone,
-      'url': `${window.location.origin}/hospitals/${hospital.seo_slug || hospital.id}`,
-      'image': hospital.photo_url ? getMediaUrl(hospital.photo_url) : undefined,
-      'address': {
+      'telephone': hospital.phone || hospital.emergency_phone || hospital.hotline || undefined,
+      'url': `${window.location.origin}${canonicalPath}`,
+      'image': hospital.photo_url ? getMediaUrl(hospital.photo_url) : (hospital.banner_url ? getMediaUrl(hospital.banner_url) : DEMO_BANNER),
+      'logo': hospital.logo_url ? getMediaUrl(hospital.logo_url) : undefined,
+    }
+
+    if (hospital.address || hospital.district?.name || hospital.upazila?.name) {
+      schema.address = {
         '@type': 'PostalAddress',
-        'streetAddress': hospital.address,
-        'addressLocality': hospital.district?.name || 'Dhaka',
+        'streetAddress': hospital.address || undefined,
+        'addressLocality': hospital.upazila?.name || hospital.district?.name || 'Dhaka',
+        'addressRegion': hospital.district?.name || 'Dhaka',
         'addressCountry': 'BD'
       }
     }
-  }, [hospital])
+
+    if (hospital.bed_count) {
+      schema.numberOfBeds = Number(hospital.bed_count)
+    }
+
+    return schema
+  }, [hospital, canonicalPath])
+
+  const breadcrumbSchema = useMemo(() => {
+    if (!hospital) return null
+    const origin = window.location.origin
+    const items = [
+      {
+        '@type': 'ListItem',
+        'position': 1,
+        'name': 'Home',
+        'item': `${origin}/`
+      },
+      {
+        '@type': 'ListItem',
+        'position': 2,
+        'name': 'Hospitals',
+        'item': `${origin}/hospitals`
+      }
+    ]
+
+    let pos = 3
+    if (hospital.district?.name) {
+      items.push({
+        '@type': 'ListItem',
+        'position': pos++,
+        'name': hospital.district.name,
+        'item': `${origin}/hospitals?district_id=${hospital.district.id}`
+      })
+    }
+
+    if (hospital.upazila?.name) {
+      items.push({
+        '@type': 'ListItem',
+        'position': pos++,
+        'name': hospital.upazila.name,
+        'item': `${origin}/hospitals?upazila_id=${hospital.upazila.id}`
+      })
+    }
+
+    items.push({
+      '@type': 'ListItem',
+      'position': pos,
+      'name': hospital.name,
+      'item': `${origin}${canonicalPath}`
+    })
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      'itemListElement': items
+    }
+  }, [hospital, canonicalPath])
 
   if (loadingHeader) return (
     <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh' }}>
@@ -165,12 +240,17 @@ function HospitalDetailPage() {
 
   if (errorHeader || !hospital) return (
     <div className="text-center py-5" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <SeoHead
+        title="হাসপাতাল পাওয়া যায়নি — MedConnect"
+        description="অনুরোধকৃত হাসপাতালের তথ্য খুঁজে পাওয়া যায়নি।"
+        noIndex={true}
+      />
       <div style={{ fontSize: 60, marginBottom: 20 }}>🏥</div>
       <h4 style={{ color: '#1E293B', fontWeight: 700 }}>{t('hospital_not_found')}</h4>
-      <div className="d-flex justify-content-center gap-3 mt-4">
-        <button onClick={() => refetchHospital()} style={{ background: '#006B52', color: 'white', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 600 }}>{t('try_again')}</button>
-        <button onClick={() => navigate('/hospitals')} style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 28px', fontWeight: 600, color: '#1E293B' }}>{t('back_to_hospitals')}</button>
-      </div>
+      <p style={{ color: '#64748B', maxWidth: 400 }}>{errorHeader || 'অনুরোধকৃত হাসপাতালের তথ্য খুঁজে পাওয়া যায়নি বা এটি নিষ্ক্রিয় রয়েছে।'}</p>
+      <button onClick={() => navigate('/hospitals')} className="btn btn-primary mt-3" style={{ borderRadius: 12, padding: '10px 24px' }}>
+        হাসপাতাল তালিকায় ফিরে যান
+      </button>
     </div>
   )
 
@@ -184,10 +264,10 @@ function HospitalDetailPage() {
       <SeoHead
         title={`${hospital?.name || 'হাসপাতাল'} — বিস্তারিত ও ডাক্তার তালিকা | MedConnect`}
         description={`${hospital?.name} - ${hospital?.address || 'বাংলাদেশ'}। বিশেষজ্ঞ ডাক্তারদের তালিকা, ওপিডি সিরিয়াল ও ইমার্জেন্সি সেবা।`}
-        canonicalUrl={`${window.location.origin}/hospitals/${hospital?.seo_slug || hospital?.id || id}`}
-        ogImage={hospital?.photo_url ? getMediaUrl(hospital.photo_url) : undefined}
+        canonicalUrl={`${window.location.origin}${canonicalPath}`}
+        ogImage={hospital?.photo_url ? getMediaUrl(hospital.photo_url) : (hospital?.banner_url ? getMediaUrl(hospital.banner_url) : DEMO_BANNER)}
         ogType="business.business"
-        schemaData={hospitalSchema}
+        schemaData={[hospitalSchema, breadcrumbSchema].filter(Boolean)}
       />
       
       {/* 1. Breadcrumbs */}
@@ -198,6 +278,18 @@ function HospitalDetailPage() {
             <IconChevronRight size={14} color={mutedColor} />
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/hospitals')}>হাসপাতাল</span>
             <IconChevronRight size={14} color={mutedColor} />
+            {hospital?.district?.name && (
+              <>
+                <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate(`/hospitals?district_id=${hospital.district.id}`)}>{hospital.district.name}</span>
+                <IconChevronRight size={14} color={mutedColor} />
+              </>
+            )}
+            {hospital?.upazila?.name && (
+              <>
+                <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate(`/hospitals?upazila_id=${hospital.upazila.id}`)}>{hospital.upazila.name}</span>
+                <IconChevronRight size={14} color={mutedColor} />
+              </>
+            )}
             <span style={{ color: mutedColor }}>{hospital?.name}</span>
           </div>
         </Container>
