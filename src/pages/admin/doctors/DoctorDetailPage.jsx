@@ -27,9 +27,10 @@ export default function DoctorDetailPage() {
         getChambers({ doctor_id: id })
       ])
 
-      setDoctor(docRes.data?.data || docRes.data)
+      const doc = docRes.data?.data || docRes.data
+      setDoctor(doc)
       const allChambers = chamRes.data?.data || chamRes.data || []
-      const filtered = allChambers.filter(c => String(c.doctor_id) === String(id))
+      const filtered = allChambers.length > 0 ? allChambers : (doc?.chambers || [])
       setChambers(filtered)
     } catch (err) {
       

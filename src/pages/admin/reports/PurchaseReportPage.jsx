@@ -32,7 +32,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
-    <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', width: '100%', opacity: disabled ? 0.6 : 1 }}>
+    <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', flex: '1 1 180px', minWidth: 150, opacity: disabled ? 0.6 : 1 }}>
       <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
       <div 
         className="status-select" 

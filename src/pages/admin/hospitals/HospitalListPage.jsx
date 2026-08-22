@@ -37,7 +37,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
-    <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', width: '100%', opacity: disabled ? 0.6 : 1 }}>
+    <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', flex: '1 1 180px', minWidth: 150, opacity: disabled ? 0.6 : 1 }}>
       <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
       <div
         className="status-select"
@@ -187,18 +187,20 @@ export default function HospitalListPage() {
       if (districtId) params.district_id = districtId
       if (upazilaId) params.upazila_id = upazilaId
       if (unionId) params.union_id = unionId
+
       const res = await getHospitals(params)
-      setHospitalsOptions(res.data?.data?.data || res.data?.data || [])
+      setHospitalsOptions(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) { console.error(err) }
   }
 
   const fetchHospitals = async () => {
     try {
       setLoading(true)
-      const res = await getHospitals({ per_page: 500 })
-      setHospitals(res.data?.data?.data || res.data?.data || [])
+      const res = await getHospitals({ per_page: 1000 })
+      setHospitals(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+      console.error('Failed to load hospitals', err)
+    } finally {
       setLoading(false)
     }
   }
@@ -209,9 +211,10 @@ export default function HospitalListPage() {
     try {
       await deleteHospital(deleteTarget.id)
       setHospitals(hospitals.filter(h => h.id !== deleteTarget.id))
-      
+      setHospitalsOptions(hospitalsOptions.filter(h => h.id !== deleteTarget.id))
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -222,36 +225,45 @@ export default function HospitalListPage() {
       const newStatus = !hospital.is_active
       await updateHospital(hospital.id, { is_active: newStatus ? 1 : 0 })
       setHospitals(hospitals.map(h => h.id === hospital.id ? { ...h, is_active: newStatus } : h))
-      
     } catch (err) {
-}
+      console.error(err)
+    }
   }
 
   const clearFilters = () => {
     setSearch('')
-    setHospitalIdFilter('')
-    setStatusFilter('')
     setDivisionId('')
     setDistrictId('')
     setUpazilaId('')
     setUnionId('')
+    setHospitalIdFilter('')
+    setStatusFilter('')
   }
 
   const filtered = hospitals.filter(h => {
-    const matchText = !search || h.name?.toLowerCase().includes(search.toLowerCase()) || h.email?.toLowerCase().includes(search.toLowerCase())
-    const matchHospital = !hospitalIdFilter || String(h.id) === String(hospitalIdFilter)
-    const matchStatus = !statusFilter || (statusFilter === 'active' ? h.is_active : !h.is_active)
-    const matchDivision = !divisionId || String(h.division_id) === String(divisionId)
-    const matchDistrict = !districtId || String(h.district_id) === String(districtId)
-    const matchUpazila = !upazilaId || String(h.upazila_id) === String(upazilaId)
-    const matchUnion = !unionId || String(h.union_id) === String(unionId)
-    return matchText && matchHospital && matchStatus && matchDivision && matchDistrict && matchUpazila && matchUnion
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase()
+      const matchesSearch =
+        h.name?.toLowerCase().includes(q) ||
+        h.phone?.toLowerCase().includes(q) ||
+        h.email?.toLowerCase().includes(q) ||
+        h.address?.toLowerCase().includes(q) ||
+        h.branch_name?.toLowerCase().includes(q)
+      if (!matchesSearch) return false
+    }
+
+    if (hospitalIdFilter && h.id.toString() !== hospitalIdFilter.toString()) return false
+    if (statusFilter && (statusFilter === 'active' ? !h.is_active : h.is_active)) return false
+
+    if (divisionId && (h.division_id || h.division?.id)?.toString() !== divisionId.toString()) return false
+    if (districtId && (h.district_id || h.district?.id)?.toString() !== districtId.toString()) return false
+    if (upazilaId && (h.upazila_id || h.upazila?.id)?.toString() !== upazilaId.toString()) return false
+    if (unionId && (h.union_id || h.union?.id)?.toString() !== unionId.toString()) return false
+
+    return true
   })
 
-  const hasFilters = search || hospitalIdFilter || statusFilter || divisionId || districtId || upazilaId || unionId
-
   useEffect(() => { setCurrentPage(1) }, [filtered.length])
-
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
   return (
@@ -266,7 +278,7 @@ export default function HospitalListPage() {
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search hospital by name, phone, branch, email..."
@@ -297,16 +309,17 @@ export default function HospitalListPage() {
         <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
         <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
         <SearchableSelect label="Hospital / Clinic" placeholder="All Facilities" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} />
-        <div style={{ minWidth: 140 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
-          <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+        <div style={{ flex: '1 1 140px', minWidth: 120 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+          <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 10, padding: '0 14px', fontSize: 13, fontWeight: 500, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
         </div>
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">Registered Facilities</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
@@ -448,7 +461,6 @@ export default function HospitalListPage() {
         )}
       </div>
 
-      
       <TableFooter
         total={filtered.length}
         currentPage={currentPage}
@@ -456,7 +468,8 @@ export default function HospitalListPage() {
         perPage={perPage}
         setPerPage={setPerPage}
       />
-<DeleteModal
+
+      <DeleteModal
         show={!!deleteTarget}
         title="Delete Hospital"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}

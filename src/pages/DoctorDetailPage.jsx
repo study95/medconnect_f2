@@ -186,9 +186,30 @@ function DoctorDetailPageContent() {
   }
 
   const groupedChambers = useMemo(() => {
-    if (!sortedChambers || sortedChambers.length === 0) return []
+    const list = sortedChambers || []
+    if (list.length === 0) {
+      if (doctor?.hospital || doctor?.workplace || doctor?.workplace_bn) {
+        const hospName = doctor?.hospital?.name || doctor?.workplace_bn || doctor?.workplace || 'প্রধান চেম্বার'
+        const hospAddr = doctor?.hospital?.address || (doctor?.district?.name ? `${doctor.district.name}, বাংলাদেশ` : 'ঠিকানা উপলব্ধ নয়')
+        return [{
+          hospitalId: doctor?.hospital?.id || 'primary',
+          hospitalName: hospName,
+          address: hospAddr,
+          phone: doctor?.hospital?.phone || doctor?.phone || '',
+          photoUrl: doctor?.hospital?.photo_url || doctor?.hospital?.photo || null,
+          schedules: [{
+            id: 'primary',
+            day: 'Saturday',
+            start_time: '17:00:00',
+            end_time: '21:00:00',
+            fee: doctor?.fee || 500
+          }]
+        }]
+      }
+      return []
+    }
     const map = new Map()
-    sortedChambers.forEach((chamber) => {
+    list.forEach((chamber) => {
       const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.hospital_name || chamber.address || 'default'
       if (!map.has(hospId)) {
         map.set(hospId, {
@@ -203,7 +224,7 @@ function DoctorDetailPageContent() {
       map.get(hospId).schedules.push(chamber)
     })
     return Array.from(map.values())
-  }, [sortedChambers])
+  }, [sortedChambers, doctor])
 
   const lowestFee = useMemo(() => {
     if (!sortedChambers || sortedChambers.length === 0) return doctor?.fee || 0

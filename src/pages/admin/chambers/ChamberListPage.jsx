@@ -135,8 +135,11 @@ export default function ChamberListPage() {
   }, [])
 
   useEffect(() => {
-    fetchData()
-  }, [doctorId, hospitalId, statusFilter])
+    const timer = setTimeout(() => {
+      fetchData()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [doctorId, hospitalId, statusFilter, search])
 
   const fetchOptions = async () => {
     try {
@@ -155,7 +158,7 @@ export default function ChamberListPage() {
     try {
       setLoading(true)
       const params = {}
-      if (search.trim()) params.search = search.trim()
+      if (search && search.trim()) params.search = search.trim()
       
       if (!isDoctorOnly) {
         if (doctorId) params.doctor_id = doctorId
@@ -166,6 +169,7 @@ export default function ChamberListPage() {
       const res = await getChambers(params)
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
+      console.error('Failed to load chambers', err)
     } finally {
       setLoading(false)
     }
@@ -177,7 +181,6 @@ export default function ChamberListPage() {
     setHospitalId('')
     setStatusFilter('')
     setDayFilter('')
-    setTimeout(fetchData, 0)
   }
 
   const handleDelete = async () => {
@@ -187,6 +190,7 @@ export default function ChamberListPage() {
       await deleteChamber(deleteTarget.id)
       setItems(items.filter(i => i.id !== deleteTarget.id))
     } catch (err) {
+      console.error(err)
     } finally {
       setDeleting(false)
       setDeleteTarget(null)
@@ -198,6 +202,7 @@ export default function ChamberListPage() {
       const res = await toggleChamberActive(id)
       setItems(items.map(i => i.id === id ? { ...i, is_active: !i.is_active } : i))
     } catch (err) {
+      console.error(err)
     }
   }
 
@@ -205,6 +210,36 @@ export default function ChamberListPage() {
 
   const filtered = items.filter(i => {
     if (dayFilter && i.day !== dayFilter) return false
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase()
+      const docName = (i.doctor?.name || i.doctor_name || '').toLowerCase()
+      const docNameBn = (i.doctor?.name_bn || '').toLowerCase()
+      const docSpecialty = (i.doctor?.specialty?.name || (i.doctor?.specialties?.map(s => s.name).join(' ')) || '').toLowerCase()
+      const bmdc = (i.doctor?.bmdc || '').toLowerCase()
+      const hospName = (i.hospital?.name || i.hospital_name || '').toLowerCase()
+      const hospNameBn = (i.hospital?.name_bn || '').toLowerCase()
+      const hospAddress = (i.hospital?.address || i.address || '').toLowerCase()
+      const day = (i.day || '').toLowerCase()
+      const room = (i.room_number || '').toLowerCase()
+      const fee = String(i.fee || '')
+      const id = String(i.id || '')
+      const publicId = (i.public_id || '').toLowerCase()
+
+      const matches = docName.includes(q) ||
+        docNameBn.includes(q) ||
+        docSpecialty.includes(q) ||
+        bmdc.includes(q) ||
+        hospName.includes(q) ||
+        hospNameBn.includes(q) ||
+        hospAddress.includes(q) ||
+        day.includes(q) ||
+        room.includes(q) ||
+        fee.includes(q) ||
+        id.includes(q) ||
+        publicId.includes(q)
+
+      if (!matches) return false
+    }
     return true
   })
 

@@ -181,7 +181,7 @@ export default function DoctorListPage() {
   const fetchDoctors = async () => {
     try {
       setLoading(true)
-      const params = { per_page: 5000 }
+      const params = { per_page: 5000, admin_view: 1 }
       if (search) params.search = search
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
@@ -195,7 +195,8 @@ export default function DoctorListPage() {
       const res = await getDoctors(params)
       setDoctors(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setLoading(false)
     }
   }
@@ -206,9 +207,9 @@ export default function DoctorListPage() {
     try {
       await deleteDoctor(deleteTarget.id)
       setDoctors(doctors.filter(d => d.id !== deleteTarget.id))
-      
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
@@ -232,9 +233,9 @@ export default function DoctorListPage() {
       const newStatus = !doctor.is_active
       await updateDoctor(doctor.id, { is_active: newStatus ? 1 : 0 })
       setDoctors(doctors.map(d => d.id === doctor.id ? { ...d, is_active: newStatus } : d))
-      
     } catch (err) {
-}
+      console.error(err)
+    }
   }
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
@@ -382,7 +383,7 @@ export default function DoctorListPage() {
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search doctor by name, BMDC, phone, specialty..."
@@ -477,7 +478,8 @@ export default function DoctorListPage() {
           </select>
         </div>
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">All Registered Doctors</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
@@ -638,7 +640,6 @@ export default function DoctorListPage() {
         )}
       </div>
 
-      
       <TableFooter
         total={filtered.length}
         currentPage={currentPage}
@@ -646,7 +647,8 @@ export default function DoctorListPage() {
         perPage={perPage}
         setPerPage={setPerPage}
       />
-<style dangerouslySetInnerHTML={{
+
+      <style dangerouslySetInnerHTML={{
         __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
         .profile-info-group { padding: 12px 0; border-bottom: 1px solid var(--admin-border); }
