@@ -18,6 +18,9 @@ const DoctorsPage         = lazy(() => import('./pages/DoctorsPage'))
 const DoctorDetailPage    = lazy(() => import('./pages/DoctorDetailPage'))
 const HospitalsPage       = lazy(() => import('./pages/HospitalsPage'))
 const HospitalDetailPage  = lazy(() => import('./pages/HospitalDetailPage'))
+const SpecialtiesPage     = lazy(() => import('./pages/SpecialtiesPage'))
+const SpecialtyDetailPage = lazy(() => import('./pages/SpecialtyDetailPage'))
+const SearchPage          = lazy(() => import('./pages/SearchPage'))
 const BookAppointmentPage = lazy(() => import('./pages/BookAppointmentPage'))
 const MyAppointmentsPage    = lazy(() => import('./pages/MyAppointmentsPage'))
 const AppointmentTicketPage = lazy(() => import('./pages/AppointmentTicketPage'))
@@ -364,10 +367,19 @@ function App() {
                   <Route path="/"           element={<HomePage />} />
                   <Route path="/doctors"    element={<DoctorsPage />} />
                   <Route path="/doctors/:district/:upazila/:slug" element={<DoctorDetailPage />} />
+                  <Route path="/doctors/:district/:upazila" element={<DoctorsPage />} />
+                  <Route path="/doctors/:district" element={<DoctorsPage />} />
                   <Route path="/doctors/:id" element={<DoctorDetailPage />} />
                   <Route path="/hospitals"  element={<HospitalsPage />} />
                   <Route path="/hospitals/:district/:upazila/:slug" element={<HospitalDetailPage />} />
+                  <Route path="/hospitals/:district/:upazila" element={<HospitalsPage />} />
+                  <Route path="/hospitals/:district" element={<HospitalsPage />} />
                   <Route path="/hospitals/:id" element={<HospitalDetailPage />} />
+                  <Route path="/specialties" element={<SpecialtiesPage />} />
+                  <Route path="/specialties/:slug/:district/:upazila" element={<SpecialtyDetailPage />} />
+                  <Route path="/specialties/:slug/:district" element={<SpecialtyDetailPage />} />
+                  <Route path="/specialties/:slug" element={<SpecialtyDetailPage />} />
+                  <Route path="/search"      element={<SearchPage />} />
                   <Route path="/login"      element={<LoginPage />} />
                   <Route path="/register"   element={<RegisterPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />

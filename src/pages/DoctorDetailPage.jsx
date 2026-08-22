@@ -157,7 +157,8 @@ function DoctorDetailPageContent() {
   }
 
   const handleBook = (chamberId = null) => {
-    let path = `/book-appointment/${id}`
+    const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
+    let path = `/book-appointment/${doctorIdentifier}`
     if (chamberId !== null && chamberId !== undefined && chamberId !== '') {
       path += `?chamberId=${chamberId}`
     }

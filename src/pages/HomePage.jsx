@@ -5,6 +5,8 @@ import ImageBannerSlider from '../components/home/ImageBannerSlider'
 import MostViewedDoctors from '../components/home/MostViewedDoctors'
 import TopSpecialtiesSlider from '../components/home/TopSpecialtiesSlider'
 import TopHospitals from '../components/home/TopHospitals'
+import DoctorCard from '../components/common/DoctorCard'
+import HospitalCard from '../components/common/HospitalCard'
 import OptimizedImage from '../components/common/OptimizedImage'
 import ScrollReveal from '../components/common/ScrollReveal'
 import SeoHead from '../components/common/SeoHead'
@@ -1099,7 +1101,7 @@ function DigitalDashboardBanner() {
 }
 
 // ─── EXPLORE DIVISIONS / CITIES SECTION (IMAGE 1 REFERENCE DESIGN) ───────────
-function BrowseByLocationSection() {
+function BrowseByLocationSection({ popularDistricts = [], popularUpazilas = [] }) {
   const navigate = useNavigate()
 
   const mainDivisions = [
@@ -1107,21 +1109,21 @@ function BrowseByLocationSection() {
       bnName: 'ঢাকা বিভাগ',
       enName: 'Dhaka Division',
       count: '৪৫+ হাসপাতাল',
-      searchKey: 'Dhaka',
+      searchKey: 'dhaka',
       img: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600&auto=format&fit=crop&q=70'
     },
     {
       bnName: 'সিলেট বিভাগ',
       enName: 'Sylhet Division',
       count: '১৮+ হাসপাতাল',
-      searchKey: 'Sylhet',
+      searchKey: 'sylhet',
       img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=70'
     },
     {
       bnName: 'চট্টগ্রাম বিভাগ',
       enName: 'Chattogram Division',
       count: '২৫+ হাসপাতাল',
-      searchKey: 'Chattogram',
+      searchKey: 'chattogram',
       img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600&auto=format&fit=crop&q=70'
     }
   ]
@@ -1138,10 +1140,10 @@ function BrowseByLocationSection() {
             margin: 0,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
-            বিভাগ অনুযায়ী হাসপাতাল খুঁজুন
+            বিভাগ ও জেলা অনুযায়ী ডাক্তার ও হাসপাতাল খুঁজুন
           </h2>
           <p style={{ fontSize: 13.5, color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            বাংলাদেশের জনপ্রিয় বিভাগ ও এলাকার সেরা হাসপাতাল এবং ল্যাব সেন্টার
+            বাংলাদেশের জনপ্রিয় বিভাগ, জেলা ও থানা ভিত্তিক যাচাইকৃত বিশেষজ্ঞ ডাক্তার এবং হাসপাতাল
           </p>
         </div>
 
@@ -1150,7 +1152,7 @@ function BrowseByLocationSection() {
           {mainDivisions.map((div, i) => (
             <Col key={i} xs={12} sm={6} lg={3}>
               <div
-                onClick={() => navigate(`/hospitals?search=${encodeURIComponent(div.searchKey)}`)}
+                onClick={() => navigate(`/doctors/${div.searchKey}`)}
                 style={{
                   position: 'relative',
                   height: 230,
@@ -1233,7 +1235,7 @@ function BrowseByLocationSection() {
           {/* 4th (Last) Card: Center "+" More View Button */}
           <Col xs={12} sm={6} lg={3}>
             <div
-              onClick={() => navigate('/hospitals')}
+              onClick={() => navigate('/doctors')}
               style={{
                 position: 'relative',
                 height: 230,
@@ -1316,12 +1318,56 @@ function BrowseByLocationSection() {
                   color: 'rgba(255, 255, 255, 0.75)',
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
-                  সকল বিভাগ ও হাসপাতাল
+                  সকল বিভাগ ও জেলা
                 </span>
               </div>
             </div>
           </Col>
         </Row>
+
+        {/* Popular Districts Internal Linking Discovery Hub */}
+        {popularDistricts && popularDistricts.length > 0 && (
+          <div className="mt-4 pt-3">
+            <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
+              জনপ্রিয় জেলাভিত্তিক ডাক্তার ও হাসপাতাল:
+            </h5>
+            <div className="d-flex flex-wrap gap-2">
+              {popularDistricts.map(dist => (
+                <Link
+                  key={dist.id}
+                  to={`/doctors/${dist.slug}`}
+                  className="btn btn-sm btn-white border rounded-pill px-3 py-1 text-decoration-none text-dark shadow-sm bg-white"
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  📍 {dist.bangla_name || dist.name}
+                  {dist.doctors_count > 0 && <span className="badge bg-light text-muted rounded-pill ms-1">{dist.doctors_count}</span>}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Popular Upazilas / Cities Internal Linking */}
+        {popularUpazilas && popularUpazilas.length > 0 && (
+          <div className="mt-3">
+            <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
+              জনপ্রিয় থানা / এলাকা:
+            </h5>
+            <div className="d-flex flex-wrap gap-2">
+              {popularUpazilas.map(upz => (
+                <Link
+                  key={upz.id}
+                  to={`/doctors/${upz.district?.slug || 'dhaka'}/${upz.slug}`}
+                  className="btn btn-sm btn-light border rounded-pill px-3 py-1 text-decoration-none text-dark"
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  🏥 {upz.bangla_name || upz.name}
+                  {upz.doctors_count > 0 && <span className="badge bg-white text-muted rounded-pill ms-1">{upz.doctors_count}</span>}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </Container>
 
       <style>{`
@@ -1339,6 +1385,98 @@ function BrowseByLocationSection() {
           box-shadow: 0 8px 25px rgba(0, 184, 117, 0.65) !important;
         }
       `}</style>
+    </section>
+  )
+}
+
+// ─── RECENTLY ADDED ENTITIES DISCOVERY SECTION ───────────────────────────────
+function RecentlyAddedSection({ doctors = [], hospitals = [] }) {
+  if ((!doctors || doctors.length === 0) && (!hospitals || hospitals.length === 0)) return null
+
+  return (
+    <section style={{ padding: '48px 0', background: '#FFFFFF', borderBottom: '1px solid #E2E8F0' }}>
+      <Container>
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
+              নতুন সংযোজন
+            </span>
+            <h2 className="fw-bold mb-0 text-dark" style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              সম্প্রতি যুক্ত বিশেষজ্ঞ ডাক্তার ও হাসপাতাল
+            </h2>
+          </div>
+          <Link to="/doctors" className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+            সকল ডাক্তার <IconArrowRight size={16} />
+          </Link>
+        </div>
+
+        {doctors && doctors.length > 0 && (
+          <Row className="g-3">
+            {doctors.slice(0, 3).map(doc => (
+              <Col key={doc.id} xs={12} sm={6} md={4}>
+                <DoctorCard doctor={doc} />
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Container>
+    </section>
+  )
+}
+
+// ─── HOMEPAGE FAQ SECTION (WITH SCHEMA SUPPORT) ─────────────────────────────
+function HomepageFaqSection() {
+  const faqs = [
+    {
+      q: 'কিভাবে MedConnect-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
+      a: 'ওয়েবসাইটে ডাক্তার বা স্পেশালিটি অনুসন্ধান করে আপনার পছন্দের ডাক্তারের প্রোফাইলে প্রবেশ করুন। এরপর আপনার সুবিধাজনক চেম্বার এবং সময় নির্বাচন করে সহজেই অ্যাপয়েন্টমেন্ট নিশ্চিত করুন।'
+    },
+    {
+      q: 'অনলাইন সিরিয়াল বুকিং করতে কোন অতিরিক্ত ফি লাগে?',
+      a: 'না, MedConnect প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
+    },
+    {
+      q: 'হাসপাতালের জরুরি অ্যাম্বুলেন্স ও আইসিইউ সেবা কিভাবে খুঁজব?',
+      a: 'আমাদের হাসপাতাল ডিরেক্টরিতে জেলা ও থানা ভিত্তিক ফিল্টার ব্যবহার করে ২৪/৭ ইমার্জেন্সি, আইসিইউ এবং অ্যাম্বুলেন্স সেবা সমৃদ্ধ হাসপাতাল তাৎক্ষণিক খুঁজে নিতে পারেন।'
+    },
+    {
+      q: 'অ্যাপয়েন্টমেন্ট বাতিল বা সময় পরিবর্তন করা যাবে কি?',
+      a: 'হ্যাঁ, বুকিং সম্পন্ন হলে আপনার মোবাইল নম্বরে প্রাপ্ত বুকিং ট্র্যাকিং লিংকের মাধ্যমে সহজে অ্যাপয়েন্টমেন্ট রিসিডিউল বা বাতিল করতে পারবেন।'
+    },
+    {
+      q: 'টেলিমেডিসিন বা অনলাইন ভিডিও কনসালটেশন পাওয়া যাবে কি?',
+      a: 'হ্যাঁ, যেসকল ডাক্তারের প্রোফাইলে "টেলিমেডিসিন সুবিধা" উল্লেখ রয়েছে, তাদের সাথে আপনি ঘরে বসেই সরাসরি ভিডিও কলে পরামর্শ গ্রহণ করতে পারেন।'
+    }
+  ]
+
+  return (
+    <section style={{ padding: '60px 0', background: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
+      <Container style={{ maxWidth: 880 }}>
+        <div className="text-center mb-4">
+          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#E0F2FE', color: '#0284C7', fontSize: '0.8rem', fontWeight: 700 }}>
+            প্রশ্নোত্তর
+          </span>
+          <h2 className="fw-bold text-dark" style={{ fontSize: 'clamp(22px, 3.5vw, 30px)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            সাধারণ জিজ্ঞাসা ও উত্তর
+          </h2>
+          <p className="text-muted" style={{ fontSize: '0.95rem' }}>
+            MedConnect ব্যবহার ও স্বাস্থ্যসেবা প্রাপ্তি সংক্রান্ত সাধারণ তথ্যাবলী
+          </p>
+        </div>
+
+        <div className="d-flex flex-column gap-3">
+          {faqs.map((faq, i) => (
+            <div key={i} className="p-4 bg-white rounded-3 border shadow-sm">
+              <h5 className="fw-bold text-dark mb-2" style={{ fontSize: 16, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                ❓ {faq.q}
+              </h5>
+              <p className="text-muted mb-0" style={{ fontSize: 14.5, lineHeight: 1.6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                {faq.a}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Container>
     </section>
   )
 }
@@ -2040,20 +2178,59 @@ function DoctorBookingPromoBanner() {
 
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 function HomePage() {
-  // SINGLE API CALL: Fetches top doctors, top hospitals, specialties, and stats
+  // SINGLE API CALL: Fetches top doctors, top hospitals, recent entities, locations, specialties, and stats
   const { data, isLoading } = useHomepage()
 
   const homeSchema = {
     '@context': 'https://schema.org',
-    '@type': 'MedicalWebPage',
-    'name': 'MedConnect — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি',
-    'description': 'বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য, চেম্বার সময়সূচি এবং অনলাইন অ্যাপয়েন্টমেন্ট বুকিং প্ল্যাটফর্ম।',
-    'url': window.location.origin,
-    'potentialAction': {
-      '@type': 'SearchAction',
-      'target': `${window.location.origin}/doctors?search={search_term_string}`,
-      'query-input': 'required name=search_term_string'
-    }
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${window.location.origin}/#website`,
+        'url': window.location.origin,
+        'name': 'MedConnect',
+        'description': 'বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি',
+        'potentialAction': {
+          '@type': 'SearchAction',
+          'target': `${window.location.origin}/search?query={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      },
+      {
+        '@type': 'MedicalOrganization',
+        '@id': `${window.location.origin}/#organization`,
+        'name': 'MedConnect Bangladesh',
+        'url': window.location.origin,
+        'logo': `${window.location.origin}/logo.png`,
+        'contactPoint': {
+          '@type': 'ContactPoint',
+          'contactType': 'customer support',
+          'availableLanguage': ['bn', 'en']
+        }
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${window.location.origin}/#faq`,
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'কিভাবে MedConnect-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'ওয়েবসাইটে ডাক্তার বা স্পেশালিটি অনুসন্ধান করে আপনার পছন্দের ডাক্তারের প্রোফাইলে প্রবেশ করুন। এরপর আপনার সুবিধাজনক চেম্বার এবং সময় নির্বাচন করে সহজেই অ্যাপয়েন্টমেন্ট নিশ্চিত করুন।'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'অনলাইন সিরিয়াল বুকিং করতে কোন অতিরিক্ত ফি লাগে?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'না, MedConnect প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
+            }
+          }
+        ]
+      }
+    ]
   }
 
   return (
@@ -2079,7 +2256,10 @@ function HomePage() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
-        <BrowseByLocationSection />
+        <BrowseByLocationSection
+          popularDistricts={data?.popular_districts}
+          popularUpazilas={data?.popular_upazilas}
+        />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
@@ -2088,6 +2268,13 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <TopHospitals hospitals={data?.top_hospitals} loading={isLoading} />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <RecentlyAddedSection
+          doctors={data?.recent_doctors}
+          hospitals={data?.recent_hospitals}
+        />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
@@ -2104,6 +2291,10 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <HospitalPartnersSection hospitals={data?.top_hospitals} />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <HomepageFaqSection />
       </ScrollReveal>
 
 

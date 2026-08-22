@@ -8,10 +8,16 @@ Allow: /top-10-doctors
 Allow: /top-10-hospitals
 Allow: /services
 Allow: /services/*
+Allow: /specialties
+Allow: /specialties/*
 Allow: /about
 Allow: /contact
 
-# Disallow Private, Auth and Admin Areas
+# Disallow Private, Auth, Search and Booking Transactional Pages
+Disallow: /search
+Disallow: /search/*
+Disallow: /book-appointment
+Disallow: /book-appointment/*
 Disallow: /admin/
 Disallow: /admin/*
 Disallow: /admin-secure-access

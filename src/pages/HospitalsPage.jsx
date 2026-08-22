@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 
 import HospitalCard from '../components/common/HospitalCard'
 import ErrorState from '../components/common/ErrorState'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
+import SeoHead from '../components/common/SeoHead'
+import HospitalDetailPage from './HospitalDetailPage'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
@@ -37,7 +39,19 @@ const BED_RANGES = [
 ]
 
 function HospitalsPage() {
+  const { district: districtParam, upazila: upazilaParam } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // 1-segment legacy fallback disambiguation:
+  // If route matched /hospitals/:district and the token is purely numeric or ULID, delegate to HospitalDetailPage
+  const isLegacyIdentifier = !upazilaParam && (
+    districtParam && (/^\d+$/.test(districtParam) || (districtParam.length === 26 && /^[0-9A-HJ-KM-NP-TV-Z]+$/i.test(districtParam)))
+  )
+
+  if (isLegacyIdentifier) {
+    return <HospitalDetailPage />
+  }
+
   const {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
@@ -92,6 +106,21 @@ function HospitalsPage() {
     }, { replace: true })
   }, [setSearchParams])
 
+  // Sync regional URL params with useLocations
+  useEffect(() => {
+    if (districtParam && districts?.length > 0 && !selectedDistrict) {
+      const match = districts.find(d => d.slug === districtParam)
+      if (match) setSelectedDistrict(String(match.id))
+    }
+  }, [districtParam, districts, selectedDistrict, setSelectedDistrict])
+
+  useEffect(() => {
+    if (upazilaParam && upazilas?.length > 0 && !selectedUpazila) {
+      const match = upazilas.find(u => u.slug === upazilaParam)
+      if (match) setSelectedUpazila(String(match.id))
+    }
+  }, [upazilaParam, upazilas, selectedUpazila, setSelectedUpazila])
+
   useEffect(() => {
     const currentStr = searchParams.toString()
     if (prevParamsRef.current === currentStr) return
@@ -121,18 +150,20 @@ function HospitalsPage() {
 
   const appliedFilters = useMemo(() => {
     const p = {}
-    if (selectedDivision)          p.division_id  = selectedDivision
-    if (selectedDistrict)          p.district_id  = selectedDistrict
-    if (selectedUpazila)           p.upazila_id   = selectedUpazila
-    if (selectedUnion)             p.union_id     = selectedUnion
-    if (hospitalType)              p.type         = hospitalType
-    if (selectedSpecialty)         p.specialty_id = selectedSpecialty
-    if (selectedBeds)              p.beds         = selectedBeds
-    if (emergencyOnly)             p.emergency    = true
-    if (openTodayOnly)             p.open_today   = true
-    if (effectiveSearch)           p.search       = effectiveSearch
+    if (districtParam)             p.district_slug = districtParam
+    if (upazilaParam)              p.upazila_slug  = upazilaParam
+    if (selectedDivision)          p.division_id   = selectedDivision
+    if (selectedDistrict)          p.district_id   = selectedDistrict
+    if (selectedUpazila)           p.upazila_id    = selectedUpazila
+    if (selectedUnion)             p.union_id      = selectedUnion
+    if (hospitalType)              p.hospital_type = hospitalType
+    if (selectedSpecialty)         p.specialty_id  = selectedSpecialty
+    if (selectedBeds)              p.bed_range     = selectedBeds
+    if (emergencyOnly)             p.emergency_only = true
+    if (openTodayOnly)             p.open_today    = true
+    if (effectiveSearch)           p.search        = effectiveSearch
     return p
-  }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, effectiveSearch])
+  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, effectiveSearch])
 
   const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
 
@@ -326,8 +357,83 @@ function HospitalsPage() {
     return specialties.filter(s => (s.name || '').toLowerCase().includes(q) || (s.name_bn || '').toLowerCase().includes(q))
   }, [specialties, specialtySearch])
 
+  // Dynamic SEO metadata computation for national, district, and upazila listing hubs
+  const seoData = useMemo(() => {
+    const districtObj = districts?.find(d => d.slug === districtParam || String(d.id) === String(selectedDistrict))
+    const upazilaObj = upazilas?.find(u => u.slug === upazilaParam || String(u.id) === String(selectedUpazila))
+    
+    const distNameBn = districtObj?.bangla_name || districtObj?.name_bn || districtObj?.name
+    const upaNameBn = upazilaObj?.bangla_name || upazilaObj?.name_bn || upazilaObj?.name
+    const distNameEn = districtObj?.name || districtParam
+    const upaNameEn = upazilaObj?.name || upazilaParam
+
+    let canonicalPath = '/hospitals'
+    let title = 'বাংলাদেশের সেরা হাসপাতাল ও ক্লিনিক তালিকা | MedConnect'
+    let description = 'বাংলাদেশের শীর্ষস্থানীয় সরকারি ও বেসরকারি হাসপাতাল, ক্লিনিক এবং ডায়াগনস্টিক সেন্টারের তালিকা, জরুরি সেবা ও ওপিডি শিডিউল।'
+
+    const breadcrumbs = [
+      { name: 'Home', url: '/' },
+      { name: 'Hospitals', url: '/hospitals' },
+    ]
+
+    if (districtParam) {
+      canonicalPath = `/hospitals/${districtParam}`
+      title = `${distNameBn || distNameEn} জেলার সেরা হাসপাতাল ও ক্লিনিক তালিকা | MedConnect`
+      description = `${distNameBn || distNameEn} জেলার শীর্ষ হাসপাতাল, বিশেষজ্ঞ ডাক্তার, আইসিইউ ও জরুরি এম্বুলেন্স সেবা সমূহের পূর্ণাঙ্গ তালিকা।`
+      breadcrumbs.push({ name: distNameEn || 'District', url: `/hospitals/${districtParam}` })
+
+      if (upazilaParam) {
+        canonicalPath = `/hospitals/${districtParam}/${upazilaParam}`
+        title = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} — হাসপাতাল ও বিশেষজ্ঞ স্বাস্থ্যসেবা | MedConnect`
+        description = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} এলাকার সকল হাসপাতাল, ডায়াগনস্টিক সেন্টার, বেড সংখ্যা ও জরুরি সেবা সমূহের তালিকা।`
+        breadcrumbs.push({ name: upaNameEn || 'Upazila', url: `/hospitals/${districtParam}/${upazilaParam}` })
+      }
+    }
+
+    const collectionSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: title,
+      description: description,
+      url: `https://medconnect.com.bd${canonicalPath}`,
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: hospitals.slice(0, 12).map((hosp, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: hosp.name || hosp.name_bn,
+          url: hosp.canonical_url ? `https://medconnect.com.bd${hosp.canonical_url}` : undefined,
+        })),
+      },
+    }
+
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumbs.map((crumb, idx) => ({
+        '@type': 'ListItem',
+        position: idx + 1,
+        name: crumb.name,
+        item: `https://medconnect.com.bd${crumb.url}`,
+      })),
+    }
+
+    return {
+      title,
+      description,
+      canonicalUrl: `https://medconnect.com.bd${canonicalPath}`,
+      schema: [collectionSchema, breadcrumbSchema],
+    }
+  }, [districtParam, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, hospitals])
+
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
+      <SeoHead
+        title={seoData.title}
+        description={seoData.description}
+        canonicalUrl={seoData.canonicalUrl}
+        schema={seoData.schema}
+      />
       
       {/* ── RESPONSIVE FILTER DRAWER CSS ── */}
       <style>{`
