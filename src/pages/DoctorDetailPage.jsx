@@ -267,21 +267,97 @@ function DoctorDetailPageContent() {
 
   const doctorSchema = useMemo(() => {
     if (!doctor) return null
-    return {
+    const schema = {
       '@context': 'https://schema.org',
       '@type': 'Physician',
       'name': doctor.name,
-      'alternateName': doctor.name_bn,
+      'alternateName': doctor.name_bn || undefined,
       'description': doctor.about || doctor.specialty?.name || 'বিশেষজ্ঞ ডাক্তার',
-      'medicalSpecialty': doctor.specialty?.name || doctor.specialty?.name_bn,
-      'telephone': doctor.phone || doctor.hotline,
+      'medicalSpecialty': doctor.specialty?.name || doctor.specialty?.name_bn || undefined,
+      'telephone': doctor.phone || doctor.hotline || undefined,
       'url': `${window.location.origin}/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug || doctor.id}`,
-      'image': doctor.photo_url ? getMediaUrl(doctor.photo_url) : undefined,
-      'address': {
+      'image': doctor.photo ? getMediaUrl(doctor.photo) : (doctor.photo_url ? getMediaUrl(doctor.photo_url) : DEMO_AVATAR),
+      'priceRange': doctor.fee ? `৳ ${doctor.fee}` : undefined,
+    }
+
+    if (doctor.district?.name || doctor.upazila?.name) {
+      schema.address = {
         '@type': 'PostalAddress',
-        'addressLocality': doctor.district?.name || 'Dhaka',
+        'addressLocality': doctor.upazila?.name || undefined,
+        'addressRegion': doctor.district?.name || 'Dhaka',
         'addressCountry': 'BD'
       }
+    }
+
+    if (doctor.hospital?.name) {
+      schema.worksFor = {
+        '@type': 'Hospital',
+        'name': doctor.hospital.name
+      }
+    }
+
+    if (reviews && reviews.length > 0) {
+      const avgRating = reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length
+      schema.aggregateRating = {
+        '@type': 'AggregateRating',
+        'ratingValue': avgRating.toFixed(1),
+        'reviewCount': reviews.length,
+        'bestRating': '5',
+        'worstRating': '1'
+      }
+    }
+
+    return schema
+  }, [doctor, reviews])
+
+  const breadcrumbSchema = useMemo(() => {
+    if (!doctor) return null
+    const origin = window.location.origin
+    const items = [
+      {
+        '@type': 'ListItem',
+        'position': 1,
+        'name': 'Home',
+        'item': `${origin}/`
+      },
+      {
+        '@type': 'ListItem',
+        'position': 2,
+        'name': 'Doctors',
+        'item': `${origin}/doctors`
+      }
+    ]
+
+    let pos = 3
+    if (doctor.district?.name) {
+      items.push({
+        '@type': 'ListItem',
+        'position': pos++,
+        'name': doctor.district.name,
+        'item': `${origin}/doctors?district_id=${doctor.district.id}`
+      })
+    }
+
+    if (doctor.upazila?.name) {
+      items.push({
+        '@type': 'ListItem',
+        'position': pos++,
+        'name': doctor.upazila.name,
+        'item': `${origin}/doctors?upazila_id=${doctor.upazila.id}`
+      })
+    }
+
+    items.push({
+      '@type': 'ListItem',
+      'position': pos,
+      'name': doctor.name,
+      'item': `${origin}/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug || doctor.id}`
+    })
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      'itemListElement': items
     }
   }, [doctor])
 
@@ -295,6 +371,11 @@ function DoctorDetailPageContent() {
 
   if (error || !doctor) return (
     <div className="page-wrapper">
+      <SeoHead
+        title="ডাক্তার পাওয়া যায়নি — MedConnect"
+        description="অনুরোধকৃত ডাক্তারের তথ্য খুঁজে পাওয়া যায়নি।"
+        noIndex={true}
+      />
       <Container className="py-5 text-center">
         <div style={{ fontSize: 48, marginBottom: 16 }}>😔</div>
         <h4 style={{ fontWeight: 700, marginBottom: 8, color: '#1E293B' }}>{t ? t('doctor_not_found') : 'ডাক্তার পাওয়া যায়নি'}</h4>
@@ -318,6 +399,7 @@ function DoctorDetailPageContent() {
   const isFav = doctor ? isDoctorFavorite(doctor.id) : false
 
   const canonicalPath = `/doctors/${doctor?.district_slug || district || 'bangladesh'}/${doctor?.upazila_slug || upazila || 'general'}/${doctor?.slug || slug || doctor?.id}`
+  const doctorOgImage = doctor?.photo ? getMediaUrl(doctor.photo) : (doctor?.photo_url ? getMediaUrl(doctor.photo_url) : DEMO_AVATAR)
 
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
@@ -325,9 +407,9 @@ function DoctorDetailPageContent() {
         title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | MedConnect`}
         description={`${doctor?.name} (${doctor?.degree || 'MBBS'}) - ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}। চেম্বার ও অ্যাপয়েন্টমেন্টের তথ্য।`}
         canonicalUrl={`${window.location.origin}${canonicalPath}`}
-        ogImage={doctor?.photo_url ? getMediaUrl(doctor.photo_url) : undefined}
+        ogImage={doctorOgImage}
         ogType="profile"
-        schemaData={doctorSchema}
+        schemaData={[doctorSchema, breadcrumbSchema].filter(Boolean)}
       />
       
       {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
@@ -364,6 +446,18 @@ function DoctorDetailPageContent() {
             <IconChevronRight size={14} color={mutedTextColor} />
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/doctors')}>ডাক্তার নির্দেশিকা</span>
             <IconChevronRight size={14} color={mutedTextColor} />
+            {doctor?.district?.name && (
+              <>
+                <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate(`/doctors?district_id=${doctor.district.id}`)}>{doctor.district.name}</span>
+                <IconChevronRight size={14} color={mutedTextColor} />
+              </>
+            )}
+            {doctor?.upazila?.name && (
+              <>
+                <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate(`/doctors?upazila_id=${doctor.upazila.id}`)}>{doctor.upazila.name}</span>
+                <IconChevronRight size={14} color={mutedTextColor} />
+              </>
+            )}
             <span style={{ color: mutedTextColor }}>{doctor?.name}</span>
           </div>
         </Container>
