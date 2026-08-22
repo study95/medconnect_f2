@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../context/AuthContext'
 import { getSpecialties, deleteSpecialty } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -11,6 +12,7 @@ import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 
 export default function SpecialtyListPage() {
+  const { isAdmin } = useAuth()
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
@@ -30,7 +32,7 @@ export default function SpecialtyListPage() {
       const res = await getSpecialties()
       setItems(res.data?.data?.data || res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -43,13 +45,23 @@ export default function SpecialtyListPage() {
       setItems(items.filter(i => i.id !== deleteTarget.id))
       
     } catch (err) {
-} finally {
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
-  const filtered = items.filter(i => i.name?.toLowerCase().includes(search.toLowerCase()))
+  const filtered = items.filter(i => 
+    i.name?.toLowerCase().includes(search.toLowerCase()) ||
+    i.bangla_name?.includes(search) ||
+    i.slug?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -64,7 +76,7 @@ export default function SpecialtyListPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search specialty by name, Bengali name..."
-        onRefresh={fetchSpecialties}
+        onRefresh={fetchData}
         refreshing={loading}
         actions={
           isAdmin && (
@@ -74,7 +86,7 @@ export default function SpecialtyListPage() {
           )
         }
       />
-<div className="admin-card">
+      <div className="admin-card">
         <div className="admin-card-header" style={{ background: 'rgba(0,0,0,0.02)' }}>
           <h3 className="admin-card-title" style={{ color: 'var(--admin-text)' }}>Professional Categories</h3>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-primary)', background: 'rgba(0, 168, 140, 0.1)', padding: '4px 12px', borderRadius: 20 }}>
@@ -98,7 +110,7 @@ export default function SpecialtyListPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paginatedData.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <CompactUlid value={item.public_id || item.id} />
@@ -138,13 +150,12 @@ export default function SpecialtyListPage() {
       </div>
 
       <TableFooter
-        total={items ? items.length : 0}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
         setPerPage={setPerPage}
       />
-
       <DeleteModal 
         show={!!deleteTarget} 
         title="Delete Specialty" 

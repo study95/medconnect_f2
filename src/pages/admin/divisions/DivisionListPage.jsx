@@ -29,9 +29,9 @@ export default function DivisionListPage() {
     try {
       setLoading(true)
       const res = await getDivisions()
-      setItems(res.data.data || res.data || [])
+      setItems(res.data?.data || res.data || [])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -44,13 +44,22 @@ export default function DivisionListPage() {
       setItems(items.filter(i => i.id !== deleteTarget.id))
       
     } catch (err) {
-} finally {
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
-  const filtered = items.filter(i => i.name?.toLowerCase().includes(search.toLowerCase()))
+  const filtered = items.filter(i => 
+    i.name?.toLowerCase().includes(search.toLowerCase()) ||
+    i.bangla_name?.includes(search)
+  )
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -65,7 +74,7 @@ export default function DivisionListPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search division by name, Bengali name..."
-        onRefresh={fetchItems}
+        onRefresh={fetchDivisions}
         refreshing={loading}
         actions={
           <Link to="/admin/divisions/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
@@ -73,7 +82,7 @@ export default function DivisionListPage() {
           </Link>
         }
       />
-<div className="admin-card">
+      <div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
           <h3 className="admin-card-title">Territorial Database</h3>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444', background: '#FEE2E2', padding: '4px 12px', borderRadius: 20 }}>
@@ -90,14 +99,14 @@ export default function DivisionListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 100, paddingLeft: 24 }}>System ID</th>
-                  <th>Territory Name</th>
+                  <th style={{ width: 100, paddingLeft: 24 }}>ID</th>
+                  <th>Division Name</th>
                   <th>Bangla Name</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Management Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paginatedData.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <CompactUlid value={item.public_id || item.id} />
@@ -135,7 +144,7 @@ export default function DivisionListPage() {
       </div>
 
       <TableFooter
-        total={items ? items.length : 0}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

@@ -144,7 +144,7 @@ export default function DistrictListPage() {
       const res = await getDistricts(params)
       setItems(res.data.data || res.data || [])
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -157,13 +157,22 @@ export default function DistrictListPage() {
       setItems(items.filter(i => i.id !== deleteTarget.id))
       
     } catch (err) {
-} finally {
+    } finally {
       setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
-  const filtered = items.filter(i => i.name?.toLowerCase().includes(search.toLowerCase()))
+  const filtered = items.filter(i => 
+    i.name?.toLowerCase().includes(search.toLowerCase()) ||
+    i.bangla_name?.includes(search)
+  )
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -177,11 +186,11 @@ export default function DistrictListPage() {
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search district by name, Bengali name..."
-        onRefresh={fetchItems}
+        onRefresh={fetchDistricts}
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
@@ -196,7 +205,7 @@ export default function DistrictListPage() {
           </Link>
         }
       >
-        <SearchableDivisionSelect
+        <SearchableSelect
           label="Division"
           placeholder="All Divisions"
           options={divisions}
@@ -204,7 +213,8 @@ export default function DistrictListPage() {
           onChange={setDivisionFilter}
         />
       </ListToolbar>
-<div className="admin-card">
+      
+      <div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
           <h3 className="admin-card-title">All Registered Districts</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', background: '#E2E8F0', padding: '4px 10px', borderRadius: 20 }}>
@@ -229,7 +239,7 @@ export default function DistrictListPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paginatedData.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <CompactUlid value={item.public_id || item.id} />
@@ -272,7 +282,7 @@ export default function DistrictListPage() {
       </div>
 
       <TableFooter
-        total={items ? items.length : 0}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
@@ -290,7 +300,7 @@ export default function DistrictListPage() {
 
       <style dangerouslySetInnerHTML={{ __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 1; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}} />
     </div>
   )

@@ -306,8 +306,7 @@ export default function ServiceListPage() {
                           <IconEye size={14} /> দেখুন
                         </button>
                         <button
-                          onClick={() => handleDelete(ticket.id)}
-                          disabled={deleting === ticket.id}
+                          onClick={() => setDeleteId(ticket.id)}
                           title="মুছে ফেলুন"
                           style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #FEE2E2', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
                         >
