@@ -1,5 +1,5 @@
 // DoctorListPage.jsx — Admin doctor management + Doctor own profile
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
@@ -247,13 +247,44 @@ export default function DoctorListPage() {
     )
   }
 
-  const filtered = allowedDoctors.filter(d =>
-    d.name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.specialty?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.workplace?.toLowerCase().includes(search.toLowerCase()) ||
-    d.bmdc?.toLowerCase().includes(search.toLowerCase()) ||
-    d.email?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = useMemo(() => {
+    return allowedDoctors.filter(d => {
+      if (!search || !search.trim()) return true
+      const q = search.trim().toLowerCase()
+      const id = String(d.public_id || d.id || '').toLowerCase()
+      const name = String(d.name || '').toLowerCase()
+      const nameBn = String(d.name_bn || '').toLowerCase()
+      const specialtyName = String(d.specialty?.name || '').toLowerCase()
+      const specialtyBn = String(d.specialty_bn || '').toLowerCase()
+      const workplace = String(d.workplace || '').toLowerCase()
+      const workplaceBn = String(d.workplace_bn || '').toLowerCase()
+      const bmdc = String(d.bmdc || '').toLowerCase()
+      const email = String(d.email || '').toLowerCase()
+      const phone = String(d.phone || '').toLowerCase()
+      const degree = String(d.degree || '').toLowerCase()
+      const hospitalName = String(d.hospital?.name || '').toLowerCase()
+      const location = [
+        d.division?.name,
+        d.district?.name,
+        d.upazila?.name,
+        d.union?.name
+      ].filter(Boolean).join(' ').toLowerCase()
+
+      return id.includes(q) ||
+        name.includes(q) ||
+        nameBn.includes(q) ||
+        specialtyName.includes(q) ||
+        specialtyBn.includes(q) ||
+        workplace.includes(q) ||
+        workplaceBn.includes(q) ||
+        bmdc.includes(q) ||
+        email.includes(q) ||
+        phone.includes(q) ||
+        degree.includes(q) ||
+        hospitalName.includes(q) ||
+        location.includes(q)
+    })
+  }, [allowedDoctors, search])
 
   const myProfile = isDoctorOnly ? allowedDoctors[0] : null
 
@@ -386,7 +417,7 @@ export default function DoctorListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search doctor by name, BMDC, phone, specialty..."
+        searchPlaceholder="Search doctor by ID, name, BMDC, phone, specialty..."
         onRefresh={fetchDoctors}
         refreshing={loading}
         showFilters={showFilters}
