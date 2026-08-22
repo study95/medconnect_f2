@@ -5,13 +5,16 @@ import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { DoctorDetailSkeleton } from '../components/common/Skeletons'
+import DoctorCard from '../components/common/DoctorCard'
 import useDoctorDetail from '../hooks/useDoctorDetail'
+import useDoctorRelated from '../hooks/useDoctorRelated'
 import { useFavorites } from '../context/FavoritesContext'
 import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
 
 import ErrorBoundary from '../components/common/ErrorBoundary'
 import SeoHead from '../components/common/SeoHead'
+import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { 
@@ -34,6 +37,8 @@ function DoctorDetailPageContent() {
   const { user, isLoggedIn } = useAuth() || {}
 
   const { doctor, chambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
+  const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
+  const { relatedDoctors, loading: loadingRelated } = useDoctorRelated(doctorIdentifier)
   const favoritesContext = useFavorites() || {}
   const isDoctorFavorite = favoritesContext.isDoctorFavorite || (() => false)
   const toggleFavoriteDoctor = favoritesContext.toggleFavoriteDoctor || (() => {})
@@ -266,101 +271,9 @@ function DoctorDetailPageContent() {
     }
   }
 
-  const doctorSchema = useMemo(() => {
-    if (!doctor) return null
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': 'Physician',
-      'name': doctor.name,
-      'alternateName': doctor.name_bn || undefined,
-      'description': doctor.about || doctor.specialty?.name || 'বিশেষজ্ঞ ডাক্তার',
-      'medicalSpecialty': doctor.specialty?.name || doctor.specialty?.name_bn || undefined,
-      'telephone': doctor.phone || doctor.hotline || undefined,
-      'url': `${window.location.origin}/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug || doctor.id}`,
-      'image': doctor.photo ? getMediaUrl(doctor.photo) : (doctor.photo_url ? getMediaUrl(doctor.photo_url) : DEMO_AVATAR),
-      'priceRange': doctor.fee ? `৳ ${doctor.fee}` : undefined,
-    }
-
-    if (doctor.district?.name || doctor.upazila?.name) {
-      schema.address = {
-        '@type': 'PostalAddress',
-        'addressLocality': doctor.upazila?.name || undefined,
-        'addressRegion': doctor.district?.name || 'Dhaka',
-        'addressCountry': 'BD'
-      }
-    }
-
-    if (doctor.hospital?.name) {
-      schema.worksFor = {
-        '@type': 'Hospital',
-        'name': doctor.hospital.name
-      }
-    }
-
-    if (reviews && reviews.length > 0) {
-      const avgRating = reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length
-      schema.aggregateRating = {
-        '@type': 'AggregateRating',
-        'ratingValue': avgRating.toFixed(1),
-        'reviewCount': reviews.length,
-        'bestRating': '5',
-        'worstRating': '1'
-      }
-    }
-
-    return schema
+  const structuredSchema = useMemo(() => {
+    return buildPhysicianSchema(doctor, reviews)
   }, [doctor, reviews])
-
-  const breadcrumbSchema = useMemo(() => {
-    if (!doctor) return null
-    const origin = window.location.origin
-    const items = [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': `${origin}/`
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': 'Doctors',
-        'item': `${origin}/doctors`
-      }
-    ]
-
-    let pos = 3
-    if (doctor.district?.name) {
-      items.push({
-        '@type': 'ListItem',
-        'position': pos++,
-        'name': doctor.district.name,
-        'item': `${origin}/doctors?district_id=${doctor.district.id}`
-      })
-    }
-
-    if (doctor.upazila?.name) {
-      items.push({
-        '@type': 'ListItem',
-        'position': pos++,
-        'name': doctor.upazila.name,
-        'item': `${origin}/doctors?upazila_id=${doctor.upazila.id}`
-      })
-    }
-
-    items.push({
-      '@type': 'ListItem',
-      'position': pos,
-      'name': doctor.name,
-      'item': `${origin}/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug || doctor.id}`
-    })
-
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      'itemListElement': items
-    }
-  }, [doctor])
 
   if (loading) return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
@@ -410,7 +323,7 @@ function DoctorDetailPageContent() {
         canonicalUrl={`${window.location.origin}${canonicalPath}`}
         ogImage={doctorOgImage}
         ogType="profile"
-        schemaData={[doctorSchema, breadcrumbSchema].filter(Boolean)}
+        schemaData={structuredSchema}
       />
       
       {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
@@ -1312,6 +1225,49 @@ function DoctorDetailPageContent() {
             </div>
           </Col>
         </Row>
+
+        {/* ================= RELATED DOCTORS (INTERNAL LINKING SEO DISCOVERY) ================= */}
+        {relatedDoctors && relatedDoctors.length > 0 && (
+          <section className="mt-5 pt-4 border-top">
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+              <div>
+                <h3 style={{ fontSize: 22, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
+                  সম্পর্কিত বিশেষজ্ঞ ডাক্তারগণ
+                </h3>
+                <p style={{ fontSize: 13, color: mutedTextColor, margin: 0, fontWeight: 600 }}>
+                  {specialtyName} বিভাগের অন্যান্য শীর্ষস্থানীয় ডাক্তারদের প্রোফাইল ও অ্যাপয়েন্টমেন্ট
+                </p>
+              </div>
+              {doctor?.specialty?.slug && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/specialties/${doctor.specialty.slug}`)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: primaryGreen,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    cursor: 'pointer'
+                  }}
+                >
+                  সব দেখুন <IconChevronRight size={16} />
+                </button>
+              )}
+            </div>
+
+            <Row className="g-3">
+              {relatedDoctors.slice(0, 4).map((relDoc, idx) => (
+                <Col key={relDoc.id || idx} xs={12} sm={6} lg={4} xl={3}>
+                  <DoctorCard doctor={relDoc} viewMode="grid" />
+                </Col>
+              ))}
+            </Row>
+          </section>
+        )}
       </Container>
 
       {/* STICKY MOBILE BOTTOM BAR (CRISP CARD STYLING & BENGALI TEXT) */}

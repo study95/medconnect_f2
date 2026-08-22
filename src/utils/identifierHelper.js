@@ -23,6 +23,10 @@ export function buildLocationSeoUrl(resource, item, defaultDistrict = 'banglades
     if (item.startsWith(`/${resource}/`)) return item
     return `/${resource}/${item}`
   }
+  // Prioritize existing canonical_url property if available
+  if (item.canonical_url && typeof item.canonical_url === 'string' && item.canonical_url.startsWith(`/${resource}/`)) {
+    return item.canonical_url
+  }
   const districtSlug = item.district_slug || item.district?.slug || defaultDistrict
   const upazilaSlug = item.upazila_slug || item.upazila?.slug || defaultUpazila
   const slug = item.slug || item.seo_slug || item.id
@@ -39,6 +43,10 @@ export function buildStandardSeoUrl(resource, item) {
   if (typeof item === 'string') {
     if (item.startsWith(`/${resource}/`)) return item
     return `/${resource}/${item}`
+  }
+  // Prioritize existing canonical_url property if available
+  if (item.canonical_url && typeof item.canonical_url === 'string' && item.canonical_url.startsWith(`/${resource}/`)) {
+    return item.canonical_url
   }
   const slug = item.slug || item.seo_slug || item.id
   return `/${resource}/${slug}`

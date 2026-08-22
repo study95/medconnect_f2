@@ -4,9 +4,12 @@ import { Container, Row, Col, Nav } from 'react-bootstrap'
 import useHospitalDetail from '../hooks/useHospitalDetail'
 import useDoctors from '../hooks/useDoctors'
 import DoctorCard from '../components/common/DoctorCard'
+import HospitalCard from '../components/common/HospitalCard'
+import useHospitalRelated from '../hooks/useHospitalRelated'
 import { HospitalDetailSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import SeoHead from '../components/common/SeoHead'
+import { buildHospitalSchema } from '../utils/schemaBuilder'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
@@ -36,8 +39,10 @@ function HospitalDetailPage() {
   const { theme } = useTheme()
 
   const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail({ district, upazila, slug, id })
-  const hospitalIdentifier = hospital?.id || hospital?.public_id || id
-  const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: hospitalIdentifier })
+  const hospitalIdentifier = hospital?.slug || slug || hospital?.public_id || hospital?.id || id
+  const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: hospital?.id || hospital?.public_id || id })
+  const { doctors: relatedDoctors, relatedHospitals, loading: loadingRelated } = useHospitalRelated(hospitalIdentifier)
+  const displayDoctors = relatedDoctors && relatedDoctors.length > 0 ? relatedDoctors : (doctors || [])
 
   // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/hospitals/:id), update URL to canonical SEO route
   useEffect(() => {
@@ -147,88 +152,9 @@ function HospitalDetailPage() {
     return 'Hospital'
   }
 
-  const hospitalSchema = useMemo(() => {
-    if (!hospital) return null
-    const schemaType = getHospitalSchemaType(hospital.hospital_type)
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': schemaType,
-      'name': hospital.name,
-      'alternateName': hospital.name_bn || undefined,
-      'description': hospital.about || 'আধুনিক স্বাস্থ্যসেবা কেন্দ্র ও হাসপাতাল',
-      'telephone': hospital.phone || hospital.emergency_phone || hospital.hotline || undefined,
-      'url': `${window.location.origin}${canonicalPath}`,
-      'image': hospital.photo_url ? getMediaUrl(hospital.photo_url) : (hospital.banner_url ? getMediaUrl(hospital.banner_url) : DEMO_BANNER),
-      'logo': hospital.logo_url ? getMediaUrl(hospital.logo_url) : undefined,
-    }
-
-    if (hospital.address || hospital.district?.name || hospital.upazila?.name) {
-      schema.address = {
-        '@type': 'PostalAddress',
-        'streetAddress': hospital.address || undefined,
-        'addressLocality': hospital.upazila?.name || hospital.district?.name || 'Dhaka',
-        'addressRegion': hospital.district?.name || 'Dhaka',
-        'addressCountry': 'BD'
-      }
-    }
-
-    if (hospital.bed_count) {
-      schema.numberOfBeds = Number(hospital.bed_count)
-    }
-
-    return schema
-  }, [hospital, canonicalPath])
-
-  const breadcrumbSchema = useMemo(() => {
-    if (!hospital) return null
-    const origin = window.location.origin
-    const items = [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': `${origin}/`
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': 'Hospitals',
-        'item': `${origin}/hospitals`
-      }
-    ]
-
-    let pos = 3
-    if (hospital.district?.name) {
-      items.push({
-        '@type': 'ListItem',
-        'position': pos++,
-        'name': hospital.district.name,
-        'item': `${origin}/hospitals?district_id=${hospital.district.id}`
-      })
-    }
-
-    if (hospital.upazila?.name) {
-      items.push({
-        '@type': 'ListItem',
-        'position': pos++,
-        'name': hospital.upazila.name,
-        'item': `${origin}/hospitals?upazila_id=${hospital.upazila.id}`
-      })
-    }
-
-    items.push({
-      '@type': 'ListItem',
-      'position': pos,
-      'name': hospital.name,
-      'item': `${origin}${canonicalPath}`
-    })
-
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      'itemListElement': items
-    }
-  }, [hospital, canonicalPath])
+  const structuredSchema = useMemo(() => {
+    return buildHospitalSchema(hospital)
+  }, [hospital])
 
   if (loadingHeader) return (
     <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh' }}>
@@ -267,7 +193,7 @@ function HospitalDetailPage() {
         canonicalUrl={`${window.location.origin}${canonicalPath}`}
         ogImage={hospital?.photo_url ? getMediaUrl(hospital.photo_url) : (hospital?.banner_url ? getMediaUrl(hospital.banner_url) : DEMO_BANNER)}
         ogType="business.business"
-        schemaData={[hospitalSchema, breadcrumbSchema].filter(Boolean)}
+        schemaData={structuredSchema}
       />
       
       {/* 1. Breadcrumbs */}
@@ -492,27 +418,45 @@ function HospitalDetailPage() {
 
               {/* Popular Doctors Section */}
               <div id="doctors" className="scroll-section">
-                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, marginBottom: 24 }}>জনপ্রিয় ডাক্তার সমূহ</h3>
-                <Row className="g-3">
-                  {doctors.slice(0, 4).map(doc => (
-                    <Col key={doc.id} xs={12} sm={6} md={4}>
-                      <div style={{ background: 'white', borderRadius: 20, border: `1.5px solid #F1F5F9`, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                        <div style={{ padding: 16 }}>
-                          <img src={doc.photo || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=1470&auto=format&fit=crop'} alt={doc.name} style={{ width: '100%', aspectRatio: '1/1', borderRadius: 16, objectFit: 'cover', marginBottom: 12 }} />
-                          <h4 style={{ fontSize: 15, fontWeight: 950, color: textColor, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, marginBottom: 2 }}>কার্ডিওলজিস্ট</p>
-                          <p style={{ fontSize: 12, fontWeight: 800, color: '#334155', margin: 0 }}>{doc.experience} বছর অভিজ্ঞতা</p>
-                        </div>
-                        <div className="mt-auto border-top">
-                          <button onClick={() => navigate(`/doctors/${doc.id}`)} style={{ width: '100%', padding: '12px', border: 'none', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 900 }}>প্রোফাইল দেখুন</button>
-                        </div>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-                <div className="text-end mt-4">
-                  <span style={{ color: '#059669', fontWeight: 900, cursor: 'pointer', fontSize: 15 }}>সব ডাক্তার দেখুন</span>
+                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                  <div>
+                    <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>জনপ্রিয় ডাক্তার সমূহ</h3>
+                    <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>এই হাসপাতালে কর্মরত বিশেষজ্ঞ চিকিৎসকবৃন্দ</p>
+                  </div>
+                  {hospital?.id && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/doctors?hospital_id=${hospital.id}`)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: primaryGreen,
+                        fontWeight: 800,
+                        fontSize: 14,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      সব ডাক্তার দেখুন <IconChevronRight size={16} />
+                    </button>
+                  )}
                 </div>
+
+                {displayDoctors && displayDoctors.length > 0 ? (
+                  <Row className="g-3">
+                    {displayDoctors.slice(0, 4).map((doc, idx) => (
+                      <Col key={doc.id || idx} xs={12} sm={6}>
+                        <DoctorCard doctor={doc} viewMode="grid" />
+                      </Col>
+                    ))}
+                  </Row>
+                ) : (
+                  <div className="text-center py-4 bg-white rounded-4 border">
+                    <p style={{ color: mutedColor, margin: 0, fontWeight: 600 }}>এই মুহূর্তে কোনো ডাক্তারের তথ্য পাওয়া যায়নি</p>
+                  </div>
+                )}
               </div>
 
               <div style={{ height: '1px', background: borderColor }} />
@@ -680,7 +624,52 @@ function HospitalDetailPage() {
         </Row>
       </Container>
 
-      {/* 5. Bottom Banner CTA */}
+      {/* 5. Related Hospitals Section (Internal Linking SEO Discovery) */}
+      {relatedHospitals && relatedHospitals.length > 0 && (
+        <Container className="pb-4">
+          <div className="pt-4 border-top">
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+              <div>
+                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+                  সম্পর্কিত অন্যান্য হাসপাতাল
+                </h3>
+                <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
+                  {hospital?.district?.name || 'এই এলাকার'} অন্যান্য উন্নত চিকিৎসাকেন্দ্র ও হাসপাতাল
+                </p>
+              </div>
+              {hospital?.district?.slug && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/hospitals/${hospital.district_slug || hospital.district?.slug}`)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: primaryGreen,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    cursor: 'pointer'
+                  }}
+                >
+                  সব হাসপাতাল <IconChevronRight size={16} />
+                </button>
+              )}
+            </div>
+
+            <Row className="g-3">
+              {relatedHospitals.slice(0, 3).map((hosp, idx) => (
+                <Col key={hosp.id || idx} xs={12} md={4}>
+                  <HospitalCard hospital={hosp} viewMode="grid" />
+                </Col>
+              ))}
+            </Row>
+          </div>
+        </Container>
+      )}
+
+      {/* 6. Bottom Banner CTA */}
       <Container className="pb-5">
         <div style={{ background: '#F0FDF4', borderRadius: 24, padding: '32px 48px', border: '1.5px solid #DCFCE7', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
           <div className="d-flex align-items-center gap-4">

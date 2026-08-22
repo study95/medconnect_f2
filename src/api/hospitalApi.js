@@ -11,3 +11,7 @@ export const getHospitalBySlug = (district, upazila, slug) =>
 // GET /api/hospitals/:id (Legacy / Fallback Endpoint)
 export const getHospitalById = (id) =>
   axiosInstance.get(`/hospitals/${id}`)
+
+// GET /api/hospitals/:identifier/related (Internal Linking Endpoint)
+export const getHospitalRelated = (identifier) =>
+  axiosInstance.get(`/hospitals/${identifier}/related`)
