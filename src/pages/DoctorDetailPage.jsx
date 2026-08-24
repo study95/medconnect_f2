@@ -472,9 +472,9 @@ function DoctorDetailPageContent() {
 
           {/* Working Location Row */}
           <div style={{ fontSize: 11, color: mutedTextColor, fontWeight: 600 }}>
-            Working in
+            কর্মরত আছেন
             <div style={{ fontSize: 13, fontWeight: 800, color: darkTextColor, marginTop: 2 }}>
-              {sortedChambers?.[0]?.hospital?.name || doctor?.hospital?.name || 'Dhaka medical college hospital'}
+              {sortedChambers?.[0]?.hospital?.name || doctor?.hospital?.name || 'ঢাকা মেডিকেল কলেজ হাসপাতাল'}
             </div>
           </div>
         </div>
@@ -739,14 +739,14 @@ function DoctorDetailPageContent() {
               }}>
                 <Nav className="flex-nowrap align-items-center justify-content-between" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 4 }}>
                   {[
-                    { key: 'about', label: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} /> },
-                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', icon: <IconBuildingHospital size={16} /> },
-                    { key: 'experience', label: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} /> },
-                    { key: 'reviews', label: 'রিভিউ', icon: <IconStar size={16} /> }
+                    { key: 'about', label: 'ডাক্তার সম্পর্কে', mobileLabel: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} />, showOnMobile: true },
+                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', mobileLabel: 'চেম্বার', icon: <IconBuildingHospital size={16} />, showOnMobile: true },
+                    { key: 'experience', label: 'অভিজ্ঞতা', mobileLabel: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} />, showOnMobile: false },
+                    { key: 'reviews', label: 'রিভিউ', mobileLabel: 'রিভিউ', icon: <IconStar size={16} />, showOnMobile: true }
                   ].map(tab => {
                     const isActive = activeTab === tab.key
                     return (
-                      <Nav.Item key={tab.key} style={{ flex: 1, textAlign: 'center' }}>
+                      <Nav.Item key={tab.key} className={tab.showOnMobile ? '' : 'd-none d-lg-block'} style={{ flex: 1, textAlign: 'center' }}>
                         <Nav.Link 
                           eventKey={tab.key}
                           style={{ 
@@ -767,7 +767,9 @@ function DoctorDetailPageContent() {
                             fontFamily: 'inherit'
                           }}
                         >
-                          {tab.icon} <span>{tab.label}</span>
+                          {tab.icon}
+                          <span className="d-none d-lg-inline">{tab.label}</span>
+                          <span className="d-inline d-lg-none">{tab.mobileLabel || tab.label}</span>
                         </Nav.Link>
                       </Nav.Item>
                     )
@@ -778,7 +780,7 @@ function DoctorDetailPageContent() {
               {/* Body Content: Shows ONLY Selected Menu Item Data at the Top! */}
               <div className="tab-content-container">
 
-                {/* 1. About Doctor Section */}
+                {/* 1. About Doctor Section (Includes Experience on Mobile) */}
                 {activeTab === 'about' && (
                   <div id="section-about" className="tab-body-section animate-tab-view">
                     <div className="d-flex align-items-center gap-2 mb-3">
@@ -836,7 +838,7 @@ function DoctorDetailPageContent() {
                     </div>
 
                     {/* Educational background */}
-                    <div>
+                    <div style={{ marginBottom: 24 }}>
                       <h4 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <IconSchool size={18} color={primaryGreen} /> শিক্ষাগত যোগ্যতা ও সনদ
                       </h4>
@@ -847,6 +849,123 @@ function DoctorDetailPageContent() {
                             <span style={{ fontSize: 14, fontWeight: 800, color: '#334155' }}>{edu}</span>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Experience Section (Inside Doctor Info / About) */}
+                    <div className="pt-3 border-top">
+                      <div className="d-flex align-items-center gap-2 mb-3">
+                        <IconBriefcase size={20} color={primaryGreen} />
+                        <h4 style={{ fontSize: 16, fontWeight: 950, color: darkTextColor, margin: 0 }}>
+                          অভিজ্ঞতা ও কর্মজীবন
+                        </h4>
+                      </div>
+
+                      <div className="d-flex flex-column gap-3">
+                        {Array.isArray(doctor?.experiences) && doctor.experiences.length > 0 ? (
+                          doctor.experiences.map((exp, idx) => {
+                            const isPresent = Boolean(
+                              exp?.is_current ||
+                              exp?.currently_working ||
+                              (typeof exp?.period === 'string' && /present|বর্তমান/i.test(exp.period)) ||
+                              (typeof exp?.end_date === 'string' && /present|বর্তমান/i.test(exp.end_date)) ||
+                              (typeof exp?.to_date === 'string' && /present|বর্তমান/i.test(exp.to_date))
+                            )
+
+                            return (
+                              <div
+                                key={exp.id || idx}
+                                style={{
+                                  padding: '16px 18px',
+                                  background: isPresent ? '#F0FDF4' : '#F8FAFC',
+                                  borderRadius: 14,
+                                  border: isPresent ? '1.5px solid #00B875' : `1px solid ${cardBorderColor}`,
+                                  boxShadow: isPresent ? '0 4px 14px rgba(0, 184, 117, 0.08)' : 'none',
+                                  position: 'relative',
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 12
+                                }}
+                              >
+                                {isPresent && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '-10px',
+                                      right: '16px',
+                                      background: '#00B875',
+                                      color: '#FFFFFF',
+                                      fontSize: '10.5px',
+                                      fontWeight: 700,
+                                      padding: '2px 8px',
+                                      borderRadius: '6px',
+                                      boxShadow: '0 2px 6px rgba(0, 184, 117, 0.25)',
+                                      fontFamily: "'Hind Siliguri', sans-serif"
+                                    }}
+                                  >
+                                    বর্তমানে কর্মরত আছেন
+                                  </div>
+                                )}
+
+                                <div style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: 10,
+                                  background: isPresent ? '#FFFFFF' : lightGreenBg,
+                                  border: isPresent ? '1px solid #A7F3D0' : 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginTop: 2,
+                                  color: primaryGreen
+                                }}>
+                                  <IconBriefcase size={18} />
+                                </div>
+
+                                <div className="flex-grow-1">
+                                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                                    <h5 style={{ fontSize: 15, fontWeight: 700, color: darkTextColor, margin: 0 }}>
+                                      {exp.designation || 'Specialist Doctor'}
+                                    </h5>
+                                    {exp.duration && (
+                                      <span style={{ fontSize: 11.5, fontWeight: 600, color: primaryGreen, background: isPresent ? '#DCFCE7' : lightGreenBg, padding: '2px 8px', borderRadius: 20 }}>
+                                        {exp.duration}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: 13.5, fontWeight: 600, color: primaryGreen, margin: '0 0 4px' }}>
+                                    {exp.hospital_name || 'Hospital / Institute'}
+                                  </div>
+                                  {exp.department && (
+                                    <div style={{ margin: '0 0 6px 0' }}>
+                                      <span style={{
+                                        background: '#00B875',
+                                        color: 'white',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        padding: '2px 8px',
+                                        borderRadius: 4,
+                                        display: 'inline-block',
+                                        fontFamily: "'Hind Siliguri', sans-serif"
+                                      }}>
+                                        {exp.department}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="d-flex align-items-center gap-3 flex-wrap text-muted" style={{ fontSize: 12, fontWeight: 500 }}>
+                                    {exp.period && <span>📅 {exp.period}</span>}
+                                    {exp.address && <span>📍 {exp.address}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <div style={{ padding: '14px', background: '#F8FAFC', borderRadius: 12, border: `1px dashed ${cardBorderColor}`, color: '#64748B', fontSize: 13.5, fontWeight: 600, textAlign: 'center' }}>
+                            ১০+ বছরের চিকিৎসা অভিজ্ঞতা
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
