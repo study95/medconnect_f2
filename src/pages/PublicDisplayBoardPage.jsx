@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { getPublicDisplayBoard, getPublicHospitalDisplayBoard } from '../api/appointmentApi'
+import { getDoctorUrl } from '../utils/identifierHelper'
 import { soundService } from '../utils/soundUtils'
 import { 
   Clock, 
@@ -239,7 +240,7 @@ export default function PublicDisplayBoardPage() {
 
   const rawDocPhoto = doctor.photo || doctor.photo_url || doctor.image || doctor.avatar
   const doctorPhoto = rawDocPhoto ? (rawDocPhoto.startsWith('http') ? rawDocPhoto : `${BASE}/storage/${rawDocPhoto}`) : null
-  const doctorUrl = doctor.id ? `${window.location.origin}/doctors/${doctor.id}` : `${window.location.origin}/doctors`
+  const doctorUrl = doctor ? `${window.location.origin}${getDoctorUrl(doctor)}` : `${window.location.origin}/doctors`
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(doctorUrl)}&margin=0`
 
   const totalPatientsCount = stats.total_patients || (waitingPatients.length + (stats.total_completed || 0) + (currentlyServing ? 1 : 0)) || 0

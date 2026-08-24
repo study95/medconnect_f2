@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
-import html2pdf from 'html2pdf.js'
+// html2pdf.js is dynamically imported inside handleDownloadPdf() to avoid loading
+// its bundled html2canvas+jsPDF (~1.3MB) until the user actually clicks Download PDF
 
 export default function CommissionMemo({ show, onClose, data, summary, filters, doctor, hospital }) {
   const componentRef = useRef()
@@ -9,7 +10,7 @@ export default function CommissionMemo({ show, onClose, data, summary, filters, 
     content: () => componentRef.current,
   })
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const element = componentRef.current;
     const opt = {
       margin:       10,
@@ -18,6 +19,8 @@ export default function CommissionMemo({ show, onClose, data, summary, filters, 
       html2canvas:  { scale: 2, useCORS: true },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
+    // Dynamic import — only loads html2pdf.js when user clicks the button
+    const { default: html2pdf } = await import('html2pdf.js')
     html2pdf().from(element).set(opt).save();
   }
 

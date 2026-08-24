@@ -7,8 +7,8 @@ import { getPrescription } from '../api/adminApi'
 import { AppointmentListSkeleton } from '../components/common/Skeletons'
 import { useTranslation } from 'react-i18next'
 import { MapPin, Calendar, Clock, ChevronRight, ArrowLeft, Download, Loader2, FileText, User } from 'lucide-react'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+// html2canvas and jsPDF are dynamically imported inside the download handler
+// to avoid adding ~600KB to the initial MyAppointmentsPage bundle
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
@@ -197,6 +197,12 @@ function MyAppointmentsPage() {
 
       const A4_WIDTH_PX = 794
       const A4_HEIGHT_PX = 1123
+
+      // Dynamic imports — only load heavy PDF libs when user clicks download
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
 
       const canvas = await html2canvas(rxPaperRef.current, {
         scale: 2,

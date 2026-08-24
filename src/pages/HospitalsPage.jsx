@@ -7,6 +7,7 @@ import ErrorState from '../components/common/ErrorState'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
 import HospitalDetailPage from './HospitalDetailPage'
+import { getHospitalUrl } from '../utils/identifierHelper'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
@@ -820,7 +821,7 @@ function HospitalsPage() {
                   return (
                     <div
                       key={h.id}
-                      onClick={() => navigate(`/hospitals/${h.id}`)}
+                      onClick={() => navigate(getHospitalUrl(h))}
                       style={{
                         position: 'absolute',
                         top: pos.top,

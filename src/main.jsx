@@ -11,7 +11,9 @@ import ReactDOM from 'react-dom/client'
 // Bootstrap CSS — must be imported before your own CSS
 // so your custom styles can override Bootstrap if needed
 import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+// Note: bootstrap.bundle.min.js is NOT imported here.
+// react-bootstrap handles all Bootstrap interactivity (modals, dropdowns, tooltips, etc.)
+// without requiring the vanilla Bootstrap JS bundle. Removing it saves ~22KB.
 
 // Swiper CSS for sliders
 import 'swiper/css'

@@ -6,8 +6,8 @@ import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import { calculateAge } from '../../../utils/dateUtils'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+// html2canvas and jsPDF are dynamically imported inside handleDownloadPrescription()
+// to avoid adding ~600KB to the PatientProfilePage chunk
 import '../../../styles/prescription.css'
 
 export default function PatientProfilePage() {
@@ -109,6 +109,11 @@ export default function PatientProfilePage() {
       setExportingRx(rxData)
       setTimeout(async () => {
         if (!silentPaperRef.current) return
+        // Dynamic imports: only load when user clicks Download
+        const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+          import('html2canvas'),
+          import('jspdf'),
+        ])
         const canvas = await html2canvas(silentPaperRef.current, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
         const pdf = new jsPDF('p', 'mm', 'a4')
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297)

@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700;800;900&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+/* FONT NOTE: Google Fonts are loaded non-blocking via index.html (media="print" onload trick).
+   Removed the @import here to eliminate a duplicate render-blocking font request.
+   All font families (Hind Siliguri, Noto Sans Bengali, Inter, Outfit) are still available. */
 
 /* ===================================================
    GLOBAL STYLES — Doctor Booklet
@@ -733,3 +735,45 @@ a:hover {
 
 
 
+
+
+/* =====================================================================
+   CORE WEB VITALS CSS OPTIMIZATIONS
+   Added for LCP / CLS / INP / Lighthouse performance improvements
+   ===================================================================== */
+
+/* -- Shimmer animation used by OptimizedImage skeleton -- */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+/* -- Contain paint for card grids  -- */
+.hosp-banner-card,
+.doc-banner-card,
+.doctor-card-wrapper {
+  contain: layout style paint;
+}
+
+/* -- Respect user's preference for reduced motion -- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .scroll-reveal-box {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* -- Lazy-loaded image minimum height to prevent CLS -- */
+img[loading="lazy"] {
+  min-height: 1px;
+}

@@ -92,6 +92,8 @@ function DoctorBannerCard({ doctor }) {
           src={photo}
           alt={mainName}
           className="doc-banner-photo-img"
+          loading="lazy"
+          decoding="async"
           style={{
             width: '100%',
             height: '100%',

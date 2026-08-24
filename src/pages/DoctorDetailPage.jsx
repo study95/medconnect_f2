@@ -388,6 +388,10 @@ function DoctorDetailPageContent() {
               <img
                 src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)}
                 alt={doctor?.name || 'Doctor'}
+                loading="lazy"
+                decoding="async"
+                width="90"
+                height="98"
                 onError={(e) => { e.target.src = DEMO_AVATAR }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
@@ -495,6 +499,8 @@ function DoctorDetailPageContent() {
                 <img 
                   src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)} 
                   alt={doctor?.name || 'Doctor'}
+                  loading="lazy"
+                  decoding="async"
                   onError={(e) => { e.target.src = DEMO_AVATAR }}
                   style={{
                     width: '100%',

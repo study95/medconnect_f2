@@ -6,8 +6,8 @@ import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { getPrescription } from '../api/adminApi'
 import { useTranslation } from 'react-i18next'
 import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, ArrowLeft, CheckCircle2, AlertCircle, FileText, Download, Loader2 } from 'lucide-react'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+// html2canvas and jsPDF are dynamically imported inside handleDownloadRx()
+// so they don't bloat the initial page load (~600KB saved from first render)
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import PatientLiveQueueTracker from '../components/queue/PatientLiveQueueTracker'
 import toast from 'react-hot-toast'
@@ -197,6 +197,12 @@ export default function AppointmentTicketPage() {
 
       const A4_WIDTH_PX = 794
       const A4_HEIGHT_PX = 1123
+
+      // Dynamic imports: load only when user clicks download (saves ~600KB from initial load)
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
 
       const canvas = await html2canvas(rxPaperRef.current, {
         scale: 2,

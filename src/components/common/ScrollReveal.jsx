@@ -83,7 +83,8 @@ export default function ScrollReveal({
     opacity: isVisible ? 1 : 0,
     transform: getTransform(),
     transition: `opacity ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
-    willChange: 'opacity, transform',
+    // willChange: only applied before animation, released after to save GPU compositor layers
+    willChange: isVisible ? 'auto' : 'opacity, transform',
     ...style
   }
 
@@ -137,7 +138,7 @@ export function useScrollFade({ threshold = 0.1, delay = 0, duration = 600, dist
     opacity: isVisible ? 1 : 0,
     transform: getTransform(),
     transition: `opacity ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
-    willChange: 'opacity, transform',
+    willChange: isVisible ? 'auto' : 'opacity, transform',
   }
 
   return { ref, isVisible, style }

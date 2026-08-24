@@ -365,9 +365,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
   const [searchText, setSearchText] = useState('')
 
-  // Fetch specialties
+  // Fetch specialties — uses same cache key as useSpecialties() hook
+  // → If useSpecialties() already fetched on this page, this is instant (cache hit)
   const specialtiesQuery = useQuery({
-    queryKey: ['hero-specialties'],
+    queryKey: ['specialties'],
     queryFn: async () => {
       const res = await getSpecialties()
       return res.data?.data || res.data || []
@@ -376,12 +377,13 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   })
   const specialties = specialtiesQuery.data || []
 
-  // Fetch hospitals
+  // Fetch hospitals — uses same cache key as useHospitals({ per_page: 100 })
+  // → If another component fetched hospitals with same params, this is instant (cache hit)
   const hospitalsQuery = useQuery({
-    queryKey: ['hero-hospitals'],
+    queryKey: ['hospitals', { per_page: 100 }],
     queryFn: async () => {
       const res = await getHospitals({ per_page: 100 })
-      return res.data?.data || res.data || []
+      return res.data?.data || res.data?.data?.data || res.data || []
     },
     staleTime: 30 * 60 * 1000
   })

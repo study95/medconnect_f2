@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getPrescription } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+// html2canvas and jsPDF are dynamically imported inside handleOpenPDF()
+// to keep this admin page's chunk small
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import '../../../styles/prescription.css'
 
@@ -67,6 +67,11 @@ export default function PrescriptionViewPage() {
       }
 
       const element = paperRef.current;
+      // Dynamic imports: only load when user opens PDF (heavy libs, ~600KB)
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
       const canvas = await html2canvas(element, {
         scale: 2, // High resolution
         useCORS: true,
