@@ -448,18 +448,26 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     <div
       onClick={handleDetails}
       style={{
-        background: 'white', borderRadius: 8, border: '1px solid #E2E8F0',
-        padding: '16px', cursor: 'pointer', transition: 'all 0.25s ease',
-        position: 'relative', overflow: 'hidden', height: '100%',
-        display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        background: 'white',
+        borderRadius: 14,
+        border: '1px solid #E5E7EB',
+        padding: '16px',
+        cursor: 'pointer',
+        transition: 'all 0.25s ease',
+        position: 'relative',
+        overflow: 'hidden',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = '#00A88C'
-        e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 168, 140, 0.08)'
+        e.currentTarget.style.borderColor = '#00B875'
+        e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 184, 117, 0.10)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = '#E2E8F0'
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+        e.currentTarget.style.borderColor = '#E5E7EB'
+        e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.03)'
       }}
     >
       {/* Heart Wishlist Button */}
@@ -474,7 +482,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           top: 12,
           right: 12,
           zIndex: 15,
-          background: 'rgba(255, 255, 255, 0.95)',
+          background: 'rgba(255, 255, 255, 0.98)',
           border: '1px solid #E2E8F0',
           borderRadius: '50%',
           width: 32,
@@ -483,30 +491,31 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          color: '#EF4444'
+          color: '#EF4444',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
         }}
       >
         <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
       </button>
 
       {/* Doctor Top Avatar & Main Info */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
         {/* Avatar Container with Blue Verified Badge on Top Right of Image */}
-        <div style={{ flexShrink: 0, position: 'relative' }}>
+        <div style={{ flexShrink: 0, position: 'relative', width: 90, height: 95 }}>
           <OptimizedImage
             src={getMediaUrl(doctorPhoto)}
             fallback={DEMO_AVATAR}
             alt={doctor.name}
             width={90}
             height={95}
-            borderRadius={8}
-            style={{ border: '1px solid #F1F5F9', objectFit: 'cover' }}
+            borderRadius={12}
+            style={{ border: '1px solid #F1F5F9', objectFit: 'cover', width: 90, height: 95 }}
           />
-          {/* Verified Blue Badge Icon on Image Top Right */}
+          {/* Verified Badge Icon on Image Top Right */}
           <div style={{
             position: 'absolute',
-            top: -4,
-            right: -4,
+            top: -5,
+            right: -5,
             zIndex: 5,
             display: 'flex',
             alignItems: 'center',
@@ -519,9 +528,10 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, paddingRight: 24 }}>
           <h4 style={{
-            fontWeight: 800, color: '#0F172A', fontSize: 15,
+            fontWeight: 800, color: '#0F172A', fontSize: 15.5,
             margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            fontFamily: "'Hind Siliguri', sans-serif"
+            fontFamily: "'Hind Siliguri', sans-serif",
+            lineHeight: 1.25
           }} title={doctor.name}>
             {doctor.name}
           </h4>
@@ -531,9 +541,9 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               display: 'inline-block',
               background: '#00B875',
               color: 'white',
-              fontSize: 11,
+              fontSize: 11.5,
               fontWeight: 700,
-              padding: '2px 9px 2px 7px',
+              padding: '2px 10px 2px 8px',
               borderRadius: '4px 2px 2px 4px',
               clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)',
               fontFamily: "'Hind Siliguri', sans-serif",
@@ -546,32 +556,32 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             </span>
           </div>
 
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {degrees}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 12, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconBuildingHospital size={14} color="#64748B" />
+            <IconBuildingHospital size={14} color="#64748B" style={{ flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {primaryHospital}
             </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 12, fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconMapPin size={14} color="#00A88C" />
+            <IconMapPin size={14} color="#00B875" style={{ flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {locationText || 'ঢাকা'}
             </span>
           </div>
 
-          <div style={{ fontSize: 12, color: '#475569', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+          <div style={{ fontSize: 12, color: '#334155', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 1 }}>
             {experience} বছর অভিজ্ঞতা • ৳{fee} ফি
           </div>
         </div>
       </div>
 
       {/* Bottom Action Buttons */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', width: '100%' }}>
         <button
           type="button"
           onClick={handleDetails}
@@ -583,19 +593,21 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             background: 'white',
             color: '#0F172A',
             fontWeight: 700,
-            fontSize: 12.5,
+            fontSize: 'clamp(11.5px, 3.2vw, 13px)',
+            padding: '0 4px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 5,
-            fontFamily: "'Hind Siliguri', sans-serif"
+            fontFamily: "'Hind Siliguri', sans-serif",
+            transition: 'all 0.15s ease'
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
         >
-          <IconEye size={15} />
+          <IconEye size={15} style={{ flexShrink: 0 }} />
           <span>বিস্তারিত দেখুন</span>
         </button>
         <button
@@ -609,7 +621,8 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             background: '#00B875',
             color: 'white',
             fontWeight: 800,
-            fontSize: 12.5,
+            fontSize: 'clamp(11.5px, 3.2vw, 13px)',
+            padding: '0 4px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',
@@ -617,12 +630,13 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             justifyContent: 'center',
             gap: 5,
             boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
-            fontFamily: "'Hind Siliguri', sans-serif"
+            fontFamily: "'Hind Siliguri', sans-serif",
+            transition: 'background 0.15s ease'
           }}
           onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
           onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
         >
-          <IconCalendarEvent size={15} color="#FFFFFF" />
+          <IconCalendarEvent size={15} color="#FFFFFF" style={{ flexShrink: 0 }} />
           <span>অ্যাপয়েন্টমেন্ট নিন</span>
         </button>
       </div>

@@ -1234,10 +1234,10 @@ function DoctorDetailPageContent() {
 
         {/* ================= RELATED DOCTORS (INTERNAL LINKING SEO DISCOVERY) ================= */}
         {relatedDoctors && relatedDoctors.length > 0 && (
-          <section className="mt-5 pt-4 border-top">
+          <section className="doc-detail-related-section mt-5 pt-4 border-top">
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
               <div>
-                <h3 style={{ fontSize: 22, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
                   সম্পর্কিত বিশেষজ্ঞ ডাক্তারগণ
                 </h3>
                 <p style={{ fontSize: 13, color: mutedTextColor, margin: 0, fontWeight: 600 }}>
@@ -1265,9 +1265,9 @@ function DoctorDetailPageContent() {
               )}
             </div>
 
-            <Row className="g-3">
+            <Row className="g-3 g-md-4">
               {relatedDoctors.slice(0, 4).map((relDoc, idx) => (
-                <Col key={relDoc.id || idx} xs={12} sm={6} lg={4} xl={3}>
+                <Col key={relDoc.id || idx} xs={12} sm={6} md={6} lg={4} xl={relatedDoctors.length <= 3 ? 4 : 3}>
                   <DoctorCard doctor={relDoc} viewMode="grid" />
                 </Col>
               ))}
@@ -1492,6 +1492,20 @@ function DoctorDetailPageContent() {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+          }
+          .doc-detail-related-section {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+            margin-top: 24px !important;
+            margin-bottom: 24px !important;
+          }
+          .doc-detail-related-section .row {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .doc-detail-related-section [class*="col-"] {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
           }
         }
       ` }} />
