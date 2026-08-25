@@ -521,11 +521,11 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         {/* Hero Title */}
         <ScrollReveal direction="up" distance={20} duration={600}>
           <div className="text-center mx-auto hero-title-wrapper" style={{ maxWidth: 980, marginBottom: 36 }}>
-            <h1 className="hero-title-h1" style={{ fontSize: 'clamp(24px, 3.8vw, 46px)', fontWeight: 900, color: '#00B875', lineHeight: 1.35, letterSpacing: '-0.01em', marginBottom: 16, textShadow: '0 2px 14px rgba(0, 0, 0, 0.6)', whiteSpace: 'normal', wordBreak: 'break-word', fontFamily: "'Hind Siliguri', sans-serif" }}>
-              <div style={{ display: 'block', color: '#00B875' }}>স্বাগত ডক্টর বুকলেটে</div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: '1.3em', marginTop: 4 }}>
-                <span style={{ color: '#FFFFFF' }}>{typedLine2}</span>
-                <span style={{ display: 'inline-block', color: '#00B875', fontWeight: 300, animation: 'cursorBlink 0.8s infinite', marginLeft: 2 }}>|</span>
+            <h1 className="hero-title-h1" style={{ fontSize: 'clamp(22px, 3.6vw, 44px)', fontWeight: 900, color: '#00B875', lineHeight: 1.35, letterSpacing: '-0.01em', marginBottom: 16, textShadow: '0 2px 14px rgba(0, 0, 0, 0.6)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              <div style={{ display: 'block', color: '#00B875', whiteSpace: 'nowrap' }}>স্বাগত ডক্টর বুকলেটে</div>
+              <div className="hero-typed-wrapper" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', minHeight: '1.35em', lineHeight: 1.35, marginTop: 4 }}>
+                <span style={{ color: '#FFFFFF', whiteSpace: 'nowrap' }}>{typedLine2 || ' '}</span>
+                <span style={{ display: 'inline-block', color: '#00B875', fontWeight: 300, animation: 'cursorBlink 0.8s infinite', marginLeft: 2, lineHeight: 1 }}>|</span>
               </div>
             </h1>
             <p className="hero-subtitle-p" style={{ fontSize: 'clamp(14px, 1.6vw, 18px)', color: 'rgba(241, 245, 249, 0.94)', fontWeight: 400, lineHeight: 1.65, margin: '0 auto', maxWidth: 880 }}>
@@ -651,6 +651,16 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       </Container>
 
       <style>{`
+        /* ── Stable Typewriter Container (Zero Layout Shift) ──── */
+        .hero-typed-wrapper {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          white-space: nowrap;
+          min-height: 1.35em;
+          line-height: 1.35;
+        }
+
         /* ── Hero Section Background Layers ──── */
         .hero-section-main {
           position: relative;
@@ -1080,9 +1090,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             margin-bottom: 20px !important;
           }
           .hero-title-h1 {
-            font-size: clamp(20px, 5vw, 28px) !important;
-            line-height: 1.4 !important;
+            font-size: clamp(17px, 4.6vw, 25px) !important;
+            line-height: 1.35 !important;
             margin-bottom: 12px !important;
+          }
+          .hero-title-h1 div {
+            white-space: nowrap !important;
           }
           .hero-subtitle-p {
             font-size: 13.5px !important;

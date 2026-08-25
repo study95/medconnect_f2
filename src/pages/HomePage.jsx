@@ -15,7 +15,7 @@ import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
-  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus
+  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus
 } from '@tabler/icons-react'
 import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -1329,7 +1329,7 @@ function BrowseByLocationSection({ popularDistricts = [], popularUpazilas = [] }
         {popularDistricts && popularDistricts.length > 0 && (
           <div className="mt-4 pt-3">
             <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
-              জনপ্রিয় জেলাভিত্তিক ডাক্তার ও হাসপাতাল:
+              জনপ্রিয় জেলাভিত্তিক ডাক্তার ও হাসপাতাল:
             </h5>
             <div className="d-flex flex-wrap gap-2">
               {popularDistricts.map(dist => (
@@ -1351,7 +1351,7 @@ function BrowseByLocationSection({ popularDistricts = [], popularUpazilas = [] }
         {popularUpazilas && popularUpazilas.length > 0 && (
           <div className="mt-3">
             <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
-              জনপ্রিয় থানা / এলাকা:
+              জনপ্রিয় থানা / এলাকা:
             </h5>
             <div className="d-flex flex-wrap gap-2">
               {popularUpazilas.map(upz => (
@@ -1426,14 +1426,16 @@ function RecentlyAddedSection({ doctors = [], hospitals = [] }) {
 
 // ─── HOMEPAGE FAQ SECTION (WITH SCHEMA SUPPORT) ─────────────────────────────
 function HomepageFaqSection() {
+  const [openIndex, setOpenIndex] = useState(0)
+
   const faqs = [
     {
-      q: 'কিভাবে MedConnect-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
+      q: 'কিভাবে DoctorBooklet-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
       a: 'ওয়েবসাইটে ডাক্তার বা স্পেশালিটি অনুসন্ধান করে আপনার পছন্দের ডাক্তারের প্রোফাইলে প্রবেশ করুন। এরপর আপনার সুবিধাজনক চেম্বার এবং সময় নির্বাচন করে সহজেই অ্যাপয়েন্টমেন্ট নিশ্চিত করুন।'
     },
     {
       q: 'অনলাইন সিরিয়াল বুকিং করতে কোন অতিরিক্ত ফি লাগে?',
-      a: 'না, MedConnect প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
+      a: 'না, DoctorBooklet প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
     },
     {
       q: 'হাসপাতালের জরুরি অ্যাম্বুলেন্স ও আইসিইউ সেবা কিভাবে খুঁজব?',
@@ -1449,34 +1451,139 @@ function HomepageFaqSection() {
     }
   ]
 
+  const handleToggle = (i) => {
+    setOpenIndex(prev => (prev === i ? null : i))
+  }
+
   return (
     <section style={{ padding: '60px 0', background: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
       <Container style={{ maxWidth: 880 }}>
         <div className="text-center mb-4">
-          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#E0F2FE', color: '#0284C7', fontSize: '0.8rem', fontWeight: 700 }}>
+          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
             প্রশ্নোত্তর
           </span>
           <h2 className="fw-bold text-dark" style={{ fontSize: 'clamp(22px, 3.5vw, 30px)', fontFamily: "'Hind Siliguri', sans-serif" }}>
             সাধারণ জিজ্ঞাসা ও উত্তর
           </h2>
-          <p className="text-muted" style={{ fontSize: '0.95rem' }}>
-            MedConnect ব্যবহার ও স্বাস্থ্যসেবা প্রাপ্তি সংক্রান্ত সাধারণ তথ্যাবলী
+          <p className="text-muted" style={{ fontSize: '0.95rem', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            DoctorBooklet ব্যবহার ও স্বাস্থ্যসেবা প্রাপ্তি সংক্রান্ত সাধারণ তথ্যাবলী
           </p>
         </div>
 
         <div className="d-flex flex-column gap-3">
-          {faqs.map((faq, i) => (
-            <div key={i} className="p-4 bg-white rounded-3 border shadow-sm">
-              <h5 className="fw-bold text-dark mb-2" style={{ fontSize: 16, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                ❓ {faq.q}
-              </h5>
-              <p className="text-muted mb-0" style={{ fontSize: 14.5, lineHeight: 1.6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                {faq.a}
-              </p>
-            </div>
-          ))}
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i
+            return (
+              <div
+                key={i}
+                className="bg-white rounded-3 border"
+                style={{
+                  boxShadow: isOpen ? '0 4px 20px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  borderColor: isOpen ? '#86EFAC' : '#E2E8F0',
+                  transition: 'all 0.25s ease',
+                  overflow: 'hidden'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggle(i)}
+                  className="w-100 d-flex align-items-center justify-content-between p-3 p-md-4 text-start border-0 bg-transparent"
+                  style={{ cursor: 'pointer', outline: 'none', gap: 14 }}
+                  aria-expanded={isOpen}
+                >
+                  <span
+                    className="fw-bold mb-0"
+                    style={{
+                      fontSize: 16,
+                      color: isOpen ? '#15803D' : '#1E293B',
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      lineHeight: 1.5,
+                      flex: 1,
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    {faq.q}
+                  </span>
+                  <span
+                    className="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: isOpen ? '#00B875' : '#F1F5F9',
+                      color: isOpen ? '#FFFFFF' : '#475569',
+                      transition: 'all 0.25s ease',
+                      border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0'
+                    }}
+                  >
+                    {isOpen ? <IconMinus size={18} stroke={2.5} /> : <IconPlus size={18} stroke={2.5} />}
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <div
+                    className="px-3 px-md-4 pb-3 pb-md-4 pt-0"
+                    style={{
+                      animation: 'faqFadeIn 0.3s ease'
+                    }}
+                  >
+                    <div style={{ height: 1, background: '#F1F5F9', marginBottom: 14 }} />
+                    <p
+                      className="text-muted mb-0"
+                      style={{
+                        fontSize: 14.5,
+                        lineHeight: 1.7,
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        color: '#475569'
+                      }}
+                    >
+                      {faq.a}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* আরো জানুন (FAQ / Help Center) Button */}
+        <div className="text-center mt-4 pt-2">
+          <Link
+            to="/support"
+            className="btn text-white rounded-pill px-4 py-2 fw-bold"
+            style={{
+              fontSize: '0.95rem',
+              fontFamily: "'Hind Siliguri', sans-serif",
+              background: '#00B875',
+              borderColor: '#00B875',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+              transition: 'all 0.25s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#009E64'
+              e.currentTarget.style.borderColor = '#009E64'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#00B875'
+              e.currentTarget.style.borderColor = '#00B875'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            আরো জানুন (সাহায্য কেন্দ্র FAQ)
+            <IconArrowRight size={18} />
+          </Link>
         </div>
       </Container>
+
+      <style>{`
+        @keyframes faqFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   )
 }
@@ -1703,12 +1810,12 @@ function PatientTestimonialsSection() {
 function DarkRegistrationSection() {
   const navigate = useNavigate()
 
-  const steps = [
+  const roles = [
     {
-      stepNum: 'STEP 01',
+      badge: 'ডাক্তারদের জন্য',
       title: 'Doctor Registration',
-      subTitle: 'ডাক্তার হিসেবে যুক্ত হোন',
-      desc: 'আপনার প্র্যাকটিস পরিচালনা করুন এবং রোগীদের ডিজিটাল সেবা দিন।',
+      subTitle: 'ডাক্তার হিসেবে যোগ দিন',
+      desc: 'আপনার চেম্বার ও প্র্যাকটিস পরিচালনা করুন এবং রোগীদের সরাসরি ডিজিটাল সেবা দিন।',
       link: '/register?role=doctor',
       icon: (
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1720,10 +1827,10 @@ function DarkRegistrationSection() {
       ),
     },
     {
-      stepNum: 'STEP 02',
+      badge: 'হাসপাতাল ও ক্লিনিকের জন্য',
       title: 'Hospital Registration',
       subTitle: 'হাসপাতাল পার্টনার হোন',
-      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অ্যাপয়েন্টমেন্ট ম্যানেজ করুন।',
+      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অনলাইন অ্যাপয়েন্টমেন্ট ও সার্ভিস ম্যানেজ করুন।',
       link: '/register?role=hospital',
       icon: (
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1734,10 +1841,10 @@ function DarkRegistrationSection() {
       ),
     },
     {
-      stepNum: 'STEP 03',
+      badge: 'রোগীদের জন্য',
       title: 'Patient Registration',
       subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
-      desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
+      desc: 'বিশেষজ্ঞ ডাক্তার খুঁজুন এবং যেকোনো সময় সহজে অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
       link: '/register?role=patient',
       icon: (
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1750,41 +1857,44 @@ function DarkRegistrationSection() {
   ]
 
   return (
-    <section className="registration-section" style={{ padding: '42px 0 32px', background: '#F8FAFC' }}>
+    <section className="registration-section" style={{ padding: '48px 0 40px', background: '#F8FAFC' }}>
       <Container>
         {/* Header Title & Subtitle */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
+            ইউজার নিবন্ধন
+          </span>
           <h2 style={{
-            fontSize: 'clamp(26px, 3.8vw, 36px)',
+            fontSize: 'clamp(24px, 3.8vw, 34px)',
             fontWeight: 900,
             color: '#0F172A',
             marginBottom: 8,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
-            সহজ ৩টি ধাপে নিবন্ধন করুন
+            আপনার ক্যাটাগরি অনুযায়ী নিবন্ধন করুন
           </h2>
           <p style={{
             fontSize: 15,
             color: '#64748B',
             fontWeight: 500,
-            maxWidth: 580,
+            maxWidth: 620,
             margin: '0 auto',
             fontFamily: "'Hind Siliguri', sans-serif"
           }}>
-            ডাক্তার, হাসপাতাল এবং রোগী — সবার জন্য ডিজিটাল স্বাস্থ্যসেবা
+            ডাক্তার, হাসপাতাল কিংবা সাধারণ রোগী — আপনার প্রয়োজন অনুযায়ী সঠিক প্রোফাইল নির্বাচন করুন
           </p>
         </div>
 
         {/* Dark Navy 3-Column Container */}
         <div style={{
           background: '#0B192C',
-          borderRadius: 8,
+          borderRadius: 12,
           boxShadow: '0 20px 45px -10px rgba(11, 25, 44, 0.3)',
           overflow: 'hidden',
           position: 'relative'
         }}>
           <div className="pic1-steps-grid">
-            {steps.map((item, i) => (
+            {roles.map((item, i) => (
               <div
                 key={i}
                 className="pic1-step-col"
@@ -1800,22 +1910,25 @@ function DarkRegistrationSection() {
                   transition: 'background 0.3s ease'
                 }}
               >
-                {/* Step Label */}
+                {/* Role Category Badge */}
                 <span style={{
-                  fontSize: 11,
-                  fontWeight: 800,
+                  fontSize: 12,
+                  fontWeight: 700,
                   color: '#00B875',
-                  letterSpacing: '2px',
-                  marginBottom: 24,
-                  textTransform: 'uppercase',
-                  fontFamily: "'Inter', sans-serif"
+                  letterSpacing: '0.5px',
+                  marginBottom: 20,
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  background: 'rgba(0, 184, 117, 0.12)',
+                  padding: '4px 12px',
+                  borderRadius: 20,
+                  border: '1px solid rgba(0, 184, 117, 0.25)'
                 }}>
-                  {item.stepNum}
+                  {item.badge}
                 </span>
 
                 {/* Icon */}
                 <div style={{
-                  marginBottom: 22,
+                  marginBottom: 20,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1842,11 +1955,12 @@ function DarkRegistrationSection() {
                   fontWeight: 700,
                   color: '#FFFFFF',
                   background: '#00B875',
-                  padding: '4px 14px',
-                  borderRadius: 4,
+                  padding: '5px 16px',
+                  borderRadius: 6,
                   marginBottom: 14,
                   display: 'inline-block',
-                  fontFamily: "'Hind Siliguri', sans-serif"
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  boxShadow: '0 2px 8px rgba(0, 184, 117, 0.3)'
                 }}>
                   {item.subTitle}
                 </span>
@@ -1862,13 +1976,6 @@ function DarkRegistrationSection() {
                 }}>
                   {item.desc}
                 </p>
-
-                {/* Arrow connector between columns (desktop only) */}
-                {i < steps.length - 1 && (
-                  <div className="pic1-step-connector">
-                    <IconChevronRight size={14} color="#00B875" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -1897,7 +2004,7 @@ function DarkRegistrationSection() {
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#009E64' }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = '#00B875' }}
           >
-            <span>এখনই নিবন্ধন শুরু করুন</span>
+            <span>নিবন্ধন নির্বাচন করুন</span>
             <IconArrowRight size={18} stroke={2.5} />
           </button>
         </div>
@@ -1915,25 +2022,10 @@ function DarkRegistrationSection() {
           border-right: none;
         }
         .pic1-step-col:hover {
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.04);
         }
         .pic1-step-col:hover .pic1-icon-wrap {
           transform: translateY(-4px) scale(1.08);
-        }
-        .pic1-step-connector {
-          position: absolute;
-          right: -14px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background: #0B192C;
-          border: 1px solid rgba(245, 158, 11, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10;
         }
         @media (max-width: 860px) {
           .pic1-steps-grid {
@@ -1946,9 +2038,6 @@ function DarkRegistrationSection() {
           }
           .pic1-step-col:last-child {
             border-bottom: none;
-          }
-          .pic1-step-connector {
-            display: none;
           }
         }
       `}</style>
@@ -2199,7 +2288,7 @@ function HomePage() {
       {
         '@type': 'MedicalOrganization',
         '@id': `${window.location.origin}/#organization`,
-        'name': 'MedConnect Bangladesh',
+        'name': 'DoctorBooklet Bangladesh',
         'url': window.location.origin,
         'logo': `${window.location.origin}/logo.png`,
         'contactPoint': {
@@ -2214,7 +2303,7 @@ function HomePage() {
         'mainEntity': [
           {
             '@type': 'Question',
-            'name': 'কিভাবে MedConnect-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
+            'name': 'কিভাবে DoctorBooklet-এ বিশেষজ্ঞ ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করব?',
             'acceptedAnswer': {
               '@type': 'Answer',
               'text': 'ওয়েবসাইটে ডাক্তার বা স্পেশালিটি অনুসন্ধান করে আপনার পছন্দের ডাক্তারের প্রোফাইলে প্রবেশ করুন। এরপর আপনার সুবিধাজনক চেম্বার এবং সময় নির্বাচন করে সহজেই অ্যাপয়েন্টমেন্ট নিশ্চিত করুন।'
@@ -2225,7 +2314,7 @@ function HomePage() {
             'name': 'অনলাইন সিরিয়াল বুকিং করতে কোন অতিরিক্ত ফি লাগে?',
             'acceptedAnswer': {
               '@type': 'Answer',
-              'text': 'না, MedConnect প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
+              'text': 'না, DoctorBooklet প্ল্যাটফর্মের মাধ্যমে অ্যাপয়েন্টমেন্ট বুকিং সম্পূর্ণ ফ্রি। আপনি চেম্বারে পৌঁছে ডাক্তারের নির্ধারিত ভিজিট ফি প্রদান করবেন।'
             }
           }
         ]

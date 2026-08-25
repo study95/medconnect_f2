@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Container } from 'react-bootstrap'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { Navigation, Autoplay } from 'swiper/modules'
+import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import { useNavigate } from 'react-router-dom'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { getContent } from '../../utils/contentService'
 import 'swiper/css'
 import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 
 const FALLBACK_BANNERS = [
     { id: 1, image: '/images/banner_telemedicine_1786196938449.jpg', alt: 'Telemedicine & Doctor Booking Banner', link: '/doctors' },
@@ -47,7 +48,7 @@ export default function ImageBannerSlider() {
             className="image-banner-prev-btn"
             aria-label="Previous Slide"
           >
-            <IconChevronLeft size={24} stroke={3} />
+            <IconChevronLeft size={20} stroke={2.5} />
           </button>
 
           <button
@@ -55,11 +56,11 @@ export default function ImageBannerSlider() {
             className="image-banner-next-btn"
             aria-label="Next Slide"
           >
-            <IconChevronRight size={24} stroke={3} />
+            <IconChevronRight size={20} stroke={2.5} />
           </button>
 
           <Swiper
-            modules={[Navigation, Autoplay]}
+            modules={[Navigation, Pagination, Autoplay]}
             centeredSlides={true}
             loop={banners.length > 2}
             speed={700}
@@ -72,17 +73,21 @@ export default function ImageBannerSlider() {
               prevEl: prevRef.current,
               nextEl: nextRef.current,
             }}
+            pagination={{
+              clickable: true,
+              dynamicBullets: false,
+            }}
             onBeforeInit={(swiper) => {
               swiper.params.navigation.prevEl = prevRef.current
               swiper.params.navigation.nextEl = nextRef.current
             }}
-            spaceBetween={0}
-            slidesPerView={1}
+            spaceBetween={20}
+            slidesPerView={1.08}
             breakpoints={{
-              576: { slidesPerView: 1.08, spaceBetween: 12 },
-              768: { slidesPerView: 1.25, spaceBetween: 16 },
-              1024: { slidesPerView: 1.30, spaceBetween: 16 },
-              1400: { slidesPerView: 1.35, spaceBetween: 16 },
+              576: { slidesPerView: 1.12, spaceBetween: 16 },
+              768: { slidesPerView: 1.18, spaceBetween: 20 },
+              992: { slidesPerView: 1.20, spaceBetween: 22 },
+              1200: { slidesPerView: 1.22, spaceBetween: 24 },
             }}
             className="image-banner-swiper"
           >
@@ -93,15 +98,16 @@ export default function ImageBannerSlider() {
                     onClick={() => navigate(item.link)}
                     className={`image-slide-card ${isActive ? 'is-active' : 'is-peek'}`}
                     style={{
-                      borderRadius: 7,
+                      borderRadius: 16,
                       position: 'relative',
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      boxShadow: isActive ? '0 20px 45px rgba(15, 23, 42, 0.25)' : '0 8px 20px rgba(0,0,0,0.08)',
-                      transition: 'all 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+                      border: '1px solid #E2E8F0',
+                      transition: 'all 0.4s ease',
                       aspectRatio: '16 / 6.5',
                       minHeight: 220,
-                      background: '#1E293B',
+                      background: '#F1F5F9',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -115,11 +121,11 @@ export default function ImageBannerSlider() {
                         height: '100%',
                         objectFit: 'cover',
                         display: 'block',
-                        borderRadius: 7,
-                        transition: 'transform 0.5s ease'
+                        borderRadius: 15,
+                        transition: 'transform 0.4s ease'
                       }}
                       onMouseEnter={(e) => {
-                        if (isActive) e.currentTarget.style.transform = 'scale(1.03)'
+                        if (isActive) e.currentTarget.style.transform = 'scale(1.015)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'scale(1)'
@@ -136,7 +142,7 @@ export default function ImageBannerSlider() {
 
       <style>{`
         .image-banner-swiper {
-          padding: 8px 0 12px !important;
+          padding: 10px 0 !important;
           overflow: visible !important;
         }
 
@@ -145,17 +151,17 @@ export default function ImageBannerSlider() {
         }
 
         .image-slide-card {
-          border-radius: 7px !important;
+          border-radius: 16px !important;
         }
 
         .image-slide-card img {
-          border-radius: 7px !important;
+          border-radius: 15px !important;
         }
 
         .image-slide-card.is-peek {
-          opacity: 0.72;
-          transform: scale(0.95);
-          filter: brightness(0.85);
+          opacity: 0.88;
+          transform: scale(0.98);
+          filter: brightness(0.92);
         }
 
         .image-slide-card.is-active {
@@ -164,56 +170,117 @@ export default function ImageBannerSlider() {
           filter: brightness(1);
         }
 
-        /* Floating Prev / Next Navigation Buttons (< & >) */
+        /* Desktop: hide pagination dots, use navigation arrow buttons */
+        .image-banner-swiper .swiper-pagination {
+          display: none;
+        }
+
+        /* Floating Prev / Next Navigation Buttons (< & >) exactly centered in the image gap line */
         .image-banner-prev-btn,
         .image-banner-next-btn {
           position: absolute;
           top: 50%;
-          transform: translateY(-50%);
-          width: 44px;
-          height: 50px;
-          border-radius: 10px !important;
+          width: 38px;
+          height: 38px;
+          border-radius: 8px !important;
           background: #FFFFFF;
-          color: #0F172A;
-          border: 1.5px solid rgba(226, 232, 240, 0.9);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+          color: #1E293B;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           z-index: 25;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.2s ease;
         }
 
+        /* Desktop: 1200px+ (slidesPerView: 1.22 -> center seam line at 9.0%) */
         .image-banner-prev-btn {
-          left: calc(12.5% - 22px);
+          left: 9.0%;
+          transform: translate(-50%, -50%);
         }
 
         .image-banner-next-btn {
-          right: calc(12.5% - 22px);
+          right: 9.0%;
+          transform: translate(50%, -50%);
         }
 
         .image-banner-prev-btn:hover,
         .image-banner-next-btn:hover {
-          background: #15803D;
+          background: #00B875;
           color: #FFFFFF;
-          border-color: #15803D;
-          transform: translateY(-50%) scale(1.08);
-          box-shadow: 0 12px 28px rgba(21, 128, 61, 0.35);
+          border-color: #00B875;
+          box-shadow: 0 6px 18px rgba(0, 184, 117, 0.35);
         }
 
-        @media (max-width: 991px) {
-          .image-banner-prev-btn { left: 6px; }
-          .image-banner-next-btn { right: 6px; }
+        /* 992px - 1199px (slidesPerView: 1.20 -> center seam line at 8.3%) */
+        @media (max-width: 1199px) and (min-width: 992px) {
+          .image-banner-prev-btn { left: 8.3%; }
+          .image-banner-next-btn { right: 8.3%; }
+        }
+
+        /* 768px - 991px (slidesPerView: 1.18 -> center seam line at 7.6%) */
+        @media (max-width: 991px) and (min-width: 768px) {
+          .image-banner-prev-btn { left: 7.6%; }
+          .image-banner-next-btn { right: 7.6%; }
           .image-slide-card { aspect-ratio: 16 / 8 !important; min-height: 180px !important; }
+        }
+
+        /* 576px - 767px (slidesPerView: 1.12 -> center seam line at 5.3%) */
+        @media (max-width: 767px) and (min-width: 576px) {
+          .image-banner-prev-btn { left: 5.3%; }
+          .image-banner-next-btn { right: 5.3%; }
+          .image-slide-card { aspect-ratio: 16 / 8.5 !important; min-height: 160px !important; }
+        }
+
+        /* Mobile View: Clean Minimalist Indicator Dots directly on image (No dark box) */
+        @media (max-width: 767px) {
+          .image-banner-swiper .swiper-pagination {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: absolute !important;
+            bottom: 17px !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 20 !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            gap: 6px !important;
+          }
+
+          .image-banner-swiper .swiper-pagination-bullet {
+            width: 8px !important;
+            height: 8px !important;
+            background: rgba(255, 255, 255, 0.75) !important;
+            opacity: 1 !important;
+            border-radius: 50% !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: none !important;
+          }
+
+          .image-banner-swiper .swiper-pagination-bullet-active {
+            background: #00B875 !important;
+            width: 22px !important;
+            height: 8px !important;
+            border-radius: 99px !important;
+            box-shadow: 0 2px 8px rgba(0, 184, 117, 0.7), 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+          }
         }
 
         @media (max-width: 575px) {
           .image-banner-slider-section { padding: 6px 0 12px !important; }
           .image-banner-slider-section .container-fluid { padding-left: 0 !important; padding-right: 0 !important; }
           .image-banner-prev-btn, .image-banner-next-btn { display: none !important; }
-          .image-slide-card { border-radius: 0 !important; aspect-ratio: 16 / 8.5 !important; min-height: auto !important; }
-          .image-slide-card img { border-radius: 0 !important; }
+          .image-slide-card { border-radius: 12px !important; aspect-ratio: 16 / 8.5 !important; min-height: auto !important; }
+          .image-slide-card img { border-radius: 11px !important; }
         }
       `}</style>
     </section>
