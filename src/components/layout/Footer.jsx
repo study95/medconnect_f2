@@ -207,7 +207,7 @@ function Footer() {
         <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.1) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', position: 'relative', zIndex: 2 }}>
-          <AccordionItem id="brand" title="মেডকানেক্ট (আমাদের সম্পর্কে)">
+          <AccordionItem id="brand" title="ডক্টর বুকলেট সম্পর্কে">
             {LEGAL_LINKS.slice(0, 1).map(link => renderMobileLink(link))}
             {QUICK_LINKS.slice(3, 5).map(link => renderMobileLink(link))}
           </AccordionItem>
