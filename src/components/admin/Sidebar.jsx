@@ -312,6 +312,32 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </>
           )}
 
+          {/* Review Moderation Section — Admin */}
+          {isAdmin && (
+            <>
+              <div className="sidebar-section-title">MODERATION</div>
+              <NavLink
+                to="/admin/reviews/moderation"
+                className={`sidebar-nav-item ${isActive('/admin/reviews/moderation') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Review Moderation' : undefined}
+              >
+                <span className="nav-icon"><MessageSquare size={18} /></span>
+                <span className="nav-text">Review Moderation</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/reviews/reports"
+                className={`sidebar-nav-item ${isActive('/admin/reviews/reports') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Dispute Reports' : undefined}
+              >
+                <span className="nav-icon"><Shield size={18} /></span>
+                <span className="nav-text">Dispute Reports</span>
+              </NavLink>
+            </>
+          )}
+
           {/* System Admin Section */}
           {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('payment.view') || hasPermission('content.update') || hasPermission('patient.view')) && (
             <>

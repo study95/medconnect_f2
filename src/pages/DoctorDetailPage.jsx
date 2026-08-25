@@ -13,6 +13,9 @@ import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
 
 import ErrorBoundary from '../components/common/ErrorBoundary'
+import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
+import { useDeleteReview } from '../features/reviews/useReviews'
+import toast from 'react-hot-toast'
 import SeoHead from '../components/common/SeoHead'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
@@ -59,63 +62,28 @@ function DoctorDetailPageContent() {
     }
   }, [id, doctor?.slug, doctor?.district_slug, doctor?.upazila_slug, navigate])
 
-  const [reviews, setReviews] = useState([
-    {
-      id: 1,
-      userName: 'আরিফুর রহমান',
-      rating: 5,
-      date: '২ দিন আগে',
-      comment: 'ডাক্তার সাহেব অত্যন্ত ধৈর্য্য সহকারে কথা শোনেন এবং বিস্তারিত বুঝিয়ে দেন। প্রেসক্রিপশনও অনেক ভালো লেগেছে।',
-      verified: true
-    },
-    {
-      id: 2,
-      userName: 'মোছাঃ নাসরিন সুলতানা',
-      rating: 5,
-      date: '১ সপ্তাহ আগে',
-      comment: 'উনার চিকিৎসায় আমার আম্মার রক্তচাপ এখন নিয়ন্ত্রণে আছে। নিয়মিত ফলোআপের ব্যবস্থা প্রশংসনীয়।',
-      verified: true
-    },
-    {
-      id: 3,
-      userName: 'তানভীর আহমেদ',
-      rating: 4,
-      date: '২ সপ্তাহ আগে',
-      comment: 'চেম্বারের পরিবেশ সুন্দর এবং সিরিয়াল ব্যবস্থাপনা ভালো ছিল। ডাক্তার সাহেবের আচরণ খুবই মার্জিত।',
-      verified: true
+  // Review Module Modal States
+  const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
+  const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
+  const [selectedReviewForEdit, setSelectedReviewForEdit] = useState(null)
+
+  const deleteReviewMutation = useDeleteReview()
+
+  const handleDeleteReview = async (rev) => {
+    if (window.confirm('Are you sure you want to delete this review?')) {
+      try {
+        await deleteReviewMutation.mutateAsync(rev.public_id || rev.id)
+        toast.success('Review deleted successfully')
+      } catch (err) {
+        toast.error('Failed to delete review')
+      }
     }
-  ])
-
-  const [newRating, setNewRating] = useState(5)
-  const [hoverRating, setHoverRating] = useState(0)
-  const [newComment, setNewComment] = useState('')
-  const [reviewSubmitted, setReviewSubmitted] = useState(false)
-
-  const handleReviewSubmit = (e) => {
-    e.preventDefault()
-    if (!newComment.trim()) return
-
-    const newRev = {
-      id: Date.now(),
-      userName: user?.name || user?.full_name || 'বেনামী রোগী',
-      rating: newRating,
-      date: 'আজ',
-      comment: newComment.trim(),
-      verified: true
-    }
-
-    setReviews([newRev, ...reviews])
-    setNewComment('')
-    setNewRating(5)
-    setReviewSubmitted(true)
-    setTimeout(() => setReviewSubmitted(false), 4000)
   }
 
   const averageRating = useMemo(() => {
-    if (!reviews || reviews.length === 0) return '5.0'
-    const sum = reviews.reduce((acc, r) => acc + (Number(r?.rating) || 5), 0)
-    return (sum / reviews.length).toFixed(1)
-  }, [reviews])
+    if (doctor?.rating_avg) return Number(doctor.rating_avg).toFixed(1)
+    return '5.0'
+  }, [doctor])
 
   // Compute total experience from all experience durations
   const totalExpLabel = (() => {
@@ -272,8 +240,8 @@ function DoctorDetailPageContent() {
   }
 
   const structuredSchema = useMemo(() => {
-    return buildPhysicianSchema(doctor, reviews)
-  }, [doctor, reviews])
+    return buildPhysicianSchema(doctor, doctor?.reviews || [])
+  }, [doctor])
 
   if (loading) return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
@@ -465,7 +433,7 @@ function DoctorDetailPageContent() {
               <div style={{ display: 'flex', alignItems: 'center', justifyCenter: 'center', gap: 3 }}>
                 <IconStar size={14} color="#F59E0B" fill="#F59E0B" />
                 <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{averageRating}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: mutedTextColor }}>({(reviews || []).length * 100 + 51})</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: mutedTextColor }}>({doctor?.rating_count || doctor?.reviews_count || 51})</span>
               </div>
             </div>
           </div>
@@ -602,7 +570,7 @@ function DoctorDetailPageContent() {
                       </span>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: mutedTextColor, display: 'block' }}>
-                      ({(reviews || []).length} রিভিউ)
+                      ({doctor?.rating_count || doctor?.reviews_count || 0} রিভিউ)
                     </span>
                   </Col>
 
@@ -1244,105 +1212,14 @@ function DoctorDetailPageContent() {
                 {/* 4. Patient Reviews Section */}
                 {activeTab === 'reviews' && (
                   <div id="section-reviews" className="tab-body-section animate-tab-view">
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                      <IconStar size={22} color={primaryGreen} />
-                      <h3 style={{ fontSize: 19, fontWeight: 950, color: darkTextColor, margin: 0 }}>
-                        Patient Reviews ({(reviews || []).length})
-                      </h3>
-                    </div>
-
-                    {/* Rating Breakdown */}
-                    <div className="mb-4" style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}` }}>
-                      <div className="d-flex align-items-center gap-3 mb-3">
-                        <IconStar size={32} color="#F59E0B" fill="#F59E0B" />
-                        <div>
-                          <span style={{ fontSize: 36, fontWeight: 950, color: darkTextColor, lineHeight: 1 }}>{averageRating}</span>
-                          <span style={{ fontSize: 13, color: mutedTextColor, fontWeight: 700, display: 'block' }}>({(reviews || []).length} Reviews)</span>
-                        </div>
-                      </div>
-
-                      <div className="d-flex flex-column gap-1">
-                        {[5, 4, 3, 2, 1].map(stars => {
-                          const count = (reviews || []).filter(r => r.rating === stars).length
-                          const percent = (reviews || []).length > 0 ? (count / reviews.length) * 100 : 0
-                          return (
-                            <div key={stars} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
-                              <span style={{ width: 16, fontWeight: 700 }}>{stars}★</span>
-                              <div className="flex-grow-1" style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ width: `${percent}%`, height: '100%', background: primaryGreen }} />
-                              </div>
-                              <span style={{ width: 30, color: mutedTextColor, textAlign: 'right' }}>{Math.round(percent)}%</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Add Review Form for Logged In Users */}
-                    <div style={{ background: '#F8FAFC', borderRadius: 16, padding: 20, border: `1px solid ${cardBorderColor}` }}>
-                      {isLoggedIn ? (
-                        <form onSubmit={handleReviewSubmit}>
-                          <h4 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, marginBottom: 12 }}>
-                            আপনার অভিজ্ঞতা জানান:
-                          </h4>
-
-                          {reviewSubmitted && (
-                            <div className="mb-3 p-2" style={{ background: lightGreenBg, border: '1px solid #A7F3D0', borderRadius: 8, color: '#007A65', fontSize: 13, fontWeight: 800 }}>
-                              <IconCheck size={16} className="me-1" /> রিভিউ জমা দেওয়া হয়েছে!
-                            </div>
-                          )}
-
-                          <div className="d-flex gap-2 align-items-center mb-3">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => setNewRating(star)}
-                                onMouseEnter={() => setHoverRating(star)}
-                                onMouseLeave={() => setHoverRating(0)}
-                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                              >
-                                <IconStar
-                                  size={24}
-                                  color="#F59E0B"
-                                  fill={(hoverRating || newRating) >= star ? '#F59E0B' : 'none'}
-                                />
-                              </button>
-                            ))}
-                          </div>
-
-                          <textarea
-                            rows={3}
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="আপনার মতামত বা অভিজ্ঞতা লিখুন..."
-                            required
-                            style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
-                              border: `1px solid ${cardBorderColor}`, fontSize: 14,
-                              outline: 'none', fontFamily: 'inherit', marginBottom: 12
-                            }}
-                          />
-
-                          <button
-                            type="submit"
-                            style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: primaryGreen, color: 'white', fontWeight: 900, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
-                            রিভিউ জমা দিন
-                          </button>
-                        </form>
-                      ) : (
-                        <div className="d-flex align-items-center justify-content-between">
-                          <span style={{ fontSize: 14, fontWeight: 700, color: darkTextColor }}>রিভিউ দিতে চান?</span>
-                          <button
-                            onClick={() => navigate('/login', { state: { from: `/doctor/${id}` } })}
-                            style={{ padding: '6px 18px', borderRadius: 8, border: `1px solid ${primaryGreen}`, background: 'white', color: primaryGreen, fontWeight: 900, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
-                            লগইন করুন
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <ReviewList
+                      doctorId={doctor?.id || doctor?.public_id || id}
+                      title="রোগীর মতামত ও রিভিউ"
+                      onReply={(rev) => setSelectedReviewForReply(rev)}
+                      onReport={(rev) => setSelectedReviewForReport(rev)}
+                      onEdit={(rev) => setSelectedReviewForEdit(rev)}
+                      onDelete={handleDeleteReview}
+                    />
                   </div>
                 )}
 
@@ -1628,6 +1505,28 @@ function DoctorDetailPageContent() {
           }
         }
       ` }} />
+
+      {/* Review Modals */}
+      <ReviewReplyModal
+        show={Boolean(selectedReviewForReply)}
+        onHide={() => setSelectedReviewForReply(null)}
+        review={selectedReviewForReply}
+        responderType="doctor"
+        responderId={doctor?.id || doctor?.public_id}
+      />
+
+      <ReviewReportModal
+        show={Boolean(selectedReviewForReport)}
+        onHide={() => setSelectedReviewForReport(null)}
+        review={selectedReviewForReport}
+      />
+
+      <ReviewFormModal
+        show={Boolean(selectedReviewForEdit)}
+        onHide={() => setSelectedReviewForEdit(null)}
+        review={selectedReviewForEdit}
+        isEditMode={true}
+      />
 
       <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />
     </div>

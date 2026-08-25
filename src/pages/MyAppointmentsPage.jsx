@@ -6,10 +6,11 @@ import { getAppointments } from '../api/appointmentApi'
 import { getPrescription } from '../api/adminApi'
 import { AppointmentListSkeleton } from '../components/common/Skeletons'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Calendar, Clock, ChevronRight, ArrowLeft, Download, Loader2, FileText, User } from 'lucide-react'
+import { MapPin, Calendar, Clock, ChevronRight, ArrowLeft, Download, Loader2, FileText, User, Star } from 'lucide-react'
 // html2canvas and jsPDF are dynamically imported inside the download handler
 // to avoid adding ~600KB to the initial MyAppointmentsPage bundle
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
+import ReviewFormModal from '../components/reviews/ReviewFormModal'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import '../styles/prescription.css'
@@ -144,6 +145,8 @@ function MyAppointmentsPage() {
 
   const [downloadingRxId, setDownloadingRxId] = useState(null)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
+  const [reviewAppt, setReviewAppt] = useState(null)
+  const [existingReviewToEdit, setExistingReviewToEdit] = useState(null)
   const rxPaperRef = useRef(null)
 
   const handleDirectDownloadPrescription = async (appt) => {
@@ -625,9 +628,9 @@ function MyAppointmentsPage() {
                     </div>
                   </div>
 
-                  {/* ── Prominent Dedicated Prescription Download Section for Completed Visits ── */}
+                  {/* ── Prominent Dedicated Actions for Completed Visits (Prescription & Review) ── */}
                   {status === 'completed' && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #E2E8F0' }}>
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #E2E8F0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -675,6 +678,49 @@ function MyAppointmentsPage() {
                           </>
                         )}
                       </button>
+
+                      {/* Patient Review & Rating CTA */}
+                      {isLoggedIn && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setReviewAppt(appt)
+                            setExistingReviewToEdit(appt.review || null)
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 7,
+                            background: appt.review || appt.has_review ? '#FFFBEB' : '#FEF3C7',
+                            border: '1.5px solid #FDE68A',
+                            color: '#B45309',
+                            padding: '8px 14px',
+                            borderRadius: 9,
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            fontFamily: "'Hind Siliguri', sans-serif",
+                            boxShadow: '0 1px 3px rgba(180,83,9,0.06)',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = '#FDE68A'
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = appt.review || appt.has_review ? '#FFFBEB' : '#FEF3C7'
+                          }}
+                          title={appt.review || appt.has_review ? "আপনার দেওয়া রিভিউ সম্পাদনা করুন" : "ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"}
+                        >
+                          <Star size={15} color="#D97706" fill="#F59E0B" />
+                          <span>
+                            {appt.review || appt.has_review
+                              ? (language === 'bn' ? 'রিভিউ দেওয়া হয়েছে (সম্পাদনা করুন)' : 'Review Submitted (Edit)')
+                              : (language === 'bn' ? 'ডাক্তারকে রেটিং ও রিভিউ দিন' : 'Rate & Review Doctor')}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -683,6 +729,17 @@ function MyAppointmentsPage() {
           </div>
         )}
       </Container>
+
+      {/* ── Review Form Modal ── */}
+      <ReviewFormModal
+        show={Boolean(reviewAppt)}
+        onHide={() => {
+          setReviewAppt(null)
+          setExistingReviewToEdit(null)
+        }}
+        appointment={reviewAppt}
+        existingReview={existingReviewToEdit}
+      />
 
       {/* ── Offscreen Prescription Paper for Direct PDF Rendering ── */}
       {rxDataForDownload && (

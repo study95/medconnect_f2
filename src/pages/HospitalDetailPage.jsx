@@ -8,12 +8,16 @@ import HospitalCard from '../components/common/HospitalCard'
 import useHospitalRelated from '../hooks/useHospitalRelated'
 import { HospitalDetailSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
+import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
+import { useDeleteReview } from '../features/reviews/useReviews'
+import toast from 'react-hot-toast'
 import SeoHead from '../components/common/SeoHead'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useFavorites } from '../context/FavoritesContext'
+import { useAuth } from '../context/AuthContext'
 import { translateMetadata } from '../utils/translationUtils'
 import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
@@ -54,12 +58,31 @@ function HospitalDetailPage() {
   const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
   const { isHospitalFavorite, toggleFavoriteHospital } = useFavorites()
+  const { user } = useAuth() || {}
   const { triggerShare, shareModalOpen, shareData, closeShareModal } = useShare()
   const { t, i18n } = useTranslation()
   const language = i18n.language
   const { theme } = useTheme()
 
   const [deptModalOpen, setDeptModalOpen] = useState(false)
+
+  // Review Module Modal States
+  const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
+  const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
+  const [selectedReviewForEdit, setSelectedReviewForEdit] = useState(null)
+
+  const deleteReviewMutation = useDeleteReview()
+
+  const handleDeleteReview = async (rev) => {
+    if (window.confirm('Are you sure you want to delete this review?')) {
+      try {
+        await deleteReviewMutation.mutateAsync(rev.public_id || rev.id)
+        toast.success('Review deleted successfully')
+      } catch (err) {
+        toast.error('Failed to delete review')
+      }
+    }
+  }
   const [deptSearchQuery, setDeptSearchQuery] = useState('')
 
   const filteredDepartments = useMemo(() => {

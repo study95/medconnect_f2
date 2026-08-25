@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
 import NotificationPopup from './NotificationPopup'
+import NotificationDropdown from '../layout/NotificationDropdown'
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconExternalLink } from '@tabler/icons-react'
 import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon } from 'lucide-react'
 import { useSubscription } from '../../context/SubscriptionContext'
@@ -124,19 +125,8 @@ export default function AdminLayout() {
 
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 
-              {/* Notification Bell */}
-              <Link to="/admin/notifications" style={{ position: 'relative', color: 'var(--admin-text)', display: 'flex', alignItems: 'center' }}>
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -5, right: -5,
-                    background: '#EF4444', color: 'white', borderRadius: 10,
-                    padding: '1px 5px', fontSize: 10, fontWeight: 800
-                  }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
+              {/* Global Notification Bell Dropdown */}
+              <NotificationDropdown targetPath="/admin/notifications" iconColor="var(--admin-text)" />
 
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 

@@ -5,11 +5,12 @@ import { getAppointmentById, cancelAppointment } from '../api/appointmentApi'
 import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { getPrescription } from '../api/adminApi'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, ArrowLeft, CheckCircle2, AlertCircle, FileText, Download, Loader2 } from 'lucide-react'
+import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, ArrowLeft, CheckCircle2, AlertCircle, FileText, Download, Loader2, Star } from 'lucide-react'
 // html2canvas and jsPDF are dynamically imported inside handleDownloadRx()
 // so they don't bloat the initial page load (~600KB saved from first render)
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import PatientLiveQueueTracker from '../components/queue/PatientLiveQueueTracker'
+import ReviewFormModal from '../components/reviews/ReviewFormModal'
 import toast from 'react-hot-toast'
 import '../styles/prescription.css'
 
@@ -58,6 +59,7 @@ export default function AppointmentTicketPage() {
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [downloadingRx, setDownloadingRx] = useState(false)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
   const rxPaperRef = useRef(null)
@@ -760,39 +762,65 @@ export default function AppointmentTicketPage() {
             </button>
 
             {status === 'completed' ? (
-              <button
-                onClick={handleDirectDownloadPDF}
-                disabled={downloadingRx}
-                style={{
-                  flex: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  background: '#EFF6FF',
-                  border: '1.5px solid #3B82F6',
-                  color: '#2563EB',
-                  padding: '10px',
-                  borderRadius: 10,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: downloadingRx ? 'not-allowed' : 'pointer',
-                  opacity: downloadingRx ? 0.75 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {downloadingRx ? (
-                  <>
-                    <Loader2 size={16} className="spinner-border spinner-border-sm" style={{ borderWidth: 2 }} />
-                    ডাউনলোড হচ্ছে...
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} />
-                    প্রেসক্রিপশন
-                  </>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={handleDirectDownloadPDF}
+                  disabled={downloadingRx}
+                  style={{
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: '#EFF6FF',
+                    border: '1.5px solid #3B82F6',
+                    color: '#2563EB',
+                    padding: '10px',
+                    borderRadius: 10,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: downloadingRx ? 'not-allowed' : 'pointer',
+                    opacity: downloadingRx ? 0.75 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {downloadingRx ? (
+                    <>
+                      <Loader2 size={16} className="spinner-border spinner-border-sm" style={{ borderWidth: 2 }} />
+                      ডাউনলোড হচ্ছে...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      প্রেসক্রিপশন
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setShowReviewModal(true)}
+                  style={{
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: '#FFFBEB',
+                    border: '1.5px solid #FDE68A',
+                    color: '#B45309',
+                    padding: '10px',
+                    borderRadius: 10,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"
+                >
+                  <Star size={16} color="#D97706" fill="#F59E0B" />
+                  রিভিউ দিন
+                </button>
+              </>
             ) : status !== 'cancelled' ? (
               <button
                 onClick={() => setShowCancelModal(true)}
@@ -935,6 +963,13 @@ export default function AppointmentTicketPage() {
           <PrescriptionPaper ref={rxPaperRef} prescription={rxDataForDownload} />
         </div>
       )}
+
+      {/* ── Review Form Modal ── */}
+      <ReviewFormModal
+        show={showReviewModal}
+        onHide={() => setShowReviewModal(false)}
+        appointment={appointment}
+      />
     </div>
   )
 }

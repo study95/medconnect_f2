@@ -120,6 +120,10 @@ const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPag
 // Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
 
+// Review Moderation & Dispute Reports
+const ReviewModerationPage   = lazy(() => import('./pages/admin/reviews/ReviewModerationPage'))
+const ReviewReportsPage      = lazy(() => import('./pages/admin/reviews/ReviewReportsPage'))
+
 // Serial Display & Live Queue Management
 const SerialDisplayManagerPage = lazy(() => import('./pages/admin/display/SerialDisplayManagerPage'))
 
@@ -344,6 +348,10 @@ function App() {
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="password" element={<AdminPasswordPage />} />
+
+            {/* Review Moderation & Dispute Reports (Admin) */}
+            <Route path="reviews/moderation" element={<ReviewModerationPage />} />
+            <Route path="reviews/reports" element={<ReviewReportsPage />} />
 
             {/* Audit Log */}
             <Route path="audit-logs" element={<AuditLogPage />} />

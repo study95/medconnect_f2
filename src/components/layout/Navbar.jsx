@@ -8,6 +8,7 @@ import {
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X 
 } from 'lucide-react'
+import NotificationDropdown from './NotificationDropdown'
 import { getContent } from '../../utils/contentService'
 
 function AppNavbar() {
@@ -377,6 +378,10 @@ function AppNavbar() {
                 <HelpCircle size={14} strokeWidth={2.2} />
                 <span>সহায়তা কেন্দ্র</span>
               </Link>
+
+              {isLoggedIn && (
+                <NotificationDropdown targetPath={isStaff ? "/admin/notifications" : "/profile"} iconColor="#ffffff" />
+              )}
 
               {isLoggedIn ? (
                 <NavDropdown
