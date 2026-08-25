@@ -1784,20 +1784,6 @@ function HospitalDetailPage() {
         </Container>
       )}
 
-      {/* 6. Bottom Banner CTA */}
-      <Container className="pb-5">
-        <div style={{ background: '#F0FDF4', borderRadius: 24, padding: '32px 48px', border: '1.5px solid #DCFCE7', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
-          <div className="d-flex align-items-center gap-4">
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: '#DCFCE7', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconCalendarEvent size={36} /></div>
-            <div>
-              <h4 style={{ fontSize: 24, fontWeight: 950, color: textColor, marginBottom: 4 }}>সহজে অ্যাপয়েন্টমেন্ট নিন</h4>
-              <p style={{ fontSize: 16, color: mutedColor, margin: 0, fontWeight: 800 }}>দ্রুত ও সহজে আপনার পছন্দের ডাক্তার এর সিরিয়াল বুক করুন</p>
-            </div>
-          </div>
-          <button onClick={() => navigate(`/doctors?hospital_id=${id}`)} style={{ padding: '14px 40px', borderRadius: 12, border: 'none', background: primaryGreen, color: 'white', fontWeight: 950, fontSize: 16, marginLeft: 'auto' }}>অ্যাপয়েন্টমেন্ট নিন</button>
-        </div>
-      </Container>
-
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
         .nav-link:hover { color: #00B875 !important; }
@@ -1812,27 +1798,6 @@ function HospitalDetailPage() {
         }
 
         
-        /* Bottom CTA Banner Responsive */
-        @media (max-width: 767px) {
-          .bottom-cta-banner {
-            flex-direction: column !important;
-            align-items: center !important;
-            text-align: center !important;
-            padding: 22px 18px !important;
-            gap: 16px !important;
-          }
-          .bottom-cta-content {
-            flex-direction: column !important;
-            align-items: center !important;
-            text-align: center !important;
-            gap: 10px !important;
-          }
-          .bottom-cta-btn {
-            width: 100% !important;
-            margin: 0 !important;
-          }
-        }
-
         .sticky-tab-bar {
           top: var(--header-height);
           box-shadow: 0 4px 12px rgba(0,0,0,0.03);

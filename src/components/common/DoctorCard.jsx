@@ -28,7 +28,68 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const isFavorite = isDoctorFavorite(doctor.id)
 
   const doctorPhoto = doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar || doctor?.profile_image
-  const specialtyName = doctor.specialty_name || doctor.specialty?.name_bn || doctor.specialty?.name || 'বিশেষজ্ঞ'
+  const specialtyName = (() => {
+    // 1. Direct specialty_name or string field
+    if (doctor.specialty_name && typeof doctor.specialty_name === 'string' && doctor.specialty_name.trim()) return doctor.specialty_name
+    if (doctor.speciality_name && typeof doctor.speciality_name === 'string' && doctor.speciality_name.trim()) return doctor.speciality_name
+
+    // 2. Specialty object
+    if (doctor.specialty && typeof doctor.specialty === 'object') {
+      const name = doctor.specialty.name_bn || doctor.specialty.name || doctor.specialty.title_bn || doctor.specialty.title
+      if (name && typeof name === 'string' && name.trim()) return name
+    }
+    if (typeof doctor.specialty === 'string' && doctor.specialty.trim()) return doctor.specialty
+
+    // 3. Speciality object (alternate spelling)
+    if (doctor.speciality && typeof doctor.speciality === 'object') {
+      const name = doctor.speciality.name_bn || doctor.speciality.name || doctor.speciality.title_bn || doctor.speciality.title
+      if (name && typeof name === 'string' && name.trim()) return name
+    }
+    if (typeof doctor.speciality === 'string' && doctor.speciality.trim()) return doctor.speciality
+
+    // 4. Array of specialties
+    if (Array.isArray(doctor.specialties) && doctor.specialties.length > 0) {
+      const first = doctor.specialties[0]
+      if (typeof first === 'object' && first) {
+        const name = first.name_bn || first.name || first.specialty_name || first.title_bn || first.title
+        if (name && typeof name === 'string' && name.trim()) return name
+      } else if (typeof first === 'string' && first.trim()) {
+        return first
+      }
+    }
+    if (typeof doctor.specialties === 'string' && doctor.specialties.trim()) return doctor.specialties
+
+    // 5. Array of specialities
+    if (Array.isArray(doctor.specialities) && doctor.specialities.length > 0) {
+      const first = doctor.specialities[0]
+      if (typeof first === 'object' && first) {
+        const name = first.name_bn || first.name || first.specialty_name
+        if (name && typeof name === 'string' && name.trim()) return name
+      } else if (typeof first === 'string' && first.trim()) {
+        return first
+      }
+    }
+
+    // 6. Specialization field
+    if (doctor.specialization && typeof doctor.specialization === 'string' && doctor.specialization.trim()) return doctor.specialization
+    if (doctor.specializations && typeof doctor.specializations === 'string' && doctor.specializations.trim()) return doctor.specializations
+
+    // 7. Department name
+    if (doctor.department && typeof doctor.department === 'object') {
+      const name = doctor.department.name_bn || doctor.department.name
+      if (name && typeof name === 'string' && name.trim()) return name
+    }
+    if (typeof doctor.department === 'string' && doctor.department.trim()) return doctor.department
+
+    // 8. Designation
+    if (doctor.designation_bn && typeof doctor.designation_bn === 'string' && doctor.designation_bn.trim()) return doctor.designation_bn
+    if (doctor.designation && typeof doctor.designation === 'string' && doctor.designation.trim()) return doctor.designation
+
+    // 9. Default provided on doctor object
+    if (doctor.defaultSpecialty) return doctor.defaultSpecialty
+
+    return 'বিশেষজ্ঞ চিকিৎসক'
+  })()
   const experience = (() => {
     const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
     let totalMonths = 0
