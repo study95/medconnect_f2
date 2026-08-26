@@ -37,11 +37,13 @@ const ReviewList = memo(function ReviewList({
   onWriteReview,
   onLoginClick,
   canWrite = false,
+  showReplyFilter = false,
   className = '',
 }) {
   const [selectedStar, setSelectedStar] = useState(null)
   const [sortBy, setSortBy] = useState('newest')
   const [page, setPage] = useState(1)
+  const [replyFilter, setReplyFilter] = useState('all') // 'all' | 'needs_reply' | 'replied'
 
   const filterParams = useMemo(() => {
     const params = {
@@ -66,6 +68,20 @@ const ReviewList = memo(function ReviewList({
     if (!data) return []
     return Array.isArray(data) ? data : data.data || []
   }, [data])
+
+  const displayedReviews = useMemo(() => {
+    if (replyFilter === 'needs_reply') {
+      return reviews.filter(
+        (r) => !r.doctor_reply && !r.doctorReply && !r.hospital_reply && !r.hospitalReply
+      )
+    }
+    if (replyFilter === 'replied') {
+      return reviews.filter(
+        (r) => Boolean(r.doctor_reply || r.doctorReply || r.hospital_reply || r.hospitalReply)
+      )
+    }
+    return reviews
+  }, [reviews, replyFilter])
 
   const meta = data?.meta || data?.pagination || null
   const totalPages = meta?.last_page || 1
@@ -206,6 +222,46 @@ const ReviewList = memo(function ReviewList({
             </div>
           )}
 
+          {/* Feature 8K: Review Management Quick Filters (All, Needs Reply, Replied) */}
+          {(showReplyFilter || onReply) && (
+            <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-light-subtle flex-wrap">
+              <span className="small fw-bold text-dark me-2">ম্যানেজমেন্ট ফিল্টার:</span>
+              {[
+                { key: 'all', label: 'All (সবগুলো)', count: reviews.length },
+                {
+                  key: 'needs_reply',
+                  label: 'Needs Reply (উত্তর প্রয়োজন)',
+                  count: reviews.filter(
+                    (r) => !r.doctor_reply && !r.doctorReply && !r.hospital_reply && !r.hospitalReply
+                  ).length,
+                },
+                {
+                  key: 'replied',
+                  label: 'Replied (উত্তর সম্পন্ন)',
+                  count: reviews.filter(
+                    (r) => Boolean(r.doctor_reply || r.doctorReply || r.hospital_reply || r.hospitalReply)
+                  ).length,
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setReplyFilter(tab.key)}
+                  className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 ${
+                    replyFilter === tab.key
+                      ? 'btn-dark text-white shadow-sm'
+                      : 'btn-light border-light-subtle text-secondary'
+                  }`}
+                >
+                  {tab.label}
+                  <span className="badge bg-secondary-subtle text-dark rounded-pill extra-small ms-1">
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Filter & Sort Controls Toolbar */}
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-2 border-bottom border-light-subtle">
             {/* Star Filter Pills */}
@@ -255,13 +311,15 @@ const ReviewList = memo(function ReviewList({
           </div>
 
           {/* Feature 4 — Review Feed & Empty States */}
-          {reviews.length === 0 ? (
+          {displayedReviews.length === 0 ? (
             /* Empty State */
             <div className="text-center py-5 rounded-4 bg-light border border-light-subtle my-3 px-3">
               <MessageSquareOff size={48} className="text-muted mb-3 opacity-50" />
               <h6 className="fw-bold text-dark mb-2">এখনও কোনো রোগী রিভিউ দেননি</h6>
               <p className="text-muted small mb-4 mx-auto" style={{ maxWidth: '440px' }}>
-                {selectedStar
+                {replyFilter !== 'all'
+                  ? `আপনার নির্বাচিত ফিল্টারের সাথে মেলেনি এমন কোনো রিভিউ নেই।`
+                  : selectedStar
                   ? `${selectedStar}-তারকার কোনো রিভিউ আপনার ফিল্টারের সাথে মেলেনি।`
                   : !isLoggedIn
                   ? 'লগইন করে আপনার চিকিৎসার অভিজ্ঞতা শেয়ার করুন এবং অন্যান্য রোগীদের সাহায্য করুন।'
@@ -270,7 +328,15 @@ const ReviewList = memo(function ReviewList({
                   : 'চিকিৎসা সম্পন্ন হওয়ার পর রোগীরা এখানে তাদের রিভিউ প্রদান করতে পারেন।'}
               </p>
 
-              {selectedStar ? (
+              {replyFilter !== 'all' ? (
+                <button
+                  type="button"
+                  onClick={() => setReplyFilter('all')}
+                  className="btn btn-sm btn-outline-primary rounded-pill px-4 py-2"
+                >
+                  সকল রিভিউ দেখুন
+                </button>
+              ) : selectedStar ? (
                 <button
                   type="button"
                   onClick={() => handleStarFilter(null)}
@@ -300,7 +366,7 @@ const ReviewList = memo(function ReviewList({
             </div>
           ) : (
             <div className={`reviews-feed-wrapper ${isFetching ? 'opacity-75' : ''}`}>
-              {reviews.map((review) => (
+              {displayedReviews.map((review) => (
                 <ReviewCard
                   key={review.public_id || review.id}
                   review={review}

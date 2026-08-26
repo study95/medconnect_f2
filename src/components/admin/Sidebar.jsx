@@ -155,6 +155,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><Building2 size={18} /></span>
                 <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
               </NavLink>
+
+              {isManager && (
+                <NavLink
+                  to="/admin/hospital-reviews"
+                  className={`sidebar-nav-item ${isActive('/admin/hospital-reviews') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Hospital Reviews' : undefined}
+                >
+                  <span className="nav-icon"><MessageSquare size={18} /></span>
+                  <span className="nav-text">Hospital Reviews</span>
+                </NavLink>
+              )}
             </>
           )}
 
@@ -249,6 +261,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             >
               <span className="nav-icon"><ClipboardPlus size={18} /></span>
               <span className="nav-text">My Notes</span>
+            </NavLink>
+          )}
+
+          {isDoctor && (
+            <NavLink
+              to="/admin/doctor-reviews"
+              className={`sidebar-nav-item ${isActive('/admin/doctor-reviews') ? 'active' : ''}`}
+              onClick={onClose}
+              title={isCollapsed ? 'Patient Reviews' : undefined}
+            >
+              <span className="nav-icon"><MessageSquare size={18} /></span>
+              <span className="nav-text">Patient Reviews</span>
             </NavLink>
           )}
 

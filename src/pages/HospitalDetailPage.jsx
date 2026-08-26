@@ -1271,49 +1271,18 @@ function HospitalDetailPage() {
               <div 
                 id="reviews" 
                 className="scroll-section"
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 20,
-                  padding: '28px 24px',
-                  border: `1.5px solid #E2E8F0`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
               >
-                <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, marginBottom: 20 }}>
-                  রোগী রিভিউ
-                </h3>
-                <div>
-                  <div className="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom">
-                    <div style={{ fontSize: 44, fontWeight: 950, color: textColor, lineHeight: 1 }}>4.8</div>
-                    <div>
-                      <div className="d-flex gap-1 mb-1">
-                        {[1, 2, 3, 4, 5].map(s => <IconStar key={s} size={20} color="#F59E0B" fill="#F59E0B" />)}
-                      </div>
-                      <p style={{ fontSize: 14, color: mutedColor, margin: 0, fontWeight: 700 }}>১,২৫৬ জন রোগীর মতামতের ভিত্তিতে</p>
-                    </div>
-                  </div>
-                  
-                  <div className="d-flex flex-column gap-3">
-                    {[1, 2].map((review) => (
-                      <div key={review} className="d-flex gap-3 p-3 rounded-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#334155', flexShrink: 0 }}>
-                          R
-                        </div>
-                        <div>
-                          <div className="d-flex justify-content-between align-items-center mb-1">
-                            <h5 style={{ fontSize: 15, fontWeight: 900, color: textColor, margin: 0 }}>রাকিবুল ইসলাম</h5>
-                            <span style={{ fontSize: 12, color: mutedColor, fontWeight: 600 }}>২ দিন আগে</span>
-                          </div>
-                          <div className="d-flex gap-1 mb-2">
-                            {[1, 2, 3, 4, 5].map(s => <IconStar key={s} size={13} color="#F59E0B" fill="#F59E0B" />)}
-                          </div>
-                          <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.6 }}>হাসপাতালের পরিবেশ খুব সুন্দর এবং পরিষ্কার। ডাক্তার এবং নার্সদের ব্যবহার অনেক ভালো ছিল। সার্ভিস নিয়ে আমি সন্তুষ্ট।</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button style={{ width: '100%', marginTop: 20, padding: '12px', borderRadius: 12, border: `1.5px solid #E2E8F0`, background: '#F8FAFC', color: textColor, fontWeight: 800, fontSize: 14 }}>আরও রিভিউ দেখুন</button>
-                </div>
+                <ReviewList
+                  hospitalId={hospital?.id || hospital?.public_id || id}
+                  title="হাসপাতাল রিভিউ ও রোগীর মতামত"
+                  currentUser={user}
+                  isLoggedIn={Boolean(user)}
+                  onReply={(rev) => setSelectedReviewForReply(rev)}
+                  onReport={(rev) => setSelectedReviewForReport(rev)}
+                  onEdit={(rev) => setSelectedReviewForEdit(rev && (rev.id || rev.public_id) ? rev : null)}
+                  onDelete={handleDeleteReview}
+                  onLoginClick={() => navigate('/patient/login')}
+                />
               </div>
 
               {/* 8. Contact & Location Section (Card Design) */}
@@ -2027,6 +1996,27 @@ function HospitalDetailPage() {
           </Row>
         </Modal.Body>
       </Modal>
+
+      {/* Review Modals */}
+      <ReviewReplyModal
+        show={Boolean(selectedReviewForReply)}
+        onHide={() => setSelectedReviewForReply(null)}
+        review={selectedReviewForReply}
+        responderType="hospital"
+        responderId={hospital?.id || hospital?.public_id}
+      />
+
+      <ReviewReportModal
+        show={Boolean(selectedReviewForReport)}
+        onHide={() => setSelectedReviewForReport(null)}
+        review={selectedReviewForReport}
+      />
+
+      <ReviewFormModal
+        show={Boolean(selectedReviewForEdit)}
+        onHide={() => setSelectedReviewForEdit(null)}
+        existingReview={selectedReviewForEdit}
+      />
 
       <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />
     </div>

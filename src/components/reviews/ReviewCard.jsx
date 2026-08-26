@@ -21,6 +21,7 @@ import {
   Sparkles,
   Users,
   Clock,
+  CheckCircle2,
 } from 'lucide-react'
 
 /**
@@ -93,6 +94,19 @@ const ReviewCard = memo(function ReviewCard({
                   <Clock size={11} />
                   মূল্যায়নাধীন (Pending)
                 </span>
+              )}
+              {onReply && (
+                (doctorReply || hospitalReply) ? (
+                  <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-1">
+                    <CheckCircle2 size={11} />
+                    Replied (উত্তর সম্পন্ন)
+                  </span>
+                ) : (
+                  <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-1">
+                    <Clock size={11} />
+                    Needs Reply (উত্তর প্রয়োজন)
+                  </span>
+                )
               )}
             </div>
             <div className="text-muted extra-small d-flex align-items-center gap-2 mt-1">
@@ -187,6 +201,13 @@ const ReviewCard = memo(function ReviewCard({
               <MessageSquare size={14} />
               উত্তর দিন
             </button>
+          )}
+
+          {(doctorReply || hospitalReply) && onReply && !allowReply && (
+            <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small px-3 py-2 d-inline-flex align-items-center gap-1">
+              <CheckCircle2 size={13} />
+              ✓ Official Reply Added
+            </span>
           )}
 
           {allowEdit && onEdit && (

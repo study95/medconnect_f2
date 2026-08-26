@@ -114,18 +114,22 @@ export function canReply(user, review) {
   if (isAdmin) return true
 
   const isDoctor =
-    user.doctor_id &&
-    (user.doctor_id === review.doctor_id || user.doctor?.public_id === review.doctor?.public_id)
+    (user.doctor_id && (user.doctor_id === review.doctor_id || user.doctor?.public_id === review.doctor?.public_id)) ||
+    user.registration_type === 'doctor' ||
+    user.isDoctor ||
+    user.is_doctor
 
-  if (isDoctor && !review.doctor_reply) {
+  if (isDoctor && !review.doctor_reply && !review.doctorReply) {
     return true
   }
 
   const isHospital =
-    user.hospital_id &&
-    (user.hospital_id === review.hospital_id || user.hospital?.public_id === review.hospital?.public_id)
+    (user.hospital_id && (user.hospital_id === review.hospital_id || user.hospital?.public_id === review.hospital?.public_id)) ||
+    user.registration_type === 'hospital' ||
+    user.isManager ||
+    user.is_manager
 
-  if (isHospital && !review.hospital_reply) {
+  if (isHospital && !review.hospital_reply && !review.hospitalReply) {
     return true
   }
 
