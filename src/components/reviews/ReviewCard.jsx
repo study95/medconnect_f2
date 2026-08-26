@@ -31,6 +31,7 @@ import {
 const ReviewCard = memo(function ReviewCard({
   review,
   currentUser = null,
+  showManagementStatus = false,
   onReply,
   onEdit,
   onDelete,
@@ -95,7 +96,7 @@ const ReviewCard = memo(function ReviewCard({
                   মূল্যায়নাধীন (Pending)
                 </span>
               )}
-              {onReply && (
+              {showManagementStatus && onReply && (
                 (doctorReply || hospitalReply) ? (
                   <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-1">
                     <CheckCircle2 size={11} />
@@ -203,7 +204,7 @@ const ReviewCard = memo(function ReviewCard({
             </button>
           )}
 
-          {(doctorReply || hospitalReply) && onReply && !allowReply && (
+          {showManagementStatus && (doctorReply || hospitalReply) && onReply && !allowReply && (
             <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small px-3 py-2 d-inline-flex align-items-center gap-1">
               <CheckCircle2 size={13} />
               ✓ Official Reply Added

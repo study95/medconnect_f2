@@ -223,7 +223,7 @@ const ReviewList = memo(function ReviewList({
           )}
 
           {/* Feature 8K: Review Management Quick Filters (All, Needs Reply, Replied) */}
-          {(showReplyFilter || onReply) && (
+          {Boolean(showReplyFilter) && (
             <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-light-subtle flex-wrap">
               <span className="small fw-bold text-dark me-2">ম্যানেজমেন্ট ফিল্টার:</span>
               {[
@@ -371,6 +371,7 @@ const ReviewList = memo(function ReviewList({
                   key={review.public_id || review.id}
                   review={review}
                   currentUser={currentUser}
+                  showManagementStatus={showReplyFilter}
                   onReply={onReply}
                   onEdit={onEdit}
                   onDelete={onDelete}
