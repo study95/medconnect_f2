@@ -679,8 +679,8 @@ function MyAppointmentsPage() {
                         )}
                       </button>
 
-                      {/* Patient Review & Rating CTA */}
-                      {isLoggedIn && (
+                      {/* Patient Review & Rating CTA - for active non-cancelled visits */}
+                      {isLoggedIn && appt.status !== 'cancelled' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()

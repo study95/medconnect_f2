@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Modal, Button, Form } from 'react-bootstrap'
 import StarRating from './StarRating'
 import { useReplyReview } from '../../features/reviews/useReviews'
-import { formatReviewerName } from '../../features/reviews/mappers'
+import { formatReviewerName, getReviewErrorMessage } from '../../features/reviews/mappers'
 import { MessageSquare, CornerDownRight, AlertCircle, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -34,20 +34,21 @@ export default function ReviewReplyModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (isSubmitting) return
     const trimmed = replyText.trim()
 
     if (!trimmed) {
-      setError('Please write your response before submitting.')
+      setError('অনুগ্রহ করে উত্তরের বিবরণ লিখুন।')
       return
     }
 
     if (trimmed.length < 5) {
-      setError('Official reply must be at least 5 characters long.')
+      setError('অফিসিয়াল উত্তর অন্তত ৫ অক্ষরের হতে হবে।')
       return
     }
 
     if (trimmed.length > 1000) {
-      setError('Official reply cannot exceed 1,000 characters.')
+      setError('অফিসিয়াল উত্তর ১,০০০ অক্ষরের বেশি হতে পারবে না।')
       return
     }
 
@@ -58,25 +59,30 @@ export default function ReviewReplyModal({
         data: { reply: trimmed },
       })
 
-      toast.success('Your official response has been published!')
+      toast.success('আপনার অফিসিয়াল উত্তর সফলভাবে প্রকাশিত হয়েছে!')
       if (onSuccess) onSuccess()
       onHide()
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.errors?.reply?.[0] ||
-        'Failed to post official reply. Please try again.'
+      const msg = getReviewErrorMessage(err)
       setError(msg)
       toast.error(msg)
     }
   }
 
   return (
-    <Modal show={show} onHide={onHide} centered size="lg" backdrop="static" className="review-reply-modal">
-      <Modal.Header closeButton className="border-bottom-0 pb-0 pt-4 px-4">
+    <Modal
+      show={show}
+      onHide={isSubmitting ? undefined : onHide}
+      centered
+      size="lg"
+      backdrop="static"
+      keyboard={!isSubmitting}
+      className="review-reply-modal"
+    >
+      <Modal.Header closeButton={!isSubmitting} className="border-bottom-0 pb-0 pt-4 px-4">
         <Modal.Title className="fw-bold text-dark fs-5 d-flex align-items-center gap-2">
           <MessageSquare size={20} className="text-primary" />
-          Post Official Response
+          অফিসিয়াল উত্তর প্রদান
         </Modal.Title>
       </Modal.Header>
 
@@ -90,7 +96,7 @@ export default function ReviewReplyModal({
                 {review.is_anonymous && (
                   <span className="badge bg-secondary-subtle text-secondary rounded-pill extra-small d-inline-flex align-items-center gap-1">
                     <ShieldCheck size={11} />
-                    Anonymous Patient
+                    যাচাইকৃত রোগী (বেনামী)
                   </span>
                 )}
               </div>
@@ -107,16 +113,16 @@ export default function ReviewReplyModal({
             <div className="d-flex align-items-center justify-content-between mb-1">
               <Form.Label className="fw-bold text-dark small mb-0 d-flex align-items-center gap-1">
                 <CornerDownRight size={15} className="text-primary" />
-                Your Official Provider Response <span className="text-danger">*</span>
+                আপনার অফিসিয়াল উত্তর <span className="text-danger">*</span>
               </Form.Label>
               <span className={`extra-small ${replyText.length < 5 ? 'text-muted' : 'text-success fw-semibold'}`}>
-                {replyText.length} / 1000 chars (min 5)
+                {replyText.length} / ১০০০ অক্ষর (সর্বনিম্ন ৫)
               </span>
             </div>
             <Form.Control
               as="textarea"
               rows={4}
-              placeholder="Address patient feedback professionally, thank them for their visit, or offer follow-up guidance..."
+              placeholder="রোগীর মতামতের জন্য ধন্যবাদ জানিয়ে বা প্রয়োজনীয় পরামর্শ দিয়ে পেশাদারভাবে উত্তর লিখুন..."
               value={replyText}
               maxLength={1000}
               onChange={(e) => {
@@ -133,15 +139,14 @@ export default function ReviewReplyModal({
           <div className="p-3 rounded-3 bg-primary-subtle border border-primary-subtle d-flex align-items-start gap-2">
             <AlertCircle size={16} className="text-primary flex-shrink-0 mt-1" />
             <div className="text-primary-emphasis extra-small lh-base">
-              <strong>Professional Standard:</strong> Your official response will appear publicly under this
-              patient review on your profile. Please ensure no sensitive patient medical diagnoses or private clinical records are disclosed.
+              <strong>পেশাদার নির্দেশনা:</strong> আপনার দেওয়া উত্তরটি প্রোফাইলে এই রিভিউয়ের নিচে প্রকাশ্যে দেখা যাবে। কোনো সংবেদনশীল ব্যক্তিগত চিকিৎসা তথ্য বা গোপনীয় রিপোর্ট প্রকাশ করা থেকে বিরত থাকুন।
             </div>
           </div>
         </Modal.Body>
 
         <Modal.Footer className="border-top-0 pt-0 pb-4 px-4 d-flex align-items-center justify-content-end gap-2">
           <Button variant="light" onClick={onHide} disabled={isSubmitting} className="rounded-pill px-4">
-            Cancel
+            বাতিল
           </Button>
           <Button
             type="submit"
@@ -152,12 +157,12 @@ export default function ReviewReplyModal({
             {isSubmitting ? (
               <>
                 <Loader2 size={16} className="spinner-border spinner-border-sm" style={{ borderWidth: 2 }} />
-                <span>Posting Response...</span>
+                <span>প্রকাশ করা হচ্ছে...</span>
               </>
             ) : (
               <>
                 <CheckCircle2 size={16} />
-                <span>Publish Official Response</span>
+                <span>উত্তর প্রকাশ করুন</span>
               </>
             )}
           </Button>

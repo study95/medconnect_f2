@@ -28,14 +28,29 @@ export function canCreateReview(user, appointment) {
 export function canEditReview(user, review) {
   if (!user || !review) return false
 
-  const isAuthor = user.id === review.user_id || user.public_id === review.user?.public_id
-  if (!isAuthor) return false
-
+  // 1. Authoritative backend permission flag if present
   if (typeof review.can_edit === 'boolean') {
     return review.can_edit
   }
 
-  // Fallback 48-hour client calculation
+  // 2. Exact identity matching (prevent undefined === undefined leakage)
+  const currentUserId = user.id ?? user.user_id
+  const currentUserPublicId = user.public_id
+  const reviewAuthorId = review.user_id ?? review.reviewer?.id
+  const reviewAuthorPublicId = review.user?.public_id ?? review.reviewer?.public_id
+
+  const isAuthor = Boolean(
+    (currentUserId && reviewAuthorId && String(currentUserId) === String(reviewAuthorId)) ||
+    (currentUserPublicId && reviewAuthorPublicId && String(currentUserPublicId) === String(reviewAuthorPublicId)) ||
+    review.is_author === true
+  )
+
+  if (!isAuthor) return false
+
+  // 3. Only approved reviews can be edited (pending reviews awaiting moderation cannot be edited)
+  if (review.status && review.status !== 'approved') return false
+
+  // 4. Strict 48-hour editable window
   if (review.created_at) {
     const createdAt = new Date(review.created_at).getTime()
     const now = Date.now()
@@ -53,15 +68,33 @@ export function canEditReview(user, review) {
 export function canDeleteReview(user, review) {
   if (!user || !review) return false
 
+  // 1. Authoritative backend permission flag if present
+  if (typeof review.can_delete === 'boolean') {
+    return review.can_delete
+  }
+
   const isAdmin =
     user.role === 'admin' ||
     user.role === 'super-admin' ||
     user.registration_type === 'admin' ||
+    user.role_id === 1 ||
+    String(user.role_id) === 'admin' ||
     (Array.isArray(user.roles) && user.roles.some((r) => ['admin', 'super-admin'].includes(r.name || r)))
 
-  const isAuthor = user.id === review.user_id || user.public_id === review.user?.public_id
+  if (isAdmin) return true
 
-  return isAdmin || isAuthor
+  const currentUserId = user.id ?? user.user_id
+  const currentUserPublicId = user.public_id
+  const reviewAuthorId = review.user_id ?? review.reviewer?.id
+  const reviewAuthorPublicId = review.user?.public_id ?? review.reviewer?.public_id
+
+  const isAuthor = Boolean(
+    (currentUserId && reviewAuthorId && String(currentUserId) === String(reviewAuthorId)) ||
+    (currentUserPublicId && reviewAuthorPublicId && String(currentUserPublicId) === String(reviewAuthorPublicId)) ||
+    review.is_author === true
+  )
+
+  return isAuthor
 }
 
 /**

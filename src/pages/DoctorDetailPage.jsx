@@ -13,8 +13,11 @@ import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
 
 import ErrorBoundary from '../components/common/ErrorBoundary'
+import { useQuery } from '@tanstack/react-query'
+import { getAppointments } from '../api/appointmentApi'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
 import { useDeleteReview } from '../features/reviews/useReviews'
+import { getReviewErrorMessage } from '../features/reviews/mappers'
 import toast from 'react-hot-toast'
 import SeoHead from '../components/common/SeoHead'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
@@ -66,16 +69,53 @@ function DoctorDetailPageContent() {
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
   const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
   const [selectedReviewForEdit, setSelectedReviewForEdit] = useState(null)
+  const [selectedAppointmentForReview, setSelectedAppointmentForReview] = useState(null)
+
+  // Query patient appointments to detect review eligibility for this doctor
+  const { data: userAppointmentsData } = useQuery({
+    queryKey: ['my-appointments', user?.id],
+    queryFn: async () => {
+      const res = await getAppointments()
+      return Array.isArray(res.data) ? res.data : res.data?.data || []
+    },
+    enabled: Boolean(isLoggedIn && user?.id),
+    staleTime: 1000 * 60 * 2,
+  })
+
+  const userAppointments = useMemo(() => {
+    return Array.isArray(userAppointmentsData) ? userAppointmentsData : []
+  }, [userAppointmentsData])
+
+  const eligibleAppointment = useMemo(() => {
+    if (!isLoggedIn || !doctor) return null
+    const docId = String(doctor.id)
+    const docPublicId = String(doctor.public_id || '')
+
+    const found = userAppointments.filter((a) => {
+      const matchDoc =
+        String(a.doctor_id) === docId ||
+        String(a.doctor?.id) === docId ||
+        String(a.doctor?.public_id) === docPublicId
+      return matchDoc && a.status !== 'cancelled'
+    })
+
+    return found.length > 0 ? found[0] : null
+  }, [isLoggedIn, doctor, userAppointments])
+
+  const userExistingReview = useMemo(() => {
+    if (!eligibleAppointment) return null
+    return eligibleAppointment.review || (eligibleAppointment.has_review ? eligibleAppointment.review : null)
+  }, [eligibleAppointment])
 
   const deleteReviewMutation = useDeleteReview()
 
   const handleDeleteReview = async (rev) => {
-    if (window.confirm('Are you sure you want to delete this review?')) {
+    if (window.confirm('আপনি কি নিশ্চিতভাবে এই রিভিউটি মুছে ফেলতে চান?')) {
       try {
         await deleteReviewMutation.mutateAsync(rev.public_id || rev.id)
-        toast.success('Review deleted successfully')
+        toast.success('রিভিউটি সফলভাবে মুছে ফেলা হয়েছে।')
       } catch (err) {
-        toast.error('Failed to delete review')
+        toast.error(getReviewErrorMessage(err))
       }
     }
   }
@@ -1215,9 +1255,25 @@ function DoctorDetailPageContent() {
                     <ReviewList
                       doctorId={doctor?.id || doctor?.public_id || id}
                       title="রোগীর মতামত ও রিভিউ"
+                      currentUser={user}
+                      isLoggedIn={Boolean(isLoggedIn)}
+                      isEligible={Boolean(eligibleAppointment)}
+                      hasReviewed={Boolean(userExistingReview)}
+                      onWriteReview={() => {
+                        if (!isLoggedIn) {
+                          navigate('/patient/login')
+                          return
+                        }
+                        if (userExistingReview) {
+                          setSelectedReviewForEdit(userExistingReview)
+                        } else if (eligibleAppointment) {
+                          setSelectedAppointmentForReview(eligibleAppointment)
+                        }
+                      }}
+                      onLoginClick={() => navigate('/patient/login')}
                       onReply={(rev) => setSelectedReviewForReply(rev)}
                       onReport={(rev) => setSelectedReviewForReport(rev)}
-                      onEdit={(rev) => setSelectedReviewForEdit(rev)}
+                      onEdit={(rev) => setSelectedReviewForEdit((rev && (rev.id || rev.public_id) ? rev : null) || userExistingReview)}
                       onDelete={handleDeleteReview}
                     />
                   </div>
@@ -1522,10 +1578,13 @@ function DoctorDetailPageContent() {
       />
 
       <ReviewFormModal
-        show={Boolean(selectedReviewForEdit)}
-        onHide={() => setSelectedReviewForEdit(null)}
-        review={selectedReviewForEdit}
-        isEditMode={true}
+        show={Boolean(selectedReviewForEdit || selectedAppointmentForReview)}
+        onHide={() => {
+          setSelectedReviewForEdit(null)
+          setSelectedAppointmentForReview(null)
+        }}
+        appointment={selectedAppointmentForReview || eligibleAppointment}
+        existingReview={selectedReviewForEdit}
       />
 
       <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />

@@ -32,7 +32,7 @@ axiosInstance.interceptors.response.use(
     return response
   },
   (error) => {
-    const method = error.config?.method?.toLowerCase()
+    const method = (error.config?.method || '').toLowerCase()
     const url = error.config?.url || ''
 
     // Only expire the authentication session if the core identity endpoint explicitly returns 401

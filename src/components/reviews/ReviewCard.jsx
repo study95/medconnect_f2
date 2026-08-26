@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React, { memo, useState } from 'react'
 import StarRating from './StarRating'
 import {
   formatReviewerName,
@@ -9,6 +9,7 @@ import {
   canDeleteReview,
   canReply,
 } from '../../features/reviews/permissions'
+import { getMediaUrl } from '../../utils/mediaUtils'
 import {
   ShieldCheck,
   UserCheck,
@@ -35,10 +36,12 @@ const ReviewCard = memo(function ReviewCard({
   onReport,
   className = '',
 }) {
+  const [imageError, setImageError] = useState(false)
   if (!review) return null
 
   const reviewerName = formatReviewerName(review)
-  const isAnonymous = Boolean(review.is_anonymous)
+  const isAnonymous = Boolean(review.reviewer?.is_anonymous ?? review.is_anonymous)
+  const reviewerPhoto = review.reviewer?.avatar || review.reviewer?.photo || review.user?.avatar || review.user?.photo
   const isVerified = review.appointment_id || review.verified_patient !== false
 
   const allowEdit = canEditReview(currentUser, review)
@@ -53,15 +56,26 @@ const ReviewCard = memo(function ReviewCard({
       {/* Header: Reviewer Info + Star Rating */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div className="d-flex align-items-center gap-3">
-          {/* Avatar Icon */}
+          {/* Avatar Icon / Image */}
           <div
-            className={`rounded-circle d-flex align-items-center justify-content-center fw-bold ${
+            className={`rounded-circle d-flex align-items-center justify-content-center fw-bold overflow-hidden ${
               isAnonymous ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-dark'
             }`}
-            style={{ width: '42px', height: '42px', fontSize: '1rem' }}
+            style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}
             aria-hidden="true"
           >
-            {isAnonymous ? <ShieldCheck size={20} /> : reviewerName.charAt(0).toUpperCase()}
+            {isAnonymous ? (
+              <ShieldCheck size={20} />
+            ) : reviewerPhoto && !imageError ? (
+              <img
+                src={getMediaUrl(reviewerPhoto)}
+                alt={reviewerName}
+                className="w-100 h-100 object-fit-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              reviewerName.charAt(0).toUpperCase()
+            )}
           </div>
 
           {/* Name & Metadata */}
@@ -71,7 +85,13 @@ const ReviewCard = memo(function ReviewCard({
               {isVerified && (
                 <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-1">
                   <UserCheck size={12} />
-                  Verified Patient
+                  যাচাইকৃত রোগী
+                </span>
+              )}
+              {review.status === 'pending' && (
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-1">
+                  <Clock size={11} />
+                  মূল্যায়নাধীন (Pending)
                 </span>
               )}
             </div>
@@ -80,7 +100,7 @@ const ReviewCard = memo(function ReviewCard({
               {review.is_edited && (
                 <>
                   <span>•</span>
-                  <span className="text-secondary fst-italic">Edited</span>
+                  <span className="text-secondary fst-italic">সম্পাদিত</span>
                 </>
               )}
             </div>
@@ -99,19 +119,19 @@ const ReviewCard = memo(function ReviewCard({
           {review.cleanliness_rating && (
             <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2 py-1 small fw-normal d-inline-flex align-items-center gap-1">
               <Sparkles size={13} className="text-primary" />
-              Cleanliness: {review.cleanliness_rating}★
+              পরিচ্ছন্নতা: {review.cleanliness_rating}★
             </span>
           )}
           {review.staff_rating && (
             <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2 py-1 small fw-normal d-inline-flex align-items-center gap-1">
               <Users size={13} className="text-success" />
-              Staff: {review.staff_rating}★
+              স্টাফদের ব্যবহার: {review.staff_rating}★
             </span>
           )}
           {review.wait_time_rating && (
             <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2 py-1 small fw-normal d-inline-flex align-items-center gap-1">
               <Clock size={13} className="text-info" />
-              Wait Time: {review.wait_time_rating}★
+              অপেক্ষার সময়: {review.wait_time_rating}★
             </span>
           )}
         </div>
@@ -129,7 +149,7 @@ const ReviewCard = memo(function ReviewCard({
           <div className="d-flex align-items-center gap-2 mb-1">
             <CornerDownRight size={16} className="text-primary" />
             <span className="fw-bold text-primary small">
-              Official Response from Dr. {review.doctor?.name || doctorReply.user?.name || 'Doctor'}
+              ডাঃ {review.doctor?.name || doctorReply.user?.name || 'ডাক্তার'}-এর অফিসিয়াল উত্তর
             </span>
             <span className="text-muted extra-small ms-auto">
               {formatReviewDate(doctorReply.created_at)}
@@ -145,7 +165,7 @@ const ReviewCard = memo(function ReviewCard({
           <div className="d-flex align-items-center gap-2 mb-1">
             <CornerDownRight size={16} className="text-info" />
             <span className="fw-bold text-info small">
-              Official Response from {review.hospital?.name || 'Hospital Authority'}
+              {review.hospital?.name || 'হাসপাতাল কর্তৃপক্ষ'}-এর অফিসিয়াল উত্তর
             </span>
             <span className="text-muted extra-small ms-auto">
               {formatReviewDate(hospitalReply.created_at)}
@@ -165,7 +185,7 @@ const ReviewCard = memo(function ReviewCard({
               className="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
             >
               <MessageSquare size={14} />
-              Reply
+              উত্তর দিন
             </button>
           )}
 
@@ -176,7 +196,7 @@ const ReviewCard = memo(function ReviewCard({
               className="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
             >
               <Edit2 size={14} />
-              Edit
+              সম্পাদন
             </button>
           )}
 
@@ -187,7 +207,7 @@ const ReviewCard = memo(function ReviewCard({
               className="btn btn-sm btn-outline-danger rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
             >
               <Trash2 size={14} />
-              Delete
+              মুছুন
             </button>
           )}
         </div>
@@ -197,10 +217,11 @@ const ReviewCard = memo(function ReviewCard({
             type="button"
             onClick={() => onReport(review)}
             className="btn btn-link text-muted p-0 text-decoration-none extra-small d-inline-flex align-items-center gap-1 hover-text-danger"
-            title="Report inappropriate review"
+            title="যদি এই রিভিউটি মিথ্যা, বিভ্রান্তিকর, অপমানজনক অথবা নীতিমালা লঙ্ঘন করে থাকে, তাহলে অভিযোগ জানান"
+            aria-label="এই রিভিউ সম্পর্কে অভিযোগ করুন"
           >
             <Flag size={13} />
-            Report
+            এই রিভিউ সম্পর্কে অভিযোগ করুন
           </button>
         )}
       </div>

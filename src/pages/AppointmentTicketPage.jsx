@@ -805,7 +805,7 @@ export default function AppointmentTicketPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    background: '#FFFBEB',
+                    background: appointment?.review || appointment?.has_review ? '#FFFBEB' : '#FEF3C7',
                     border: '1.5px solid #FDE68A',
                     color: '#B45309',
                     padding: '10px',
@@ -815,10 +815,10 @@ export default function AppointmentTicketPage() {
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
-                  title="ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"
+                  title={appointment?.review || appointment?.has_review ? "আপনার দেওয়া রিভিউ সম্পাদনা করুন" : "ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"}
                 >
                   <Star size={16} color="#D97706" fill="#F59E0B" />
-                  রিভিউ দিন
+                  {appointment?.review || appointment?.has_review ? 'রিভিউ সম্পাদনা' : 'রিভিউ দিন'}
                 </button>
               </>
             ) : status !== 'cancelled' ? (
@@ -969,6 +969,17 @@ export default function AppointmentTicketPage() {
         show={showReviewModal}
         onHide={() => setShowReviewModal(false)}
         appointment={appointment}
+        existingReview={appointment?.review || null}
+        onSuccess={() => {
+          if (id) {
+            getAppointmentById(id)
+              .then((res) => {
+                const data = res.data?.data || res.data
+                if (data) setAppointment(data)
+              })
+              .catch(() => {})
+          }
+        }}
       />
     </div>
   )

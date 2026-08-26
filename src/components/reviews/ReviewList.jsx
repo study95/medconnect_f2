@@ -4,21 +4,38 @@ import ReviewCard from './ReviewCard'
 import ReviewSkeleton from './ReviewSkeleton'
 import { useDoctorReviews, useHospitalReviews } from '../../features/reviews/useReviews'
 import { REVIEW_SORT_OPTIONS } from '../../features/reviews/constants'
-import { MessageSquarePlus, MessageSquareOff, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getReviewErrorMessage } from '../../features/reviews/mappers'
+import {
+  MessageSquarePlus,
+  MessageSquareOff,
+  AlertCircle,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Lock,
+  CheckCircle,
+  Edit3,
+  LogIn,
+} from 'lucide-react'
 
 /**
  * Enterprise Review List Component
- * Manages filtering, sorting, pagination, breakdown statistics, and review card feeds.
+ * Manages filtering, sorting, pagination, breakdown statistics, entry point CTAs, and review feeds.
  */
 const ReviewList = memo(function ReviewList({
   doctorId = null,
   hospitalId = null,
   currentUser = null,
+  isLoggedIn = false,
+  isEligible = false,
+  hasReviewed = false,
   onReply,
   onEdit,
   onDelete,
   onReport,
   onWriteReview,
+  onLoginClick,
   canWrite = false,
   className = '',
 }) {
@@ -66,22 +83,62 @@ const ReviewList = memo(function ReviewList({
   return (
     <div className={`review-list-container ${className}`}>
       {/* Header with Title and "Write a Review" Action */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">Patient Reviews & Feedback</h4>
-          <p className="text-muted small mb-0">Verified consultations and patient experiences</p>
+          <h4 className="fw-bold text-dark mb-1">রোগীর মতামত ও রিভিউ</h4>
+          <p className="text-muted small mb-0">যাচাইকৃত অ্যাপয়েন্টমেন্ট ও রোগীদের বাস্তব অভিজ্ঞতা</p>
         </div>
 
-        {canWrite && onWriteReview && (
-          <button
-            type="button"
-            onClick={onWriteReview}
-            className="btn btn-primary rounded-pill d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm"
-          >
-            <MessageSquarePlus size={18} />
-            Write a Review
-          </button>
-        )}
+        {/* Feature 1 — Enterprise Entry Point CTA */}
+        <div>
+          {!isLoggedIn ? (
+            <button
+              type="button"
+              onClick={onLoginClick || onWriteReview}
+              className="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm fw-semibold"
+            >
+              <LogIn size={16} />
+              লগইন করে রিভিউ দিন
+            </button>
+          ) : hasReviewed ? (
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-1">
+                <CheckCircle size={14} />
+                আপনার রিভিউ
+              </span>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit?.()}
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+                >
+                  <Edit3 size={14} />
+                  সম্পাদনা করুন
+                </button>
+              )}
+            </div>
+          ) : isEligible ? (
+            <button
+              type="button"
+              onClick={onWriteReview}
+              className="btn btn-primary rounded-pill d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm fw-semibold"
+            >
+              <Star size={16} fill="currentColor" />
+              রিভিউ লিখুন
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="btn btn-light border text-muted rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2"
+              title="শুধুমাত্র চিকিৎসা গ্রহণ করা রোগীরাই রিভিউ দিতে পারবেন।"
+              style={{ cursor: 'not-allowed', opacity: 0.8, fontSize: '0.85rem' }}
+            >
+              <Lock size={14} />
+              রিভিউ দেওয়ার জন্য চিকিৎসা সম্পন্ন করুন
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading State Skeleton */}
@@ -93,9 +150,9 @@ const ReviewList = memo(function ReviewList({
           <div className="d-flex align-items-center gap-3">
             <AlertCircle size={24} className="text-danger flex-shrink-0" />
             <div>
-              <h6 className="fw-bold mb-1">Unable to Load Reviews</h6>
+              <h6 className="fw-bold mb-1">রিভিউ লোড করা সম্ভব হয়নি</h6>
               <p className="small mb-0 text-secondary">
-                {error?.response?.data?.message || 'A network error occurred while retrieving review records.'}
+                {getReviewErrorMessage(error)}
               </p>
             </div>
           </div>
@@ -105,7 +162,7 @@ const ReviewList = memo(function ReviewList({
             className="btn btn-sm btn-outline-danger rounded-pill d-inline-flex align-items-center gap-1"
           >
             <RefreshCw size={14} />
-            Retry
+            আবার চেষ্টা করুন
           </button>
         </div>
       ) : (
@@ -118,6 +175,37 @@ const ReviewList = memo(function ReviewList({
             className="mb-4"
           />
 
+          {/* Feature 3 — Enterprise Review Invitation Card */}
+          {isLoggedIn && isEligible && !hasReviewed && onWriteReview && (
+            <div
+              className="card border-0 rounded-4 p-4 mb-4 shadow-sm"
+              style={{
+                background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+                border: '1.5px solid #86EFAC',
+              }}
+            >
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                  <div className="text-warning mb-1 fs-5">★★★★★</div>
+                  <h6 className="fw-bold text-dark mb-1">
+                    আপনার চিকিৎসার অভিজ্ঞতা অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।
+                  </h6>
+                  <p className="text-muted small mb-0">
+                    আপনার মূল্যবান মতামত শেয়ার করে স্বাস্থ্যসেবা উন্নত করতে সাহায্য করুন।
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onWriteReview}
+                  className="btn btn-success rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
+                >
+                  <MessageSquarePlus size={18} />
+                  রিভিউ লিখুন
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Filter & Sort Controls Toolbar */}
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-2 border-bottom border-light-subtle">
             {/* Star Filter Pills */}
@@ -129,7 +217,7 @@ const ReviewList = memo(function ReviewList({
                   selectedStar === null ? 'btn-primary' : 'btn-outline-secondary border-light-subtle'
                 }`}
               >
-                All Stars
+                সকল রেটিং
               </button>
               {[5, 4, 3, 2, 1].map((star) => (
                 <button
@@ -148,7 +236,7 @@ const ReviewList = memo(function ReviewList({
             {/* Sort Dropdown */}
             <div className="d-flex align-items-center gap-2">
               <label htmlFor="review-sort-select" className="small text-muted mb-0 text-nowrap">
-                Sort by:
+                সাজান:
               </label>
               <select
                 id="review-sort-select"
@@ -166,26 +254,49 @@ const ReviewList = memo(function ReviewList({
             </div>
           </div>
 
-          {/* Review Feed */}
+          {/* Feature 4 — Review Feed & Empty States */}
           {reviews.length === 0 ? (
             /* Empty State */
-            <div className="text-center py-5 rounded-4 bg-light border border-light-subtle my-3">
+            <div className="text-center py-5 rounded-4 bg-light border border-light-subtle my-3 px-3">
               <MessageSquareOff size={48} className="text-muted mb-3 opacity-50" />
-              <h6 className="fw-bold text-dark mb-1">No Reviews Found</h6>
-              <p className="text-muted small mb-3">
+              <h6 className="fw-bold text-dark mb-2">এখনও কোনো রোগী রিভিউ দেননি</h6>
+              <p className="text-muted small mb-4 mx-auto" style={{ maxWidth: '440px' }}>
                 {selectedStar
-                  ? `There are no ${selectedStar}-star reviews matching your current filter.`
-                  : 'Be the first verified patient to share your consultation experience.'}
+                  ? `${selectedStar}-তারকার কোনো রিভিউ আপনার ফিল্টারের সাথে মেলেনি।`
+                  : !isLoggedIn
+                  ? 'লগইন করে আপনার চিকিৎসার অভিজ্ঞতা শেয়ার করুন এবং অন্যান্য রোগীদের সাহায্য করুন।'
+                  : isEligible && !hasReviewed
+                  ? 'প্রথম রোগী হিসেবে আপনার চিকিৎসার অভিজ্ঞতা সবার সাথে শেয়ার করুন।'
+                  : 'চিকিৎসা সম্পন্ন হওয়ার পর রোগীরা এখানে তাদের রিভিউ প্রদান করতে পারেন।'}
               </p>
-              {selectedStar && (
+
+              {selectedStar ? (
                 <button
                   type="button"
                   onClick={() => handleStarFilter(null)}
-                  className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                  className="btn btn-sm btn-outline-primary rounded-pill px-4 py-2"
                 >
-                  Clear Star Filter
+                  ফিল্টার মুছুন
                 </button>
-              )}
+              ) : !isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={onLoginClick || onWriteReview}
+                  className="btn btn-primary rounded-pill px-4 py-2 d-inline-flex align-items-center gap-2 shadow-sm"
+                >
+                  <LogIn size={16} />
+                  লগইন করে আপনার চিকিৎসার অভিজ্ঞতা শেয়ার করুন
+                </button>
+              ) : isEligible && !hasReviewed && onWriteReview ? (
+                <button
+                  type="button"
+                  onClick={onWriteReview}
+                  className="btn btn-primary rounded-pill px-4 py-2 d-inline-flex align-items-center gap-2 shadow-sm"
+                >
+                  <MessageSquarePlus size={16} />
+                  প্রথম রিভিউটি লিখুন
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className={`reviews-feed-wrapper ${isFetching ? 'opacity-75' : ''}`}>
@@ -211,11 +322,11 @@ const ReviewList = memo(function ReviewList({
                     className="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center gap-1"
                   >
                     <ChevronLeft size={16} />
-                    Previous
+                    পূর্ববর্তী
                   </button>
 
                   <span className="small text-muted px-2">
-                    Page <strong className="text-dark">{page}</strong> of {totalPages}
+                    পৃষ্ঠা <strong className="text-dark">{page}</strong> / {totalPages}
                   </span>
 
                   <button
@@ -224,7 +335,7 @@ const ReviewList = memo(function ReviewList({
                     onClick={() => setPage((p) => p + 1)}
                     className="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center gap-1"
                   >
-                    Next
+                    পরবর্তী
                     <ChevronRight size={16} />
                   </button>
                 </div>

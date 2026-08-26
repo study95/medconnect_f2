@@ -58,11 +58,15 @@ export function useCreateReview(options = {}) {
   return useMutation({
     mutationFn: (payload) => reviewApi.createReview(payload),
     onSuccess: (data, variables) => {
-      // Invalidate relevant doctor & hospital review feeds
+      // Invalidate review feeds & moderation lists
       queryClient.invalidateQueries({ queryKey: reviewQueryKeys.all })
-      // Invalidate appointments query to reflect reviewed status
+      // Invalidate doctor & hospital profiles (refreshes rating_avg and reviews_count)
+      queryClient.invalidateQueries({ queryKey: ['doctor'] })
+      queryClient.invalidateQueries({ queryKey: ['hospital'] })
+      // Invalidate appointments queries so reviewed status updates immediately
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['my-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['appointment'] })
     },
     ...options,
   })
@@ -77,8 +81,12 @@ export function useUpdateReview(options = {}) {
   return useMutation({
     mutationFn: ({ identifier, data }) => reviewApi.updateReview(identifier, data),
     onSuccess: (data, { identifier }) => {
-      queryClient.invalidateQueries({ queryKey: reviewQueryKeys.detail(identifier) })
-      queryClient.invalidateQueries({ queryKey: reviewQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: reviewQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['doctor'] })
+      queryClient.invalidateQueries({ queryKey: ['hospital'] })
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['appointment'] })
     },
     ...options,
   })
@@ -94,6 +102,11 @@ export function useDeleteReview(options = {}) {
     mutationFn: (identifier) => reviewApi.deleteReview(identifier),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reviewQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['doctor'] })
+      queryClient.invalidateQueries({ queryKey: ['hospital'] })
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['appointment'] })
     },
     ...options,
   })

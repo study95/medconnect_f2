@@ -8,6 +8,7 @@ import BackToTop     from './components/common/BackToTop'
 import WelcomeModal  from './components/common/WelcomeModal'
 import FloatingBottomNav from './components/layout/FloatingBottomNav'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import { Toaster } from 'react-hot-toast'
 import AdminRoute    from './components/admin/AdminRoute'
 import AdminLayout   from './components/admin/AdminLayout'
 import SubscriptionGate from './components/admin/SubscriptionGate'
@@ -423,6 +424,7 @@ function App() {
             }
           />
         </Routes>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       </Suspense>
     </ErrorBoundary>
   )

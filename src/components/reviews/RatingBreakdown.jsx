@@ -30,8 +30,7 @@ const RatingBreakdown = memo(function RatingBreakdown({
           </div>
           <StarRating rating={displayAverage} size={22} className="mb-2" />
           <p className="text-muted small mb-0">
-            Based on <span className="fw-semibold text-dark">{displayTotal}</span> verified review
-            {displayTotal === 1 ? '' : 's'}
+            <span className="fw-semibold text-dark">{displayTotal}</span> জন রোগীর যাচাইকৃত মতামতের ভিত্তিতে
           </p>
         </div>
 
@@ -52,7 +51,7 @@ const RatingBreakdown = memo(function RatingBreakdown({
                     isSelected ? 'bg-primary-subtle' : 'hover-bg-light'
                   }`}
                   style={{ cursor: onFilterByStar ? 'pointer' : 'default' }}
-                  aria-label={`Filter by ${star} star reviews: ${count} reviews`}
+                  aria-label={`${star} তারকা রিভিউ: ${count}টি`}
                 >
                   <span className="small fw-semibold text-secondary" style={{ width: '40px' }}>
                     {star} ★
@@ -89,7 +88,7 @@ const RatingBreakdown = memo(function RatingBreakdown({
                     <span className="fw-bold small">{summary.cleanlinessAverage.toFixed(1)}</span>
                   </div>
                   <div className="text-muted extra-small" style={{ fontSize: '0.75rem' }}>
-                    Cleanliness
+                    পরিচ্ছন্নতা
                   </div>
                 </div>
               </div>
@@ -102,7 +101,7 @@ const RatingBreakdown = memo(function RatingBreakdown({
                     <span className="fw-bold small">{summary.staffAverage.toFixed(1)}</span>
                   </div>
                   <div className="text-muted extra-small" style={{ fontSize: '0.75rem' }}>
-                    Staff Behavior
+                    স্টাফদের ব্যবহার
                   </div>
                 </div>
               </div>
@@ -115,7 +114,7 @@ const RatingBreakdown = memo(function RatingBreakdown({
                     <span className="fw-bold small">{summary.waitTimeAverage.toFixed(1)}</span>
                   </div>
                   <div className="text-muted extra-small" style={{ fontSize: '0.75rem' }}>
-                    Punctuality
+                    অপেক্ষার সময়
                   </div>
                 </div>
               </div>

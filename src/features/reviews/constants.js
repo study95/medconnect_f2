@@ -19,24 +19,24 @@ export const REVIEW_STATUS_LABELS = {
 }
 
 export const REVIEW_SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest First' },
-  { value: 'oldest', label: 'Oldest First' },
-  { value: 'highest_rating', label: 'Highest Rating' },
-  { value: 'lowest_rating', label: 'Lowest Rating' },
+  { value: 'newest', label: 'সবচেয়ে নতুন' },
+  { value: 'oldest', label: 'সবচেয়ে পুরাতন' },
+  { value: 'highest_rating', label: 'সর্বোচ্চ রেটিং' },
+  { value: 'lowest_rating', label: 'সর্বনিম্ন রেটিং' },
 ]
 
 export const RATING_LABELS = {
-  1: 'Poor',
-  2: 'Fair',
-  3: 'Good',
-  4: 'Very Good',
-  5: 'Excellent',
+  1: 'খুব খারাপ',
+  2: 'খারাপ',
+  3: 'মোটামুটি',
+  4: 'ভালো',
+  5: 'অসাধারণ',
 }
 
 export const SUB_DIMENSION_LABELS = {
-  cleanliness_rating: 'Cleanliness & Hygiene',
-  staff_rating: 'Staff & Reception Behavior',
-  wait_time_rating: 'Wait Time & Punctuality',
+  cleanliness_rating: 'পরিচ্ছন্নতা ও স্বাস্থ্যবিধি',
+  staff_rating: 'স্টাফদের ব্যবহার',
+  wait_time_rating: 'অপেক্ষার সময়',
 }
 
 export const MODERATION_ACTIONS = {
@@ -53,12 +53,12 @@ export const REPLY_RESPONDER_TYPE = {
 }
 
 export const REPORT_REASONS = [
-  { value: 'defamation', label: 'False or Defamatory Claims' },
-  { value: 'inappropriate_language', label: 'Inappropriate or Abusive Language' },
-  { value: 'spam', label: 'Commercial Spam or Promotion' },
-  { value: 'unverified_visit', label: 'Patient Never Attended Consultation' },
-  { value: 'wrong_doctor_or_clinic', label: 'Submitted for Wrong Doctor or Facility' },
-  { value: 'other', label: 'Other Policy Violation' },
+  { value: 'spam', label: 'স্প্যাম' },
+  { value: 'fake_appointment', label: 'ভুয়া রিভিউ' },
+  { value: 'harassment', label: 'অশালীন ভাষা' },
+  { value: 'defamation', label: 'মানহানিকর তথ্য' },
+  { value: 'privacy_leak', label: 'বিভ্রান্তিকর বা ব্যক্তিগত তথ্য' },
+  { value: 'other', label: 'অন্যান্য' },
 ]
 
 export const REPORT_STATUS = {
