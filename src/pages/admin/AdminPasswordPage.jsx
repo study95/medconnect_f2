@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { updatePasswordApi } from '../../api/authApi'
 import { Lock, Save, Eye, EyeOff } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 export default function AdminPasswordPage() {
+  const { showSuccess, showError } = useDialog()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     current_password: '',
@@ -44,8 +46,6 @@ export default function AdminPasswordPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstErrMsg = Object.values(newErrors)[0]
-      toast.error(firstErrMsg, { id: 'admin-password-val-error' })
       return
     }
 
@@ -53,7 +53,10 @@ export default function AdminPasswordPage() {
     setLoading(true)
     try {
       await updatePasswordApi(form)
-      // Success toast is automatically triggered once by axiosInstance with server message
+      showSuccess({
+        title: 'পাসওয়ার্ড পরিবর্তিত হয়েছে',
+        message: 'আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।',
+      })
       setForm({ current_password: '', new_password: '', new_password_confirmation: '' })
       setErrors({})
     } catch (err) {
@@ -70,8 +73,11 @@ export default function AdminPasswordPage() {
         setErrors({ current_password: msg })
       } else {
         setErrors({ general: msg })
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message: msg,
+        })
       }
-      toast.error(msg, { id: 'admin-password-error' })
     } finally {
       setLoading(false)
     }

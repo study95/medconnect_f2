@@ -1,7 +1,8 @@
-// UpazilaFormPage.jsx — Premium Upazila Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { 
   getUpazila, createUpazila, updateUpazila, 
   getDistricts, getDivisions 
@@ -97,6 +98,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function UpazilaFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({ 
@@ -126,7 +128,6 @@ export default function UpazilaFormPage() {
       loadDistricts(form.division_id)
     } else {
       setDropdowns(prev => ({ ...prev, districts: [] }))
-      if (!isEdit) setForm(prev => ({ ...prev, district_id: '' }))
     }
   }, [form.division_id])
 
@@ -139,11 +140,10 @@ export default function UpazilaFormPage() {
     }
   }
 
-  const loadDistricts = async (divId) => {
+  const loadDistricts = async (divisionId) => {
     try {
-      const res = await getDistricts({ division_id: divId })
-      const data = res.data?.data?.data || res.data?.data || res.data || []
-      setDropdowns(prev => ({ ...prev, districts: Array.isArray(data) ? data : [] }))
+      const res = await getDistricts({ division_id: divisionId, per_page: 100 })
+      setDropdowns(prev => ({ ...prev, districts: res.data?.data?.data || res.data?.data || [] }))
     } catch (err) {
       console.error('Failed to load districts:', err)
     }
@@ -156,19 +156,17 @@ export default function UpazilaFormPage() {
       const u = res.data?.data || res.data
       if (!u) throw new Error('Upazila not found')
       
+      const districtId = u.district_id || u.district?.id || ''
+      const divisionId = u.division_id || u.district?.division_id || ''
+      
       setForm({
         name: u.name || '',
         bangla_name: u.bangla_name || '',
-        division_id: u.district?.division_id || '',
-        district_id: u.district_id || ''
+        division_id: divisionId,
+        district_id: districtId
       })
-
-      // If we have a division, load districts for it
-      if (u.district?.division_id) {
-        loadDistricts(u.district.division_id)
-      }
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -188,7 +186,6 @@ export default function UpazilaFormPage() {
 
     setSaving(true)
     try {
-      // We only send district_id, name, and bangla_name to the server
       const payload = {
         name: form.name,
         bangla_name: form.bangla_name,
@@ -197,14 +194,24 @@ export default function UpazilaFormPage() {
 
       if (isEdit) {
         await updateUpazila(id, payload)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'উপজেলার তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
+        })
       } else {
         await createUpazila(payload)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন উপজেলা সফলভাবে সংরক্ষণ করা হয়েছে।',
+        })
       }
-      navigate('/admin/upazilas')
+      setTimeout(() => navigate('/admin/upazilas'), 700)
     } catch (err) {
-} finally {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: getErrorMessage(err, 'উপজেলার তথ্য সংরক্ষণে সমস্যা হয়েছে'),
+      })
+    } finally {
       setSaving(false)
     }
   }

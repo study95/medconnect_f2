@@ -3,7 +3,8 @@ import { Modal, Button, Form } from 'react-bootstrap'
 import { useResolveReport } from '../../../features/reviews/useReviews'
 import { REPORT_REASONS } from '../../../features/reviews/constants'
 import { ShieldAlert, CheckCircle2, Trash2, Clock, AlertTriangle, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 
 /**
  * Enterprise Admin Dispute & Abuse Report Resolution Modal
@@ -14,6 +15,7 @@ export default function ReviewResolveReportModal({
   report = null,
   onSuccess = null,
 }) {
+  const { showSuccess, showError } = useDialog()
   const [action, setAction] = useState('dismiss')
   const [resolutionNotes, setResolutionNotes] = useState('')
   const [error, setError] = useState('')
@@ -47,13 +49,19 @@ export default function ReviewResolveReportModal({
         },
       })
 
-      toast.success('Dispute report resolved successfully.')
+      showSuccess({
+        title: DIALOG_MESSAGES.REVIEW_RESOLVED.title,
+        message: DIALOG_MESSAGES.REVIEW_RESOLVED.message,
+      })
       if (onSuccess) onSuccess()
       onHide()
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to resolve dispute report.'
       setError(msg)
-      toast.error(msg)
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: msg,
+      })
     }
   }
 

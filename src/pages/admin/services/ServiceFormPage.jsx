@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Container, Row, Col, Form, Button, Card } from 'react-bootstrap'
 import { IconArrowLeft, IconDeviceFloppy } from '@tabler/icons-react'
 import axiosInstance from '../../../api/axiosInstance'
-import { toast } from 'react-hot-toast'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 
 export default function ServiceFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [formData, setFormData] = useState({
@@ -27,10 +29,9 @@ export default function ServiceFormPage() {
     if (isEdit) {
       const fetchService = async () => {
         try {
-          const res = await axiosInstance.get(`/admin/services/\${id}`)
+          const res = await axiosInstance.get(`/admin/services/${id}`)
           setFormData(res.data)
         } catch (err) {
-          
           navigate('/admin/services')
         }
       }
@@ -43,15 +44,24 @@ export default function ServiceFormPage() {
     setLoading(true)
     try {
       if (isEdit) {
-        await axiosInstance.put(`/admin/services/\${id}`, formData)
-        
+        await axiosInstance.put(`/admin/services/${id}`, formData)
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'সেবা তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
+        })
       } else {
         await axiosInstance.post('/admin/services', formData)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন সেবা সফলভাবে তৈরি করা হয়েছে।',
+        })
       }
-      navigate('/admin/services')
+      setTimeout(() => navigate('/admin/services'), 700)
     } catch (err) {
-      
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'সেবা তথ্য সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      })
     } finally {
       setLoading(false)
     }

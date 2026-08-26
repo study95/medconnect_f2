@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 import { getHospitals, getDoctors, getChambers } from '../../../api/adminApi'
 import { 
   getHospitalLiveQueue, 
@@ -116,6 +118,7 @@ const getNextDateForDay = (targetDayName) => {
 export default function SerialDisplayManagerPage() {
   const navigate = useNavigate()
   const { user, isAdmin, isManager, isDoctor } = useAuth()
+  const { confirm, showError } = useDialog()
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
 
   // Selection states
@@ -413,7 +416,14 @@ export default function SerialDisplayManagerPage() {
   }
 
   const handleRegenerateToken = async (chamberId) => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে নতুন ডিসপ্লে লিংক তৈরি করতে চান? পূর্বের লিংক কাজ করবে না।')) return
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.SERIAL_RESET_CONFIRM.title,
+      message: DIALOG_MESSAGES.SERIAL_RESET_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.CONFIRM,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
     try {
       setActionLoading(true)
       await regenerateChamberToken(chamberId)
@@ -440,7 +450,10 @@ export default function SerialDisplayManagerPage() {
   const handleSaveBreak = async () => {
     const targetChamberId = breakTargetChamber?.chamber?.id || currentChamberQueue?.chamber?.id
     if (!targetChamberId) {
-      toast.error('কোনো চেম্বার নির্বাচন করা নেই')
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'কোনো চেম্বার নির্বাচন করা নেই।',
+      })
       return
     }
 

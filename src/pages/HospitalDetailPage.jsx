@@ -10,6 +10,8 @@ import { HospitalDetailSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
 import { useDeleteReview } from '../features/reviews/useReviews'
+import { useDialog } from '../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import toast from 'react-hot-toast'
 import SeoHead from '../components/common/SeoHead'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
@@ -71,15 +73,30 @@ function HospitalDetailPage() {
   const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
   const [selectedReviewForEdit, setSelectedReviewForEdit] = useState(null)
 
+  const { confirm, showSuccess, showError } = useDialog()
   const deleteReviewMutation = useDeleteReview()
 
   const handleDeleteReview = async (rev) => {
-    if (window.confirm('Are you sure you want to delete this review?')) {
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.REVIEW_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.REVIEW_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+
+    if (isConfirmed) {
       try {
         await deleteReviewMutation.mutateAsync(rev.public_id || rev.id)
-        toast.success('Review deleted successfully')
+        showSuccess({
+          title: DIALOG_MESSAGES.REVIEW_DELETE_SUCCESS.title,
+          message: DIALOG_MESSAGES.REVIEW_DELETE_SUCCESS.message,
+        })
       } catch (err) {
-        toast.error('Failed to delete review')
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message: DIALOG_MESSAGES.ERROR.message,
+        })
       }
     }
   }

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 
 export default function DoctorNotesPage() {
   const { user } = useAuth()
+  const { confirm, showSuccess } = useDialog()
   const [notes, setNotes] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ title: '', content: '' })
@@ -28,16 +31,21 @@ export default function DoctorNotesPage() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.title.trim() || !formData.content.trim()) {
-      
       return
     }
 
     if (editingId) {
       saveNotes(notes.map(n => n.id === editingId ? { ...n, ...formData } : n))
-      
+      showSuccess({
+        title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+        message: 'নোট সফলভাবে হালনাগাদ করা হয়েছে।',
+      })
     } else {
       saveNotes([...notes, { id: Date.now().toString(), ...formData }])
-      
+      showSuccess({
+        title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+        message: 'নতুন নোট সফলভাবে সংরক্ষণ করা হয়েছে।',
+      })
     }
     
     setEditingId(null)
@@ -49,10 +57,21 @@ export default function DoctorNotesPage() {
     setFormData({ title: note.title, content: note.content })
   }
 
-  const handleDelete = (id) => {
-    if(window.confirm('Are you sure you want to delete this note?')) {
+  const handleDelete = async (id) => {
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.NOTE_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.NOTE_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+
+    if (isConfirmed) {
       saveNotes(notes.filter(n => n.id !== id))
-      
+      showSuccess({
+        title: DIALOG_MESSAGES.NOTE_DELETE_SUCCESS.title,
+        message: DIALOG_MESSAGES.NOTE_DELETE_SUCCESS.message,
+      })
     }
   }
 

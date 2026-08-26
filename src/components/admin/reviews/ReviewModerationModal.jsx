@@ -4,7 +4,8 @@ import { useModerateReview } from '../../../features/reviews/useReviews'
 import { formatReviewerName } from '../../../features/reviews/mappers'
 import StarRating from '../../reviews/StarRating'
 import { CheckCircle2, XCircle, Flag, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 
 /**
  * Enterprise Admin Review Moderation Action Modal
@@ -16,6 +17,7 @@ export default function ReviewModerationModal({
   initialAction = 'approve',
   onSuccess = null,
 }) {
+  const { showSuccess, showError } = useDialog()
   const [action, setAction] = useState(initialAction)
   const [moderationNote, setModerationNote] = useState('')
   const [error, setError] = useState('')
@@ -54,13 +56,27 @@ export default function ReviewModerationModal({
         },
       })
 
-      toast.success(`Review ${action}d successfully`)
+      showSuccess({
+        title: action === 'approve' 
+          ? DIALOG_MESSAGES.REVIEW_APPROVED.title 
+          : action === 'reject' 
+          ? DIALOG_MESSAGES.REVIEW_REJECTED.title 
+          : 'মডারেশন সম্পন্ন হয়েছে',
+        message: action === 'approve' 
+          ? DIALOG_MESSAGES.REVIEW_APPROVED.message 
+          : action === 'reject' 
+          ? DIALOG_MESSAGES.REVIEW_REJECTED.message 
+          : `রিভিউটি সফলভাবে ${action} করা হয়েছে।`,
+      })
       if (onSuccess) onSuccess()
       onHide()
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to update review moderation status.'
       setError(msg)
-      toast.error(msg)
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: msg,
+      })
     }
   }
 

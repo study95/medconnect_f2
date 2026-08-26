@@ -1,7 +1,8 @@
-// UnionFormPage.jsx — Premium Union Create/Edit Form with Full Cascading
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { 
   getUnion, createUnion, updateUnion, 
   getUpazilas, getDistricts, getDivisions 
@@ -97,6 +98,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function UnionFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({ 
@@ -223,14 +225,24 @@ export default function UnionFormPage() {
 
       if (isEdit) {
         await updateUnion(id, payload)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'ইউনিয়নের তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
+        })
       } else {
         await createUnion(payload)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন ইউনিয়ন সফলভাবে সংরক্ষণ করা হয়েছে।',
+        })
       }
-      navigate('/admin/unions')
+      setTimeout(() => navigate('/admin/unions'), 700)
     } catch (err) {
-} finally {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: getErrorMessage(err, 'ইউনিয়নের তথ্য সংরক্ষণে সমস্যা হয়েছে'),
+      })
+    } finally {
       setSaving(false)
     }
   }

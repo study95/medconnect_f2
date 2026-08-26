@@ -18,7 +18,8 @@ import { getAppointments } from '../api/appointmentApi'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
 import { useDeleteReview } from '../features/reviews/useReviews'
 import { getReviewErrorMessage } from '../features/reviews/mappers'
-import toast from 'react-hot-toast'
+import { useDialog } from '../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import SeoHead from '../components/common/SeoHead'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
@@ -107,15 +108,30 @@ function DoctorDetailPageContent() {
     return eligibleAppointment.review || (eligibleAppointment.has_review ? eligibleAppointment.review : null)
   }, [eligibleAppointment])
 
+  const { confirm, showSuccess, showError } = useDialog()
   const deleteReviewMutation = useDeleteReview()
 
   const handleDeleteReview = async (rev) => {
-    if (window.confirm('আপনি কি নিশ্চিতভাবে এই রিভিউটি মুছে ফেলতে চান?')) {
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.REVIEW_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.REVIEW_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+
+    if (isConfirmed) {
       try {
         await deleteReviewMutation.mutateAsync(rev.public_id || rev.id)
-        toast.success('রিভিউটি সফলভাবে মুছে ফেলা হয়েছে।')
+        showSuccess({
+          title: DIALOG_MESSAGES.REVIEW_DELETE_SUCCESS.title,
+          message: DIALOG_MESSAGES.REVIEW_DELETE_SUCCESS.message,
+        })
       } catch (err) {
-        toast.error(getReviewErrorMessage(err))
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message: getReviewErrorMessage(err),
+        })
       }
     }
   }

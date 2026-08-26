@@ -1,0 +1,269 @@
+/* dialog.css — Unified Enterprise Healthcare Dialog & Notification System */
+
+:root {
+  --dialog-bg: #FFFFFF;
+  --dialog-text: #0F172A;
+  --dialog-text-muted: #64748B;
+  --dialog-border: #E2E8F0;
+  --dialog-backdrop: rgba(15, 23, 42, 0.65);
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+  --dialog-success: #00B875;
+  --dialog-success-bg: rgba(0, 184, 117, 0.1);
+  --dialog-danger: #EF4444;
+  --dialog-danger-bg: rgba(239, 68, 68, 0.1);
+  --dialog-warning: #F59E0B;
+  --dialog-warning-bg: rgba(245, 158, 11, 0.1);
+  --dialog-info: #6366F1;
+  --dialog-info-bg: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"],
+.dark-theme,
+body.dark {
+  --dialog-bg: #1E293B;
+  --dialog-text: #F8FAFC;
+  --dialog-text-muted: #94A3B8;
+  --dialog-border: #334155;
+  --dialog-backdrop: rgba(0, 0, 0, 0.75);
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+  --dialog-success-bg: rgba(0, 184, 117, 0.15);
+  --dialog-danger-bg: rgba(239, 68, 68, 0.15);
+  --dialog-warning-bg: rgba(245, 158, 11, 0.15);
+  --dialog-info-bg: rgba(99, 102, 241, 0.15);
+}
+
+/* Dialog Overlay */
+.db-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: var(--dialog-backdrop);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: db-dialog-fade-in 180ms ease-out forwards;
+}
+
+/* Dialog Card */
+.db-dialog-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: var(--dialog-bg);
+  color: var(--dialog-text);
+  border: 1px solid var(--dialog-border);
+  border-radius: 16px;
+  box-shadow: var(--dialog-shadow);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  animation: db-dialog-scale-in 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  outline: none;
+}
+
+/* Icon Container */
+.db-dialog-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.db-dialog-icon-wrapper.success {
+  background: var(--dialog-success-bg);
+  color: var(--dialog-success);
+}
+
+.db-dialog-icon-wrapper.danger,
+.db-dialog-icon-wrapper.error {
+  background: var(--dialog-danger-bg);
+  color: var(--dialog-danger);
+}
+
+.db-dialog-icon-wrapper.warning {
+  background: var(--dialog-warning-bg);
+  color: var(--dialog-warning);
+}
+
+.db-dialog-icon-wrapper.info {
+  background: var(--dialog-info-bg);
+  color: var(--dialog-info);
+}
+
+/* Typography */
+.db-dialog-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--dialog-text);
+  letter-spacing: -0.01em;
+}
+
+.db-dialog-body {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--dialog-text-muted);
+  word-break: break-word;
+}
+
+/* Actions Row */
+.db-dialog-actions {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Standard Buttons */
+.db-dialog-btn {
+  flex: 1;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
+}
+
+.db-dialog-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.35);
+}
+
+.db-dialog-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Cancel / Outline Button */
+.db-dialog-btn-cancel {
+  background: transparent;
+  color: var(--dialog-text);
+  border-color: var(--dialog-border);
+}
+
+.db-dialog-btn-cancel:hover:not(:disabled) {
+  background: rgba(100, 116, 139, 0.08);
+}
+
+/* Primary / Confirm Button */
+.db-dialog-btn-primary {
+  background: var(--dialog-success);
+  color: #FFFFFF;
+}
+
+.db-dialog-btn-primary:hover:not(:disabled) {
+  background: #009E64;
+  box-shadow: 0 4px 12px rgba(0, 184, 117, 0.25);
+}
+
+/* Danger / Delete Button */
+.db-dialog-btn-danger {
+  background: var(--dialog-danger);
+  color: #FFFFFF;
+}
+
+.db-dialog-btn-danger:hover:not(:disabled) {
+  background: #DC2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.db-dialog-btn-danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35);
+}
+
+/* Auto-close Progress Bar */
+.db-dialog-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--dialog-success);
+  width: 100%;
+  animation: db-dialog-progress linear forwards;
+  opacity: 0.85;
+}
+
+/* Keyframes */
+@keyframes db-dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes db-dialog-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes db-dialog-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Responsive adjustment */
+@media (max-width: 480px) {
+  .db-dialog-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .db-dialog-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 12px;
+  }
+
+  .db-dialog-title {
+    font-size: 16px;
+  }
+
+  .db-dialog-body {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .db-dialog-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .db-dialog-btn {
+    width: 100%;
+  }
+}

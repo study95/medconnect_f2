@@ -6,6 +6,8 @@ import {
   ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Info, X
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getChamber, createChamber, updateChamber, getDoctors, getHospitals } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
@@ -196,6 +198,7 @@ export default function ChamberFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, isAdmin, isManager, isDoctor } = useAuth()
+  const { showSuccess } = useDialog()
   const isEdit = !!id
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
 
@@ -356,7 +359,11 @@ export default function ChamberFormPage() {
           end_time: form.end_time,
           fee: form.fee
         })
-        navigate('/admin/chambers')
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'চেম্বার শিডিউল সফলভাবে হালনাগাদ করা হয়েছে।',
+        })
+        setTimeout(() => navigate('/admin/chambers'), 700)
       } else {
         // Multi-day create: Create a chamber entry for each selected day
         const results = await Promise.allSettled(
@@ -375,7 +382,11 @@ export default function ChamberFormPage() {
 
         if (failed.length === 0) {
           // All succeeded
-          navigate('/admin/chambers')
+          showSuccess({
+            title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+            message: `${selectedDays.length}টি দিনের চেম্বার শিডিউল সফলভাবে তৈরি করা হয়েছে।`,
+          })
+          setTimeout(() => navigate('/admin/chambers'), 700)
         } else if (succeeded.length > 0) {
           // Partial success
           const failedDays = selectedDays.filter((_, idx) => results[idx].status === 'rejected')

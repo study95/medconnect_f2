@@ -5,7 +5,8 @@ import { useReportReview } from '../../features/reviews/useReviews'
 import { formatReviewerName, getReviewErrorMessage } from '../../features/reviews/mappers'
 import { REPORT_REASONS } from '../../features/reviews/constants'
 import { Flag, AlertTriangle, ShieldCheck, Loader2, CheckCircle2, Info } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 /**
  * Enterprise Review Dispute & Abuse Reporting Modal
@@ -16,6 +17,7 @@ export default function ReviewReportModal({
   review = null,
   onSuccess = null,
 }) {
+  const { showSuccess, showError } = useDialog()
   const [reason, setReason] = useState('defamation')
   const [explanation, setExplanation] = useState('')
   const [error, setError] = useState('')
@@ -70,13 +72,19 @@ export default function ReviewReportModal({
         },
       })
 
-      toast.success('অভিযোগটি সফলভাবে জমা হয়েছে। আমাদের টিম এটি পর্যালোচনা করবে।')
+      showSuccess({
+        title: DIALOG_MESSAGES.REVIEW_REPORT_SUCCESS.title,
+        message: DIALOG_MESSAGES.REVIEW_REPORT_SUCCESS.message,
+      })
       if (onSuccess) onSuccess()
       onHide()
     } catch (err) {
       const msg = getReviewErrorMessage(err)
       setError(msg)
-      toast.error(msg)
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: msg,
+      })
     }
   }
 

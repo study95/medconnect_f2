@@ -1,8 +1,9 @@
-// HospitalFormPage.jsx — Premium Hospital Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import {
   getHospital, createHospital, updateHospital,
   getDivisions, getDistricts, getUpazilas, getUnions
@@ -115,6 +116,7 @@ export default function HospitalFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { showSuccess, showError } = useDialog()
   const isEdit = Boolean(id)
   const canEditPhone = isAdmin || !isEdit
 
@@ -350,10 +352,18 @@ export default function HospitalFormPage() {
       if (isEdit) {
         formData.append('_method', 'PUT')
         await updateHospital(id, formData)
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
+        })
       } else {
         await createHospital(formData)
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
+        })
       }
-      navigate('/admin/hospitals')
+      setTimeout(() => navigate('/admin/hospitals'), 700)
     } catch (err) {
       const backendErrors = err.response?.data?.errors || {}
       const formattedErrors = {}
@@ -364,6 +374,11 @@ export default function HospitalFormPage() {
       setErrors(formattedErrors)
       if (Object.keys(formattedErrors).length > 0) {
         scrollToFirstError(formattedErrors)
+      } else {
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message: getErrorMessage(err, 'হাসপাতালের তথ্য সংরক্ষণে সমস্যা হয়েছে'),
+        })
       }
     } finally {
       setSaving(false)

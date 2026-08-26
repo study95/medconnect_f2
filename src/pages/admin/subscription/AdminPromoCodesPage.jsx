@@ -1,8 +1,10 @@
-// AdminPromoCodesPage.jsx — CRUD promo codes
 import { useState, useEffect } from 'react'
 import { getAdminPromoCodes, createAdminPromoCode, updateAdminPromoCode, deleteAdminPromoCode } from '../../../api/subscriptionApi'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 
 export default function AdminPromoCodesPage() {
+  const { confirm, showSuccess, showError } = useDialog()
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -45,20 +47,49 @@ export default function AdminPromoCodesPage() {
       if (!data.max_uses) data.max_uses = null
       if (editing) {
         await updateAdminPromoCode(editing.id, data)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'প্রোমো কোড সফলভাবে হালনাগাদ হয়েছে।',
+        })
       } else {
         await createAdminPromoCode(data)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন প্রোমো কোড সফলভাবে তৈরি হয়েছে।',
+        })
       }
       setShowModal(false)
       load()
-    } catch (err) {  }
+    } catch (err) {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'প্রোমো কোড সংরক্ষণ করা সম্ভব হয়নি।',
+      })
+    }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this promo code?')) return
-    try { await deleteAdminPromoCode(id);  load() }
-    catch {  }
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.PROMO_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.PROMO_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
+    try { 
+      await deleteAdminPromoCode(id)
+      showSuccess({
+        title: DIALOG_MESSAGES.DELETE_SUCCESS.title,
+        message: DIALOG_MESSAGES.DELETE_SUCCESS.message,
+      })
+      load() 
+    } catch {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'প্রোমো কোড মুছে ফেলা সম্ভব হয়নি।',
+      })
+    }
   }
 
   return (

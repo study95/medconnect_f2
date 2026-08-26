@@ -28,8 +28,9 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { AuthProvider } from './context/AuthContext'
 import { FavoritesProvider } from './context/FavoritesContext'
-import { ThemeProvider } from './context/ThemeContext'
 import { SubscriptionProvider } from './context/SubscriptionContext'
+import { ThemeProvider } from './context/ThemeContext'
+import { DialogProvider } from './context/DialogContext'
 import App from './App'
 
 // ─── GLOBAL DOM WORKAROUND ──────────────────────────────────────────────────
@@ -72,7 +73,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <AuthProvider>
             <FavoritesProvider>
               <SubscriptionProvider>
-                <App />
+                <DialogProvider>
+                  <App />
+                </DialogProvider>
               </SubscriptionProvider>
             </FavoritesProvider>
           </AuthProvider>

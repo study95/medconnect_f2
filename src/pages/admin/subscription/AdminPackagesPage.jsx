@@ -1,8 +1,10 @@
-// AdminPackagesPage.jsx — CRUD subscription packages
 import { useState, useEffect } from 'react'
 import { getAdminPackages, createAdminPackage, updateAdminPackage, deleteAdminPackage } from '../../../api/subscriptionApi'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 
 export default function AdminPackagesPage() {
+  const { confirm, showSuccess, showError } = useDialog()
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -44,23 +46,49 @@ export default function AdminPackagesPage() {
     try {
       if (editing) {
         await updateAdminPackage(editing.id, form)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'প্যাকেজ সফলভাবে হালনাগাদ হয়েছে।',
+        })
       } else {
         await createAdminPackage(form)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন প্যাকেজ সফলভাবে তৈরি হয়েছে।',
+        })
       }
       setShowModal(false)
       load()
-    } catch (err) {  }
+    } catch (err) {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'প্যাকেজ সংরক্ষণ করা সম্ভব হয়নি।',
+      })
+    }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this package?')) return
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.PACKAGE_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.PACKAGE_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
     try {
       await deleteAdminPackage(id)
-      
+      showSuccess({
+        title: DIALOG_MESSAGES.DELETE_SUCCESS.title,
+        message: DIALOG_MESSAGES.DELETE_SUCCESS.message,
+      })
       load()
-    } catch {  }
+    } catch {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'প্যাকেজ মুছে ফেলা সম্ভব হয়নি।',
+      })
+    }
   }
 
   return (

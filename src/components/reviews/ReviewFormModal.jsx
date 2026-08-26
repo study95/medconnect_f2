@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Info,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 /**
  * Enterprise Patient Review Form Modal — Fully Localized for Bengali UX
@@ -33,6 +34,8 @@ export default function ReviewFormModal({
   const isEditing = Boolean(activeExistingReview)
   const apptId = appointment?.id || appointment?.public_id || activeExistingReview?.appointment_id || 'general'
   const draftStorageKey = `review_draft_${apptId}`
+
+  const { showSuccess, showError } = useDialog()
 
   // Form State
   const [rating, setRating] = useState(5)
@@ -162,7 +165,10 @@ export default function ReviewFormModal({
 
         const identifier = activeExistingReview?.public_id || activeExistingReview?.id
         await updateReviewMutation.mutateAsync({ identifier, data: updatePayload })
-        toast.success('আপনার রিভিউ সফলভাবে আপডেট করা হয়েছে। ধন্যবাদ!', { duration: 4000 })
+        showSuccess({
+          title: DIALOG_MESSAGES.REVIEW_UPDATE_SUCCESS.title,
+          message: DIALOG_MESSAGES.REVIEW_UPDATE_SUCCESS.message,
+        })
       } else {
         const createPayload = normalizeReviewPayload({
           appointment_id: appointment?.id,
@@ -177,10 +183,10 @@ export default function ReviewFormModal({
         })
 
         await createReviewMutation.mutateAsync(createPayload)
-        toast.success(
-          'আপনার রিভিউ সফলভাবে জমা হয়েছে। ধন্যবাদ!\nআপনার সৎ মতামত অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।',
-          { duration: 5000 }
-        )
+        showSuccess({
+          title: DIALOG_MESSAGES.REVIEW_CREATE_SUCCESS.title,
+          message: DIALOG_MESSAGES.REVIEW_CREATE_SUCCESS.message,
+        })
         sessionStorage.removeItem(draftStorageKey)
       }
 
@@ -188,8 +194,7 @@ export default function ReviewFormModal({
       onHide()
     } catch (err) {
       const serverMessage = getReviewErrorMessage(err)
-      toast.error(serverMessage, { duration: 4500 })
-
+      
       // Auto-populate inline field errors if backend returned 422
       if (err?.response?.status === 422 && err.response.data?.errors) {
         const backendErrors = err.response.data.errors
@@ -198,6 +203,11 @@ export default function ReviewFormModal({
         if (backendErrors.rating?.[0]) inline.rating = backendErrors.rating[0]
         if (backendErrors.title?.[0]) inline.title = backendErrors.title[0]
         setErrors((prev) => ({ ...prev, ...inline }))
+      } else {
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message: serverMessage,
+        })
       }
     }
   }

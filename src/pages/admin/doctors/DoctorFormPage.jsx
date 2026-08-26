@@ -1,9 +1,9 @@
-// DoctorFormPage.jsx — Premium Doctor Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { 
   getDoctor, createDoctor, updateDoctor, getSpecialties, getHospitals,
   getDivisions, getDistricts, getUpazilas, getUnions 
@@ -174,6 +174,7 @@ export default function DoctorFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
   const canEditPhone = isAdmin || !isEdit
 
@@ -475,13 +476,19 @@ export default function DoctorFormPage() {
     try {
       if (isEdit) {
         await updateDoctor(id, formData)
-        toast.success('Doctor profile updated successfully!')
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: DIALOG_MESSAGES.DOCTOR_SAVE_SUCCESS.message,
+        })
       } else {
         await createDoctor(formData)
-        toast.success('Doctor profile created successfully!')
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: DIALOG_MESSAGES.DOCTOR_SAVE_SUCCESS.message,
+        })
       }
       
-      navigate('/admin/doctors')
+      setTimeout(() => navigate('/admin/doctors'), 700)
     } catch (err) {
       if (err.response?.data?.errors) {
         const errs = err.response.data.errors
@@ -489,7 +496,10 @@ export default function DoctorFormPage() {
         scrollToFirstError(errs)
       } else {
         const message = err.response?.data?.message || getErrorMessage(err, 'Failed to save doctor profile.')
-        toast.error(message)
+        showError({
+          title: DIALOG_MESSAGES.ERROR.title,
+          message,
+        })
       }
     } finally {
       setSaving(false)

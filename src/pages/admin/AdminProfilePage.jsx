@@ -10,10 +10,12 @@ import {
   User, Mail, Phone, MapPin, Briefcase, Key, Edit2, Save, X, 
   Calendar, Activity, GraduationCap, Building2, Search, Settings, ShieldCheck, CheckCircle2 
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 function AdminProfilePage() {
   const { user, userType, fetchCurrentUser, isDoctor, isAdmin, isManager, isPatient } = useAuth()
+  const { showSuccess, showError } = useDialog()
   const navigate = useNavigate()
 
   const [editing, setEditing] = useState(false)
@@ -158,12 +160,20 @@ function AdminProfilePage() {
 
       await updateMyProfile(formData)
 
+      showSuccess({
+        title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+        message: 'প্রোফাইল সফলভাবে হালনাগাদ করা হয়েছে।',
+      })
+
       setEditing(false)
       await fetchCurrentUser()
       loadProfile()
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to update profile'
-      toast.error(msg, { id: 'admin-profile-err' })
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: msg,
+      })
     } finally {
       setSaving(false)
     }

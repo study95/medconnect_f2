@@ -1,7 +1,8 @@
-// AdminMessagesPage.jsx — Admin sends notifications/messages to doctors
 import { useState, useEffect, useRef } from 'react'
 import { getAdminNotifications, sendAdminNotification, deleteAdminNotification } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/adminApi'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 
@@ -133,6 +134,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function AdminMessagesPage() {
+  const { confirm, showSuccess, showError } = useDialog()
   const [notifications, setNotifications] = useState([])
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
@@ -165,16 +167,43 @@ export default function AdminMessagesPage() {
       const data = { ...form }
       if (!data.doctor_id) data.doctor_id = null // broadcast
       await sendAdminNotification(data)
-      
+      showSuccess({
+        title: 'মেসেজ পাঠানো হয়েছে',
+        message: 'নোটিফিকেশন বার্তা সফলভাবে পাঠানো হয়েছে।',
+      })
       setShowModal(false)
       load()
-    } catch (err) {  }
+    } catch (err) {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'নোটিফিকেশন পাঠাতে সমস্যা হয়েছে।',
+      })
+    }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this notification?')) return
-    try { await deleteAdminNotification(id);  load() }
-    catch {  }
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.NOTIFICATION_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.NOTIFICATION_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
+    try { 
+      await deleteAdminNotification(id)
+      showSuccess({
+        title: DIALOG_MESSAGES.DELETE_SUCCESS.title,
+        message: DIALOG_MESSAGES.DELETE_SUCCESS.message,
+      })
+      load() 
+    }
+    catch {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'নোটিফিকেশন মুছে ফেলা সম্ভব হয়নি।',
+      })
+    }
   }
 
   const typeIcons = { warning: '⚠️', info: 'ℹ️', promo: '🎁', system: '🔧', expiry: '⏰' }

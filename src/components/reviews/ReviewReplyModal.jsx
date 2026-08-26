@@ -4,7 +4,8 @@ import StarRating from './StarRating'
 import { useReplyReview } from '../../features/reviews/useReviews'
 import { formatReviewerName, getReviewErrorMessage } from '../../features/reviews/mappers'
 import { MessageSquare, CornerDownRight, AlertCircle, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 /**
  * Enterprise Official Reply Modal for Doctors and Hospital Authorities
@@ -15,6 +16,7 @@ export default function ReviewReplyModal({
   review = null,
   onSuccess = null,
 }) {
+  const { showSuccess, showError } = useDialog()
   const [replyText, setReplyText] = useState('')
   const [error, setError] = useState('')
 
@@ -59,13 +61,19 @@ export default function ReviewReplyModal({
         data: { reply: trimmed },
       })
 
-      toast.success('আপনার অফিসিয়াল উত্তর সফলভাবে প্রকাশিত হয়েছে!')
+      showSuccess({
+        title: DIALOG_MESSAGES.REVIEW_REPLY_SUCCESS.title,
+        message: DIALOG_MESSAGES.REVIEW_REPLY_SUCCESS.message,
+      })
       if (onSuccess) onSuccess()
       onHide()
     } catch (err) {
       const msg = getReviewErrorMessage(err)
       setError(msg)
-      toast.error(msg)
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: msg,
+      })
     }
   }
 

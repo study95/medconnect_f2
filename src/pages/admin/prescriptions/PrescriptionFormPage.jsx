@@ -1,10 +1,11 @@
 // PrescriptionFormPage.jsx — Doctor writes prescription with enhanced medicine autocomplete
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { createPrescription, updatePrescription, getPrescription, getAppointment, createWalkInPatient, searchMedicines } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 
 const emptyMedicine = { medicine_name: '', dosage: '', duration: '', instructions: '' }
 
@@ -15,6 +16,7 @@ export default function PrescriptionFormPage() {
   const returnTo = searchParams.get('return_to') || (searchParams.get('from') === 'serial-display' ? '/admin/serial-display' : null) || '/admin/prescriptions'
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({
@@ -275,14 +277,12 @@ export default function PrescriptionFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.diagnosis.trim()) { 
-      toast.error('অনুগ্রহ করে রোগ নির্ণয় (Diagnosis) লিখুন')
       setActiveTab('clinical')
       return 
     }
 
     const cleanMedicines = form.medicines.filter(m => m.medicine_name.trim())
     if (cleanMedicines.length === 0) { 
-      toast.error('অনুগ্রহ করে অন্তত একটি ওষুধ যোগ করুন')
       setActiveTab('medicines')
       return 
     }
@@ -291,14 +291,23 @@ export default function PrescriptionFormPage() {
     try {
       if (isEdit) {
         await updatePrescription(id, { ...form, medicines: cleanMedicines })
-        toast.success('প্রেসক্রিপশন সফলভাবে আপডেট করা হয়েছে!')
+        showSuccess({
+          title: DIALOG_MESSAGES.PRESCRIPTION_UPDATE_SUCCESS.title,
+          message: DIALOG_MESSAGES.PRESCRIPTION_UPDATE_SUCCESS.message,
+        })
       } else {
         await createPrescription({ ...form, medicines: cleanMedicines })
-        toast.success('প্রেসক্রিপশন সফলভাবে সংরক্ষণ করা হয়েছে!')
+        showSuccess({
+          title: DIALOG_MESSAGES.PRESCRIPTION_SAVE_SUCCESS.title,
+          message: DIALOG_MESSAGES.PRESCRIPTION_SAVE_SUCCESS.message,
+        })
       }
-      setTimeout(() => navigate(returnTo), 600)
+      setTimeout(() => navigate(returnTo), 800)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'প্রেসক্রিপশন সংরক্ষণে সমস্যা হয়েছে'))
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: getErrorMessage(err, 'প্রেসক্রিপশন সংরক্ষণে সমস্যা হয়েছে'),
+      })
     } finally {
       setSaving(false)
     }
@@ -306,7 +315,6 @@ export default function PrescriptionFormPage() {
 
   const handleWalkInRegister = async () => {
     if (!walkInForm.name) {
-      toast.error('Patient name is required')
       return
     }
 
@@ -316,12 +324,18 @@ export default function PrescriptionFormPage() {
       const data = res.data?.data
       if (data && data.appointment_id) {
         setForm({ ...form, appointment_id: data.appointment_id })
-        toast.success('Walk-in patient registered')
+        showSuccess({
+          title: 'রোগী নিবন্ধিত হয়েছে',
+          message: 'ওয়াক-ইন রোগী সফলভাবে নিবন্ধিত হয়েছে।',
+        })
         loadAppointment(data.appointment_id)
         setShowWalkIn(false)
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to register walk-in patient'))
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: getErrorMessage(err, 'Failed to register walk-in patient'),
+      })
     } finally {
       setRegistering(false)
     }

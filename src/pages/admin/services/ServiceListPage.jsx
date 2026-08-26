@@ -6,8 +6,8 @@ import {
   IconChecklist
 } from '@tabler/icons-react'
 import axiosInstance from '../../../api/axiosInstance'
-import { toast } from 'react-hot-toast'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import DeleteModal from '../../../components/admin/DeleteModal'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -423,19 +423,14 @@ export default function ServiceListPage() {
         </Modal.Footer>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
-      <Modal show={!!deleteId} onHide={() => setDeleteId(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: 16, fontWeight: 800, color: '#EF4444' }}>অভিযোগ মুছে ফেলার নিশ্চিতকরণ</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ fontSize: 14, color: '#475569' }}>
-          আপনি কি নিশ্চিত যে এই সাপোর্ট টিকিট/অভিযোগটি ডাটাবেজ থেকে মুছে ফেলতে চান? এই কাজটি পুনরায় ফিরিয়ে আনা যাবে না।
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setDeleteId(null)}>বাতিল</Button>
-          <Button variant="danger" onClick={handleDelete} style={{ background: '#EF4444', border: 'none', fontWeight: 800 }}>হ্যাঁ, নিশ্চিত মুছুন</Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Delete Confirmation Modal using unified DeleteModal */}
+      <DeleteModal
+        show={!!deleteId}
+        onCancel={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="অভিযোগ মুছে ফেলার নিশ্চিতকরণ"
+        message="আপনি কি নিশ্চিত যে এই সাপোর্ট টিকিট/অভিযোগটি ডাটাবেজ থেকে মুছে ফেলতে চান? এই কাজটি পুনরায় ফিরিয়ে আনা যাবে না।"
+      />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

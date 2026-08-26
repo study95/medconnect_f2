@@ -11,6 +11,8 @@ import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, Arrow
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import PatientLiveQueueTracker from '../components/queue/PatientLiveQueueTracker'
 import ReviewFormModal from '../components/reviews/ReviewFormModal'
+import { useDialog } from '../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../utils/dialogMessages'
 import toast from 'react-hot-toast'
 import '../styles/prescription.css'
 
@@ -39,6 +41,7 @@ export default function AppointmentTicketPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const { confirm, showSuccess, showError } = useDialog()
 
   // Helper to find cached or passed appointment
   const getInitialAppointment = () => {
@@ -58,7 +61,6 @@ export default function AppointmentTicketPage() {
   const [refreshCount, setRefreshCount] = useState(0)
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
-  const [showCancelModal, setShowCancelModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [downloadingRx, setDownloadingRx] = useState(false)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
@@ -143,14 +145,29 @@ export default function AppointmentTicketPage() {
   }, [id, refreshCount])
 
   const handleCancelAppointment = async () => {
+    if (cancelling) return
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.APPOINTMENT_CANCEL_CONFIRM.title,
+      message: DIALOG_MESSAGES.APPOINTMENT_CANCEL_CONFIRM.message,
+      confirmText: 'হ্যাঁ, বাতিল করুন',
+      cancelText: 'না, ফিরে যাই',
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
+
     setCancelling(true)
     try {
       await cancelAppointment(id)
-      toast.success('অ্যাপয়েন্টমেন্ট সফলভাবে বাতিল করা হয়েছে')
-      setShowCancelModal(false)
+      showSuccess({
+        title: DIALOG_MESSAGES.APPOINTMENT_CANCEL_SUCCESS.title,
+        message: DIALOG_MESSAGES.APPOINTMENT_CANCEL_SUCCESS.message,
+      })
       setRefreshCount(p => p + 1)
     } catch (err) {
-      toast.error('বাতিল করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'অ্যাপয়েন্টমেন্ট বাতিল করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      })
     } finally {
       setCancelling(false)
     }
@@ -823,7 +840,8 @@ export default function AppointmentTicketPage() {
               </>
             ) : status !== 'cancelled' ? (
               <button
-                onClick={() => setShowCancelModal(true)}
+                onClick={handleCancelAppointment}
+                disabled={cancelling}
                 style={{
                   flex: 1,
                   display: 'inline-flex',
@@ -839,10 +857,11 @@ export default function AppointmentTicketPage() {
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  opacity: cancelling ? 0.7 : 1,
                 }}
               >
                 <X size={16} />
-                বাতিল করুন
+                {cancelling ? 'বাতিল হচ্ছে...' : 'বাতিল করুন'}
               </button>
             ) : null}
           </div>
@@ -884,78 +903,6 @@ export default function AppointmentTicketPage() {
 
         </div>
       </Container>
-
-      {/* ── Cancel Confirmation Modal ── */}
-      {showCancelModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.55)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16,
-          zIndex: 9999,
-          fontFamily: '"Hind Siliguri", sans-serif',
-        }}>
-          <div style={{
-            background: '#fff',
-            borderRadius: 18,
-            maxWidth: 380,
-            width: '100%',
-            padding: 24,
-            textAlign: 'center',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-          }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <AlertCircle size={28} />
-            </div>
-            <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 8, fontSize: 17 }}>
-              অ্যাপয়েন্টমেন্ট বাতিল করবেন?
-            </h5>
-            <p style={{ fontSize: 13.5, color: '#64748B', marginBottom: 20, lineHeight: 1.5 }}>
-              আপনি কি নিশ্চিত যে আপনি এই অ্যাপয়েন্টমেন্টটি বাতিল করতে চান? বাতিল করার পর পুনরায় বুকিং করতে হবে।
-            </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setShowCancelModal(false)}
-                disabled={cancelling}
-                style={{
-                  flex: 1,
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  color: '#334155',
-                  padding: '10px',
-                  borderRadius: 10,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                না, ফিরে যাই
-              </button>
-              <button
-                onClick={handleCancelAppointment}
-                disabled={cancelling}
-                style={{
-                  flex: 1,
-                  background: '#DC2626',
-                  border: 'none',
-                  color: '#fff',
-                  padding: '10px',
-                  borderRadius: 10,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                {cancelling ? 'বাতিল হচ্ছে...' : 'হ্যাঁ, বাতিল করুন'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Offscreen Prescription Paper for Direct Canvas to PDF Rendering ── */}
       {rxDataForDownload && (

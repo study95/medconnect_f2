@@ -1,7 +1,8 @@
-// DistrictFormPage.jsx — Premium District Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getDistrict, createDistrict, updateDistrict, getDivisions } from '../../../api/adminApi'
 
 // Premium Searchable Select Component
@@ -94,6 +95,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function DistrictFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({ name: '', bangla_name: '', division_id: '' })
@@ -128,7 +130,7 @@ export default function DistrictFormPage() {
         division_id: d.division_id || ''
       })
     } catch (err) {
-} finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -149,14 +151,24 @@ export default function DistrictFormPage() {
     try {
       if (isEdit) {
         await updateDistrict(id, form)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
+          message: 'জেলার তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
+        })
       } else {
         await createDistrict(form)
-        
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: 'নতুন জেলা সফলভাবে সংরক্ষণ করা হয়েছে।',
+        })
       }
-      navigate('/admin/districts')
+      setTimeout(() => navigate('/admin/districts'), 700)
     } catch (err) {
-} finally {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: getErrorMessage(err, 'জেলার তথ্য সংরক্ষণে সমস্যা হয়েছে'),
+      })
+    } finally {
       setSaving(false)
     }
   }

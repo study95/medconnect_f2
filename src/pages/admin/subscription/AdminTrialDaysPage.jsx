@@ -1,9 +1,11 @@
-// AdminTrialDaysPage.jsx — Grant free trial days per doctor
 import { useState, useEffect } from 'react'
 import { getAdminTrialDays, grantTrialDays, deleteTrialDay } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/adminApi'
+import { useDialog } from '../../../hooks/useDialog'
+import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 
 export default function AdminTrialDaysPage() {
+  const { confirm, showSuccess, showError } = useDialog()
   const [trials, setTrials] = useState([])
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,16 +34,42 @@ export default function AdminTrialDaysPage() {
     e.preventDefault()
     try {
       await grantTrialDays(form)
-      
+      showSuccess({
+        title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+        message: 'ট্রায়াল দিন সফলভাবে প্রদান করা হয়েছে।',
+      })
       setShowModal(false)
       load()
-    } catch (err) {  }
+    } catch (err) {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'ট্রায়াল দিন প্রদান করা সম্ভব হয়নি।',
+      })
+    }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Remove this trial entry?')) return
-    try { await deleteTrialDay(id);  load() }
-    catch {  }
+    const isConfirmed = await confirm({
+      title: DIALOG_MESSAGES.TRIAL_DELETE_CONFIRM.title,
+      message: DIALOG_MESSAGES.TRIAL_DELETE_CONFIRM.message,
+      confirmText: DIALOG_BUTTONS.DELETE,
+      cancelText: DIALOG_BUTTONS.CANCEL,
+      variant: 'danger',
+    })
+    if (!isConfirmed) return
+    try { 
+      await deleteTrialDay(id)
+      showSuccess({
+        title: DIALOG_MESSAGES.DELETE_SUCCESS.title,
+        message: DIALOG_MESSAGES.DELETE_SUCCESS.message,
+      })
+      load() 
+    } catch {
+      showError({
+        title: DIALOG_MESSAGES.ERROR.title,
+        message: 'ট্রায়াল এন্ট্রি মুছে ফেলা সম্ভব হয়নি।',
+      })
+    }
   }
 
   return (
