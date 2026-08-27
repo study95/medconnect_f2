@@ -80,7 +80,22 @@ function DoctorsPage() {
   const [hospitalSearch, setHospitalSearch]       = useState('')
 
   const [sortBy, setSortBy]   = useState('relevance')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+  const [viewMode, setViewModeState] = useState(() => {
+    try {
+      return localStorage.getItem('doctors_view_mode') || 'grid'
+    } catch {
+      return 'grid'
+    }
+  })
+
+  const setViewMode = (mode) => {
+    setViewModeState(mode)
+    try {
+      localStorage.setItem('doctors_view_mode', mode)
+    } catch {
+      // ignore
+    }
+  }
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
   // Accordion state

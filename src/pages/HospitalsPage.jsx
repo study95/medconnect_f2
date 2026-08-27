@@ -71,7 +71,22 @@ function HospitalsPage() {
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [sortBy, setSortBy]   = useState('newest')
-  const [viewMode, setViewMode] = useState('list') // 'list' | 'grid' | 'map'
+  const [viewMode, setViewModeState] = useState(() => {
+    try {
+      return localStorage.getItem('hospitals_view_mode') || 'list'
+    } catch {
+      return 'list'
+    }
+  })
+
+  const setViewMode = (mode) => {
+    setViewModeState(mode)
+    try {
+      localStorage.setItem('hospitals_view_mode', mode)
+    } catch {
+      // ignore
+    }
+  }
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
