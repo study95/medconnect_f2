@@ -97,6 +97,10 @@ const ServiceFormPage    = lazy(() => import('./pages/admin/services/ServiceForm
 const PatientListPage     = lazy(() => import('./pages/admin/patients/PatientListPage'))
 const PatientFormPage     = lazy(() => import('./pages/admin/patients/PatientFormPage'))
 
+// Doctor Leave pages
+const DoctorLeavePage      = lazy(() => import('./pages/admin/leaves/DoctorLeavePage'))
+const AdminDoctorLeavePage = lazy(() => import('./pages/admin/leaves/AdminDoctorLeavePage'))
+
 // Subscription pages
 const SubscriptionPage       = lazy(() => import('./pages/admin/subscription/SubscriptionPage'))
 const CheckoutPage           = lazy(() => import('./pages/admin/subscription/CheckoutPage'))
@@ -287,6 +291,11 @@ function App() {
             <Route path="chambers" element={<ChamberListPage />} />
             <Route path="chambers/create" element={<ChamberFormPage />} />
             <Route path="chambers/edit/:id" element={<ChamberFormPage />} />
+
+            {/* Doctor Leaves */}
+            <Route path="my-leaves" element={<DoctorLeavePage />} />
+            <Route path="leaves" element={<DoctorLeavePage />} />
+            <Route path="doctor-leaves" element={<AdminDoctorLeavePage />} />
 
             {/* Appointments & Live Serial Queue */}
             <Route path="appointments" element={<AppointmentListPage />} />

@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv } from 'lucide-react'
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -196,6 +196,31 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             >
               <span className="nav-icon"><BriefcaseMedical size={18} /></span>
               <span className="nav-text">{isDoctor ? 'My Chambers' : 'Chambers'}</span>
+            </NavLink>
+          )}
+
+          {/* Doctor: My Leaves / Admin: Doctor Leaves */}
+          {isDoctor && (
+            <NavLink
+              to="/admin/my-leaves"
+              className={`sidebar-nav-item ${isActive('/admin/my-leaves') ? 'active' : ''}`}
+              onClick={onClose}
+              title={isCollapsed ? 'My Leaves' : undefined}
+            >
+              <span className="nav-icon"><CalendarOff size={18} /></span>
+              <span className="nav-text">My Leaves</span>
+            </NavLink>
+          )}
+
+          {(isAdmin || isManager || hasPermission('doctor_leave.view')) && !isDoctor && (
+            <NavLink
+              to="/admin/doctor-leaves"
+              className={`sidebar-nav-item ${isActive('/admin/doctor-leaves') ? 'active' : ''}`}
+              onClick={onClose}
+              title={isCollapsed ? 'Doctor Leaves' : undefined}
+            >
+              <span className="nav-icon"><CalendarOff size={18} /></span>
+              <span className="nav-text">Doctor Leaves</span>
             </NavLink>
           )}
 
