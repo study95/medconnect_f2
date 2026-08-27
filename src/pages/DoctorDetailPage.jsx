@@ -35,6 +35,14 @@ import {
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
 
+// Verified Badge Icon (Green scalloped badge matching DoctorCard)
+const VerifiedBadge = ({ size = 26 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path fillRule="evenodd" clipRule="evenodd" d="M10.374 2.378c.95-.504 2.102-.504 3.052 0l1.107.587c.453.24.966.35 1.478.318l1.247-.078c1.074-.067 2.072.51 2.52 1.487l.52 1.139c.212.467.553.858.986 1.133l1.054.67c.907.577 1.348 1.666 1.114 2.704l-.271 1.22c-.11.498-.07 1.016.117 1.49l.455 1.168c.394 1.012.046 2.167-.879 2.793l-1.071.724c-.439.297-.76.712-.927 1.199l-.409 1.185c-.352 1.026-1.378 1.684-2.457 1.579l-1.248-.121c-.512-.05-1.026.04-1.488.261l-1.127.549c-.968.472-2.12.472-3.088 0l-1.127-.549c-.462-.221-.976-.311-1.488-.261l-1.248.121c-1.079.105-2.105-.553-2.457-1.579l-.409-1.185c-.167-.487-.488-.902-.927-1.199l-1.071-.724c-.925-.626-1.273-1.781-.879-2.793l.455-1.168c.187-.474.227-.992.117-1.49l-.271-1.22c-.234-1.038.207-2.127 1.114-2.704l1.054-.67c.433-.275.774-.666.986-1.133l.52-1.139c.448-.977 1.446-1.554 2.52-1.487l1.247.078c.512.032 1.025-.078 1.478-.318l1.107-.587z" fill="#00B875"/>
+    <path fillRule="evenodd" clipRule="evenodd" d="M16.707 8.293a1 1 0 010 1.414l-5.5 5.5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 111.414-1.414L10.5 13.086l4.793-4.793a1 1 0 011.414 0z" fill="white"/>
+  </svg>
+)
+
 function DoctorDetailPageContent() {
   const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
@@ -437,8 +445,9 @@ function DoctorDetailPageContent() {
 
             {/* Info Column */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 900, color: darkTextColor, margin: '0 0 3px 0', lineHeight: 1.3 }}>
-                {doctor?.name}
+              <h2 style={{ fontSize: 17, fontWeight: 900, color: darkTextColor, margin: '0 0 3px 0', lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>{doctor?.name}</span>
+                <VerifiedBadge size={17} />
               </h2>
               <div style={{ fontSize: 12, fontWeight: 600, color: mutedTextColor, marginBottom: 8, lineHeight: 1.4 }}>
                 {doctor?.degree || 'MBBS, MCPS (Gynae & Obs), MS (Gynae & Obs), FCPS (Gynae & Obs)'}
@@ -535,23 +544,18 @@ function DoctorDetailPageContent() {
                   }}
                 />
                 
-                {/* Verified Badge on Top Right of Rectangular Image */}
+                {/* Verified Badge on Top Right of Rectangular Image (Matching DoctorCard) */}
                 <div style={{
                   position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: '#00B875',
-                  color: 'white',
+                  top: 10,
+                  right: 10,
+                  zIndex: 5,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 10px rgba(0, 184, 117, 0.35)',
-                  border: '2px solid white'
+                  filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.22))'
                 }} title="ভেরিফাইড ডাক্তার">
-                  <IconCheck size={16} stroke={3.5} />
+                  <VerifiedBadge size={26} />
                 </div>
               </div>
 
@@ -713,7 +717,13 @@ function DoctorDetailPageContent() {
                 </button>
 
                 <button 
-                  onClick={() => doctor && toggleFavoriteDoctor(doctor)}
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      navigate('/login', { state: { from: window.location.pathname } })
+                      return
+                    }
+                    doctor && toggleFavoriteDoctor(doctor)
+                  }}
                   style={{
                     width: 46,
                     height: 46,
@@ -763,10 +773,10 @@ function DoctorDetailPageContent() {
               }}>
                 <Nav className="flex-nowrap align-items-center justify-content-between" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 4 }}>
                   {[
-                    { key: 'about', label: 'ডাক্তার সম্পর্কে', mobileLabel: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} />, showOnMobile: true },
-                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', mobileLabel: 'চেম্বার', icon: <IconBuildingHospital size={16} />, showOnMobile: true },
-                    { key: 'experience', label: 'অভিজ্ঞতা', mobileLabel: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} />, showOnMobile: false },
-                    { key: 'reviews', label: 'রিভিউ', mobileLabel: 'রিভিউ', icon: <IconStar size={16} />, showOnMobile: true }
+                    { key: 'about', label: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} />, showOnMobile: true },
+                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', icon: <IconBuildingHospital size={16} />, showOnMobile: true },
+                    { key: 'experience', label: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} />, showOnMobile: false },
+                    { key: 'reviews', label: 'রিভিউ', icon: <IconStar size={16} />, showOnMobile: true }
                   ].map(tab => {
                     const isActive = activeTab === tab.key
                     return (
@@ -774,8 +784,9 @@ function DoctorDetailPageContent() {
                         <Nav.Link 
                           eventKey={tab.key}
                           style={{ 
-                            padding: '10px 8px',
+                            padding: '9px 14px',
                             fontSize: 13.5,
+                            lineHeight: 1,
                             fontWeight: isActive ? 800 : 600,
                             color: isActive ? primaryGreen : '#64748B',
                             borderRadius: 99,
@@ -788,12 +799,14 @@ function DoctorDetailPageContent() {
                             gap: 6,
                             whiteSpace: 'nowrap',
                             border: 'none',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            width: '100%'
                           }}
                         >
-                          {tab.icon}
-                          <span className="d-none d-lg-inline">{tab.label}</span>
-                          <span className="d-inline d-lg-none">{tab.mobileLabel || tab.label}</span>
+                          <span className="tab-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}>
+                            {tab.icon}
+                          </span>
+                          <span className="tab-text-label" style={{ lineHeight: 1.2 }}>{tab.label}</span>
                         </Nav.Link>
                       </Nav.Item>
                     )
@@ -1277,7 +1290,7 @@ function DoctorDetailPageContent() {
                       hasReviewed={Boolean(userExistingReview)}
                       onWriteReview={() => {
                         if (!isLoggedIn) {
-                          navigate('/patient/login')
+                          navigate('/login', { state: { from: window.location.pathname } })
                           return
                         }
                         if (userExistingReview) {
@@ -1286,7 +1299,7 @@ function DoctorDetailPageContent() {
                           setSelectedAppointmentForReview(eligibleAppointment)
                         }
                       }}
-                      onLoginClick={() => navigate('/patient/login')}
+                      onLoginClick={() => navigate('/login', { state: { from: window.location.pathname } })}
                       onReply={(rev) => setSelectedReviewForReply(rev)}
                       onReport={(rev) => setSelectedReviewForReport(rev)}
                       onEdit={(rev) => setSelectedReviewForEdit((rev && (rev.id || rev.public_id) ? rev : null) || userExistingReview)}
@@ -1504,6 +1517,28 @@ function DoctorDetailPageContent() {
           display: flex !important;
           flex-wrap: nowrap !important;
         }
+        .top-menu-tabs-wrapper .nav-link {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+          line-height: 1.2 !important;
+        }
+        .top-menu-tabs-wrapper .nav-link .tab-icon-wrap {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          flex-shrink: 0 !important;
+          line-height: 1 !important;
+        }
+        .top-menu-tabs-wrapper .nav-link .tab-icon-wrap svg {
+          display: block !important;
+          margin: 0 !important;
+        }
+        .top-menu-tabs-wrapper .nav-link .tab-text-label {
+          display: block !important;
+          line-height: 1.2 !important;
+        }
         .btn-share-profile:hover {
           background: #D1FAE5 !important;
         }
@@ -1549,17 +1584,23 @@ function DoctorDetailPageContent() {
             min-width: 0 !important;
           }
           .top-menu-tabs-wrapper .nav-link {
-            font-size: 13px !important;
-            padding: 8px 4px !important;
+            font-size: 12.5px !important;
+            padding: 8px 6px !important;
             gap: 4px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
-          .top-menu-tabs-wrapper .nav-link svg {
-            display: none !important;
+          .top-menu-tabs-wrapper .nav-link .tab-icon-wrap {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
-          .top-menu-tabs-wrapper .nav-link span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+          .top-menu-tabs-wrapper .nav-link .tab-text-label {
+            display: block !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
           }
           .doc-detail-related-section {
             padding-left: 14px !important;
