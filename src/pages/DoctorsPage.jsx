@@ -7,6 +7,7 @@ import ErrorState from '../components/common/ErrorState'
 import { DoctorGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
 import DoctorDetailPage from './DoctorDetailPage'
+import AvailabilityDateFilter from '../components/common/AvailabilityDateFilter'
 import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
@@ -45,6 +46,29 @@ const EXP_RANGES = [
   { id: '21-99', label: '২০+ বছর' }
 ]
 
+const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
+const bnMonthNames = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+]
+const formatDateLabelBn = (dateVal) => {
+  if (!dateVal) return ''
+  if (dateVal === 'today') return 'আজ'
+  if (dateVal === 'tomorrow') return 'আগামীকাল'
+  if (dateVal === 'next_7_days') return 'পরবর্তী ৭ দিন'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+    try {
+      const [year, month, day] = dateVal.split('-')
+      const mIdx = parseInt(month, 10) - 1
+      return `${toBengaliNumber(parseInt(day, 10))} ${bnMonthNames[mIdx] || month}`
+    } catch {
+      return dateVal
+    }
+  }
+  return dateVal
+}
+
 function DoctorsPage() {
   const { district: districtParam, upazila: upazilaParam } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -72,6 +96,7 @@ function DoctorsPage() {
   const [selectedHospital, setSelectedHospital]   = useState((searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : '')
   const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
+  const [selectedDate, setSelectedDate]           = useState(searchParams.get('date') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
   const debouncedSearchText                       = useDebounce(searchText, 350)
   const [availableToday, setAvailableToday]       = useState(false)
@@ -146,6 +171,12 @@ function DoctorsPage() {
     }
   }, [upazilaParam, upazilas, selectedUpazila, setSelectedUpazila])
 
+  // Date filter change handler
+  const handleDateChange = useCallback((dateVal) => {
+    setSelectedDate(dateVal)
+    updateUrlParams({ date: dateVal })
+  }, [updateUrlParams])
+
   // Sync state when URL params change from external navigation
   useEffect(() => {
     const currentStr = searchParams.toString()
@@ -161,6 +192,7 @@ function DoctorsPage() {
     const hospId  = (searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : ''
     const fee     = searchParams.get('fee_range') || ''
     const exp     = searchParams.get('exp_range') || ''
+    const qDate   = searchParams.get('date') || ''
 
     setSelectedDivision(divId)
     setSelectedDistrict(distId)
@@ -171,6 +203,7 @@ function DoctorsPage() {
     setSelectedHospital(hospId)
     setSelectedFee(fee)
     setSelectedExp(exp)
+    setSelectedDate(qDate)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
 
   // Effective search keyword: immediately empty when searchText is cleared
@@ -188,11 +221,12 @@ function DoctorsPage() {
     if (selectedHospital)          p.hospital_id   = selectedHospital
     if (selectedFee)               p.fee_range     = selectedFee
     if (selectedExp)               p.exp_range     = selectedExp
+    if (selectedDate)              p.date          = selectedDate
     if (telemedicineOnly)          p.available_telemedicine = 'yes'
     if (availableToday)            p.available_today = true
     if (effectiveSearch)           p.search        = effectiveSearch
     return p
-  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, effectiveSearch])
+  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, effectiveSearch])
 
   const { doctors, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteDoctors(appliedFilters)
 
@@ -358,6 +392,13 @@ function DoctorsPage() {
         }
       })
     }
+    if (selectedDate) {
+      list.push({
+        key: 'date',
+        label: formatDateLabelBn(selectedDate),
+        clear: () => handleDateChange('')
+      })
+    }
     if (telemedicineOnly) {
       list.push({ key: 'telemedicine', label: 'অনলাইন ভিডিও পরামর্শ', clear: () => setTelemedicineOnly(false) })
     }
@@ -374,8 +415,8 @@ function DoctorsPage() {
     return list
   }, [
     selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
-    selectedHospital, selectedFee, selectedExp, telemedicineOnly, availableToday, searchText,
-    specialties, divisions, districts, upazilas, unions, hospitals, updateUrlParams
+    selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, searchText,
+    specialties, divisions, districts, upazilas, unions, hospitals, updateUrlParams, handleDateChange
   ])
 
   const activeCount = activeFilters.length
@@ -389,6 +430,7 @@ function DoctorsPage() {
     setSelectedHospital('')
     setSelectedFee('')
     setSelectedExp('')
+    setSelectedDate('')
     setTelemedicineOnly(false)
     setAvailableToday(false)
     setSearchText('')
@@ -815,6 +857,12 @@ function DoctorsPage() {
             )
           })}
         </div>
+
+        {/* ── AVAILABILITY DATE FILTER (PLACED ABOVE DOCTORS LISTING) ── */}
+        <AvailabilityDateFilter
+          value={selectedDate}
+          onChange={handleDateChange}
+        />
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
