@@ -1,8 +1,9 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent
+  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck
 } from '@tabler/icons-react'
+import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
 import OptimizedImage from './OptimizedImage'
@@ -165,14 +166,50 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     navigate(getBookingUrl(doctor))
   }
 
-  const handleShare = (e) => {
+  const handleShare = async (e) => {
     if (e) e.stopPropagation()
     const url = `${window.location.origin}${getDoctorUrl(doctor)}`
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+    const title = doctor.name || 'ডাক্তার প্রোফাইল'
+
+    if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({
+          title,
+          text: `${title} - MedConnect`,
+          url
+        })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
     }
+
+    let copiedOk = false
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url)
+        copiedOk = true
+      }
+    } catch {}
+
+    if (!copiedOk) {
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        copiedOk = document.execCommand('copy')
+        document.body.removeChild(textArea)
+      } catch {}
+    }
+
+    setCopied(true)
+    toast.success('ডাক্তারের প্রোফাইল লিংক কপি করা হয়েছে!', { id: `doc-share-${doctor.id}` })
+    setTimeout(() => setCopied(false), 2000)
   }
 
   /* ── 1. LIST VIEW CARD ── */
@@ -438,23 +475,28 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                   <button
                     type="button"
                     onClick={handleShare}
-                    title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+                    title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+                    aria-label="শেয়ার করুন"
                     style={{
-                      background: 'transparent',
+                      background: copied ? 'rgba(0, 184, 117, 0.1)' : 'transparent',
                       border: 'none',
-                      padding: 4,
-                      color: copied ? '#008767' : '#64748B',
+                      padding: 6,
+                      borderRadius: 6,
+                      color: copied ? '#00B875' : '#64748B',
                       cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <IconShare size={18} />
+                    {copied ? <IconCheck size={18} color="#00B875" /> : <IconShare size={18} />}
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleFavoriteDoctor(doctor) }}
-                    title="পছন্দের তালিকায় রাখুন"
+                    title="পছন্দের তালিকায় রাখুন"
+                    aria-label="পছন্দের তালিকায় রাখুন"
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -551,33 +593,55 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
         e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.03)'
       }}
     >
-      {/* Heart Wishlist Button */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleFavoriteDoctor(doctor)
-        }}
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          zIndex: 15,
-          background: 'rgba(255, 255, 255, 0.98)',
-          border: '1px solid #E2E8F0',
-          borderRadius: '50%',
-          width: 32,
-          height: 32,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: '#EF4444',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-        }}
-      >
-        <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
-      </button>
+      {/* Share & Heart Action Buttons */}
+      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={handleShare}
+          title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+          aria-label="শেয়ার করুন"
+          style={{
+            background: 'rgba(255, 255, 255, 0.98)',
+            border: '1px solid #E2E8F0',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: copied ? '#00B875' : '#64748B',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {copied ? <IconCheck size={15} color="#00B875" /> : <IconShare size={15} />}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleFavoriteDoctor(doctor)
+          }}
+          title="পছন্দের তালিকায় রাখুন"
+          aria-label="পছন্দের তালিকায় রাখুন"
+          style={{
+            background: 'rgba(255, 255, 255, 0.98)',
+            border: '1px solid #E2E8F0',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#EF4444',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+          }}
+        >
+          <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
+        </button>
+      </div>
 
       {/* Doctor Top Avatar & Main Info */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>

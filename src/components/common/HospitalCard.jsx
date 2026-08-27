@@ -2,7 +2,8 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getHospitalUrl } from '../../utils/identifierHelper'
-import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent } from '@tabler/icons-react'
+import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck } from '@tabler/icons-react'
+import { toast } from 'react-hot-toast'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 
@@ -144,14 +145,50 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
   const isFavorite = isHospitalFavorite(hospital.id)
   const [copied, setCopied] = useState(false)
 
-  const handleShare = (e) => {
-    e.stopPropagation()
+  const handleShare = async (e) => {
+    if (e) e.stopPropagation()
     const url = `${window.location.origin}${getHospitalUrl(hospital)}`
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+    const title = hospital.name || 'হাসপাতাল প্রোফাইল'
+
+    if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({
+          title,
+          text: `${title} - MedConnect`,
+          url
+        })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
     }
+
+    let copiedOk = false
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url)
+        copiedOk = true
+      }
+    } catch {}
+
+    if (!copiedOk) {
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        copiedOk = document.execCommand('copy')
+        document.body.removeChild(textArea)
+      } catch {}
+    }
+
+    setCopied(true)
+    toast.success('হাসপাতালের প্রোফাইল লিংক কপি করা হয়েছে!', { id: `hosp-share-${hospital.id}` })
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const locationText = [
@@ -201,13 +238,26 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
               <h4 style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', margin: '0 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {hospital.name}
               </h4>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); toggleFavoriteHospital(hospital) }}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: isFavorite ? '#EF4444' : '#94A3B8' }}
-              >
-                <IconHeart size={14} fill={isFavorite ? '#EF4444' : 'none'} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+                  aria-label="শেয়ার করুন"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? '#00B875' : '#94A3B8' }}
+                >
+                  {copied ? <IconCheck size={14} color="#00B875" /> : <IconShare size={14} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteHospital(hospital) }}
+                  title="পছন্দের তালিকায় রাখুন"
+                  aria-label="পছন্দের তালিকায় রাখুন"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: isFavorite ? '#EF4444' : '#94A3B8' }}
+                >
+                  <IconHeart size={14} fill={isFavorite ? '#EF4444' : 'none'} />
+                </button>
+              </div>
             </div>
             <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
               <IconMapPin size={12} color="#94A3B8" />
@@ -404,23 +454,28 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                   <button
                     type="button"
                     onClick={handleShare}
-                    title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+                    title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+                    aria-label="শেয়ার করুন"
                     style={{
-                      background: 'transparent',
+                      background: copied ? 'rgba(0, 184, 117, 0.1)' : 'transparent',
                       border: 'none',
-                      padding: 4,
-                      color: copied ? '#008767' : '#64748B',
+                      padding: 6,
+                      borderRadius: 6,
+                      color: copied ? '#00B875' : '#64748B',
                       cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <IconShare size={18} />
+                    {copied ? <IconCheck size={18} color="#00B875" /> : <IconShare size={18} />}
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleFavoriteHospital(hospital) }}
-                    title="পছন্দের তালিকায় রাখুন"
+                    title="পছন্দের তালিকায় রাখুন"
+                    aria-label="পছন্দের তালিকায় রাখুন"
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -538,30 +593,55 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
       }}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleFavoriteHospital(hospital)
-        }}
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          zIndex: 15,
-          background: 'rgba(255, 255, 255, 0.95)',
-          border: '1px solid #E2E8F0',
-          borderRadius: '50%',
-          width: 32,
-          height: 32,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: '#EF4444'
-        }}
-      >
-        <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
-      </button>
+      {/* Share & Heart Action Buttons */}
+      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={handleShare}
+          title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
+          aria-label="শেয়ার করুন"
+          style={{
+            background: 'rgba(255, 255, 255, 0.98)',
+            border: '1px solid #E2E8F0',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: copied ? '#00B875' : '#64748B',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {copied ? <IconCheck size={15} color="#00B875" /> : <IconShare size={15} />}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleFavoriteHospital(hospital)
+          }}
+          title="পছন্দের তালিকায় রাখুন"
+          aria-label="পছন্দের তালিকায় রাখুন"
+          style={{
+            background: 'rgba(255, 255, 255, 0.98)',
+            border: '1px solid #E2E8F0',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#EF4444',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+          }}
+        >
+          <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
+        </button>
+      </div>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         <div style={{ flexShrink: 0, position: 'relative' }}>
