@@ -36,7 +36,7 @@ const formatCustomDateBn = (dateStr) => {
 }
 
 /**
- * AvailabilityDateFilter Component
+ * AvailabilityDateFilter Component (Polished)
  *
  * @param {string} value - Selected preset or YYYY-MM-DD date string ('today' | 'tomorrow' | 'next_7_days' | 'YYYY-MM-DD' | '')
  * @param {function} onChange - Callback receiving the new value or empty string if cleared
@@ -58,12 +58,21 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
   }
 
   const handleCustomDateClick = () => {
-    if (dateInputRef.current) {
+    if (!dateInputRef.current) return
+    try {
       if (typeof dateInputRef.current.showPicker === 'function') {
         dateInputRef.current.showPicker()
       } else {
         dateInputRef.current.focus()
         dateInputRef.current.click()
+      }
+    } catch {
+      // Safe fallback for older browsers or restricted iframe contexts
+      try {
+        dateInputRef.current.focus()
+        dateInputRef.current.click()
+      } catch {
+        // graceful degrade
       }
     }
   }
@@ -92,6 +101,35 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
         transition: 'all 0.2s ease'
       }}
     >
+      {/* ── Scoped Responsive Styles for Mobile Ergonomics ── */}
+      <style>{`
+        .avail-date-chip {
+          height: 38px;
+          padding: 0 14px;
+          border-radius: 20px;
+          font-size: 13px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.2s ease;
+          outline: none;
+          box-sizing: border-box;
+        }
+        .avail-date-chip:focus-visible {
+          box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #00B875 !important;
+        }
+        @media (max-width: 767px) {
+          .avail-date-chip {
+            height: 42px !important;
+            padding: 0 16px !important;
+            font-size: 13.5px !important;
+          }
+        }
+      `}</style>
+
       {/* ── Heading Row ── */}
       <div
         style={{
@@ -122,6 +160,7 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           <button
             type="button"
             onClick={handleClear}
+            aria-label="তারিখ ফিল্টার রিসেট করুন"
             style={{
               background: 'none',
               border: 'none',
@@ -154,23 +193,14 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
         {/* 1. আজ (Today) */}
         <button
           type="button"
+          className="avail-date-chip"
           onClick={() => handlePillClick('today')}
+          aria-pressed={value === 'today'}
           style={{
-            height: 38,
-            padding: '0 14px',
-            borderRadius: 20,
             border: value === 'today' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
             background: value === 'today' ? '#00B875' : '#F8FAFC',
             color: value === 'today' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'today' ? 800 : 600,
-            fontSize: 13,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            fontFamily: "'Hind Siliguri', sans-serif",
-            transition: 'all 0.2s ease',
             boxShadow: value === 'today' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
           }}
         >
@@ -181,23 +211,14 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
         {/* 2. আগামীকাল (Tomorrow) */}
         <button
           type="button"
+          className="avail-date-chip"
           onClick={() => handlePillClick('tomorrow')}
+          aria-pressed={value === 'tomorrow'}
           style={{
-            height: 38,
-            padding: '0 14px',
-            borderRadius: 20,
             border: value === 'tomorrow' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
             background: value === 'tomorrow' ? '#00B875' : '#F8FAFC',
             color: value === 'tomorrow' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'tomorrow' ? 800 : 600,
-            fontSize: 13,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            fontFamily: "'Hind Siliguri', sans-serif",
-            transition: 'all 0.2s ease',
             boxShadow: value === 'tomorrow' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
           }}
         >
@@ -208,23 +229,14 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
         {/* 3. পরবর্তী ৭ দিন (Next 7 Days) */}
         <button
           type="button"
+          className="avail-date-chip"
           onClick={() => handlePillClick('next_7_days')}
+          aria-pressed={value === 'next_7_days'}
           style={{
-            height: 38,
-            padding: '0 14px',
-            borderRadius: 20,
             border: value === 'next_7_days' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
             background: value === 'next_7_days' ? '#00B875' : '#F8FAFC',
             color: value === 'next_7_days' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'next_7_days' ? 800 : 600,
-            fontSize: 13,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            fontFamily: "'Hind Siliguri', sans-serif",
-            transition: 'all 0.2s ease',
             boxShadow: value === 'next_7_days' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
           }}
         >
@@ -232,41 +244,35 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           <span>পরবর্তী ৭ দিন</span>
         </button>
 
-        {/* 4. তারিখ বাছুন (Custom Date Picker) */}
+        {/* 4. তারিখ দিন (Custom Date Picker) */}
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <button
             type="button"
+            className="avail-date-chip"
             onClick={handleCustomDateClick}
+            aria-pressed={isCustomDate}
+            aria-label={isCustomDate ? `নির্বাচিত তারিখ: ${formatCustomDateBn(value)}` : 'নির্দিষ্ট তারিখ নির্বাচন করুন'}
             style={{
-              height: 38,
-              padding: '0 14px',
-              borderRadius: 20,
               border: isCustomDate ? '1.5px solid #00B875' : '1px solid #CBD5E1',
               background: isCustomDate ? '#00B875' : '#F8FAFC',
               color: isCustomDate ? '#FFFFFF' : '#334155',
               fontWeight: isCustomDate ? 800 : 600,
-              fontSize: 13,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif",
-              transition: 'all 0.2s ease',
               boxShadow: isCustomDate ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
             }}
           >
             {isCustomDate ? <IconCheck size={15} /> : <IconCalendarEvent size={15} color="#00B875" />}
-            <span>{isCustomDate ? formatCustomDateBn(value) : 'তারিখ বাছুন'}</span>
+            <span>{isCustomDate ? formatCustomDateBn(value) : 'তারিখ দিন'}</span>
           </button>
 
-          {/* Hidden native HTML5 date input triggered programmatically */}
+          {/* Native HTML5 date input with safe fallbacks and accessibility */}
           <input
             ref={dateInputRef}
             type="date"
             min={todayIso}
             value={isCustomDate ? value : ''}
             onChange={handleDateInputChange}
+            aria-label="তারিখ নির্বাচন ক্যালেন্ডার"
+            tabIndex={-1}
             style={{
               position: 'absolute',
               top: 0,
