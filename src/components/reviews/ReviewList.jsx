@@ -263,15 +263,21 @@ const ReviewList = memo(function ReviewList({
           )}
 
           {/* Filter & Sort Controls Toolbar */}
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-2 border-bottom border-light-subtle">
-            {/* Star Filter Pills */}
-            <div className="d-flex align-items-center gap-1 flex-wrap">
+          <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-3 mb-4 pb-2 border-bottom border-light-subtle">
+            {/* Star Filter Pills with Horizontal Scroll on Mobile */}
+            <div className="d-flex align-items-center gap-1.5 overflow-auto pb-1 pb-sm-0 flex-nowrap" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
               <button
                 type="button"
                 onClick={() => handleStarFilter(null)}
-                className={`btn btn-sm rounded-pill px-3 py-1 ${
-                  selectedStar === null ? 'btn-primary' : 'btn-outline-secondary border-light-subtle'
+                className={`btn btn-sm rounded-pill px-3 py-1 text-nowrap flex-shrink-0 ${
+                  selectedStar === null ? 'btn-success text-white shadow-sm' : 'btn-outline-secondary border-light-subtle'
                 }`}
+                style={{
+                  backgroundColor: selectedStar === null ? '#00B875' : 'transparent',
+                  borderColor: selectedStar === null ? '#00B875' : '#E2E8F0',
+                  fontSize: '12.5px',
+                  fontWeight: 700
+                }}
               >
                 সকল রেটিং
               </button>
@@ -280,9 +286,15 @@ const ReviewList = memo(function ReviewList({
                   key={star}
                   type="button"
                   onClick={() => handleStarFilter(star)}
-                  className={`btn btn-sm rounded-pill px-3 py-1 ${
-                    selectedStar === star ? 'btn-primary' : 'btn-outline-secondary border-light-subtle'
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 text-nowrap flex-shrink-0 ${
+                    selectedStar === star ? 'btn-success text-white shadow-sm' : 'btn-outline-secondary border-light-subtle'
                   }`}
+                  style={{
+                    backgroundColor: selectedStar === star ? '#00B875' : 'transparent',
+                    borderColor: selectedStar === star ? '#00B875' : '#E2E8F0',
+                    fontSize: '12.5px',
+                    fontWeight: 700
+                  }}
                 >
                   {star} ★
                 </button>
@@ -290,16 +302,16 @@ const ReviewList = memo(function ReviewList({
             </div>
 
             {/* Sort Dropdown */}
-            <div className="d-flex align-items-center gap-2">
-              <label htmlFor="review-sort-select" className="small text-muted mb-0 text-nowrap">
+            <div className="d-flex align-items-center justify-content-end gap-2 flex-shrink-0">
+              <label htmlFor="review-sort-select" className="small text-muted mb-0 text-nowrap" style={{ fontSize: '12.5px', fontWeight: 600 }}>
                 সাজান:
               </label>
               <select
                 id="review-sort-select"
                 value={sortBy}
                 onChange={handleSortChange}
-                className="form-select form-select-sm rounded-3 border-light-subtle"
-                style={{ width: '160px' }}
+                className="form-select form-select-sm rounded-3 border-light-subtle shadow-none"
+                style={{ width: '140px', fontSize: '12.5px' }}
               >
                 {REVIEW_SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

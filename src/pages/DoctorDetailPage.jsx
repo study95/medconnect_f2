@@ -16,8 +16,8 @@ import ErrorBoundary from '../components/common/ErrorBoundary'
 import { useQuery } from '@tanstack/react-query'
 import { getAppointments } from '../api/appointmentApi'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
-import { useDeleteReview } from '../features/reviews/useReviews'
-import { getReviewErrorMessage } from '../features/reviews/mappers'
+import { useDeleteReview, useDoctorReviews } from '../features/reviews/useReviews'
+import { getReviewErrorMessage, calculateRatingSummary } from '../features/reviews/mappers'
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import SeoHead from '../components/common/SeoHead'
@@ -144,10 +144,37 @@ function DoctorDetailPageContent() {
     }
   }
 
+  const doctorDbId = doctor?.id || doctor?.public_id || id
+  const { data: reviewsData } = useDoctorReviews(doctorDbId, {}, { enabled: Boolean(doctorDbId) })
+
+  const doctorReviewsList = useMemo(() => {
+    if (!reviewsData) return Array.isArray(doctor?.reviews) ? doctor.reviews : []
+    return Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || [])
+  }, [reviewsData, doctor?.reviews])
+
+  const ratingSummary = useMemo(() => {
+    return calculateRatingSummary(doctorReviewsList)
+  }, [doctorReviewsList])
+
   const averageRating = useMemo(() => {
-    if (doctor?.rating_avg) return Number(doctor.rating_avg).toFixed(1)
-    return '5.0'
-  }, [doctor])
+    if (ratingSummary.total > 0 && ratingSummary.average > 0) {
+      return ratingSummary.average.toFixed(1)
+    }
+    if (doctor?.rating_avg && Number(doctor.rating_avg) > 0) {
+      return Number(doctor.rating_avg).toFixed(1)
+    }
+    return ratingSummary.total > 0 ? '0.0' : (doctor?.rating_avg ? Number(doctor.rating_avg).toFixed(1) : '5.0')
+  }, [ratingSummary, doctor?.rating_avg])
+
+  const totalReviewsCount = useMemo(() => {
+    if (ratingSummary.total > 0) {
+      return ratingSummary.total
+    }
+    if (doctor?.rating_count || doctor?.reviews_count) {
+      return Number(doctor.rating_count || doctor.reviews_count)
+    }
+    return 0
+  }, [ratingSummary, doctor?.rating_count, doctor?.reviews_count])
 
   // Compute total experience from all experience durations
   const totalExpLabel = (() => {
@@ -495,10 +522,10 @@ function DoctorDetailPageContent() {
             </div>
             <div style={{ textAlign: 'center', flex: 1, padding: '0 4px' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Rating</span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyCenter: 'center', gap: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                 <IconStar size={14} color="#F59E0B" fill="#F59E0B" />
                 <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{averageRating}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: mutedTextColor }}>({doctor?.rating_count || doctor?.reviews_count || 51})</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: mutedTextColor }}>({totalReviewsCount})</span>
               </div>
             </div>
           </div>
@@ -630,7 +657,7 @@ function DoctorDetailPageContent() {
                       </span>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: mutedTextColor, display: 'block' }}>
-                      ({doctor?.rating_count || doctor?.reviews_count || 0} রিভিউ)
+                      ({totalReviewsCount} রিভিউ)
                     </span>
                   </Col>
 
@@ -764,19 +791,40 @@ function DoctorDetailPageContent() {
               <div className="top-menu-tabs-wrapper" style={{
                 background: '#F1F5F9',
                 borderRadius: 99,
-                padding: '5px',
-                marginBottom: 24,
-                position: 'sticky',
-                top: 'calc(var(--header-height, 135px) + 10px)',
-                zIndex: 9,
+                padding: '4px',
+                marginBottom: 20,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
               }}>
                 <Nav className="flex-nowrap align-items-center justify-content-between" activeKey={activeTab} onSelect={(k) => handleTabChange(k)} style={{ gap: 4 }}>
                   {[
-                    { key: 'about', label: 'ডাক্তার সম্পর্কে', icon: <IconUser size={16} />, showOnMobile: true },
-                    { key: 'chamber', label: 'চেম্বার ও সময়সূচি', icon: <IconBuildingHospital size={16} />, showOnMobile: true },
-                    { key: 'experience', label: 'অভিজ্ঞতা', icon: <IconBriefcase size={16} />, showOnMobile: false },
-                    { key: 'reviews', label: 'রিভিউ', icon: <IconStar size={16} />, showOnMobile: true }
+                    { 
+                      key: 'about', 
+                      desktopLabel: 'ডাক্তার সম্পর্কে', 
+                      mobileLabel: 'ডাক্তার সম্পর্কে', 
+                      icon: <IconUser size={16} />, 
+                      showOnMobile: true 
+                    },
+                    { 
+                      key: 'chamber', 
+                      desktopLabel: 'চেম্বার ও সময়সূচি', 
+                      mobileLabel: 'চেম্বার', 
+                      icon: <IconBuildingHospital size={16} />, 
+                      showOnMobile: true 
+                    },
+                    { 
+                      key: 'experience', 
+                      desktopLabel: 'অভিজ্ঞতা', 
+                      mobileLabel: 'অভিজ্ঞতা', 
+                      icon: <IconBriefcase size={16} />, 
+                      showOnMobile: false 
+                    },
+                    { 
+                      key: 'reviews', 
+                      desktopLabel: 'রিভিউ', 
+                      mobileLabel: 'রিভিউ', 
+                      icon: <IconStar size={16} />, 
+                      showOnMobile: true 
+                    }
                   ].map(tab => {
                     const isActive = activeTab === tab.key
                     return (
@@ -786,7 +834,7 @@ function DoctorDetailPageContent() {
                           style={{ 
                             padding: '9px 14px',
                             fontSize: 13.5,
-                            lineHeight: 1,
+                            lineHeight: 1.2,
                             fontWeight: isActive ? 800 : 600,
                             color: isActive ? primaryGreen : '#64748B',
                             borderRadius: 99,
@@ -803,10 +851,16 @@ function DoctorDetailPageContent() {
                             width: '100%'
                           }}
                         >
-                          <span className="tab-icon-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}>
+                          {/* Desktop Only Icon */}
+                          <span className="tab-icon-wrap d-none d-lg-inline-flex align-items-center justify-content-center" style={{ flexShrink: 0, lineHeight: 1 }}>
                             {tab.icon}
                           </span>
-                          <span className="tab-text-label" style={{ lineHeight: 1.2 }}>{tab.label}</span>
+
+                          {/* Desktop Label ("চেম্বার ও সময়সূচি") */}
+                          <span className="tab-text-label d-none d-lg-inline">{tab.desktopLabel}</span>
+
+                          {/* Mobile Label ("চেম্বার" - No Icon) */}
+                          <span className="tab-text-label d-inline d-lg-none">{tab.mobileLabel}</span>
                         </Nav.Link>
                       </Nav.Item>
                     )
@@ -1429,7 +1483,7 @@ function DoctorDetailPageContent() {
           border: 1.5px solid #CBD5E1;
           border-radius: 8px;
           padding: 4px 10px;
-          fontSize: 12.5px;
+          font-size: 12.5px;
           font-weight: 800;
           display: inline-flex;
           align-items: center;
@@ -1508,43 +1562,14 @@ function DoctorDetailPageContent() {
         .animate-tab-view {
           animation: fadeInTab 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
-        .top-menu-tabs-wrapper .nav::-webkit-scrollbar {
-          display: none !important;
-        }
-        .top-menu-tabs-wrapper .nav {
-          -ms-overflow-style: none !important;
-          scrollbar-width: none !important;
-          display: flex !important;
-          flex-wrap: nowrap !important;
-        }
-        .top-menu-tabs-wrapper .nav-link {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 6px !important;
-          line-height: 1.2 !important;
-        }
-        .top-menu-tabs-wrapper .nav-link .tab-icon-wrap {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          flex-shrink: 0 !important;
-          line-height: 1 !important;
-        }
-        .top-menu-tabs-wrapper .nav-link .tab-icon-wrap svg {
-          display: block !important;
-          margin: 0 !important;
-        }
-        .top-menu-tabs-wrapper .nav-link .tab-text-label {
-          display: block !important;
-          line-height: 1.2 !important;
-        }
+
         .btn-share-profile:hover {
           background: #D1FAE5 !important;
         }
         .btn-book-now:hover {
           background: #009E64 !important;
         }
+
         @media (max-width: 991px) {
           .db-topbar, .db-main-header, .navbar, .doc-detail-breadcrumb, footer {
             display: none !important;
@@ -1568,39 +1593,39 @@ function DoctorDetailPageContent() {
             box-shadow: none !important;
           }
           .top-menu-tabs-wrapper {
-            top: 52px !important;
-            margin: 0 12px 18px 12px !important;
+            margin: 0 0 16px 0 !important;
             padding: 4px !important;
-            background: #F8FAFC !important;
+            background: #F1F5F9 !important;
             border-radius: 99px !important;
           }
           .top-menu-tabs-wrapper .nav {
-            gap: 2px !important;
+            gap: 4px !important;
             justify-content: space-between !important;
             width: 100% !important;
           }
           .top-menu-tabs-wrapper .nav-item {
             flex: 1 1 0px !important;
             min-width: 0 !important;
+            text-align: center !important;
           }
           .top-menu-tabs-wrapper .nav-link {
-            font-size: 12.5px !important;
-            padding: 8px 6px !important;
-            gap: 4px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            padding: 8px 4px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-          }
-          .top-menu-tabs-wrapper .nav-link .tab-icon-wrap {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            border-radius: 99px !important;
+            text-align: center !important;
+            width: 100% !important;
           }
           .top-menu-tabs-wrapper .nav-link .tab-text-label {
             display: block !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
             white-space: nowrap !important;
+            font-size: 13px !important;
+            text-align: center !important;
           }
           .doc-detail-related-section {
             padding-left: 14px !important;

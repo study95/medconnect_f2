@@ -9,7 +9,8 @@ import useHospitalRelated from '../hooks/useHospitalRelated'
 import { HospitalDetailSkeleton } from '../components/common/Skeletons'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewFormModal } from '../components/reviews'
-import { useDeleteReview } from '../features/reviews/useReviews'
+import { useDeleteReview, useHospitalReviews } from '../features/reviews/useReviews'
+import { calculateRatingSummary } from '../features/reviews/mappers'
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import toast from 'react-hot-toast'
@@ -116,12 +117,37 @@ function HospitalDetailPage() {
   const { doctors: relatedDoctors, relatedHospitals, loading: loadingRelated } = useHospitalRelated(hospitalIdentifier)
   const displayDoctors = relatedDoctors && relatedDoctors.length > 0 ? relatedDoctors : (doctors || [])
 
-  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/hospitals/:id), update URL to canonical SEO route
-  useEffect(() => {
-    if (id && hospital?.slug && hospital?.district_slug && hospital?.upazila_slug) {
-      navigate(`/hospitals/${hospital.district_slug}/${hospital.upazila_slug}/${hospital.slug}`, { replace: true })
+  const hospitalDbId = hospital?.id || hospital?.public_id || id
+  const { data: reviewsData } = useHospitalReviews(hospitalDbId, {}, { enabled: Boolean(hospitalDbId) })
+
+  const hospitalReviewsList = useMemo(() => {
+    if (!reviewsData) return Array.isArray(hospital?.reviews) ? hospital.reviews : []
+    return Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || [])
+  }, [reviewsData, hospital?.reviews])
+
+  const ratingSummary = useMemo(() => {
+    return calculateRatingSummary(hospitalReviewsList)
+  }, [hospitalReviewsList])
+
+  const averageRating = useMemo(() => {
+    if (ratingSummary.total > 0 && ratingSummary.average > 0) {
+      return ratingSummary.average.toFixed(1)
     }
-  }, [id, hospital?.slug, hospital?.district_slug, hospital?.upazila_slug, navigate])
+    if (hospital?.rating_avg && Number(hospital.rating_avg) > 0) {
+      return Number(hospital.rating_avg).toFixed(1)
+    }
+    return ratingSummary.total > 0 ? '0.0' : (hospital?.rating_avg ? Number(hospital.rating_avg).toFixed(1) : '5.0')
+  }, [ratingSummary, hospital?.rating_avg])
+
+  const totalReviewsCount = useMemo(() => {
+    if (ratingSummary.total > 0) {
+      return ratingSummary.total
+    }
+    if (hospital?.rating_count || hospital?.reviews_count) {
+      return Number(hospital.rating_count || hospital.reviews_count)
+    }
+    return 0
+  }, [ratingSummary, hospital?.rating_count, hospital?.reviews_count])
 
   const [activeTab, setActiveTab] = useState('summary')
   const activeTabRef = useRef('summary')
@@ -143,14 +169,14 @@ function HospitalDetailPage() {
       handleSetActiveTab(sectionId);
 
       const isMobile = window.innerWidth < 992;
-      const offset = isMobile ? 148 : 205;
-      const bodyRect = document.body.getBoundingClientRect().top;
-      const elementRect = element.getBoundingClientRect().top;
-      const elementPosition = elementRect - bodyRect;
+      // Mobile: header (54px) + sticky tab bar (48px) + offset = 108px
+      // Desktop: fixed top header (116px) + comfortable breathing room (24px) = 140px
+      const offset = isMobile ? 108 : 140;
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       const offsetPosition = elementPosition - offset;
 
       window.scrollTo({
-        top: offsetPosition,
+        top: Math.max(0, offsetPosition),
         behavior: 'smooth'
       });
 
@@ -168,9 +194,9 @@ function HospitalDetailPage() {
     const updateActiveTabOnScroll = () => {
       if (isProgrammaticScroll.current) return;
 
-      const sections = ['summary', 'department', 'doctors', 'facilities', 'gallery', 'reviews', 'contact'];
+      const sections = ['summary', 'department', 'facilities', 'doctors', 'gallery', 'reviews'];
       const isMobile = window.innerWidth < 992;
-      const offset = isMobile ? 150 : 220;
+      const offset = isMobile ? 115 : 150;
 
       let currentActive = 'summary';
 
@@ -194,22 +220,30 @@ function HospitalDetailPage() {
     };
   }, []);
 
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/hospitals/:id), update URL to canonical SEO route
+  useEffect(() => {
+    if (id && hospital?.slug && hospital?.district_slug && hospital?.upazila_slug) {
+      navigate(`/hospitals/${hospital.district_slug}/${hospital.upazila_slug}/${hospital.slug}`, { replace: true })
+    }
+  }, [id, hospital?.slug, hospital?.district_slug, hospital?.upazila_slug, navigate])
+
   useEffect(() => {
     if (!activeTab) return;
     const container = tabContainerRef.current;
     if (!container) return;
 
-    const activeEl = container.querySelector('.nav-link.active');
+    const activeEl = container.querySelector('.nav-link.active') || container.querySelector(`[data-rb-event-key="${activeTab}"]`);
     if (!activeEl) return;
 
+    const parentItem = activeEl.closest('.nav-item') || activeEl;
     const containerWidth = container.offsetWidth;
-    const activeWidth = activeEl.offsetWidth;
-    const activeLeft = activeEl.offsetLeft;
+    const activeWidth = parentItem.offsetWidth;
+    const activeLeft = parentItem.offsetLeft;
 
     const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
 
     container.scrollTo({
-      left: targetScrollLeft,
+      left: Math.max(0, targetScrollLeft),
       behavior: 'smooth'
     });
   }, [activeTab]);
@@ -485,8 +519,8 @@ function HospitalDetailPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <IconStar size={15} color="#F59E0B" fill="#F59E0B" />
-                          <span style={{ fontSize: 14, fontWeight: 900, color: '#1E293B' }}>4.8</span>
-                          <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>(৩,৫০০+ রিভিউ)</span>
+                          <span style={{ fontSize: 14, fontWeight: 900, color: '#1E293B' }}>{averageRating}</span>
+                          <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>({totalReviewsCount} রিভিউ)</span>
                         </div>
                         <div
                           style={{
@@ -694,7 +728,7 @@ function HospitalDetailPage() {
       </section>
 
       {/* 3. Navigation Tabs */}
-      <div className="sticky-tab-bar" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}`, position: 'sticky', zIndex: 990 }}>
+      <div className="sticky-tab-bar" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}` }}>
         <Container>
           <Nav
             ref={tabContainerRef}
@@ -709,8 +743,7 @@ function HospitalDetailPage() {
               { key: 'facilities', label: 'সুবিধা সমূহ', icon: <IconStar size={18} /> },
               { key: 'doctors',    label: 'ডাক্তার',      icon: <IconUsers size={18} /> },
               { key: 'gallery',    label: 'গ্যালারি',     icon: <IconPhoto size={18} /> },
-              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={18} /> },
-              { key: 'contact',    label: 'অবস্থান',      icon: <IconMapPin size={18} /> }
+              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={18} /> }
             ].map(tab => (
               <Nav.Item key={tab.key} style={{ flex: '1 1 0', display: 'flex', justifyContent: 'center' }}>
                 <Nav.Link
@@ -1281,44 +1314,16 @@ function HospitalDetailPage() {
                   onReport={(rev) => setSelectedReviewForReport(rev)}
                   onEdit={(rev) => setSelectedReviewForEdit(rev && (rev.id || rev.public_id) ? rev : null)}
                   onDelete={handleDeleteReview}
-                  onLoginClick={() => navigate('/patient/login')}
+                  onLoginClick={() => navigate('/register', { state: { from: window.location.pathname } })}
+                  onWriteReview={() => {
+                    if (!user) {
+                      navigate('/register', { state: { from: window.location.pathname } })
+                      return
+                    }
+                  }}
                 />
               </div>
 
-              {/* 8. Contact & Location Section (Card Design) */}
-              <div 
-                id="contact" 
-                className="scroll-section"
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 20,
-                  padding: '28px 24px',
-                  border: `1.5px solid #E2E8F0`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
-              >
-                <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, marginBottom: 20 }}>
-                  যোগাযোগের ঠিকানা
-                </h3>
-                <div className="d-flex flex-column gap-3">
-                  {[
-                    { icon: <IconPhone size={22} />, title: 'ফোন নাম্বার', value: hospital?.phone || '+880 2 48119911-15' },
-                    { icon: <IconMail size={22} />, title: 'ইমেইল এড্রেস', value: hospital?.email || 'info@labaidhospital.com' },
-                    { icon: <IconWorld size={22} />, title: 'ওয়েবসাইট', value: hospital?.url || 'www.labaidhospital.com' },
-                    { icon: <IconMapPin size={22} />, title: 'লোকেশন', value: hospital?.address || 'ধানমণ্ডি, ঢাকা - ১২০৫, বাংলাদেশ' }
-                  ].map((contact, idx) => (
-                    <div key={idx} className="d-flex align-items-center gap-3 p-3 rounded-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {contact.icon}
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, margin: 0 }}>{contact.title}</p>
-                        <p style={{ fontSize: 15, fontWeight: 900, color: textColor, margin: '2px 0 0 0' }}>{contact.value}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
             </div>
           </Col>
@@ -1807,11 +1812,7 @@ function HospitalDetailPage() {
         }
 
         
-        .sticky-tab-bar {
-          top: var(--header-height);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-          transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .sticky-tab-bar { position: relative; background: #FFFFFF; border-bottom: 1.5px solid #E2E8F0; }
 
         /* Hero Responsive Row */
         @media (min-width: 992px) {
@@ -1834,6 +1835,41 @@ function HospitalDetailPage() {
         }
 
         @media (max-width: 991px) {
+          .sticky-tab-bar {
+            position: sticky !important;
+            top: 54px !important;
+            z-index: 1040 !important;
+            background: #FFFFFF !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+            border-bottom: 1.5px solid #E2E8F0 !important;
+          }
+          .sticky-tab-bar .container {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            max-width: 100% !important;
+          }
+          .sticky-tab-bar .nav {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            gap: 4px !important;
+            padding: 0 10px !important;
+            width: 100% !important;
+            justify-content: flex-start !important;
+          }
+          .sticky-tab-bar .nav-item {
+            flex: 0 0 auto !important;
+            width: auto !important;
+          }
+          .sticky-tab-bar .nav-link {
+            padding: 12px 14px !important;
+            font-size: 13.5px !important;
+            white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+          }
           .hero-bottom-row {
             flex-direction: column !important;
             align-items: stretch !important;
