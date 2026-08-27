@@ -69,7 +69,7 @@ function DoctorsPage() {
   const { hospitals } = useHospitals({ per_page: 100 })
 
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
-  const [selectedHospital, setSelectedHospital]   = useState(searchParams.get('hospital_id') || '')
+  const [selectedHospital, setSelectedHospital]   = useState((searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : '')
   const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
@@ -158,7 +158,7 @@ function DoctorsPage() {
     const uniId   = searchParams.get('union_id') || ''
     const qSearch = searchParams.get('search') || ''
     const specId  = searchParams.get('specialty_id') || ''
-    const hospId  = searchParams.get('hospital_id') || ''
+    const hospId  = (searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : ''
     const fee     = searchParams.get('fee_range') || ''
     const exp     = searchParams.get('exp_range') || ''
 
@@ -320,14 +320,19 @@ function DoctorsPage() {
         }
       })
     }
-    if (selectedHospital) {
-      const item = hospitals.find(h => String(h.id) === String(selectedHospital))
+    if (selectedHospital && selectedHospital !== 'undefined') {
+      const item = hospitals.find(h => 
+        String(h.id) === String(selectedHospital) || 
+        String(h.public_id) === String(selectedHospital) || 
+        String(h.slug) === String(selectedHospital)
+      )
+      const passedName = searchParams.get('hospital_name') || searchParams.get('hospital')
       list.push({
         key: 'hospital',
-        label: item ? item.name || item.name_bn : 'Hospital',
+        label: item ? (item.name || item.name_bn) : (passedName || 'হাসপাতাল'),
         clear: () => {
-          setSelectedHospital('')
-          updateUrlParams({ hospital_id: '' })
+          setSelectedHospital(''); updateUrlParams({ hospital_name: '' })
+          updateUrlParams({ hospital_id: '', hospital_name: '' })
         }
       })
     }

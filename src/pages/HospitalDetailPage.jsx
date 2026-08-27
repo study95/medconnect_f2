@@ -602,7 +602,7 @@ function HospitalDetailPage() {
                   <button
                     type="button"
                     aria-label="অ্যাপয়েন্টমেন্ট নিন"
-                    onClick={() => navigate(`/doctors?hospital_id=${id}`)}
+                    onClick={() => { const hId = hospital?.id || hospital?.public_id || id; const hName = hospital?.name || hospital?.name_bn || ''; navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`); }}
                     className="hero-btn-primary"
                     style={{
                       height: 44,
@@ -1060,7 +1060,7 @@ function HospitalDetailPage() {
                       <div 
                         onClick={() => {
                           if (hospital?.id) {
-                            navigate(`/doctors?hospital_id=${hospital.id}&department=${encodeURIComponent(dept.name)}`)
+                            navigate(`/doctors?hospital_id=${hospital?.id || hospital?.public_id || id}&department=${encodeURIComponent(dept.name)}${hospital?.name ? `&hospital_name=${encodeURIComponent(hospital.name)}` : ''}`)
                           }
                         }}
                         style={{ 
@@ -1233,7 +1233,7 @@ function HospitalDetailPage() {
                   {hospital?.id && (
                     <button
                       type="button"
-                      onClick={() => navigate(`/doctors?hospital_id=${hospital.id}`)}
+                      onClick={() => { const hId = hospital?.id || hospital?.public_id || id; const hName = hospital?.name || hospital?.name_bn || ''; navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`); }}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -1352,7 +1352,7 @@ function HospitalDetailPage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate(`/doctors?hospital_id=${hospital?.id || id}`)}
+                  onClick={() => { const hId = hospital?.id || hospital?.public_id || id; const hName = hospital?.name || hospital?.name_bn || ''; navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`); }}
                   style={{
                     width: '100%',
                     padding: '13px 18px',
@@ -1974,7 +1974,7 @@ function HospitalDetailPage() {
                   onClick={() => {
                     setDeptModalOpen(false)
                     if (hospital?.id) {
-                      navigate(`/doctors?hospital_id=${hospital.id}&department=${encodeURIComponent(dept.name)}`)
+                      navigate(`/doctors?hospital_id=${hospital?.id || hospital?.public_id || id}&department=${encodeURIComponent(dept.name)}${hospital?.name ? `&hospital_name=${encodeURIComponent(hospital.name)}` : ''}`)
                     }
                   }}
                   style={{ 
