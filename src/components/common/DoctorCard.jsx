@@ -11,7 +11,7 @@ import { useFavorites } from '../../context/FavoritesContext'
 const DEMO_AVATAR = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
 
 const enToBn = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
-const toBnNum = (str) => str ? String(str).replace(/\d/g, d => enToBn[d]) : '';
+const toBnNum = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBn[d]) : '';
 
 // Verified Badge Icon (Green)
 const VerifiedBlueBadge = ({ size = 20 }) => (
@@ -108,6 +108,26 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     if (yrs === 0) return toBnNum(String(mos)) + ' মাস '  // edge: only months
     return toBnNum(String(yrs)) + '+'
   })()
+  const ratingValue = (() => {
+    const r = doctor?.rating_avg ?? doctor?.rating ?? doctor?.average_rating ?? doctor?.total_rating ?? doctor?.ratings_avg
+    if (r !== undefined && r !== null && r !== '') {
+      const num = Number(r)
+      if (!isNaN(num) && num > 0) return num.toFixed(1)
+    }
+    return '0.0'
+  })()
+
+  const reviewCountValue = (() => {
+    const c = doctor?.total_reviews ?? doctor?.reviews_count ?? doctor?.review_count ?? doctor?.ratings_count ?? (Array.isArray(doctor?.reviews) ? doctor.reviews.length : null)
+    if (c !== undefined && c !== null && c !== '') {
+      const num = Number(c)
+      if (!isNaN(num) && num >= 0) return num
+    }
+    return 0
+  })()
+
+  const formattedRatingText = `${toBnNum(ratingValue)} (${toBnNum(reviewCountValue)})`
+
   const degrees = doctor.degree || doctor.qualifications || 'MBBS, MD'
   const fee = toBnNum(doctor.fee || '৫০০')
 
@@ -336,7 +356,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               backdropFilter: 'blur(4px)'
             }}>
               <IconStarFilled size={12} color="#FBBF24" />
-              <span>৪.৯ (১২০)</span>
+              <span>{formattedRatingText}</span>
             </div>
           </div>
 
