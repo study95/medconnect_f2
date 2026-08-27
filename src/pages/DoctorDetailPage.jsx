@@ -832,7 +832,7 @@ function DoctorDetailPageContent() {
                         <Nav.Link 
                           eventKey={tab.key}
                           style={{ 
-                            padding: '9px 14px',
+                            padding: '9px 12px',
                             fontSize: 13.5,
                             lineHeight: 1.2,
                             fontWeight: isActive ? 800 : 600,
@@ -844,23 +844,15 @@ function DoctorDetailPageContent() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: 6,
                             whiteSpace: 'nowrap',
                             border: 'none',
                             fontFamily: 'inherit',
                             width: '100%'
                           }}
                         >
-                          {/* Desktop Only Icon */}
-                          <span className="tab-icon-wrap d-none d-lg-inline-flex align-items-center justify-content-center" style={{ flexShrink: 0, lineHeight: 1 }}>
-                            {tab.icon}
-                          </span>
-
-                          {/* Desktop Label ("চেম্বার ও সময়সূচি") */}
-                          <span className="tab-text-label d-none d-lg-inline">{tab.desktopLabel}</span>
-
-                          {/* Mobile Label ("চেম্বার" - No Icon) */}
-                          <span className="tab-text-label d-inline d-lg-none">{tab.mobileLabel}</span>
+                          <span className="tab-icon-wrap">{tab.icon}</span>
+                          <span className="tab-text-label-desktop">{tab.desktopLabel}</span>
+                          <span className="tab-text-label-mobile">{tab.mobileLabel}</span>
                         </Nav.Link>
                       </Nav.Item>
                     )
@@ -1563,6 +1555,21 @@ function DoctorDetailPageContent() {
           animation: fadeInTab 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
+        .tab-icon-wrap {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 6px;
+          flex-shrink: 0;
+        }
+        .tab-text-label-desktop {
+          display: inline;
+          white-space: nowrap;
+        }
+        .tab-text-label-mobile {
+          display: none;
+        }
+
         .btn-share-profile:hover {
           background: #D1FAE5 !important;
         }
@@ -1619,8 +1626,14 @@ function DoctorDetailPageContent() {
             text-align: center !important;
             width: 100% !important;
           }
-          .top-menu-tabs-wrapper .nav-link .tab-text-label {
-            display: block !important;
+          .tab-icon-wrap {
+            display: none !important;
+          }
+          .tab-text-label-desktop {
+            display: none !important;
+          }
+          .tab-text-label-mobile {
+            display: inline !important;
             overflow: visible !important;
             text-overflow: clip !important;
             white-space: nowrap !important;
