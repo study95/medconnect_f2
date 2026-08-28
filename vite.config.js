@@ -19,16 +19,13 @@ export default defineConfig({
   build: {
     sourcemap: false,
     cssCodeSplit: true,
-    // Target modern browsers — smaller bundles, better tree-shaking
     target: 'es2020',
+    chunkSizeWarningLimit: 850,
     rollupOptions: {
       output: {
-        // ─── Granular manual chunk splitting ───────────────────────────────────
-        // Strategy: isolate heavy libraries so they get their own cached chunk.
-        // When app code changes, users only re-download THEIR changed chunk.
-        // When a library version bumps, only THAT vendor chunk gets re-fetched.
+        // Granular manual chunk splitting: isolates heavy vendor packages into independently cacheable async bundles
         manualChunks(id) {
-          // ── Core React runtime (smallest, most stable) ──
+          // Core React runtime
           if (id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/react-router-dom/') ||
@@ -36,76 +33,74 @@ export default defineConfig({
             return 'vendor-react'
           }
 
-          // ── TanStack Query ──
+          // TanStack Query
           if (id.includes('node_modules/@tanstack/')) {
             return 'vendor-query'
           }
 
-          // ── Icon libraries (large but rarely change) ──
-          if (id.includes('node_modules/@tabler/') ||
-              id.includes('node_modules/lucide-react/')) {
-            return 'vendor-icons'
+          // Icon libraries split by family
+          if (id.includes('node_modules/@tabler/')) {
+            return 'vendor-tabler'
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'vendor-lucide'
           }
 
-          // ── UI framework ──
+          // UI framework & carousels
           if (id.includes('node_modules/react-bootstrap/') ||
               id.includes('node_modules/bootstrap/') ||
               id.includes('node_modules/swiper/')) {
             return 'vendor-ui'
           }
 
-          // ── Recharts — only needed in admin dashboard/reports ──
-          // Split into its own chunk so public pages don't download it
+          // Analytics charts (admin only)
           if (id.includes('node_modules/recharts/') ||
               id.includes('node_modules/d3-') ||
               id.includes('node_modules/victory-vendor/')) {
             return 'vendor-recharts'
           }
 
-          // ── PDF generation — only in prescription + ticket + commission ──
-          // These are 390KB + 201KB — isolate completely
-          if (id.includes('node_modules/jspdf/') ||
-              id.includes('node_modules/html2canvas/')) {
-            return 'vendor-pdf'
-          }
-
-          // ── Rich text editor (Quill) — only in content manager ──
+          // Rich text editor (admin content & messages only)
           if (id.includes('node_modules/quill/') ||
               id.includes('node_modules/react-quill/')) {
             return 'vendor-quill'
           }
 
-          // ── i18n (translation) ──
+          // PDF generation libraries (split individually for optimal lazy loading on print triggers)
+          if (id.includes('node_modules/jspdf/')) {
+            return 'vendor-jspdf'
+          }
+          if (id.includes('node_modules/html2canvas/')) {
+            return 'vendor-html2canvas'
+          }
+          if (id.includes('node_modules/html2pdf')) {
+            return 'vendor-html2pdf'
+          }
+
+          // Translation & i18n
           if (id.includes('node_modules/i18next') ||
               id.includes('node_modules/react-i18next/')) {
             return 'vendor-i18n'
           }
 
-          // ── WebSocket / Real-time (Pusher + Echo) ──
+          // Real-time WebSockets
           if (id.includes('node_modules/pusher-js/') ||
               id.includes('node_modules/laravel-echo/')) {
             return 'vendor-realtime'
           }
 
-          // ── HTML2PDF (separate from html2canvas — different import path) ──
-          if (id.includes('node_modules/html2pdf')) {
-            return 'vendor-pdf'
-          }
-
-          // ── React-to-print ──
+          // React-to-print
           if (id.includes('node_modules/react-to-print/')) {
             return 'vendor-print'
           }
 
-          // ── Chart helpers used only in reports ──
+          // Spreadsheet / export helpers
           if (id.includes('node_modules/file-saver/') ||
               id.includes('node_modules/xlsx/')) {
             return 'vendor-export'
           }
         }
       }
-    },
-    // Raise warning limit — icon libraries are legitimately large
-    chunkSizeWarningLimit: 600,
+    }
   }
 })

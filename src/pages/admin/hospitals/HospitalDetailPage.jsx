@@ -3,8 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getHospital, getDoctors, getChambers } from '../../../api/adminApi'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
 
 export default function HospitalDetailPage() {
   const { id } = useParams()
@@ -44,6 +42,10 @@ export default function HospitalDetailPage() {
     if (!printRef.current) return
     setExporting(true)
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,

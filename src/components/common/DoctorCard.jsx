@@ -408,16 +408,19 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           }}>
             {/* Top Title, Specialty & Hospital Details */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, width: '100%' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{
                     fontSize: 18,
                     fontWeight: 800,
                     color: '#0F172A',
                     margin: '0 0 4px 0',
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.3
-                  }}>
+                    lineHeight: 1.3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }} title={doctor.name}>
                     {doctor.name}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
@@ -471,7 +474,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                 </div>
 
                 {/* Share & Heart Action Icons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}>
                   <button
                     type="button"
                     onClick={handleShare}
@@ -593,55 +596,35 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
         e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.03)'
       }}
     >
-      {/* Share & Heart Action Buttons */}
-      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button
-          type="button"
-          onClick={handleShare}
-          title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
-          aria-label="শেয়ার করুন"
-          style={{
-            background: 'rgba(255, 255, 255, 0.98)',
-            border: '1px solid #E2E8F0',
-            borderRadius: '50%',
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: copied ? '#00B875' : '#64748B',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {copied ? <IconCheck size={15} color="#00B875" /> : <IconShare size={15} />}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            toggleFavoriteDoctor(doctor)
-          }}
-          title="পছন্দের তালিকায় রাখুন"
-          aria-label="পছন্দের তালিকায় রাখুন"
-          style={{
-            background: 'rgba(255, 255, 255, 0.98)',
-            border: '1px solid #E2E8F0',
-            borderRadius: '50%',
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: '#EF4444',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-          }}
-        >
-          <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
-        </button>
-      </div>
+      {/* Heart Wishlist Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleFavoriteDoctor(doctor)
+        }}
+        title="পছন্দের তালিকায় রাখুন"
+        aria-label="পছন্দের তালিকায় রাখুন"
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          zIndex: 15,
+          background: 'rgba(255, 255, 255, 0.98)',
+          border: '1px solid #E2E8F0',
+          borderRadius: '50%',
+          width: 32,
+          height: 32,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: '#EF4444',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+        }}
+      >
+        <IconHeart size={16} fill={isFavorite ? '#EF4444' : 'none'} color="#EF4444" />
+      </button>
 
       {/* Doctor Top Avatar & Main Info */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>

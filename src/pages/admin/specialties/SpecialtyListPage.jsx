@@ -1,7 +1,7 @@
 // SpecialtyListPage.jsx — Premium Specialty Management (Admin)
-import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { getSpecialties, deleteSpecialty } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -10,6 +10,7 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { getErrorMessage } from '../../../utils/errorHelper'
 
 export default function SpecialtyListPage() {
   const { isAdmin } = useAuth()
@@ -29,9 +30,11 @@ export default function SpecialtyListPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const res = await getSpecialties()
-      setItems(res.data?.data?.data || res.data?.data || res.data || [])
+      const res = await getSpecialties({ per_page: 5000 })
+      const list = res.data?.data?.data || res.data?.data || res.data || []
+      setItems(Array.isArray(list) ? list : [])
     } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to load specialties.'))
     } finally {
       setLoading(false)
     }
@@ -41,10 +44,21 @@ export default function SpecialtyListPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      await deleteSpecialty(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
+      const res = await deleteSpecialty(deleteTarget.id)
+      setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+      toast.success(res.data?.message || 'Specialty deleted successfully')
     } catch (err) {
+      const status = err.response?.status
+      const msg = err.response?.data?.message || err.response?.data?.error
+      if (status === 409) {
+        toast.error(msg || 'Cannot delete specialty because it has associated doctor listings.')
+      } else if (status === 403) {
+        toast.error('You do not have permission to delete this specialty.')
+      } else if (status === 404) {
+        toast.error('Specialty not found or already deleted.')
+      } else {
+        toast.error(msg || 'Failed to delete specialty.')
+      }
     } finally {
       setDeleting(false)
       setDeleteTarget(null)
@@ -53,7 +67,6 @@ export default function SpecialtyListPage() {
 
   const filtered = items.filter(i => 
     i.name?.toLowerCase().includes(search.toLowerCase()) ||
-    i.bangla_name?.includes(search) ||
     i.slug?.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -75,7 +88,7 @@ export default function SpecialtyListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search specialty by name, Bengali name..."
+        searchPlaceholder="Search specialty by name, slug..."
         onRefresh={fetchData}
         refreshing={loading}
         actions={
@@ -95,7 +108,7 @@ export default function SpecialtyListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Specialty Name', 'Bengali Title', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Specialty Name', 'URL Slug', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState searchQuery={search} onClearSearch={() => setSearch('')} icon="🩺" title="No specialties found" description="Try a different search term or add a new medical specialty." primaryAction={isAdmin ? { label: '+ Add Specialty', to: '/admin/specialties/create' } : undefined} />
         ) : (

@@ -20,7 +20,7 @@ export const updateHospital = (id, data) => axiosInstance.post(`/hospitals/${id}
 export const deleteHospital = (id) => axiosInstance.delete(`/hospitals/${id}`)
 
 // ===== SPECIALTIES =====
-export const getSpecialties = () => axiosInstance.get('/specialties')
+export const getSpecialties = (params) => axiosInstance.get('/specialties', { params })
 export const getSpecialty = (id) => axiosInstance.get(`/specialties/${id}`)
 export const createSpecialty = (data) => axiosInstance.post('/specialties', data)
 export const updateSpecialty = (id, data) => axiosInstance.put(`/specialties/${id}`, data)

@@ -1,8 +1,9 @@
 // SpecialtyFormPage.jsx — Premium Specialty Create/Edit Form
-import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { getSpecialty, createSpecialty, updateSpecialty } from '../../../api/adminApi'
+import { getErrorMessage } from '../../../utils/errorHelper'
 
 export default function SpecialtyFormPage() {
   const { id } = useParams()
@@ -24,37 +25,92 @@ export default function SpecialtyFormPage() {
       const res = await getSpecialty(id)
       const d = res.data?.data || res.data
       if (!d) throw new Error('Specialty not found')
-      setForm({ name: d.name || '', slug: d.slug || '' })
+      const specialty = d.specialty || d
+      setForm({
+        name: specialty.name || '',
+        slug: specialty.slug || '',
+      })
     } catch (err) {
-} finally {
+      toast.error(getErrorMessage(err, 'Failed to load specialty details.'))
+      navigate('/admin/specialties')
+    } finally {
       setLoading(false)
     }
   }
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setErrors({ ...errors, [e.target.name]: '' })
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const validate = () => {
+    const errs = {}
+    if (!form.name.trim()) {
+      errs.name = 'Specialty name is required'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.name.trim()) {
-      setErrors({ name: 'Specialty name is required' })
+    if (!validate()) {
+      toast.error('Specialty name is required')
       return
     }
 
     setSaving(true)
+    setErrors({})
     try {
+      const payload = {
+        name: form.name.trim(),
+        slug: form.slug.trim() || undefined,
+      }
+
       if (isEdit) {
-        await updateSpecialty(id, form)
-        
+        const res = await updateSpecialty(id, payload)
+        toast.success(res.data?.message || 'Specialty updated successfully')
       } else {
-        await createSpecialty(form)
-        
+        const res = await createSpecialty(payload)
+        toast.success(res.data?.message || 'Specialty created successfully')
       }
       navigate('/admin/specialties')
     } catch (err) {
-} finally {
+      const backendErrors = err.response?.data?.errors
+      if (backendErrors && typeof backendErrors === 'object') {
+        const formattedErrors = {}
+        Object.keys(backendErrors).forEach((key) => {
+          const val = backendErrors[key]
+          formattedErrors[key] = Array.isArray(val) ? val[0] : val
+        })
+        setErrors(formattedErrors)
+        const firstError = Object.values(formattedErrors)[0]
+        if (firstError) toast.error(firstError)
+      } else {
+        const status = err.response?.status
+        const msg = err.response?.data?.message || err.response?.data?.error
+        if (status === 409) {
+          const dupMsg = msg || 'Specialty already exists.'
+          setErrors({ name: dupMsg })
+          toast.error(dupMsg)
+        } else if (msg) {
+          toast.error(msg)
+        } else if (status === 404) {
+          toast.error('Specialty not found.')
+        } else if (status === 403) {
+          toast.error('You do not have permission to perform this action.')
+        } else if (status === 401) {
+          toast.error('Please login again to continue.')
+        } else if (status >= 500) {
+          toast.error('Server error occurred. Please try again later.')
+        } else {
+          toast.error('Failed to save specialty.')
+        }
+      }
+    } finally {
       setSaving(false)
     }
   }
@@ -78,14 +134,15 @@ export default function SpecialtyFormPage() {
             <div className="admin-form-group">
               <label className="admin-form-label">Specialty Name *</label>
               <input 
-                className="admin-form-input" 
+                className={`admin-form-input ${errors.name ? 'border-red-500' : ''}`} 
                 name="name" 
                 value={form.name} 
                 onChange={handleChange} 
                 placeholder="e.g. Pediatrics, Cardiology, etc."
-                style={{ height: 48, fontSize: 15, fontWeight: 500 }}
+                style={{ height: 48, fontSize: 15, fontWeight: 500, borderColor: errors.name ? '#EF4444' : undefined }}
+                autoFocus
               />
-              {errors.name && <div className="admin-form-error">{errors.name}</div>}
+              {errors.name && <div className="admin-form-error" style={{ color: '#EF4444', marginTop: 4 }}>{errors.name}</div>}
             </div>
 
             <div className="admin-form-group" style={{ marginTop: 24 }}>
@@ -93,14 +150,15 @@ export default function SpecialtyFormPage() {
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 16, top: 13, color: '#94A3B8', fontSize: 14 }}>/</span>
                 <input 
-                  className="admin-form-input" 
+                  className={`admin-form-input ${errors.slug ? 'border-red-500' : ''}`} 
                   name="slug" 
                   value={form.slug} 
                   onChange={handleChange} 
                   placeholder="specialty-url-slug"
-                  style={{ height: 48, paddingLeft: 30, fontSize: 14, color: '#64748B' }}
+                  style={{ height: 48, paddingLeft: 30, fontSize: 14, color: '#64748B', borderColor: errors.slug ? '#EF4444' : undefined }}
                 />
               </div>
+              {errors.slug && <div className="admin-form-error" style={{ color: '#EF4444', marginTop: 4 }}>{errors.slug}</div>}
               <p style={{ marginTop: 8, fontSize: 12, color: '#94A3B8' }}>
                 Use lowercase and hyphens only. Example: <code>cardiology-specialist</code>
               </p>
@@ -111,7 +169,16 @@ export default function SpecialtyFormPage() {
                 type="submit" 
                 className="admin-btn admin-btn-primary" 
                 disabled={saving}
-                style={{ background: '#0EA5E9', padding: '14px 40px', fontSize: 16, fontWeight: 800, borderRadius: 12, boxShadow: '0 10px 15px -3px rgba(14, 165, 233, 0.2)' }}
+                style={{
+                  background: '#0EA5E9',
+                  padding: '14px 40px',
+                  fontSize: 16,
+                  fontWeight: 800,
+                  borderRadius: 12,
+                  boxShadow: '0 10px 15px -3px rgba(14, 165, 233, 0.2)',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.7 : 1
+                }}
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update Specialty' : '🚀 Create Specialty'}
               </button>
