@@ -1,5 +1,5 @@
-// PatientFormPage.jsx — Premium Patient Profile Form
 import { getErrorMessage } from '../../../utils/errorHelper'
+import toast from 'react-hot-toast'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -185,7 +185,8 @@ export default function PatientFormPage() {
 
         setInitialLoadDone(true)
       } catch (err) {
-} finally {
+        toast.error(getErrorMessage(err, 'Failed to load patient profile.'))
+      } finally {
         setLoading(false)
       }
     }
@@ -257,15 +258,21 @@ export default function PatientFormPage() {
 
     try {
       if (isEdit) {
-        await updateAdminPatient(id, formData)
-        
+        const res = await updateAdminPatient(id, formData)
+        toast.success(res.data?.message || 'Patient profile updated successfully.')
       } else {
-        await createAdminPatient(formData)
-        
+        const res = await createAdminPatient(formData)
+        toast.success(res.data?.message || 'Patient registered successfully.')
       }
       navigate('/admin/patients')
     } catch (err) {
-if (err.response?.data?.errors) setErrors(err.response.data.errors)
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors)
+        const firstError = Object.values(err.response.data.errors)[0]
+        if (firstError) toast.error(Array.isArray(firstError) ? firstError[0] : firstError)
+      } else {
+        toast.error(getErrorMessage(err, 'Failed to save patient profile.'))
+      }
     } finally {
       setSaving(false)
     }

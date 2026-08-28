@@ -12,6 +12,7 @@ import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import toast from 'react-hot-toast'
 
 // Custom Searchable Dropdown Component (Premium Select)
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -182,7 +183,7 @@ export default function PatientListPage() {
       const res = await getPatients(params)
       setPatients(res.data?.data?.data || res.data?.data || [])
     } catch (err) {
-      console.error(err)
+      toast.error(getErrorMessage(err, 'Failed to load patients list.'))
     } finally {
       setLoading(false)
     }
@@ -198,10 +199,11 @@ export default function PatientListPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      await deleteAdminPatient(deleteTarget.id)
+      const res = await deleteAdminPatient(deleteTarget.id)
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
+      toast.success(res.data?.message || 'Patient deleted successfully.')
     } catch (err) {
-      console.error(err)
+      toast.error(getErrorMessage(err, 'Failed to delete patient profile.'))
     } finally {
       setDeleting(false)
       setDeleteTarget(null)
