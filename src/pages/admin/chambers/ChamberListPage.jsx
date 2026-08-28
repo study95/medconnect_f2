@@ -1,7 +1,7 @@
 // ChamberListPage.jsx — Premium Doctor Chamber Management
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getChambers, deleteChamber, getDoctors, getHospitals, toggleChamberActive } from '../../../api/adminApi'
@@ -118,9 +118,11 @@ export default function ChamberListPage() {
   const [currentPage, setCurrentPage] = useState(1)
   
   // Advanced Filters
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status') || 'all'
   const [doctorId, setDoctorId] = useState('')
   const [hospitalId, setHospitalId] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [dayFilter, setDayFilter] = useState('')
   
   // Filter Options
@@ -128,6 +130,17 @@ export default function ChamberListPage() {
   const [hospitals, setHospitals] = useState([])
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
+
+  const handleStatusChange = (newStatus) => {
+    setStatusFilter(newStatus)
+    const newParams = new URLSearchParams(searchParams)
+    if (newStatus && newStatus !== 'all') {
+      newParams.set('status', newStatus)
+    } else {
+      newParams.delete('status')
+    }
+    setSearchParams(newParams, { replace: true })
+  }
 
   useEffect(() => { 
     fetchData() 
@@ -163,7 +176,10 @@ export default function ChamberListPage() {
       if (!isDoctorOnly) {
         if (doctorId) params.doctor_id = doctorId
         if (hospitalId) params.hospital_id = hospitalId
-        if (statusFilter !== '') params.is_active = statusFilter
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter
       }
 
       const res = await getChambers(params)
@@ -179,8 +195,11 @@ export default function ChamberListPage() {
     setSearch('')
     setDoctorId('')
     setHospitalId('')
-    setStatusFilter('')
+    setStatusFilter('all')
     setDayFilter('')
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('status')
+    setSearchParams(newParams, { replace: true })
   }
 
   const handleDelete = async () => {
@@ -206,10 +225,12 @@ export default function ChamberListPage() {
     }
   }
 
-  const hasActiveFilters = Boolean(search || doctorId || hospitalId || statusFilter !== '' || dayFilter)
+  const hasActiveFilters = Boolean(search || doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter)
 
   const filtered = items.filter(i => {
     if (dayFilter && i.day !== dayFilter) return false
+    if (statusFilter === 'active' && !i.is_active) return false
+    if (statusFilter === 'inactive' && i.is_active) return false
     if (search && search.trim()) {
       const q = search.trim().toLowerCase()
       const docName = (i.doctor?.name || i.doctor_name || '').toLowerCase()
@@ -266,12 +287,13 @@ export default function ChamberListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(doctorId || hospitalId || statusFilter || dayFilter)}
+        hasActiveFilters={Boolean(doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter)}
         onClearFilters={clearFilters}
         activeFilters={[
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
           hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
           dayFilter && { key: 'day', label: `Day: ${dayFilter}`, onRemove: () => setDayFilter('') },
+          (statusFilter && statusFilter !== 'all') && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => handleStatusChange('all') },
         ].filter(Boolean)}
         actions={
           (isAdmin || hasPermission('chamber.create')) && (
@@ -292,6 +314,18 @@ export default function ChamberListPage() {
             {['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
               <option key={d} value={d}>{d}</option>
             ))}
+          </select>
+        </div>
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+          <select 
+            value={statusFilter} 
+            onChange={e => handleStatusChange(e.target.value)} 
+            style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
       </ListToolbar>
