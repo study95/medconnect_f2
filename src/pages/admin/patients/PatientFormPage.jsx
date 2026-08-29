@@ -269,9 +269,9 @@ export default function PatientFormPage() {
       if (err.response?.data?.errors) {
         setErrors(err.response.data.errors)
         const firstError = Object.values(err.response.data.errors)[0]
-        if (firstError) toast.error(Array.isArray(firstError) ? firstError[0] : firstError)
+        if (firstError) toast.error(Array.isArray(firstError) ? firstError[0] : firstError, { id: 'patient-form-validation' })
       } else {
-        toast.error(getErrorMessage(err, 'Failed to save patient profile.'))
+        console.error('Failed to save patient profile', err)
       }
     } finally {
       setSaving(false)

@@ -48,17 +48,7 @@ export default function SpecialtyListPage() {
       setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
       toast.success(res.data?.message || 'Specialty deleted successfully')
     } catch (err) {
-      const status = err.response?.status
-      const msg = err.response?.data?.message || err.response?.data?.error
-      if (status === 409) {
-        toast.error(msg || 'Cannot delete specialty because it has associated doctor listings.')
-      } else if (status === 403) {
-        toast.error('You do not have permission to delete this specialty.')
-      } else if (status === 404) {
-        toast.error('Specialty not found or already deleted.')
-      } else {
-        toast.error(msg || 'Failed to delete specialty.')
-      }
+      console.error('Failed to delete specialty', err)
     } finally {
       setDeleting(false)
       setDeleteTarget(null)

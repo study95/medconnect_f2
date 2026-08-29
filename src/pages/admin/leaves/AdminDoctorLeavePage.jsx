@@ -101,7 +101,7 @@ export default function AdminDoctorLeavePage() {
         fetchLeaves(currentPage)
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ছুটি মুছে ফেলা সম্ভব হয়নি'))
+      console.error('Failed to delete leave', err)
     } finally {
       setDeleting(false)
     }

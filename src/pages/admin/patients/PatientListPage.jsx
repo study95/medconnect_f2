@@ -203,7 +203,7 @@ export default function PatientListPage() {
       setPatients(patients.filter(p => p.id !== deleteTarget.id))
       toast.success(res.data?.message || 'Patient deleted successfully.')
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete patient profile.'))
+      console.error('Failed to delete patient', err)
     } finally {
       setDeleting(false)
       setDeleteTarget(null)

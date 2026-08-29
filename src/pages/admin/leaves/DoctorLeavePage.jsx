@@ -109,7 +109,7 @@ export default function DoctorLeavePage() {
       if (errRes?.errors) {
         setServerErrors(errRes.errors)
       }
-      toast.error(errRes?.message || getErrorMessage(err, 'ছুটি সংরক্ষণ ব্যর্থ হয়েছে'))
+      console.error('Failed to create leave', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -127,7 +127,7 @@ export default function DoctorLeavePage() {
         fetchLeaves(currentPage)
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ছুটি মুছে ফেলা সম্ভব হয়নি'))
+      console.error('Failed to delete leave', err)
     } finally {
       setDeleting(false)
     }

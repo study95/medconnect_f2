@@ -88,27 +88,15 @@ export default function SpecialtyFormPage() {
         })
         setErrors(formattedErrors)
         const firstError = Object.values(formattedErrors)[0]
-        if (firstError) toast.error(firstError)
+        if (firstError) toast.error(firstError, { id: 'specialty-form-validation' })
       } else {
         const status = err.response?.status
         const msg = err.response?.data?.message || err.response?.data?.error
         if (status === 409) {
           const dupMsg = msg || 'Specialty already exists.'
           setErrors({ name: dupMsg })
-          toast.error(dupMsg)
-        } else if (msg) {
-          toast.error(msg)
-        } else if (status === 404) {
-          toast.error('Specialty not found.')
-        } else if (status === 403) {
-          toast.error('You do not have permission to perform this action.')
-        } else if (status === 401) {
-          toast.error('Please login again to continue.')
-        } else if (status >= 500) {
-          toast.error('Server error occurred. Please try again later.')
-        } else {
-          toast.error('Failed to save specialty.')
         }
+        console.error('Failed to save specialty', err)
       }
     } finally {
       setSaving(false)

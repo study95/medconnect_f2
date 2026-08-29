@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
 import {
   getDoctors, updateDoctor,
   getHospitals, updateHospital

@@ -13,7 +13,6 @@ import { useDeleteReview, useHospitalReviews } from '../features/reviews/useRevi
 import { calculateRatingSummary } from '../features/reviews/mappers'
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
-import toast from 'react-hot-toast'
 import SeoHead from '../components/common/SeoHead'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
 import { getMediaUrl } from '../utils/mediaUtils'

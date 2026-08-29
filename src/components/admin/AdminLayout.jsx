@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Outlet, Link } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
@@ -33,33 +32,6 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-wrapper">
-      <Toaster 
-        position="top-right" 
-        toastOptions={{ 
-          duration: 3500,
-          style: {
-            background: 'var(--admin-card-bg)',
-            color: 'var(--admin-text)',
-            border: '1px solid var(--admin-border)',
-            borderRadius: '0px',
-            fontSize: '13px',
-            fontWeight: '600',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.12)'
-          },
-          success: {
-            iconTheme: {
-              primary: '#00B875',
-              secondary: '#ffffff'
-            }
-          },
-          error: {
-            iconTheme: {
-              primary: '#EF4444',
-              secondary: '#ffffff'
-            }
-          }
-        }}
-      />
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

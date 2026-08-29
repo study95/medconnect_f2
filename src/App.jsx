@@ -441,7 +441,30 @@ function App() {
           />
         </Routes>
         <GlobalDialog />
-        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        <Toaster 
+          position="top-right" 
+          toastOptions={{ 
+            duration: 3500,
+            style: {
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.12)'
+            },
+            success: {
+              iconTheme: {
+                primary: '#00B875',
+                secondary: '#ffffff'
+              }
+            },
+            error: {
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#ffffff'
+              }
+            }
+          }} 
+        />
       </Suspense>
     </ErrorBoundary>
   )
