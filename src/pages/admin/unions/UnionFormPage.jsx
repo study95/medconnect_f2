@@ -4,9 +4,12 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { 
-  getUnion, createUnion, updateUnion, 
-  getUpazilas, getDistricts, getDivisions 
-} from '../../../api/adminApi'
+  useUnionDetail, 
+  useDivisions, 
+  useDistricts, 
+  useUpazilas, 
+  useAdminLocationMutations 
+} from '../../../hooks/admin/useAdminLocations'
 
 // Premium Searchable Select Component
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -106,100 +109,38 @@ export default function UnionFormPage() {
     bangla_name: '', 
     division_id: '', 
     district_id: '',
-    upazila_id: ''
+    upazila_id: '' 
   })
   
-  const [dropdowns, setDropdowns] = useState({
-    divisions: [],
-    districts: [],
-    upazilas: []
-  })
-
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { districts = [] } = useDistricts(form.division_id || null)
+  const { upazilas = [] } = useUpazilas(form.district_id || null)
+  const { union, isLoading: loading } = useUnionDetail(id)
+  const {
+    createUnion: saveCreateUnion,
+    updateUnion: saveUpdateUnion,
+    isCreatingUnion,
+    isUpdatingUnion,
+  } = useAdminLocationMutations()
+
+  const saving = isCreatingUnion || isUpdatingUnion
+
   useEffect(() => {
-    loadDivisions()
-    if (isEdit) loadUnion()
-  }, [id])
-
-  // Division Change -> Load Districts
-  useEffect(() => {
-    if (form.division_id) {
-      loadDistricts(form.division_id)
-    } else {
-      setDropdowns(prev => ({ ...prev, districts: [], upazilas: [] }))
-      if (!isEdit) setForm(prev => ({ ...prev, district_id: '', upazila_id: '' }))
-    }
-  }, [form.division_id])
-
-  // District Change -> Load Upazilas
-  useEffect(() => {
-    if (form.district_id) {
-      loadUpazilas(form.district_id)
-    } else {
-      setDropdowns(prev => ({ ...prev, upazilas: [] }))
-      if (!isEdit) setForm(prev => ({ ...prev, upazila_id: '' }))
-    }
-  }, [form.district_id])
-
-  const loadDivisions = async () => {
-    try {
-      const res = await getDivisions()
-      setDropdowns(prev => ({ ...prev, divisions: res.data?.data || [] }))
-    } catch (err) {
-      console.error('Failed to load divisions:', err)
-    }
-  }
-
-  const loadDistricts = async (divId) => {
-    try {
-      const res = await getDistricts({ division_id: divId })
-      const data = res.data?.data?.data || res.data?.data || res.data || []
-      setDropdowns(prev => ({ ...prev, districts: Array.isArray(data) ? data : [] }))
-    } catch (err) {
-      console.error('Failed to load districts:', err)
-    }
-  }
-
-  const loadUpazilas = async (distId) => {
-    try {
-      const res = await getUpazilas({ district_id: distId })
-      const data = res.data?.data?.data || res.data?.data || res.data || []
-      setDropdowns(prev => ({ ...prev, upazilas: Array.isArray(data) ? data : [] }))
-    } catch (err) {
-      console.error('Failed to load upazilas:', err)
-    }
-  }
-
-  const loadUnion = async () => {
-    setLoading(true)
-    try {
-      const res = await getUnion(id)
-      const u = res.data?.data || res.data
-      if (!u) throw new Error('Union not found')
-      
-      const upazila = u.upazila || {}
+    if (union) {
+      const upazila = union.upazila || {}
       const district = upazila.district || {}
-      
       setForm({
-        name: u.name || '',
-        bangla_name: u.bangla_name || '',
+        name: union.name || '',
+        bangla_name: union.bangla_name || '',
         division_id: district.division_id || '',
         district_id: upazila.district_id || '',
-        upazila_id: u.upazila_id || ''
+        upazila_id: union.upazila_id || '',
       })
-
-      // Load cascading data
-      if (district.division_id) loadDistricts(district.division_id)
-      if (upazila.district_id) loadUpazilas(upazila.district_id)
-      
-    } catch (err) {
-} finally {
-      setLoading(false)
     }
-  }
+  }, [union])
 
   const validate = () => {
     const errs = {}
@@ -297,7 +238,7 @@ export default function UnionFormPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
                 <SearchableSelect 
                   label="Division *" 
-                  options={dropdowns.divisions} 
+                  options={divisions} 
                   value={form.division_id} 
                   onChange={(val) => {
                     setForm({ ...form, division_id: val, district_id: '', upazila_id: '' })
@@ -309,7 +250,7 @@ export default function UnionFormPage() {
 
                 <SearchableSelect 
                   label="District *" 
-                  options={dropdowns.districts} 
+                  options={districts} 
                   value={form.district_id} 
                   onChange={(val) => {
                     setForm({ ...form, district_id: val, upazila_id: '' })
@@ -322,7 +263,7 @@ export default function UnionFormPage() {
 
                 <SearchableSelect 
                   label="Upazila *" 
-                  options={dropdowns.upazilas} 
+                  options={upazilas} 
                   value={form.upazila_id} 
                   onChange={(val) => {
                     setForm({ ...form, upazila_id: val })

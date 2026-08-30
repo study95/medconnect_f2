@@ -3,10 +3,8 @@ import toast from 'react-hot-toast'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import {
-  getAdminPatient, createAdminPatient, updateAdminPatient,
-  getDivisions, getDistricts, getUpazilas, getUnions
-} from '../../../api/adminApi'
+import { getAdminPatient } from '../../../api/adminApi'
+import { useAdminPatientLookups, useAdminPatientMutations } from '../../../features/patients/useAdminPatients'
 import { BLOOD_GROUPS, GENDERS, calculateAge } from '../../../utils/dateUtils'
 
 // Premium Searchable Select Component
@@ -114,11 +112,12 @@ export default function PatientFormPage() {
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
 
-  const [locationData, setLocationData] = useState({
-    divisions: [], districts: [], upazilas: [], unions: []
+  const { divisions, districts, upazilas, unions } = useAdminPatientLookups({
+    divisionId: form.division_id,
+    districtId: form.district_id,
+    upazilaId: form.upazila_id,
   })
-
-  const [initialLoadDone, setInitialLoadDone] = useState(false)
+  const { createPatient: saveNewPatient, updatePatient: saveUpdatedPatient } = useAdminPatientMutations()
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -133,98 +132,42 @@ export default function PatientFormPage() {
   const ageInfo = calculateAge(form.date_of_birth)
 
   useEffect(() => {
-    const init = async () => {
+    if (!isEdit) return
+    const loadPatient = async () => {
       setLoading(true)
       try {
-        const divRes = await getDivisions()
-        const divisions = divRes.data?.data || []
-        let districts = [], upazilas = [], unions = []
+        const pRes = await getAdminPatient(id)
+        const p = pRes.data?.data || pRes.data
+        if (!p) throw new Error('Patient not found')
 
-        if (isEdit) {
-          const pRes = await getAdminPatient(id)
-          const p = pRes.data?.data || pRes.data
-
-          if (p.division_id) {
-            const distRes = await getDistricts({ division_id: p.division_id })
-            districts = distRes.data?.data || []
-          }
-          if (p.district_id) {
-            const upazilaRes = await getUpazilas({ district_id: p.district_id })
-            upazilas = upazilaRes.data?.data || []
-          }
-          if (p.upazila_id) {
-            const unionRes = await getUnions({ upazila_id: p.upazila_id })
-            unions = unionRes.data?.data || []
-          }
-
-          setLocationData({ divisions, districts, upazilas, unions })
-
-          let dob = ''
-          if (p.date_of_birth) {
-            dob = p.date_of_birth.substring(0, 10)
-          }
-
-          setForm({
-            name: p.name || '',
-            email: p.email || '',
-            phone: p.mobile || p.phone || '',
-            occupation: p.occupation || '',
-            date_of_birth: dob,
-            gender: p.gender || '',
-            blood_group: p.blood_group || '',
-            division_id: p.division_id ? p.division_id.toString() : '',
-            district_id: p.district_id ? p.district_id.toString() : '',
-            upazila_id: p.upazila_id ? p.upazila_id.toString() : '',
-            union_id: p.union_id ? p.union_id.toString() : '',
-          })
-
-          if (p.profile_pic) setPhotoPreview(p.profile_pic)
-        } else {
-          setLocationData(ld => ({ ...ld, divisions }))
+        let dob = ''
+        if (p.date_of_birth) {
+          dob = p.date_of_birth.substring(0, 10)
         }
 
-        setInitialLoadDone(true)
+        setForm({
+          name: p.name || '',
+          email: p.email || '',
+          phone: p.mobile || p.phone || '',
+          occupation: p.occupation || '',
+          date_of_birth: dob,
+          gender: p.gender || '',
+          blood_group: p.blood_group || '',
+          division_id: p.division_id ? p.division_id.toString() : '',
+          district_id: p.district_id ? p.district_id.toString() : '',
+          upazila_id: p.upazila_id ? p.upazila_id.toString() : '',
+          union_id: p.union_id ? p.union_id.toString() : '',
+        })
+
+        if (p.profile_pic) setPhotoPreview(p.profile_pic)
       } catch (err) {
         toast.error(getErrorMessage(err, 'Failed to load patient profile.'))
       } finally {
         setLoading(false)
       }
     }
-    init()
-  }, [id])
-
-  useEffect(() => {
-    if (!initialLoadDone) return
-    if (form.division_id) {
-      getDistricts({ division_id: form.division_id }).then(res =>
-        setLocationData(p => ({ ...p, districts: res.data?.data || [], upazilas: [], unions: [] }))
-      )
-    } else {
-      setLocationData(p => ({ ...p, districts: [], upazilas: [], unions: [] }))
-    }
-  }, [form.division_id, initialLoadDone])
-
-  useEffect(() => {
-    if (!initialLoadDone) return
-    if (form.district_id) {
-      getUpazilas({ district_id: form.district_id }).then(res =>
-        setLocationData(p => ({ ...p, upazilas: res.data?.data || [], unions: [] }))
-      )
-    } else {
-      setLocationData(p => ({ ...p, upazilas: [], unions: [] }))
-    }
-  }, [form.district_id, initialLoadDone])
-
-  useEffect(() => {
-    if (!initialLoadDone) return
-    if (form.upazila_id) {
-      getUnions({ upazila_id: form.upazila_id }).then(res =>
-        setLocationData(p => ({ ...p, unions: res.data?.data || [] }))
-      )
-    } else {
-      setLocationData(p => ({ ...p, unions: [] }))
-    }
-  }, [form.upazila_id, initialLoadDone])
+    loadPatient()
+  }, [id, isEdit])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -258,10 +201,10 @@ export default function PatientFormPage() {
 
     try {
       if (isEdit) {
-        const res = await updateAdminPatient(id, formData)
+        const res = await saveUpdatedPatient({ id, formData })
         toast.success(res.data?.message || 'Patient profile updated successfully.')
       } else {
-        const res = await createAdminPatient(formData)
+        const res = await saveNewPatient(formData)
         toast.success(res.data?.message || 'Patient registered successfully.')
       }
       navigate('/admin/patients')
@@ -370,10 +313,10 @@ export default function PatientFormPage() {
             <h3 className="admin-card-title" style={{ color: '#10B981' }}>📍 Residential Location</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
-            <SearchableSelect label="Division" options={locationData.divisions} value={form.division_id} onChange={(v) => setForm(f => ({ ...f, division_id: v, district_id: '', upazila_id: '', union_id: '' }))} placeholder="Select Division" />
-            <SearchableSelect label="District" options={locationData.districts} value={form.district_id} onChange={(v) => setForm(f => ({ ...f, district_id: v, upazila_id: '', union_id: '' }))} placeholder="Select District" disabled={!form.division_id} />
-            <SearchableSelect label="Upazila" options={locationData.upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({ ...f, upazila_id: v, union_id: '' }))} placeholder="Select Upazila" disabled={!form.district_id} />
-            <SearchableSelect label="Union" options={locationData.unions} value={form.union_id} onChange={(v) => setForm(f => ({ ...f, union_id: v }))} placeholder="Select Union" disabled={!form.upazila_id} />
+            <SearchableSelect label="Division" options={divisions} value={form.division_id} onChange={(v) => setForm(f => ({ ...f, division_id: v, district_id: '', upazila_id: '', union_id: '' }))} placeholder="Select Division" />
+            <SearchableSelect label="District" options={districts} value={form.district_id} onChange={(v) => setForm(f => ({ ...f, district_id: v, upazila_id: '', union_id: '' }))} placeholder="Select District" disabled={!form.division_id} />
+            <SearchableSelect label="Upazila" options={upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({ ...f, upazila_id: v, union_id: '' }))} placeholder="Select Upazila" disabled={!form.district_id} />
+            <SearchableSelect label="Union" options={unions} value={form.union_id} onChange={(v) => setForm(f => ({ ...f, union_id: v }))} placeholder="Select Union" disabled={!form.upazila_id} />
           </div>
         </div>
 

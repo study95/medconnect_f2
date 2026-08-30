@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
-import { getSpecialties, deleteSpecialty } from '../../../api/adminApi'
+import { useAdminSpecialties, useAdminSpecialtyMutations } from '../../../hooks/admin/useAdminSpecialties'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -17,40 +17,22 @@ export default function SpecialtyListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const res = await getSpecialties({ per_page: 5000 })
-      const list = res.data?.data?.data || res.data?.data || res.data || []
-      setItems(Array.isArray(list) ? list : [])
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load specialties.'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { specialties: items, isLoading: loading, refetch: fetchData } = useAdminSpecialties()
+  const { deleteSpecialty, isDeleting: deleting } = useAdminSpecialtyMutations()
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       const res = await deleteSpecialty(deleteTarget.id)
-      setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
-      toast.success(res.data?.message || 'Specialty deleted successfully')
+      toast.success(res?.data?.message || 'Specialty deleted successfully')
     } catch (err) {
       console.error('Failed to delete specialty', err)
+      toast.error(getErrorMessage(err, 'Failed to delete specialty.'))
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }

@@ -1,14 +1,11 @@
 // HospitalListPage.jsx — Premium Hospital Management
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import {
-  getHospitals, deleteHospital, updateHospital,
-  getDivisions, getDistricts, getUpazilas, getUnions
-} from '../../../api/adminApi'
+import { useAdminHospitals, useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -115,11 +112,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function HospitalListPage() {
   const { isAdmin } = useAuth()
   const navigate = useNavigate()
-  const [hospitals, setHospitals] = useState([])
-  const [hospitalsOptions, setHospitalsOptions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
@@ -135,98 +128,59 @@ export default function HospitalListPage() {
   const [upazilaId, setUpazilaId] = useState('')
   const [unionId, setUnionId] = useState('')
 
-  const [divisions, setDivisions] = useState([])
-  const [districts, setDistricts] = useState([])
-  const [upazilas, setUpazilas] = useState([])
-  const [unions, setUnions] = useState([])
+  // Server-side filter memo for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = {}
+    if (divisionId) params.division_id = divisionId
+    if (districtId) params.district_id = districtId
+    if (upazilaId) params.upazila_id = upazilaId
+    if (unionId) params.union_id = unionId
+    if (statusFilter !== '') params.is_active = statusFilter === 'active' ? 1 : 0
+    return params
+  }, [divisionId, districtId, upazilaId, unionId, statusFilter])
 
-  useEffect(() => {
-    fetchHospitals()
-    loadInitialLocations()
-  }, [])
+  // Enterprise TanStack Query Hooks
+  const { hospitals, isLoading: loading, isFetching: refreshing, refetch: fetchHospitals } = useAdminHospitals(serverFilters)
+  const { divisions, districts, upazilas, unions, hospitalsOptions } = useAdminHospitalLookups({ divisionId, districtId, upazilaId })
+  const { deleteHospital, isDeleting: deleting, toggleStatus } = useAdminHospitalMutations()
 
-  useEffect(() => {
-    loadHospitalOptions()
-  }, [divisionId, districtId, upazilaId, unionId])
-
-  const loadInitialLocations = async () => {
-    try {
-      const res = await getDivisions()
-      setDivisions(res.data?.data || [])
-    } catch (err) { console.error(err) }
+  const handleDivisionChange = (val) => {
+    setDivisionId(val)
+    setDistrictId('')
+    setUpazilaId('')
+    setUnionId('')
+    setHospitalIdFilter('')
   }
 
-  useEffect(() => {
-    if (divisionId) {
-      getDistricts({ division_id: divisionId }).then(res => setDistricts(res.data?.data || []))
-    } else {
-      setDistricts([]); setDistrictId(''); setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [divisionId])
-
-  useEffect(() => {
-    if (districtId) {
-      getUpazilas({ district_id: districtId }).then(res => setUpazilas(res.data?.data || []))
-    } else {
-      setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [districtId])
-
-  useEffect(() => {
-    if (upazilaId) {
-      getUnions({ upazila_id: upazilaId }).then(res => setUnions(res.data?.data || []))
-    } else {
-      setUnions([]); setUnionId('')
-    }
-  }, [upazilaId])
-
-  const loadHospitalOptions = async () => {
-    try {
-      const params = { per_page: 500 }
-      if (divisionId) params.division_id = divisionId
-      if (districtId) params.district_id = districtId
-      if (upazilaId) params.upazila_id = upazilaId
-      if (unionId) params.union_id = unionId
-
-      const res = await getHospitals(params)
-      setHospitalsOptions(res.data?.data?.data || res.data?.data || res.data || [])
-    } catch (err) { console.error(err) }
+  const handleDistrictChange = (val) => {
+    setDistrictId(val)
+    setUpazilaId('')
+    setUnionId('')
+    setHospitalIdFilter('')
   }
 
-  const fetchHospitals = async () => {
-    try {
-      setLoading(true)
-      const res = await getHospitals({ per_page: 1000 })
-      setHospitals(res.data?.data?.data || res.data?.data || res.data || [])
-    } catch (err) {
-      console.error('Failed to load hospitals', err)
-    } finally {
-      setLoading(false)
-    }
+  const handleUpazilaChange = (val) => {
+    setUpazilaId(val)
+    setUnionId('')
+    setHospitalIdFilter('')
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       await deleteHospital(deleteTarget.id)
-      setHospitals(hospitals.filter(h => h.id !== deleteTarget.id))
-      setHospitalsOptions(hospitalsOptions.filter(h => h.id !== deleteTarget.id))
     } catch (err) {
-      console.error(err)
+      console.error('Failed to delete hospital', err)
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
   const handleToggleStatus = async (hospital) => {
     try {
-      const newStatus = !hospital.is_active
-      await updateHospital(hospital.id, { is_active: newStatus ? 1 : 0 })
-      setHospitals(hospitals.map(h => h.id === hospital.id ? { ...h, is_active: newStatus } : h))
+      await toggleStatus({ id: hospital.id, is_active: !hospital.is_active })
     } catch (err) {
-      console.error(err)
+      console.error('Failed to toggle hospital status', err)
     }
   }
 
@@ -289,9 +243,9 @@ export default function HospitalListPage() {
         hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter !== '')}
         onClearFilters={clearFilters}
         activeFilters={[
-          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
-          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
-          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
+          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => handleDivisionChange('') },
+          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => handleDistrictChange('') },
+          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => handleUpazilaChange('') },
           unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
           hospitalIdFilter && { key: 'hospital', label: `Facility: ${hospitalsOptions.find(h => String(h.id) === String(hospitalIdFilter))?.name || hospitalIdFilter}`, onRemove: () => setHospitalIdFilter('') },
           statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
@@ -304,9 +258,9 @@ export default function HospitalListPage() {
           )
         }
       >
-        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={setDivisionId} />
-        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
-        <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
+        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionId} onChange={handleDivisionChange} />
+        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={handleDistrictChange} disabled={!divisionId} />
+        <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={handleUpazilaChange} disabled={!districtId} />
         <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
         <SearchableSelect label="Hospital / Clinic" placeholder="All Facilities" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} />
         <div style={{ flex: '1 1 140px', minWidth: 120 }}>

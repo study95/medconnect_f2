@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import { getDistrict, createDistrict, updateDistrict, getDivisions } from '../../../api/adminApi'
+import { useDistrictDetail, useDivisions, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 // Premium Searchable Select Component
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -99,41 +99,29 @@ export default function DistrictFormPage() {
   const isEdit = !!id
 
   const [form, setForm] = useState({ name: '', bangla_name: '', division_id: '' })
-  const [divisions, setDivisions] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { district, isLoading: loading } = useDistrictDetail(id)
+  const {
+    createDistrict: saveCreateDistrict,
+    updateDistrict: saveUpdateDistrict,
+    isCreatingDistrict,
+    isUpdatingDistrict,
+  } = useAdminLocationMutations()
+
+  const saving = isCreatingDistrict || isUpdatingDistrict
+
   useEffect(() => {
-    loadDivisions()
-    if (isEdit) loadDistrict()
-  }, [id])
-
-  const loadDivisions = async () => {
-    try {
-      const res = await getDivisions()
-      setDivisions(res.data?.data || [])
-    } catch (err) {
-      console.error('Failed to load divisions:', err)
-    }
-  }
-
-  const loadDistrict = async () => {
-    setLoading(true)
-    try {
-      const res = await getDistrict(id)
-      const d = res.data?.data || res.data
-      if (!d) throw new Error('District not found')
+    if (district) {
       setForm({
-        name: d.name || '',
-        bangla_name: d.bangla_name || '',
-        division_id: d.division_id || ''
+        name: district.name || '',
+        bangla_name: district.bangla_name || '',
+        division_id: district.division_id || '',
       })
-    } catch (err) {
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [district])
 
   const validate = () => {
     const errs = {}

@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getDivisions, getDistricts, getUpazilas, getUnions } from '../api/locationApi'
+import { queryKeys } from '../lib/queryKeys'
 
 function useLocations() {
   const [selectedDivision, setSelectedDivision] = useState('')
@@ -22,7 +23,7 @@ function useLocations() {
 
   // Divisions — cached 30min, fetched once
   const divisionsQuery = useQuery({
-    queryKey: ['divisions'],
+    queryKey: queryKeys.locations.divisions(),
     queryFn: async () => {
       const res = await getDivisions()
       return res.data?.data || res.data || []
@@ -33,7 +34,7 @@ function useLocations() {
 
   // Districts — cached by division, only fetches when a division is selected
   const districtsQuery = useQuery({
-    queryKey: ['districts', { division_id: selectedDivision }],
+    queryKey: queryKeys.locations.districts(selectedDivision || null),
     queryFn: async () => {
       const res = await getDistricts({ division_id: selectedDivision })
       return res.data?.data || res.data || []
@@ -45,7 +46,7 @@ function useLocations() {
 
   // Upazilas — cached by district
   const upazilasQuery = useQuery({
-    queryKey: ['upazilas', { district_id: selectedDistrict }],
+    queryKey: queryKeys.locations.upazilas(selectedDistrict || null),
     queryFn: async () => {
       const res = await getUpazilas({ district_id: selectedDistrict })
       return res.data?.data || res.data || []
@@ -57,7 +58,7 @@ function useLocations() {
 
   // Unions — cached by upazila
   const unionsQuery = useQuery({
-    queryKey: ['unions', { upazila_id: selectedUpazila }],
+    queryKey: queryKeys.locations.unions(selectedUpazila || null),
     queryFn: async () => {
       const res = await getUnions({ upazila_id: selectedUpazila })
       return res.data?.data || res.data || []

@@ -4,10 +4,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import { 
-  getDoctor, createDoctor, updateDoctor, getSpecialties, getHospitals,
-  getDivisions, getDistricts, getUpazilas, getUnions 
-} from '../../../api/adminApi'
+import { getDoctor } from '../../../api/adminApi'
+import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 
@@ -229,56 +227,21 @@ export default function DoctorFormPage() {
 
   const [expertise, setExpertise] = useState([])
   const [expertiseInput, setExpertiseInput] = useState('')
-  const [dropdowns, setDropdowns] = useState({
-    specialties: [], hospitals: [], divisions: [], districts: [], upazilas: [], unions: []
+
+  const { divisions, specialties, districts, upazilas, unions } = useAdminDoctorLookups({
+    divisionId: form.division_id,
+    districtId: form.district_id,
+    upazilaId: form.upazila_id,
   })
+  const { createDoctor: saveNewDoctor, updateDoctor: saveUpdatedDoctor } = useAdminDoctorMutations()
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => { 
-    loadInitialData()
     if (isEdit) loadDoctor()
   }, [id])
-
-  // Location Cascading
-  useEffect(() => {
-    if (form.division_id) {
-      getDistricts({ division_id: form.division_id }).then(res => setDropdowns(p => ({ ...p, districts: res.data?.data || [] })))
-    } else {
-      setDropdowns(p => ({ ...p, districts: [], upazilas: [], unions: [] }))
-    }
-  }, [form.division_id])
-
-  useEffect(() => {
-    if (form.district_id) {
-      getUpazilas({ district_id: form.district_id }).then(res => setDropdowns(p => ({ ...p, upazilas: res.data?.data || [] })))
-    } else {
-      setDropdowns(p => ({ ...p, upazilas: [], unions: [] }))
-    }
-  }, [form.district_id])
-
-  useEffect(() => {
-    if (form.upazila_id) {
-      getUnions({ upazila_id: form.upazila_id }).then(res => setDropdowns(p => ({ ...p, unions: res.data?.data || [] })))
-    } else {
-      setDropdowns(p => ({ ...p, unions: [] }))
-    }
-  }, [form.upazila_id])
-
-  const loadInitialData = async () => {
-    try {
-      const [specRes, divRes] = await Promise.all([
-        getSpecialties(), getDivisions()
-      ])
-      setDropdowns(p => ({
-        ...p,
-        specialties: specRes.data?.data?.data || specRes.data?.data || [],
-        divisions: divRes.data?.data || []
-      }))
-    } catch (err) { console.error(err) }
-  }
 
   const loadDoctor = async () => {
     setLoading(true)
@@ -475,13 +438,13 @@ export default function DoctorFormPage() {
 
     try {
       if (isEdit) {
-        await updateDoctor(id, formData)
+        await saveUpdatedDoctor({ id, formData })
         showSuccess({
           title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
           message: DIALOG_MESSAGES.DOCTOR_SAVE_SUCCESS.message,
         })
       } else {
-        await createDoctor(formData)
+        await saveNewDoctor(formData)
         showSuccess({
           title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
           message: DIALOG_MESSAGES.DOCTOR_SAVE_SUCCESS.message,
@@ -592,7 +555,7 @@ export default function DoctorFormPage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                <SearchableSelect id="field-specialty_id" label="Specialty *" options={dropdowns.specialties} value={form.specialty_id} onChange={(v) => { setForm(f => ({...f, specialty_id: v})); if (errors.specialty_id) setErrors(e => ({...e, specialty_id: ''})); }} placeholder="Select Specialty" error={errors.specialty_id} />
+                <SearchableSelect id="field-specialty_id" label="Specialty *" options={specialties} value={form.specialty_id} onChange={(v) => { setForm(f => ({...f, specialty_id: v})); if (errors.specialty_id) setErrors(e => ({...e, specialty_id: ''})); }} placeholder="Select Specialty" error={errors.specialty_id} />
                 <div className="admin-form-group">
                   <label className="admin-form-label">Specialty (Bangla)</label>
                   <input className="admin-form-input" name="specialty_bn" value={form.specialty_bn} onChange={handleChange} placeholder="বিশেষজ্ঞ..." />
@@ -704,10 +667,10 @@ export default function DoctorFormPage() {
           </div>
           <div className="admin-card-body" style={{ overflow: 'visible' }}>
              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 24 }}>
-                <SearchableSelect label="Division" options={dropdowns.divisions} value={form.division_id} onChange={(v) => setForm(f => ({...f, division_id: v, district_id: '', upazila_id: '', union_id: ''}))} placeholder="All Divisions" error={errors.division_id} />
-                <SearchableSelect label="District" options={dropdowns.districts} value={form.district_id} onChange={(v) => setForm(f => ({...f, district_id: v, upazila_id: '', union_id: ''}))} placeholder="All Districts" disabled={!form.division_id} error={errors.district_id} />
-                <SearchableSelect label="Upazila" options={dropdowns.upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({...f, upazila_id: v, union_id: ''}))} placeholder="All Upazilas" disabled={!form.district_id} error={errors.upazila_id} />
-                <SearchableSelect label="Union" options={dropdowns.unions} value={form.union_id} onChange={(v) => setForm(f => ({...f, union_id: v}))} placeholder="All Unions" disabled={!form.upazila_id} error={errors.union_id} />
+                <SearchableSelect label="Division" options={divisions} value={form.division_id} onChange={(v) => setForm(f => ({...f, division_id: v, district_id: '', upazila_id: '', union_id: ''}))} placeholder="All Divisions" error={errors.division_id} />
+                <SearchableSelect label="District" options={districts} value={form.district_id} onChange={(v) => setForm(f => ({...f, district_id: v, upazila_id: '', union_id: ''}))} placeholder="All Districts" disabled={!form.division_id} error={errors.district_id} />
+                <SearchableSelect label="Upazila" options={upazilas} value={form.upazila_id} onChange={(v) => setForm(f => ({...f, upazila_id: v, union_id: ''}))} placeholder="All Upazilas" disabled={!form.district_id} error={errors.upazila_id} />
+                <SearchableSelect label="Union" options={unions} value={form.union_id} onChange={(v) => setForm(f => ({...f, union_id: v}))} placeholder="All Unions" disabled={!form.upazila_id} error={errors.union_id} />
              </div>
 
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>

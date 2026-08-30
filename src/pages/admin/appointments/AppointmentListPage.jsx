@@ -1,8 +1,8 @@
 // AppointmentListPage.jsx — Admin appointment management with premium filters
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { getAppointments, updateAppointment, deleteAppointment, getDoctors, getHospitals } from '../../../api/adminApi'
+import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -103,12 +103,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
   const navigate = useNavigate()
-  const [appointments, setAppointments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [doctors, setDoctors] = useState([])
-  const [hospitals, setHospitals] = useState([])
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [changingStatus, setChangingStatus] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
 
@@ -124,55 +119,28 @@ export default function AppointmentListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => {
-    loadInitialData()
-    fetchAppointments()
-  }, [])
-
-  useEffect(() => {
-    fetchAppointments()
+  // Memoized server filters for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = {}
+    if (date) params.date = date
+    if (month) params.month = month
+    if (year) params.year = year
+    if (doctorId) params.doctor_id = doctorId
+    if (hospitalId) params.hospital_id = hospitalId
+    if (roleFilter) params.role = roleFilter
+    if (activeTab !== 'all') params.status = activeTab
+    return params
   }, [date, month, year, doctorId, hospitalId, roleFilter, activeTab])
 
-  const loadInitialData = async () => {
-    try {
-      const [docRes, hospRes] = await Promise.all([
-        getDoctors({ per_page: 500 }),
-        getHospitals({ per_page: 500 })
-      ])
-      setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
-      setHospitals(hospRes.data?.data?.data || hospRes.data?.data || [])
-    } catch (err) {
-      console.error('Failed to load filter data', err)
-    }
-  }
-
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true)
-      const params = { per_page: 5000 }
-      if (search) params.search = search
-      if (date) params.date = date
-      if (month) params.month = month
-      if (year) params.year = year
-      if (doctorId) params.doctor_id = doctorId
-      if (hospitalId) params.hospital_id = hospitalId
-      if (roleFilter) params.role = roleFilter
-      if (activeTab !== 'all') params.status = activeTab
-
-      const res = await getAppointments(params)
-      setAppointments(res.data?.data?.data || res.data?.data || [])
-    } catch (err) {
-      console.error('Failed to fetch appointments', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { appointments, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
+  const { doctors, hospitals } = useAdminAppointmentLookups()
+  const { deleteAppointment, isDeleting: deleting, updateAppointmentStatus } = useAdminAppointmentMutations()
 
   const handleStatusChange = async (id, newStatus) => {
     setChangingStatus(id)
     try {
-      await updateAppointment(id, { status: newStatus })
-      setAppointments(appointments.map(a => a.id === id ? { ...a, status: newStatus } : a))
+      await updateAppointmentStatus({ id, status: newStatus })
     } catch (err) {
       console.error('Failed to update status', err)
     } finally {
@@ -182,14 +150,11 @@ export default function AppointmentListPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       await deleteAppointment(deleteTarget.id)
-      setAppointments(appointments.filter(a => a.id !== deleteTarget.id))
     } catch (err) {
       console.error('Failed to delete appointment', err)
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }
@@ -203,7 +168,6 @@ export default function AppointmentListPage() {
     setHospitalId('')
     setRoleFilter('')
     setActiveTab('all')
-    setTimeout(fetchAppointments, 0)
   }
 
   const roleOptions = [

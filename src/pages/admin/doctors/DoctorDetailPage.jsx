@@ -1,42 +1,16 @@
 // DoctorDetailPage.jsx — Premium Detailed View for Admin
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getDoctor, getChambers } from '../../../api/adminApi'
+import { useAdminDoctorDetail } from '../../../features/doctors/useAdminDoctors'
 
 export default function DoctorDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const printRef = useRef(null)
-  const [doctor, setDoctor] = useState(null)
-  const [chambers, setChambers] = useState([])
-  const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [id])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const [docRes, chamRes] = await Promise.all([
-        getDoctor(id),
-        getChambers({ doctor_id: id })
-      ])
-
-      const doc = docRes.data?.data || docRes.data
-      setDoctor(doc)
-      const allChambers = chamRes.data?.data || chamRes.data || []
-      const filtered = allChambers.length > 0 ? allChambers : (doc?.chambers || [])
-      setChambers(filtered)
-    } catch (err) {
-      
-      navigate('/admin/doctors')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { doctor, chambers, isLoading: loading } = useAdminDoctorDetail(id)
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return

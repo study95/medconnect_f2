@@ -1,42 +1,16 @@
 // HospitalDetailPage.jsx — Premium Hospital Profile View for Admin
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getHospital, getDoctors, getChambers } from '../../../api/adminApi'
+import { useAdminHospitalDetail } from '../../../features/hospitals/useAdminHospitals'
 
 export default function HospitalDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const printRef = useRef(null)
-  const [hospital, setHospital] = useState(null)
-  const [doctors, setDoctors] = useState([])
-  const [chambers, setChambers] = useState([])
-  const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [id])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const [hospRes, docRes, chamRes] = await Promise.all([
-        getHospital(id),
-        getDoctors({ hospital_id: id }),
-        getChambers({ hospital_id: id })
-      ])
-
-      setHospital(hospRes.data?.data || hospRes.data)
-      setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
-      setChambers(chamRes.data?.data || chamRes.data || [])
-    } catch (err) {
-      
-      navigate('/admin/hospitals')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { hospital, doctors, chambers, isLoading: loading } = useAdminHospitalDetail(id)
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return

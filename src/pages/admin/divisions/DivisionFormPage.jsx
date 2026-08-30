@@ -2,7 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { getDivision, createDivision, updateDivision } from '../../../api/adminApi'
+import { useDivisionDetail, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 export default function DivisionFormPage() {
   const { id } = useParams()
@@ -10,26 +10,24 @@ export default function DivisionFormPage() {
   const isEdit = !!id
 
   const [form, setForm] = useState({ name: '', bangla_name: '' })
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
-  useEffect(() => {
-    if (isEdit) loadDivision()
-  }, [id])
+  // Enterprise TanStack Query Hooks
+  const { division, isLoading: loading } = useDivisionDetail(id)
+  const {
+    createDivision: saveCreateDivision,
+    updateDivision: saveUpdateDivision,
+    isCreatingDivision,
+    isUpdatingDivision,
+  } = useAdminLocationMutations()
 
-  const loadDivision = async () => {
-    setLoading(true)
-    try {
-      const res = await getDivision(id)
-      const d = res.data?.data || res.data
-      if (!d) throw new Error('Division not found')
-      setForm({ name: d.name || '', bangla_name: d.bangla_name || '' })
-    } catch (err) {
-} finally {
-      setLoading(false)
+  const saving = isCreatingDivision || isUpdatingDivision
+
+  useEffect(() => {
+    if (division) {
+      setForm({ name: division.name || '', bangla_name: division.bangla_name || '' })
     }
-  }
+  }, [division])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -38,19 +36,15 @@ export default function DivisionFormPage() {
       return
     }
 
-    setSaving(true)
     try {
       if (isEdit) {
-        await updateDivision(id, form)
-        
+        await saveUpdateDivision(id, form)
       } else {
-        await createDivision(form)
-        
+        await saveCreateDivision(form)
       }
       navigate('/admin/divisions')
     } catch (err) {
-} finally {
-      setSaving(false)
+      console.error('Failed to save division', err)
     }
   }
 

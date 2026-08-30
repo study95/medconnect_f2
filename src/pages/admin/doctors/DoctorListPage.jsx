@@ -4,7 +4,7 @@ import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { getDoctors, deleteDoctor, updateDoctor, getDivisions, getDistricts, getUpazilas, getUnions, getHospitals, getSpecialties } from '../../../api/adminApi'
+import { useAdminDoctors, useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -108,11 +108,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function DoctorListPage() {
   const { user, isAdmin, isManager, isDoctor } = useAuth()
   const navigate = useNavigate()
-  const [doctors, setDoctors] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
   // Filters State
@@ -125,97 +122,55 @@ export default function DoctorListPage() {
   const [telemedicineFilter, setTelemedicineFilter] = useState('')
   const [specialtyId, setSpecialtyId] = useState('')
 
-  // Options State
-  const [divisions, setDivisions] = useState([])
-  const [districts, setDistricts] = useState([])
-  const [upazilas, setUpazilas] = useState([])
-  const [unions, setUnions] = useState([])
-  const [specialties, setSpecialties] = useState([])
-
-  useEffect(() => {
-    fetchDoctors()
-    loadInitialData()
-  }, [])
-
-  useEffect(() => {
-    fetchDoctors()
+  // Server-side filter memo for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = {}
+    if (divisionId) params.division_id = divisionId
+    if (districtId) params.district_id = districtId
+    if (upazilaId) params.upazila_id = upazilaId
+    if (unionId) params.union_id = unionId
+    if (statusFilter !== '') params.is_active = statusFilter
+    if (top10Filter !== '') params.top_10_doctor = top10Filter
+    if (telemedicineFilter !== '') params.available_telemedicine = telemedicineFilter
+    if (specialtyId) params.specialty_id = specialtyId
+    return params
   }, [divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
 
-  const loadInitialData = async () => {
-    try {
-      const [divRes, specRes] = await Promise.all([
-        getDivisions(),
-        getSpecialties()
-      ])
-      setDivisions(divRes.data?.data || [])
-      setSpecialties(specRes.data?.data || [])
-    } catch (err) {
-      console.error('Failed to load initial filter data', err)
-    }
+  // Enterprise TanStack Query Hooks
+  const { doctors, isLoading: loading, isFetching: refreshing, refetch: fetchDoctors } = useAdminDoctors(serverFilters)
+  const { divisions, specialties, districts, upazilas, unions } = useAdminDoctorLookups({ divisionId, districtId, upazilaId })
+  const { deleteDoctor, isDeleting: deleting, toggleStatus } = useAdminDoctorMutations()
+
+  const handleDivisionChange = (val) => {
+    setDivisionId(val)
+    setDistrictId('')
+    setUpazilaId('')
+    setUnionId('')
   }
 
-  useEffect(() => {
-    if (divisionId) {
-      getDistricts({ division_id: divisionId }).then(res => setDistricts(res.data?.data || []))
-    } else {
-      setDistricts([]); setDistrictId(''); setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [divisionId])
+  const handleDistrictChange = (val) => {
+    setDistrictId(val)
+    setUpazilaId('')
+    setUnionId('')
+  }
 
-  useEffect(() => {
-    if (districtId) {
-      getUpazilas({ district_id: districtId }).then(res => setUpazilas(res.data?.data || []))
-    } else {
-      setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [districtId])
-
-  useEffect(() => {
-    if (upazilaId) {
-      getUnions({ upazila_id: upazilaId }).then(res => setUnions(res.data?.data || []))
-    } else {
-      setUnions([]); setUnionId('')
-    }
-  }, [upazilaId])
-
-  const fetchDoctors = async () => {
-    try {
-      setLoading(true)
-      const params = { per_page: 5000, admin_view: 1 }
-      if (search) params.search = search
-      if (divisionId) params.division_id = divisionId
-      if (districtId) params.district_id = districtId
-      if (upazilaId) params.upazila_id = upazilaId
-      if (unionId) params.union_id = unionId
-      if (statusFilter !== '') params.is_active = statusFilter
-      if (top10Filter !== '') params.top_10_doctor = top10Filter
-      if (telemedicineFilter !== '') params.available_telemedicine = telemedicineFilter
-      if (specialtyId) params.specialty_id = specialtyId
-
-      const res = await getDoctors(params)
-      setDoctors(res.data?.data?.data || res.data?.data || res.data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+  const handleUpazilaChange = (val) => {
+    setUpazilaId(val)
+    setUnionId('')
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       await deleteDoctor(deleteTarget.id)
-      setDoctors(doctors.filter(d => d.id !== deleteTarget.id))
     } catch (err) {
-      console.error(err)
+      console.error('Failed to delete doctor', err)
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }
 
-  const clearFilters = async () => {
+  const clearFilters = () => {
     setSearch('')
     setDivisionId('')
     setDistrictId('')
@@ -225,16 +180,13 @@ export default function DoctorListPage() {
     setTop10Filter('')
     setTelemedicineFilter('')
     setSpecialtyId('')
-    setTimeout(fetchDoctors, 0)
   }
 
   const handleToggleStatus = async (doctor) => {
     try {
-      const newStatus = !doctor.is_active
-      await updateDoctor(doctor.id, { is_active: newStatus ? 1 : 0 })
-      setDoctors(doctors.map(d => d.id === doctor.id ? { ...d, is_active: newStatus } : d))
+      await toggleStatus({ id: doctor.id, is_active: !doctor.is_active })
     } catch (err) {
-      console.error(err)
+      console.error('Failed to toggle doctor status', err)
     }
   }
 
@@ -425,9 +377,9 @@ export default function DoctorListPage() {
         hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '')}
         onClearFilters={clearFilters}
         activeFilters={[
-          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
-          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
-          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
+          divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => handleDivisionChange('') },
+          districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => handleDistrictChange('') },
+          upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => handleUpazilaChange('') },
           unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
           specialtyId && { key: 'specialty', label: `Specialty: ${specialties.find(s => String(s.id) === String(specialtyId))?.name || specialtyId}`, onRemove: () => setSpecialtyId('') },
           statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === '1' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
@@ -451,14 +403,14 @@ export default function DoctorListPage() {
           placeholder="All Divisions"
           options={divisions}
           value={divisionId}
-          onChange={setDivisionId}
+          onChange={handleDivisionChange}
         />
         <SearchableSelect
           label="District"
           placeholder="All Districts"
           options={districts}
           value={districtId}
-          onChange={setDistrictId}
+          onChange={handleDistrictChange}
           disabled={!divisionId}
         />
         <SearchableSelect
@@ -466,7 +418,7 @@ export default function DoctorListPage() {
           placeholder="All Upazilas"
           options={upazilas}
           value={upazilaId}
-          onChange={setUpazilaId}
+          onChange={handleUpazilaChange}
           disabled={!districtId}
         />
         <SearchableSelect

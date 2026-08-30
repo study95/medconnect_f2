@@ -1,7 +1,6 @@
 // AppointmentViewPage.jsx — Premium Detailed Appointment View
-import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getAppointment, updateAppointment } from '../../../api/adminApi'
+import { useAdminAppointmentDetail, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
 
@@ -9,37 +8,14 @@ export default function AppointmentViewPage() {
   const { id } = useParams()
   const { isAdmin, isDoctor } = useAuth()
   const navigate = useNavigate()
-  const [appt, setAppt] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState(false)
-
-  useEffect(() => {
-    fetchAppointment()
-  }, [id])
-
-  const fetchAppointment = async () => {
-    try {
-      setLoading(true)
-      const res = await getAppointment(id)
-      setAppt(res.data?.data || res.data)
-    } catch (err) {
-      
-      navigate('/admin/appointments')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { appointment: appt, isLoading: loading } = useAdminAppointmentDetail(id)
+  const { updateAppointmentStatus, isUpdatingStatus: updating } = useAdminAppointmentMutations()
 
   const handleStatusUpdate = async (newStatus) => {
     try {
-      setUpdating(true)
-      await updateAppointment(id, { status: newStatus })
-      setAppt(prev => ({ ...prev, status: newStatus }))
-      
+      await updateAppointmentStatus({ id, status: newStatus })
     } catch (err) {
-      
-    } finally {
-      setUpdating(false)
+      console.error('Failed to update appointment status:', err)
     }
   }
 

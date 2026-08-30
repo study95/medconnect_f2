@@ -1,7 +1,8 @@
 // PatientProfilePage.jsx — Premium Patient Profile & Clinical History
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getUser, getAdminPatient, getAppointments, getPrescriptions, getPrescription } from '../../../api/adminApi'
+import { getPrescription } from '../../../api/adminApi'
+import { useAdminPatientDetail } from '../../../features/patients/useAdminPatients'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import { calculateAge } from '../../../utils/dateUtils'
@@ -14,79 +15,11 @@ export default function PatientProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isManager, isDoctor, isAdmin } = useAuth()
-  const [patient, setPatient] = useState(null)
-  const [appointments, setAppointments] = useState([])
-  const [prescriptions, setPrescriptions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { patient, appointments, prescriptions, isLoading: loading } = useAdminPatientDetail(id, { isManager })
   const [activeSection, setActiveSection] = useState('appointments')
   const [exportingId, setExportingId] = useState(null)
   const [exportingRx, setExportingRx] = useState(null)
   const silentPaperRef = useRef(null)
-
-  useEffect(() => { loadData() }, [id])
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      let patientData = null
-      let targetUserId = null
-      let targetPatientId = id
-
-      // 1. Try to load from /admin/patients/:id first
-      try {
-        const pRes = await getAdminPatient(id)
-        if (pRes.data?.data || pRes.data) {
-          patientData = pRes.data?.data || pRes.data
-          targetUserId = patientData.user_id || patientData.user?.id || id
-          targetPatientId = patientData.id || id
-        }
-      } catch (pErr) {
-        // Fallback to /users/:id
-        try {
-          const uRes = await getUser(id)
-          patientData = uRes.data?.data || uRes.data
-          targetUserId = patientData?.id
-          targetPatientId = patientData?.patient?.id || patientData?.id
-        } catch (uErr) {
-          console.warn('Could not load user directly', uErr)
-        }
-      }
-
-      if (!patientData) {
-        setPatient(null)
-        setLoading(false)
-        return
-      }
-
-      setPatient(patientData)
-
-      // 2. Fetch appointments
-      try {
-        const apptRes = await getAppointments({ user_id: targetUserId || targetPatientId })
-        const apptList = apptRes.data?.data?.data || apptRes.data?.data || []
-        setAppointments(Array.isArray(apptList) ? apptList : [])
-      } catch (apptErr) {
-        console.warn('Failed to load appointments', apptErr)
-        setAppointments([])
-      }
-
-      // 3. Fetch prescriptions (skip for managers per backend security)
-      if (!isManager) {
-        try {
-          const pressRes = await getPrescriptions({ patient_id: targetUserId || targetPatientId })
-          const pressList = pressRes.data?.data?.data || pressRes.data?.data || []
-          setPrescriptions(Array.isArray(pressList) ? pressList : [])
-        } catch (pressErr) {
-          console.warn('Failed to load prescriptions', pressErr)
-          setPrescriptions([])
-        }
-      }
-    } catch (err) {
-      console.error('Error loading patient data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleDownloadPrescription = async (rxId) => {
     if (exportingId) return

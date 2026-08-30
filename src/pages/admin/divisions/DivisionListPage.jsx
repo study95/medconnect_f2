@@ -2,7 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getDivisions, deleteDivision } from '../../../api/adminApi'
+import { useDivisions, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -14,39 +14,20 @@ export default function DivisionListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    fetchDivisions()
-  }, [])
-
-  const fetchDivisions = async () => {
-    try {
-      setLoading(true)
-      const res = await getDivisions()
-      setItems(res.data?.data || res.data || [])
-    } catch (err) {
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { divisions: items, isLoading: loading, refetch: fetchDivisions } = useDivisions()
+  const { deleteDivision: saveDeleteDivision, isDeletingDivision: deleting } = useAdminLocationMutations()
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      await deleteDivision(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
-    } catch (err) {
-    } finally {
-      setDeleting(false)
+      await saveDeleteDivision(deleteTarget.id)
       setDeleteTarget(null)
+    } catch (err) {
+      console.error('Failed to delete division', err)
     }
   }
 

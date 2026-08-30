@@ -4,10 +4,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import {
-  getHospital, createHospital, updateHospital,
-  getDivisions, getDistricts, getUpazilas, getUnions
-} from '../../../api/adminApi'
+import { getHospital } from '../../../api/adminApi'
+import { useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
 
 const HOSPITAL_TYPES = [
   { id: 'Private Hospital', name: 'Private Hospital (বেসরকারি হাসপাতাল)' },
@@ -136,48 +134,19 @@ export default function HospitalFormPage() {
   })
 
   const [tests, setTests] = useState([])
-  const [locationData, setLocationData] = useState({
-    divisions: [], districts: [], upazilas: [], unions: []
+
+  const { divisions, districts, upazilas, unions } = useAdminHospitalLookups({
+    divisionId: form.division_id,
+    districtId: form.district_id,
+    upazilaId: form.upazila_id,
   })
+  const { createHospital: saveNewHospital, updateHospital: saveUpdatedHospital } = useAdminHospitalMutations()
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
-  useEffect(() => { loadInitialData() }, [])
   useEffect(() => { if (isEdit) loadHospital() }, [id])
-
-  // Location Cascading Logic
-  useEffect(() => {
-    if (form.division_id) {
-      getDistricts({ division_id: form.division_id }).then(res => setLocationData(p => ({ ...p, districts: res.data?.data || [] })))
-    } else {
-      setLocationData(p => ({ ...p, districts: [], upazilas: [], unions: [] }))
-    }
-  }, [form.division_id])
-
-  useEffect(() => {
-    if (form.district_id) {
-      getUpazilas({ district_id: form.district_id }).then(res => setLocationData(p => ({ ...p, upazilas: res.data?.data || [] })))
-    } else {
-      setLocationData(p => ({ ...p, upazilas: [], unions: [] }))
-    }
-  }, [form.district_id])
-
-  useEffect(() => {
-    if (form.upazila_id) {
-      getUnions({ upazila_id: form.upazila_id }).then(res => setLocationData(p => ({ ...p, unions: res.data?.data || [] })))
-    } else {
-      setLocationData(p => ({ ...p, unions: [] }))
-    }
-  }, [form.upazila_id])
-
-  const loadInitialData = async () => {
-    try {
-      const res = await getDivisions()
-      setLocationData(p => ({ ...p, divisions: res.data?.data || [] }))
-    } catch (err) { console.error(err) }
-  }
 
   const loadHospital = async () => {
     setLoading(true)
@@ -351,13 +320,13 @@ export default function HospitalFormPage() {
     try {
       if (isEdit) {
         formData.append('_method', 'PUT')
-        await updateHospital(id, formData)
+        await saveUpdatedHospital({ id, formData })
         showSuccess({
           title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
           message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
         })
       } else {
-        await createHospital(formData)
+        await saveNewHospital(formData)
         showSuccess({
           title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
           message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
@@ -478,10 +447,10 @@ export default function HospitalFormPage() {
             <h3 className="admin-card-title" style={{ color: '#10B981' }}>Geographical Location & Address</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
-            <SearchableSelect id="field-division_id" label="Division *" options={locationData.divisions} value={form.division_id} onChange={(val) => { setForm(f => ({ ...f, division_id: val, district_id: '', upazila_id: '', union_id: '' })); if (errors.division_id) setErrors(e => ({ ...e, division_id: '' })) }} placeholder="Select Division" error={errors.division_id} />
-            <SearchableSelect id="field-district_id" label="District *" options={locationData.districts} value={form.district_id} onChange={(val) => { setForm(f => ({ ...f, district_id: val, upazila_id: '', union_id: '' })); if (errors.district_id) setErrors(e => ({ ...e, district_id: '' })) }} placeholder="Select District" disabled={!form.division_id} error={errors.district_id} />
-            <SearchableSelect label="Upazila" options={locationData.upazilas} value={form.upazila_id} onChange={(val) => setForm(f => ({ ...f, upazila_id: val, union_id: '' }))} placeholder="Select Upazila" disabled={!form.district_id} />
-            <SearchableSelect label="Union" options={locationData.unions} value={form.union_id} onChange={(val) => setForm(f => ({ ...f, union_id: val }))} placeholder="Select Union" disabled={!form.upazila_id} />
+            <SearchableSelect id="field-division_id" label="Division *" options={divisions} value={form.division_id} onChange={(val) => { setForm(f => ({ ...f, division_id: val, district_id: '', upazila_id: '', union_id: '' })); if (errors.division_id) setErrors(e => ({ ...e, division_id: '' })) }} placeholder="Select Division" error={errors.division_id} />
+            <SearchableSelect id="field-district_id" label="District *" options={districts} value={form.district_id} onChange={(val) => { setForm(f => ({ ...f, district_id: val, upazila_id: '', union_id: '' })); if (errors.district_id) setErrors(e => ({ ...e, district_id: '' })) }} placeholder="Select District" disabled={!form.division_id} error={errors.district_id} />
+            <SearchableSelect label="Upazila" options={upazilas} value={form.upazila_id} onChange={(val) => setForm(f => ({ ...f, upazila_id: val, union_id: '' }))} placeholder="Select Upazila" disabled={!form.district_id} />
+            <SearchableSelect label="Union" options={unions} value={form.union_id} onChange={(val) => setForm(f => ({ ...f, union_id: val }))} placeholder="Select Union" disabled={!form.upazila_id} />
 
             <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
               <label className="admin-form-label">Full Hospital Address *</label>

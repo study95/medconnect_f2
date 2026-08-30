@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { getSpecialty, createSpecialty, updateSpecialty } from '../../../api/adminApi'
+import { useAdminSpecialtyDetail, useAdminSpecialtyMutations } from '../../../hooks/admin/useAdminSpecialties'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 export default function SpecialtyFormPage() {
@@ -11,32 +11,21 @@ export default function SpecialtyFormPage() {
   const isEdit = !!id
 
   const [form, setForm] = useState({ name: '', slug: '' })
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
-  useEffect(() => {
-    if (isEdit) loadSpecialty()
-  }, [id])
+  // Enterprise TanStack Query Hooks
+  const { specialty: fetchedSpecialty, isLoading: loading } = useAdminSpecialtyDetail(isEdit ? id : null)
+  const { createSpecialty: saveNewSpecialty, updateSpecialty: saveUpdatedSpecialty, isCreating, isUpdating } = useAdminSpecialtyMutations()
+  const saving = isCreating || isUpdating
 
-  const loadSpecialty = async () => {
-    setLoading(true)
-    try {
-      const res = await getSpecialty(id)
-      const d = res.data?.data || res.data
-      if (!d) throw new Error('Specialty not found')
-      const specialty = d.specialty || d
+  useEffect(() => {
+    if (fetchedSpecialty) {
       setForm({
-        name: specialty.name || '',
-        slug: specialty.slug || '',
+        name: fetchedSpecialty.name || '',
+        slug: fetchedSpecialty.slug || '',
       })
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load specialty details.'))
-      navigate('/admin/specialties')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [fetchedSpecialty])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -62,7 +51,6 @@ export default function SpecialtyFormPage() {
       return
     }
 
-    setSaving(true)
     setErrors({})
     try {
       const payload = {
@@ -71,11 +59,11 @@ export default function SpecialtyFormPage() {
       }
 
       if (isEdit) {
-        const res = await updateSpecialty(id, payload)
-        toast.success(res.data?.message || 'Specialty updated successfully')
+        const res = await saveUpdatedSpecialty({ id, data: payload })
+        toast.success(res?.data?.message || 'Specialty updated successfully')
       } else {
-        const res = await createSpecialty(payload)
-        toast.success(res.data?.message || 'Specialty created successfully')
+        const res = await saveNewSpecialty(payload)
+        toast.success(res?.data?.message || 'Specialty created successfully')
       }
       navigate('/admin/specialties')
     } catch (err) {
@@ -98,8 +86,6 @@ export default function SpecialtyFormPage() {
         }
         console.error('Failed to save specialty', err)
       }
-    } finally {
-      setSaving(false)
     }
   }
 

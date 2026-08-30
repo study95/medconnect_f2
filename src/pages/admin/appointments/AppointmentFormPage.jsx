@@ -1,11 +1,9 @@
 // AppointmentFormPage.jsx — Premium Appointment Create/Edit Form
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, Link, useSearchParams, useParams } from 'react-router-dom'
 import { getErrorMessage } from '../../../utils/errorHelper'
-import { 
-  getDoctors, getChambers, getPatients, createAppointment, 
-  createWalkInPatient, getAppointment, updateAppointment 
-} from '../../../api/adminApi'
+import { getAppointment } from '../../../api/adminApi'
+import { useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import { useAuth } from '../../../context/AuthContext'
 
 // Premium Searchable Select for Patients/Doctors
@@ -120,43 +118,31 @@ export default function AppointmentFormPage() {
   // Walk-in patient logic
   const [showWalkIn, setShowWalkIn] = useState(false)
   const [walkIn, setWalkIn] = useState({ name: '', phone: '', email: '' })
-  const [creatingPatient, setCreatingPatient] = useState(false)
+  const [createdWalkInPatients, setCreatedWalkInPatients] = useState([])
 
-  const [doctors, setDoctors] = useState([])
-  const [chambers, setChambers] = useState([])
-  const [patients, setPatients] = useState([])
+  const { doctors, patients: lookupPatients, chambers } = useAdminAppointmentLookups({
+    doctorId: form.doctor_id,
+  })
+  const {
+    createAppointment: saveNewAppointment,
+    updateAppointment: saveUpdatedAppointment,
+    createWalkInPatient: saveWalkInPatient,
+    isCreatingWalkIn: creatingPatient,
+  } = useAdminAppointmentMutations()
+
+  const patients = useMemo(() => {
+    return [...createdWalkInPatients, ...lookupPatients]
+  }, [createdWalkInPatients, lookupPatients])
+
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
-    loadInitialData()
     if (isEdit) loadAppointment()
     if (preSelectedDoctorId) setForm(f => ({ ...f, doctor_id: preSelectedDoctorId }))
     if (preSelectedPatientId) setForm(f => ({ ...f, patient_id: preSelectedPatientId }))
-  }, [id])
-
-  useEffect(() => {
-    if (form.doctor_id) fetchChambers(form.doctor_id)
-  }, [form.doctor_id])
-
-  const loadInitialData = async () => {
-    try {
-      const [docRes, patRes] = await Promise.all([
-        getDoctors({ per_page: 1000 }),
-        getPatients({ per_page: 1000 })
-      ])
-      setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
-      setPatients(patRes.data?.data?.data || patRes.data?.data || [])
-    } catch (err) { console.error(err) }
-  }
-
-  const fetchChambers = async (docId) => {
-    try {
-      const res = await getChambers(docId)
-      setChambers(res.data?.data || [])
-    } catch (err) { console.error(err) }
-  }
+  }, [id, preSelectedDoctorId, preSelectedPatientId])
 
   const loadAppointment = async () => {
     setLoading(true)
@@ -183,17 +169,16 @@ export default function AppointmentFormPage() {
   const handleWalkInSubmit = async (e) => {
     e.preventDefault()
     if (!walkIn.name || !walkIn.phone) return 
-    setCreatingPatient(true)
     try {
-      const res = await createWalkInPatient(walkIn)
+      const res = await saveWalkInPatient(walkIn)
       const newPatient = res.data?.data || res.data
-      setPatients([newPatient, ...patients])
-      setForm(f => ({ ...f, patient_id: newPatient.id }))
+      if (newPatient) {
+        setCreatedWalkInPatients(prev => [newPatient, ...prev])
+        setForm(f => ({ ...f, patient_id: newPatient.id }))
+      }
       setShowWalkIn(false)
     } catch (err) {
-      console.error(err)
-    } finally {
-      setCreatingPatient(false)
+      console.error('Failed to create walk-in patient', err)
     }
   }
 
@@ -203,9 +188,9 @@ export default function AppointmentFormPage() {
     setErrors({})
     try {
       if (isEdit) {
-        await updateAppointment(id, form)
+        await saveUpdatedAppointment({ id, data: form })
       } else {
-        await createAppointment(form)
+        await saveNewAppointment(form)
       }
       navigate('/admin/appointments')
     } catch (err) {

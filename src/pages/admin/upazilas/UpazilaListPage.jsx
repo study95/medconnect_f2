@@ -1,11 +1,9 @@
-// UpazilaListPage.jsx — Premium Upazila Management with Deep Filtering
+// UpazilaListPage.jsx — Premium Upazila Management (Admin)
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
-import { 
-  getUpazilas, getDistricts, getDivisions, deleteUpazila 
-} from '../../../api/adminApi'
+import { useDivisions, useDistricts, useUpazilas, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -113,78 +111,32 @@ export default function UpazilaListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   
   // Filtering States
   const [divisionFilter, setDivisionFilter] = useState('')
   const [districtFilter, setDistrictFilter] = useState('')
-  
-  // Dropdown Data
-  const [divisions, setDivisions] = useState([])
-  const [districts, setDistricts] = useState([])
-  
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    loadInitialData()
-  }, [])
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { districts = [] } = useDistricts(divisionFilter || null)
+  const { upazilas: items = [], isLoading: loading, refetch: fetchItems } = useUpazilas(districtFilter || null)
+  const { deleteUpazila: saveDeleteUpazila, isDeletingUpazila: deleting } = useAdminLocationMutations()
 
-  useEffect(() => {
-    fetchItems()
-  }, [])
-
-  // Cascading Logic: Update districts list when division filter changes
-  useEffect(() => {
-    if (divisionFilter) {
-      getDistricts({ division_id: divisionFilter }).then(res => {
-        const data = res.data?.data?.data || res.data?.data || res.data || []
-        setDistricts(Array.isArray(data) ? data : [])
-      })
-    } else {
-      setDistricts([])
-      setDistrictFilter('')
-    }
-  }, [divisionFilter])
-
-  const loadInitialData = async () => {
-    try {
-      const divRes = await getDivisions()
-      setDivisions(divRes.data?.data || [])
-    } catch (err) {
-      console.error('Failed to load divisions', err)
-    }
-  }
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true)
-      const params = {}
-      if (districtFilter) params.district_id = districtFilter
-      else if (divisionFilter) params.division_id = divisionFilter
-      
-      const res = await getUpazilas(params)
-      setItems(res.data.data || res.data || [])
-    } catch (err) {
-} finally {
-      setLoading(false)
-    }
+  const handleDivisionChange = (val) => {
+    setDivisionFilter(val)
+    setDistrictFilter('')
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      await deleteUpazila(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
-    } catch (err) {
-} finally {
-      setDeleting(false)
+      await saveDeleteUpazila(deleteTarget.id)
       setDeleteTarget(null)
+    } catch (err) {
+      console.error('Failed to delete upazila', err)
     }
   }
 
@@ -192,13 +144,14 @@ export default function UpazilaListPage() {
     setSearch('')
     setDivisionFilter('')
     setDistrictFilter('')
-    setTimeout(fetchItems, 0)
   }
 
   const filtered = items.filter(i => 
     i.name?.toLowerCase().includes(search.toLowerCase()) ||
     i.bangla_name?.includes(search)
   )
+
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
   const hasActiveFilters = Boolean(search || divisionFilter || districtFilter)
 
@@ -214,7 +167,7 @@ export default function UpazilaListPage() {
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search upazila by name, Bengali name..."
@@ -225,7 +178,7 @@ export default function UpazilaListPage() {
         hasActiveFilters={Boolean(divisionFilter || districtFilter)}
         onClearFilters={() => { setDivisionFilter(''); setDistrictFilter('') }}
         activeFilters={[
-          divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => setDivisionFilter('') },
+          divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => handleDivisionChange('') },
           districtFilter && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtFilter))?.name || districtFilter}`, onRemove: () => setDistrictFilter('') },
         ].filter(Boolean)}
         actions={
@@ -234,10 +187,11 @@ export default function UpazilaListPage() {
           </Link>
         }
       >
-        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionFilter} onChange={setDivisionFilter} />
+        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionFilter} onChange={handleDivisionChange} />
         <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtFilter} onChange={setDistrictFilter} disabled={!divisionFilter} />
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
           <h3 className="admin-card-title">Geographic Data Table</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', background: '#E2E8F0', padding: '4px 10px', borderRadius: 20 }}>
@@ -262,7 +216,7 @@ export default function UpazilaListPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paginatedData.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <CompactUlid value={item.public_id || item.id} />
@@ -311,7 +265,7 @@ export default function UpazilaListPage() {
       </div>
 
       <TableFooter
-        total={items ? items.length : 0}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

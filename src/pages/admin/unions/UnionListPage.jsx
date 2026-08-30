@@ -4,8 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { 
-  getUnions, getUpazilas, getDistricts, getDivisions, deleteUnion 
-} from '../../../api/adminApi'
+  useDivisions, 
+  useDistricts, 
+  useUpazilas, 
+  useUnions, 
+  useAdminLocationMutations 
+} from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -113,8 +117,6 @@ export default function UnionListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   
@@ -122,82 +124,41 @@ export default function UnionListPage() {
   const [divisionFilter, setDivisionFilter] = useState('')
   const [districtFilter, setDistrictFilter] = useState('')
   const [upazilaFilter, setUpazilaFilter] = useState('')
-  
-  // Dropdown Data
-  const [divisions, setDivisions] = useState([])
-  const [districts, setDistricts] = useState([])
-  const [upazilas, setUpazilas] = useState([])
-  
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    loadDivisions()
-  }, [])
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { districts = [] } = useDistricts(divisionFilter || null)
+  const { upazilas = [] } = useUpazilas(districtFilter || null)
+  const { unions: items = [], isLoading: loading, refetch: fetchItems } = useUnions(upazilaFilter || null)
+  const { deleteUnion: saveDeleteUnion, isDeletingUnion: deleting } = useAdminLocationMutations()
 
-  useEffect(() => {
-    fetchItems()
-  }, [])
-
-  // Cascade: Division -> District
-  useEffect(() => {
-    if (divisionFilter) {
-      getDistricts({ division_id: divisionFilter }).then(res => {
-        const data = res.data?.data?.data || res.data?.data || res.data || []
-        setDistricts(Array.isArray(data) ? data : [])
-      })
-    } else {
-      setDistricts([]); setDistrictFilter('')
-    }
-  }, [divisionFilter])
-
-  // Cascade: District -> Upazila
-  useEffect(() => {
-    if (districtFilter) {
-      getUpazilas({ district_id: districtFilter }).then(res => {
-        const data = res.data?.data?.data || res.data?.data || res.data || []
-        setUpazilas(Array.isArray(data) ? data : [])
-      })
-    } else {
-      setUpazilas([]); setUpazilaFilter('')
-    }
-  }, [districtFilter])
-
-  const loadDivisions = async () => {
-    try {
-      const res = await getDivisions()
-      setDivisions(res.data?.data || [])
-    } catch {}
+  const handleDivisionChange = (val) => {
+    setDivisionFilter(val)
+    setDistrictFilter('')
+    setUpazilaFilter('')
   }
 
-  const fetchItems = async () => {
-    try {
-      setLoading(true)
-      const params = {}
-      if (upazilaFilter) params.upazila_id = upazilaFilter
-      else if (districtFilter) params.district_id = districtFilter
-      else if (divisionFilter) params.division_id = divisionFilter
-      
-      const res = await getUnions(params)
-      setItems(res.data.data || res.data || [])
-    } catch (err) {
-} finally {
-      setLoading(false)
-    }
+  const handleDistrictChange = (val) => {
+    setDistrictFilter(val)
+    setUpazilaFilter('')
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      await deleteUnion(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
-    } catch (err) {
-} finally {
-      setDeleting(false)
+      await saveDeleteUnion(deleteTarget.id)
       setDeleteTarget(null)
+    } catch (err) {
+      console.error('Failed to delete union', err)
     }
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setDivisionFilter('')
+    setDistrictFilter('')
+    setUpazilaFilter('')
   }
 
   const filtered = items.filter(i => 
@@ -205,13 +166,7 @@ export default function UnionListPage() {
     i.bangla_name?.includes(search)
   )
 
-  const clearFilters = () => {
-    setSearch('')
-    setDivisionFilter('')
-    setDistrictFilter('')
-    setUpazilaFilter('')
-    setTimeout(fetchItems, 0)
-  }
+  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
   const hasActiveFilters = Boolean(search || divisionFilter || districtFilter || upazilaFilter)
 
@@ -220,14 +175,14 @@ export default function UnionListPage() {
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
-            <span style={{ marginRight: 12 }}>🏘️</span>
-            Union Management
+            <span style={{ marginRight: 12 }}>🏡</span>
+            Union Council Management
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Granular geographic control for village-level demographic profiling</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure grassroots administrative unions for precision patient catchment</p>
         </div>
       </div>
 
-<ListToolbar
+      <ListToolbar
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search union by name, Bengali name..."
@@ -238,8 +193,8 @@ export default function UnionListPage() {
         hasActiveFilters={Boolean(divisionFilter || districtFilter || upazilaFilter)}
         onClearFilters={() => { setDivisionFilter(''); setDistrictFilter(''); setUpazilaFilter('') }}
         activeFilters={[
-          divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => setDivisionFilter('') },
-          districtFilter && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtFilter))?.name || districtFilter}`, onRemove: () => setDistrictFilter('') },
+          divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => handleDivisionChange('') },
+          districtFilter && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtFilter))?.name || districtFilter}`, onRemove: () => handleDistrictChange('') },
           upazilaFilter && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaFilter))?.name || upazilaFilter}`, onRemove: () => setUpazilaFilter('') },
         ].filter(Boolean)}
         actions={
@@ -248,22 +203,23 @@ export default function UnionListPage() {
           </Link>
         }
       >
-        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionFilter} onChange={setDivisionFilter} />
-        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtFilter} onChange={setDistrictFilter} disabled={!divisionFilter} />
+        <SearchableSelect label="Division" placeholder="All Divisions" options={divisions} value={divisionFilter} onChange={handleDivisionChange} />
+        <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtFilter} onChange={handleDistrictChange} disabled={!divisionFilter} />
         <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaFilter} onChange={setUpazilaFilter} disabled={!districtFilter} />
       </ListToolbar>
-<div className="admin-card">
+
+      <div className="admin-card">
         <div className="admin-card-header" style={{ background: '#F8FAFC' }}>
-          <h3 className="admin-card-title">Regional Union Database</h3>
+          <h3 className="admin-card-title">Geographic Data Table</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', background: '#E2E8F0', padding: '4px 10px', borderRadius: 20 }}>
-            {filtered.length} Results
+            {filtered.length} Entries
           </span>
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '30%', '25%', '20%', '15%']} headers={['ID', 'Union Name', 'Bengali Name', 'Upazila', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '25%', '25%', '25%', '15%']} headers={['ID', 'Union Name', 'Bengali Name', 'Parent Upazila', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <EmptyState hasFilters={Boolean(divisionFilter || districtFilter || upazilaFilter || search)} searchQuery={search} onClearFilters={() => { setDivisionFilter(''); setDistrictFilter(''); setUpazilaFilter('') }} onClearSearch={() => setSearch('')} icon="🏘️" title="No unions found" description="Try changing your search parameters or reset location filters." primaryAction={{ label: '+ Add Union', to: '/admin/unions/create' }} />
+          <EmptyState hasFilters={Boolean(divisionFilter || districtFilter || upazilaFilter || search)} searchQuery={search} onClearFilters={() => { setDivisionFilter(''); setDistrictFilter(''); setUpazilaFilter('') }} onClearSearch={() => setSearch('')} icon="🏡" title="No unions found" description="Try adjusting your filters or add a new union." primaryAction={{ label: '+ Add Union', to: '/admin/unions/create' }} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -272,33 +228,33 @@ export default function UnionListPage() {
                   <th style={{ width: 80, paddingLeft: 24 }}>ID</th>
                   <th>Union Name</th>
                   <th>Bangla Name</th>
-                  <th>Geographic Path</th>
+                  <th>Parent Hierarchy</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paginatedData.map(item => (
                   <tr key={item.id}>
                     <td style={{ paddingLeft: 24 }}>
                       <CompactUlid value={item.public_id || item.id} />
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: '#1E293B' }}>{item.name}</div>
+                      <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
                     </td>
                     <td>
                       <div style={{ color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>{item.bangla_name || '—'}</div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ fontSize: 10, color: '#4F46E5', background: '#F5F3FF', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: '#4F46E5', background: '#EEF2FF', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
                           {item.upazila?.district?.division?.name || '—'}
                         </span>
-                        <span style={{ color: '#CBD5E1', fontSize: 10 }}>›</span>
-                        <span style={{ fontSize: 10, color: '#1E293B', background: '#F1F5F9', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                        <span style={{ color: '#CBD5E1' }}>›</span>
+                        <span style={{ fontSize: 11, color: '#00A88C', background: '#F0FDFA', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
                           {item.upazila?.district?.name || '—'}
                         </span>
-                        <span style={{ color: '#CBD5E1', fontSize: 10 }}>›</span>
-                        <span style={{ fontSize: 10, color: '#00A88C', background: '#F0FDFA', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                        <span style={{ color: '#CBD5E1' }}>›</span>
+                        <span style={{ fontSize: 11, color: '#1E293B', background: '#F1F5F9', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
                           {item.upazila?.name || '—'}
                         </span>
                       </div>
@@ -330,7 +286,7 @@ export default function UnionListPage() {
       </div>
 
       <TableFooter
-        total={items ? items.length : 0}
+        total={filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
@@ -339,8 +295,8 @@ export default function UnionListPage() {
 
       <DeleteModal 
         show={!!deleteTarget} 
-        title="Remove Union" 
-        message={`Are you sure you want to remove "${deleteTarget?.name}"? This will affect localized demographic data.`} 
+        title="Delete Union" 
+        message={`Are you sure you want to permanently delete "${deleteTarget?.name}"?`} 
         onConfirm={handleDelete} 
         onCancel={() => setDeleteTarget(null)} 
         loading={deleting} 

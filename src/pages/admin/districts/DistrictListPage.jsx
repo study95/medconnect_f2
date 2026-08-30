@@ -3,7 +3,7 @@ import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
-import { getDistricts, getDivisions, deleteDistrict } from '../../../api/adminApi'
+import { useDivisions, useDistricts, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -58,23 +58,35 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg)' }}>
             <input 
               type="text" 
-              autoFocus
-              placeholder="Search..." 
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--admin-border)', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onClick={e => e.stopPropagation()}
+              className="admin-form-input" 
+              placeholder="Type to search..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              autoFocus 
+              style={{ height: 36, fontSize: 13, borderRadius: 8 }}
             />
           </div>
-          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 0' }}>
             <div 
-              style={{ padding: '10px 14px', fontSize: 12, cursor: 'pointer', color: '#F59E0B', fontWeight: 700, textAlign: 'center', background: 'rgba(245, 158, 11, 0.08)' }}
-              onClick={() => { onChange(''); setIsOpen(false); setSearch('') }}
+              style={{ 
+                padding: '8px 14px', fontSize: 13, cursor: 'pointer', 
+                background: value === '' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                fontWeight: value === '' ? 700 : 400,
+                borderBottom: '1px solid var(--admin-border)',
+                color: 'var(--admin-text)'
+              }}
+              onClick={() => {
+                onChange('')
+                setIsOpen(false)
+                setSearch('')
+              }}
             >
-              ✕ Clear Filter
+              {placeholder}
             </div>
             {filteredOptions.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>No matching results</div>
+              <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--admin-text-muted)', textAlign: 'center' }}>
+                No options matching "{search}"
+              </div>
             ) : (
               filteredOptions.map(opt => (
                 <div 
@@ -110,56 +122,25 @@ export default function DistrictListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [divisions, setDivisions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [divisionFilter, setDivisionFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
   const hasFilters = Boolean(search || divisionFilter)
 
-  useEffect(() => {
-    loadDivisions()
-  }, [])
-
-  useEffect(() => {
-    fetchDistricts()
-  }, [])
-
-  const loadDivisions = async () => {
-    try {
-      const res = await getDivisions()
-      setDivisions(res.data?.data || [])
-    } catch {}
-  }
-
-  const fetchDistricts = async () => {
-    try {
-      setLoading(true)
-      const params = divisionFilter ? { division_id: divisionFilter } : {}
-      const res = await getDistricts(params)
-      setItems(res.data.data || res.data || [])
-    } catch (err) {
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { districts: items = [], isLoading: loading, refetch: fetchDistricts } = useDistricts(divisionFilter || null)
+  const { deleteDistrict: saveDeleteDistrict, isDeletingDistrict: deleting } = useAdminLocationMutations()
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      await deleteDistrict(deleteTarget.id)
-      setItems(items.filter(i => i.id !== deleteTarget.id))
-      
-    } catch (err) {
-    } finally {
-      setDeleting(false)
+      await saveDeleteDistrict(deleteTarget.id)
       setDeleteTarget(null)
+    } catch (err) {
+      console.error('Failed to delete district', err)
     }
   }
 

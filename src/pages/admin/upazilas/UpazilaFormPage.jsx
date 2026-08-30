@@ -3,10 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import { 
-  getUpazila, createUpazila, updateUpazila, 
-  getDistricts, getDivisions 
-} from '../../../api/adminApi'
+import { useUpazilaDetail, useDivisions, useDistricts, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 // Premium Searchable Select Component
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -108,68 +105,33 @@ export default function UpazilaFormPage() {
     district_id: '' 
   })
   
-  const [dropdowns, setDropdowns] = useState({
-    divisions: [],
-    districts: []
-  })
-
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  // Enterprise TanStack Query Hooks
+  const { divisions } = useDivisions()
+  const { districts = [] } = useDistricts(form.division_id || null)
+  const { upazila, isLoading: loading } = useUpazilaDetail(id)
+  const {
+    createUpazila: saveCreateUpazila,
+    updateUpazila: saveUpdateUpazila,
+    isCreatingUpazila,
+    isUpdatingUpazila,
+  } = useAdminLocationMutations()
+
+  const saving = isCreatingUpazila || isUpdatingUpazila
+
   useEffect(() => {
-    loadDivisions()
-    if (isEdit) loadUpazila()
-  }, [id])
-
-  // Cascading Logic: Load Districts when Division changes
-  useEffect(() => {
-    if (form.division_id) {
-      loadDistricts(form.division_id)
-    } else {
-      setDropdowns(prev => ({ ...prev, districts: [] }))
-    }
-  }, [form.division_id])
-
-  const loadDivisions = async () => {
-    try {
-      const res = await getDivisions()
-      setDropdowns(prev => ({ ...prev, divisions: res.data?.data || [] }))
-    } catch (err) {
-      console.error('Failed to load divisions:', err)
-    }
-  }
-
-  const loadDistricts = async (divisionId) => {
-    try {
-      const res = await getDistricts({ division_id: divisionId, per_page: 100 })
-      setDropdowns(prev => ({ ...prev, districts: res.data?.data?.data || res.data?.data || [] }))
-    } catch (err) {
-      console.error('Failed to load districts:', err)
-    }
-  }
-
-  const loadUpazila = async () => {
-    setLoading(true)
-    try {
-      const res = await getUpazila(id)
-      const u = res.data?.data || res.data
-      if (!u) throw new Error('Upazila not found')
-      
-      const districtId = u.district_id || u.district?.id || ''
-      const divisionId = u.division_id || u.district?.division_id || ''
-      
+    if (upazila) {
+      const districtId = upazila.district_id || upazila.district?.id || ''
+      const divisionId = upazila.division_id || upazila.district?.division_id || ''
       setForm({
-        name: u.name || '',
-        bangla_name: u.bangla_name || '',
+        name: upazila.name || '',
+        bangla_name: upazila.bangla_name || '',
         division_id: divisionId,
-        district_id: districtId
+        district_id: districtId,
       })
-    } catch (err) {
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [upazila])
 
   const validate = () => {
     const errs = {}
@@ -266,7 +228,7 @@ export default function UpazilaFormPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <SearchableSelect 
                   label="Division *" 
-                  options={dropdowns.divisions} 
+                  options={divisions} 
                   value={form.division_id} 
                   onChange={(val) => {
                     setForm({ ...form, division_id: val, district_id: '' })
@@ -278,7 +240,7 @@ export default function UpazilaFormPage() {
 
                 <SearchableSelect 
                   label="District *" 
-                  options={dropdowns.districts} 
+                  options={districts} 
                   value={form.district_id} 
                   onChange={(val) => {
                     setForm({ ...form, district_id: val })

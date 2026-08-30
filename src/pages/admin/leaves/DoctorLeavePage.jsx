@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { toast } from 'react-hot-toast'
 import { 
   CalendarOff, Plus, Trash2, Calendar, Building2, Clock, 
   AlertCircle, CheckCircle2, RefreshCw, X 
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import { getDoctorLeaves, createDoctorLeave, deleteDoctorLeave } from '../../../api/leaveApi'
-import { getDoctorChambers } from '../../../api/doctorApi'
+import { useAdminDoctorLeaves, useAdminDoctorLeaveLookups, useAdminDoctorLeaveMutations } from '../../../hooks/admin/useAdminDoctorLeaves'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import TableFooter from '../../../components/admin/TableFooter'
@@ -22,114 +21,61 @@ export default function DoctorLeavePage() {
   const doctor = user?.doctor || (user?.doctor_id ? { id: user.doctor_id } : null)
   const doctorId = doctor?.id || null
 
-  const [leaves, setLeaves] = useState([])
-  const [chambers, setChambers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
-  const [totalEntries, setTotalEntries] = useState(0)
 
   // Modal & Actions State
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverErrors, setServerErrors] = useState({})
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
-  // Load Doctor's Chambers
-  const fetchChambers = useCallback(async () => {
-    try {
-      const res = await getDoctorChambers({})
-      const data = res.data?.data?.data || res.data?.data || res.data || []
-      setChambers(data)
-    } catch (err) {
-      console.error('Failed to load doctor chambers', err)
+  // Server filters memo for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = { page: currentPage, per_page: perPage }
+    if (doctorId) {
+      params.doctor_id = doctorId
     }
-  }, [])
+    return params
+  }, [doctorId, currentPage, perPage])
 
-  // Fetch Leaves History
-  const fetchLeaves = useCallback(async (page = 1) => {
-    try {
-      setLoading(true)
-      const params = {
-        page,
-        per_page: perPage,
-      }
-      if (doctorId) {
-        params.doctor_id = doctorId
-      }
-
-      const res = await getDoctorLeaves(params)
-      const paginatedData = res.data?.data
-      if (paginatedData?.data) {
-        setLeaves(paginatedData.data)
-        setTotalEntries(paginatedData.total || paginatedData.data.length)
-        setCurrentPage(paginatedData.current_page || 1)
-      } else if (Array.isArray(paginatedData)) {
-        setLeaves(paginatedData)
-        setTotalEntries(paginatedData.length)
-      } else {
-        setLeaves([])
-        setTotalEntries(0)
-      }
-    } catch (err) {
-      console.error('Failed to fetch doctor leaves', err)
-      toast.error(getErrorMessage(err, 'ছুটির তালিকা লোড করা সম্ভব হয়নি'))
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [doctorId, perPage])
-
-  useEffect(() => {
-    fetchChambers()
-    fetchLeaves(currentPage)
-  }, [fetchChambers, fetchLeaves, currentPage])
+  // Enterprise TanStack Query Hooks
+  const { leaves, totalEntries, isLoading: loading, isFetching: refreshing, refetch: fetchLeaves } = useAdminDoctorLeaves(serverFilters)
+  const { chambers } = useAdminDoctorLeaveLookups({ doctorId })
+  const { createLeave, isCreating: isSubmitting, deleteLeave, isDeleting: deleting } = useAdminDoctorLeaveMutations()
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchLeaves(currentPage)
+    fetchLeaves()
   }
 
   // Handle Leave Submission
   const handleCreateLeave = async (payload) => {
-    setIsSubmitting(true)
     setServerErrors({})
     try {
-      const res = await createDoctorLeave(payload)
-      if (res.data?.success) {
-        toast.success(res.data.message || 'ছুটি সফলভাবে যুক্ত করা হয়েছে')
-        setShowCreateModal(false)
-        fetchLeaves(1)
-      }
+      const res = await createLeave(payload)
+      toast.success(res?.data?.message || 'ছুটি সফলভাবে যুক্ত করা হয়েছে')
+      setShowCreateModal(false)
+      setCurrentPage(1)
     } catch (err) {
       const errRes = err?.response?.data
       if (errRes?.errors) {
         setServerErrors(errRes.errors)
       }
       console.error('Failed to create leave', err)
-    } finally {
-      setIsSubmitting(false)
+      toast.error(getErrorMessage(err, 'ছুটি যোগ করতে ব্যর্থ হয়েছে'))
     }
   }
 
   // Handle Leave Deletion
   const handleDeleteLeave = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      const res = await deleteDoctorLeave(deleteTarget.id)
-      if (res.data?.success) {
-        toast.success(res.data.message || 'ছুটি সফলভাবে মুছে ফেলা হয়েছে')
-        setDeleteTarget(null)
-        fetchLeaves(currentPage)
-      }
+      const res = await deleteLeave(deleteTarget.id, doctorId)
+      toast.success(res?.data?.message || 'ছুটি সফলভাবে মুছে ফেলা হয়েছে')
+      setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete leave', err)
-    } finally {
-      setDeleting(false)
+      toast.error(getErrorMessage(err, 'ছুটি মুছতে ব্যর্থ হয়েছে'))
     }
   }
 

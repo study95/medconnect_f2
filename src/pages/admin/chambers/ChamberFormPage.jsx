@@ -1,5 +1,5 @@
 // ChamberFormPage.jsx — Modern & Premium Chamber Create/Edit Form
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { 
   Calendar, Clock, Building2, User, DollarSign, Check, 
@@ -8,7 +8,8 @@ import {
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import { getChamber, createChamber, updateChamber, getDoctors, getHospitals } from '../../../api/adminApi'
+import { getChamber } from '../../../api/adminApi'
+import { useAdminChamberLookups, useAdminChamberMutations } from '../../../features/chambers/useAdminChambers'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const DAYS = [
@@ -61,7 +62,21 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
+  const selectedOption = options.find(opt => {
+    if (value === undefined || value === null || value === '') return false
+    const valStr = String(value).trim().toLowerCase()
+    const optIdStr = String(opt.id || '').trim().toLowerCase()
+    const optPublicIdStr = String(opt.public_id || '').trim().toLowerCase()
+    const optDoctorIdStr = String(opt.doctor_id || '').trim().toLowerCase()
+    const optHospitalIdStr = String(opt.hospital_id || '').trim().toLowerCase()
+    
+    return (
+      optIdStr === valStr ||
+      (optPublicIdStr && optPublicIdStr === valStr) ||
+      (optDoctorIdStr && optDoctorIdStr === valStr) ||
+      (optHospitalIdStr && optHospitalIdStr === valStr)
+    )
+  })
   const filteredOptions = options
     .filter(opt => 
       opt.name?.toLowerCase().includes(search.toLowerCase()) || 
@@ -207,58 +222,50 @@ export default function ChamberFormPage() {
   const [form, setForm] = useState({ 
     doctor_id: '', 
     hospital_id: '', 
+    room_number: '',
     day: 'Monday', 
     start_time: '17:00', 
     end_time: '21:00', 
     fee: '500' 
   })
   
-  const [doctors, setDoctors] = useState([])
-  const [hospitals, setHospitals] = useState([])
+  const { doctors: lookupDoctors, hospitals: lookupHospitals } = useAdminChamberLookups()
+  const { createChamber: saveNewChamber, updateChamber: saveUpdatedChamber } = useAdminChamberMutations()
+
+  const [editDoctor, setEditDoctor] = useState(null)
+  const [editHospital, setEditHospital] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
   const [serverFeedback, setServerFeedback] = useState(null)
   const [myDoctorProfile, setMyDoctorProfile] = useState(null)
 
-  useEffect(() => { loadDropdowns() }, [])
-  useEffect(() => { if (isEdit) loadItem() }, [id])
+  const doctors = useMemo(() => {
+    if (!editDoctor) return lookupDoctors
+    const exists = lookupDoctors.some(d => String(d.id) === String(editDoctor.id) || (editDoctor.public_id && String(d.public_id) === String(editDoctor.public_id)))
+    return exists ? lookupDoctors : [editDoctor, ...lookupDoctors]
+  }, [lookupDoctors, editDoctor])
 
-  const loadDropdowns = async () => {
-    try {
-      const [docRes, hospRes] = await Promise.all([
-        getDoctors({ per_page: 500 }), 
-        getHospitals({ per_page: 500 })
-      ])
+  const hospitals = useMemo(() => {
+    if (!editHospital) return lookupHospitals
+    const exists = lookupHospitals.some(h => String(h.id) === String(editHospital.id) || (editHospital.public_id && String(h.public_id) === String(editHospital.public_id)))
+    return exists ? lookupHospitals : [editHospital, ...lookupHospitals]
+  }, [lookupHospitals, editHospital])
 
-      const docData = docRes.data?.data?.data || docRes.data?.data || docRes.data || []
-      const hospData = hospRes.data?.data?.data || hospRes.data?.data || hospRes.data || []
-
-      setDoctors(Array.isArray(docData) ? docData.map(d => ({ 
-        ...d, 
-        subtext: [d.specialty?.name, d.bmdc ? `BMDC: ${d.bmdc}` : null].filter(Boolean).join(' • ') 
-      })) : [])
-      
-      setHospitals(Array.isArray(hospData) ? hospData.map(h => ({ 
-        ...h, 
-        subtext: [h.district?.name, h.upazila?.name, h.address].filter(Boolean).join(', ') 
-      })) : [])
-
-      // Auto-set doctor_id for doctor role
-      if (isDoctorOnly && !isEdit) {
-        const myDoc = docData.find(d =>
-          String(d.user_id) === String(user?.id) ||
-          d.email?.toLowerCase() === user?.email?.toLowerCase()
-        )
-        if (myDoc) {
-          setMyDoctorProfile(myDoc)
-          setForm(prev => ({ ...prev, doctor_id: String(myDoc.id) }))
-        }
+  useEffect(() => {
+    if (isDoctorOnly && !isEdit && lookupDoctors.length > 0) {
+      const myDoc = lookupDoctors.find(d =>
+        String(d.user_id) === String(user?.id) ||
+        d.email?.toLowerCase() === user?.email?.toLowerCase()
+      )
+      if (myDoc && !form.doctor_id) {
+        setMyDoctorProfile(myDoc)
+        setForm(prev => ({ ...prev, doctor_id: String(myDoc.public_id || myDoc.id) }))
       }
-    } catch (err) {
-      console.error('Failed to load dropdowns:', err)
     }
-  }
+  }, [isDoctorOnly, isEdit, lookupDoctors, user])
+
+  useEffect(() => { if (isEdit) loadItem() }, [id])
 
   const loadItem = async () => {
     setLoading(true)
@@ -266,9 +273,36 @@ export default function ChamberFormPage() {
       const res = await getChamber(id)
       const d = res.data?.data || res.data
       if (!d) throw new Error('Chamber not found')
+
+      const docIdentifier = String(d.doctor?.public_id || d.doctor_id || d.doctor?.id || '')
+      const hospIdentifier = String(d.hospital?.public_id || d.hospital_id || d.hospital?.id || '')
+
+      if (d.doctor) {
+        setEditDoctor({
+          ...d.doctor,
+          id: String(d.doctor.public_id || d.doctor.id),
+          public_id: d.doctor.public_id,
+          doctor_id: d.doctor.id,
+          name: d.doctor.name,
+          subtext: [d.doctor.specialty?.name, d.doctor.bmdc ? `BMDC: ${d.doctor.bmdc}` : null].filter(Boolean).join(' • ')
+        })
+      }
+
+      if (d.hospital) {
+        setEditHospital({
+          ...d.hospital,
+          id: String(d.hospital.public_id || d.hospital.id),
+          public_id: d.hospital.public_id,
+          hospital_id: d.hospital.id,
+          name: d.hospital.name,
+          subtext: [d.hospital.district?.name, d.hospital.upazila?.name, d.hospital.address].filter(Boolean).join(', ')
+        })
+      }
+
       setForm({
-        doctor_id: String(d.doctor_id || d.doctor?.id || ''),
-        hospital_id: String(d.hospital_id || d.hospital?.id || ''),
+        doctor_id: docIdentifier,
+        hospital_id: hospIdentifier,
+        room_number: d.room_number || '',
         day: d.day || 'Monday',
         start_time: d.start_time ? d.start_time.substring(0, 5) : '17:00',
         end_time: d.end_time ? d.end_time.substring(0, 5) : '21:00',
@@ -326,6 +360,10 @@ export default function ChamberFormPage() {
     if (!form.doctor_id) errs.doctor_id = 'Please select a practitioner/doctor'
     if (!form.hospital_id) errs.hospital_id = 'Please select a hospital/clinical facility'
     
+    if (form.room_number && form.room_number.length > 50) {
+      errs.room_number = 'Room number must not exceed 50 characters.'
+    }
+
     if (isEdit) {
       if (!form.day) errs.day = 'Please select a visiting day'
     } else {
@@ -351,13 +389,17 @@ export default function ChamberFormPage() {
     try {
       if (isEdit) {
         // Single update
-        await updateChamber(id, {
-          doctor_id: form.doctor_id,
-          hospital_id: form.hospital_id,
-          day: form.day,
-          start_time: form.start_time,
-          end_time: form.end_time,
-          fee: form.fee
+        await saveUpdatedChamber({
+          id,
+          data: {
+            doctor_id: form.doctor_id,
+            hospital_id: form.hospital_id,
+            room_number: form.room_number ? form.room_number.trim() : null,
+            day: form.day,
+            start_time: form.start_time,
+            end_time: form.end_time,
+            fee: form.fee
+          }
         })
         showSuccess({
           title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
@@ -367,9 +409,10 @@ export default function ChamberFormPage() {
       } else {
         // Multi-day create: Create a chamber entry for each selected day
         const results = await Promise.allSettled(
-          selectedDays.map(day => createChamber({
+          selectedDays.map(day => saveNewChamber({
             doctor_id: form.doctor_id,
             hospital_id: form.hospital_id,
+            room_number: form.room_number ? form.room_number.trim() : null,
             day: day,
             start_time: form.start_time,
             end_time: form.end_time,
@@ -415,8 +458,16 @@ export default function ChamberFormPage() {
     }
   }
 
-  const selectedDoctorObj = doctors.find(d => String(d.id) === String(form.doctor_id))
-  const selectedHospitalObj = hospitals.find(h => String(h.id) === String(form.hospital_id))
+  const selectedDoctorObj = doctors.find(d => 
+    String(d.id) === String(form.doctor_id) || 
+    (d.public_id && String(d.public_id) === String(form.doctor_id)) ||
+    (d.doctor_id && String(d.doctor_id) === String(form.doctor_id))
+  )
+  const selectedHospitalObj = hospitals.find(h => 
+    String(h.id) === String(form.hospital_id) || 
+    (h.public_id && String(h.public_id) === String(form.hospital_id)) ||
+    (h.hospital_id && String(h.hospital_id) === String(form.hospital_id))
+  )
   const durationText = calculateDuration(form.start_time, form.end_time)
 
   if (loading) {
@@ -583,6 +634,48 @@ export default function ChamberFormPage() {
                   error={errors.hospital_id}
                 />
               </div>
+            </div>
+
+            {/* Room Number (Optional) */}
+            <div style={{ marginTop: 20 }}>
+              <label style={{ 
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
+                marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+              }}>
+                <Building2 size={14} color="#6366f1" /> Room Number (Optional)
+              </label>
+              <input 
+                type="text" 
+                maxLength={50}
+                placeholder="e.g. 301, Cabin-5, OPD-2" 
+                value={form.room_number || ''} 
+                onChange={e => { 
+                  const val = e.target.value;
+                  setForm({ ...form, room_number: val });
+                  if (val.length > 50) {
+                    setErrors({ ...errors, room_number: 'Room number must not exceed 50 characters.' });
+                  } else {
+                    setErrors({ ...errors, room_number: '' });
+                  }
+                }}
+                style={{ 
+                  width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
+                  border: errors.room_number ? '1.5px solid #ef4444' : '1.5px solid var(--admin-border, #e2e8f0)',
+                  background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
+                  fontSize: 14, fontWeight: 500, outline: 'none', boxSizing: 'border-box',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
+                Specific room number, cabin, ward, or OPD counter within the facility (max 50 characters)
+              </div>
+              {errors.room_number && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
+                  <AlertCircle size={13} /> {errors.room_number}
+                </div>
+              )}
             </div>
           </div>
 
@@ -888,6 +981,7 @@ export default function ChamberFormPage() {
                       {selectedDoctorObj?.name || 'Doctor'} @ {selectedHospitalObj?.name || 'Hospital'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
+                      {form.room_number?.trim() ? `🚪 Room: ${form.room_number.trim()} • ` : ''}
                       🗓️ {isEdit ? form.day : (selectedDays.join(', ') || 'No days selected')} • 
                       ⏰ {format12Hour(form.start_time)} – {format12Hour(form.end_time)} • 
                       💰 ৳{form.fee || 0}

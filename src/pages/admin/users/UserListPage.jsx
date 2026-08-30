@@ -4,7 +4,7 @@ import { Search, RotateCcw, X, Filter, ShieldCheck } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { getUsers, updateUserRole, deleteUser, getAllPermissions, updateUserPermissions } from '../../../api/adminApi'
+import { useAdminUsers, useAdminPermissions, useAdminUserMutations } from '../../../hooks/admin/useAdminUsers'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -55,61 +55,41 @@ const getTypeStyles = (type) => {
 
 export default function UserListPage() {
   const { user: currentUser, hasPermission, isAdmin } = useAuth()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [typeFilter, setTypeFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [changingRole, setChangingRole] = useState(null)
   
   // Permissions State
-  const [availablePermissions, setAvailablePermissions] = useState([])
   const [selectedUserForPerms, setSelectedUserForPerms] = useState(null)
   const [userPermissions, setUserPermissions] = useState([]) 
   const [permSearch, setPermSearch] = useState('')
-  const [savingPerms, setSavingPerms] = useState(false)
 
   // Pagination state
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => { 
-    fetchAvailablePermissions()
-  }, [])
+  // Server-side filter memo for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = {}
+    if (roleFilter) params.role = roleFilter
+    if (typeFilter) params.registration_type = typeFilter
+    if (search) params.search = search
+    return params
+  }, [roleFilter, typeFilter, search])
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search, roleFilter, typeFilter])
-
-  const fetchAvailablePermissions = async () => {
-    try {
-      const res = await getAllPermissions()
-      setAvailablePermissions(res.data?.data || [])
-    } catch(err) { console.error(err) }
-  }
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true)
-      const params = { per_page: 500 }
-      if (roleFilter) params.role = roleFilter
-      if (typeFilter) params.registration_type = typeFilter
-      if (search) params.search = search
-      const res = await getUsers(params)
-      const data = res.data?.data?.data || res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : [])
-      setUsers(data)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { users, isLoading: loading, refetch: fetchUsers } = useAdminUsers(serverFilters)
+  const { permissions: availablePermissions } = useAdminPermissions()
+  const {
+    updateUserRole: saveUserRole,
+    updateUserPermissions: saveUserPermissions,
+    isUpdatingPermissions: savingPerms,
+    deleteUser: saveDeleteUser,
+    isDeleting: deleting,
+  } = useAdminUserMutations()
 
   const clearFilters = () => {
     setRoleFilter('')
@@ -133,20 +113,7 @@ export default function UserListPage() {
   const handleRoleChange = async (userId, newRole) => {
     setChangingRole(userId)
     try {
-      const res = await updateUserRole(userId, newRole)
-      const updatedUser = res.data?.data || res.data
-      setUsers(users.map(u => {
-        if (u.id === userId) {
-          return { 
-            ...u, 
-            ...updatedUser, 
-            role: newRole, 
-            roles: [newRole],
-            permissions: updatedUser?.permissions || u.permissions 
-          }
-        }
-        return u
-      }))
+      await saveUserRole({ userId, role: newRole })
     } catch (err) {
       console.error('Failed to update role:', err)
     } finally {
@@ -156,13 +123,11 @@ export default function UserListPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      await deleteUser(deleteTarget.id)
-      setUsers(users.filter(u => u.id !== deleteTarget.id))
+      await saveDeleteUser(deleteTarget.id)
     } catch (err) {
+      console.error('Failed to delete user:', err)
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }
@@ -240,14 +205,11 @@ export default function UserListPage() {
   }
 
   const savePermissions = async () => {
-    setSavingPerms(true)
     try {
-      await updateUserPermissions(selectedUserForPerms.id, userPermissions)
+      await saveUserPermissions({ userId: selectedUserForPerms.id, permissions: userPermissions })
       setSelectedUserForPerms(null)
-      fetchUsers()
     } catch (err) {
-    } finally {
-      setSavingPerms(false)
+      console.error('Failed to update user permissions:', err)
     }
   }
 

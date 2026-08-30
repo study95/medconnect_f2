@@ -1,6 +1,7 @@
-﻿import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { queryKeys } from '../../../lib/queryKeys'
 import { getHospitals } from '../../../api/hospitalApi'
 import { useHospitalReviews } from '../../../features/reviews/useReviews'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewSkeleton } from '../../../components/reviews'
@@ -17,7 +18,7 @@ export default function HospitalReviewsPage() {
 
   // 1. Fetch hospitals using TanStack Query (matching HospitalListPage / AppointmentListPage pattern)
   const { data: hospitalList, isLoading: loadingHospitals } = useQuery({
-    queryKey: ['hospitals', { per_page: 500 }],
+    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
     queryFn: async () => {
       const res = await getHospitals({ per_page: 500 })
       const raw = res.data

@@ -1,10 +1,9 @@
-// PatientListPage.jsx — Premium Admin patient management (separate table from users)
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { getPatients, deleteAdminPatient, getDivisions, getDistricts, getUpazilas, getUnions } from '../../../api/adminApi'
+import { useAdminPatients, useAdminPatientLookups, useAdminPatientMutations } from '../../../features/patients/useAdminPatients'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -104,11 +103,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function PatientListPage() {
   const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
-  const [patients, setPatients] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   
   const [dateFrom, setDateFrom] = useState('')
@@ -118,76 +114,32 @@ export default function PatientListPage() {
   const [upazilaId, setUpazilaId] = useState('')
   const [unionId, setUnionId] = useState('')
   
-  const [divisions, setDivisions] = useState([])
-  const [districts, setDistricts] = useState([])
-  const [upazilas, setUpazilas] = useState([])
-  const [unions, setUnions] = useState([])
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
   const hasFilters = Boolean(search || divisionId || districtId || upazilaId || unionId || dateFrom)
 
-  useEffect(() => { 
-    loadInitialLocations()
-  }, [])
+  // Cached cascading location lookups
+  const { divisions, districts, upazilas, unions } = useAdminPatientLookups({
+    divisionId,
+    districtId,
+    upazilaId,
+  })
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchPatients()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search, divisionId, districtId, upazilaId, unionId, dateFrom])
+  // Memoized server filters for TanStack Query
+  const serverFilters = useMemo(() => {
+    const params = {}
+    if (divisionId) params.division_id = divisionId
+    if (districtId) params.district_id = districtId
+    if (upazilaId) params.upazila_id = upazilaId
+    if (unionId) params.union_id = unionId
+    if (dateFrom) params.date_from = dateFrom
+    return params
+  }, [divisionId, districtId, upazilaId, unionId, dateFrom])
 
-  const loadInitialLocations = async () => {
-    try {
-      const res = await getDivisions()
-      setDivisions(res.data?.data || [])
-    } catch (err) { console.error(err) }
-  }
-
-  useEffect(() => {
-    if (divisionId) {
-      getDistricts({ division_id: divisionId }).then(res => setDistricts(res.data?.data || []))
-    } else {
-      setDistricts([]); setDistrictId(''); setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [divisionId])
-
-  useEffect(() => {
-    if (districtId) {
-      getUpazilas({ district_id: districtId }).then(res => setUpazilas(res.data?.data || []))
-    } else {
-      setUpazilas([]); setUpazilaId(''); setUnions([]); setUnionId('')
-    }
-  }, [districtId])
-
-  useEffect(() => {
-    if (upazilaId) {
-      getUnions({ upazila_id: upazilaId }).then(res => setUnions(res.data?.data || []))
-    } else {
-      setUnions([]); setUnionId('')
-    }
-  }, [upazilaId])
-
-  const fetchPatients = async () => {
-    try {
-      setLoading(true)
-      const params = { per_page: 500 }
-      if (search.trim()) params.search = search.trim()
-      if (divisionId) params.division_id = divisionId
-      if (districtId) params.district_id = districtId
-      if (upazilaId) params.upazila_id = upazilaId
-      if (unionId) params.union_id = unionId
-      if (dateFrom) params.date_from = dateFrom
-
-      const res = await getPatients(params)
-      setPatients(res.data?.data?.data || res.data?.data || [])
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load patients list.'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Enterprise TanStack Query Hooks
+  const { patients, isLoading: loading, refetch: fetchPatients } = useAdminPatients(serverFilters)
+  const { deletePatient, isDeleting: deleting } = useAdminPatientMutations()
 
   const clearFilters = () => {
     setSearch('')
@@ -197,15 +149,12 @@ export default function PatientListPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
-      const res = await deleteAdminPatient(deleteTarget.id)
-      setPatients(patients.filter(p => p.id !== deleteTarget.id))
-      toast.success(res.data?.message || 'Patient deleted successfully.')
+      await deletePatient(deleteTarget.id)
+      toast.success('Patient deleted successfully.')
     } catch (err) {
-      console.error('Failed to delete patient', err)
+      toast.error(getErrorMessage(err, 'Failed to delete patient.'))
     } finally {
-      setDeleting(false)
       setDeleteTarget(null)
     }
   }
