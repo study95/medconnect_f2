@@ -8,7 +8,7 @@ import {
   Search, Plus, X, Copy, Trash2, ChevronDown, CheckCircle2,
   AlertTriangle, Star, Zap, BookOpen, History, ExternalLink, HelpCircle,
   Eye, Keyboard, MoreHorizontal, ShieldCheck, Maximize2, Minimize2, Sparkles, HeartPulse,
-  Thermometer, BedDouble, AlertOctagon, Share2, Printer, Download, RefreshCw, PenLine
+  Thermometer, BedDouble, AlertOctagon, Share2, Printer, Download, RefreshCw, PenLine, Edit2
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { createPrescription, updatePrescription, getPrescription, getAppointment, searchMedicines } from '../../../api/adminApi'
@@ -19,10 +19,96 @@ import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import '../../../styles/prescription.css'
 
 const STRENGTH_OPTIONS = ['500 mg', '650 mg', '250 mg', '100 mg', '50 mg', '20 mg', '10 mg', '5 mg', '30 mg/5ml', '100 ml', '—']
-const DOSE_OPTIONS = ['1 Tablet', '2 Tablets', '0.5 Tablet', '1 Capsule', '5 ml', '10 ml', '1 Sachet', '1 Spoon', '1 Drop', '1 Puff']
-const FREQUENCY_OPTIONS = ['1+0+1', '1+1+1', '1+0+0', '0+1+0', '0+0+1', '1+1+1+1', '0+0+0+1', 'SOS', 'PRN']
-const DURATION_OPTIONS = ['3 Days', '5 Days', '7 Days', '10 Days', '14 Days', '21 Days', '1 Month', '2 Months', 'Continue']
-const MEAL_OPTIONS = ['After Meal', 'Before Meal', 'With Food', 'Empty Stomach', 'As Directed', 'Bedtime']
+
+const DOSE_OPTIONS_BN = [
+  '১টি ট্যাবলেট',
+  '২টি ট্যাবলেট',
+  'আধখানা ট্যাবলেট',
+  '১টি ক্যাপসুল',
+  '১ চামচ',
+  '২ চামচ',
+  '১ প্যাকেট',
+  '১ ফোঁটা',
+  '১ চাপ'
+]
+const DOSE_OPTIONS_EN = [
+  '1 Tablet',
+  '2 Tablets',
+  '0.5 Tablet',
+  '1 Capsule',
+  '5 ml',
+  '10 ml',
+  '1 Sachet',
+  '1 Spoon',
+  '1 Drop',
+  '1 Puff'
+]
+const DOSE_OPTIONS = [...DOSE_OPTIONS_BN, ...DOSE_OPTIONS_EN]
+
+const FREQUENCY_OPTIONS = [
+  '1+0+1',
+  '1+1+1',
+  '1+0+0',
+  '0+1+0',
+  '0+0+1',
+  '1+1+1+1',
+  '0+0+0+1',
+  '1+0+1+0',
+  'SOS',
+  'PRN'
+]
+
+const DURATION_OPTIONS_BN = [
+  '৩ দিন',
+  '৫ দিন',
+  '৭ দিন',
+  '১০ দিন',
+  '১৪ দিন',
+  '২১ দিন',
+  '১ মাস',
+  '২ মাস',
+  '৩ মাস',
+  'চলবে'
+]
+const DURATION_OPTIONS_EN = [
+  '3 Days',
+  '5 Days',
+  '7 Days',
+  '10 Days',
+  '14 Days',
+  '21 Days',
+  '1 Month',
+  '2 Months',
+  '3 Months',
+  'Continue'
+]
+const DURATION_OPTIONS = [...DURATION_OPTIONS_BN, ...DURATION_OPTIONS_EN]
+
+const MEAL_OPTIONS_BN = [
+  'খাওয়ার পর',
+  'খাওয়ার আগে',
+  'খাওয়ার সাথে',
+  'খালি পেটে',
+  'ঘুমানোর আগে',
+  'নিয়ম অনুযায়ী'
+]
+const MEAL_OPTIONS_EN = [
+  'After Meal',
+  'Before Meal',
+  'With Food',
+  'Empty Stomach',
+  'Bedtime',
+  'As Directed'
+]
+const MEAL_OPTIONS = [...MEAL_OPTIONS_BN, ...MEAL_OPTIONS_EN]
+
+const matchOptionValue = (options, val) => {
+  if (!val) return options[0]
+  if (options.includes(val)) return val
+  const normalized = String(val).trim().toLowerCase()
+  const matched = options.find(opt => opt.toLowerCase() === normalized)
+  return matched || val
+}
 
 // Quick Presets for Clinical Tab
 const CC_PRESETS = ['Fever', 'Cough', 'Cold / Runny Nose', 'Throat Pain', 'Headache', 'Chest Pain', 'Abdominal Pain', 'Vomiting', 'Loose Stool', 'Body Ache', 'Weakness', 'Shortness of Breath']
@@ -102,6 +188,34 @@ const QUICK_COMBOS = [
   }
 ]
 
+// Digital Prescription Design Layout Templates (QR Code, Barcode & Hard Pad Print Enabled)
+const DIGITAL_PRESCRIPTION_TEMPLATES = [
+  {
+    id: 'digital-qr-barcode',
+    name: '১. ডিজিটাল প্রিন্ট (QR কোড ও বারকোড সহ)',
+    badge: 'ডিজিটাল প্রিন্ট',
+    description: 'সম্পূর্ণ হেডার, কিউআর কোড (QR Code), বারকোড (Barcode) এবং ভেরিফাইড ই-প্রেসক্রিপশন সিল সহ।'
+  },
+  {
+    id: 'pad-print-only-data',
+    name: '২. ডাক্তারের হার্ড প্যাড (শুধু তথ্যগুলো প্রিন্ট হবে)',
+    badge: 'প্যাড প্রিন্ট',
+    description: 'ডাক্তারের নিজস্ব ছাপানো প্যাডে প্রিন্টের জন্য — হেডার ও ফুটার বাদ দিয়ে শুধু রোগীর তথ্য ও ওষুধ প্রিন্ট হবে।'
+  },
+  {
+    id: 'smart-hospital',
+    name: '৩. স্মার্ট হসপিটাল / ক্লিনিক লে-আউট',
+    badge: 'হসপিটাল',
+    description: 'কর্পোরেট হসপিটাল হেডার, ক্লিনিক্যাল গ্রিড এবং বারকোড সহ ডিজিটাল ডিজাইন।'
+  },
+  {
+    id: 'classic-pad',
+    name: '৪. ক্লাসিক বাংলা প্রেসক্রিপশন ডিজাইন',
+    badge: 'স্ট্যান্ডার্ড',
+    description: 'দ্বি-কলাম বিশিষ্ট প্রথাগত ডিজাইন সাথে মোবাইল কিউআর কোড স্ক্যানার।'
+  }
+]
+
 const QUICK_TEMPLATES = [
   {
     name: 'Common Cold',
@@ -173,6 +287,20 @@ export default function PrescriptionFormPage() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showVitalsModal, setShowVitalsModal] = useState(false)
   const [isZenMode, setIsZenMode] = useState(false)
+  const [tableLanguage, setTableLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('dr_table_language') || 'bn'
+    } catch (e) {
+      return 'bn'
+    }
+  })
+
+  const handleToggleLanguage = (lang) => {
+    setTableLanguage(lang)
+    try {
+      localStorage.setItem('dr_table_language', lang)
+    } catch (e) {}
+  }
 
   // Walk-in Patient State — only used when creating prescription directly (no appointment)
   const isWalkIn = !appointmentId && !isEdit
@@ -182,10 +310,295 @@ export default function PrescriptionFormPage() {
     name: '', age: '', sex: 'Male', phone: '', address: '', registration_no: ''
   })
 
+  // Dynamic Favorites Medicines with LocalStorage Persistence
+  const [favoriteMedicines, setFavoriteMedicines] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dr_favorite_medicines')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return FAVORITE_MEDICINES
+  })
+  const [showAddFavForm, setShowAddFavForm] = useState(false)
+  const [editingFavIndex, setEditingFavIndex] = useState(null)
+  const [favSearchQuery, setFavSearchQuery] = useState('')
+  const [newFavForm, setNewFavForm] = useState({
+    name: '',
+    type: 'Tablet',
+    strength: '500 mg',
+    dose: '1 Tablet',
+    frequency: '1+0+1',
+    duration: '5 Days',
+    meal: 'After Meal',
+    instructions: ''
+  })
+
+  // Dynamic Quick Add Combos with LocalStorage Persistence
+  const [quickCombos, setQuickCombos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dr_quick_combos')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return QUICK_COMBOS
+  })
+  // Digital Prescription Template Selection
+  const [selectedTemplate, setSelectedTemplate] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dr_rx_template')
+      if (saved && ['digital-qr-barcode', 'pad-print-only-data', 'smart-hospital', 'classic-pad'].includes(saved)) {
+        return saved
+      }
+      return 'digital-qr-barcode'
+    } catch (e) {
+      return 'digital-qr-barcode'
+    }
+  })
+
+  // Reference to Prescription Paper for isolated clean A4 printing
+  const previewPaperRef = useRef(null)
+
+  const handlePrintNow = () => {
+    if (!previewPaperRef.current) {
+      window.print()
+      return
+    }
+
+    try {
+      const paperElement = previewPaperRef.current
+      const htmlContent = paperElement.outerHTML
+
+      // Gather all stylesheets and inline style tags from parent window
+      let stylesHtml = ''
+      document.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
+        stylesHtml += node.outerHTML
+      })
+
+      // Create an invisible isolated iframe for dedicated prescription printing
+      const existingIframe = document.getElementById('dr-print-frame')
+      if (existingIframe) {
+        try { document.body.removeChild(existingIframe) } catch (e) {}
+      }
+
+      const printIframe = document.createElement('iframe')
+      printIframe.id = 'dr-print-frame'
+      printIframe.style.position = 'fixed'
+      printIframe.style.right = '0'
+      printIframe.style.bottom = '0'
+      printIframe.style.width = '0px'
+      printIframe.style.height = '0px'
+      printIframe.style.border = '0px'
+      document.body.appendChild(printIframe)
+
+      const doc = printIframe.contentWindow.document
+      doc.open()
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Prescription Print</title>
+            <meta charset="utf-8" />
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+            ${stylesHtml}
+            <style>
+              * {
+                box-sizing: border-box !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 0 !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                background: #ffffff !important;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                overflow: hidden !important;
+              }
+              .rx-font-bn {
+                font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif !important;
+              }
+              .rx-paper {
+                margin: 0 auto !important;
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: 297mm !important;
+                min-height: 297mm !important;
+                max-height: 297mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                background: #ffffff !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-inside: avoid !important;
+                overflow: hidden !important;
+              }
+              .rx-header {
+                min-height: 55mm !important;
+                padding: 6mm 12mm 4mm 18mm !important;
+                box-sizing: border-box !important;
+                border-bottom: 3px solid #00A88C !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: flex-start !important;
+              }
+              .rx-patient-bar {
+                padding: 3mm 12mm 3mm 18mm !important;
+                box-sizing: border-box !important;
+                background: #F8FAFB !important;
+                border-bottom: 1.5px solid #D1D9E6 !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+              }
+              .rx-body {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: row !important;
+                width: 100% !important;
+                min-height: 0 !important;
+                box-sizing: border-box !important;
+              }
+              .rx-body-left {
+                width: 32% !important;
+                min-width: 65mm !important;
+                max-width: 65mm !important;
+                flex-shrink: 0 !important;
+                background-color: #F0F7FF !important;
+                border-right: 1.5px solid #D1D9E6 !important;
+                padding: 6mm 4mm 6mm 18mm !important;
+                box-sizing: border-box !important;
+              }
+              .rx-body-right {
+                width: 68% !important;
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                padding: 6mm 12mm 6mm 8mm !important;
+                box-sizing: border-box !important;
+              }
+              .rx-indicator {
+                width: 3px !important;
+                height: 14px !important;
+                background: #00A88C !important;
+                border-radius: 2px !important;
+                display: inline-block !important;
+              }
+              .rx-instructions {
+                background: #eff6ff !important;
+                color: #2563eb !important;
+                padding: 2px 8px !important;
+                border-radius: 4px !important;
+              }
+              .rx-advice-section {
+                background: #f8fafc !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 6px !important;
+                padding: 8px 12px !important;
+              }
+              .rx-footer {
+                padding: 4mm 12mm 15mm 18mm !important;
+                border-top: 2.5px solid #00A88C !important;
+                background: #F8FAFC !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                box-sizing: border-box !important;
+              }
+            </style>
+          </head>
+          <body>
+            ${htmlContent}
+          </body>
+        </html>
+      `)
+      doc.close()
+
+      printIframe.contentWindow.focus()
+      setTimeout(() => {
+        printIframe.contentWindow.print()
+        setTimeout(() => {
+          try {
+            document.body.removeChild(printIframe)
+          } catch (e) {}
+        }, 1200)
+      }, 350)
+    } catch (err) {
+      console.error('Isolated print error, falling back to window.print():', err)
+      window.print()
+    }
+  }
+
+  const [showBundleModal, setShowBundleModal] = useState(false)
+  const [editingBundleIndex, setEditingBundleIndex] = useState(null)
+  const [bundleForm, setBundleForm] = useState({
+    title: '',
+    meds: [
+      { medicine_name: '', type: 'Tablet', strength: '500 mg', dose: '1 Tablet', frequency: '1+1+1', duration: '5 Days', meal: 'After Meal', instructions: '' }
+    ]
+  })
+
   // Custom Chips State — doctors can add their own chips per section
   const [customChips, setCustomChips] = useState({ cc: [], oe: [], mh: [], oh: [] })
   const [chipInput, setChipInput] = useState({ cc: '', oe: '', mh: '', oh: '' })
   const [showChipInput, setShowChipInput] = useState({ cc: false, oe: false, mh: false, oh: false })
+
+  // Dynamic Quick Note Snippets with LocalStorage Persistence
+  const [noteSnippets, setNoteSnippets] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dr_note_snippets')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return [
+      'Patient oriented to time, place, and person.',
+      'Vitals stable throughout the consultation.',
+      'Explained warning signs and when to seek emergency care.',
+      'Advised lifestyle modifications and routine exercise.'
+    ]
+  })
+  const [newNoteSnippetInput, setNewNoteSnippetInput] = useState('')
+  const [showAddNoteSnippet, setShowAddNoteSnippet] = useState(false)
+
+  const handleAddNoteSnippet = () => {
+    const val = newNoteSnippetInput.trim()
+    if (!val) return
+    if (noteSnippets.includes(val)) {
+      setNewNoteSnippetInput('')
+      setShowAddNoteSnippet(false)
+      return
+    }
+    const updated = [...noteSnippets, val]
+    setNoteSnippets(updated)
+    setNewNoteSnippetInput('')
+    setShowAddNoteSnippet(false)
+    try {
+      localStorage.setItem('dr_note_snippets', JSON.stringify(updated))
+    } catch (e) {}
+  }
+
+  const handleRemoveNoteSnippet = (snippetToRemove) => {
+    const updated = noteSnippets.filter(s => s !== snippetToRemove)
+    setNoteSnippets(updated)
+    try {
+      localStorage.setItem('dr_note_snippets', JSON.stringify(updated))
+    } catch (e) {}
+  }
 
   // Medicine Table Column Visibility
   const [showStrengthCol, setShowStrengthCol] = useState(false)
@@ -650,11 +1063,25 @@ export default function PrescriptionFormPage() {
     if (tpl.advice) {
       syncAdvice(tpl.advice.map((adv, i) => ({ id: `adv_${i}`, text: adv, checked: true })))
     }
+  }
+
+  const handleSelectTemplate = (templateId, templateName) => {
+    setSelectedTemplate(templateId)
+    try {
+      localStorage.setItem('dr_rx_template', templateId)
+    } catch (e) {}
     setShowTemplatesDropdown(false)
     showSuccess({
-      title: 'Template Applied',
-      message: `Template "${tpl.name}" loaded successfully.`
+      title: 'Design Template Selected',
+      message: `Prescription layout set to "${templateName || templateId}".`
     })
+  }
+
+  const saveFavorites = (newList) => {
+    setFavoriteMedicines(newList)
+    try {
+      localStorage.setItem('dr_favorite_medicines', JSON.stringify(newList))
+    } catch (e) {}
   }
 
   const addFavoriteMedicine = (fav) => {
@@ -667,7 +1094,7 @@ export default function PrescriptionFormPage() {
           medicine_name: fav.name,
           type: fav.type,
           strength: fav.strength,
-          dose: fav.dose,
+          dose: fav.dose || '1 ' + (fav.type || 'Tablet'),
           dosage: fav.frequency,
           duration: fav.duration,
           meal: fav.meal,
@@ -679,6 +1106,112 @@ export default function PrescriptionFormPage() {
     showSuccess({ title: 'Medicine Added', message: `${fav.name} added to prescription.` })
   }
 
+  const toggleRowFavorite = (med) => {
+    const name = (med.medicine_name || '').trim()
+    if (!name) {
+      showError({ title: 'Medicine Name Required', message: 'Please enter a medicine name to add to favorites.' })
+      return
+    }
+
+    const existingIndex = favoriteMedicines.findIndex(f => (f.name || '').toLowerCase() === name.toLowerCase())
+    if (existingIndex >= 0) {
+      const updated = favoriteMedicines.filter((_, i) => i !== existingIndex)
+      saveFavorites(updated)
+      showSuccess({ title: 'Favorite Removed', message: `${name} removed from favorite medicines.` })
+    } else {
+      const newFav = {
+        name: name,
+        type: med.type || 'Tablet',
+        strength: med.strength || '500 mg',
+        dose: med.dose || '1 ' + (med.type || 'Tablet'),
+        frequency: med.dosage || '1+0+1',
+        duration: med.duration || '5 Days',
+        meal: med.meal || 'After Meal',
+        instructions: med.instructions || ''
+      }
+      const updated = [newFav, ...favoriteMedicines]
+      saveFavorites(updated)
+      showSuccess({ title: 'Favorite Added', message: `${name} saved to favorite medicines!` })
+    }
+  }
+
+  const deleteFavoriteItem = (e, index) => {
+    e.stopPropagation()
+    const target = favoriteMedicines[index]
+    const updated = favoriteMedicines.filter((_, i) => i !== index)
+    saveFavorites(updated)
+    showSuccess({ title: 'Favorite Deleted', message: `${target.name} removed from favorites.` })
+  }
+
+  const handleStartEditFavorite = (e, fav, index) => {
+    e.stopPropagation()
+    setEditingFavIndex(index)
+    setNewFavForm({
+      name: fav.name || '',
+      type: fav.type || 'Tablet',
+      strength: fav.strength || '500 mg',
+      dose: fav.dose || '1 ' + (fav.type || 'Tablet'),
+      frequency: fav.frequency || '1+0+1',
+      duration: fav.duration || '5 Days',
+      meal: fav.meal || 'After Meal',
+      instructions: fav.instructions || ''
+    })
+    setShowAddFavForm(true)
+  }
+
+  const handleCancelFavForm = () => {
+    setShowAddFavForm(false)
+    setEditingFavIndex(null)
+    setNewFavForm({
+      name: '',
+      type: 'Tablet',
+      strength: '500 mg',
+      dose: '1 Tablet',
+      frequency: '1+0+1',
+      duration: '5 Days',
+      meal: 'After Meal',
+      instructions: ''
+    })
+  }
+
+  const handleSaveFavorite = (e) => {
+    e.preventDefault()
+    if (!newFavForm.name.trim()) {
+      showError({ title: 'Validation Error', message: 'Please enter a medicine name.' })
+      return
+    }
+    const savedItem = {
+      name: newFavForm.name.trim(),
+      type: newFavForm.type || 'Tablet',
+      strength: newFavForm.strength || '500 mg',
+      dose: '1 ' + (newFavForm.type || 'Tablet'),
+      frequency: newFavForm.frequency || '1+0+1',
+      duration: newFavForm.duration || '5 Days',
+      meal: newFavForm.meal || 'After Meal',
+      instructions: newFavForm.instructions || ''
+    }
+
+    if (editingFavIndex !== null && editingFavIndex >= 0) {
+      const updated = [...favoriteMedicines]
+      updated[editingFavIndex] = savedItem
+      saveFavorites(updated)
+      showSuccess({ title: 'Favorite Updated', message: `${savedItem.name} updated successfully.` })
+    } else {
+      const updated = [savedItem, ...favoriteMedicines]
+      saveFavorites(updated)
+      showSuccess({ title: 'Favorite Added', message: `${savedItem.name} added to favorite medicines.` })
+    }
+
+    handleCancelFavForm()
+  }
+
+  const saveQuickCombos = (newList) => {
+    setQuickCombos(newList)
+    try {
+      localStorage.setItem('dr_quick_combos', JSON.stringify(newList))
+    } catch (e) {}
+  }
+
   const addQuickCombo = (combo) => {
     setForm(prev => ({
       ...prev,
@@ -686,12 +1219,151 @@ export default function PrescriptionFormPage() {
         ...prev.medicines.filter(m => m.medicine_name.trim()),
         ...combo.meds.map(m => ({
           _id: Math.random().toString(36).substring(2, 9),
+          type: m.type || 'Tablet',
+          strength: m.strength || '500 mg',
+          dose: m.dose || '1 Tablet',
+          dosage: m.frequency || m.dosage || '1+0+1',
+          duration: m.duration || '5 Days',
+          meal: m.meal || 'After Meal',
+          instructions: m.instructions || '',
           ...m
         }))
       ]
     }))
     setShowQuickAddDropdown(false)
     showSuccess({ title: 'Combo Added', message: `${combo.title} medicines added.` })
+  }
+
+  const deleteQuickCombo = (e, index) => {
+    e.stopPropagation()
+    const target = quickCombos[index]
+    const updated = quickCombos.filter((_, i) => i !== index)
+    saveQuickCombos(updated)
+    showSuccess({ title: 'Bundle Removed', message: `"${target.title}" removed from Quick Add bundles.` })
+  }
+
+  const saveCurrentTableAsBundle = (e) => {
+    e.stopPropagation()
+    const activeMeds = form.medicines.filter(m => (m.medicine_name || '').trim())
+    if (activeMeds.length === 0) {
+      showError({ title: 'No Medicines in Table', message: 'Please add at least one medicine to the prescription table first.' })
+      return
+    }
+    const title = prompt('Enter a name for this medicine bundle:', 'My Custom Pack')
+    if (!title || !title.trim()) return
+
+    const newBundle = {
+      title: title.trim(),
+      meds: activeMeds.map(m => ({
+        medicine_name: m.medicine_name.trim(),
+        type: m.type || 'Tablet',
+        strength: m.strength || '500 mg',
+        dose: m.dose || '1 Tablet',
+        frequency: m.dosage || m.frequency || '1+0+1',
+        duration: m.duration || '5 Days',
+        meal: m.meal || 'After Meal',
+        instructions: m.instructions || ''
+      }))
+    }
+    const updated = [...quickCombos, newBundle]
+    saveQuickCombos(updated)
+    setShowQuickAddDropdown(false)
+    showSuccess({ title: 'Bundle Saved', message: `"${newBundle.title}" saved to Quick Add bundles!` })
+  }
+
+  const handleOpenCreateBundleModal = (e) => {
+    if (e) e.stopPropagation()
+    setEditingBundleIndex(null)
+    setBundleForm({
+      title: '',
+      meds: [
+        { medicine_name: '', type: 'Tablet', strength: '500 mg', dose: '1 Tablet', frequency: '1+0+1', duration: '5 Days', meal: 'After Meal', instructions: '' }
+      ]
+    })
+    setShowQuickAddDropdown(false)
+    setShowBundleModal(true)
+  }
+
+  const handleOpenEditBundleModal = (e, bundle, index) => {
+    if (e) e.stopPropagation()
+    setEditingBundleIndex(index)
+    setBundleForm({
+      title: bundle.title || '',
+      meds: Array.isArray(bundle.meds) && bundle.meds.length > 0 
+        ? bundle.meds.map(m => ({ ...m }))
+        : [{ medicine_name: '', type: 'Tablet', strength: '500 mg', dose: '1 Tablet', frequency: '1+0+1', duration: '5 Days', meal: 'After Meal', instructions: '' }]
+    })
+    setShowQuickAddDropdown(false)
+    setShowBundleModal(true)
+  }
+
+  const handleAddMedicineToBundleForm = () => {
+    setBundleForm(prev => ({
+      ...prev,
+      meds: [
+        ...prev.meds,
+        { medicine_name: '', type: 'Tablet', strength: '500 mg', dose: '1 Tablet', frequency: '1+0+1', duration: '5 Days', meal: 'After Meal', instructions: '' }
+      ]
+    }))
+  }
+
+  const handleRemoveMedicineFromBundleForm = (index) => {
+    if (bundleForm.meds.length <= 1) return
+    setBundleForm(prev => ({
+      ...prev,
+      meds: prev.meds.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleBundleMedFieldChange = (index, field, value) => {
+    setBundleForm(prev => {
+      const updated = [...prev.meds]
+      updated[index] = { ...updated[index], [field]: value }
+      return { ...prev, meds: updated }
+    })
+  }
+
+  const handleSaveBundleForm = (e) => {
+    e.preventDefault()
+    if (!bundleForm.title.trim()) {
+      showError({ title: 'Validation Error', message: 'Please enter a title for the bundle.' })
+      return
+    }
+    const cleanMeds = bundleForm.meds
+      .filter(m => (m.medicine_name || '').trim())
+      .map(m => ({
+        medicine_name: m.medicine_name.trim(),
+        type: m.type || 'Tablet',
+        strength: m.strength || '500 mg',
+        dose: m.dose || '1 Tablet',
+        frequency: m.frequency || '1+0+1',
+        duration: m.duration || '5 Days',
+        meal: m.meal || 'After Meal',
+        instructions: m.instructions || ''
+      }))
+
+    if (cleanMeds.length === 0) {
+      showError({ title: 'Validation Error', message: 'Please add at least one medicine to the bundle.' })
+      return
+    }
+
+    const bundleObj = {
+      title: bundleForm.title.trim(),
+      meds: cleanMeds
+    }
+
+    if (editingBundleIndex !== null && editingBundleIndex >= 0) {
+      const updated = [...quickCombos]
+      updated[editingBundleIndex] = bundleObj
+      saveQuickCombos(updated)
+      showSuccess({ title: 'Bundle Updated', message: `"${bundleObj.title}" updated successfully.` })
+    } else {
+      const updated = [...quickCombos, bundleObj]
+      saveQuickCombos(updated)
+      showSuccess({ title: 'Bundle Created', message: `"${bundleObj.title}" added to Quick Add bundles.` })
+    }
+
+    setShowBundleModal(false)
   }
 
   const handleMedicineChange = (index, field, value) => {
@@ -918,25 +1590,50 @@ export default function PrescriptionFormPage() {
             <Eye size={14} /> Preview
           </button>
 
-          {/* Templates Dropdown Button */}
+          {/* Templates / Print Layout Dropdown Button */}
           <div className="dr-dropdown-container">
             <button 
               type="button" 
               className="dr-btn-white" 
               onClick={(e) => { e.stopPropagation(); setShowTemplatesDropdown(!showTemplatesDropdown); }}
+              title="Change Digital Prescription Design Layout (QR & Barcode / Pad Print)"
             >
-              <FileText size={14} /> Templates <ChevronDown size={12} />
+              <FileText size={14} color="#2563eb" /> Templates <ChevronDown size={12} />
             </button>
 
             {showTemplatesDropdown && (
-              <div className="dr-custom-dropdown-menu">
-                <div className="dr-menu-header">Select Clinical Template</div>
-                {QUICK_TEMPLATES.map((tpl, i) => (
-                  <div key={i} className="dr-menu-item" onClick={() => applyQuickTemplate(tpl)}>
-                    <strong>{tpl.name}</strong>
-                    <span>{tpl.medicines.length} Medicines • {tpl.diagnosis.split('-')[0]}</span>
-                  </div>
-                ))}
+              <div className="dr-custom-dropdown-menu" style={{ width: 350, padding: 8 }}>
+                <div className="dr-menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span>প্রেসক্রিপশন প্রিন্ট লে-আউট (Design)</span>
+                  <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}>QR & Pad Print</span>
+                </div>
+                {DIGITAL_PRESCRIPTION_TEMPLATES.map((tpl) => {
+                  const isSelected = selectedTemplate === tpl.id
+                  return (
+                    <div 
+                      key={tpl.id} 
+                      className={`dr-menu-item ${isSelected ? 'active' : ''}`}
+                      style={{
+                        background: isSelected ? '#eff6ff' : 'transparent',
+                        borderLeft: isSelected ? '3px solid #2563eb' : '3px solid transparent',
+                        padding: '8px 10px',
+                        marginBottom: 4,
+                        borderRadius: 6
+                      }}
+                      onClick={() => handleSelectTemplate(tpl.id, tpl.name)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                        <strong style={{ color: isSelected ? '#2563eb' : '#0f172a', fontSize: 12 }}>{tpl.name}</strong>
+                        {isSelected ? (
+                          <span style={{ color: '#2563eb', fontSize: 11, fontWeight: 700 }}>✓ এক্টিভ</span>
+                        ) : (
+                          <span style={{ fontSize: 10, background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: 4 }}>{tpl.badge}</span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11, color: '#475569', lineHeight: 1.3, display: 'block' }}>{tpl.description}</span>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1219,16 +1916,103 @@ export default function PrescriptionFormPage() {
                       </button>
 
                       {showQuickAddDropdown && (
-                        <div className="dr-custom-dropdown-menu">
-                          <div className="dr-menu-header">Quick Medicine Bundles</div>
-                          {QUICK_COMBOS.map((combo, i) => (
-                            <div key={i} className="dr-menu-item" onClick={() => addQuickCombo(combo)}>
-                              <strong>{combo.title}</strong>
-                              <span>{combo.meds.map(m => m.medicine_name).join(' + ')}</span>
+                        <div className="dr-custom-dropdown-menu" style={{ width: 280, padding: 6 }}>
+                          <div className="dr-menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Quick Medicine Bundles</span>
+                            <button 
+                              type="button" 
+                              className="dr-sidebar-link-btn" 
+                              style={{ fontSize: 11, color: '#2563eb' }}
+                              onClick={handleOpenCreateBundleModal}
+                            >
+                              + New Bundle
+                            </button>
+                          </div>
+
+                          {quickCombos.length === 0 ? (
+                            <div style={{ padding: '12px 8px', textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>
+                              No bundles saved yet.
                             </div>
-                          ))}
+                          ) : (
+                            quickCombos.map((combo, i) => (
+                              <div key={i} className="dr-menu-item dr-bundle-item" onClick={() => addQuickCombo(combo)}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <strong>{combo.title}</strong>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                    {combo.meds.map(m => m.medicine_name).join(' + ')}
+                                  </span>
+                                </div>
+                                <div className="dr-bundle-item-actions" onClick={e => e.stopPropagation()}>
+                                  <button 
+                                    type="button" 
+                                    className="dr-fav-action-btn dr-fav-edit-btn" 
+                                    onClick={(e) => handleOpenEditBundleModal(e, combo, i)}
+                                    title="Edit Bundle"
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="dr-fav-action-btn dr-fav-delete-btn" 
+                                    onClick={(e) => deleteQuickCombo(e, i)}
+                                    title="Remove Bundle"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+
+                          <div className="dr-menu-footer-actions">
+                            <button 
+                              type="button" 
+                              className="dr-dropdown-action-btn"
+                              onClick={saveCurrentTableAsBundle}
+                            >
+                              <Sparkles size={13} color="#16a34a" /> Save Current Table as Bundle
+                            </button>
+                          </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Language Switcher: বাংলা / English */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', background: '#f1f5f9', borderRadius: 6, padding: '2px', border: '1px solid #cbd5e1' }}>
+                      <button 
+                        type="button" 
+                        style={{ 
+                          border: 'none',
+                          borderRadius: 4,
+                          padding: '4px 10px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: tableLanguage === 'bn' ? '#2563eb' : 'transparent',
+                          color: tableLanguage === 'bn' ? '#ffffff' : '#475569',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onClick={() => handleToggleLanguage('bn')}
+                      >
+                        বাংলা
+                      </button>
+                      <button 
+                        type="button" 
+                        style={{ 
+                          border: 'none',
+                          borderRadius: 4,
+                          padding: '4px 10px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: tableLanguage === 'en' ? '#2563eb' : 'transparent',
+                          color: tableLanguage === 'en' ? '#ffffff' : '#475569',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onClick={() => handleToggleLanguage('en')}
+                      >
+                        English
+                      </button>
                     </div>
 
                     {/* Full Screen Expand/Collapse Toggle */}
@@ -1260,13 +2044,13 @@ export default function PrescriptionFormPage() {
                   <table className="dr-table">
                     <thead>
                       <tr>
-                        <th style={{ width: 40 }}>#</th>
-                        <th style={{ minWidth: 180 }}>Medicine</th>
-                        <th style={{ width: 110 }}>Frequency</th>
-                        <th style={{ width: 115 }}>Duration</th>
-                        <th style={{ width: 145 }}>Meal</th>
-                        <th style={{ minWidth: 160 }}>Instruction / Notes</th>
-                        <th style={{ width: 65, textAlign: 'center' }}>Action</th>
+                        <th className="dr-td-num">#</th>
+                        <th className="dr-td-med-cell">Medicine</th>
+                        <th className="dr-td-freq">Frequency</th>
+                        <th className="dr-td-dur">Duration</th>
+                        <th className="dr-td-meal">Meal</th>
+                        <th className="dr-td-notes">Instruction / Notes</th>
+                        <th className="dr-td-actions">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1308,37 +2092,65 @@ export default function PrescriptionFormPage() {
                             )}
                           </td>
 
-                          <td>
+                          <td className="dr-td-freq">
                             <select 
                               className="dr-select-box"
-                              value={med.dosage || '1+0+1'}
+                              value={matchOptionValue(FREQUENCY_OPTIONS, med.dosage)}
                               onChange={(e) => handleMedicineChange(index, 'dosage', e.target.value)}
                             >
                               {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                           </td>
 
-                          <td>
+                          <td className="dr-td-dur">
                             <select 
                               className="dr-select-box"
-                              value={med.duration || '5 Days'}
+                              value={matchOptionValue(DURATION_OPTIONS, med.duration)}
                               onChange={(e) => handleMedicineChange(index, 'duration', e.target.value)}
                             >
-                              {DURATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              {tableLanguage === 'bn' ? (
+                                <>
+                                  {DURATION_OPTIONS_EN.includes(med.duration) && (
+                                    <option value={med.duration}>{med.duration}</option>
+                                  )}
+                                  {DURATION_OPTIONS_BN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </>
+                              ) : (
+                                <>
+                                  {DURATION_OPTIONS_BN.includes(med.duration) && (
+                                    <option value={med.duration}>{med.duration}</option>
+                                  )}
+                                  {DURATION_OPTIONS_EN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </>
+                              )}
                             </select>
                           </td>
 
-                          <td>
+                          <td className="dr-td-meal">
                             <select 
                               className="dr-select-box"
-                              value={med.meal || 'After Meal'}
+                              value={matchOptionValue(MEAL_OPTIONS, med.meal)}
                               onChange={(e) => handleMedicineChange(index, 'meal', e.target.value)}
                             >
-                              {MEAL_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              {tableLanguage === 'bn' ? (
+                                <>
+                                  {MEAL_OPTIONS_EN.includes(med.meal) && (
+                                    <option value={med.meal}>{med.meal}</option>
+                                  )}
+                                  {MEAL_OPTIONS_BN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </>
+                              ) : (
+                                <>
+                                  {MEAL_OPTIONS_BN.includes(med.meal) && (
+                                    <option value={med.meal}>{med.meal}</option>
+                                  )}
+                                  {MEAL_OPTIONS_EN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </>
+                              )}
                             </select>
                           </td>
 
-                          <td>
+                          <td className="dr-td-notes">
                             <input
                               type="text"
                               className="dr-input-text-cell"
@@ -1348,8 +2160,22 @@ export default function PrescriptionFormPage() {
                             />
                           </td>
 
-                          <td>
+                          <td className="dr-td-actions">
                             <div className="dr-row-actions">
+                              {(() => {
+                                const medName = (med.medicine_name || '').trim().toLowerCase()
+                                const isFav = medName && favoriteMedicines.some(f => (f.name || '').toLowerCase() === medName)
+                                return (
+                                  <button 
+                                    type="button" 
+                                    className={`dr-action-btn-icon ${isFav ? 'dr-action-fav-active' : ''}`}
+                                    onClick={() => toggleRowFavorite(med)}
+                                    title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                                  >
+                                    <Star size={13} color={isFav ? "#f59e0b" : "#94a3b8"} fill={isFav ? "#f59e0b" : "none"} />
+                                  </button>
+                                )
+                              })()}
                               <button 
                                 type="button" 
                                 className="dr-action-btn-icon" 
@@ -2151,26 +2977,92 @@ export default function PrescriptionFormPage() {
               </div>
 
               <div className="dr-card">
-                <h3 className="dr-section-title">
-                  <Sparkles size={15} color="#2563eb" /> Quick Note Snippets
-                </h3>
-                <div className="dr-chips-wrap">
-                  {[
-                    'Patient oriented to time, place, and person.',
-                    'Vitals stable throughout the consultation.',
-                    'Explained warning signs and when to seek emergency care.',
-                    'Advised lifestyle modifications and routine exercise.'
-                  ].map(snippet => (
-                    <button
-                      key={snippet}
-                      type="button"
-                      className="dr-chip-btn"
-                      onClick={() => handleAppendClinicalTag('notes', snippet)}
-                    >
-                      + {snippet}
-                    </button>
-                  ))}
+                <div className="dr-card-header" style={{ marginBottom: 12 }}>
+                  <h3 className="dr-section-title">
+                    <Sparkles size={15} color="#2563eb" /> Quick Note Snippets
+                  </h3>
+                  <button
+                    type="button"
+                    className="dr-btn-primary"
+                    style={{ padding: '4px 10px', fontSize: 12, height: 30, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => setShowAddNoteSnippet(prev => !prev)}
+                  >
+                    <Plus size={13} /> Add Note
+                  </button>
                 </div>
+
+                <div className="dr-chips-wrap">
+                  {noteSnippets.map(snippet => (
+                    <div key={snippet} className="dr-chip-item-group" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <button
+                        type="button"
+                        className="dr-chip-btn"
+                        onClick={() => handleAppendClinicalTag('notes', snippet)}
+                      >
+                        + {snippet}
+                      </button>
+                      <button
+                        type="button"
+                        className="dr-chip-remove"
+                        style={{ padding: '2px 5px', color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                        title="Delete note snippet"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveNoteSnippet(snippet)
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {!showAddNoteSnippet && (
+                    <button
+                      type="button"
+                      className="dr-chip-btn dr-chip-add-btn"
+                      style={{ border: '1px dashed #2563eb', color: '#2563eb', background: '#eff6ff', fontWeight: 600 }}
+                      onClick={() => setShowAddNoteSnippet(true)}
+                    >
+                      <Plus size={13} /> Add Note
+                    </button>
+                  )}
+                </div>
+
+                {showAddNoteSnippet && (
+                  <div className="dr-advice-add-bar" style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      className="dr-advice-input-full"
+                      style={{ flex: 1, padding: '7px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                      placeholder="Type custom note snippet (e.g. Advised periodic blood sugar monitoring) and press Enter..."
+                      value={newNoteSnippetInput}
+                      autoFocus
+                      onChange={(e) => setNewNoteSnippetInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddNoteSnippet()
+                        } else if (e.key === 'Escape') {
+                          setShowAddNoteSnippet(false)
+                        }
+                      }}
+                    />
+                    <button type="button" className="dr-btn-primary" style={{ padding: '6px 14px', fontSize: 13 }} onClick={handleAddNoteSnippet}>
+                      <Plus size={14} /> Save
+                    </button>
+                    <button
+                      type="button"
+                      className="dr-btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: 13 }}
+                      onClick={() => {
+                        setShowAddNoteSnippet(false)
+                        setNewNoteSnippetInput('')
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2448,13 +3340,26 @@ export default function PrescriptionFormPage() {
           ======================================================== */}
       {showPreviewModal && (
         <div className="dr-modal-backdrop" onClick={() => setShowPreviewModal(false)}>
-          <div className="dr-modal-card dr-preview-modal-card" onClick={e => e.stopPropagation()}>
+          <div className="dr-modal-card dr-preview-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 920 }}>
             <div className="dr-modal-header">
               <div className="dr-modal-title">
-                <Eye size={18} color="#2563eb" /> Live Prescription Preview
+                <Eye size={18} color="#2563eb" /> Live Digital Prescription Preview
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button type="button" className="dr-btn-primary" onClick={() => window.print()}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Template:</span>
+                  <select 
+                    className="dr-select-box"
+                    style={{ height: 28, fontSize: 12, padding: '0 22px 0 6px', backgroundPosition: 'right 4px center' }}
+                    value={selectedTemplate}
+                    onChange={(e) => handleSelectTemplate(e.target.value, DIGITAL_PRESCRIPTION_TEMPLATES.find(t => t.id === e.target.value)?.name)}
+                  >
+                    {DIGITAL_PRESCRIPTION_TEMPLATES.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="button" className="dr-btn-primary" onClick={handlePrintNow}>
                   <Printer size={14} /> Print Now
                 </button>
                 <button type="button" className="dr-chip-remove" onClick={() => setShowPreviewModal(false)}>
@@ -2464,8 +3369,11 @@ export default function PrescriptionFormPage() {
             </div>
             <div className="dr-modal-body dr-preview-body">
               <PrescriptionPaper 
+                ref={previewPaperRef}
+                template={selectedTemplate}
                 prescription={{
                   ...form,
+                  template: selectedTemplate,
                   id: id || 'preview',
                   medicines: form.medicines.filter(m => m.medicine_name.trim()),
                   patient_name: patientName,
@@ -2475,7 +3383,7 @@ export default function PrescriptionFormPage() {
                   registration_no: patientId,
                   created_at: new Date().toISOString()
                 }}
-                isPrintMode={false}
+                hideAll={false}
               />
             </div>
           </div>
@@ -2483,37 +3391,294 @@ export default function PrescriptionFormPage() {
       )}
 
       {/* ========================================================
-          MODAL 3: FAVORITES MEDICINE PICKER
+          MODAL 3: FAVORITES MEDICINE PICKER & MANAGER
           ======================================================== */}
       {showFavoritesModal && (
-        <div className="dr-modal-backdrop" onClick={() => setShowFavoritesModal(false)}>
-          <div className="dr-modal-card" onClick={e => e.stopPropagation()}>
+        <div className="dr-modal-backdrop" onClick={() => { setShowFavoritesModal(false); handleCancelFavForm(); }}>
+          <div className="dr-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <div className="dr-modal-header">
               <div className="dr-modal-title">
-                <Star size={18} color="#f59e0b" fill="#f59e0b" /> Doctor's Favorite Medicines
+                <Star size={18} color="#f59e0b" fill="#f59e0b" /> Doctor's Favorite Medicines ({favoriteMedicines.length})
               </div>
-              <button type="button" className="dr-chip-remove" onClick={() => setShowFavoritesModal(false)}>
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button 
+                  type="button" 
+                  className={showAddFavForm ? "dr-btn-white" : "dr-btn-blue-outline-sm"}
+                  onClick={() => {
+                    if (showAddFavForm) {
+                      handleCancelFavForm()
+                    } else {
+                      setEditingFavIndex(null)
+                      setNewFavForm({
+                        name: '',
+                        type: 'Tablet',
+                        strength: '500 mg',
+                        dose: '1 Tablet',
+                        frequency: '1+0+1',
+                        duration: '5 Days',
+                        meal: 'After Meal',
+                        instructions: ''
+                      })
+                      setShowAddFavForm(true)
+                    }
+                  }}
+                >
+                  {showAddFavForm ? <X size={13} /> : <Plus size={13} />}
+                  {showAddFavForm ? "Cancel Form" : "+ Add Favorite"}
+                </button>
+                <button 
+                  type="button" 
+                  className="dr-chip-remove" 
+                  onClick={() => { setShowFavoritesModal(false); handleCancelFavForm(); }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
+            
             <div className="dr-modal-body">
-              <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 12px' }}>
-                Click on any favorite medicine to instantly add it to your prescription table:
-              </p>
-              <div className="dr-favs-picker-grid">
-                {FAVORITE_MEDICINES.map((fav, i) => (
-                  <div key={i} className="dr-fav-card" onClick={() => addFavoriteMedicine(fav)}>
-                    <div className="dr-fav-title-row">
-                      <strong>{fav.name}</strong>
-                      <span className="dr-badge-type">{fav.type}</span>
-                    </div>
-                    <div className="dr-fav-meta">
-                      {fav.strength} • {fav.frequency} • {fav.duration}
-                    </div>
-                    <div className="dr-fav-note">{fav.meal} ({fav.instructions})</div>
+              {/* Add / Edit Favorite Form */}
+              {showAddFavForm && (
+                <form onSubmit={handleSaveFavorite} className="dr-fav-add-card">
+                  <div className="dr-fav-add-title">
+                    {editingFavIndex !== null ? (
+                      <>
+                        <Edit2 size={14} color="#2563eb" /> Edit Favorite Medicine: <strong>{newFavForm.name || 'Medicine'}</strong>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} color="#16a34a" /> Add New Favorite Medicine
+                      </>
+                    )}
                   </div>
-                ))}
+                  <div className="dr-fav-form-grid">
+                    <div className="dr-fav-form-full">
+                      <label className="dr-fav-form-label">Medicine Name *</label>
+                      <input 
+                        type="text"
+                        className="dr-input-field"
+                        placeholder="e.g. Paracetamol"
+                        value={newFavForm.name}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, name: e.target.value }))}
+                        autoFocus
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Type / Form</label>
+                      <select 
+                        className="dr-select-box"
+                        value={newFavForm.type}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, type: e.target.value }))}
+                      >
+                        <option value="Tablet">Tablet</option>
+                        <option value="Capsule">Capsule</option>
+                        <option value="Syrup">Syrup</option>
+                        <option value="Suspension">Suspension</option>
+                        <option value="Injection">Injection</option>
+                        <option value="Drop">Drop</option>
+                        <option value="Ointment">Ointment</option>
+                        <option value="Sachet">Sachet</option>
+                        <option value="Inhaler">Inhaler</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Strength</label>
+                      <input 
+                        type="text"
+                        className="dr-input-field"
+                        placeholder="e.g. 500 mg"
+                        value={newFavForm.strength}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, strength: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Frequency / Dosage</label>
+                      <select 
+                        className="dr-select-box"
+                        value={matchOptionValue(FREQUENCY_OPTIONS, newFavForm.frequency)}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, frequency: e.target.value }))}
+                      >
+                        {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Duration</label>
+                      <select 
+                        className="dr-select-box"
+                        value={matchOptionValue(DURATION_OPTIONS, newFavForm.duration)}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, duration: e.target.value }))}
+                      >
+                        {DURATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Meal Instruction</label>
+                      <select 
+                        className="dr-select-box"
+                        value={matchOptionValue(MEAL_OPTIONS, newFavForm.meal)}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, meal: e.target.value }))}
+                      >
+                        {MEAL_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="dr-fav-form-label">Instructions / Notes</label>
+                      <input 
+                        type="text"
+                        className="dr-input-field"
+                        placeholder="e.g. If fever or body ache"
+                        value={newFavForm.instructions}
+                        onChange={e => setNewFavForm(prev => ({ ...prev, instructions: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="dr-fav-form-actions">
+                    <button 
+                      type="button" 
+                      className="dr-btn-white" 
+                      onClick={handleCancelFavForm}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="dr-btn-primary">
+                      {editingFavIndex !== null ? (
+                        <>
+                          <Check size={13} /> Update Favorite
+                        </>
+                      ) : (
+                        <>
+                          <Star size={13} color="#ffffff" fill="#ffffff" /> Save to Favorites
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Search Favorite Medicine Bar */}
+              <div className="dr-med-search-bar" style={{ margin: '4px 0 12px' }}>
+                <Search size={14} color="#94a3b8" />
+                <input 
+                  type="text"
+                  className="dr-med-search-input"
+                  placeholder="Search favorite medicines by name, type, dose, notes..."
+                  value={favSearchQuery}
+                  onChange={e => setFavSearchQuery(e.target.value)}
+                />
+                {favSearchQuery && (
+                  <button 
+                    type="button" 
+                    className="dr-chip-remove" 
+                    onClick={() => setFavSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
+
+              {/* Filtered Favorites Grid or Empty States */}
+              {(() => {
+                const q = favSearchQuery.toLowerCase().trim()
+                const filtered = favoriteMedicines
+                  .map((fav, originalIndex) => ({ fav, originalIndex }))
+                  .filter(({ fav }) => {
+                    if (!q) return true
+                    return (
+                      (fav.name || '').toLowerCase().includes(q) ||
+                      (fav.type || '').toLowerCase().includes(q) ||
+                      (fav.strength || '').toLowerCase().includes(q) ||
+                      (fav.frequency || '').toLowerCase().includes(q) ||
+                      (fav.duration || '').toLowerCase().includes(q) ||
+                      (fav.meal || '').toLowerCase().includes(q) ||
+                      (fav.instructions || '').toLowerCase().includes(q)
+                    )
+                  })
+
+                if (favoriteMedicines.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '30px 20px', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                      <Star size={28} color="#94a3b8" style={{ marginBottom: 8 }} />
+                      <p style={{ margin: 0, fontWeight: 600, color: '#475569', fontSize: 14 }}>No favorite medicines saved</p>
+                      <p style={{ margin: '4px 0 12px', fontSize: 12, color: '#94a3b8' }}>
+                        Click "+ Add Favorite" above or click the star icon in your prescription table to save favorites.
+                      </p>
+                      <button 
+                        type="button" 
+                        className="dr-btn-primary" 
+                        onClick={() => {
+                          setEditingFavIndex(null)
+                          setShowAddFavForm(true)
+                        }}
+                      >
+                        <Plus size={13} /> Add First Favorite
+                      </button>
+                    </div>
+                  )
+                }
+
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '24px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <Search size={22} color="#94a3b8" style={{ marginBottom: 6 }} />
+                      <p style={{ margin: 0, fontWeight: 600, color: '#475569', fontSize: 13 }}>No favorites found matching "{favSearchQuery}"</p>
+                      <button 
+                        type="button" 
+                        className="dr-sidebar-link-btn" 
+                        style={{ marginTop: 6 }}
+                        onClick={() => setFavSearchQuery('')}
+                      >
+                        Clear search filter
+                      </button>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="dr-favs-picker-grid">
+                    {filtered.map(({ fav, originalIndex }) => (
+                      <div key={originalIndex} className="dr-fav-card" onClick={() => addFavoriteMedicine(fav)}>
+                        <div className="dr-fav-title-row">
+                          <strong>{fav.name}</strong>
+                          <div className="dr-fav-card-right">
+                            <span className="dr-badge-type">{fav.type}</span>
+                            <button 
+                              type="button" 
+                              className="dr-fav-action-btn dr-fav-edit-btn" 
+                              onClick={(e) => handleStartEditFavorite(e, fav, originalIndex)}
+                              title="Edit favorite medicine"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button 
+                              type="button" 
+                              className="dr-fav-action-btn dr-fav-delete-btn" 
+                              onClick={(e) => deleteFavoriteItem(e, originalIndex)}
+                              title="Remove from favorites"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="dr-fav-meta">
+                          {fav.strength} • {fav.frequency} • {fav.duration}
+                        </div>
+                        <div className="dr-fav-note">
+                          {fav.meal} {fav.instructions ? `(${fav.instructions})` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
@@ -2811,6 +3976,117 @@ export default function PrescriptionFormPage() {
                 </button>
                 <button type="submit" className="dr-btn-primary">
                   <User size={14} /> Confirm Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL 7: QUICK MEDICINE BUNDLE BUILDER
+          ======================================================== */}
+      {showBundleModal && (
+        <div className="dr-modal-backdrop" onClick={() => setShowBundleModal(false)}>
+          <div className="dr-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 650 }}>
+            <div className="dr-modal-header">
+              <div className="dr-modal-title">
+                <Zap size={18} color="#2563eb" /> {editingBundleIndex !== null ? 'Edit Medicine Bundle' : 'Create New Medicine Bundle'}
+              </div>
+              <button type="button" className="dr-chip-remove" onClick={() => setShowBundleModal(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveBundleForm}>
+              <div className="dr-modal-body">
+                <div>
+                  <label className="dr-form-label">Bundle Title / Pack Name *</label>
+                  <input
+                    type="text"
+                    className="dr-input-field"
+                    placeholder="e.g. Typhoid Treatment Pack, Fever & Cough Combo"
+                    value={bundleForm.title}
+                    onChange={e => setBundleForm(prev => ({ ...prev, title: e.target.value }))}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="dr-form-label" style={{ margin: 0 }}>Medicines in this Bundle ({bundleForm.meds.length})</label>
+                    <button
+                      type="button"
+                      className="dr-btn-blue-outline-sm"
+                      onClick={handleAddMedicineToBundleForm}
+                    >
+                      <Plus size={12} /> Add Medicine Row
+                    </button>
+                  </div>
+
+                  <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                    {bundleForm.meds.map((bMed, bIdx) => (
+                      <div key={bIdx} className="dr-bundle-med-row">
+                        <div>
+                          <input
+                            type="text"
+                            className="dr-input-field"
+                            placeholder="Medicine Name (e.g. Paracetamol)"
+                            value={bMed.medicine_name}
+                            onChange={e => handleBundleMedFieldChange(bIdx, 'medicine_name', e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <select
+                            className="dr-select-box"
+                            value={matchOptionValue(FREQUENCY_OPTIONS, bMed.frequency)}
+                            onChange={e => handleBundleMedFieldChange(bIdx, 'frequency', e.target.value)}
+                          >
+                            {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <select
+                            className="dr-select-box"
+                            value={matchOptionValue(DURATION_OPTIONS, bMed.duration)}
+                            onChange={e => handleBundleMedFieldChange(bIdx, 'duration', e.target.value)}
+                          >
+                            {DURATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <select
+                            className="dr-select-box"
+                            value={matchOptionValue(MEAL_OPTIONS, bMed.meal)}
+                            onChange={e => handleBundleMedFieldChange(bIdx, 'meal', e.target.value)}
+                          >
+                            {MEAL_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            className="dr-fav-action-btn dr-fav-delete-btn"
+                            onClick={() => handleRemoveMedicineFromBundleForm(bIdx)}
+                            disabled={bundleForm.meds.length <= 1}
+                            title="Remove Medicine Row"
+                            style={{ opacity: bundleForm.meds.length <= 1 ? 0.4 : 1 }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="dr-modal-footer">
+                <button type="button" className="dr-btn-white" onClick={() => setShowBundleModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="dr-btn-primary">
+                  <Zap size={14} /> {editingBundleIndex !== null ? 'Update Bundle' : 'Save Bundle'}
                 </button>
               </div>
             </form>

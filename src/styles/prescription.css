@@ -5,10 +5,15 @@
    Matches real Bangladeshi doctor hardcopy layout
    =================================================================== */
 
-/* --- Prescription Design Tokens --- */
+/* --- Prescription Design Tokens (Exact A4 210x297mm Layout) --- */
 :root {
   --rx-page-width: 210mm;
   --rx-page-min-height: 297mm;
+  --rx-header-height: 55mm;
+  --rx-margin-left: 18mm;
+  --rx-margin-right: 12mm;
+  --rx-margin-bottom: 15mm;
+  --rx-body-width: 180mm;
   --rx-font-bn: 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif;
   --rx-font-en: 'Inter', 'Segoe UI', sans-serif;
   --rx-primary: #00A88C;
@@ -21,8 +26,8 @@
   --rx-accent-red: #D32F2F;
   --rx-dream-bg: #F0F7FF;
   /* Light dream/ice blue */
-  --rx-left-width: 30%;
-  --rx-right-width: 70%;
+  --rx-left-width: 32%;
+  --rx-right-width: 68%;
 }
 
 /* ===== PRESCRIPTION CONTAINER ===== */
@@ -157,23 +162,15 @@
 
 /* ===== HEADER — DOCTOR INFO ===== */
 .rx-header {
-  padding: 14px 36px 10px;
+  min-height: var(--rx-header-height, 55mm);
+  padding: 6mm var(--rx-margin-right, 12mm) 4mm var(--rx-margin-left, 18mm);
+  box-sizing: border-box;
   border-bottom: 3px solid var(--rx-primary);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 24px;
+  gap: 20px;
   position: relative;
-}
-
-.rx-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(0, 168, 140, 0.2);
 }
 
 .rx-font-bn {
@@ -306,11 +303,12 @@
 
 /* ===== PATIENT INFO BAR ===== */
 .rx-patient-bar {
-  padding: 14px 36px;
+  padding: 3mm var(--rx-margin-right, 12mm) 3mm var(--rx-margin-left, 18mm);
+  box-sizing: border-box;
   border-bottom: 1.5px solid var(--rx-border);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 6px 20px;
   align-items: baseline;
   font-family: var(--rx-font-en);
   background: var(--rx-bg-subtle);
@@ -349,12 +347,14 @@
   flex: 1;
   position: relative;
   min-height: 400px;
+  box-sizing: border-box;
 }
 
 /* Left Column — Clinical Notes */
 .rx-body-left {
   width: var(--rx-left-width);
-  padding: 24px 24px 32px 36px;
+  padding: 6mm 4mm 6mm var(--rx-margin-left, 18mm);
+  box-sizing: border-box;
   border-right: 1.5px solid var(--rx-border);
   display: flex;
   flex-direction: column;
@@ -406,7 +406,8 @@
 /* Right Column — Rx Section */
 .rx-body-right {
   width: var(--rx-right-width);
-  padding: 24px 36px 32px 28px;
+  padding: 6mm var(--rx-margin-right, 12mm) 6mm 6mm;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
@@ -481,8 +482,7 @@
 }
 
 .rx-duration::before {
-  content: '• ';
-  color: var(--rx-text-muted);
+  content: none !important;
 }
 
 .rx-instructions {
@@ -491,16 +491,15 @@
   font-size: 12px;
   font-weight: 400;
   color: var(--rx-primary);
-  font-style: italic;
   font-family: var(--rx-font-bn);
 }
 
 .rx-instructions::before {
-  content: '( ';
+  content: none !important;
 }
 
 .rx-instructions::after {
-  content: ' )';
+  content: none !important;
 }
 
 /* Advice Section */
@@ -581,7 +580,8 @@
 /* ===== FOOTER — HOSPITAL INFO ===== */
 .rx-footer {
   border-top: 2.5px solid var(--rx-primary);
-  padding: 20px 36px;
+  padding: 4mm var(--rx-margin-right, 12mm) var(--rx-margin-bottom, 15mm) var(--rx-margin-left, 18mm);
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -589,16 +589,6 @@
   position: relative;
   margin-top: auto;
   /* Push to the very bottom of the A4 paper */
-}
-
-.rx-footer::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(0, 168, 140, 0.15);
 }
 
 .rx-footer-left {
@@ -655,44 +645,95 @@
   margin-top: 2px;
 }
 
-/* ===== PRINT STYLES ===== */
+/* ===== STRICT SINGLE-PAGE A4 PRINT STYLES ===== */
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    box-sizing: border-box !important;
   }
 
   @page {
-    size: A4;
-    margin: 8mm;
-  }
-
-  body {
-    background: white !important;
-    padding: 0 !important;
+    size: A4 portrait;
     margin: 0 !important;
   }
 
+  html, body {
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+  }
+
+  /* 1. Hide entire outer admin dashboard, navigation, workspace form, buttons, dock */
+  header, footer, nav, aside,
+  .admin-header,
+  .admin-sidebar,
+  .admin-layout,
+  .dr-workspace-page,
+  .dr-top-banner,
+  .dr-bottom-dock,
+  .dr-modal-header,
+  .dr-modal-footer,
   .no-print,
-  .rx-action-bar {
+  .rx-action-bar,
+  .dr-toast-container {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
   }
 
+  /* 2. Flatten modal overlay wrapper if printed from modal */
+  .dr-modal-backdrop,
+  .dr-modal-card,
+  .dr-preview-modal-card,
+  .dr-modal-body,
+  .dr-preview-body,
   .rx-container {
-    background: white !important;
-    padding: 0 !important;
-    min-height: auto !important;
+    position: static !important;
     display: block !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
   }
 
+  /* 3. The exact A4 Prescription Paper — Perfectly 1 page */
   .rx-paper {
-    box-shadow: none !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
     margin: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: var(--rx-page-min-height) !important;
+    padding: 0 !important;
+    box-shadow: none !important;
     border: none !important;
-    overflow: visible !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-after: avoid !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   /* Force background colors for the clinical notes (dream blue) and other sections */
@@ -703,21 +744,32 @@
   }
 
   .rx-header-hidden {
+    display: none !important;
     visibility: hidden !important;
     height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    overflow: hidden !important;
   }
 
   .rx-footer-hidden {
+    display: none !important;
     visibility: hidden !important;
     height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    overflow: hidden !important;
+  }
+
+  .rx-header,
+  .rx-patient-bar,
+  .rx-body,
+  .rx-body-left,
+  .rx-body-right,
+  .rx-footer,
+  .rx-pad-header-spacer,
+  .rx-pad-footer-spacer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .rx-pad-header-spacer span,
+  .rx-pad-footer-spacer span {
+    display: none !important;
   }
 }
 
@@ -1855,10 +1907,12 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow-x: auto;
+  background: #ffffff;
 }
 
 .dr-table {
   width: 100%;
+  min-width: 940px;
   border-collapse: collapse;
   font-size: 12px;
   text-align: left;
@@ -1887,10 +1941,39 @@
 .dr-td-num {
   font-weight: 700;
   color: #64748b;
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
 }
 
 .dr-td-med-cell {
-  min-width: 160px;
+  min-width: 180px;
+  position: relative;
+}
+
+.dr-td-freq {
+  width: 105px;
+  min-width: 95px;
+}
+
+.dr-td-dur {
+  width: 140px;
+  min-width: 135px;
+}
+
+.dr-td-meal {
+  width: 175px;
+  min-width: 170px;
+}
+
+.dr-td-notes {
+  min-width: 150px;
+}
+
+.dr-td-actions {
+  width: 90px;
+  min-width: 85px;
+  text-align: center;
 }
 
 .dr-med-input-title {
@@ -1918,8 +2001,11 @@
 
 .dr-select-box {
   height: 32px;
-  padding: 0 8px;
-  background: #ffffff;
+  padding: 0 24px 0 8px;
+  background: #ffffff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 6px center / 13px 13px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 12px;
@@ -1929,10 +2015,12 @@
   width: 100%;
   cursor: pointer;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .dr-select-box:focus {
   border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 .dr-input-text-cell {
@@ -3020,6 +3108,62 @@
   color: #64748b;
 }
 
+.dr-bundle-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px;
+}
+
+.dr-bundle-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dr-menu-footer-actions {
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.dr-dropdown-action-btn {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.dr-dropdown-action-btn:hover {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+/* Bundle Builder Modal Grid */
+.dr-bundle-med-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
 /* Modal Backdrops & Cards */
 .dr-modal-backdrop {
   position: fixed;
@@ -3124,6 +3268,7 @@
   gap: 10px;
   max-height: 380px;
   overflow-y: auto;
+  padding-right: 2px;
 }
 
 .dr-fav-card {
@@ -3136,6 +3281,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
 }
 
 .dr-fav-card:hover {
@@ -3150,6 +3296,13 @@
   justify-content: space-between;
   font-size: 13px;
   color: #0f172a;
+  gap: 6px;
+}
+
+.dr-fav-card-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .dr-badge-type {
@@ -3158,6 +3311,47 @@
   background: #e2e8f0;
   border-radius: 4px;
   color: #475569;
+}
+
+.dr-fav-action-btn {
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.dr-fav-action-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.dr-fav-edit-btn:hover {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.dr-fav-delete-btn {
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.dr-fav-delete-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
 }
 
 .dr-fav-meta {
@@ -3169,6 +3363,60 @@
   font-size: 11px;
   color: #2563eb;
   font-weight: 500;
+}
+
+/* Action button favorite active state */
+.dr-action-btn-icon.dr-action-fav-active {
+  color: #f59e0b;
+}
+
+.dr-action-btn-icon.dr-action-fav-active:hover {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+/* Add Favorite Form Card inside Modal */
+.dr-fav-add-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.dr-fav-add-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #166534;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dr-fav-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dr-fav-form-full {
+  grid-column: 1 / -1;
+}
+
+.dr-fav-form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.dr-fav-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 /* Patient Profile Full View */
@@ -3284,4 +3532,103 @@
     border-left: none;
     padding-left: 0;
   }
+}
+
+/* ========================================================
+   DIGITAL PRESCRIPTION TEMPLATES (QR & BARCODE READY)
+   ======================================================== */
+.rx-template-modern-digital .rx-header {
+  border-bottom: 3px solid #00A88C;
+  background: #ffffff;
+}
+
+.rx-template-smart-hospital .rx-header {
+  border-bottom: 3px solid #2563eb;
+  background: #f8fafc;
+}
+
+.rx-template-smart-hospital .rx-symbol {
+  color: #2563eb !important;
+}
+
+.rx-template-smart-hospital .rx-serial {
+  color: #2563eb !important;
+}
+
+.rx-template-classic-pad .rx-header {
+  border-bottom: 3px solid #dc2626;
+}
+
+.rx-template-minimal-digital .rx-header {
+  border-bottom: 2px solid #0f172a;
+}
+
+.rx-template-minimal-digital .rx-symbol {
+  color: #0f172a !important;
+}
+
+/* Pure Content Hard Pad Print Mode — No Backgrounds, No Borders, No Extra Text/Badges */
+.rx-pad-print-mode {
+  background: transparent !important;
+}
+
+.rx-pad-print-mode .rx-pad-header-spacer {
+  height: var(--rx-header-height, 55mm) !important;
+  min-height: 55mm !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.rx-pad-print-mode .rx-pad-footer-spacer {
+  height: var(--rx-margin-bottom, 15mm) !important;
+  min-height: 15mm !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.rx-pad-print-mode .rx-patient-bar {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none !important;
+}
+
+.rx-pad-print-mode .rx-body-left {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-right: none !important;
+}
+
+.rx-pad-print-mode .rx-clinical-section {
+  border: none !important;
+  border-top: none !important;
+}
+
+.rx-pad-print-mode .rx-clinical-title .rx-indicator {
+  display: none !important;
+}
+
+.rx-pad-print-mode .rx-medicine-item {
+  border: none !important;
+  border-bottom: none !important;
+}
+
+.rx-pad-print-mode .rx-instructions {
+  background: transparent !important;
+  border: none !important;
+  color: #334155 !important;
+  padding: 0 !important;
+}
+
+.rx-pad-print-mode .rx-advice-section {
+  background: transparent !important;
+  border: none !important;
+  border-top: none !important;
+  padding: 6px 0 !important;
+}
+
+.rx-pad-print-mode .rx-footer {
+  border: none !important;
+  border-top: none !important;
+  background: transparent !important;
 }
