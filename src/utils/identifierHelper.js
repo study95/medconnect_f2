@@ -4,7 +4,26 @@
  */
 
 /**
- * Extracts 26-character Crockford ULID from any string (raw ULID or {slug}-{ULID})
+ * Checks if value is a valid Public ID format (e.g. PT-8K4X2M, DR-Q7P9LW, HP-M6R2TX)
+ */
+export function isPublicId(value) {
+  if (!value || typeof value !== 'string') return false
+  return /^[A-Z]{2,4}-[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}$/i.test(value.trim())
+}
+
+/**
+ * Extracts Public ID or 26-character legacy Crockford ULID from any string
+ */
+export function extractPublicId(value) {
+  if (!value || typeof value !== 'string') return null
+  const trimmed = value.trim()
+  const publicIdMatch = trimmed.match(/[A-Z]{2,4}-[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}/i)
+  if (publicIdMatch) return publicIdMatch[0].toUpperCase()
+  return extractUlid(value)
+}
+
+/**
+ * Extracts 26-character Crockford ULID from any string (legacy fallback)
  */
 export function extractUlid(value) {
   if (!value || typeof value !== 'string') return null

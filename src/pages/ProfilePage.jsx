@@ -454,11 +454,11 @@ function ProfilePage() {
 
   const fullAddress = [currentUniName, currentUpzName, currentDistName, currentDivName].filter(Boolean).join(', ')
 
-  const registrationNumber = isDoctorUser 
-    ? (form.bmdc_number ? `BMDC: ${form.bmdc_number}` : `REG-DOC-${user?.id || '1024'}`)
-    : isManager 
-      ? `REG-HOSP-${user?.id || '2048'}`
-      : `REG-PAT-${user?.id || '8941'}`
+  const registrationNumber = isDoctorUser
+    ? (form.bmdc_number ? `BMDC: ${form.bmdc_number}` : (profileData?.doctor?.public_id || profileData?.public_id || user?.public_id || `DR-${user?.id || '1024'}`))
+    : isManager
+      ? (profileData?.hospital?.public_id || profileData?.public_id || user?.public_id || `HP-${user?.id || '2048'}`)
+      : (profileData?.patient?.public_id || profileData?.public_id || user?.public_id || `PT-${user?.id || '8941'}`)
 
   if (loading) {
     return (
