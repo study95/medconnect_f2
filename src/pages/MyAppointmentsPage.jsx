@@ -716,8 +716,8 @@ function MyAppointmentsPage() {
                           <Star size={15} color="#D97706" fill="#F59E0B" />
                           <span>
                             {appt.review || appt.has_review
-                              ? (language === 'bn' ? 'রিভিউ দেওয়া হয়েছে (সম্পাদনা করুন)' : 'Review Submitted (Edit)')
-                              : (language === 'bn' ? 'ডাক্তারকে রেটিং ও রিভিউ দিন' : 'Rate & Review Doctor')}
+                              ? 'রিভিউ দেওয়া হয়েছে (সম্পাদনা করুন)'
+                              : 'ডাক্তারকে রেটিং ও রিভিউ দিন'}
                           </span>
                         </button>
                       )}
