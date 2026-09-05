@@ -27,6 +27,7 @@ import {
   getUnions,
   getSpecialties,
   getChambers,
+  getHospitals,
 } from '../../api/adminApi'
 import { getErrorMessage } from '../../utils/errorHelper'
 
@@ -141,13 +142,23 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
     enabled: Boolean(upazilaId),
   })
 
+  // Master Hospitals
+  const hospitalsQuery = useLookupQuery({
+    queryKey: queryKeys.hospitals.lists(),
+    queryFn: async () => {
+      const res = await getHospitals({ per_page: 5000, admin_view: 1 })
+      return res.data?.data?.data || res.data?.data || res.data || []
+    },
+  })
+
   return {
     divisions: divisionsQuery.data || [],
     specialties: specialtiesQuery.data || [],
     districts: districtsQuery.data || [],
     upazilas: upazilasQuery.data || [],
     unions: unionsQuery.data || [],
-    loadingLookups: divisionsQuery.isLoading || specialtiesQuery.isLoading,
+    hospitals: hospitalsQuery.data || [],
+    loadingLookups: divisionsQuery.isLoading || specialtiesQuery.isLoading || hospitalsQuery.isLoading,
   }
 }
 

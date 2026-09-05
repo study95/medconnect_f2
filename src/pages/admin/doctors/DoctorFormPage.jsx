@@ -1,15 +1,12 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getDoctor } from '../../../api/adminApi'
 import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
-import ReactQuill from 'react-quill'
-import 'react-quill/dist/quill.snow.css'
-
-const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
 
 // Premium Searchable Select Component
 function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -25,9 +22,9 @@ function SearchableSelect({ id, label, options, value, onChange, placeholder, di
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt.id.toString() === (value || '').toString())
+  const filteredOptions = (options || [])
+    .filter(opt => (opt.name || '').toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   const hasErr = !!error
@@ -79,14 +76,14 @@ function SearchableSelect({ id, label, options, value, onChange, placeholder, di
                   key={opt.id} 
                   style={{ 
                     padding: '10px 16px', fontSize: 14, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                    background: (value || '').toString() === opt.id.toString() ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
                     color: 'var(--admin-text)',
                     borderBottom: '1px solid var(--admin-border)'
                   }}
                   onMouseEnter={(e) => e.target.style.background = 'rgba(0,0,0,0.03)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(99, 102, 241, 0.1)' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = (value || '').toString() === opt.id.toString() ? 'rgba(99, 102, 241, 0.1)' : 'transparent'}
                   onClick={() => {
-                    onChange(opt.id.toString())
+                    onChange(opt.id.toString(), opt)
                     setIsOpen(false)
                     setSearch('')
                   }}
@@ -179,13 +176,14 @@ export default function DoctorFormPage() {
   const [form, setForm] = useState({
     name: '', name_bn: '', slug: '', slug_bn: '', 
     specialty_id: '', specialty_bn: '',
+    hospital_id: '',
     degree: '', degree_bn: '', 
     degree1: '', degree1_bn: '',
     degree2: '', degree2_bn: '',
     degree3: '', degree3_bn: '',
     degree4: '', degree4_bn: '',
     workplace: '', workplace_bn: '', 
-    bmdc: '', fee: '', experience: '', phone: '', email: '', bio: '', long_bio: '',
+    bmdc: '', fee: '', experience: '', phone: '', email: '', bio: '',
     top_10_doctor: 'no', available_telemedicine: 'no', is_active: true,
     division_id: '', district_id: '', upazila_id: '', union_id: ''
   })
@@ -220,15 +218,26 @@ export default function DoctorFormPage() {
     setExperiences(updated)
   }
 
+  // Media State & File Input Refs
   const [media, setMedia] = useState({
     photo: null, signature: null,
-    photoPreview: null, signaturePreview: null
+    photoPreview: null, signaturePreview: null,
+    photoDims: null, signatureDims: null
   })
+  const [removedMedia, setRemovedMedia] = useState({
+    photo: false,
+    signature: false
+  })
+
+  const fileInputRefs = {
+    photo: useRef(null),
+    signature: useRef(null)
+  }
 
   const [expertise, setExpertise] = useState([])
   const [expertiseInput, setExpertiseInput] = useState('')
 
-  const { divisions, specialties, districts, upazilas, unions } = useAdminDoctorLookups({
+  const { divisions, specialties, districts, upazilas, unions, hospitals } = useAdminDoctorLookups({
     divisionId: form.division_id,
     districtId: form.district_id,
     upazilaId: form.upazila_id,
@@ -257,6 +266,7 @@ export default function DoctorFormPage() {
         slug_bn: d.slug_bn || '',
         specialty_id: (d.specialty_id ?? d.specialty?.id ?? '').toString(),
         specialty_bn: d.specialty_bn || '',
+        hospital_id: (d.hospital_id ?? d.hospital?.id ?? '').toString(),
         degree: d.degree || '',
         degree_bn: d.degree_bn || '',
         degree1: d.degree1 || '',
@@ -275,7 +285,6 @@ export default function DoctorFormPage() {
         phone: d.phone || '',
         email: d.email || '',
         bio: d.bio || '',
-        long_bio: d.long_bio || '',
         top_10_doctor: d.top_10_doctor === 'yes' ? 'yes' : 'no',
         available_telemedicine: d.available_telemedicine === 'yes' ? 'yes' : 'no',
         is_active: d.is_active === 1 || d.is_active === true,
@@ -304,6 +313,8 @@ export default function DoctorFormPage() {
       
       if (d.photo) setMedia(m => ({ ...m, photoPreview: d.photo }))
       if (d.signature_photo) setMedia(m => ({ ...m, signaturePreview: d.signature_photo }))
+      setRemovedMedia({ photo: false, signature: false })
+
       if (d.expertise) {
         try { 
           const parsed = Array.isArray(d.expertise) ? d.expertise : JSON.parse(d.expertise)
@@ -313,7 +324,8 @@ export default function DoctorFormPage() {
         }
       }
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setLoading(false)
     }
   }
@@ -321,26 +333,111 @@ export default function DoctorFormPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
-    if (errors[name]) setErrors({ ...errors, [name]: '' })
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
-  const handleMediaChange = (e, type) => {
-    const file = e.target.files[0]
-    if (file) {
+  const handleHospitalChange = (hospitalId) => {
+    const selected = (hospitals || []).find(h => h.id.toString() === hospitalId.toString())
+    setForm(prev => {
+      const updates = { ...prev, hospital_id: hospitalId }
+      if (selected) {
+        if (!prev.workplace || !prev.workplace.trim()) {
+          updates.workplace = selected.name || ''
+        }
+        if (!prev.workplace_bn || !prev.workplace_bn.trim()) {
+          updates.workplace_bn = selected.name_bn || selected.name || ''
+        }
+      }
+      return updates
+    })
+    if (errors.hospital_id) setErrors(prev => ({ ...prev, hospital_id: '' }))
+  }
+
+  const handleMediaFile = (file, type) => {
+    if (!file) return
+    const errorKey = type === 'photo' ? 'photo' : 'signature_photo'
+    const maxMb = 2
+
+    // Client-side file type verification
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!validTypes.includes(file.type)) {
+      const msg = 'File must be an image (JPG, PNG, WEBP, or GIF).'
+      toast.error(msg)
+      setErrors(prev => ({ ...prev, [errorKey]: msg }))
+      return
+    }
+
+    // Client-side file size verification (2MB)
+    if (file.size > maxMb * 1024 * 1024) {
+      const msg = `${type === 'photo' ? 'Profile photo' : 'Signature photo'} must not exceed ${maxMb} MB.`
+      toast.error(msg)
+      setErrors(prev => ({ ...prev, [errorKey]: msg }))
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
       setMedia(m => ({
         ...m,
         [type]: file,
-        [`${type}Preview`]: URL.createObjectURL(file)
+        [`${type}Preview`]: objectUrl,
+        [`${type}Dims`]: { width: img.naturalWidth, height: img.naturalHeight }
       }))
+      setRemovedMedia(prev => ({ ...prev, [type]: false }))
+      setErrors(prev => ({ ...prev, [errorKey]: '' }))
     }
+    img.onerror = () => {
+      setMedia(m => ({
+        ...m,
+        [type]: file,
+        [`${type}Preview`]: objectUrl,
+        [`${type}Dims`]: null
+      }))
+      setRemovedMedia(prev => ({ ...prev, [type]: false }))
+      setErrors(prev => ({ ...prev, [errorKey]: '' }))
+    }
+    img.src = objectUrl
+  }
+
+  const handleMediaChange = (e, type) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleMediaFile(file, type)
+    }
+  }
+
+  const handleDropMedia = (e, type) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      handleMediaFile(file, type)
+    }
+  }
+
+  const handleRemoveMedia = (type) => {
+    setMedia(m => ({
+      ...m,
+      [type]: null,
+      [`${type}Preview`]: null,
+      [`${type}Dims`]: null
+    }))
+    setRemovedMedia(prev => ({ ...prev, [type]: true }))
+    if (fileInputRefs[type]?.current) {
+      fileInputRefs[type].current.value = ''
+    }
+    const label = type === 'photo' ? 'Profile Photo' : 'Digital Signature'
+    toast.success(`${label} removed`)
   }
 
   const scrollToFirstError = (errorObj) => {
     if (!errorObj || Object.keys(errorObj).length === 0) return
 
     const fieldOrder = [
-      'name', 'name_bn', 'slug', 'slug_bn', 'specialty_id', 'specialty_bn',
+      'name', 'name_bn', 'slug', 'slug_bn', 'specialty_id', 'hospital_id', 'specialty_bn',
       'workplace', 'workplace_bn', 'bmdc', 'fee', 'experience', 'degree',
+      'photo', 'signature_photo',
       'division_id', 'district_id', 'upazila_id', 'union_id', 'phone', 'email'
     ]
 
@@ -395,6 +492,10 @@ export default function DoctorFormPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
+      showError({
+        title: 'Validation Error',
+        message: 'Please review and resolve the highlighted errors in the form.'
+      })
       scrollToFirstError(newErrors)
       return
     }
@@ -424,15 +525,32 @@ export default function DoctorFormPage() {
       if (key === 'is_active') value = value ? '1' : '0'
       
       // Only append if value is present (avoids overwriting with empty/null unless intended)
-      if (value !== null && value !== undefined) {
+      if (value !== null && value !== undefined && value !== '') {
         formData.append(key, value)
       }
     })
 
+    // If hospital_id was explicitly cleared to empty string, send null/empty
+    if (!form.hospital_id && isEdit) {
+      formData.append('hospital_id', '')
+    }
+
     if (expertise.length > 0) formData.append('expertise', JSON.stringify(expertise))
     if (experiences.length > 0) formData.append('experiences', JSON.stringify(experiences))
-    if (media.photo) formData.append('photo', media.photo)
-    if (media.signature) formData.append('signature_photo', media.signature)
+
+    // Handle photo upload / removal
+    if (media.photo) {
+      formData.append('photo', media.photo)
+    } else if (removedMedia.photo) {
+      formData.append('remove_photo', '1')
+    }
+
+    // Handle signature upload / removal
+    if (media.signature) {
+      formData.append('signature_photo', media.signature)
+    } else if (removedMedia.signature) {
+      formData.append('remove_signature_photo', '1')
+    }
 
     if (isEdit) formData.append('_method', 'PUT')
 
@@ -456,6 +574,10 @@ export default function DoctorFormPage() {
       if (err.response?.data?.errors) {
         const errs = err.response.data.errors
         setErrors(errs)
+        showError({
+          title: 'Validation Error',
+          message: 'Please review and fix the highlighted fields returned by the server.'
+        })
         scrollToFirstError(errs)
       } else {
         const message = err.response?.data?.message || getErrorMessage(err, 'Failed to save doctor profile.')
@@ -492,51 +614,256 @@ export default function DoctorFormPage() {
         
         {/* Core Profile Section */}
         <div className="admin-card" style={{ borderTop: '4px solid #0EA5E9', overflow: 'visible' }}>
-          <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 40, overflow: 'visible' }}>
-            {/* Left: Media */}
+          <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 36, overflow: 'visible' }}>
+            
+            {/* Left: Enterprise Media Dropzones */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-               <div style={{ textAlign: 'center' }}>
-                <label className="admin-form-label">Profile Image</label>
-                <div style={{ 
-                  width: '100%', aspectRatio: '3/4', borderRadius: 20, border: '2px dashed var(--admin-border)',
-                  overflow: 'hidden', background: 'rgba(0,0,0,0.02)', position: 'relative', cursor: 'pointer'
-                }}>
-                  {media.photoPreview ? (
-                    <img src={media.photoPreview} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-text-muted)', fontSize: 40 }}>📷</div>
-                  )}
-                  <input type="file" onChange={(e) => handleMediaChange(e, 'photo')} accept="image/*" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+              
+              {/* Profile Photo Dropzone */}
+              <div id="field-photo">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 700 }}>
+                    Profile Photo <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>(Max 2 MB)</span>
+                  </label>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0EA5E9', background: 'rgba(14, 165, 233, 0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                    1:1 (600×600 px)
+                  </span>
                 </div>
+
+                <div 
+                  className="media-dropzone"
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#0EA5E9'; }}
+                  onDragLeave={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = errors.photo ? '#EF4444' : 'var(--admin-border)'; }}
+                  onDrop={(e) => { e.currentTarget.style.borderColor = errors.photo ? '#EF4444' : 'var(--admin-border)'; handleDropMedia(e, 'photo'); }}
+                  style={{ 
+                    border: `2px dashed ${errors.photo ? '#EF4444' : 'var(--admin-border)'}`, 
+                    borderRadius: 16, 
+                    padding: 16, 
+                    textAlign: 'center', 
+                    background: errors.photo ? 'rgba(239, 68, 68, 0.03)' : 'rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    transition: 'border-color 0.2s'
+                  }}
+                >
+                  {media.photoPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }} className="media-preview-container">
+                      <img 
+                        src={media.photoPreview} 
+                        alt="Profile Preview" 
+                        style={{ width: 140, height: 140, borderRadius: 16, objectFit: 'cover', display: 'block', margin: '0 auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
+                      />
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('photo')}
+                        title="Remove Photo"
+                        aria-label="Remove Photo"
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                          border: '2px solid #FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
+                          padding: 0
+                        }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 900, lineHeight: 1 }}>✕</span>
+                      </button>
+
+                      {media.photoDims && (
+                        <div style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#059669' : '#D97706',
+                          background: Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#ECFDF5' : '#FFFBEB',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          display: 'inline-block',
+                          border: `1px solid ${Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#A7F3D0' : '#FDE68A'}`
+                        }}>
+                          {media.photoDims.width} × {media.photoDims.height} px
+                          {Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? ' ✓ Ideal' : ' (Square Recommended)'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px 0 10px 0', color: 'var(--admin-text-muted)' }}>
+                      <div style={{ fontSize: 32, marginBottom: 4 }}>👨‍⚕️</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>No Photo Selected</div>
+                      <div style={{ fontSize: 11, color: '#94A3B8' }}>Drag & drop or browse below (600×600 px)</div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefs.photo.current?.click()}
+                      className="admin-btn admin-btn-outline"
+                      style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8 }}
+                    >
+                      {media.photoPreview ? '🔄 Replace Photo' : '📁 Browse Photo'}
+                    </button>
+                    {media.photoPreview && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('photo')}
+                        className="admin-btn"
+                        style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: 'none' }}
+                      >
+                        🗑️ Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <input 
+                    ref={fileInputRefs.photo}
+                    type="file" 
+                    onChange={(e) => handleMediaChange(e, 'photo')} 
+                    accept="image/jpeg,image/png,image/webp,image/gif" 
+                    style={{ display: 'none' }} 
+                  />
+                </div>
+                {renderFieldError('photo')}
               </div>
 
-              <div style={{ textAlign: 'center' }}>
-                <label className="admin-form-label">Digital Signature</label>
-                <div style={{ 
-                  width: '100%', height: 80, borderRadius: 12, border: '2px dashed var(--admin-border)',
-                  overflow: 'hidden', background: 'var(--admin-card-bg)', position: 'relative', cursor: 'pointer'
-                }}>
-                  {media.signaturePreview ? (
-                    <img src={media.signaturePreview} alt="S" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>Upload Signature</div>
-                  )}
-                  <input type="file" onChange={(e) => handleMediaChange(e, 'signature')} accept="image/*" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+              {/* Digital Signature Dropzone */}
+              <div id="field-signature_photo">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 700 }}>
+                    Digital Signature <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>(Max 2 MB)</span>
+                  </label>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#8B5CF6', background: 'rgba(139, 92, 246, 0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                    3:1 (300×100 px)
+                  </span>
                 </div>
+
+                <div 
+                  className="media-dropzone"
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#8B5CF6'; }}
+                  onDragLeave={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = errors.signature_photo ? '#EF4444' : 'var(--admin-border)'; }}
+                  onDrop={(e) => { e.currentTarget.style.borderColor = errors.signature_photo ? '#EF4444' : 'var(--admin-border)'; handleDropMedia(e, 'signature'); }}
+                  style={{ 
+                    border: `2px dashed ${errors.signature_photo ? '#EF4444' : 'var(--admin-border)'}`, 
+                    borderRadius: 16, 
+                    padding: 14, 
+                    textAlign: 'center', 
+                    background: errors.signature_photo ? 'rgba(239, 68, 68, 0.03)' : 'rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    transition: 'border-color 0.2s'
+                  }}
+                >
+                  {media.signaturePreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 6 }} className="media-preview-container">
+                      <img 
+                        src={media.signaturePreview} 
+                        alt="Signature Preview" 
+                        style={{ width: 180, height: 60, borderRadius: 8, objectFit: 'contain', display: 'block', margin: '0 auto', background: '#FFFFFF', padding: 4, border: '1px solid var(--admin-border)' }} 
+                      />
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('signature')}
+                        title="Remove Signature"
+                        aria-label="Remove Signature"
+                        style={{
+                          position: 'absolute',
+                          top: -6,
+                          right: -6,
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                          border: '2px solid #FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
+                          padding: 0
+                        }}
+                      >
+                        <span style={{ fontSize: 12, fontWeight: 900, lineHeight: 1 }}>✕</span>
+                      </button>
+
+                      {media.signatureDims && (
+                        <div style={{
+                          marginTop: 4,
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: '#6B7280',
+                          background: 'rgba(0,0,0,0.04)',
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          display: 'inline-block'
+                        }}>
+                          {media.signatureDims.width} × {media.signatureDims.height} px (Transparent PNG Recommended)
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '12px 0 8px 0', color: 'var(--admin-text-muted)' }}>
+                      <div style={{ fontSize: 24, marginBottom: 2 }}>✍️</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>No Signature Uploaded</div>
+                      <div style={{ fontSize: 10.5, color: '#94A3B8' }}>Transparent PNG (300×100 px)</div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefs.signature.current?.click()}
+                      className="admin-btn admin-btn-outline"
+                      style={{ fontSize: 11.5, padding: '5px 12px', borderRadius: 8 }}
+                    >
+                      {media.signaturePreview ? '🔄 Replace Signature' : '📁 Browse Signature'}
+                    </button>
+                    {media.signaturePreview && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('signature')}
+                        className="admin-btn"
+                        style={{ fontSize: 11.5, padding: '5px 10px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: 'none' }}
+                      >
+                        🗑️ Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <input 
+                    ref={fileInputRefs.signature}
+                    type="file" 
+                    onChange={(e) => handleMediaChange(e, 'signature')} 
+                    accept="image/jpeg,image/png,image/webp,image/gif" 
+                    style={{ display: 'none' }} 
+                  />
+                </div>
+                {renderFieldError('signature_photo')}
               </div>
+
             </div>
 
-            {/* Right: Personal Details */}
+            {/* Right: Personal & Professional Details */}
             <div style={{ display: 'grid', gap: 20 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Doctor Name (English) *</label>
-                  <input className="admin-form-input" name="name" value={form.name} onChange={handleChange} placeholder="Dr. John Doe" />
+                  <input className={`admin-form-input ${errors.name ? 'has-error' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Dr. John Doe" />
                   {renderFieldError('name')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Doctor Name (Bangla) *</label>
-                  <input className="admin-form-input" name="name_bn" value={form.name_bn} onChange={handleChange} placeholder="ডাঃ জন ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  <input className={`admin-form-input ${errors.name_bn ? 'has-error' : ''}`} name="name_bn" value={form.name_bn} onChange={handleChange} placeholder="ডাঃ জন ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
                   {renderFieldError('name_bn')}
                 </div>
               </div>
@@ -544,34 +871,49 @@ export default function DoctorFormPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Profile Slug (URL) *</label>
-                  <input className="admin-form-input" name="slug" value={form.slug} onChange={handleChange} placeholder="dr-john-doe" />
+                  <input className={`admin-form-input ${errors.slug ? 'has-error' : ''}`} name="slug" value={form.slug} onChange={handleChange} placeholder="dr-john-doe" />
                   {renderFieldError('slug')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Bangla Slug</label>
-                  <input className="admin-form-input" name="slug_bn" value={form.slug_bn} onChange={handleChange} placeholder="ডাঃ-জন-ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  <input className={`admin-form-input ${errors.slug_bn ? 'has-error' : ''}`} name="slug_bn" value={form.slug_bn} onChange={handleChange} placeholder="ডাঃ-জন-ডো" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
                   {renderFieldError('slug_bn')}
                 </div>
               </div>
 
+              {/* Specialty & Bangla Specialty */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <SearchableSelect id="field-specialty_id" label="Specialty *" options={specialties} value={form.specialty_id} onChange={(v) => { setForm(f => ({...f, specialty_id: v})); if (errors.specialty_id) setErrors(e => ({...e, specialty_id: ''})); }} placeholder="Select Specialty" error={errors.specialty_id} />
                 <div className="admin-form-group">
                   <label className="admin-form-label">Specialty (Bangla)</label>
-                  <input className="admin-form-input" name="specialty_bn" value={form.specialty_bn} onChange={handleChange} placeholder="বিশেষজ্ঞ..." />
+                  <input className={`admin-form-input ${errors.specialty_bn ? 'has-error' : ''}`} name="specialty_bn" value={form.specialty_bn} onChange={handleChange} placeholder="বিশেষজ্ঞ..." />
                   {renderFieldError('specialty_bn')}
                 </div>
               </div>
 
+              {/* Affiliated Primary Hospital */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+                <SearchableSelect 
+                  id="field-hospital_id" 
+                  label="Affiliated Hospital (Primary Institutional Link)" 
+                  options={hospitals} 
+                  value={form.hospital_id} 
+                  onChange={(val) => handleHospitalChange(val)} 
+                  placeholder="Search & select affiliated hospital (Optional)..." 
+                  error={errors.hospital_id} 
+                />
+              </div>
+
+              {/* Workplace & Workplace BN */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Current Workplace / Hospital (English) *</label>
-                  <input className="admin-form-input" name="workplace" value={form.workplace} onChange={handleChange} placeholder="e.g. Dhaka Medical College Hospital" />
+                  <input className={`admin-form-input ${errors.workplace ? 'has-error' : ''}`} name="workplace" value={form.workplace} onChange={handleChange} placeholder="e.g. Dhaka Medical College Hospital" />
                   {renderFieldError('workplace')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">বর্তমান কর্মস্থল (Bangla)</label>
-                  <input className="admin-form-input" name="workplace_bn" value={form.workplace_bn} onChange={handleChange} placeholder="যেমনঃ ঢাকা মেডিকেল কলেজ হাসপাতাল" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  <input className={`admin-form-input ${errors.workplace_bn ? 'has-error' : ''}`} name="workplace_bn" value={form.workplace_bn} onChange={handleChange} placeholder="যেমনঃ ঢাকা মেডিকেল কলেজ হাসপাতাল" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
                   {renderFieldError('workplace_bn')}
                 </div>
               </div>
@@ -579,12 +921,12 @@ export default function DoctorFormPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
                 <div className="admin-form-group">
                   <label className="admin-form-label">BMDC Reg No. *</label>
-                  <input className="admin-form-input" name="bmdc" value={form.bmdc} onChange={handleChange} placeholder="A-12345" />
+                  <input className={`admin-form-input ${errors.bmdc ? 'has-error' : ''}`} name="bmdc" value={form.bmdc} onChange={handleChange} placeholder="A-12345" />
                   {renderFieldError('bmdc')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Consultation Fee (৳)</label>
-                  <input type="number" className="admin-form-input" name="fee" value={form.fee} onChange={handleChange} placeholder="500" />
+                  <input type="number" className={`admin-form-input ${errors.fee ? 'has-error' : ''}`} name="fee" value={form.fee} onChange={handleChange} placeholder="500" />
                   {renderFieldError('fee')}
                 </div>
                 <div className="admin-form-group">
@@ -602,7 +944,7 @@ export default function DoctorFormPage() {
                         if (yr) totalMonths += parseInt(yr[1]) * 12
                         if (mo) totalMonths += parseInt(mo[1])
                       })
-                      if (totalMonths === 0) return form.experience || '—'
+                      if (totalMonths === 0) return form.experience ? `${form.experience} Years` : '—'
                       const yrs = Math.floor(totalMonths / 12)
                       const mos = totalMonths % 12
                       if (yrs === 0) return `${mos} Month${mos !== 1 ? 's' : ''}`
@@ -628,12 +970,12 @@ export default function DoctorFormPage() {
             <div className="admin-card-body" style={{ display: 'grid', gap: 16 }}>
               <div className="admin-form-group">
                 <label className="admin-form-label">Primary Degrees</label>
-                <input className="admin-form-input" name="degree" value={form.degree} onChange={handleChange} placeholder="MBBS, FCPS" />
+                <input className={`admin-form-input ${errors.degree ? 'has-error' : ''}`} name="degree" value={form.degree} onChange={handleChange} placeholder="MBBS, FCPS" />
                 {renderFieldError('degree')}
               </div>
               {[1, 2, 3, 4].map(num => (
                 <div key={num} className="admin-form-group">
-                  <input className="admin-form-input" name={`degree${num}`} value={form[`degree${num}`]} onChange={handleChange} placeholder={`Additional Degree ${num}`} />
+                  <input className={`admin-form-input ${errors[`degree${num}`] ? 'has-error' : ''}`} name={`degree${num}`} value={form[`degree${num}`]} onChange={handleChange} placeholder={`Additional Degree ${num}`} />
                   {renderFieldError(`degree${num}`)}
                 </div>
               ))}
@@ -647,12 +989,12 @@ export default function DoctorFormPage() {
             <div className="admin-card-body" style={{ display: 'grid', gap: 16 }}>
               <div className="admin-form-group">
                 <label className="admin-form-label">ডিগ্রীসমূহ</label>
-                <input className="admin-form-input" name="degree_bn" value={form.degree_bn} onChange={handleChange} placeholder="এমবিবিএস, এফসিপিএস" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                <input className={`admin-form-input ${errors.degree_bn ? 'has-error' : ''}`} name="degree_bn" value={form.degree_bn} onChange={handleChange} placeholder="এমবিবিএস, এফসিপিএস" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
                 {renderFieldError('degree_bn')}
               </div>
               {[1, 2, 3, 4].map(num => (
                 <div key={num} className="admin-form-group">
-                  <input className="admin-form-input" name={`degree${num}_bn`} value={form[`degree${num}_bn`]} onChange={handleChange} placeholder={`অতিরিক্ত ডিগ্রী ${num}`} style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
+                  <input className={`admin-form-input ${errors[`degree${num}_bn`] ? 'has-error' : ''}`} name={`degree${num}_bn`} value={form[`degree${num}_bn`]} onChange={handleChange} placeholder={`অতিরিক্ত ডিগ্রী ${num}`} style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
                   {renderFieldError(`degree${num}_bn`)}
                 </div>
               ))}
@@ -863,21 +1205,52 @@ export default function DoctorFormPage() {
           </div>
         </div>
 
-        {/* Bio & Content */}
+        {/* Bio & Content (Single Clean Plain-Text Bio - SSOT) */}
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3 className="admin-card-title">Biography & Professional Summary</h3>
+            <h3 className="admin-card-title">Doctor Biography & Profile Overview</h3>
+            <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '2px 0 0' }}>Provide professional background, clinical expertise, qualifications, and patient care philosophy (clean semantic text only)</p>
           </div>
-          <div className="admin-card-body" style={{ display: 'grid', gap: 24 }}>
+          <div className="admin-card-body">
             <div className="admin-form-group">
-              <label className="admin-form-label">Short Bio (Quick Preview)</label>
-              <textarea className="admin-form-textarea" name="bio" value={form.bio} onChange={handleChange} rows={2} placeholder="Summarize professional background..." />
-            </div>
-            <div className="admin-form-group">
-              <label className="admin-form-label">Detailed Professional Profile (Rich Text)</label>
-              <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--admin-border)' }}>
-                <ReactQuill theme="snow" value={form.long_bio} onChange={(val) => setForm(f => ({ ...f, long_bio: val }))} style={{ height: 300, marginBottom: 50 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <label className="admin-form-label" style={{ margin: 0, fontWeight: 700 }}>
+                  Doctor Biography (ডাক্তার পরিচিতি)
+                </label>
+                <span style={{ 
+                  fontSize: 12, 
+                  fontWeight: 600,
+                  color: (form.bio?.length || 0) > 2000 ? '#EF4444' : (form.bio?.length || 0) > 1800 ? '#D97706' : 'var(--admin-text-muted)' 
+                }}>
+                  {form.bio?.length || 0} / 2,000 characters
+                </span>
               </div>
+              <textarea 
+                className={`admin-form-textarea ${errors.bio ? 'has-error' : ''}`} 
+                name="bio" 
+                value={form.bio} 
+                onChange={(e) => {
+                  handleChange(e)
+                  // Auto-resize height dynamically
+                  e.target.style.height = 'auto'
+                  e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 140), 450)}px`
+                }}
+                rows={6}
+                maxLength={2000}
+                placeholder="Enter comprehensive doctor biography, clinical focus, educational background, hospital affiliations, and achievements. Line breaks will be cleanly preserved on the public profile without messy HTML tags..." 
+                style={{ 
+                  lineHeight: 1.65, 
+                  fontSize: 14.5,
+                  minHeight: 140,
+                  resize: 'vertical',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11.5, color: 'var(--admin-text-muted)' }}>
+                <span>💡 Plain text only. Paragraphs and line breaks are automatically rendered cleanly on public profile views.</span>
+                <span>Max 2,000 characters</span>
+              </div>
+              {renderFieldError('bio')}
             </div>
           </div>
         </div>
@@ -928,6 +1301,8 @@ export default function DoctorFormPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .media-dropzone:hover { border-color: #0EA5E9 !important; }
+        .has-error { border-color: #EF4444 !important; }
       `}} />
     </div>
   )

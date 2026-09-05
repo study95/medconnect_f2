@@ -774,7 +774,7 @@ function DoctorDetailPageContent() {
                       </h3>
                     </div>
 
-                    <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.8, marginBottom: 24, textAlign: 'justify' }}>
+                    <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.8, marginBottom: 24, textAlign: 'justify', whiteSpace: 'pre-line' }}>
                       {doctor?.bio || doctor?.summary || (doctor?.name ? `ডাঃ ${doctor.name} একজন দক্ষ ও অভিজ্ঞ বিশেষজ্ঞ চিকিৎসক।` : '')}
                     </p>
 
