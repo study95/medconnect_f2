@@ -1,9 +1,10 @@
 // src/hooks/useDoctorDetail.js
 // WHY: Extracts doctor profile + chambers fetching for DoctorDetailPage.
+// DoctorResource provides the doctor profile with precomputed chambers and grouped_chambers as SSOT.
 // Supports both canonical SEO route (/doctors/:district/:upazila/:slug) and legacy route (/doctors/:id).
 
 import { useQuery } from '@tanstack/react-query'
-import { getDoctorBySlug, getDoctorById, getDoctorChambers } from '../api/doctorApi'
+import { getDoctorBySlug, getDoctorById } from '../api/doctorApi'
 import { getErrorMessage } from '../utils/errorHelper'
 import { useMemo } from 'react'
 
@@ -17,7 +18,7 @@ export default function useDoctorDetail(params) {
   const isIdRoute = Boolean(id && !isSlugRoute)
   const isEnabled = isSlugRoute || isIdRoute
 
-  // 1. Fetch doctor profile
+  // 1. Fetch doctor profile (includes precomputed chambers & grouped_chambers as SSOT)
   const doctorQuery = useQuery({
     queryKey: isSlugRoute ? ['doctor', district, upazila, slug] : ['doctor', id],
     queryFn: async () => {
@@ -31,43 +32,32 @@ export default function useDoctorDetail(params) {
   })
 
   const doctorData = doctorQuery.data
-  const doctorIdentifier = doctorData?.id || doctorData?.public_id || id
 
-  // 2. Fetch doctor chambers (schedule)
-  const chambersQuery = useQuery({
-    queryKey: ['doctor-chambers', doctorIdentifier],
-    queryFn: async () => {
-      const res = await getDoctorChambers({ doctor_id: doctorIdentifier })
-      const d = res.data?.data || res.data || []
-      const list = Array.isArray(d) ? d : []
-      return list.filter(c => c.is_active !== false)
-    },
-    enabled: Boolean(doctorIdentifier),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  // Combine chambers from direct API or doctor relation
   const chambers = useMemo(() => {
-    if (chambersQuery.data && chambersQuery.data.length > 0) {
-      return chambersQuery.data
-    }
-    if (doctorData?.chambers && Array.isArray(doctorData.chambers) && doctorData.chambers.length > 0) {
+    if (doctorData?.chambers && Array.isArray(doctorData.chambers)) {
       return doctorData.chambers.filter(c => c.is_active !== false)
     }
-    return chambersQuery.data || []
-  }, [chambersQuery.data, doctorData])
+    return []
+  }, [doctorData?.chambers])
+
+  const groupedChambers = useMemo(() => {
+    if (doctorData?.grouped_chambers && Array.isArray(doctorData.grouped_chambers)) {
+      return doctorData.grouped_chambers
+    }
+    return []
+  }, [doctorData?.grouped_chambers])
 
   return {
     doctor: doctorData || null,
     chambers: chambers || [],
+    groupedChambers: groupedChambers || [],
     loading: doctorQuery.isLoading,
-    loadingChambers: chambersQuery.isLoading,
+    loadingChambers: doctorQuery.isLoading,
     error: doctorQuery.isError
       ? getErrorMessage(doctorQuery.error, 'ডাক্তারের তথ্য লোড করা সম্ভব হয়নি।')
       : null,
     refetch: () => {
       doctorQuery.refetch()
-      chambersQuery.refetch()
     },
   }
 }

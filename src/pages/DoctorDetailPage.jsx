@@ -1,9 +1,8 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Container, Row, Col, Nav } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
-import { useTheme } from '../context/ThemeContext'
 import { DoctorDetailSkeleton } from '../components/common/Skeletons'
 import DoctorCard from '../components/common/DoctorCard'
 import useDoctorDetail from '../hooks/useDoctorDetail'
@@ -27,11 +26,10 @@ import { translateMetadata } from '../utils/translationUtils'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { 
   IconHeart, IconShare, IconMapPin, IconClock, 
-  IconBriefcase, IconCertificate, IconStar, 
-  IconSchool, IconUsers, IconAward, IconCheck, IconChevronRight,
-  IconHistory, IconDiscountCheckFilled, IconCalendarEvent,
-  IconLock, IconSend, IconUserCheck, IconStethoscope, IconPhone, IconSparkles,
-  IconWallet, IconBuildingHospital, IconShieldCheck, IconUser, IconArrowLeft
+  IconBriefcase, IconStar, 
+  IconSchool, IconUsers, IconCheck, IconChevronRight,
+  IconCalendarEvent, IconSparkles, 
+  IconBuildingHospital, IconShieldCheck, IconUser, IconArrowLeft
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -52,10 +50,9 @@ function DoctorDetailPageContent() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const language = i18n?.language || 'bn'
-  const { theme } = useTheme() || {}
   const { user, isLoggedIn } = useAuth() || {}
 
-  const { doctor, chambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
+  const { doctor, chambers, groupedChambers: rawGroupedChambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
   const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
   const { relatedDoctors, totalCount: relatedTotalCount, loading: loadingRelated } = useDoctorRelated(doctorIdentifier)
   const [showAllRelated, setShowAllRelated] = useState(false)
@@ -181,24 +178,8 @@ function DoctorDetailPageContent() {
     return 0
   }, [ratingSummary, doctor?.rating_count, doctor?.reviews_count])
 
-  // Compute total experience from all experience durations
-  const totalExpLabel = (() => {
-    const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
-    let totalMonths = 0
-    exps.forEach(exp => {
-      const d = (exp.duration || '').toLowerCase()
-      const yr = d.match(/(\d+)\s*year/)
-      const mo = d.match(/(\d+)\s*month/)
-      if (yr) totalMonths += parseInt(yr[1]) * 12
-      if (mo) totalMonths += parseInt(mo[1])
-    })
-    if (totalMonths === 0) return (doctor?.experience || '১০') + '+ বছর'
-    const yrs = Math.floor(totalMonths / 12)
-    const mos = totalMonths % 12
-    if (yrs === 0) return mos + ' মাস'
-    if (mos === 0) return yrs + '+ বছর'
-    return yrs + ' বছর ' + mos + ' মাস'
-  })()
+  // Total experience label from backend SSOT
+  const totalExpLabel = doctor?.total_experience?.label_bn || doctor?.stats?.experience?.label_bn || (doctor?.experience ? `${toBnNum(doctor.experience)}+ বছর` : 'অভিজ্ঞ')
 
   const handleTabChange = (tabKey) => {
     setActiveTab(tabKey)
@@ -234,106 +215,18 @@ function DoctorDetailPageContent() {
     navigate(path)
   }
 
-  const sortedChambers = useMemo(() => {
-    const DAY_ORDER = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    const getDayIndex = (dayStr) => {
-      if (!dayStr) return 99
-      const normalized = dayStr.charAt(0).toUpperCase() + dayStr.slice(1).toLowerCase()
-      const idx = DAY_ORDER.indexOf(normalized)
-      return idx === -1 ? 99 : idx
-    }
-    return [...(chambers || [])].sort((a, b) => getDayIndex(a?.day) - getDayIndex(b?.day))
-  }, [chambers])
-
-  const dayNamesBn = {
-    'Saturday': 'শনিবার',
-    'Sunday': 'রবিবার',
-    'Monday': 'সোমবার',
-    'Tuesday': 'মঙ্গলবার',
-    'Wednesday': 'বুধবার',
-    'Thursday': 'বৃহস্পতিবার',
-    'Friday': 'শুক্রবার'
-  }
-
+  // Pre-grouped and pre-sorted chambers delivered directly by backend SSOT
   const groupedChambers = useMemo(() => {
-    const list = sortedChambers || []
-    if (list.length === 0) {
-      if (doctor?.hospital || doctor?.workplace || doctor?.workplace_bn) {
-        const hospName = doctor?.hospital?.name || doctor?.workplace_bn || doctor?.workplace || 'প্রধান চেম্বার'
-        const hospAddr = doctor?.hospital?.address || (doctor?.district?.name ? `${doctor.district.name}, বাংলাদেশ` : 'ঠিকানা উপলব্ধ নয়')
-        return [{
-          hospitalId: doctor?.hospital?.id || 'primary',
-          hospitalName: hospName,
-          address: hospAddr,
-          phone: doctor?.hospital?.phone || doctor?.phone || '',
-          photoUrl: doctor?.hospital?.photo_url || doctor?.hospital?.photo || null,
-          schedules: [{
-            id: 'primary',
-            day: 'Saturday',
-            start_time: '17:00:00',
-            end_time: '21:00:00',
-            fee: doctor?.fee || 500
-          }]
-        }]
-      }
-      return []
+    if (Array.isArray(doctor?.grouped_chambers) && doctor.grouped_chambers.length > 0) {
+      return doctor.grouped_chambers
     }
-    const map = new Map()
-    list.forEach((chamber) => {
-      const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.hospital_name || chamber.address || 'default'
-      if (!map.has(hospId)) {
-        map.set(hospId, {
-          hospitalId: chamber.hospital_id || chamber.hospital?.id,
-          hospitalName: chamber.hospital?.name || chamber.hospital_name || 'চেম্বার',
-          address: chamber.address || chamber.hospital?.address || 'ঠিকানা উপলব্ধ নয়',
-          phone: chamber.hospital?.phone || chamber.phone || '',
-          photoUrl: chamber.hospital?.photo_url || chamber.hospital?.photo || null,
-          schedules: []
-        })
-      }
-      map.get(hospId).schedules.push(chamber)
-    })
-    return Array.from(map.values())
-  }, [sortedChambers, doctor])
-
-  const lowestFee = useMemo(() => {
-    if (!sortedChambers || sortedChambers.length === 0) return doctor?.fee || 0
-    const validFees = sortedChambers.map(c => Number(c?.fee)).filter(f => !isNaN(f) && f > 0)
-    return validFees.length > 0 ? Math.min(...validFees) : (doctor?.fee || 0)
-  }, [sortedChambers, doctor])
-
-  const formatTimeBn = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      let timeUpper = timeStr.toUpperCase();
-      let isPM = timeUpper.includes('PM');
-      let isAM = timeUpper.includes('AM');
-      let cleanStr = timeStr.replace(/[a-zA-Z\s]/g, '').trim();
-      let parts = cleanStr.split(':');
-      let h = parseInt(parts[0], 10);
-      let m = parseInt(parts[1] || '0', 10);
-      
-      if (isPM && h < 12) h += 12;
-      if (isAM && h === 12) h = 0;
-
-      let periodBn = '';
-      if (h >= 6 && h < 12) periodBn = 'সকাল';
-      else if (h >= 12 && h < 15) periodBn = 'দুপুর';
-      else if (h >= 15 && h < 18) periodBn = 'বিকাল';
-      else if (h >= 18 && h < 20) periodBn = 'সন্ধ্যা';
-      else periodBn = 'রাত';
-      
-      let h12 = h % 12 || 12;
-      let timeEn = `${h12}:${String(m).padStart(2, '0')}`;
-      
-      const enToBn = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
-      let timeBn = timeEn.replace(/\d/g, d => enToBn[d]);
-      
-      return `${periodBn} ${timeBn}`;
-    } catch {
-      return timeStr;
+    if (Array.isArray(rawGroupedChambers) && rawGroupedChambers.length > 0) {
+      return rawGroupedChambers
     }
-  }
+    return []
+  }, [doctor?.grouped_chambers, rawGroupedChambers])
+
+  const lowestFee = doctor?.fees?.consultation ?? doctor?.fees?.min ?? doctor?.fee ?? 0
 
   const structuredSchema = useMemo(() => {
     return buildPhysicianSchema(doctor, doctor?.reviews || [])
@@ -363,7 +256,9 @@ function DoctorDetailPageContent() {
     </div>
   )
 
-  const specialtyName = translateMetadata(doctor?.specialty?.name || doctor?.specialty_name || (t ? t('general_physician') : 'সাধারণ চিকিৎসক'), language, t)
+  const specialtyName = language === 'bn'
+    ? (doctor?.specialty?.name_bn || translateMetadata(doctor?.specialty?.name || doctor?.specialty_name || (t ? t('general_physician') : 'সাধারণ চিকিৎসক'), language, t))
+    : (doctor?.specialty?.name || translateMetadata(doctor?.specialty?.name || doctor?.specialty_name || (t ? t('general_physician') : 'General Physician'), language, t))
 
   // Design tokens aligned with main website brand green
   const primaryGreen = '#00B875'
@@ -516,11 +411,15 @@ function DoctorDetailPageContent() {
           }}>
             <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Experience</span>
-              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{doctor?.experience || '15'}+ Years</span>
+              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>
+                {doctor?.total_experience?.label || (doctor?.experience ? `${doctor.experience}+ Years` : 'Experienced')}
+              </span>
             </div>
             <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>BMDC Number</span>
-              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>{doctor?.bmdc_number || doctor?.bmdc_no || '51550'}</span>
+              <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>
+                {doctor?.bmdc_number || doctor?.bmdc || doctor?.bmdc_no || 'তথ্য নেই'}
+              </span>
             </div>
             <div style={{ textAlign: 'center', flex: 1, padding: '0 4px' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Rating</span>
@@ -536,7 +435,7 @@ function DoctorDetailPageContent() {
           <div style={{ fontSize: 11, color: mutedTextColor, fontWeight: 600 }}>
             কর্মরত আছেন
             <div style={{ fontSize: 13, fontWeight: 800, color: darkTextColor, marginTop: 2 }}>
-              {sortedChambers?.[0]?.hospital?.name || doctor?.hospital?.name || 'ঢাকা মেডিকেল কলেজ হাসপাতাল'}
+              {groupedChambers?.[0]?.hospital_name || doctor?.hospital?.name || doctor?.workplace_bn || doctor?.workplace || 'তথ্য উপলব্ধ নয়'}
             </div>
           </div>
         </div>
@@ -627,7 +526,7 @@ function DoctorDetailPageContent() {
                 textAlign: 'center',
                 marginBottom: 20
               }}>
-                {doctor?.degree || 'MBBS, FCPS'}
+                {doctor?.degree_summary_bn || doctor?.degree_summary || doctor?.degree || ''}
               </p>
 
               {/* PIC 2 STYLE HORIZONTAL STATS BAR (Visit Fee | Rating | Patients) */}
@@ -646,7 +545,7 @@ function DoctorDetailPageContent() {
                       ভিজিট ফি
                     </span>
                     <span style={{ fontSize: 18, fontWeight: 950, color: primaryGreen }}>
-                      ৳{lowestFee || doctor?.fee || '৫০০'}
+                      {doctor?.fees?.formatted_bn ? `৳${doctor.fees.formatted_bn}` : (lowestFee ? `৳${toBnNum(lowestFee)}` : 'ফি উল্লেখ নেই')}
                     </span>
                   </Col>
 
@@ -668,7 +567,7 @@ function DoctorDetailPageContent() {
                     <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
                       <IconUsers size={16} color="#3B82F6" />
                       <span style={{ fontSize: 15, fontWeight: 950, color: darkTextColor }}>
-                        ৪,৮৬৩
+                        {doctor?.stats?.patients?.count ? toBnNum(doctor.stats.patients.count) : (totalReviewsCount > 0 ? toBnNum(totalReviewsCount) : '০')}
                       </span>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: mutedTextColor, display: 'block' }}>
@@ -876,66 +775,70 @@ function DoctorDetailPageContent() {
                     </div>
 
                     <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.8, marginBottom: 24, textAlign: 'justify' }}>
-                      {doctor?.bio || `ডাঃ ${doctor?.name || ''} একজন দক্ষ ও অভিজ্ঞ বিশেষজ্ঞ চিকিৎসক। তিনি দীর্ঘ দিন ধরে রোগীদের উন্নত স্বাস্থ্যসেবা ও সঠিক পরামর্শ প্রদানে নিরলসভাবে কাজ করে যাচ্ছেন।`}
+                      {doctor?.bio || doctor?.summary || (doctor?.name ? `ডাঃ ${doctor.name} একজন দক্ষ ও অভিজ্ঞ বিশেষজ্ঞ চিকিৎসক।` : '')}
                     </p>
 
-                    {/* NOTE REQUIREMENT: বিশেষ দক্ষতা */}
-                    <div style={{
-                      background: lightGreenBg,
-                      borderRadius: 16,
-                      padding: '20px',
-                      border: '1px solid #B4EBE3',
-                      marginBottom: 24
-                    }}>
-                      <div className="d-flex align-items-center gap-2 mb-3">
-                        <IconSparkles size={20} color={primaryGreen} />
-                        <h4 style={{ fontSize: 16, fontWeight: 950, color: '#007A65', margin: 0 }}>
-                          বিশেষ দক্ষতা:
-                        </h4>
+                    {/* বিশেষ দক্ষতা */}
+                    {Array.isArray(doctor?.expertise) && doctor.expertise.length > 0 && (
+                      <div style={{
+                        background: lightGreenBg,
+                        borderRadius: 16,
+                        padding: '20px',
+                        border: '1px solid #B4EBE3',
+                        marginBottom: 24
+                      }}>
+                        <div className="d-flex align-items-center gap-2 mb-3">
+                          <IconSparkles size={20} color={primaryGreen} />
+                          <h4 style={{ fontSize: 16, fontWeight: 950, color: '#007A65', margin: 0 }}>
+                            বিশেষ দক্ষতা:
+                          </h4>
+                        </div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {doctor.expertise.map((skill, idx) => (
+                            <span key={idx} style={{
+                              padding: '6px 14px',
+                              borderRadius: 8,
+                              background: 'white',
+                              color: '#007A65',
+                              fontSize: 13,
+                              fontWeight: 800,
+                              border: '1px solid #80DFD1',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6
+                            }}>
+                              <IconCheck size={15} color={primaryGreen} /> {skill}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="d-flex flex-wrap gap-2">
-                        {[
-                          'হার্ট ব্লক চিকিৎসা',
-                          'উচ্চ রক্তচাপ ও হাইপারটেনশন',
-                          'করোনারি আর্টারি ডিজিজ (CAD)',
-                          'হার্ট ফেইলিওর ব্যবস্থাপনা',
-                          'ইসিজি ও ইকোকার্ডিওগ্রাফি',
-                          'ট্রেডমিল টেস্ট (ETT)',
-                          'পেসমেকার ইমপ্লান্ট ও ফলোআপ',
-                          'অ্যাঞ্জিওপ্লাস্টি ও করোনারি কেয়ার'
-                        ].map((skill, idx) => (
-                          <span key={idx} style={{
-                            padding: '6px 14px',
-                            borderRadius: 8,
-                            background: 'white',
-                            color: '#007A65',
-                            fontSize: 13,
-                            fontWeight: 800,
-                            border: '1px solid #80DFD1',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6
-                          }}>
-                            <IconCheck size={15} color={primaryGreen} /> {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    )}
 
                     {/* Educational background */}
-                    <div style={{ marginBottom: 24 }}>
-                      <h4 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <IconSchool size={18} color={primaryGreen} /> শিক্ষাগত যোগ্যতা ও সনদ
-                      </h4>
-                      <div className="d-flex flex-column gap-2">
-                        {['MBBS - ঢাকা মেডিকেল কলেজ', 'MD (কার্ডিওলজি / বিশেষজ্ঞ)', 'FCPS - বিসিপিএস বাংলাদেশ'].map((edu, i) => (
-                          <div key={i} className="d-flex align-items-center gap-2" style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: `1px solid ${cardBorderColor}` }}>
-                            <IconCheck size={16} color={primaryGreen} />
-                            <span style={{ fontSize: 14, fontWeight: 800, color: '#334155' }}>{edu}</span>
+                    {(() => {
+                      const degreeList = (Array.isArray(doctor?.degrees_bn) && doctor.degrees_bn.length > 0)
+                        ? doctor.degrees_bn
+                        : (Array.isArray(doctor?.degrees) && doctor.degrees.length > 0
+                            ? doctor.degrees
+                            : (doctor?.degree ? [doctor.degree] : []))
+                      if (degreeList.length === 0) return null
+
+                      return (
+                        <div style={{ marginBottom: 24 }}>
+                          <h4 style={{ fontSize: 15, fontWeight: 900, color: darkTextColor, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <IconSchool size={18} color={primaryGreen} /> শিক্ষাগত যোগ্যতা ও সনদ
+                          </h4>
+                          <div className="d-flex flex-column gap-2">
+                            {degreeList.map((edu, i) => (
+                              <div key={i} className="d-flex align-items-center gap-2" style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: `1px solid ${cardBorderColor}` }}>
+                                <IconCheck size={16} color={primaryGreen} />
+                                <span style={{ fontSize: 14, fontWeight: 800, color: '#334155' }}>{edu}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                        </div>
+                      )
+                    })()}
 
                     {/* Experience Section (Inside Doctor Info / About) */}
                     <div className="pt-3 border-top">
@@ -1048,7 +951,7 @@ function DoctorDetailPageContent() {
                           })
                         ) : (
                           <div style={{ padding: '14px', background: '#F8FAFC', borderRadius: 12, border: `1px dashed ${cardBorderColor}`, color: '#64748B', fontSize: 13.5, fontWeight: 600, textAlign: 'center' }}>
-                            ১০+ বছরের চিকিৎসা অভিজ্ঞতা
+                            {totalExpLabel ? `${totalExpLabel} চিকিৎসা অভিজ্ঞতা` : 'অভিজ্ঞতার বিস্তারিত তথ্য এখনো যুক্ত করা হয়নি।'}
                           </div>
                         )}
                       </div>
@@ -1105,7 +1008,7 @@ function DoctorDetailPageContent() {
                               </div>
                               <div>
                                 <h4 style={{ fontSize: 16.5, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
-                                  {group.hospitalName}
+                                  {group.hospital_name || group.hospitalName || 'চেম্বার'}
                                 </h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: mutedTextColor, fontSize: 13, fontWeight: 600 }}>
                                   <IconMapPin size={14} color={primaryGreen} style={{ flexShrink: 0 }} />
@@ -1132,8 +1035,9 @@ function DoctorDetailPageContent() {
                           {/* Visiting Schedules list */}
                           <div className="d-flex flex-column gap-2">
                             {group.schedules.map((sch, sIdx) => {
-                              const fee = sch?.fee || doctor?.fee || doctor?.consultation_fee
-                              const dayBn = dayNamesBn[sch?.day] || (sch?.day ? translateMetadata(sch.day, language, t) : 'সাপ্তাহিক দিন')
+                              const feeBn = sch?.fee_formatted_bn || (sch?.fee ? toBnNum(sch.fee) : (doctor?.fee ? toBnNum(doctor.fee) : ''))
+                              const dayBn = sch?.day_bn || sch?.day || (sch?.day ? translateMetadata(sch.day, language, t) : 'সাপ্তাহিক দিন')
+                              const timeDisplay = sch?.formatted_time || (sch?.start_time ? `${sch.start_time} - ${sch.end_time}` : '')
                               return (
                                 <div
                                   key={sch?.id || sIdx}
@@ -1148,17 +1052,19 @@ function DoctorDetailPageContent() {
                                     </span>
 
                                     {/* Time */}
-                                    <div className="doc-schedule-time">
-                                      <IconClock size={14} color={primaryGreen} />
-                                      <span>
-                                        {sch?.start_time ? `${formatTimeBn(sch.start_time)} - ${formatTimeBn(sch.end_time)}` : 'বিকাল ৫:০০ - রাত ৯:০০'}
-                                      </span>
-                                    </div>
+                                    {timeDisplay && (
+                                      <div className="doc-schedule-time">
+                                        <IconClock size={14} color={primaryGreen} />
+                                        <span>
+                                          {timeDisplay}
+                                        </span>
+                                      </div>
+                                    )}
 
                                     {/* Fee Tag on Desktop */}
-                                    {fee && (
+                                    {feeBn && (
                                       <span className="doc-schedule-fee d-none d-sm-inline-flex">
-                                        ৳{fee} ফি
+                                        ৳{feeBn} ফি
                                       </span>
                                     )}
                                   </div>
@@ -1166,9 +1072,9 @@ function DoctorDetailPageContent() {
                                   {/* Bottom / Right Group: Mobile Fee + Booking Button */}
                                   <div className="doc-schedule-right">
                                     {/* Fee Tag on Mobile */}
-                                    {fee ? (
+                                    {feeBn ? (
                                       <span className="doc-schedule-fee d-inline-flex d-sm-none">
-                                        ৳{fee} ফি
+                                        ৳{feeBn} ফি
                                       </span>
                                     ) : <div className="d-sm-none" />}
 
@@ -1310,17 +1216,11 @@ function DoctorDetailPageContent() {
                           )
                         })
                       ) : (
-                        [
-                          '10+ Years of experience in Allergy & Immunology / Cardiology',
-                          'Worked as Senior Consultant at National Heart Foundation',
-                          'Specialized in Asthma, Allergy, Sinusitis & Immunodeficiency Disorders',
-                          'Expert in Advanced Allergy Testing & Immunotherapy'
-                        ].map((item, idx) => (
-                          <div key={idx} className="d-flex align-items-start gap-3" style={{ padding: '12px 16px', background: '#F8FAFC', borderRadius: 12, border: `1px solid ${cardBorderColor}` }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: primaryGreen, marginTop: 6, flexShrink: 0 }} />
-                            <span style={{ fontSize: 14, fontWeight: 700, color: '#374151', lineHeight: 1.6 }}>{item}</span>
-                          </div>
-                        ))
+                        <div style={{ padding: '24px', textAlign: 'center', background: '#F8FAFC', borderRadius: 12, border: `1px solid ${cardBorderColor}` }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: mutedTextColor }}>
+                            অভিজ্ঞতার বিস্তারিত তথ্য এখনো যুক্ত করা হয়নি।
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1471,7 +1371,9 @@ function DoctorDetailPageContent() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
           <div>
             <span style={{ fontSize: 12, fontWeight: 800, color: '#475569', display: 'block', marginBottom: 2 }}>চেম্বার ফি</span>
-            <span style={{ fontSize: 20, fontWeight: 950, color: primaryGreen }}>৳{lowestFee || doctor?.fee || '৫০০'}</span>
+            <span style={{ fontSize: 20, fontWeight: 950, color: primaryGreen }}>
+              {doctor?.fees?.formatted_bn ? `৳${doctor.fees.formatted_bn}` : (lowestFee ? `৳${toBnNum(lowestFee)}` : 'ফি উল্লেখ নেই')}
+            </span>
           </div>
           <button
             type="button"
