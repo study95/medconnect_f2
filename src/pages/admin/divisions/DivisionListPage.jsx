@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useDivisions, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -24,16 +25,17 @@ export default function DivisionListPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await saveDeleteDivision(deleteTarget.id)
+      const res = await saveDeleteDivision(deleteTarget.id)
+      toast.success(res?.data?.message || 'Division deleted successfully')
       setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete division', err)
+      toast.error(getErrorMessage(err, 'Failed to delete division'))
     }
   }
 
   const filtered = items.filter(i => 
-    i.name?.toLowerCase().includes(search.toLowerCase()) ||
-    i.bangla_name?.includes(search)
+    i.name?.toLowerCase().includes(search.toLowerCase())
   )
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
@@ -54,7 +56,7 @@ export default function DivisionListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search division by name, Bengali name..."
+        searchPlaceholder="Search division by name..."
         onRefresh={fetchDivisions}
         refreshing={loading}
         actions={
@@ -72,7 +74,7 @@ export default function DivisionListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Division Name', 'Bengali Name', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '60%', '25%']} headers={['ID', 'Division Name', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState searchQuery={search} onClearSearch={() => setSearch('')} icon="🗺️" title="No divisions found" description="Try a different search term or register a new division." primaryAction={{ label: '+ Add Division', to: '/admin/divisions/create' }} />
         ) : (
@@ -82,7 +84,6 @@ export default function DivisionListPage() {
                 <tr>
                   <th style={{ width: 100, paddingLeft: 24 }}>ID</th>
                   <th>Division Name</th>
-                  <th>Bangla Name</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Management Actions</th>
                 </tr>
               </thead>
@@ -94,9 +95,6 @@ export default function DivisionListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 800, color: '#1E293B', fontSize: 16 }}>{item.name}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 500, color: '#64748B', fontSize: 14 }}>{item.bangla_name || '—'}</div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>

@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useDivisionDetail, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 export default function DivisionFormPage() {
@@ -9,7 +10,7 @@ export default function DivisionFormPage() {
   const navigate = useNavigate()
   const isEdit = !!id
 
-  const [form, setForm] = useState({ name: '', bangla_name: '' })
+  const [form, setForm] = useState({ name: '' })
   const [errors, setErrors] = useState({})
 
   // Enterprise TanStack Query Hooks
@@ -25,7 +26,7 @@ export default function DivisionFormPage() {
 
   useEffect(() => {
     if (division) {
-      setForm({ name: division.name || '', bangla_name: division.bangla_name || '' })
+      setForm({ name: division.name || '' })
     }
   }, [division])
 
@@ -33,25 +34,30 @@ export default function DivisionFormPage() {
     e.preventDefault()
     if (!form.name.trim()) {
       setErrors({ name: 'Division name is required' })
+      toast.error('Division name is required')
       return
     }
 
     try {
+      const payload = { name: form.name.trim() }
       if (isEdit) {
-        await saveUpdateDivision(id, form)
+        const res = await saveUpdateDivision(id, payload)
+        toast.success(res?.data?.message || 'Division updated successfully')
       } else {
-        await saveCreateDivision(form)
+        const res = await saveCreateDivision(payload)
+        toast.success(res?.data?.message || 'Division created successfully')
       }
       navigate('/admin/divisions')
     } catch (err) {
       console.error('Failed to save division', err)
+      toast.error(getErrorMessage(err, 'Failed to save division'))
     }
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 160 }}>
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Division' : '🏢 Add New Division'}</h2>
@@ -65,7 +71,7 @@ export default function DivisionFormPage() {
           <form className="admin-form" onSubmit={handleSubmit}>
             
             <div className="admin-form-group">
-              <label className="admin-form-label">Division Name (English) *</label>
+              <label className="admin-form-label">Division Name *</label>
               <input 
                 className="admin-form-input" 
                 name="name" 
@@ -77,21 +83,6 @@ export default function DivisionFormPage() {
               {errors.name && <div className="admin-form-error">{errors.name}</div>}
               <p style={{ marginTop: 8, fontSize: 12, color: '#94A3B8' }}>
                 This will be used as the primary identifier in location dropdowns.
-              </p>
-            </div>
-
-            <div className="admin-form-group" style={{ marginTop: 20 }}>
-              <label className="admin-form-label">Division Name (Bangla)</label>
-              <input 
-                className="admin-form-input" 
-                name="bangla_name" 
-                value={form.bangla_name} 
-                onChange={(e) => { setForm({ ...form, bangla_name: e.target.value }); setErrors({}) }} 
-                placeholder="e.g. ঢাকা, চট্টগ্রাম, etc."
-                style={{ height: 48, fontSize: 15, fontWeight: 500 }}
-              />
-              <p style={{ marginTop: 8, fontSize: 12, color: '#94A3B8' }}>
-                Localized name for Bangla interface.
               </p>
             </div>
 

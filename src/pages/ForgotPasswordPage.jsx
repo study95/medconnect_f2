@@ -20,12 +20,9 @@ function ForgotPasswordPage() {
     setStatusMsg({ type: '', text: '' })
     try {
       const res = await axiosInstance.post('/forgot-password', { email })
-      if (res.data.token) {
-        setDevToken(res.data.token)
-      }
       if (res.data.success) {
-        setStatusMsg({ type: 'success', text: res.data.message || 'Password reset link has been sent.' })
-      } else if (!res.data.token) {
+        setStatusMsg({ type: 'success', text: res.data.message || 'Password reset link has been sent to your email.' })
+      } else {
         setStatusMsg({ type: 'danger', text: res.data.message || 'Unable to process request.' })
       }
     } catch (err) {
@@ -57,27 +54,9 @@ function ForgotPasswordPage() {
               <p className="text-muted" style={{ fontSize: 14 }}>{t('forgot_password_subtitle')}</p>
             </div>
 
-
-            {devToken && (
-              <div style={{ background: '#ECFDF5', border: '1px solid #10B98130', borderRadius: 24, padding: '30px', marginBottom: 28, textAlign: 'center' }}>
-                 <div style={{ fontSize: 36, marginBottom: 12 }}>🚀</div>
-                 <h6 style={{ fontWeight: 900, color: '#065F46', marginBottom: 8, fontSize: 18 }}>Dev Mode Shortcut</h6>
-                 <p style={{ fontSize: 13, color: '#059669', marginBottom: 20, lineHeight: 1.6 }}>
-                   Real emails are disabled in local development. Use this shortcut to test the reset flow:
-                 </p>
-                 <Link 
-                   to={`/reset-password?token=${devToken}&email=${email}`}
-                   style={{ 
-                     display: 'block', padding: '14px', background: '#00A88C', color: 'white', 
-                     borderRadius: 14, fontWeight: 900, textDecoration: 'none', fontSize: 14,
-                     boxShadow: '0 8px 16px rgba(0,168,140,0.2)', transition: '0.3s'
-                   }}
-                 >
-                   RESET PASSWORD ➝
-                 </Link>
-                 <div style={{ marginTop: 20, padding: 10, background: '#D1FAE5', borderRadius: 10, fontSize: 11, color: '#047857', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                   TOKEN: {devToken}
-                 </div>
+            {statusMsg.text && (
+              <div className={`alert alert-${statusMsg.type === 'success' ? 'success' : 'danger'} mb-4`} role="alert" style={{ fontSize: 13.5, borderRadius: 12 }}>
+                {statusMsg.text}
               </div>
             )}
 

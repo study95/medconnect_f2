@@ -470,7 +470,7 @@
 .admin-footer {
   height: var(--admin-footer-height);
   background: var(--admin-card-bg, #FFFFFF);
-  border-top: none;
+  border-top: 1px solid var(--admin-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -479,7 +479,7 @@
   bottom: 0;
   right: 0;
   left: var(--admin-sidebar-width);
-  z-index: 1020;
+  z-index: 30;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
   font-size: 12px;
   color: var(--admin-text-muted);
@@ -618,7 +618,7 @@
 /* Admin Content */
 .admin-content {
   flex: 1;
-  padding: 32px;
+  padding: 32px 32px 100px 32px;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;

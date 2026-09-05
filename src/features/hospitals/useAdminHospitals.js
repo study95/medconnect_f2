@@ -37,7 +37,7 @@ export function useAdminHospitals(filters = {}) {
   const query = useQuery({
     queryKey: queryKeys.hospitals.adminList(filters),
     queryFn: async () => {
-      const params = { per_page: 1000, ...filters }
+      const params = { per_page: 1000, admin_view: 1, ...filters }
       const res = await getHospitals(params)
       const raw = res.data?.data?.data || res.data?.data || res.data || []
       return Array.isArray(raw) ? raw : []

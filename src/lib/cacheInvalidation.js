@@ -127,20 +127,30 @@ export function invalidateSpecialties(queryClient, { specialtyId = null, slug = 
 export function invalidateLocations(queryClient, { type = 'all', divisionId = null, districtId = null, upazilaId = null } = {}) {
   if (!queryClient) return
 
+  // Always invalidate the root locations namespace to ensure fresh list/dropdown data across the app
+  queryClient.invalidateQueries({ queryKey: queryKeys.locations.all })
+
   if (type === 'all' || type === 'divisions') {
-    queryClient.invalidateQueries({ queryKey: queryKeys.locations.divisions() })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'divisions'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'division'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'districts'] })
   }
 
   if (type === 'all' || type === 'districts') {
-    queryClient.invalidateQueries({ queryKey: queryKeys.locations.districts(divisionId) })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'districts'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'district'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'upazilas'] })
   }
 
   if (type === 'all' || type === 'upazilas') {
-    queryClient.invalidateQueries({ queryKey: queryKeys.locations.upazilas(districtId) })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'upazilas'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'upazila'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'unions'] })
   }
 
   if (type === 'all' || type === 'unions') {
-    queryClient.invalidateQueries({ queryKey: queryKeys.locations.unions(upazilaId) })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'unions'] })
+    queryClient.invalidateQueries({ queryKey: ['locations', 'union'] })
   }
 }
 

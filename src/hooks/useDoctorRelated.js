@@ -18,6 +18,12 @@ export default function useDoctorRelated(identifier) {
 
   return {
     relatedDoctors: query.data?.related_doctors || [],
+    totalCount: query.data?.total_related_doctors_count ?? (query.data?.related_doctors?.length || 0),
+    meta: query.data?.meta || {
+      total: query.data?.total_related_doctors_count ?? (query.data?.related_doctors?.length || 0),
+      displayed: query.data?.related_doctors?.length || 0,
+      has_more: false,
+    },
     hospitals: query.data?.hospitals || [],
     specialtyLink: query.data?.specialty_link || '',
     specialtyName: query.data?.specialty_name || '',

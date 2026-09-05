@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useDivisions, useDistricts, useUpazilas, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -25,9 +26,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -45,7 +46,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -62,8 +63,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
               autoFocus
               placeholder="Search..." 
               style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--admin-border)', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
               onClick={e => e.stopPropagation()}
             />
           </div>
@@ -82,20 +83,20 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 14px', fontSize: 13, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent',
+                    background: String(value || '') === String(opt.id) ? 'rgba(0, 168, 140, 0.1)' : 'transparent',
                     borderBottom: '1px solid var(--admin-border)',
                     color: 'var(--admin-text)'
                   }}
                   onMouseEnter={(e) => e.target.style.background = 'rgba(0, 168, 140, 0.05)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? 'rgba(0, 168, 140, 0.1)' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500 }}>
-                    {opt.bangla_name || opt.name}
+                  <div style={{ fontWeight: String(value || '') === String(opt.id) ? 700 : 500 }}>
+                    {opt.name}
                   </div>
                 </div>
               ))
@@ -133,10 +134,12 @@ export default function UpazilaListPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await saveDeleteUpazila(deleteTarget.id)
+      const res = await saveDeleteUpazila(deleteTarget.id)
+      toast.success(res?.data?.message || 'Upazila deleted successfully')
       setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete upazila', err)
+      toast.error(getErrorMessage(err, 'Failed to delete upazila'))
     }
   }
 
@@ -147,8 +150,7 @@ export default function UpazilaListPage() {
   }
 
   const filtered = items.filter(i => 
-    i.name?.toLowerCase().includes(search.toLowerCase()) ||
-    i.bangla_name?.includes(search)
+    i.name?.toLowerCase().includes(search.toLowerCase())
   )
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
@@ -170,7 +172,7 @@ export default function UpazilaListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search upazila by name, Bengali name..."
+        searchPlaceholder="Search upazila by name..."
         onRefresh={fetchItems}
         refreshing={loading}
         showFilters={showFilters}
@@ -200,7 +202,7 @@ export default function UpazilaListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '30%', '25%', '20%', '15%']} headers={['ID', 'Upazila Name', 'Bengali Name', 'District', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '45%', '30%', '15%']} headers={['ID', 'Upazila Name', 'District', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionFilter || districtFilter || search)} searchQuery={search} onClearFilters={() => { setDivisionFilter(''); setDistrictFilter('') }} onClearSearch={() => setSearch('')} icon="📍" title="No upazilas found" description="Try changing your search query or reset division/district filters." primaryAction={{ label: '+ Add Upazila', to: '/admin/upazilas/create' }} />
         ) : (
@@ -210,7 +212,6 @@ export default function UpazilaListPage() {
                 <tr>
                   <th style={{ width: 80, paddingLeft: 24 }}>ID</th>
                   <th>Upazila Name</th>
-                  <th>Bangla Name</th>
                   <th>Parent Hierarchy</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                 </tr>
@@ -223,9 +224,6 @@ export default function UpazilaListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
-                    </td>
-                    <td>
-                      <div style={{ color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>{item.bangla_name || '—'}</div>
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

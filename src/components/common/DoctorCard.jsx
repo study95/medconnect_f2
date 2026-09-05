@@ -709,20 +709,22 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
       </div>
 
       {/* Bottom Action Buttons */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', width: '100%' }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', width: '100%', minWidth: 0 }}>
         <button
           type="button"
           onClick={handleDetails}
           style={{
             flex: 1,
+            minWidth: 0,
+            boxSizing: 'border-box',
             height: 38,
             borderRadius: 8,
             border: '1.5px solid #CBD5E1',
             background: 'white',
             color: '#0F172A',
             fontWeight: 700,
-            fontSize: 'clamp(11.5px, 3.2vw, 13px)',
-            padding: '0 4px',
+            fontSize: 13,
+            padding: '0 6px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',
@@ -743,14 +745,16 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           onClick={handleBook}
           style={{
             flex: 1,
+            minWidth: 0,
+            boxSizing: 'border-box',
             height: 38,
             borderRadius: 8,
             border: 'none',
             background: '#00B875',
             color: 'white',
             fontWeight: 800,
-            fontSize: 'clamp(11.5px, 3.2vw, 13px)',
-            padding: '0 4px',
+            fontSize: 13,
+            padding: '0 6px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',

@@ -98,8 +98,8 @@ export const translateToBangla = (msg, fallback = 'তথ্য প্রক্�
     return 'অতিরিক্ত চেষ্টা করা হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।';
   }
 
-  // Duplicate database entry fallback
-  if (lower.includes('duplicate entry') || lower.includes('sqlstate[23000]')) {
+  // Duplicate database entry fallback (MySQL 1062)
+  if (lower.includes('duplicate entry') || lower.includes('1062 duplicate')) {
     return 'এই তথ্যটি (মোবাইল বা ইমেইল) ইতিমধ্যে সিস্টেমে বিদ্যমান।';
   }
 

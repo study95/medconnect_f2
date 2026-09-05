@@ -1,8 +1,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useDialog } from '../../../hooks/useDialog'
-import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
+import toast from 'react-hot-toast'
 import { useDistrictDetail, useDivisions, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 // Premium Searchable Select Component
@@ -19,9 +18,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -38,7 +37,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? '#1E293B' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: '#94A3B8' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -71,17 +70,17 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 16px', fontSize: 14, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'
+                    background: String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'
                   }}
                   onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  {opt.bangla_name || opt.name}
+                  {opt.name}
                 </div>
               ))
             )}
@@ -95,10 +94,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function DistrictFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
-  const [form, setForm] = useState({ name: '', bangla_name: '', division_id: '' })
+  const [form, setForm] = useState({ name: '', division_id: '' })
   const [errors, setErrors] = useState({})
 
   // Enterprise TanStack Query Hooks
@@ -117,7 +115,6 @@ export default function DistrictFormPage() {
     if (district) {
       setForm({
         name: district.name || '',
-        bangla_name: district.bangla_name || '',
         division_id: district.division_id || '',
       })
     }
@@ -133,38 +130,35 @@ export default function DistrictFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      if (!form.name.trim()) toast.error('District name is required')
+      else if (!form.division_id) toast.error('Parent division is required')
+      return
+    }
 
-    setSaving(true)
     try {
-      if (isEdit) {
-        await updateDistrict(id, form)
-        showSuccess({
-          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
-          message: 'জেলার তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
-        })
-      } else {
-        await createDistrict(form)
-        showSuccess({
-          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-          message: 'নতুন জেলা সফলভাবে সংরক্ষণ করা হয়েছে।',
-        })
+      const payload = {
+        name: form.name.trim(),
+        division_id: form.division_id
       }
-      setTimeout(() => navigate('/admin/districts'), 700)
+      if (isEdit) {
+        const res = await saveUpdateDistrict(id, payload)
+        toast.success(res?.data?.message || 'District updated successfully')
+      } else {
+        const res = await saveCreateDistrict(payload)
+        toast.success(res?.data?.message || 'District created successfully')
+      }
+      navigate('/admin/districts')
     } catch (err) {
-      showError({
-        title: DIALOG_MESSAGES.ERROR.title,
-        message: getErrorMessage(err, 'জেলার তথ্য সংরক্ষণে সমস্যা হয়েছে'),
-      })
-    } finally {
-      setSaving(false)
+      console.error('Failed to save district', err)
+      toast.error(getErrorMessage(err, 'Failed to save district'))
     }
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Data...</div>
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+    <div style={{ maxWidth: 700, margin: '0 auto', paddingBottom: 160 }}>
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit District' : '🏙️ Add New District'}</h2>
@@ -178,7 +172,7 @@ export default function DistrictFormPage() {
           <form className="admin-form" onSubmit={handleSubmit}>
             
             <div className="admin-form-group">
-              <label className="admin-form-label">District Name (English) *</label>
+              <label className="admin-form-label">District Name *</label>
               <input 
                 className="admin-form-input" 
                 name="name" 
@@ -188,18 +182,6 @@ export default function DistrictFormPage() {
                 style={{ height: 48 }}
               />
               {errors.name && <div className="admin-form-error">{errors.name}</div>}
-            </div>
-
-            <div className="admin-form-group" style={{ marginTop: 20 }}>
-              <label className="admin-form-label">District Name (Bangla)</label>
-              <input 
-                className="admin-form-input" 
-                name="bangla_name" 
-                value={form.bangla_name} 
-                onChange={(e) => { setForm({ ...form, bangla_name: e.target.value }); setErrors({ ...errors, bangla_name: '' }) }} 
-                placeholder="e.g. গাজীপুর"
-                style={{ height: 48 }}
-              />
             </div>
 
             <div style={{ background: '#FFFBEB', padding: 20, borderRadius: 16, border: '1px solid #FEF3C7', margin: '24px 0' }}>

@@ -1,8 +1,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useDialog } from '../../../hooks/useDialog'
-import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
+import toast from 'react-hot-toast'
 import { useUpazilaDetail, useDivisions, useDistricts, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 
 // Premium Searchable Select Component
@@ -19,9 +18,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -38,7 +37,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? '#1E293B' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: '#94A3B8' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -71,17 +70,17 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 16px', fontSize: 14, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'
+                    background: String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'
                   }}
                   onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  {opt.bangla_name || opt.name}
+                  {opt.name}
                 </div>
               ))
             )}
@@ -95,12 +94,10 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function UpazilaFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({ 
     name: '', 
-    bangla_name: '', 
     division_id: '', 
     district_id: '' 
   })
@@ -126,7 +123,6 @@ export default function UpazilaFormPage() {
       const divisionId = upazila.division_id || upazila.district?.division_id || ''
       setForm({
         name: upazila.name || '',
-        bangla_name: upazila.bangla_name || '',
         division_id: divisionId,
         district_id: districtId,
       })
@@ -144,44 +140,37 @@ export default function UpazilaFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      if (!form.name.trim()) toast.error('Upazila name is required')
+      else if (!form.division_id) toast.error('Division is required')
+      else if (!form.district_id) toast.error('District is required')
+      return
+    }
 
-    setSaving(true)
     try {
       const payload = {
-        name: form.name,
-        bangla_name: form.bangla_name,
+        name: form.name.trim(),
         district_id: form.district_id
       }
 
       if (isEdit) {
-        await updateUpazila(id, payload)
-        showSuccess({
-          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
-          message: 'উপজেলার তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
-        })
+        const res = await saveUpdateUpazila(id, payload)
+        toast.success(res?.data?.message || 'Upazila updated successfully')
       } else {
-        await createUpazila(payload)
-        showSuccess({
-          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-          message: 'নতুন উপজেলা সফলভাবে সংরক্ষণ করা হয়েছে।',
-        })
+        const res = await saveCreateUpazila(payload)
+        toast.success(res?.data?.message || 'Upazila created successfully')
       }
-      setTimeout(() => navigate('/admin/upazilas'), 700)
+      navigate('/admin/upazilas')
     } catch (err) {
-      showError({
-        title: DIALOG_MESSAGES.ERROR.title,
-        message: getErrorMessage(err, 'উপজেলার তথ্য সংরক্ষণে সমস্যা হয়েছে'),
-      })
-    } finally {
-      setSaving(false)
+      console.error('Failed to save upazila', err)
+      toast.error(getErrorMessage(err, 'Failed to save upazila'))
     }
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Initializing Form...</div>
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 160 }}>
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Upazila' : '📍 Add New Upazila'}</h2>
@@ -194,31 +183,17 @@ export default function UpazilaFormPage() {
         <div className="admin-card-body" style={{ overflow: 'visible' }}>
           <form className="admin-form" onSubmit={handleSubmit}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Upazila Name (English) *</label>
-                <input 
-                  className="admin-form-input" 
-                  name="name" 
-                  value={form.name} 
-                  onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors({ ...errors, name: '' }) }} 
-                  placeholder="e.g. Savar"
-                  style={{ height: 48 }}
-                />
-                {errors.name && <div className="admin-form-error">{errors.name}</div>}
-              </div>
-
-              <div className="admin-form-group">
-                <label className="admin-form-label">Upazila Name (Bangla)</label>
-                <input 
-                  className="admin-form-input" 
-                  name="bangla_name" 
-                  value={form.bangla_name} 
-                  onChange={(e) => setForm({ ...form, bangla_name: e.target.value })} 
-                  placeholder="e.g. সাভার"
-                  style={{ height: 48, fontFamily: "'Hind Siliguri', sans-serif" }}
-                />
-              </div>
+            <div className="admin-form-group" style={{ marginBottom: 24 }}>
+              <label className="admin-form-label">Upazila Name *</label>
+              <input 
+                className="admin-form-input" 
+                name="name" 
+                value={form.name} 
+                onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors({ ...errors, name: '' }) }} 
+                placeholder="e.g. Savar"
+                style={{ height: 48 }}
+              />
+              {errors.name && <div className="admin-form-error">{errors.name}</div>}
             </div>
 
             <div style={{ background: '#F0FDFA', padding: 24, borderRadius: 16, border: '1px solid #CCFBF1', marginBottom: 24 }}>

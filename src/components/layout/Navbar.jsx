@@ -254,7 +254,7 @@ function AppNavbar() {
         .user-dropdown-item,
         .dropdown-menu .dropdown-item {
           font-size: 13.5px !important;
-          font-weight: 700 !important;
+          font-weight: 500 !important;
           color: #1E293B !important;
           padding: 9px 14px !important;
           border-radius: 8px !important;
@@ -302,7 +302,7 @@ function AppNavbar() {
         .user-dropdown-logout {
           color: #EF4444 !important;
           font-size: 13.5px !important;
-          font-weight: 700 !important;
+          font-weight: 500 !important;
           padding: 9px 14px !important;
           border-radius: 8px !important;
           display: flex !important;
@@ -567,18 +567,18 @@ function AppNavbar() {
                   <div style={{ fontWeight: 800, fontSize: 14, color: '#003820' }}>{user?.name}</div>
                   <div style={{ fontSize: 11, color: '#64748b' }}>{getUserTypeLabel()}</div>
                 </div>
-                <Nav.Link as={Link} to="/profile" onClick={closeMenu} style={{ fontWeight: 700, padding: '8px 0', color: '#1e293b' }}>
+                <Nav.Link as={Link} to="/profile" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#1e293b' }}>
                   <User size={16} className="me-2" /> প্রোফাইল
                 </Nav.Link>
-                <Nav.Link as={Link} to="/my-appointments" onClick={closeMenu} style={{ fontWeight: 700, padding: '8px 0', color: '#1e293b' }}>
+                <Nav.Link as={Link} to="/my-appointments" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#1e293b' }}>
                   <Calendar size={16} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
                 </Nav.Link>
                 {isStaff && (
-                  <Nav.Link as={Link} to="/admin" onClick={closeMenu} style={{ fontWeight: 800, padding: '8px 0', color: '#003820' }}>
+                  <Nav.Link as={Link} to="/admin" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#003820' }}>
                     <LayoutGrid size={16} className="me-2" /> {getAdminLinkLabel()}
                   </Nav.Link>
                 )}
-                <Button variant="link" onClick={handleLogout} className="text-danger p-0 fw-bold text-decoration-none mt-2 d-flex align-items-center">
+                <Button variant="link" onClick={handleLogout} className="text-danger p-0 text-decoration-none mt-2 d-flex align-items-center" style={{ fontWeight: 500 }}>
                   <LogOut size={16} className="me-2" /> সাইন আউট
                 </Button>
               </div>

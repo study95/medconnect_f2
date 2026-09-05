@@ -1,8 +1,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useDialog } from '../../../hooks/useDialog'
-import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
+import toast from 'react-hot-toast'
 import { 
   useUnionDetail, 
   useDivisions, 
@@ -25,9 +24,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -44,7 +43,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? '#1E293B' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: '#94A3B8' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -77,17 +76,17 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 16px', fontSize: 14, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'
+                    background: String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'
                   }}
                   onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? '#F1F5F9' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? '#F1F5F9' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  {opt.bangla_name || opt.name}
+                  {opt.name}
                 </div>
               ))
             )}
@@ -101,12 +100,10 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function UnionFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showSuccess, showError } = useDialog()
   const isEdit = !!id
 
   const [form, setForm] = useState({ 
     name: '', 
-    bangla_name: '', 
     division_id: '', 
     district_id: '',
     upazila_id: '' 
@@ -134,7 +131,6 @@ export default function UnionFormPage() {
       const district = upazila.district || {}
       setForm({
         name: union.name || '',
-        bangla_name: union.bangla_name || '',
         division_id: district.division_id || '',
         district_id: upazila.district_id || '',
         upazila_id: union.upazila_id || '',
@@ -154,44 +150,38 @@ export default function UnionFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      if (!form.name.trim()) toast.error('Union name is required')
+      else if (!form.division_id) toast.error('Division is required')
+      else if (!form.district_id) toast.error('District is required')
+      else if (!form.upazila_id) toast.error('Upazila is required')
+      return
+    }
 
-    setSaving(true)
     try {
       const payload = {
-        name: form.name,
-        bangla_name: form.bangla_name,
+        name: form.name.trim(),
         upazila_id: form.upazila_id
       }
 
       if (isEdit) {
-        await updateUnion(id, payload)
-        showSuccess({
-          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
-          message: 'ইউনিয়নের তথ্য সফলভাবে হালনাগাদ করা হয়েছে।',
-        })
+        const res = await saveUpdateUnion(id, payload)
+        toast.success(res?.data?.message || 'Union updated successfully')
       } else {
-        await createUnion(payload)
-        showSuccess({
-          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-          message: 'নতুন ইউনিয়ন সফলভাবে সংরক্ষণ করা হয়েছে।',
-        })
+        const res = await saveCreateUnion(payload)
+        toast.success(res?.data?.message || 'Union created successfully')
       }
-      setTimeout(() => navigate('/admin/unions'), 700)
+      navigate('/admin/unions')
     } catch (err) {
-      showError({
-        title: DIALOG_MESSAGES.ERROR.title,
-        message: getErrorMessage(err, 'ইউনিয়নের তথ্য সংরক্ষণে সমস্যা হয়েছে'),
-      })
-    } finally {
-      setSaving(false)
+      console.error('Failed to save union', err)
+      toast.error(getErrorMessage(err, 'Failed to save union'))
     }
   }
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Initializing Form...</div>
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 160 }}>
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Union' : '🏘️ Add New Union'}</h2>
@@ -204,31 +194,17 @@ export default function UnionFormPage() {
         <div className="admin-card-body" style={{ overflow: 'visible' }}>
           <form className="admin-form" onSubmit={handleSubmit}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Union Name (English) *</label>
-                <input 
-                  className="admin-form-input" 
-                  name="name" 
-                  value={form.name} 
-                  onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors({ ...errors, name: '' }) }} 
-                  placeholder="e.g. Ashulia"
-                  style={{ height: 48 }}
-                />
-                {errors.name && <div className="admin-form-error">{errors.name}</div>}
-              </div>
-
-              <div className="admin-form-group">
-                <label className="admin-form-label">Union Name (Bangla)</label>
-                <input 
-                  className="admin-form-input" 
-                  name="bangla_name" 
-                  value={form.bangla_name} 
-                  onChange={(e) => setForm({ ...form, bangla_name: e.target.value })} 
-                  placeholder="e.g. আশুলিয়া"
-                  style={{ height: 48, fontFamily: "'Hind Siliguri', sans-serif" }}
-                />
-              </div>
+            <div className="admin-form-group" style={{ marginBottom: 24 }}>
+              <label className="admin-form-label">Union Name *</label>
+              <input 
+                className="admin-form-input" 
+                name="name" 
+                value={form.name} 
+                onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors({ ...errors, name: '' }) }} 
+                placeholder="e.g. Ashulia"
+                style={{ height: 48 }}
+              />
+              {errors.name && <div className="admin-form-error">{errors.name}</div>}
             </div>
 
             <div style={{ background: '#F5F3FF', padding: 24, borderRadius: 16, border: '1px solid #DDD6FE', marginBottom: 24 }}>

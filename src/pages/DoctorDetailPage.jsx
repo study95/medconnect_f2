@@ -21,6 +21,7 @@ import { getReviewErrorMessage, calculateRatingSummary } from '../features/revie
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import SeoHead from '../components/common/SeoHead'
+import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
 import { getMediaUrl } from '../utils/mediaUtils'
@@ -43,6 +44,9 @@ const VerifiedBadge = ({ size = 26 }) => (
   </svg>
 )
 
+const enToBn = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
+const toBnNum = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBn[d]) : '';
+
 function DoctorDetailPageContent() {
   const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
@@ -53,7 +57,8 @@ function DoctorDetailPageContent() {
 
   const { doctor, chambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
   const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
-  const { relatedDoctors, loading: loadingRelated } = useDoctorRelated(doctorIdentifier)
+  const { relatedDoctors, totalCount: relatedTotalCount, loading: loadingRelated } = useDoctorRelated(doctorIdentifier)
+  const [showAllRelated, setShowAllRelated] = useState(false)
   const favoritesContext = useFavorites() || {}
   const isDoctorFavorite = favoritesContext.isDoctorFavorite || (() => false)
   const toggleFavoriteDoctor = favoritesContext.toggleFavoriteDoctor || (() => {})
@@ -345,19 +350,16 @@ function DoctorDetailPageContent() {
   if (error || !doctor) return (
     <div className="page-wrapper">
       <SeoHead
-        title="ডাক্তার পাওয়া যায়নি — MedConnect"
-        description="অনুরোধকৃত ডাক্তারের তথ্য খুঁজে পাওয়া যায়নি।"
+        title="ডাক্তার পাওয়া যায়নি — Doctor Booklet"
+        description="অনুরোধকৃত ডাক্তারের তথ্য খুঁজে পাওয়া যায়নি বা এটি নিষ্ক্রিয় রয়েছে।"
         noIndex={true}
       />
-      <Container className="py-5 text-center">
-        <div style={{ fontSize: 48, marginBottom: 16 }}>😔</div>
-        <h4 style={{ fontWeight: 700, marginBottom: 8, color: '#1E293B' }}>{t ? t('doctor_not_found') : 'ডাক্তার পাওয়া যায়নি'}</h4>
-        <p style={{ color: '#64748B', marginBottom: 24 }}>{error || 'অনুরোধকৃত ডাক্তারের তথ্য খুঁজে পাওয়া যায়নি'}</p>
-        <div className="d-flex justify-content-center gap-3">
-          <button onClick={() => refetch && refetch()} style={{ background: '#00A88C', color: 'white', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 600, cursor: 'pointer' }}>{t ? t('try_again') : 'আবার চেষ্টা করুন'}</button>
-          <button onClick={() => navigate('/doctors')} style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 28px', fontWeight: 600, cursor: 'pointer', color: '#1E293B' }}>{t ? t('back_to_doctors') : 'ডাক্তার তালিকায় ফিরে যান'}</button>
-        </div>
-      </Container>
+      <NotFoundEntityState
+        type="doctor"
+        title="ডাক্তার পাওয়া যায়নি"
+        message={error || 'অনুরোধকৃত ডাক্তারের প্রোফাইলটি বর্তমানে সক্রিয় নেই অথবা লিংকটি পরিবর্তিত হয়েছে।'}
+        onRetry={() => refetch && refetch()}
+      />
     </div>
   )
 
@@ -1364,13 +1366,28 @@ function DoctorDetailPageContent() {
           <section className="doc-detail-related-section mt-5 pt-4 border-top">
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
               <div>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
-                  সম্পর্কিত বিশেষজ্ঞ ডাক্তারগণ
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>সম্পর্কিত বিশেষজ্ঞ ডাক্তারগণ</span>
+                  {relatedDoctors.length > 0 && (
+                    <span style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: primaryGreen,
+                      background: 'rgba(0, 184, 117, 0.1)',
+                      padding: '2px 10px',
+                      borderRadius: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}>
+                      {toBnNum(relatedTotalCount || relatedDoctors.length)} জন
+                    </span>
+                  )}
                 </h3>
                 <p style={{ fontSize: 13, color: mutedTextColor, margin: 0, fontWeight: 600 }}>
                   {specialtyName} বিভাগের অন্যান্য শীর্ষস্থানীয় ডাক্তারদের প্রোফাইল ও অ্যাপয়েন্টমেন্ট
                 </p>
               </div>
+
               {doctor?.specialty?.slug && (
                 <button
                   type="button"
@@ -1393,12 +1410,48 @@ function DoctorDetailPageContent() {
             </div>
 
             <Row className="g-3 g-md-4">
-              {relatedDoctors.slice(0, 4).map((relDoc, idx) => (
-                <Col key={relDoc.id || idx} xs={12} sm={6} md={6} lg={4} xl={relatedDoctors.length <= 3 ? 4 : 3}>
+              {(showAllRelated ? relatedDoctors : relatedDoctors.slice(0, 3)).map((relDoc, idx) => (
+                <Col key={relDoc.id || idx} xs={12} sm={6} md={6} lg={4} xl={4}>
                   <DoctorCard doctor={relDoc} viewMode="grid" />
                 </Col>
               ))}
             </Row>
+
+            {relatedDoctors.length > 3 && (
+              <div className="d-flex justify-content-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAllRelated(prev => !prev)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: 10,
+                    color: '#334155',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    padding: '9px 24px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = primaryGreen
+                    e.currentTarget.style.color = primaryGreen
+                    e.currentTarget.style.background = 'rgba(0, 184, 117, 0.04)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#E2E8F0'
+                    e.currentTarget.style.color = '#334155'
+                    e.currentTarget.style.background = '#FFFFFF'
+                  }}
+                >
+                  {showAllRelated ? 'কম দেখুন' : `আরও ${toBnNum(relatedDoctors.length - 3)} জন দেখুন`}
+                </button>
+              </div>
+            )}
           </section>
         )}
       </Container>

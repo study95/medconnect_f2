@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useDivisions, useDistricts, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -25,9 +26,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -44,7 +45,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -70,8 +71,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
             <div 
               style={{ 
                 padding: '8px 14px', fontSize: 13, cursor: 'pointer', 
-                background: value === '' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
-                fontWeight: value === '' ? 700 : 400,
+                background: !value ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                fontWeight: !value ? 700 : 400,
                 borderBottom: '1px solid var(--admin-border)',
                 color: 'var(--admin-text)'
               }}
@@ -93,20 +94,20 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 14px', fontSize: 13, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                    background: String(value || '') === String(opt.id) ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
                     borderBottom: '1px solid var(--admin-border)',
                     color: 'var(--admin-text)'
                   }}
                   onMouseEnter={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.05)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(245, 158, 11, 0.12)' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? 'rgba(245, 158, 11, 0.12)' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500 }}>
-                    {opt.bangla_name || opt.name}
+                  <div style={{ fontWeight: String(value || '') === String(opt.id) ? 700 : 500 }}>
+                    {opt.name}
                   </div>
                 </div>
               ))
@@ -137,16 +138,17 @@ export default function DistrictListPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await saveDeleteDistrict(deleteTarget.id)
+      const res = await saveDeleteDistrict(deleteTarget.id)
+      toast.success(res?.data?.message || 'District deleted successfully')
       setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete district', err)
+      toast.error(getErrorMessage(err, 'Failed to delete district'))
     }
   }
 
   const filtered = items.filter(i => 
-    i.name?.toLowerCase().includes(search.toLowerCase()) ||
-    i.bangla_name?.includes(search)
+    i.name?.toLowerCase().includes(search.toLowerCase())
   )
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
@@ -170,7 +172,7 @@ export default function DistrictListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search district by name, Bengali name..."
+        searchPlaceholder="Search district by name..."
         onRefresh={fetchDistricts}
         refreshing={loading}
         showFilters={showFilters}
@@ -204,7 +206,7 @@ export default function DistrictListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '35%', '25%', '25%', '15%']} headers={['ID', 'District Name', 'Bengali Name', 'Division', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '45%', '30%', '15%']} headers={['ID', 'District Name', 'Division', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionFilter || search)} searchQuery={search} onClearFilters={() => setDivisionFilter('')} onClearSearch={() => setSearch('')} icon="🏙️" title="No districts found" description="Try changing your search keywords or clear division filters." primaryAction={{ label: '+ Add District', to: '/admin/districts/create' }} />
         ) : (
@@ -214,7 +216,6 @@ export default function DistrictListPage() {
                 <tr>
                   <th style={{ width: 80, paddingLeft: 24 }}>ID</th>
                   <th>District Name</th>
-                  <th>Bangla Name</th>
                   <th>Parent Division</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                 </tr>
@@ -227,9 +228,6 @@ export default function DistrictListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 500, color: '#64748B', fontSize: 13 }}>{item.bangla_name || '—'}</div>
                     </td>
                     <td>
                       <div style={{ display: 'inline-block', fontSize: 11, color: '#B45309', background: '#FFFBEB', padding: '4px 12px', borderRadius: 8, fontWeight: 800 }}>

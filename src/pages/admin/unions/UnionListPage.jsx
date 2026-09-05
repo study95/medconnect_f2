@@ -2,6 +2,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { 
   useDivisions, 
@@ -31,9 +32,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = (options || []).find(opt => opt && String(opt.id) === String(value || ''))
+  const filteredOptions = (options || [])
+    .filter(opt => opt && opt.name?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   return (
@@ -51,7 +52,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? (selectedOption.bangla_name || selectedOption.name) : placeholder}
+          {selectedOption ? selectedOption.name : placeholder}
         </span>
         <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -67,9 +68,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
               type="text" 
               autoFocus
               placeholder="Search..." 
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--admin-border)', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
               onClick={e => e.stopPropagation()}
             />
           </div>
@@ -88,20 +89,20 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
                   key={opt.id} 
                   style={{ 
                     padding: '10px 14px', fontSize: 13, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
+                    background: String(value || '') === String(opt.id) ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
                     borderBottom: '1px solid var(--admin-border)',
                     color: 'var(--admin-text)'
                   }}
                   onMouseEnter={(e) => e.target.style.background = 'rgba(79, 70, 229, 0.05)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(79, 70, 229, 0.1)' : 'transparent'}
+                  onMouseLeave={(e) => e.target.style.background = String(value || '') === String(opt.id) ? 'rgba(79, 70, 229, 0.1)' : 'transparent'}
                   onClick={() => {
                     onChange(opt.id.toString())
                     setIsOpen(false)
                     setSearch('')
                   }}
                 >
-                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500 }}>
-                    {opt.bangla_name || opt.name}
+                  <div style={{ fontWeight: String(value || '') === String(opt.id) ? 700 : 500 }}>
+                    {opt.name}
                   </div>
                 </div>
               ))
@@ -147,10 +148,12 @@ export default function UnionListPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await saveDeleteUnion(deleteTarget.id)
+      const res = await saveDeleteUnion(deleteTarget.id)
+      toast.success(res?.data?.message || 'Union deleted successfully')
       setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete union', err)
+      toast.error(getErrorMessage(err, 'Failed to delete union'))
     }
   }
 
@@ -162,8 +165,7 @@ export default function UnionListPage() {
   }
 
   const filtered = items.filter(i => 
-    i.name?.toLowerCase().includes(search.toLowerCase()) ||
-    i.bangla_name?.includes(search)
+    i.name?.toLowerCase().includes(search.toLowerCase())
   )
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
@@ -185,7 +187,7 @@ export default function UnionListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search union by name, Bengali name..."
+        searchPlaceholder="Search union by name..."
         onRefresh={fetchItems}
         refreshing={loading}
         showFilters={showFilters}
@@ -217,7 +219,7 @@ export default function UnionListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={6} columnWidths={['100px', '25%', '25%', '25%', '15%']} headers={['ID', 'Union Name', 'Bengali Name', 'Parent Upazila', 'Actions']} />
+          <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Union Name', 'Parent Upazila', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionFilter || districtFilter || upazilaFilter || search)} searchQuery={search} onClearFilters={() => { setDivisionFilter(''); setDistrictFilter(''); setUpazilaFilter('') }} onClearSearch={() => setSearch('')} icon="🏡" title="No unions found" description="Try adjusting your filters or add a new union." primaryAction={{ label: '+ Add Union', to: '/admin/unions/create' }} />
         ) : (
@@ -227,7 +229,6 @@ export default function UnionListPage() {
                 <tr>
                   <th style={{ width: 80, paddingLeft: 24 }}>ID</th>
                   <th>Union Name</th>
-                  <th>Bangla Name</th>
                   <th>Parent Hierarchy</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                 </tr>
@@ -240,9 +241,6 @@ export default function UnionListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
-                    </td>
-                    <td>
-                      <div style={{ color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>{item.bangla_name || '—'}</div>
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

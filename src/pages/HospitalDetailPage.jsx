@@ -14,6 +14,7 @@ import { calculateRatingSummary } from '../features/reviews/mappers'
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import SeoHead from '../components/common/SeoHead'
+import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { useTranslation } from 'react-i18next'
@@ -270,18 +271,18 @@ function HospitalDetailPage() {
   )
 
   if (errorHeader || !hospital) return (
-    <div className="text-center py-5" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+    <div className="page-wrapper">
       <SeoHead
-        title="হাসপাতাল পাওয়া যায়নি — MedConnect"
-        description="অনুরোধকৃত হাসপাতালের তথ্য খুঁজে পাওয়া যায়নি।"
+        title="হাসপাতাল পাওয়া যায়নি — Doctor Booklet"
+        description="অনুরোধকৃত হাসপাতালের তথ্য খুঁজে পাওয়া যায়নি বা এটি নিষ্ক্রিয় রয়েছে।"
         noIndex={true}
       />
-      <div style={{ fontSize: 60, marginBottom: 20 }}>🏥</div>
-      <h4 style={{ color: '#1E293B', fontWeight: 700 }}>{t('hospital_not_found')}</h4>
-      <p style={{ color: '#64748B', maxWidth: 400 }}>{errorHeader || 'অনুরোধকৃত হাসপাতালের তথ্য খুঁজে পাওয়া যায়নি বা এটি নিষ্ক্রিয় রয়েছে।'}</p>
-      <button onClick={() => navigate('/hospitals')} className="btn btn-primary mt-3" style={{ borderRadius: 12, padding: '10px 24px' }}>
-        হাসপাতাল তালিকায় ফিরে যান
-      </button>
+      <NotFoundEntityState
+        type="hospital"
+        title="হাসপাতাল পাওয়া যায়নি"
+        message={errorHeader || 'অনুরোধকৃত হাসপাতালের প্রোফাইলটি বর্তমানে সক্রিয় নেই অথবা লিংকটি পরিবর্তিত হয়েছে।'}
+        onRetry={() => refetchHospital && refetchHospital()}
+      />
     </div>
   )
 

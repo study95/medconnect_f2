@@ -241,15 +241,6 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <button
                   type="button"
-                  onClick={handleShare}
-                  title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
-                  aria-label="শেয়ার করুন"
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? '#00B875' : '#94A3B8' }}
-                >
-                  {copied ? <IconCheck size={14} color="#00B875" /> : <IconShare size={14} />}
-                </button>
-                <button
-                  type="button"
                   onClick={(e) => { e.stopPropagation(); toggleFavoriteHospital(hospital) }}
                   title="পছন্দের তালিকায় রাখুন"
                   aria-label="পছন্দের তালিকায় রাখুন"
@@ -593,30 +584,8 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
       }}
     >
-      {/* Share & Heart Action Buttons */}
+      {/* Favorite Heart Action Button */}
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button
-          type="button"
-          onClick={handleShare}
-          title={copied ? "লিংক কপি করা হয়েছে" : "শেয়ার করুন"}
-          aria-label="শেয়ার করুন"
-          style={{
-            background: 'rgba(255, 255, 255, 0.98)',
-            border: '1px solid #E2E8F0',
-            borderRadius: '50%',
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: copied ? '#00B875' : '#64748B',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {copied ? <IconCheck size={15} color="#00B875" /> : <IconShare size={15} />}
-        </button>
         <button
           type="button"
           onClick={(e) => {

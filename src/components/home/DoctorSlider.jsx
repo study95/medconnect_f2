@@ -84,9 +84,11 @@ function DoctorSlider() {
           autoplay={{ delay: 4000, disableOnInteraction: false }}
           loop={doctors.length > 3}
           breakpoints={{
-            576: { slidesPerView: 2 },
-            768: { slidesPerView: 3 },
-            992: { slidesPerView: 4 },
+            576: { slidesPerView: 1 },
+            640: { slidesPerView: 2 },
+            768: { slidesPerView: 2 },
+            992: { slidesPerView: 3 },
+            1200: { slidesPerView: 3 },
           }}
           className="premium-slider"
         >
