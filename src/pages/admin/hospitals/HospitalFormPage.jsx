@@ -1,6 +1,7 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
@@ -119,9 +120,11 @@ export default function HospitalFormPage() {
   const canEditPhone = isAdmin || !isEdit
 
   const [form, setForm] = useState({
-    name: '', hospital_type: '', license_number: '',
+    name: '', hospital_type: '', license_number: '', about: '',
     district_id: '', upazila_id: '', union_id: '', division_id: '',
-    address: '', phone: '', hotline: '', email: '', official_email: '', url: '',
+    address: '', latitude: '', longitude: '',
+    phone: '', hotline: '', email: '', official_email: '', url: '',
+    facebook_url: '', youtube_url: '', x_url: '', linkedin_url: '',
     ambulance_number: '', reserved_doctor_number: '', visited_doctor_number: '',
     nurse_number: '', staff_number: '', ICU_number: '', CCU_number: '', HDU_number: '', Cabin_number: '',
     top_10_hospital: 'no', is_active: true
@@ -130,8 +133,18 @@ export default function HospitalFormPage() {
   // Media States
   const [media, setMedia] = useState({
     photo: null, logo: null, banner: null,
-    photoPreview: null, logoPreview: null, bannerPreview: null
+    photoPreview: null, logoPreview: null, bannerPreview: null,
+    photoDims: null, logoDims: null, bannerDims: null
   })
+  const [removedMedia, setRemovedMedia] = useState({
+    photo: false, logo: false, banner: false
+  })
+
+  const fileInputRefs = {
+    photo: useRef(null),
+    logo: useRef(null),
+    banner: useRef(null)
+  }
 
   const [tests, setTests] = useState([])
 
@@ -155,27 +168,34 @@ export default function HospitalFormPage() {
       const h = res.data?.data || res.data
       setForm({
         name: h.name || '',
-        hospital_type: h.hospital_type || '',
+        hospital_type: h.hospital_type || h.type || '',
+        about: h.about || h.bio || '',
         license_number: h.license_number || '',
-        division_id: h.division_id || '',
-        district_id: h.district_id || '',
-        upazila_id: h.upazila_id || '',
-        union_id: h.union_id || '',
+        division_id: h.division_id ? String(h.division_id) : (h.division?.id ? String(h.division.id) : ''),
+        district_id: h.district_id ? String(h.district_id) : (h.district?.id ? String(h.district.id) : ''),
+        upazila_id: h.upazila_id ? String(h.upazila_id) : (h.upazila?.id ? String(h.upazila.id) : ''),
+        union_id: h.union_id ? String(h.union_id) : (h.union?.id ? String(h.union.id) : ''),
         address: h.address || '',
+        latitude: h.latitude ?? '',
+        longitude: h.longitude ?? '',
         phone: h.phone || '',
         hotline: h.hotline || '',
         email: h.email || '',
         official_email: h.official_email || h.email || '',
-        url: h.url || '',
+        url: h.url || h.website || '',
+        facebook_url: h.facebook_url || '',
+        youtube_url: h.youtube_url || '',
+        x_url: h.x_url || h.twitter_url || '',
+        linkedin_url: h.linkedin_url || '',
         ambulance_number: h.ambulance_number || '',
-        reserved_doctor_number: h.reserved_doctor_number || '',
-        visited_doctor_number: h.visited_doctor_number || '',
-        nurse_number: h.nurse_number || '',
-        staff_number: h.staff_number || '',
-        ICU_number: h.ICU_number || '',
-        CCU_number: h.CCU_number || '',
-        HDU_number: h.HDU_number || '',
-        Cabin_number: h.Cabin_number || '',
+        reserved_doctor_number: h.reserved_doctor_number ?? '',
+        visited_doctor_number: h.visited_doctor_number ?? '',
+        nurse_number: h.nurse_number ?? h.nurse_count ?? '',
+        staff_number: h.staff_number ?? h.staff_count ?? '',
+        ICU_number: h.ICU_number ?? h.icu_beds ?? '',
+        CCU_number: h.CCU_number ?? h.ccu_beds ?? '',
+        HDU_number: h.HDU_number ?? h.hdu_beds ?? '',
+        Cabin_number: h.Cabin_number ?? h.cabin_count ?? '',
         top_10_hospital: h.top_10_hospital === 'yes' ? 'yes' : 'no',
         is_active: h.is_active ?? true
       })
@@ -186,6 +206,7 @@ export default function HospitalFormPage() {
         logoPreview: h.logo_url,
         bannerPreview: h.banner_url
       }))
+      setRemovedMedia({ photo: false, logo: false, banner: false })
     } catch (err) {
       console.error(err)
     } finally {
@@ -202,12 +223,54 @@ export default function HospitalFormPage() {
   const handleMediaChange = (e, type) => {
     const file = e.target.files[0]
     if (file) {
-      setMedia(m => ({
-        ...m,
-        [type]: file,
-        [`${type}Preview`]: URL.createObjectURL(file)
-      }))
+      const maxMb = type === 'banner' ? 5 : 2
+      const errorKey = type === 'banner' ? 'hospital_banner' : type === 'logo' ? 'hospital_logo' : 'photo'
+      if (file.size > maxMb * 1024 * 1024) {
+        const msg = `${type === 'banner' ? 'Banner image' : type === 'logo' ? 'Logo' : 'Profile photo'} must not exceed ${maxMb} MB.`
+        toast.error(msg)
+        setErrors(prev => ({ ...prev, [errorKey]: msg }))
+        return
+      }
+
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        setMedia(m => ({
+          ...m,
+          [type]: file,
+          [`${type}Preview`]: objectUrl,
+          [`${type}Dims`]: { width: img.naturalWidth, height: img.naturalHeight }
+        }))
+        setRemovedMedia(prev => ({ ...prev, [type]: false }))
+        setErrors(prev => ({ ...prev, [errorKey]: '' }))
+      }
+      img.onerror = () => {
+        setMedia(m => ({
+          ...m,
+          [type]: file,
+          [`${type}Preview`]: objectUrl,
+          [`${type}Dims`]: null
+        }))
+        setRemovedMedia(prev => ({ ...prev, [type]: false }))
+        setErrors(prev => ({ ...prev, [errorKey]: '' }))
+      }
+      img.src = objectUrl
     }
+  }
+
+  const handleRemoveMedia = (type) => {
+    setMedia(m => ({
+      ...m,
+      [type]: null,
+      [`${type}Preview`]: null,
+      [`${type}Dims`]: null
+    }))
+    setRemovedMedia(prev => ({ ...prev, [type]: true }))
+    if (fileInputRefs[type]?.current) {
+      fileInputRefs[type].current.value = ''
+    }
+    const label = type === 'banner' ? 'ব্যানার ছবি' : type === 'logo' ? 'লোগো' : 'প্রোফাইল ছবি'
+    toast.success(`${label} সরানো হয়েছে`)
   }
 
   const scrollToFirstError = (errObj) => {
@@ -218,10 +281,14 @@ export default function HospitalFormPage() {
       'name',
       'hospital_type',
       'license_number',
+      'photo',
+      'hospital_logo',
+      'hospital_banner',
       'division_id',
       'district_id',
       'address',
       'phone',
+      'ambulance_number',
       'hotline',
       'official_email',
       'email'
@@ -234,6 +301,9 @@ export default function HospitalFormPage() {
     if (!targetEl && firstKey === 'division_id') targetEl = document.getElementById('field-division_id')
     if (!targetEl && firstKey === 'district_id') targetEl = document.getElementById('field-district_id')
     if (!targetEl && firstKey === 'hospital_type') targetEl = document.getElementById('field-hospital_type')
+    if (!targetEl && firstKey === 'photo') targetEl = document.getElementById('field-photo')
+    if (!targetEl && firstKey === 'hospital_logo') targetEl = document.getElementById('field-hospital_logo')
+    if (!targetEl && firstKey === 'hospital_banner') targetEl = document.getElementById('field-hospital_banner')
 
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -270,6 +340,12 @@ export default function HospitalFormPage() {
       newErrors.phone = 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).'
     }
 
+    if (form.ambulance_number && form.ambulance_number.trim()) {
+      if (!/^01[3-9]\d{8}$/.test(form.ambulance_number.trim())) {
+        newErrors.ambulance_number = 'Please enter a valid 11-digit Bangladesh mobile number. Example: 01712345678'
+      }
+    }
+
     if (form.official_email && form.official_email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(form.official_email.trim())) {
@@ -287,6 +363,8 @@ export default function HospitalFormPage() {
     setErrors(newErrors)
     if (Object.keys(newErrors).length > 0) {
       scrollToFirstError(newErrors)
+      const firstErrMsg = Object.values(newErrors)[0]
+      toast.error(firstErrMsg || 'অনুগ্রহ করে প্রয়োজনীয় তথ্যগুলো পূরণ করুন।')
       return false
     }
     return true
@@ -312,27 +390,46 @@ export default function HospitalFormPage() {
     const validTests = tests.filter(t => t.trim() !== '')
     validTests.forEach((t, i) => formData.append(`medical_test_list[${i}]`, t))
 
-    // Files
-    if (media.photo) formData.append('photo', media.photo)
-    if (media.logo) formData.append('hospital_logo', media.logo)
-    if (media.banner) formData.append('hospital_banner', media.banner)
+    // Files (Upload new file, or explicitly signal removal)
+    if (media.photo) {
+      formData.append('photo', media.photo)
+    } else if (removedMedia.photo) {
+      formData.append('photo', '')
+    }
+
+    if (media.logo) {
+      formData.append('hospital_logo', media.logo)
+    } else if (removedMedia.logo) {
+      formData.append('hospital_logo', '')
+    }
+
+    if (media.banner) {
+      formData.append('hospital_banner', media.banner)
+    } else if (removedMedia.banner) {
+      formData.append('hospital_banner', '')
+    }
 
     try {
+      let res
       if (isEdit) {
         formData.append('_method', 'PUT')
-        await saveUpdatedHospital({ id, formData })
+        res = await saveUpdatedHospital({ id, formData })
+        const successMsg = res?.data?.message || DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message
+        toast.success(successMsg)
         showSuccess({
           title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
-          message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
+          message: successMsg,
         })
       } else {
-        await saveNewHospital(formData)
+        res = await saveNewHospital(formData)
+        const successMsg = res?.data?.message || DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message
+        toast.success(successMsg)
         showSuccess({
           title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-          message: DIALOG_MESSAGES.HOSPITAL_SAVE_SUCCESS.message,
+          message: successMsg,
         })
       }
-      setTimeout(() => navigate('/admin/hospitals'), 700)
+      setTimeout(() => navigate('/admin/hospitals'), 1200)
     } catch (err) {
       const backendErrors = err.response?.data?.errors || {}
       const formattedErrors = {}
@@ -341,12 +438,15 @@ export default function HospitalFormPage() {
         formattedErrors[key] = msg
       })
       setErrors(formattedErrors)
+      const firstValidationMsg = Object.values(formattedErrors)[0]
+      const errorMsg = firstValidationMsg || (err.response?.data?.message !== 'Validation failed.' && err.response?.data?.message) || getErrorMessage(err, 'হাসপাতালের তথ্য সংরক্ষণে সমস্যা হয়েছে')
+      toast.error(errorMsg)
       if (Object.keys(formattedErrors).length > 0) {
         scrollToFirstError(formattedErrors)
       } else {
         showError({
           title: DIALOG_MESSAGES.ERROR.title,
-          message: getErrorMessage(err, 'হাসপাতালের তথ্য সংরক্ষণে সমস্যা হয়েছে'),
+          message: errorMsg,
         })
       }
     } finally {
@@ -415,27 +515,297 @@ export default function HospitalFormPage() {
               {errors.license_number && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.license_number}</div>}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
-              <div>
-                <label className="admin-form-label">Profile Photo</label>
-                <div style={{ border: '2px dashed var(--admin-border)', borderRadius: 16, padding: 20, textAlign: 'center', background: 'rgba(0,0,0,0.02)' }}>
-                  {media.photoPreview && <img src={media.photoPreview} alt="P" style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', marginBottom: 12 }} />}
-                  <input type="file" onChange={(e) => handleMediaChange(e, 'photo')} accept="image/*" style={{ fontSize: 12, color: 'var(--admin-text-muted)' }} />
+            <div className="admin-form-group">
+              <label className="admin-form-label">About Hospital (হাসপাতাল সম্পর্কে)</label>
+              <textarea
+                className={`admin-form-input ${errors.about ? 'has-error' : ''}`}
+                name="about"
+                value={form.about}
+                onChange={handleChange}
+                placeholder="Describe hospital overview, specialized medical care, mission, facilities..."
+                style={{ height: 110, padding: '12px 16px', resize: 'vertical' }}
+              />
+              {errors.about && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.about}</div>}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+              {/* Profile Photo Dropzone */}
+              <div id="field-photo">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="admin-form-label" style={{ margin: 0 }}>
+                    Profile Photo <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>(Max 2 MB)</span>
+                  </label>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#00B875', background: 'rgba(0, 184, 117, 0.08)', padding: '2px 6px', borderRadius: 6 }}>
+                    অনুপাত ১:১ (৪০০x৪০০ px)
+                  </span>
                 </div>
+                <div 
+                  className="media-dropzone"
+                  style={{ 
+                    border: `2px dashed ${errors.photo ? '#EF4444' : 'var(--admin-border)'}`, 
+                    borderRadius: 16, 
+                    padding: 16, 
+                    textAlign: 'center', 
+                    background: errors.photo ? 'rgba(239, 68, 68, 0.03)' : 'rgba(0,0,0,0.02)',
+                    position: 'relative'
+                  }}
+                >
+                  {media.photoPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 10 }} className="media-preview-container">
+                      <img 
+                        src={media.photoPreview} 
+                        alt="Profile Photo" 
+                        style={{ width: 110, height: 110, borderRadius: 14, objectFit: 'cover', display: 'block', border: '1px solid var(--admin-border)' }} 
+                      />
+                      {/* Hover Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('photo')}
+                        title="ছবিটি মুছে ফেলুন (Remove image)"
+                        aria-label="Remove Photo"
+                        className="media-remove-btn"
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                          border: '2px solid #FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          padding: 0
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>✕</span>
+                      </button>
+
+                      {media.photoDims && (
+                        <div style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#059669' : '#D97706',
+                          background: Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#ECFDF5' : '#FFFBEB',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          display: 'inline-block',
+                          border: `1px solid ${Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? '#A7F3D0' : '#FDE68A'}`
+                        }}>
+                          {media.photoDims.width} × {media.photoDims.height} px
+                          {Math.abs(media.photoDims.width - media.photoDims.height) < 40 ? ' ✓ পারফেক্ট' : ' (১:১ বাঞ্ছনীয়)'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '14px 0 10px 0', color: 'var(--admin-text-muted)' }}>
+                      <div style={{ fontSize: 26, marginBottom: 4 }}>📷</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>কোনো ছবি নির্বাচিত নেই</div>
+                      <div style={{ fontSize: 11, color: '#94A3B8' }}>প্রস্তাবিত সাইজ: 400×400 বা 500×500 px (বর্গাকার)</div>
+                    </div>
+                  )}
+
+                  <input 
+                    ref={fileInputRefs.photo}
+                    type="file" 
+                    onChange={(e) => handleMediaChange(e, 'photo')} 
+                    accept="image/*" 
+                    style={{ fontSize: 12, color: 'var(--admin-text-muted)', width: '100%', marginTop: 6 }} 
+                  />
+                </div>
+                {errors.photo && <div className="admin-form-error" style={{ marginTop: 6, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.photo}</div>}
               </div>
-              <div>
-                <label className="admin-form-label">Hospital Logo</label>
-                <div style={{ border: '2px dashed var(--admin-border)', borderRadius: 16, padding: 20, textAlign: 'center', background: 'rgba(0,0,0,0.02)' }}>
-                  {media.logoPreview && <img src={media.logoPreview} alt="L" style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'contain', marginBottom: 12 }} />}
-                  <input type="file" onChange={(e) => handleMediaChange(e, 'logo')} accept="image/*" style={{ fontSize: 12, color: 'var(--admin-text-muted)' }} />
+
+              {/* Hospital Logo Dropzone */}
+              <div id="field-hospital_logo">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="admin-form-label" style={{ margin: 0 }}>
+                    Hospital Logo <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>(Max 2 MB)</span>
+                  </label>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#00B875', background: 'rgba(0, 184, 117, 0.08)', padding: '2px 6px', borderRadius: 6 }}>
+                    অনুপাত ১:১ (৩০০x৩০০ px)
+                  </span>
                 </div>
+                <div 
+                  className="media-dropzone"
+                  style={{ 
+                    border: `2px dashed ${errors.hospital_logo ? '#EF4444' : 'var(--admin-border)'}`, 
+                    borderRadius: 16, 
+                    padding: 16, 
+                    textAlign: 'center', 
+                    background: errors.hospital_logo ? 'rgba(239, 68, 68, 0.03)' : 'rgba(0,0,0,0.02)',
+                    position: 'relative'
+                  }}
+                >
+                  {media.logoPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 10 }} className="media-preview-container">
+                      <img 
+                        src={media.logoPreview} 
+                        alt="Hospital Logo" 
+                        style={{ width: 110, height: 110, borderRadius: 14, objectFit: 'contain', display: 'block', background: '#FFFFFF', padding: 6, border: '1px solid var(--admin-border)' }} 
+                      />
+                      {/* Hover Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('logo')}
+                        title="লোগো মুছে ফেলুন (Remove logo)"
+                        aria-label="Remove Logo"
+                        className="media-remove-btn"
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                          border: '2px solid #FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          padding: 0
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>✕</span>
+                      </button>
+
+                      {media.logoDims && (
+                        <div style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: Math.abs(media.logoDims.width - media.logoDims.height) < 40 ? '#059669' : '#D97706',
+                          background: Math.abs(media.logoDims.width - media.logoDims.height) < 40 ? '#ECFDF5' : '#FFFBEB',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          display: 'inline-block',
+                          border: `1px solid ${Math.abs(media.logoDims.width - media.logoDims.height) < 40 ? '#A7F3D0' : '#FDE68A'}`
+                        }}>
+                          {media.logoDims.width} × {media.logoDims.height} px
+                          {Math.abs(media.logoDims.width - media.logoDims.height) < 40 ? ' ✓ পারফেক্ট' : ' (১:১ বা স্বচ্ছ PNG)'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '14px 0 10px 0', color: 'var(--admin-text-muted)' }}>
+                      <div style={{ fontSize: 26, marginBottom: 4 }}>🛡️</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>কোনো লোগো নির্বাচিত নেই</div>
+                      <div style={{ fontSize: 11, color: '#94A3B8' }}>প্রস্তাবিত সাইz: 300×300 বা 512×512 px (PNG)</div>
+                    </div>
+                  )}
+
+                  <input 
+                    ref={fileInputRefs.logo}
+                    type="file" 
+                    onChange={(e) => handleMediaChange(e, 'logo')} 
+                    accept="image/*" 
+                    style={{ fontSize: 12, color: 'var(--admin-text-muted)', width: '100%', marginTop: 6 }} 
+                  />
+                </div>
+                {errors.hospital_logo && <div className="admin-form-error" style={{ marginTop: 6, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.hospital_logo}</div>}
               </div>
-              <div>
-                <label className="admin-form-label">Banner Image</label>
-                <div style={{ border: '2px dashed var(--admin-border)', borderRadius: 16, padding: 20, textAlign: 'center', background: 'rgba(0,0,0,0.02)' }}>
-                  {media.bannerPreview && <img src={media.bannerPreview} alt="B" style={{ width: 180, height: 100, borderRadius: 12, objectFit: 'cover', marginBottom: 12 }} />}
-                  <input type="file" onChange={(e) => handleMediaChange(e, 'banner')} accept="image/*" style={{ fontSize: 12, color: 'var(--admin-text-muted)' }} />
+
+              {/* Banner Image Dropzone */}
+              <div id="field-hospital_banner">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="admin-form-label" style={{ margin: 0 }}>
+                    Banner Image <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>(Max 5 MB)</span>
+                  </label>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#3B82F6', background: 'rgba(59, 130, 246, 0.08)', padding: '2px 6px', borderRadius: 6 }}>
+                    অনুপাত ১৬:৯ (১২০০x৪৫০ px)
+                  </span>
                 </div>
+                <div 
+                  className="media-dropzone"
+                  style={{ 
+                    border: `2px dashed ${errors.hospital_banner ? '#EF4444' : 'var(--admin-border)'}`, 
+                    borderRadius: 16, 
+                    padding: 16, 
+                    textAlign: 'center', 
+                    background: errors.hospital_banner ? 'rgba(239, 68, 68, 0.03)' : 'rgba(0,0,0,0.02)',
+                    position: 'relative'
+                  }}
+                >
+                  {media.bannerPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: 260, marginBottom: 10 }} className="media-preview-container">
+                      <img 
+                        src={media.bannerPreview} 
+                        alt="Hospital Banner" 
+                        style={{ width: '100%', height: 110, borderRadius: 14, objectFit: 'cover', display: 'block', border: '1px solid var(--admin-border)' }} 
+                      />
+                      {/* Hover Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia('banner')}
+                        title="ব্যানার ছবি মুছে ফেলুন (Remove banner)"
+                        aria-label="Remove Banner"
+                        className="media-remove-btn"
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                          border: '2px solid #FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          padding: 0
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>✕</span>
+                      </button>
+
+                      {media.bannerDims && (
+                        <div style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: media.bannerDims.width >= media.bannerDims.height * 1.5 ? '#059669' : '#D97706',
+                          background: media.bannerDims.width >= media.bannerDims.height * 1.5 ? '#ECFDF5' : '#FFFBEB',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          display: 'inline-block',
+                          border: `1px solid ${media.bannerDims.width >= media.bannerDims.height * 1.5 ? '#A7F3D0' : '#FDE68A'}`
+                        }}>
+                          {media.bannerDims.width} × {media.bannerDims.height} px
+                          {media.bannerDims.width >= media.bannerDims.height * 1.5 ? ' ✓ ওয়াইডস্ক্রিন' : ' (১৬:৯ ওয়াইডস্ক্রিন প্রস্তাবিত)'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '14px 0 10px 0', color: 'var(--admin-text-muted)' }}>
+                      <div style={{ fontSize: 26, marginBottom: 4 }}>🖼️</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>কোনো ব্যানার নির্বাচিত নেই</div>
+                      <div style={{ fontSize: 11, color: '#94A3B8' }}>প্রস্তাবিত সাইজ: 1200×450 বা 1920×600 px (Landscape)</div>
+                    </div>
+                  )}
+
+                  <input 
+                    ref={fileInputRefs.banner}
+                    type="file" 
+                    onChange={(e) => handleMediaChange(e, 'banner')} 
+                    accept="image/*" 
+                    style={{ fontSize: 12, color: 'var(--admin-text-muted)', width: '100%', marginTop: 6 }} 
+                  />
+                </div>
+                {errors.hospital_banner && <div className="admin-form-error" style={{ marginTop: 6, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.hospital_banner}</div>}
               </div>
             </div>
           </div>
@@ -463,6 +833,34 @@ export default function HospitalFormPage() {
                 style={{ height: 100, padding: '12px 16px', resize: 'none' }}
               />
               {errors.address && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.address}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">Map Latitude (অক্ষাংশ)</label>
+              <input
+                type="number"
+                step="any"
+                className={`admin-form-input ${errors.latitude ? 'has-error' : ''}`}
+                name="latitude"
+                value={form.latitude}
+                onChange={handleChange}
+                placeholder="e.g. 23.8103"
+              />
+              {errors.latitude && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.latitude}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">Map Longitude (দ্রাঘিমাংশ)</label>
+              <input
+                type="number"
+                step="any"
+                className={`admin-form-input ${errors.longitude ? 'has-error' : ''}`}
+                name="longitude"
+                value={form.longitude}
+                onChange={handleChange}
+                placeholder="e.g. 90.4125"
+              />
+              {errors.longitude && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.longitude}</div>}
             </div>
           </div>
         </div>
@@ -553,14 +951,90 @@ export default function HospitalFormPage() {
           </div>
         </div>
 
+        {/* Social Media Links Card */}
+        <div className="admin-card">
+          <div className="admin-card-header" style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
+            <h3 className="admin-card-title" style={{ color: '#4F46E5' }}>Social Media Profiles (সামাজিক মাধ্যম)</h3>
+          </div>
+          <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+            <div className="admin-form-group">
+              <label className="admin-form-label">Facebook Page / Profile URL</label>
+              <input
+                className={`admin-form-input ${errors.facebook_url ? 'has-error' : ''}`}
+                name="facebook_url"
+                value={form.facebook_url}
+                onChange={handleChange}
+                placeholder="https://facebook.com/..."
+              />
+              {errors.facebook_url && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.facebook_url}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">YouTube Channel URL</label>
+              <input
+                className={`admin-form-input ${errors.youtube_url ? 'has-error' : ''}`}
+                name="youtube_url"
+                value={form.youtube_url}
+                onChange={handleChange}
+                placeholder="https://youtube.com/..."
+              />
+              {errors.youtube_url && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.youtube_url}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">X (Twitter) Profile URL</label>
+              <input
+                className={`admin-form-input ${errors.x_url ? 'has-error' : ''}`}
+                name="x_url"
+                value={form.x_url}
+                onChange={handleChange}
+                placeholder="https://x.com/..."
+              />
+              {errors.x_url && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.x_url}</div>}
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">LinkedIn Page URL</label>
+              <input
+                className={`admin-form-input ${errors.linkedin_url ? 'has-error' : ''}`}
+                name="linkedin_url"
+                value={form.linkedin_url}
+                onChange={handleChange}
+                placeholder="https://linkedin.com/company/..."
+              />
+              {errors.linkedin_url && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.linkedin_url}</div>}
+            </div>
+          </div>
+        </div>
+
         {/* Capacity & Stats */}
         <div className="admin-card">
           <div className="admin-card-header" style={{ background: 'rgba(59, 130, 246, 0.05)' }}>
             <h3 className="admin-card-title" style={{ color: '#3B82F6' }}>Facility Capacity & Statistics</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+            <div className="admin-form-group" id="field-ambulance_number">
+              <label className="admin-form-label">🚑 Ambulance Contact</label>
+              <input
+                type="text"
+                className={`admin-form-input ${errors.ambulance_number ? 'has-error' : ''}`}
+                name="ambulance_number"
+                value={form.ambulance_number || ''}
+                onChange={handleChange}
+                placeholder="01712345678"
+                maxLength={11}
+              />
+              <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 4 }}>
+                Example: 01712345678
+              </div>
+              {errors.ambulance_number && (
+                <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>
+                  {errors.ambulance_number}
+                </div>
+              )}
+            </div>
+
             {[
-              { name: 'ambulance_number', label: 'Ambulance Contact', icon: '🚑' },
               { name: 'reserved_doctor_number', label: 'Reserved Doctors', icon: '👨‍⚕️' },
               { name: 'visited_doctor_number', label: 'Visiting Doctors', icon: '🩺' },
               { name: 'nurse_number', label: 'Total Nurses', icon: '👩‍⚕️' },
@@ -628,6 +1102,27 @@ export default function HospitalFormPage() {
         __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Media hover remove button effects */
+        .media-preview-container {
+          position: relative;
+          transition: transform 0.2s ease;
+        }
+        .media-preview-container:hover {
+          transform: scale(1.02);
+        }
+        .media-remove-btn {
+          opacity: 0.85;
+          transform: scale(0.95);
+        }
+        .media-preview-container:hover .media-remove-btn {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+        .media-remove-btn:hover {
+          background: #DC2626 !important;
+          transform: scale(1.2) !important;
+        }
       `}} />
     </div>
   )

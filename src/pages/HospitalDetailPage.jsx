@@ -21,41 +21,18 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useAuth } from '../context/AuthContext'
-import { translateMetadata } from '../utils/translationUtils'
 import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
 import { 
   IconHeart, IconShare, IconCircleCheckFilled, IconMapPin, IconClock, 
   IconPhone, IconWorld, IconStar, IconUsers, IconBed, 
-  IconAmbulance, IconStethoscope, IconNurse, IconMicroscope,
-  IconChevronRight, IconMessageQuestion, IconPhoto, IconBriefcase,
+  IconAmbulance, IconStethoscope, IconMicroscope,
+  IconChevronRight, IconPhoto,
   IconCalendarEvent, IconCheck, IconDiscountCheckFilled,
-  IconScissors, IconEye, IconBuildingHospital, IconSend, IconLayoutGrid, IconActivity, IconPlus, IconX, IconSearch, IconMail, IconCompass, IconBrandLinkedin, IconBrandTwitter, IconBrandX, IconBrandYoutube, IconBrandFacebook
+  IconScissors, IconEye, IconBuildingHospital, IconSend, IconLayoutGrid, IconActivity, IconPlus, IconX, IconSearch, IconMail, IconCompass, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconBrandFacebook
 } from '@tabler/icons-react'
 
 const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003f?q=80&w=2070&auto=format&fit=crop'
-const DEMO_LOGO = 'https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=2070&auto=format&fit=crop'
-
-const ALL_DEPARTMENTS = [
-  { id: 'cardiology', name: 'কার্ডিওলজি', sub: 'হৃদরোগ বিভাগ', icon: <IconHeart size={26} /> },
-  { id: 'neurology', name: 'নিউরোলজি', sub: 'স্নায়ুরোগ বিভাগ', icon: <IconActivity size={26} /> },
-  { id: 'gastroenterology', name: 'গ্যাস্ট্রোএন্টারোলজি', sub: 'হজম ও লিভার বিভাগ', icon: <IconActivity size={26} /> },
-  { id: 'orthopedics', name: 'অর্থোপেডিকস', sub: 'হাড় ও জয়েন্ট বিভাগ', icon: <IconActivity size={26} /> },
-  { id: 'urology', name: 'ইউরোলজি', sub: 'মূত্র ও কিডনি বিভাগ', icon: <IconScissors size={26} /> },
-  { id: 'gynecology', name: 'গাইনি ও অবস', sub: 'নারী ও প্রসূতি বিভাগ', icon: <IconUsers size={26} /> },
-  { id: 'ophthalmology', name: 'চক্ষু বিভাগ', sub: 'চোখের সেবা', icon: <IconEye size={26} /> },
-  { id: 'ent', name: 'ইএনটি', sub: 'কান, নাক, গলা', icon: <IconStethoscope size={26} /> },
-  { id: 'pediatrics', name: 'শিশুরোগ বিভাগ', sub: 'নবজাতক ও শিশু বিশেষজ্ঞ', icon: <IconUsers size={26} /> },
-  { id: 'dermatology', name: 'ডার্মাটোলজি', sub: 'চর্ম ও যৌন রোগ বিভাগ', icon: <IconActivity size={26} /> },
-  { id: 'dental', name: 'ডেন্টাল কেয়ার', sub: 'দন্ত চিকিৎসা বিভাগ', icon: <IconScissors size={26} /> },
-  { id: 'nephrology', name: 'নেফ্রোলজি', sub: 'কিডনি ও ডায়ালাইসিস', icon: <IconActivity size={26} /> },
-  { id: 'pulmonology', name: 'পালমোনোলজি', sub: 'বক্ষব্যাধি ও অ্যাজমা', icon: <IconActivity size={26} /> },
-  { id: 'oncology', name: 'অনকোলজি', sub: 'ক্যান্সার কেয়ার ইউনিট', icon: <IconHeart size={26} /> },
-  { id: 'psychiatry', name: 'সাইকিয়াট্রি', sub: 'মানসিক স্বাস্থ্য বিভাগ', icon: <IconUsers size={26} /> },
-  { id: 'surgery', name: 'জেনারেল সার্জারি', sub: 'ল্যাপারোস্কোপিক অস্ত্রোপচার', icon: <IconScissors size={26} /> },
-  { id: 'endocrinology', name: 'এন্ডোক্রিনোলজি', sub: 'ডায়াবেটিস ও হরমোন', icon: <IconActivity size={26} /> },
-  { id: 'emergency', name: 'ইমার্জেন্সি ও ট্রমা', sub: '২৪/৭ জরুরি বিভাগ', icon: <IconAmbulance size={26} /> }
-]
 
 function HospitalDetailPage() {
   const { district, upazila, slug, id } = useParams()
@@ -103,14 +80,6 @@ function HospitalDetailPage() {
   }
   const [deptSearchQuery, setDeptSearchQuery] = useState('')
 
-  const filteredDepartments = useMemo(() => {
-    if (!deptSearchQuery.trim()) return ALL_DEPARTMENTS
-    const q = deptSearchQuery.toLowerCase()
-    return ALL_DEPARTMENTS.filter(d => 
-      d.name.toLowerCase().includes(q) || d.sub.toLowerCase().includes(q)
-    )
-  }, [deptSearchQuery])
-
   const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail({ district, upazila, slug, id })
   const hospitalIdentifier = hospital?.slug || slug || hospital?.public_id || hospital?.id || id
   const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: hospital?.id || hospital?.public_id || id })
@@ -143,11 +112,85 @@ function HospitalDetailPage() {
     if (ratingSummary.total > 0) {
       return ratingSummary.total
     }
-    if (hospital?.rating_count || hospital?.reviews_count) {
-      return Number(hospital.rating_count || hospital.reviews_count)
+    if (hospital?.rating_count || hospital?.review_count || hospital?.reviews_count) {
+      return Number(hospital.rating_count || hospital.review_count || hospital.reviews_count)
     }
     return 0
-  }, [ratingSummary, hospital?.rating_count, hospital?.reviews_count])
+  }, [ratingSummary, hospital?.rating_count, hospital?.review_count, hospital?.reviews_count])
+
+  // Pure presentation data derived directly from backend contract
+  const departments = hospital?.departments || []
+  const facilities = hospital?.facilities || []
+  const photos = hospital?.photos || []
+  const badges = hospital?.badges || []
+  const stats = hospital?.stats || null
+  const facts = hospital?.facts || []
+  const socialLinks = useMemo(() => {
+    if (Array.isArray(hospital?.social_links) && hospital.social_links.length > 0) {
+      return hospital.social_links
+    }
+    const links = []
+    if (hospital?.facebook_url) links.push({ platform: 'facebook', url: hospital.facebook_url })
+    if (hospital?.youtube_url) links.push({ platform: 'youtube', url: hospital.youtube_url })
+    if (hospital?.twitter_url || hospital?.x_url) links.push({ platform: 'x', url: hospital?.twitter_url || hospital?.x_url })
+    if (hospital?.linkedin_url) links.push({ platform: 'linkedin', url: hospital.linkedin_url })
+    return links
+  }, [hospital?.social_links, hospital?.facebook_url, hospital?.youtube_url, hospital?.twitter_url, hospital?.x_url, hospital?.linkedin_url])
+
+  // UI-only search filter for departments modal
+  const filteredDepartments = useMemo(() => {
+    if (!deptSearchQuery.trim()) return departments
+    const q = deptSearchQuery.toLowerCase()
+    return departments.filter(d => 
+      (d.name && d.name.toLowerCase().includes(q)) || 
+      (d.sub && d.sub.toLowerCase().includes(q))
+    )
+  }, [deptSearchQuery, departments])
+
+  // UI icon mapper for facilities based on backend semantic icon identifier
+  const getFacilityIcon = (iconKey) => {
+    switch (iconKey) {
+      case 'ambulance': return <IconAmbulance size={24} />
+      case 'activity': return <IconActivity size={24} />
+      case 'bed': return <IconBed size={24} />
+      case 'microscope': return <IconMicroscope size={24} />
+      case 'building-hospital': return <IconBuildingHospital size={24} />
+      default: return <IconCheck size={24} />
+    }
+  }
+
+  // UI icon mapper for facts based on backend semantic type identifier
+  const getFactIcon = (type) => {
+    switch (type) {
+      case 'type': return <IconBuildingHospital size={18} />
+      case 'beds': return <IconBed size={18} />
+      case 'emergency': return <IconPhone size={18} />
+      case 'diagnostic': return <IconMicroscope size={18} />
+      default: return <IconCheck size={18} />
+    }
+  }
+
+  // UI icon mapper for social platforms based on backend semantic platform identifier
+  const getSocialIcon = (platform) => {
+    switch (platform) {
+      case 'facebook': return <IconBrandFacebook size={22} />
+      case 'youtube': return <IconBrandYoutube size={22} />
+      case 'x': return <IconBrandX size={20} />
+      case 'linkedin': return <IconBrandLinkedin size={22} />
+      default: return <IconWorld size={20} />
+    }
+  }
+
+  // UI styling mapper for social platforms
+  const getSocialStyle = (platform) => {
+    switch (platform) {
+      case 'facebook': return { bg: '#1877F2', shadow: 'rgba(24, 119, 242, 0.25)', hoverShadow: 'rgba(24, 119, 242, 0.4)' }
+      case 'youtube': return { bg: '#FF0000', shadow: 'rgba(255, 0, 0, 0.25)', hoverShadow: 'rgba(255, 0, 0, 0.4)' }
+      case 'x': return { bg: '#000000', shadow: 'rgba(0, 0, 0, 0.25)', hoverShadow: 'rgba(0, 0, 0, 0.4)' }
+      case 'linkedin': return { bg: '#0A66C2', shadow: 'rgba(10, 102, 194, 0.25)', hoverShadow: 'rgba(10, 102, 194, 0.4)' }
+      default: return { bg: '#007A65', shadow: 'rgba(0, 122, 101, 0.25)', hoverShadow: 'rgba(0, 122, 101, 0.4)' }
+    }
+  }
 
   const [activeTab, setActiveTab] = useState('summary')
   const activeTabRef = useRef('summary')
@@ -346,8 +389,8 @@ function HospitalDetailPage() {
         >
           {/* Background Image */}
           <img
-            src={hospital?.photo_url || DEMO_BANNER}
-            alt={`${hospital?.name} Cover`}
+            src={hospital?.banner_url || hospital?.photo_url || DEMO_BANNER}
+            alt={`${hospital?.name || 'হাসপাতাল'} Cover`}
             loading="eager"
             decoding="async"
             onError={(e) => { e.target.src = DEMO_BANNER }}
@@ -380,7 +423,7 @@ function HospitalDetailPage() {
               title: hospital.name,
               text: (hospital.address || 'হাসপাতাল') + ' | Doctor Booklet',
               url: window.location.href,
-              image: hospital.photo_url || DEMO_BANNER
+              image: hospital.banner_url || hospital.photo_url || DEMO_BANNER
             })}
             style={{
               position: 'absolute',
@@ -449,17 +492,28 @@ function HospitalDetailPage() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 6,
+                        padding: (hospital?.logo_url || hospital?.photo_url) ? 4 : 8,
                         flexShrink: 0
                       }}
                     >
-                      <img
-                        src={DEMO_LOGO}
-                        alt="Logo"
-                        loading="lazy"
-                        decoding="async"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
+                      {(hospital?.logo_url || hospital?.photo_url) ? (
+                        <img
+                          src={hospital.logo_url || hospital.photo_url}
+                          alt={hospital.name || 'Hospital Logo'}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.style.display = 'none';
+                            if (e.target.parentElement) {
+                              e.target.parentElement.innerHTML = '<div style="color:#00B875;display:flex;align-items:center;justify-content:center;width:100%;height:100%"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/><line x1="10" y1="9" x2="14" y2="9"/><line x1="12" y1="7" x2="12" y2="11"/></svg></div>';
+                            }
+                          }}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <IconBuildingHospital size={36} color={primaryGreen} />
+                      )}
                     </div>
 
                     {/* Hospital Name, Verified Badge, Subtitle, Rating */}
@@ -475,9 +529,11 @@ function HospitalDetailPage() {
                               lineHeight: 1.2
                             }}
                           >
-                            {hospital?.name || 'ABC Hospital'}
+                            {hospital?.name || 'হাসপাতাল'}
                           </h1>
-                          <IconDiscountCheckFilled size={20} color="#00A88C" style={{ flexShrink: 0 }} />
+                          {(hospital?.is_active || hospital?.license_number || hospital?.top_10_hospital === 'yes') && (
+                            <IconDiscountCheckFilled size={20} color="#00A88C" style={{ flexShrink: 0 }} title="যাচাইকৃত প্রতিষ্ঠান" />
+                          )}
                         </div>
 
                         {/* Favorite Heart Icon Button on Right Side of Hospital Name */}
@@ -512,33 +568,40 @@ function HospitalDetailPage() {
                       </div>
 
                       <p style={{ fontSize: 13, fontWeight: 700, color: '#64748B', margin: '2px 0 5px 0' }}>
-                        মাল্টিস্পেশালিটি হাসপাতাল
+                        {hospital?.hospital_type || hospital?.type || (hospital?.district?.name ? `${hospital.district.name}-এর চিকিৎসা প্রতিষ্ঠান` : 'আধুনিক হাসপাতাল ও ডায়াগনস্টিক')}
                       </p>
 
-                      {/* Rating & NABH Badge */}
+                      {/* Rating & Dynamic Registration Badge */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <IconStar size={15} color="#F59E0B" fill="#F59E0B" />
                           <span style={{ fontSize: 14, fontWeight: 900, color: '#1E293B' }}>{averageRating}</span>
                           <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>({totalReviewsCount} রিভিউ)</span>
                         </div>
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            background: '#E6F8F3',
-                            color: '#008A74',
-                            borderRadius: 6,
-                            padding: '2px 8px',
-                            fontSize: 11,
-                            fontWeight: 800,
-                            letterSpacing: '0.2px'
-                          }}
-                        >
-                          <IconCircleCheckFilled size={12} color="#00A88C" />
-                          NABH Accredited
-                        </div>
+                        {badges.length > 0 && badges.map((badge, bIdx) => (
+                          <div
+                            key={bIdx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: badge.type === 'top_10' ? '#FEF3C7' : '#E6F8F3',
+                              color: badge.type === 'top_10' ? '#B45309' : '#008A74',
+                              borderRadius: 6,
+                              padding: '2px 8px',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              letterSpacing: '0.2px'
+                            }}
+                          >
+                            {badge.type === 'top_10' ? (
+                              <IconStar size={12} color="#D97706" />
+                            ) : (
+                              <IconCircleCheckFilled size={12} color="#00A88C" />
+                            )}
+                            {badge.label}
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -560,31 +623,39 @@ function HospitalDetailPage() {
                     }}
                   >
                     {/* Location */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
-                      <IconMapPin size={14} color="#00A88C" style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} title={hospital?.address || 'ধানমণ্ডি, ঢাকা'}>
-                        {hospital?.address || 'ধানমণ্ডি, ঢাকা'}
-                      </span>
-                    </div>
+                    {hospital?.address && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+                        <IconMapPin size={14} color="#00A88C" style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} title={hospital.address}>
+                          {hospital.address}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Phone */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      <IconPhone size={14} color="#00A88C" style={{ flexShrink: 0 }} />
-                      <span>{hospital?.phone || '011100111w'}</span>
-                    </div>
+                    {hospital?.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        <IconPhone size={14} color="#00A88C" style={{ flexShrink: 0 }} />
+                        <a href={`tel:${hospital.phone}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                          {hospital.phone}
+                        </a>
+                      </div>
+                    )}
 
                     {/* Website */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      <IconWorld size={14} color="#00A88C" style={{ flexShrink: 0 }} />
-                      <a
-                        href={hospital?.url ? (hospital.url.startsWith('http') ? hospital.url : `https://${hospital.url}`) : 'https://www.abchospital.com'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#334155', textDecoration: 'none', whiteSpace: 'nowrap' }}
-                      >
-                        {hospital?.url || 'www.abchospital.com'}
-                      </a>
-                    </div>
+                    {(hospital?.url || hospital?.website) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        <IconWorld size={14} color="#00A88C" style={{ flexShrink: 0 }} />
+                        <a
+                          href={(hospital.url || hospital.website).startsWith('http') ? (hospital.url || hospital.website) : `https://${hospital.url || hospital.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#334155', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                        >
+                          {(hospital.url || hospital.website).replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -657,7 +728,9 @@ function HospitalDetailPage() {
 
                   {/* 3. Direction */}
                   <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(hospital?.address || hospital?.name || '')}`}
+                    href={(hospital?.latitude && hospital?.longitude)
+                      ? `https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}`
+                      : `https://maps.google.com/?q=${encodeURIComponent(hospital?.address || hospital?.name || '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="দিক নির্দেশনা"
@@ -780,7 +853,7 @@ function HospitalDetailPage() {
           <Col lg={8}>
             <div className="d-flex flex-column" style={{ gap: '24px' }}>
               
-              {/* 1. Top Key Stats Bar (150+ Doctors, 350 Beds, 20+ Departments, 24/7 Emergency) */}
+              {/* 1. Top Key Stats Bar (Doctors, Beds, Departments, Emergency) */}
               <Row className="g-3">
                 <Col xs={6} md={3}>
                   <div style={{
@@ -809,7 +882,7 @@ function HospitalDetailPage() {
                     </div>
                     <div>
                       <h4 style={{ fontSize: 'clamp(17px, 1.5vw, 21px)', fontWeight: 950, color: textColor, margin: 0, lineHeight: 1.1 }}>
-                        {hospital?.doctors_count ? `${hospital.doctors_count}+` : '150+'}
+                        {stats?.doctors?.available ? `${stats.doctors.count}+` : (displayDoctors?.length > 0 ? `${displayDoctors.length}+` : 'উপলব্ধ')}
                       </h4>
                       <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, margin: '3px 0 0 0' }}>
                         বিশেষজ্ঞ ডাক্তার
@@ -845,7 +918,7 @@ function HospitalDetailPage() {
                     </div>
                     <div>
                       <h4 style={{ fontSize: 'clamp(17px, 1.5vw, 21px)', fontWeight: 950, color: textColor, margin: 0, lineHeight: 1.1 }}>
-                        {hospital?.bed_count || '350'}
+                        {stats?.beds?.available ? `${stats.beds.count}+` : (hospital?.bed_count ? `${hospital.bed_count}+` : 'উপলব্ধ')}
                       </h4>
                       <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, margin: '3px 0 0 0' }}>
                         বেড সুবিধা
@@ -881,7 +954,7 @@ function HospitalDetailPage() {
                     </div>
                     <div>
                       <h4 style={{ fontSize: 'clamp(17px, 1.5vw, 21px)', fontWeight: 950, color: textColor, margin: 0, lineHeight: 1.1 }}>
-                        {ALL_DEPARTMENTS?.length ? `${ALL_DEPARTMENTS.length}+` : '20+'}
+                        {stats?.departments?.available ? `${stats.departments.count}+` : (departments.length > 0 ? `${departments.length}+` : 'উপলব্ধ')}
                       </h4>
                       <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, margin: '3px 0 0 0' }}>
                         বিভাগ সমূহ
@@ -917,7 +990,7 @@ function HospitalDetailPage() {
                     </div>
                     <div>
                       <h4 style={{ fontSize: 'clamp(17px, 1.5vw, 21px)', fontWeight: 950, color: textColor, margin: 0, lineHeight: 1.1 }}>
-                        24/7
+                        {stats?.emergency?.is_24_7 ? '২৪/৭' : 'সার্বক্ষণিক'}
                       </h4>
                       <p style={{ fontSize: 12, fontWeight: 700, color: mutedColor, margin: '3px 0 0 0' }}>
                         জরুরি সেবা
@@ -943,271 +1016,251 @@ function HospitalDetailPage() {
                   হাসপাতাল সম্পর্কে
                 </h3>
                 <p style={{ color: '#334155', fontSize: 15, lineHeight: 1.8, margin: 0, textAlign: 'justify' }}>
-                  {hospital?.bio || 'ABC Hospital একটি আধুনিক ও মাল্টিস্পেশালিটি হাসপাতাল। ১৯৯৫ সাল থেকে আমরা উন্নত চিকিৎসা সেবা দিয়ে আসছি। অভিজ্ঞ ডাক্তার, আধুনিক প্রযুক্তি ও মানসম্মত সেবাই আমাদের মূল লক্ষ্য।'}
+                  {hospital?.about_summary || hospital?.about || hospital?.bio || `${hospital?.name || 'এই হাসপাতাল'} একটি আধুনিক চিকিৎসা প্রতিষ্ঠান।`}
                 </p>
 
-                {/* Key Facts Summary Bar (স্থাপিত সাল, ধরন, শাখা, রোগী পরিষেবা) */}
-                <div 
-                  style={{
+                {/* Key Facts Summary Bar (Prepared by backend) */}
+                {facts && facts.length > 0 && (
+                  <div style={{
                     marginTop: 20,
-                    background: '#F8FAFC',
-                    borderRadius: 14,
-                    border: '1px solid #E2E8F0',
-                    padding: '14px 16px',
+                    paddingTop: 18,
+                    borderTop: '1px solid #F1F5F9',
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 14
-                  }}
-                >
-                  {/* Fact 1: Established Year */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <IconBuildingHospital size={18} />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: mutedColor, margin: 0 }}>স্থাপিত সাল</p>
-                      <p style={{ fontSize: 14, fontWeight: 950, color: textColor, margin: '2px 0 0 0' }}>
-                        {hospital?.established_year || '1995'}
-                      </p>
-                    </div>
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                    gap: 16
+                  }}>
+                    {facts.map((fact, idx) => (
+                      <div key={fact.type || idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {getFactIcon(fact.type)}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: mutedColor, margin: 0 }}>{fact.label}</p>
+                          <p style={{ fontSize: 14, fontWeight: 950, color: textColor, margin: '2px 0 0 0' }}>
+                            {fact.value}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Fact 2: Hospital Type */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <IconBuildingHospital size={18} />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: mutedColor, margin: 0 }}>হাসপাতালের ধরন</p>
-                      <p style={{ fontSize: 14, fontWeight: 950, color: textColor, margin: '2px 0 0 0' }}>
-                        {hospital?.type || 'প্রাইভেট'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Fact 3: Branches */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <IconBuildingHospital size={18} />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: mutedColor, margin: 0 }}>শাখা সংখ্যা</p>
-                      <p style={{ fontSize: 14, fontWeight: 950, color: textColor, margin: '2px 0 0 0' }}>
-                        {hospital?.branches_count ? `${hospital.branches_count}+` : '5+'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Fact 4: Patients Served */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <IconHeart size={18} />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: mutedColor, margin: 0 }}>রোগী পরিষেবা</p>
-                      <p style={{ fontSize: 14, fontWeight: 950, color: textColor, margin: '2px 0 0 0' }}>
-                        1M+
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* 3. Departments Section (Card Design) */}
-              <div 
-                id="department" 
-                className="scroll-section"
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 20,
-                  padding: '28px 24px',
-                  border: `1.5px solid #E2E8F0`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
-              >
-                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                  <div>
-                    <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
-                      আমাদের বিভাগসমূহ
-                    </h3>
-                    <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
-                      মোট {ALL_DEPARTMENTS.length}টি বিশেষায়িত চিকিৎসা বিভাগ
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDeptModalOpen(true)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: primaryGreen,
-                      fontWeight: 800,
-                      fontSize: 14,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    সব দেখুন <IconChevronRight size={16} />
-                  </button>
-                </div>
-
-                <Row className="g-3">
-                  {/* First 7 Departments */}
-                  {ALL_DEPARTMENTS.slice(0, 7).map((dept, idx) => (
-                    <Col key={dept.id || idx} xs={6} md={4} lg={3}>
-                      <div 
-                        onClick={() => {
-                          if (hospital?.id) {
-                            navigate(`/doctors?hospital_id=${hospital?.id || hospital?.public_id || id}&department=${encodeURIComponent(dept.name)}${hospital?.name ? `&hospital_name=${encodeURIComponent(hospital.name)}` : ''}`)
-                          }
+              {/* 3. Departments Section (Card Design - Render only if departments exist) */}
+              {departments.length > 0 && (
+                <div 
+                  id="department" 
+                  className="scroll-section"
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 20,
+                    padding: '28px 24px',
+                    border: `1.5px solid #E2E8F0`,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                      <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+                        আমাদের বিভাগসমূহ
+                      </h3>
+                      <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
+                        মোট {departments.length}টি বিশেষায়িত চিকিৎসা বিভাগ
+                      </p>
+                    </div>
+                    {departments.length > 7 && (
+                      <button
+                        type="button"
+                        onClick={() => setDeptModalOpen(true)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: primaryGreen,
+                          fontWeight: 800,
+                          fontSize: 14,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          cursor: 'pointer'
                         }}
-                        style={{ 
-                          padding: '18px 14px', 
+                      >
+                        সব দেখুন <IconChevronRight size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <Row className="g-3">
+                    {departments.slice(0, departments.length > 8 ? 7 : 8).map((dept, idx) => (
+                      <Col key={dept.id || idx} xs={6} md={4} lg={3}>
+                        <div 
+                          onClick={() => {
+                            const hId = hospital?.id || hospital?.public_id || id;
+                            const hName = hospital?.name || hospital?.name_bn || '';
+                            navigate(`/doctors?hospital_id=${hId}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
+                          }}
+                          style={{ 
+                            padding: '18px 14px', 
+                            borderRadius: 14, 
+                            border: `1.5px solid #F1F5F9`, 
+                            background: '#FAFAFA', 
+                            color: textColor, 
+                            height: '100%',
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: 10, 
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.01)'
+                          }} 
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = primaryGreen
+                            e.currentTarget.style.background = '#FFFFFF'
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,168,140,0.08)'
+                          }} 
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = '#F1F5F9'
+                            e.currentTarget.style.background = '#FAFAFA'
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.01)'
+                          }}
+                        >
+                          <div style={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: 10, 
+                            background: '#E6F8F3', 
+                            color: primaryGreen, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center' 
+                          }}>
+                            <IconStethoscope size={26} />
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 14.5, fontWeight: 900, margin: 0, color: textColor }}>{dept.name}</p>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>
+                              {dept.sub || (dept.doctors_count ? `${dept.doctors_count} জন বিশেষজ্ঞ ডাক্তার` : 'বিশেষায়িত চিকিৎসা বিভাগ')}
+                            </p>
+                          </div>
+                        </div>
+                      </Col>
+                    ))}
+
+                    {departments.length > 8 && (
+                      <Col xs={6} md={4} lg={3}>
+                        <div 
+                          onClick={() => setDeptModalOpen(true)}
+                          style={{ 
+                            padding: '18px 14px', 
+                            borderRadius: 14, 
+                            border: `2px dashed #00B875`, 
+                            background: '#F0FDF4', 
+                            color: textColor, 
+                            height: '100%',
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8, 
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }} 
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.background = '#DCFCE7'
+                          }} 
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.background = '#F0FDF4'
+                          }}
+                        >
+                          <div style={{ 
+                            width: 38, 
+                            height: 38, 
+                            borderRadius: 10, 
+                            background: '#00B875', 
+                            color: '#FFFFFF',
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            boxShadow: '0 3px 8px rgba(0,184,117,0.3)'
+                          }}>
+                            <IconPlus size={22} stroke={2.5} />
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 14, fontWeight: 900, color: '#007A65', margin: 0 }}>
+                              +{departments.length - 7}টি বিভাগ
+                            </p>
+                            <p style={{ fontSize: 11.5, fontWeight: 700, color: '#00B875', margin: '2px 0 0 0' }}>
+                              সকল বিভাগ দেখুন
+                            </p>
+                          </div>
+                        </div>
+                      </Col>
+                    )}
+                  </Row>
+                </div>
+              )}
+
+              {/* 4. Facilities Section (Card Design - Render only if facilities exist) */}
+              {facilities.length > 0 && (
+                <div 
+                  id="facilities" 
+                  className="scroll-section"
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 20,
+                    padding: '28px 24px',
+                    border: `1.5px solid #E2E8F0`,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                      <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+                        আমাদের সুবিধাসমূহ
+                      </h3>
+                      <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
+                        হাসপাতালে সার্বক্ষণিক উপলব্ধ চিকিৎসা ও জরুরি সেবা
+                      </p>
+                    </div>
+                  </div>
+                  <Row className="g-3">
+                    {facilities.map((facility, idx) => (
+                      <Col key={facility.id || idx} xs={12} sm={6} md={4}>
+                        <div style={{ 
+                          padding: '16px 14px', 
                           borderRadius: 14, 
                           border: `1.5px solid #F1F5F9`, 
                           background: '#FAFAFA', 
-                          color: textColor, 
-                          height: '100%',
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          gap: 10, 
-                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
-                          cursor: 'pointer',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.01)'
-                        }} 
-                        onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = primaryGreen
-                          e.currentTarget.style.background = '#FFFFFF'
-                          e.currentTarget.style.transform = 'translateY(-2px)'
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,168,140,0.08)'
-                        }} 
-                        onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = '#F1F5F9'
-                          e.currentTarget.style.background = '#FAFAFA'
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.01)'
-                        }}
-                      >
-                        <div style={{ 
-                          width: 40, 
-                          height: 40, 
-                          borderRadius: 10, 
-                          background: '#E6F8F3', 
-                          color: primaryGreen, 
                           display: 'flex', 
                           alignItems: 'center', 
-                          justifyContent: 'center' 
+                          gap: 12,
+                          transition: 'all 0.2s ease',
+                          height: '100%'
                         }}>
-                          {dept.icon}
+                          <div style={{ color: primaryGreen, flexShrink: 0 }}>
+                            {getFacilityIcon(facility.icon || facility.id)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 14.5, fontWeight: 800, color: textColor, margin: 0, lineHeight: 1.3 }}>{facility.name}</p>
+                            {facility.sub && (
+                              <p style={{ fontSize: 11.5, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>{facility.sub}</p>
+                            )}
+                            {facility.contact && (
+                              <a href={`tel:${facility.contact}`} style={{ fontSize: 12, fontWeight: 800, color: primaryGreen, textDecoration: 'none', display: 'inline-block', marginTop: 2 }}>
+                                হটলাইন: {facility.contact}
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p style={{ fontSize: 14.5, fontWeight: 900, margin: 0, color: textColor }}>{dept.name}</p>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>{dept.sub}</p>
-                        </div>
-                      </div>
-                    </Col>
-                  ))}
-
-                  {/* 8th Slot: + Button Card to open Modal */}
-                  <Col xs={6} md={4} lg={3}>
-                    <div 
-                      onClick={() => setDeptModalOpen(true)}
-                      style={{ 
-                        padding: '18px 14px', 
-                        borderRadius: 14, 
-                        border: `2px dashed #00B875`, 
-                        background: '#F0FDF4', 
-                        color: textColor, 
-                        height: '100%',
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8, 
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
-                        cursor: 'pointer',
-                        textAlign: 'center'
-                      }} 
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.background = '#DCFCE7'
-                      }} 
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.background = '#F0FDF4'
-                      }}
-                    >
-                      <div style={{ 
-                        width: 38, 
-                        height: 38, 
-                        borderRadius: 10, 
-                        background: '#00B875', 
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 3px 8px rgba(0,184,117,0.3)'
-                      }}>
-                        <IconPlus size={22} stroke={2.5} />
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 14, fontWeight: 900, color: '#007A65', margin: 0 }}>
-                          +{ALL_DEPARTMENTS.length - 7}টি বিভাগ
-                        </p>
-                        <p style={{ fontSize: 11.5, fontWeight: 700, color: '#00B875', margin: '2px 0 0 0' }}>
-                          সকল বিভাগ দেখুন
-                        </p>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* 4. Facilities Section (Card Design) */}
-              <div 
-                id="facilities" 
-                className="scroll-section"
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 20,
-                  padding: '28px 24px',
-                  border: `1.5px solid #E2E8F0`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
-              >
-                <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, marginBottom: 20 }}>
-                  আমাদের সুবিধাসমূহ
-                </h3>
-                <Row className="g-3">
-                  {[
-                    { icon: <IconAmbulance size={24} />, name: '২৪/৭ অ্যাম্বুলেন্স' },
-                    { icon: <IconBed size={24} />, name: 'আইসিইউ (ICU)' },
-                    { icon: <IconScissors size={24} />, name: 'আধুনিক অপারেশন থিয়েটার' },
-                    { icon: <IconActivity size={24} />, name: 'জরুরি বিভাগ (Emergency)' },
-                    { icon: <IconBuildingHospital size={24} />, name: 'ডায়াগনস্টিক সেন্টার' },
-                    { icon: <IconCheck size={24} />, name: 'ফার্মেসি' }
-                  ].map((facility, idx) => (
-                    <Col key={idx} xs={6} md={4}>
-                      <div style={{ 
-                        padding: '16px 14px', 
-                        borderRadius: 14, 
-                        border: `1.5px solid #F1F5F9`, 
-                        background: '#FAFAFA', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 12,
-                        transition: 'all 0.2s ease',
-                        cursor: 'default'
-                      }}>
-                        <div style={{ color: primaryGreen }}>{facility.icon}</div>
-                        <p style={{ fontSize: 14.5, fontWeight: 800, color: textColor, margin: 0 }}>{facility.name}</p>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </div>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+              )}
 
               {/* 5. Popular / Specialist Doctors Section (Card Design) */}
               <div 
@@ -1266,39 +1319,42 @@ function HospitalDetailPage() {
                 )}
               </div>
 
-              {/* 6. Gallery Section (Card Design) */}
-              <div 
-                id="gallery" 
-                className="scroll-section"
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 20,
-                  padding: '28px 24px',
-                  border: `1.5px solid #E2E8F0`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
-              >
-                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                  <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: 0 }}>
-                    গ্যালারি
-                  </h3>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: primaryGreen }}>
-                    ৪টি ছবি
-                  </span>
+              {/* 6. Gallery Section (Card Design - Rendered only when real photos exist) */}
+              {photos.length > 0 && (
+                <div 
+                  id="gallery" 
+                  className="scroll-section"
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 20,
+                    padding: '28px 24px',
+                    border: `1.5px solid #E2E8F0`,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: 0 }}>
+                      গ্যালারি
+                    </h3>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: primaryGreen }}>
+                      {photos.length}টি ছবি
+                    </span>
+                  </div>
+                  <Row className="g-3">
+                    {photos.map((img, idx) => (
+                      <Col key={idx} xs={6} md={photos.length === 1 ? 12 : 6}>
+                        <img
+                          src={img}
+                          alt={`${hospital?.name || 'Hospital'} ${idx + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 14, border: `1px solid ${borderColor}` }}
+                        />
+                      </Col>
+                    ))}
+                  </Row>
                 </div>
-                <Row className="g-3">
-                  {[
-                    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=1453&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1581594693702-fbdc51b2763b?q=80&w=1470&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1538108149393-fbbd81895907?q=80&w=1528&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=1470&auto=format&fit=crop'
-                  ].map((img, idx) => (
-                    <Col key={idx} xs={6} md={6}>
-                      <img src={img} alt="Gallery" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 14, border: `1px solid ${borderColor}` }} />
-                    </Col>
-                  ))}
-                </Row>
-              </div>
+              )}
 
               {/* 7. Reviews Section (Card Design) */}
               <div 
@@ -1386,367 +1442,297 @@ function HospitalDetailPage() {
               </div>
               
               {/* 1. Contact Sidebar Card (যোগাযোগ) */}
-              <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 18 }}>যোগাযোগ</h3>
-                <div className="d-flex flex-column gap-3">
-                  {/* Phone */}
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconPhone size={20} />
-                    </div>
-                    <a 
-                      href={`tel:${hospital?.phone || ''}`} 
-                      style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0 }}
-                    >
-                      {hospital?.phone || '011100111w'}
-                    </a>
-                  </div>
+              {(hospital?.phone || hospital?.official_email || hospital?.email || hospital?.url || hospital?.website || hospital?.address) && (
+                <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 18 }}>যোগাযোগ</h3>
+                  <div className="d-flex flex-column gap-3">
+                    {/* Phone */}
+                    {hospital?.phone && (
+                      <div className="d-flex align-items-center gap-3">
+                        <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconPhone size={20} />
+                        </div>
+                        <a 
+                          href={`tel:${hospital.phone}`} 
+                          style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0 }}
+                        >
+                          {hospital.phone}
+                        </a>
+                      </div>
+                    )}
 
-                  {/* Email */}
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconMail size={20} />
-                    </div>
-                    <a 
-                      href={`mailto:${hospital?.email || 'abc1@gmail.com'}`} 
-                      style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0, wordBreak: 'break-all' }}
-                    >
-                      {hospital?.email || 'abc1@gmail.com'}
-                    </a>
-                  </div>
+                    {/* Email */}
+                    {(hospital?.official_email || hospital?.email) && (
+                      <div className="d-flex align-items-center gap-3">
+                        <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconMail size={20} />
+                        </div>
+                        <a 
+                          href={`mailto:${hospital.official_email || hospital.email}`} 
+                          style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0, wordBreak: 'break-all' }}
+                        >
+                          {hospital.official_email || hospital.email}
+                        </a>
+                      </div>
+                    )}
 
-                  {/* Website */}
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconWorld size={20} />
-                    </div>
-                    <a 
-                      href={hospital?.url ? (hospital.url.startsWith('http') ? hospital.url : `https://${hospital.url}`) : 'https://www.abchospital.com'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0 }}
-                    >
-                      {hospital?.url || 'www.abchospital.com'}
-                    </a>
-                  </div>
+                    {/* Website */}
+                    {(hospital?.url || hospital?.website) && (
+                      <div className="d-flex align-items-center gap-3">
+                        <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconWorld size={20} />
+                        </div>
+                        <a 
+                          href={(hospital.url || hospital.website).startsWith('http') ? (hospital.url || hospital.website) : `https://${hospital.url || hospital.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 14.5, fontWeight: 800, color: textColor, textDecoration: 'none', margin: 0, wordBreak: 'break-all' }}
+                        >
+                          {(hospital.url || hospital.website).replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    )}
 
-                  {/* Address */}
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconMapPin size={20} />
-                    </div>
-                    <p style={{ fontSize: 14.5, fontWeight: 800, color: textColor, margin: 0 }}>
-                      {hospital?.address || 'ধানমণ্ডি, ঢাকা - ১২০৫'}
-                    </p>
+                    {/* Address */}
+                    {hospital?.address && (
+                      <div className="d-flex align-items-center gap-3">
+                        <div style={{ color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconMapPin size={20} />
+                        </div>
+                        <p style={{ fontSize: 14.5, fontWeight: 800, color: textColor, margin: 0 }}>
+                          {hospital.address}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* 2. Emergency Services Card (জরুরি সেবা) */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)', 
-                borderRadius: 20, 
-                padding: '22px 24px', 
-                border: '1.5px solid #FECDD3',
-                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
-              }}>
-                <h3 style={{ fontSize: 18, fontWeight: 950, color: '#E11D48', marginBottom: 4 }}>
-                  জরুরি সেবা
-                </h3>
-                <p style={{ fontSize: 13, color: '#64748B', fontWeight: 700, margin: '0 0 16px 0' }}>
-                  24/7 আমাদের জরুরি সেবা চালু আছে
-                </p>
-                
-                <a 
-                  href={`tel:${hospital?.phone || '011100111w'}`}
-                  style={{
-                    background: '#FFFFFF',
-                    borderRadius: 12,
-                    border: '1.5px solid #FDA4AF',
-                    padding: '12px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    color: '#E11D48',
-                    fontWeight: 900,
-                    fontSize: 16,
-                    textDecoration: 'none',
-                    boxShadow: '0 2px 8px rgba(225, 29, 72, 0.1)',
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = '#E11D48'
-                    e.currentTarget.style.color = '#FFFFFF'
-                    e.currentTarget.style.transform = 'scale(1.02)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = '#FFFFFF'
-                    e.currentTarget.style.color = '#E11D48'
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                >
-                  <IconPhone size={20} color="currentColor" />
-                  <span>{hospital?.phone || '011100111w'}</span>
-                </a>
-              </div>
+              {(hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone) && (
+                <div style={{ 
+                  background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)', 
+                  borderRadius: 20, 
+                  padding: '22px 24px', 
+                  border: '1.5px solid #FECDD3',
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
+                }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 950, color: '#E11D48', marginBottom: 4 }}>
+                    জরুরি সেবা
+                  </h3>
+                  <p style={{ fontSize: 13, color: '#64748B', fontWeight: 700, margin: '0 0 16px 0' }}>
+                    24/7 আমাদের জরুরি সেবা চালু আছে
+                  </p>
+                  
+                  <a 
+                    href={`tel:${hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone}`}
+                    style={{
+                      background: '#FFFFFF',
+                      borderRadius: 12,
+                      border: '1.5px solid #FDA4AF',
+                      padding: '12px 18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      color: '#E11D48',
+                      fontWeight: 900,
+                      fontSize: 16,
+                      textDecoration: 'none',
+                      boxShadow: '0 2px 8px rgba(225, 29, 72, 0.1)',
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#E11D48'
+                      e.currentTarget.style.color = '#FFFFFF'
+                      e.currentTarget.style.transform = 'scale(1.02)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = '#FFFFFF'
+                      e.currentTarget.style.color = '#E11D48'
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    <IconPhone size={20} color="currentColor" />
+                    <span>{hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone}</span>
+                  </a>
+                </div>
+              )}
 
               {/* 3. Our Location Card (আমাদের অবস্থান) */}
-              <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 16 }}>
-                  আমাদের অবস্থান
-                </h3>
-                
-                {/* Map Preview Container */}
-                <div 
-                  style={{ 
-                    position: 'relative', 
-                    width: '100%', 
-                    height: 160, 
-                    borderRadius: 14, 
-                    overflow: 'hidden', 
-                    background: '#E2E8F0',
-                    marginBottom: 14,
-                    border: '1px solid #CBD5E1'
-                  }}
-                >
-                  {/* Stylized Map Background Pattern */}
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px), radial-gradient(#94A3B8 1.5px, #F1F5F9 1.5px)',
-                      backgroundSize: '24px 24px',
-                      backgroundPosition: '0 0, 12px 12px',
-                      opacity: 0.8
-                    }}
-                  />
-                  {/* Visual Map Roads/Grid Lines */}
-                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.4 }} xmlns="http://www.w3.org/2000/svg">
-                    <line x1="0" y1="30" x2="300" y2="160" stroke="#94A3B8" strokeWidth="6" />
-                    <line x1="80" y1="0" x2="220" y2="160" stroke="#00B875" strokeWidth="4" />
-                    <line x1="0" y1="110" x2="300" y2="70" stroke="#60A5FA" strokeWidth="4" />
-                    <circle cx="150" cy="80" r="45" fill="#E6F8F3" opacity="0.6" />
-                  </svg>
-
-                  {/* Center Location Pin Badge */}
+              {(hospital?.address || hospital?.name) && (
+                <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 16 }}>
+                    আমাদের অবস্থান
+                  </h3>
+                  
+                  {/* Map Preview Container */}
                   <div 
                     style={{ 
-                      position: 'absolute', 
-                      top: '50%', 
-                      left: '50%', 
-                      transform: 'translate(-50%, -60%)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      zIndex: 2
+                      position: 'relative', 
+                      width: '100%', 
+                      height: 160, 
+                      borderRadius: 14, 
+                      overflow: 'hidden', 
+                      background: '#E2E8F0',
+                      marginBottom: 14,
+                      border: '1px solid #CBD5E1'
                     }}
                   >
-                    <div style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: '50%',
-                      background: '#00B875',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 12px rgba(0, 184, 117, 0.4)',
-                      border: '2.5px solid #FFFFFF'
-                    }}>
-                      <IconMapPin size={22} />
-                    </div>
-                    <div style={{
-                      background: '#FFFFFF',
-                      color: '#1E293B',
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      padding: '2px 10px',
-                      borderRadius: 8,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                      marginTop: 4,
-                      whiteSpace: 'nowrap',
-                      border: '1px solid #E2E8F0'
-                    }}>
-                      {hospital?.address ? hospital.address.split(',')[0] : 'ধানমণ্ডি'}
+                    {/* Stylized Map Background Pattern */}
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px), radial-gradient(#94A3B8 1.5px, #F1F5F9 1.5px)',
+                        backgroundSize: '24px 24px',
+                        backgroundPosition: '0 0, 12px 12px',
+                        opacity: 0.8
+                      }}
+                    />
+                    {/* Visual Map Roads/Grid Lines */}
+                    <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.4 }} xmlns="http://www.w3.org/2000/svg">
+                      <line x1="0" y1="30" x2="300" y2="160" stroke="#94A3B8" strokeWidth="6" />
+                      <line x1="80" y1="0" x2="220" y2="160" stroke="#00B875" strokeWidth="4" />
+                      <line x1="0" y1="110" x2="300" y2="70" stroke="#60A5FA" strokeWidth="4" />
+                      <circle cx="150" cy="80" r="45" fill="#E6F8F3" opacity="0.6" />
+                    </svg>
+
+                    {/* Center Location Pin Badge */}
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        top: '50%', 
+                        left: '50%', 
+                        transform: 'translate(-50%, -60%)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        zIndex: 2
+                      }}
+                    >
+                      <div style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: '50%',
+                        background: '#00B875',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0, 184, 117, 0.4)',
+                        border: '2.5px solid #FFFFFF'
+                      }}>
+                        <IconMapPin size={22} />
+                      </div>
+                      <div style={{
+                        background: '#FFFFFF',
+                        color: '#1E293B',
+                        fontSize: 11.5,
+                        fontWeight: 800,
+                        padding: '2px 10px',
+                        borderRadius: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        marginTop: 4,
+                        whiteSpace: 'nowrap',
+                        border: '1px solid #E2E8F0'
+                      }}>
+                        {hospital?.address ? hospital.address.split(',')[0] : (hospital?.name || 'হাসপাতাল')}
+                      </div>
                     </div>
                   </div>
+
+                  <p style={{ fontSize: 14, fontWeight: 800, color: textColor, textAlign: 'center', margin: '0 0 14px 0' }}>
+                    {hospital?.address || hospital?.name}
+                  </p>
+
+                  {/* Direction Button */}
+                  <a 
+                    href={(hospital?.latitude && hospital?.longitude)
+                      ? `https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}`
+                      : `https://maps.google.com/?q=${encodeURIComponent([hospital?.name, hospital?.address].filter(Boolean).join(', '))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#FFFFFF',
+                      borderRadius: 12,
+                      border: '1.5px solid #E2E8F0',
+                      padding: '11px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      color: textColor,
+                      fontWeight: 800,
+                      fontSize: 14,
+                      textDecoration: 'none',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = primaryGreen
+                      e.currentTarget.style.color = primaryGreen
+                      e.currentTarget.style.background = '#F0FDF4'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = '#E2E8F0'
+                      e.currentTarget.style.color = textColor
+                      e.currentTarget.style.background = '#FFFFFF'
+                    }}
+                  >
+                    <IconCompass size={18} color={primaryGreen} />
+                    <span>দিক নির্দেশনা দেখুন</span>
+                  </a>
                 </div>
-
-                <p style={{ fontSize: 14, fontWeight: 800, color: textColor, textAlign: 'center', margin: '0 0 14px 0' }}>
-                  {hospital?.address || 'ধানমণ্ডি, ঢাকা'}
-                </p>
-
-                {/* Direction Button */}
-                <a 
-                  href={`https://maps.google.com/?q=${encodeURIComponent(hospital?.address || hospital?.name || '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    background: '#FFFFFF',
-                    borderRadius: 12,
-                    border: '1.5px solid #E2E8F0',
-                    padding: '11px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    color: textColor,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    textDecoration: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = primaryGreen
-                    e.currentTarget.style.color = primaryGreen
-                    e.currentTarget.style.background = '#F0FDF4'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = '#E2E8F0'
-                    e.currentTarget.style.color = textColor
-                    e.currentTarget.style.background = '#FFFFFF'
-                  }}
-                >
-                  <IconCompass size={18} color={primaryGreen} />
-                  <span>দিক নির্দেশনা দেখুন</span>
-                </a>
-              </div>
+              )}
 
               {/* 4. Social Media Card (সামাজিক মাধ্যমে) */}
-              <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 18 }}>
-                  সামাজিক মাধ্যমে
-                </h3>
-                
-                <div className="d-flex align-items-center justify-content-between gap-2">
-                  {/* Facebook */}
-                  <a 
-                    href={hospital?.facebook_url || 'https://facebook.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Facebook"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: '50%',
-                      background: '#1877F2',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 10px rgba(24, 119, 242, 0.25)',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-3px)'
-                      e.currentTarget.style.boxShadow = '0 6px 14px rgba(24, 119, 242, 0.4)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(24, 119, 242, 0.25)'
-                    }}
-                  >
-                    <IconBrandFacebook size={22} />
-                  </a>
-
-                  {/* YouTube */}
-                  <a 
-                    href={hospital?.youtube_url || 'https://youtube.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="YouTube"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: '50%',
-                      background: '#FF0000',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 10px rgba(255, 0, 0, 0.25)',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-3px)'
-                      e.currentTarget.style.boxShadow = '0 6px 14px rgba(255, 0, 0, 0.4)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(255, 0, 0, 0.25)'
-                    }}
-                  >
-                    <IconBrandYoutube size={22} />
-                  </a>
-
-                  {/* X (formerly Twitter) */}
-                  <a 
-                    href={hospital?.twitter_url || hospital?.x_url || 'https://x.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="X"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: '50%',
-                      background: '#000000',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 10px rgba(0, 0, 0, 0.25)',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-3px)'
-                      e.currentTarget.style.boxShadow = '0 6px 14px rgba(0, 0, 0, 0.4)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.25)'
-                    }}
-                  >
-                    <IconBrandX size={20} />
-                  </a>
-
-                  {/* LinkedIn */}
-                  <a 
-                    href={hospital?.linkedin_url || 'https://linkedin.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="LinkedIn"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: '50%',
-                      background: '#0A66C2',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 10px rgba(10, 102, 194, 0.25)',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-3px)'
-                      e.currentTarget.style.boxShadow = '0 6px 14px rgba(10, 102, 194, 0.4)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(10, 102, 194, 0.25)'
-                    }}
-                  >
-                    <IconBrandLinkedin size={22} />
-                  </a>
+              {socialLinks.length > 0 && (
+                <div style={{ background: '#FFFFFF', borderRadius: 20, padding: '22px 24px', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 950, color: textColor, marginBottom: 18 }}>
+                    সামাজিক মাধ্যমে
+                  </h3>
+                  
+                  <div className="d-flex align-items-center justify-content-start gap-3 flex-wrap">
+                    {socialLinks.map((item, idx) => {
+                      const style = getSocialStyle(item.platform)
+                      return (
+                        <a 
+                          key={item.platform || idx}
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={item.platform}
+                          style={{
+                            width: 46,
+                            height: 46,
+                            borderRadius: '50%',
+                            background: style.bg,
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textDecoration: 'none',
+                            boxShadow: `0 4px 10px ${style.shadow}`,
+                            transition: 'transform 0.2s, box-shadow 0.2s'
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translateY(-3px)'
+                            e.currentTarget.style.boxShadow = `0 6px 14px ${style.hoverShadow}`
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = `0 4px 10px ${style.shadow}`
+                          }}
+                        >
+                          {getSocialIcon(item.platform)}
+                        </a>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
           </Col>
@@ -1929,7 +1915,7 @@ function HospitalDetailPage() {
               আমাদের সকল ডিপার্টমেন্ট সমূহ
             </Modal.Title>
             <p style={{ fontSize: 13, color: mutedColor, margin: '4px 0 0 0', fontWeight: 600 }}>
-              {hospital?.name || 'হাসপাতাল'}-এর মোট {ALL_DEPARTMENTS.length}টি বিশেষায়িত বিভাগ
+              {hospital?.name || 'হাসপাতাল'}-এর মোট {stats?.departments?.count ?? departments.length}টি বিশেষায়িত বিভাগ
             </p>
           </div>
         </Modal.Header>
