@@ -229,15 +229,18 @@ export function AuthProvider({ children }) {
   
   const isAdmin = 
     hasRole('admin') || user?.role_id === 1 || String(user?.role_id) === 'admin' || 
-    Boolean(user?.is_admin) || Boolean(user?.isAdmin);
+    Boolean(user?.is_admin) || Boolean(user?.isAdmin) ||
+    user?.registration_type === 'admin' || userType === 'admin';
     
   const isDoctor = 
     hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 
-    Boolean(user?.is_doctor) || Boolean(user?.isDoctor);
+    Boolean(user?.is_doctor) || Boolean(user?.isDoctor) ||
+    user?.registration_type === 'doctor' || userType === 'doctor';
     
   const isManager = 
     hasRole('manager') || hasRole('hospital') || user?.role_id === 3 || String(user?.role_id) === 'manager' || 
-    Boolean(user?.is_manager) || Boolean(user?.isManager);
+    Boolean(user?.is_manager) || Boolean(user?.isManager) ||
+    user?.registration_type === 'hospital' || user?.registration_type === 'manager' || userType === 'hospital';
 
   const isPatient = !isAdmin && !isDoctor && !isManager;
     

@@ -226,7 +226,8 @@ export default function ChamberFormPage() {
     day: 'Monday', 
     start_time: '17:00', 
     end_time: '21:00', 
-    fee: '500' 
+    fee: '500',
+    slot_duration_minutes: '15'
   })
   
   const { doctors: lookupDoctors, hospitals: lookupHospitals } = useAdminChamberLookups()
@@ -306,7 +307,8 @@ export default function ChamberFormPage() {
         day: d.day || 'Monday',
         start_time: d.start_time ? d.start_time.substring(0, 5) : '17:00',
         end_time: d.end_time ? d.end_time.substring(0, 5) : '21:00',
-        fee: d.fee || '500'
+        fee: d.fee || '500',
+        slot_duration_minutes: d.slot_duration_minutes ? String(d.slot_duration_minutes) : '15'
       })
       if (d.day) {
         setSelectedDays([d.day])
@@ -398,7 +400,8 @@ export default function ChamberFormPage() {
             day: form.day,
             start_time: form.start_time,
             end_time: form.end_time,
-            fee: form.fee
+            fee: form.fee,
+            slot_duration_minutes: Number(form.slot_duration_minutes) || 15
           }
         })
         showSuccess({
@@ -416,7 +419,8 @@ export default function ChamberFormPage() {
             day: day,
             start_time: form.start_time,
             end_time: form.end_time,
-            fee: form.fee
+            fee: form.fee,
+            slot_duration_minutes: Number(form.slot_duration_minutes) || 15
           }))
         )
 
@@ -469,6 +473,16 @@ export default function ChamberFormPage() {
     (h.hospital_id && String(h.hospital_id) === String(form.hospital_id))
   )
   const durationText = calculateDuration(form.start_time, form.end_time)
+  const estimatedCapacity = useMemo(() => {
+    if (!form.start_time || !form.end_time) return 0
+    const [h1, m1] = form.start_time.split(':').map(Number)
+    const [h2, m2] = form.end_time.split(':').map(Number)
+    if (isNaN(h1) || isNaN(h2)) return 0
+    let totalMin = (h2 * 60 + m2) - (h1 * 60 + m1)
+    if (totalMin <= 0) totalMin += 24 * 60
+    const slot = Number(form.slot_duration_minutes) || 15
+    return Math.floor(totalMin / Math.max(1, slot)) + 1
+  }, [form.start_time, form.end_time, form.slot_duration_minutes])
 
   if (loading) {
     return (
@@ -959,6 +973,39 @@ export default function ChamberFormPage() {
                 )}
               </div>
 
+              {/* Slot Duration */}
+              <div>
+                <label style={{ 
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
+                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+                }}>
+                  <Clock size={14} color="#6366f1" /> Slot Duration (Min) *
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <select 
+                    value={form.slot_duration_minutes || '15'} 
+                    onChange={e => setForm({ ...form, slot_duration_minutes: e.target.value })}
+                    style={{ 
+                      width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
+                      border: '1.5px solid var(--admin-border, #e2e8f0)',
+                      background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
+                      fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="10">10 mins (Quick)</option>
+                    <option value="15">15 mins (Standard)</option>
+                    <option value="20">20 mins (Detailed)</option>
+                    <option value="30">30 mins (Extended)</option>
+                    <option value="45">45 mins (Specialist)</option>
+                    <option value="60">60 mins (Comprehensive)</option>
+                  </select>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
+                  Consultation interval per patient (Est. ~{estimatedCapacity} capacity)
+                </div>
+              </div>
+
             </div>
 
             {/* Live Schedule Preview Card */}
@@ -984,6 +1031,7 @@ export default function ChamberFormPage() {
                       {form.room_number?.trim() ? `🚪 Room: ${form.room_number.trim()} • ` : ''}
                       🗓️ {isEdit ? form.day : (selectedDays.join(', ') || 'No days selected')} • 
                       ⏰ {format12Hour(form.start_time)} – {format12Hour(form.end_time)} • 
+                      ⏱️ {form.slot_duration_minutes || 15}m slots (~{estimatedCapacity} patients) • 
                       💰 ৳{form.fee || 0}
                     </div>
                   </div>

@@ -218,7 +218,12 @@ export default function BookAppointmentPage() {
 
   useEffect(() => {
     if (chambers.length > 0 && chamberIdParam) {
-      const targetChamber = chambers.find(c => String(c.id) === String(chamberIdParam))
+      const paramStr = String(chamberIdParam).trim().toLowerCase()
+      const targetChamber = chambers.find(c => 
+        String(c.id).trim().toLowerCase() === paramStr ||
+        (c.public_id && String(c.public_id).trim().toLowerCase() === paramStr) ||
+        (c.chamber_id && String(c.chamber_id).trim().toLowerCase() === paramStr)
+      )
       if (targetChamber) {
         handleChamberSelect(targetChamber.id)
       }

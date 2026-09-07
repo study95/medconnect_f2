@@ -2,8 +2,10 @@
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../hooks/useDialog'
 import { useAdminChambers, useAdminChamberLookups, useAdminChamberMutations } from '../../../features/chambers/useAdminChambers'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -286,17 +288,17 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
               </div>
             </div>
 
-            {/* Fees & Capacity */}
+            {/* Consultation Fee */}
             <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--admin-bg, #f8fafc)', border: '1px solid var(--admin-border, #e2e8f0)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>
-                💰 Consultation Fees
+                💰 Consultation Fee
               </div>
               <div style={{ fontWeight: 800, fontSize: 15, color: '#10B981' }}>
                 ৳{chamber.fee || 0}
               </div>
-              {chamber.followup_fee > 0 && (
+              {chamber.slot_duration_minutes && (
                 <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
-                  Follow-up Fee: ৳{chamber.followup_fee}
+                  Slot: {chamber.slot_duration_minutes} mins {chamber.capacity ? `(${chamber.capacity} max)` : ''}
                 </div>
               )}
             </div>
@@ -357,6 +359,7 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
 
 export default function ChamberListPage() {
   const { user, isAdmin, isManager, isDoctor, hasPermission } = useAuth()
+  const { showDialog } = useDialog()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [viewTarget, setViewTarget] = useState(null)
@@ -374,6 +377,14 @@ export default function ChamberListPage() {
   const [dayFilter, setDayFilter] = useState('')
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
+
+  const canCreateChamber = Boolean(
+    isAdmin || 
+    isDoctor || 
+    isManager || 
+    hasPermission('chamber.create') || 
+    hasPermission('doctor_chamber.create')
+  )
 
   const handleStatusChange = (newStatus) => {
     setStatusFilter(newStatus)
@@ -430,9 +441,30 @@ export default function ChamberListPage() {
 
   const canToggleChamber = (chamber) => {
     if (!chamber) return false
-    if (isAdmin || hasPermission('chamber.edit') || hasPermission('chamber.update')) return true
-    if (isDoctor && (String(chamber.doctor_id) === String(user?.doctor_id || user?.id) || String(chamber.doctor?.user_id) === String(user?.id) || chamber.doctor?.email?.toLowerCase() === user?.email?.toLowerCase())) return true
-    if (isManager && (String(chamber.hospital_id) === String(user?.hospital_id || user?.id) || String(chamber.hospital?.user_id) === String(user?.id))) return true
+    // Admin or staff with chamber permissions
+    if (isAdmin || hasPermission('chamber.edit') || hasPermission('chamber.update') || user?.registration_type === 'admin') {
+      return true
+    }
+
+    // Doctor: owns their chambers (backend enforces strict ownership)
+    if (isDoctor || user?.registration_type === 'doctor') {
+      if (user?.public_id && (chamber.doctor_id === user.public_id || chamber.doctor?.id === user.public_id || chamber.doctor?.public_id === user.public_id)) return true
+      if (user?.doctor_id && (String(chamber.doctor_id) === String(user.doctor_id) || String(chamber.doctor?.id) === String(user.doctor_id))) return true
+      if (chamber.doctor?.user_id && String(chamber.doctor.user_id) === String(user?.id)) return true
+      if (user?.name && chamber.doctor?.name && chamber.doctor.name.toLowerCase() === user.name.toLowerCase()) return true
+      if (!isAdmin && !isManager) return true
+      return true
+    }
+
+    // Hospital Manager: manages their hospital's chambers
+    if (isManager || user?.registration_type === 'hospital' || user?.registration_type === 'manager') {
+      if (user?.public_id && (chamber.hospital_id === user.public_id || chamber.hospital?.id === user.public_id || chamber.hospital?.public_id === user.public_id)) return true
+      if (user?.hospital_id && (String(chamber.hospital_id) === String(user.hospital_id) || String(chamber.hospital?.id) === String(user.hospital_id))) return true
+      if (chamber.hospital?.user_id && String(chamber.hospital.user_id) === String(user?.id)) return true
+      if (!isAdmin && !isDoctor) return true
+      return true
+    }
+
     return false
   }
 
@@ -440,12 +472,34 @@ export default function ChamberListPage() {
     if (!chamber || togglingIds.has(chamber.id)) return
     if (!canToggleChamber(chamber)) return
 
+    const willDeactivate = Boolean(chamber.is_active)
+
+    const confirmed = await showDialog({
+      type: 'confirm',
+      title: willDeactivate ? 'Disable Chamber?' : 'Enable Chamber?',
+      message: willDeactivate
+        ? 'Patients will no longer be able to book appointments for this chamber until you enable it again.'
+        : 'Patients will be able to book appointments for this chamber again.',
+      confirmText: willDeactivate ? 'Disable Chamber' : 'Enable Chamber',
+      cancelText: 'Cancel',
+      variant: willDeactivate ? 'danger' : 'primary',
+      preventBackdropClose: true,
+    })
+
+    if (!confirmed) return
+
     setTogglingIds(prev => new Set(prev).add(chamber.id))
 
     try {
       await toggleChamberActive(chamber.id)
+      if (willDeactivate) {
+        toast.success('Chamber deactivated successfully.')
+      } else {
+        toast.success('Chamber activated successfully.')
+      }
     } catch (err) {
       console.error('Failed to toggle chamber status', err)
+      toast.error(getErrorMessage(err, 'Failed to update chamber status.'))
     } finally {
       setTogglingIds(prev => {
         const next = new Set(prev)
@@ -526,9 +580,23 @@ export default function ChamberListPage() {
           (statusFilter && statusFilter !== 'all') && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => handleStatusChange('all') },
         ].filter(Boolean)}
         actions={
-          (isAdmin || hasPermission('chamber.create')) && (
-            <Link to="/admin/chambers/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
-              + Add New Chamber
+          canCreateChamber && (
+            <Link
+              to="/admin/chambers/create"
+              className="admin-btn admin-btn-primary"
+              style={{
+                height: 38,
+                padding: '0 16px',
+                borderRadius: 9,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 600,
+                fontSize: 13,
+              }}
+            >
+              <Plus size={15} />
+              <span>Create Chamber</span>
             </Link>
           )
         }
@@ -571,7 +639,33 @@ export default function ChamberListPage() {
         {loading ? (
           <TableSkeleton rowCount={8} columnWidths={['60px', '22%', '22%', '15%', '15%', '10%', '16%']} headers={['SL', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
-          <EmptyState hasFilters={hasActiveFilters} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No chambers found" description="Try adjusting your filter preferences or schedule a new chamber routine." primaryAction={(isAdmin || hasPermission('chamber.create')) ? { label: '+ Add New Chamber', to: '/admin/chambers/create' } : undefined} />
+          <EmptyState
+            hasFilters={hasActiveFilters}
+            searchQuery={search}
+            onClearFilters={clearFilters}
+            onClearSearch={() => setSearch('')}
+            icon="📅"
+            title={
+              hasActiveFilters
+                ? 'No chambers found'
+                : 'No Chamber Schedule Yet'
+            }
+            description={
+              hasActiveFilters
+                ? 'Try adjusting your filter preferences or search query.'
+                : 'Create your first chamber schedule so patients can book appointments.'
+            }
+            primaryAction={
+              canCreateChamber
+                ? {
+                    label: 'Create Chamber',
+                    to: '/admin/chambers/create',
+                    icon: Plus,
+                    variant: 'primary',
+                  }
+                : undefined
+            }
+          />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -619,65 +713,87 @@ export default function ChamberListPage() {
                         {format12Hour(chamber.start_time)} – {format12Hour(chamber.end_time)}
                       </div>
                       <div style={{ fontSize: 10.5, color: 'var(--admin-text-muted)' }}>
-                        {chamber.max_patients && Number(chamber.max_patients) > 0 
-                          ? `Capacity: ${chamber.max_patients} Patients` 
+                        {chamber.capacity && Number(chamber.capacity) > 0 
+                          ? `Capacity: ${chamber.capacity} Patients` 
                           : 'Capacity: Open'}
                       </div>
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13 }}>৳{chamber.fee || 0}</div>
-                      {chamber.followup_fee > 0 && (
-                        <div style={{ fontSize: 10.5, color: 'var(--admin-text-muted)' }}>Followup: ৳{chamber.followup_fee}</div>
+                      {chamber.slot_duration_minutes && (
+                        <div style={{ fontSize: 10.5, color: 'var(--admin-text-muted)' }}>{chamber.slot_duration_minutes} min slots</div>
                       )}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {canToggleChamber(chamber) ? (
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={Boolean(chamber.is_active)}
-                            aria-label={`Toggle chamber status for ${chamber.doctor?.name || 'doctor'}`}
-                            disabled={togglingIds.has(chamber.id)}
-                            onClick={() => handleToggle(chamber)}
-                            className="chamber-toggle-btn"
-                            style={{
-                              width: 36,
-                              height: 20,
-                              borderRadius: 12,
-                              padding: 2,
-                              cursor: togglingIds.has(chamber.id) ? 'wait' : 'pointer',
-                              background: chamber.is_active ? '#10B981' : '#CBD5E1',
-                              display: 'flex',
+                          <>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={Boolean(chamber.is_active)}
+                              aria-label="Toggle chamber availability"
+                              disabled={togglingIds.has(chamber.id)}
+                              onClick={() => handleToggle(chamber)}
+                              onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.35)' }}
+                              onBlur={(e) => { e.currentTarget.style.boxShadow = chamber.is_active ? '0 2px 5px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.1)' }}
+                              className="chamber-toggle-btn"
+                              style={{
+                                width: 44,
+                                height: 22,
+                                borderRadius: 12,
+                                padding: '2px 3px',
+                                cursor: togglingIds.has(chamber.id) ? 'wait' : 'pointer',
+                                background: chamber.is_active ? '#10B981' : '#94A3B8',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                justifyContent: chamber.is_active ? 'flex-end' : 'flex-start',
+                                border: 'none',
+                                outline: 'none',
+                                opacity: togglingIds.has(chamber.id) ? 0.65 : 1,
+                                boxShadow: chamber.is_active ? '0 2px 5px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.1)'
+                              }}
+                              title={`Click to ${chamber.is_active ? 'deactivate' : 'activate'} chamber`}
+                            >
+                              {togglingIds.has(chamber.id) ? (
+                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <div className="admin-spinner" style={{ width: 10, height: 10, borderWidth: 1.5, borderColor: '#10B981 transparent #10B981 transparent' }} />
+                                </div>
+                              ) : (
+                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+                              )}
+                            </button>
+                            <span style={{ 
+                              display: 'inline-flex',
                               alignItems: 'center',
-                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              justifyContent: chamber.is_active ? 'flex-end' : 'flex-start',
-                              border: 'none',
-                              outline: 'none',
-                              opacity: togglingIds.has(chamber.id) ? 0.7 : 1,
-                              boxShadow: chamber.is_active ? '0 2px 4px rgba(16, 185, 129, 0.25)' : 'none'
-                            }}
-                            title={`Click to ${chamber.is_active ? 'deactivate' : 'activate'} chamber`}
-                          >
-                            {togglingIds.has(chamber.id) ? (
-                              <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div className="admin-spinner" style={{ width: 10, height: 10, borderWidth: 1.5, borderColor: '#10B981 transparent #10B981 transparent' }} />
-                              </div>
-                            ) : (
-                              <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                            )}
-                          </button>
+                              padding: '1px 6px',
+                              borderRadius: 5,
+                              fontSize: 11, 
+                              fontWeight: 800, 
+                              letterSpacing: '0.04em',
+                              background: chamber.is_active ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.15)',
+                              color: chamber.is_active ? '#059669' : '#64748b'
+                            }}>
+                              {chamber.is_active ? 'ON' : 'OFF'}
+                            </span>
+                          </>
                         ) : (
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: chamber.is_active ? '#10B981' : '#CBD5E1' }} />
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: chamber.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                            color: chamber.is_active ? '#10B981' : 'var(--admin-text-muted)',
+                          }}>
+                            <span style={{ fontSize: 7 }}>{chamber.is_active ? '●' : '○'}</span>
+                            <span>{chamber.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                          </div>
                         )}
-                        <span style={{ 
-                          fontSize: 11.5, 
-                          fontWeight: 700, 
-                          color: chamber.is_active ? '#10B981' : 'var(--admin-text-muted)',
-                          letterSpacing: '0.02em'
-                        }}>
-                          {chamber.is_active ? 'ACTIVE' : 'INACTIVE'}
-                        </span>
                       </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
