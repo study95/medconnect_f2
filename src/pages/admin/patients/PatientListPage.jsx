@@ -334,28 +334,25 @@ export default function PatientListPage() {
                         <div className="admin-actions" style={{ justifyContent: 'flex-end', display: 'inline-flex', gap: 6 }}>
                           <Link
                             to={`/admin/patients/view/${patient.id}`}
-                            className="admin-btn admin-btn-outline admin-btn-sm"
-                            style={{ padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                            className="admin-action-btn admin-action-btn-view"
                             title="View patient details"
                           >
-                            👁️ View
+                            <img src="/icons/view.png" alt="View" />
                           </Link>
                           <Link
                             to={`/admin/patients/edit/${patient.id}`}
-                            className="admin-btn admin-btn-outline admin-btn-sm"
-                            style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
+                            className="admin-action-btn admin-action-btn-edit"
                             title="Edit patient profile"
                           >
-                            ✏️
+                            <img src="/icons/edit.png" alt="Edit" />
                           </Link>
                           {isAdmin && (
                             <button
                               onClick={() => setDeleteTarget(patient)}
-                              className="admin-btn admin-btn-danger admin-btn-sm"
-                              style={{ padding: '4px 8px' }}
+                              className="admin-action-btn admin-action-btn-delete"
                               title="Delete patient account"
                             >
-                              🗑️
+                              <img src="/icons/delete.png" alt="Delete" />
                             </button>
                           )}
                         </div>

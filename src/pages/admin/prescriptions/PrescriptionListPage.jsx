@@ -165,20 +165,26 @@ export default function PrescriptionListPage() {
                     <td>
                       <div className="admin-actions">
                         <button
-                          className="admin-btn admin-btn-outline admin-btn-sm"
+                          className="admin-action-btn admin-action-btn-view"
                           onClick={() => navigate(`/admin/prescriptions/${p.id}`)}
                           title="View / Print"
-                        >👁️ View</button>
+                        >
+                          <img src="/icons/view.png" alt="View" />
+                        </button>
                         <button
-                          className="admin-btn admin-btn-outline admin-btn-sm"
+                          className="admin-action-btn admin-action-btn-edit"
                           onClick={() => navigate(`/admin/prescriptions/edit/${p.id}`)}
                           title="Edit"
-                        >✏️</button>
+                        >
+                          <img src="/icons/edit.png" alt="Edit" />
+                        </button>
                         <button
-                          className="admin-btn admin-btn-danger admin-btn-sm"
+                          className="admin-action-btn admin-action-btn-delete"
                           onClick={() => setDeleteTarget(p)}
                           title="Delete"
-                        >🗑️</button>
+                        >
+                          <img src="/icons/delete.png" alt="Delete" />
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -398,11 +398,12 @@ export default function UserListPage() {
                             <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => handleOpenPerms(u)}>🔑 Perms</button>
                             {isAdmin && (
                               <button 
-                                className="admin-btn admin-btn-sm admin-btn-danger" 
+                                className="admin-action-btn admin-action-btn-delete" 
+                                title="Delete User"
                                 onClick={() => setDeleteTarget(u)}
                                 disabled={u.id === currentUser.id}
                               >
-                                🗑️
+                                <img src="/icons/delete.png" alt="Delete" />
                               </button>
                             )}
                           </div>

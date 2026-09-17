@@ -800,36 +800,28 @@ export default function ChamberListPage() {
                       <div style={{ display: 'inline-flex', gap: 6 }}>
                         <button
                           onClick={() => setViewTarget(chamber)}
-                          className="admin-btn admin-btn-outline admin-btn-sm chamber-action-btn"
-                          style={{ 
-                            padding: '4px 8px', 
-                            color: '#0284c7', 
-                            borderColor: 'rgba(2, 132, 199, 0.25)', 
-                            background: 'rgba(2, 132, 199, 0.06)' 
-                          }}
+                          className="admin-action-btn admin-action-btn-view"
                           aria-label="View chamber routine details"
                           title="View chamber routine details"
                         >
-                          👁️
+                          <img src="/icons/view.png" alt="View" />
                         </button>
                         <button
                           onClick={() => navigate(`/admin/chambers/edit/${chamber.id}`)}
-                          className="admin-btn admin-btn-outline admin-btn-sm chamber-action-btn"
-                          style={{ padding: '4px 8px' }}
+                          className="admin-action-btn admin-action-btn-edit"
                           aria-label="Edit chamber routine"
                           title="Edit chamber routine"
                         >
-                          ✏️
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         {(isAdmin || hasPermission('chamber.delete')) && (
                           <button
                             onClick={() => setDeleteTarget(chamber)}
-                            className="admin-btn admin-btn-danger admin-btn-sm chamber-delete-btn"
-                            style={{ padding: '4px 8px' }}
+                            className="admin-action-btn admin-action-btn-delete"
                             aria-label="Delete chamber routine"
                             title="Delete chamber routine"
                           >
-                            🗑️
+                            <img src="/icons/delete.png" alt="Delete" />
                           </button>
                         )}
                       </div>

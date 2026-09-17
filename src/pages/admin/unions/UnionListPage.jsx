@@ -260,18 +260,18 @@ export default function UnionListPage() {
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
                         <button 
-                          className="admin-btn admin-btn-outline admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-edit" 
                           onClick={() => navigate(`/admin/unions/edit/${item.id}`)}
-                          style={{ borderRadius: 8 }}
+                          title="Edit Union"
                         >
-                          ✏️ Edit
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         <button 
-                          className="admin-btn admin-btn-danger admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-delete" 
                           onClick={() => setDeleteTarget(item)}
-                          style={{ borderRadius: 8 }}
+                          title="Delete Union"
                         >
-                          🗑️
+                          <img src="/icons/delete.png" alt="Delete" />
                         </button>
                       </div>
                     </td>

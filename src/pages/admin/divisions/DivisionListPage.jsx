@@ -99,18 +99,18 @@ export default function DivisionListPage() {
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
                         <button 
-                          className="admin-btn admin-btn-outline admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-edit" 
                           onClick={() => navigate(`/admin/divisions/edit/${item.id}`)}
-                          style={{ borderRadius: 10, padding: '8px 16px' }}
+                          title="Edit Region"
                         >
-                          ✏️ Edit Region
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         <button 
-                          className="admin-btn admin-btn-danger admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-delete" 
                           onClick={() => setDeleteTarget(item)}
-                          style={{ borderRadius: 10, width: 40 }}
+                          title="Delete Region"
                         >
-                          🗑️
+                          <img src="/icons/delete.png" alt="Delete" />
                         </button>
                       </div>
                     </td>

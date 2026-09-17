@@ -1327,17 +1327,29 @@ export default function DoctorListPage() {
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{doctor.email || '—'}</div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button className="admin-btn admin-btn-outline admin-btn-sm" style={{ color: '#0EA5E9', borderColor: 'rgba(14, 165, 233, 0.2)', background: 'rgba(14, 165, 233, 0.05)' }} onClick={() => navigate(`/admin/doctors/view/${doctor.id}`)}>
-                          👁️ View
+                      <div className="admin-actions" style={{ justifyContent: 'flex-end', gap: 10 }}>
+                        <button 
+                          className="admin-action-btn admin-action-btn-view" 
+                          title="View Profile" 
+                          onClick={() => navigate(`/admin/doctors/view/${doctor.id}`)}
+                        >
+                          <img src="/icons/view.png" alt="View" />
                         </button>
                         {isAdmin && (
                           <>
-                            <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/doctors/edit/${doctor.id}`)}>
-                              ✏️ Edit
+                            <button 
+                              className="admin-action-btn admin-action-btn-edit" 
+                              title="Edit Doctor" 
+                              onClick={() => navigate(`/admin/doctors/edit/${doctor.id}`)}
+                            >
+                              <img src="/icons/edit.png" alt="Edit" />
                             </button>
-                            <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(doctor)}>
-                              🗑️
+                            <button 
+                              className="admin-action-btn admin-action-btn-delete" 
+                              title="Delete Doctor" 
+                              onClick={() => setDeleteTarget(doctor)}
+                            >
+                              <img src="/icons/delete.png" alt="Delete" />
                             </button>
                           </>
                         )}

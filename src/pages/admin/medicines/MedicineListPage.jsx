@@ -217,15 +217,21 @@ export default function MedicineListPage() {
                         <div className="admin-actions">
                           {(isAdmin || hasPermission('medicine.update')) && (
                             <button
-                              className="admin-btn admin-btn-outline admin-btn-sm"
+                              className="admin-action-btn admin-action-btn-edit"
+                              title="Edit Medicine"
                               onClick={() => navigate(`/admin/medicines/edit/${med.id}`)}
-                            >✏️ Edit</button>
+                            >
+                              <img src="/icons/edit.png" alt="Edit" />
+                            </button>
                           )}
                           {(isAdmin || hasPermission('medicine.delete')) && (
                             <button
-                              className="admin-btn admin-btn-danger admin-btn-sm"
+                              className="admin-action-btn admin-action-btn-delete"
+                              title="Delete Medicine"
                               onClick={() => setDeleteTarget(med)}
-                            >🗑️</button>
+                            >
+                              <img src="/icons/delete.png" alt="Delete" />
+                            </button>
                           )}
                         </div>
                       </td>

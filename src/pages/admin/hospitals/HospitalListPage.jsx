@@ -389,20 +389,20 @@ export default function HospitalListPage() {
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/hospitals/view/${h.id}`)} title="View Detail">
-                          👁️
+                        <button className="admin-action-btn admin-action-btn-view" onClick={() => navigate(`/admin/hospitals/view/${h.id}`)} title="View Detail">
+                          <img src="/icons/view.png" alt="View" />
                         </button>
                         {h.url && (
-                          <a href={h.url} target="_blank" rel="noreferrer" className="admin-btn admin-btn-outline admin-btn-sm" style={{ padding: '6px 12px' }}>
+                          <a href={h.url} target="_blank" rel="noreferrer" className="admin-btn admin-btn-outline admin-btn-sm" style={{ padding: '6px 10px', fontSize: 12 }}>
                             🌐 Site
                           </a>
                         )}
-                        <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => navigate(`/admin/hospitals/edit/${h.id}`)}>
-                          ✏️ Edit
+                        <button className="admin-action-btn admin-action-btn-edit" onClick={() => navigate(`/admin/hospitals/edit/${h.id}`)} title="Edit Hospital">
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         {isAdmin && (
-                          <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(h)}>
-                            🗑️
+                          <button className="admin-action-btn admin-action-btn-delete" onClick={() => setDeleteTarget(h)} title="Delete Hospital">
+                            <img src="/icons/delete.png" alt="Delete" />
                           </button>
                         )}
                       </div>

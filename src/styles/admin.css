@@ -935,6 +935,66 @@
   align-items: center;
 }
 
+/* Action Icon Buttons (Clean Flaticon Style — Optical Visual Weight Balanced) */
+.admin-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: none !important;
+  background: transparent !important;
+  padding: 0;
+  flex-shrink: 0;
+  box-shadow: none !important;
+  outline: none;
+  text-decoration: none;
+}
+.admin-action-btn:hover {
+  transform: scale(1.18);
+}
+.admin-action-btn:active {
+  transform: scale(1.02);
+}
+.admin-action-btn img {
+  display: block;
+  pointer-events: none;
+  object-fit: contain;
+  transition: transform 0.18s ease;
+}
+/* View (Eye) has horizontal aspect ratio, so larger bounding box creates equal perceived size */
+.admin-action-btn-view img {
+  width: 26px !important;
+  height: 26px !important;
+}
+/* Edit & Delete are blocky/vertical shapes, 18px balances them evenly with the eye */
+.admin-action-btn-edit img {
+  width: 18px !important;
+  height: 18px !important;
+}
+.admin-action-btn-delete img {
+  width: 18px !important;
+  height: 18px !important;
+}
+.admin-action-btn-view,
+.admin-action-btn-edit,
+.admin-action-btn-delete {
+  background: transparent !important;
+  border: none !important;
+}
+.admin-action-btn-view:hover {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+.admin-action-btn-edit:hover {
+  background: rgba(14, 165, 233, 0.12) !important;
+}
+.admin-action-btn-delete:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
 /* ===== STATUS BADGES ===== */
 .status-badge {
   display: inline-flex;

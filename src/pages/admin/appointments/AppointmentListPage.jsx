@@ -256,21 +256,27 @@ export default function AppointmentListPage() {
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>
                         <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                          <Link to={`/admin/appointments/view/${appt.id}`} className="admin-btn admin-btn-outline admin-btn-sm">👁️ View</Link>
+                          <Link to={`/admin/appointments/view/${appt.id}`} className="admin-action-btn admin-action-btn-view" title="View Details">
+                            <img src="/icons/view.png" alt="View" />
+                          </Link>
                           {isAdmin && (
-                            <Link to={`/admin/appointments/edit/${appt.id}`} className="admin-btn admin-btn-outline admin-btn-sm">✏️</Link>
+                            <Link to={`/admin/appointments/edit/${appt.id}`} className="admin-action-btn admin-action-btn-edit" title="Edit Appointment">
+                              <img src="/icons/edit.png" alt="Edit" />
+                            </Link>
                           )}
                           {(isDoctor || isAdmin) && (
                             <Link 
                               to={appt.prescription_id ? `/admin/prescriptions/view/${appt.prescription_id}` : `/admin/prescriptions/create?appointment_id=${appt.id}`}
                               className="admin-btn admin-btn-outline admin-btn-sm"
-                              style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)' }}
+                              style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
                             >
                               Rx
                             </Link>
                           )}
                           {(isAdmin || isManager) && (
-                            <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(appt)}>🗑️</button>
+                            <button className="admin-action-btn admin-action-btn-delete" title="Delete" onClick={() => setDeleteTarget(appt)}>
+                              <img src="/icons/delete.png" alt="Delete" />
+                            </button>
                           )}
                         </div>
                       </td>

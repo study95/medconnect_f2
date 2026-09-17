@@ -109,20 +109,20 @@ export default function SpecialtyListPage() {
                       </code>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div className="admin-actions" style={{ justifyContent: 'flex-end', display: 'flex', gap: 12 }}>
+                      <div className="admin-actions" style={{ justifyContent: 'flex-end', display: 'flex', gap: 6 }}>
                         <button 
-                          className="admin-btn admin-btn-outline admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-edit" 
                           onClick={() => navigate(`/admin/specialties/edit/${item.id}`)}
-                          style={{ borderRadius: 10, padding: '8px 16px' }}
+                          title="Edit Specialty"
                         >
-                          ✏️ Edit
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         <button 
-                          className="admin-btn admin-btn-danger admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-delete" 
                           onClick={() => setDeleteTarget(item)}
-                          style={{ borderRadius: 10, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Delete Specialty"
                         >
-                          🗑️
+                          <img src="/icons/delete.png" alt="Delete" />
                         </button>
                       </div>
                     </td>

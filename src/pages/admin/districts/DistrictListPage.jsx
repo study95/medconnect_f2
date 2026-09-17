@@ -237,18 +237,18 @@ export default function DistrictListPage() {
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
                         <button 
-                          className="admin-btn admin-btn-outline admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-edit" 
                           onClick={() => navigate(`/admin/districts/edit/${item.id}`)}
-                          style={{ borderRadius: 8 }}
+                          title="Edit District"
                         >
-                          ✏️ Edit
+                          <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         <button 
-                          className="admin-btn admin-btn-danger admin-btn-sm" 
+                          className="admin-action-btn admin-action-btn-delete" 
                           onClick={() => setDeleteTarget(item)}
-                          style={{ borderRadius: 8 }}
+                          title="Delete District"
                         >
-                          🗑️
+                          <img src="/icons/delete.png" alt="Delete" />
                         </button>
                       </div>
                     </td>
