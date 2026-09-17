@@ -53,6 +53,8 @@ export default function CompactUlid({ value, style, className }) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        flexWrap: 'nowrap',
+        whiteSpace: 'nowrap',
         gap: 5,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
         fontSize: 12,
@@ -60,11 +62,12 @@ export default function CompactUlid({ value, style, className }) {
         color: 'var(--admin-text, #334155)',
         maxWidth: '100%',
         verticalAlign: 'middle',
+        flexShrink: 0,
         ...style
       }}
       title={cleanValue}
     >
-      <span style={{ letterSpacing: '-0.01em', userSelect: 'all' }}>
+      <span style={{ letterSpacing: '-0.01em', userSelect: 'all', whiteSpace: 'nowrap' }}>
         {displayText}
       </span>
 
@@ -80,12 +83,12 @@ export default function CompactUlid({ value, style, className }) {
           color: copied ? '#059669' : '#94a3b8',
           display: 'inline-flex',
           alignItems: 'center',
+          flexShrink: 0,
           gap: 3,
           fontSize: 10,
           fontWeight: 700,
           transition: 'all 0.15s ease',
-          lineHeight: 1,
-          flexShrink: 0
+          lineHeight: 1
         }}
         onMouseEnter={(e) => {
           if (!copied) {

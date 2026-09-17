@@ -322,7 +322,7 @@ export default function UserListPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: 24 }}>Profile</th>
+                    <th style={{ paddingLeft: 24, minWidth: 200 }}>Profile</th>
                     <th>Contact Info</th>
                     <th>Identity Type</th>
                     <th>Access Role</th>
@@ -340,7 +340,8 @@ export default function UserListPage() {
                               width: 40, height: 40, borderRadius: 12, overflow: 'hidden',
                               background: 'var(--admin-bg)', border: '1px solid var(--admin-border)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontWeight: 800, fontSize: 14, color: 'var(--admin-primary)'
+                              fontWeight: 800, fontSize: 14, color: 'var(--admin-primary)',
+                              flexShrink: 0
                             }}>
                               {u.profile_pic ? (
                                 <img
@@ -360,7 +361,9 @@ export default function UserListPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{u.name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>ID: <CompactUlid value={u.public_id || u.id} /></div>
+                              <div style={{ marginTop: 3 }}>
+                                <CompactUlid value={u.public_id || u.id} />
+                              </div>
                             </div>
                           </div>
                         </td>

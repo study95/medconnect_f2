@@ -265,7 +265,7 @@ export default function PatientListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 110, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
+                  <th style={{ width: 130, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
                   <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Patient</th>
                   <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
                   <th style={{ width: '16%', color: 'var(--admin-text-muted)' }}>Clinical Info</th>
@@ -282,7 +282,7 @@ export default function PatientListPage() {
 
                   return (
                     <tr key={patient.id} style={{ transition: 'background 0.15s' }}>
-                      <td style={{ paddingLeft: 24 }}>
+                      <td style={{ paddingLeft: 24, whiteSpace: 'nowrap' }}>
                         <CompactUlid value={patient.public_id || patient.id} />
                       </td>
                       <td>

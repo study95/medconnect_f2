@@ -182,10 +182,10 @@ export default function AppointmentListPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: 24 }}>ID</th>
-                    <th>Patient Details</th>
-                    <th>Doctor Information</th>
-                    <th>Facility & Venue</th>
+                    <th style={{ paddingLeft: 24, width: 135 }}>ID</th>
+                    <th style={{ minWidth: 170 }}>Patient Details</th>
+                    <th style={{ minWidth: 160 }}>Doctor Information</th>
+                    <th style={{ minWidth: 170 }}>Facility & Venue</th>
                     <th>Booked By</th>
                     <th>Schedule</th>
                     <th>Status</th>
@@ -195,25 +195,40 @@ export default function AppointmentListPage() {
                 <tbody>
                   {appointments.map(appt => (
                     <tr key={appt.id}>
-                      <td style={{ paddingLeft: 24 }}><CompactUlid value={appt.public_id || appt.id} /></td>
+                      <td style={{ paddingLeft: 24, whiteSpace: 'nowrap' }}><CompactUlid value={appt.public_id || appt.id} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--admin-text)' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--admin-text)', flexShrink: 0 }}>
                             {(appt.patient?.name || appt.user_name || 'P').charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || appt.user_name || 'Unknown Patient'}</div>
-                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{appt.patient?.phone || appt.patient?.mobile || appt.patient?.email || appt.user_email || 'No contact info'}</div>
+                            {(appt.patient_public_id || appt.patient?.public_id || appt.patient?.patient_id) ? (
+                              <div style={{ marginTop: 4 }}>
+                                <CompactUlid value={appt.patient_public_id || appt.patient?.public_id || appt.patient?.patient_id} />
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>—</div>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.doctor?.name || appt.doctor_name || 'No Doctor assigned'}</div>
                         <div style={{ fontSize: 11, color: 'var(--admin-primary)', fontWeight: 600 }}>{appt.doctor?.specialty?.name || 'General Practitioner'}</div>
+                        {(appt.doctor_public_id || appt.doctor?.public_id || appt.doctor?.id) && (
+                          <div style={{ marginTop: 4 }}>
+                            <CompactUlid value={appt.doctor_public_id || appt.doctor?.public_id || appt.doctor?.id} />
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{appt.hospital?.name || appt.hospital_name || '—'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{appt.chamber_name || 'General Appointment'}</div>
+                        {(appt.hospital_public_id || appt.hospital?.public_id || appt.hospital?.id) && (
+                          <div style={{ marginTop: 4 }}>
+                            <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id || appt.hospital?.id} />
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

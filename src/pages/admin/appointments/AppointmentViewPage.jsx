@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminAppointmentDetail, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
+import CompactUlid from '../../../components/common/CompactUlid'
 
 export default function AppointmentViewPage() {
   const { id } = useParams()
@@ -30,11 +31,14 @@ export default function AppointmentViewPage() {
             <span style={{ marginRight: 12 }}>📅</span>
             Appointment Detail
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Registration ID: <span style={{ fontWeight: 800, color: 'var(--admin-text)' }}>#{appt.registration_id || appt.id}</span></p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <span style={{ color: 'var(--admin-text-muted)', fontSize: 13, fontWeight: 600 }}>Appointment ID:</span>
+            <CompactUlid value={appt.public_id || appt.id || id} />
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <Link to="/admin/appointments" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← List</Link>
-          <Link to={`/admin/appointments/edit/${appt.id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit</Link>
+          <Link to={`/admin/appointments/edit/${appt.public_id || appt.id || id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit</Link>
         </div>
       </div>
 
@@ -108,9 +112,16 @@ export default function AppointmentViewPage() {
               </div>
 
               <div style={{ marginTop: 32, padding: '20px', background: 'var(--admin-bg)', borderRadius: 16, border: '1px solid var(--admin-border)' }}>
-                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Venue / Hospital</label>
-                <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', margin: '6px 0 2px' }}>{appt.hospital_name || 'General Facility'}</h4>
-                <p style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>{appt.chamber_id ? 'Doctor Specialized Chamber' : 'Outpatient Department'}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Venue / Hospital</label>
+                    <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', margin: '6px 0 2px' }}>{appt.hospital_name || 'General Facility'}</h4>
+                    <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: 0 }}>{appt.chamber_id ? 'Doctor Specialized Chamber' : 'Outpatient Department'}</p>
+                  </div>
+                  {(appt.hospital_public_id || appt.hospital?.public_id) && (
+                    <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id} />
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -135,7 +146,7 @@ export default function AppointmentViewPage() {
           <div className="admin-card" style={{ overflow: 'hidden' }}>
             <div style={{ height: 60, background: 'linear-gradient(135deg, var(--admin-primary), #00C9A7)' }} />
             <div className="admin-card-body" style={{ marginTop: -40, textAlign: 'center' }}>
-              <Link to={`/admin/patients/view/${appt.user_id}`} style={{ textDecoration: 'none', display: 'block' }}>
+              <Link to={`/admin/patients/view/${appt.patient_public_id || appt.patient?.public_id || appt.user_id}`} style={{ textDecoration: 'none', display: 'block' }}>
                 <div style={{ width: 80, height: 80, borderRadius: 24, background: 'var(--admin-card-bg)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, color: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)', border: '4px solid var(--admin-card-bg)' }}>
                   {appt.user_name?.charAt(0)?.toUpperCase() || 'P'}
                 </div>
@@ -148,10 +159,12 @@ export default function AppointmentViewPage() {
                   <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Email</span>
                   <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.user_email || '—'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
-                  <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Registration</span>
-                  <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>#{appt.user_id}</span>
-                </div>
+                {(appt.patient_public_id || appt.patient?.public_id) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                    <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Patient ID</span>
+                    <CompactUlid value={appt.patient_public_id || appt.patient?.public_id} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -166,10 +179,15 @@ export default function AppointmentViewPage() {
                 <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(0, 168, 140, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🩺</div>
                 <div>
                   <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 15, marginBottom: 2 }}>{appt.doctor_name}</h4>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textTransform: 'uppercase' }}>Medical Specialist</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textTransform: 'uppercase' }}>Medical Specialist</span>
+                    {(appt.doctor_public_id || appt.doctor?.public_id) && (
+                      <CompactUlid value={appt.doctor_public_id || appt.doctor?.public_id} />
+                    )}
+                  </div>
                 </div>
               </div>
-              <Link to={`/admin/doctors/view/${appt.doctor_id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ width: '100%', borderRadius: 10 }}>View Full Profile</Link>
+              <Link to={`/admin/doctors/view/${appt.doctor_public_id || appt.doctor_id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ width: '100%', borderRadius: 10 }}>View Full Profile</Link>
             </div>
           </div>
 

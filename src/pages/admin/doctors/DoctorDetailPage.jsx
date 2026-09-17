@@ -3,6 +3,7 @@ import { useState, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminDoctorDetail } from '../../../features/doctors/useAdminDoctors'
+import CompactUlid from '../../../components/common/CompactUlid'
 
 export default function DoctorDetailPage() {
   const { id } = useParams()
@@ -198,7 +199,8 @@ export default function DoctorDetailPage() {
                   <table className="admin-table" style={{ border: 'none' }}>
                     <thead>
                       <tr>
-                        <th style={{ paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Visiting Day</th>
+                        <th style={{ width: 120, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Chamber ID</th>
+                        <th style={{ color: 'var(--admin-text-muted)' }}>Visiting Day</th>
                         <th style={{ color: 'var(--admin-text-muted)' }}>Hospital / Venue</th>
                         <th style={{ color: 'var(--admin-text-muted)' }}>Time Slot</th>
                         <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Fee</th>
@@ -208,6 +210,9 @@ export default function DoctorDetailPage() {
                       {chambers.map(c => (
                         <tr key={c.id}>
                           <td style={{ paddingLeft: 24 }}>
+                            <CompactUlid value={c.public_id || c.id} />
+                          </td>
+                          <td>
                             <div style={{ fontWeight: 800, color: 'var(--admin-text)' }}>{c.day}</div>
                           </td>
                           <td>

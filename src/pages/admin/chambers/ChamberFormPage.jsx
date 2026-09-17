@@ -11,6 +11,7 @@ import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getChamber } from '../../../api/adminApi'
 import { useAdminChamberLookups, useAdminChamberMutations } from '../../../features/chambers/useAdminChambers'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import CompactUlid from '../../../components/common/CompactUlid'
 
 const DAYS = [
   { id: 'Saturday', label: 'Sat', full: 'Saturday', weekend: true },
@@ -235,6 +236,7 @@ export default function ChamberFormPage() {
 
   const [editDoctor, setEditDoctor] = useState(null)
   const [editHospital, setEditHospital] = useState(null)
+  const [chamberData, setChamberData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
@@ -274,6 +276,7 @@ export default function ChamberFormPage() {
       const res = await getChamber(id)
       const d = res.data?.data || res.data
       if (!d) throw new Error('Chamber not found')
+      setChamberData(d)
 
       const docIdentifier = String(d.doctor?.public_id || d.doctor_id || d.doctor?.id || '')
       const hospIdentifier = String(d.hospital?.public_id || d.hospital_id || d.hospital?.id || '')
@@ -390,9 +393,9 @@ export default function ChamberFormPage() {
 
     try {
       if (isEdit) {
-        // Single update
+        // Single update using public_id
         await saveUpdatedChamber({
-          id,
+          id: chamberData?.public_id || id,
           data: {
             doctor_id: form.doctor_id,
             hospital_id: form.hospital_id,
@@ -510,12 +513,30 @@ export default function ChamberFormPage() {
             <Calendar size={24} />
           </div>
           <div>
-            <h1 style={{ 
-              fontSize: 22, fontWeight: 800, color: 'var(--admin-text, #0f172a)', 
-              letterSpacing: '-0.5px', margin: 0 
-            }}>
-              {isEdit ? 'Edit Chamber Schedule' : 'Add Clinical Chamber'}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <h1 style={{ 
+                fontSize: 22, fontWeight: 800, color: 'var(--admin-text, #0f172a)', 
+                letterSpacing: '-0.5px', margin: 0 
+              }}>
+                {isEdit ? 'Edit Chamber Schedule' : 'Add Clinical Chamber'}
+              </h1>
+              {isEdit && (chamberData?.public_id || id) && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 10px',
+                  borderRadius: 8,
+                  background: 'rgba(0, 168, 140, 0.08)',
+                  border: '1px solid rgba(0, 168, 140, 0.25)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#008f77'
+                }}>
+                  Public ID: <CompactUlid value={chamberData?.public_id || id} />
+                </span>
+              )}
+            </div>
             <p style={{ fontSize: 13, color: 'var(--admin-text-muted, #64748b)', margin: '4px 0 0' }}>
               {isEdit 
                 ? 'Update doctor visiting hours and consultation fee'

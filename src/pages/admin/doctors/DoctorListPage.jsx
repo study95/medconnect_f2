@@ -1199,7 +1199,7 @@ export default function DoctorListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['110px', '80px', '22%', '18%', '16%', '12%', '14%', '6%']} headers={['ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['135px', '80px', '22%', '18%', '16%', '12%', '14%', '6%']} headers={['ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
@@ -1207,7 +1207,7 @@ export default function DoctorListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 110, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
+                  <th style={{ width: 135, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>ID</th>
                   <th style={{ width: 80, color: 'var(--admin-text-muted)' }}>Photo</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Professional Details</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Workplace Identity</th>
@@ -1220,7 +1220,7 @@ export default function DoctorListPage() {
               <tbody>
                 {paginatedData.map(doctor => (
                   <tr key={doctor.id}>
-                    <td style={{ paddingLeft: 24 }}>
+                    <td style={{ paddingLeft: 24, whiteSpace: 'nowrap' }}>
                       <CompactUlid value={doctor.public_id || doctor.id} />
                     </td>
                     <td>

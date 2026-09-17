@@ -12,6 +12,7 @@ import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import TableFooter from '../../../components/admin/TableFooter'
+import CompactUlid from '../../../components/common/CompactUlid'
 
 // Premium Searchable Select for Filters
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -178,8 +179,14 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
                 Chamber Routine Details
               </h3>
-              <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
-                Routine #{chamber.id} {chamber.public_id ? `• ${chamber.public_id}` : ''}
+              <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Routine #{chamber.id}</span>
+                {chamber.public_id && (
+                  <>
+                    <span>•</span>
+                    <CompactUlid value={chamber.public_id} />
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -255,6 +262,11 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
               <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text, #0f172a)' }}>
                 {chamber.hospital?.name || 'Independent Clinic'}
               </div>
+              {(chamber.hospital?.public_id || chamber.hospital_id) && (
+                <div style={{ marginTop: 4 }}>
+                  <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />
+                </div>
+              )}
               {chamber.hospital?.address && (
                 <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
                   {chamber.hospital.address}
@@ -335,7 +347,7 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
           {canEdit && (
             <button
               type="button"
-              onClick={() => { onClose(); onEdit(chamber.id) }}
+              onClick={() => { onClose(); onEdit(chamber.public_id || chamber.id) }}
               style={{
                 padding: '8px 20px',
                 borderRadius: 10,
@@ -637,7 +649,7 @@ export default function ChamberListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['60px', '22%', '22%', '15%', '15%', '10%', '16%']} headers={['SL', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['130px', '22%', '22%', '16%', '14%', '10%', '16%']} headers={['Chamber ID', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState
             hasFilters={hasActiveFilters}
@@ -671,7 +683,7 @@ export default function ChamberListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 60, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>SL</th>
+                  <th style={{ width: 130, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Chamber ID</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Doctor</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Hospital & Location</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Schedule & Capacity</th>
@@ -681,17 +693,10 @@ export default function ChamberListPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map((chamber, idx) => (
+                {paginatedData.map((chamber) => (
                   <tr key={chamber.id} style={{ transition: 'background 0.15s' }}>
                     <td style={{ paddingLeft: 24 }}>
-                      <span style={{ 
-                        fontSize: 12.5, 
-                        fontWeight: 700, 
-                        color: 'var(--admin-text-muted)',
-                        fontVariantNumeric: 'tabular-nums' 
-                      }}>
-                        {String((currentPage - 1) * perPage + idx + 1).padStart(2, '0')}
-                      </span>
+                      <CompactUlid value={chamber.public_id || chamber.id} />
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{chamber.doctor?.name || 'Unknown Doctor'}</div>
@@ -701,8 +706,10 @@ export default function ChamberListPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{chamber.hospital?.name || 'Independent Clinic'}</div>
-                      {chamber.room_number && (
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>Room: {chamber.room_number}</div>
+                      {(chamber.hospital?.public_id || chamber.hospital_id) && (
+                        <div style={{ marginTop: 2 }}>
+                          <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />
+                        </div>
                       )}
                     </td>
                     <td>
@@ -807,7 +814,7 @@ export default function ChamberListPage() {
                           <img src="/icons/view.png" alt="View" />
                         </button>
                         <button
-                          onClick={() => navigate(`/admin/chambers/edit/${chamber.id}`)}
+                          onClick={() => navigate(`/admin/chambers/edit/${chamber.public_id || chamber.id}`)}
                           className="admin-action-btn admin-action-btn-edit"
                           aria-label="Edit chamber routine"
                           title="Edit chamber routine"
@@ -845,7 +852,7 @@ export default function ChamberListPage() {
       <ChamberDetailModal
         chamber={viewTarget}
         onClose={() => setViewTarget(null)}
-        onEdit={(id) => navigate(`/admin/chambers/edit/${id}`)}
+        onEdit={(editId) => navigate(`/admin/chambers/edit/${editId}`)}
         canEdit={isAdmin || hasPermission('chamber.edit') || hasPermission('chamber.update') || isDoctor || isManager}
       />
 
