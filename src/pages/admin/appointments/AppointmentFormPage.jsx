@@ -1,99 +1,10 @@
-// AppointmentFormPage.jsx — Premium Appointment Create/Edit Form
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link, useSearchParams, useParams } from 'react-router-dom'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { getAppointment } from '../../../api/adminApi'
 import { useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import { useAuth } from '../../../context/AuthContext'
-
-// Premium Searchable Select for Patients/Doctors
-function SearchableSelect({ label, options, value, onChange, placeholder, error, disabled = false }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const dropdownRef = useRef(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()) || opt.subtext?.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-
-  return (
-    <div className="admin-form-group" ref={dropdownRef} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
-      <label className="admin-form-label">{label}</label>
-      <div 
-        className={`admin-form-input ${error ? 'border-red-500' : ''}`}
-        style={{ 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'var(--admin-bg)' : 'var(--admin-card-bg)', 
-          height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid var(--admin-border)',
-          fontSize: 14, fontWeight: 500, transition: 'all 0.2s',
-          color: 'var(--admin-text)'
-        }}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? selectedOption.name : placeholder}
-        </span>
-        <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
-      </div>
-      {error && <div className="admin-form-error">{error}</div>}
-
-      {isOpen && (
-        <div style={{ 
-          position: 'absolute', top: '100%', left: 0, right: 0,
-          background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 12, marginTop: 8,
-          boxShadow: 'var(--admin-shadow-lg)', overflow: 'hidden', zIndex: 1000
-        }}>
-          <div style={{ padding: '12px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg)' }}>
-            <input 
-              type="text" 
-              autoFocus
-              placeholder="Search..." 
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--admin-border)', outline: 'none', fontSize: 13, background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onClick={e => e.stopPropagation()}
-            />
-          </div>
-          <div style={{ maxHeight: 250, overflowY: 'auto' }}>
-            {filteredOptions.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 13 }}>No matches found</div>
-            ) : (
-              filteredOptions.map(opt => (
-                <div 
-                  key={opt.id} 
-                  style={{ 
-                    padding: '10px 16px', fontSize: 14, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent',
-                    borderBottom: '1px solid var(--admin-border)'
-                  }}
-                  onMouseEnter={(e) => e.target.style.background = 'rgba(0, 168, 140, 0.05)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent'}
-                  onClick={() => {
-                    onChange(opt.id.toString())
-                    setIsOpen(false)
-                    setSearch('')
-                  }}
-                >
-                  <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{opt.name}</div>
-                  {opt.subtext && <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{opt.subtext}</div>}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+import SearchableSelect from '../../../components/common/SearchableSelect'
 
 export default function AppointmentFormPage() {
   const { id } = useParams()

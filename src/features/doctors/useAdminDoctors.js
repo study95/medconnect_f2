@@ -212,6 +212,7 @@ export function useAdminDoctorMutations() {
     mutationFn: (formData) => createDoctor(formData),
     onSuccess: () => {
       invalidateDoctors(queryClient, { includeChambers: true })
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all, refetchType: 'all' })
     },
   })
 
@@ -220,6 +221,7 @@ export function useAdminDoctorMutations() {
     mutationFn: ({ id, formData }) => updateDoctor(id, formData),
     onSuccess: (_, { id }) => {
       invalidateDoctors(queryClient, { doctorId: id, includeChambers: true })
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all, refetchType: 'all' })
     },
   })
 

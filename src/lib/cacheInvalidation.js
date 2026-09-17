@@ -15,14 +15,15 @@ import { queryKeys } from './queryKeys'
 export function invalidateDoctors(queryClient, { doctorId = null, includeChambers = false, includeReviews = false } = {}) {
   if (!queryClient) return
 
-  // Invalidate doctor lists & admin lists
-  queryClient.invalidateQueries({ queryKey: queryKeys.doctors.lists() })
-  queryClient.invalidateQueries({ queryKey: queryKeys.doctors.adminLists() })
+  // Invalidate doctor lists & admin lists (refetchType: 'all' covers active & inactive cached queries)
+  queryClient.invalidateQueries({ queryKey: queryKeys.doctors.lists(), refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: queryKeys.doctors.adminLists(), refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all, refetchType: 'all' })
 
   if (doctorId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.detail(doctorId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.related(doctorId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.schedule(doctorId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.detail(doctorId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.related(doctorId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.schedule(doctorId), refetchType: 'all' })
   }
 
   if (includeChambers) {

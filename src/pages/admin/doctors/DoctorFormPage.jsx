@@ -7,6 +7,7 @@ import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getDoctor } from '../../../api/adminApi'
 import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
+import { Award, Plus, Trash2 } from 'lucide-react'
 
 // Premium Searchable Select Component
 function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -168,14 +169,15 @@ function formatExperiencePeriod(fromDate, toDate, isCurrent) {
 export default function DoctorFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, fetchCurrentUser } = useAuth()
   const { showSuccess, showError } = useDialog()
   const isEdit = !!id
   const canEditPhone = isAdmin || !isEdit
+  const canEditBmdc = isAdmin || !isEdit
 
   const [form, setForm] = useState({
     name: '', name_bn: '', slug: '', slug_bn: '', 
-    specialty_id: '', specialty_bn: '',
+    specialty_id: '',
     hospital_id: '',
     degree: '', degree_bn: '', 
     degree1: '', degree1_bn: '',
@@ -183,7 +185,7 @@ export default function DoctorFormPage() {
     degree3: '', degree3_bn: '',
     degree4: '', degree4_bn: '',
     workplace: '', workplace_bn: '', 
-    bmdc: '', fee: '', experience: '', phone: '', email: '', bio: '',
+    bmdc: '', experience: '', phone: '', email: '', bio: '',
     top_10_doctor: 'no', available_telemedicine: 'no', is_active: true,
     division_id: '', district_id: '', upazila_id: '', union_id: ''
   })
@@ -200,6 +202,24 @@ export default function DoctorFormPage() {
     duration: '' 
   }
   const [experiences, setExperiences] = useState([])
+  
+  // Dynamic Additional Degrees State
+  const [additionalDegrees, setAdditionalDegrees] = useState([])
+
+  const handleAddDegree = () => {
+    setAdditionalDegrees(prev => [
+      ...prev,
+      { id: `deg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, en: '', bn: '' }
+    ])
+  }
+
+  const handleUpdateDegree = (id, field, value) => {
+    setAdditionalDegrees(prev => prev.map(deg => deg.id === id ? { ...deg, [field]: value } : deg))
+  }
+
+  const handleRemoveDegree = (id) => {
+    setAdditionalDegrees(prev => prev.filter(deg => deg.id !== id))
+  }
   
   const updateExperience = (idx, field, value) => {
     const updated = [...experiences]
@@ -265,7 +285,6 @@ export default function DoctorFormPage() {
         slug: d.slug || '',
         slug_bn: d.slug_bn || '',
         specialty_id: (d.specialty_id ?? d.specialty?.id ?? '').toString(),
-        specialty_bn: d.specialty_bn || '',
         hospital_id: (d.hospital_id ?? d.hospital?.id ?? '').toString(),
         degree: d.degree || '',
         degree_bn: d.degree_bn || '',
@@ -280,7 +299,6 @@ export default function DoctorFormPage() {
         workplace: d.workplace || '',
         workplace_bn: d.workplace_bn || '',
         bmdc: d.bmdc || '',
-        fee: d.fee || '',
         experience: d.experience || '',
         phone: d.phone || '',
         email: d.email || '',
@@ -295,6 +313,17 @@ export default function DoctorFormPage() {
       }
       
       setForm(mappedData)
+
+      // Populate additional degrees dynamically from degree1..4
+      const degArr = []
+      for (let i = 1; i <= 4; i++) {
+        const en = d[`degree${i}`] || ''
+        const bn = d[`degree${i}_bn`] || ''
+        if (en || bn) {
+          degArr.push({ id: `deg_${i}_${Date.now()}`, en, bn })
+        }
+      }
+      setAdditionalDegrees(degArr)
 
       // Load experiences
       if (d.experiences && Array.isArray(d.experiences)) {
@@ -435,8 +464,8 @@ export default function DoctorFormPage() {
     if (!errorObj || Object.keys(errorObj).length === 0) return
 
     const fieldOrder = [
-      'name', 'name_bn', 'slug', 'slug_bn', 'specialty_id', 'hospital_id', 'specialty_bn',
-      'workplace', 'workplace_bn', 'bmdc', 'fee', 'experience', 'degree',
+      'name', 'name_bn', 'slug', 'slug_bn', 'specialty_id', 'hospital_id',
+      'workplace', 'workplace_bn', 'bmdc', 'experience', 'degree',
       'photo', 'signature_photo',
       'division_id', 'district_id', 'upazila_id', 'union_id', 'phone', 'email'
     ]
@@ -530,6 +559,15 @@ export default function DoctorFormPage() {
       }
     })
 
+    // Sync dynamic additional degrees into degree1..4 and degree1_bn..4_bn
+    for (let i = 1; i <= 4; i++) {
+      const item = additionalDegrees[i - 1]
+      const enVal = item && item.en ? item.en.trim() : ''
+      const bnVal = item && item.bn ? item.bn.trim() : ''
+      formData.set(`degree${i}`, enVal)
+      formData.set(`degree${i}_bn`, bnVal)
+    }
+
     // If hospital_id was explicitly cleared to empty string, send null/empty
     if (!form.hospital_id && isEdit) {
       formData.append('hospital_id', '')
@@ -557,6 +595,9 @@ export default function DoctorFormPage() {
     try {
       if (isEdit) {
         await saveUpdatedDoctor({ id, formData })
+        if (typeof fetchCurrentUser === 'function') {
+          fetchCurrentUser().catch(() => {})
+        }
         showSuccess({
           title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
           message: DIALOG_MESSAGES.DOCTOR_SAVE_SUCCESS.message,
@@ -881,14 +922,9 @@ export default function DoctorFormPage() {
                 </div>
               </div>
 
-              {/* Specialty & Bangla Specialty */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Specialty */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
                 <SearchableSelect id="field-specialty_id" label="Specialty *" options={specialties} value={form.specialty_id} onChange={(v) => { setForm(f => ({...f, specialty_id: v})); if (errors.specialty_id) setErrors(e => ({...e, specialty_id: ''})); }} placeholder="Select Specialty" error={errors.specialty_id} />
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Specialty (Bangla)</label>
-                  <input className={`admin-form-input ${errors.specialty_bn ? 'has-error' : ''}`} name="specialty_bn" value={form.specialty_bn} onChange={handleChange} placeholder="বিশেষজ্ঞ..." />
-                  {renderFieldError('specialty_bn')}
-                </div>
               </div>
 
               {/* Affiliated Primary Hospital */}
@@ -918,16 +954,23 @@ export default function DoctorFormPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div className="admin-form-group">
-                  <label className="admin-form-label">BMDC Reg No. *</label>
-                  <input className={`admin-form-input ${errors.bmdc ? 'has-error' : ''}`} name="bmdc" value={form.bmdc} onChange={handleChange} placeholder="A-12345" />
+                  <label className="admin-form-label">
+                    BMDC Reg No. * {(!canEditBmdc) && <span style={{ fontSize: 11, fontWeight: 600, color: '#00B875', marginLeft: 4 }}>✓ (Registered — Non-editable)</span>}
+                  </label>
+                  <input 
+                    className={`admin-form-input ${errors.bmdc ? 'has-error' : ''}`} 
+                    name="bmdc" 
+                    value={form.bmdc} 
+                    onChange={handleChange} 
+                    placeholder="A-12345"
+                    disabled={!canEditBmdc}
+                    readOnly={!canEditBmdc}
+                    title={!canEditBmdc ? "BMDC Registration Number cannot be changed after registration" : ""}
+                    style={!canEditBmdc ? { background: 'rgba(0,0,0,0.04)', cursor: 'not-allowed', color: 'var(--admin-text-muted)' } : {}}
+                  />
                   {renderFieldError('bmdc')}
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Consultation Fee (৳)</label>
-                  <input type="number" className={`admin-form-input ${errors.fee ? 'has-error' : ''}`} name="fee" value={form.fee} onChange={handleChange} placeholder="500" />
-                  {renderFieldError('fee')}
                 </div>
                 <div className="admin-form-group">
                   <label className="admin-form-label">Experience (Auto-Calculated)</label>
@@ -961,43 +1004,149 @@ export default function DoctorFormPage() {
           </div>
         </div>
 
-        {/* Qualifications & Degrees */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-          <div className="admin-card">
-            <div className="admin-card-header">
-              <h3 className="admin-card-title">Professional Credentials (EN)</h3>
+        {/* Qualifications & Degrees (Dynamic Bilingual Credentials) */}
+        <div className="admin-card">
+          <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 className="admin-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Award size={18} color="#2563eb" /> Professional Credentials &amp; Degrees (পেশাগত বিবরণ ও ডিগ্রীসমূহ)
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--admin-text-muted)' }}>
+                Medical qualifications in English &amp; Bengali. Synchronized across doctor profile and prescription pads.
+              </p>
             </div>
-            <div className="admin-card-body" style={{ display: 'grid', gap: 16 }}>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Primary Degrees</label>
-                <input className={`admin-form-input ${errors.degree ? 'has-error' : ''}`} name="degree" value={form.degree} onChange={handleChange} placeholder="MBBS, FCPS" />
-                {renderFieldError('degree')}
-              </div>
-              {[1, 2, 3, 4].map(num => (
-                <div key={num} className="admin-form-group">
-                  <input className={`admin-form-input ${errors[`degree${num}`] ? 'has-error' : ''}`} name={`degree${num}`} value={form[`degree${num}`]} onChange={handleChange} placeholder={`Additional Degree ${num}`} />
-                  {renderFieldError(`degree${num}`)}
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              className="admin-btn admin-btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 16px', fontWeight: 600 }}
+              onClick={handleAddDegree}
+            >
+              <Plus size={15} /> + Add Additional Degree (অতিরিক্ত ডিগ্রী যোগ করুন)
+            </button>
           </div>
 
-          <div className="admin-card">
-            <div className="admin-card-header">
-              <h3 className="admin-card-title">পেশাগত বিবরণ (BN)</h3>
-            </div>
-            <div className="admin-card-body" style={{ display: 'grid', gap: 16 }}>
-              <div className="admin-form-group">
-                <label className="admin-form-label">ডিগ্রীসমূহ</label>
-                <input className={`admin-form-input ${errors.degree_bn ? 'has-error' : ''}`} name="degree_bn" value={form.degree_bn} onChange={handleChange} placeholder="এমবিবিএস, এফসিপিএস" style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
-                {renderFieldError('degree_bn')}
-              </div>
-              {[1, 2, 3, 4].map(num => (
-                <div key={num} className="admin-form-group">
-                  <input className={`admin-form-input ${errors[`degree${num}_bn`] ? 'has-error' : ''}`} name={`degree${num}_bn`} value={form[`degree${num}_bn`]} onChange={handleChange} placeholder={`অতিরিক্ত ডিগ্রী ${num}`} style={{ fontFamily: "'Hind Siliguri', sans-serif" }} />
-                  {renderFieldError(`degree${num}_bn`)}
+          <div className="admin-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Primary Degree Row */}
+            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#2563eb', letterSpacing: '0.5px', display: 'block', marginBottom: 12 }}>
+                Primary Medical Degree (মূল ডিগ্রী) *
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="admin-form-group" style={{ margin: 0 }}>
+                  <label className="admin-form-label" style={{ fontSize: 12, fontWeight: 600 }}>Primary Degree (English) *</label>
+                  <input
+                    className={`admin-form-input ${errors.degree ? 'has-error' : ''}`}
+                    name="degree"
+                    value={form.degree}
+                    onChange={handleChange}
+                    placeholder="e.g. MBBS, FCPS"
+                  />
+                  {renderFieldError('degree')}
                 </div>
-              ))}
+
+                <div className="admin-form-group" style={{ margin: 0 }}>
+                  <label className="admin-form-label" style={{ fontSize: 12, fontWeight: 600 }}>মূল ডিগ্রী (বাংলায়) *</label>
+                  <input
+                    className={`admin-form-input ${errors.degree_bn ? 'has-error' : ''}`}
+                    name="degree_bn"
+                    value={form.degree_bn}
+                    onChange={handleChange}
+                    placeholder="যেমন: এমবিবিএস, এফসিপিএস"
+                    style={{ fontFamily: "'Hind Siliguri', sans-serif" }}
+                  />
+                  {renderFieldError('degree_bn')}
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Degrees Dynamic List */}
+            {additionalDegrees.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Additional Post-Graduate / Fellowship Degrees ({additionalDegrees.length})
+                </span>
+
+                {additionalDegrees.map((item, index) => (
+                  <div 
+                    key={item.id} 
+                    style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr auto', 
+                      gap: 16, 
+                      alignItems: 'center', 
+                      padding: '12px 16px', 
+                      background: '#ffffff', 
+                      borderRadius: 10, 
+                      border: '1px solid #cbd5e1' 
+                    }}
+                  >
+                    <div className="admin-form-group" style={{ margin: 0 }}>
+                      <label className="admin-form-label" style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                        Additional Degree {index + 1} (English)
+                      </label>
+                      <input
+                        className="admin-form-input"
+                        placeholder="e.g. BCS (Health), MD (Cardiology)"
+                        value={item.en}
+                        onChange={(e) => handleUpdateDegree(item.id, 'en', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="admin-form-group" style={{ margin: 0 }}>
+                      <label className="admin-form-label" style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                        অতিরিক্ত ডিগ্রী {index + 1} (বাংলা)
+                      </label>
+                      <input
+                        className="admin-form-input"
+                        placeholder="যেমন: বিসিএস (স্বাস্থ্য), এমডি (কার্ডিওলজি)"
+                        value={item.bn}
+                        onChange={(e) => handleUpdateDegree(item.id, 'bn', e.target.value)}
+                        style={{ fontFamily: "'Hind Siliguri', sans-serif" }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      title="Remove this degree"
+                      style={{ 
+                        marginTop: 18, 
+                        height: 40, 
+                        width: 40, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        borderRadius: 8, 
+                        border: '1px solid #fecaca', 
+                        color: '#dc2626', 
+                        background: '#fef2f2',
+                        cursor: 'pointer' 
+                      }}
+                      onClick={() => handleRemoveDegree(item.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {additionalDegrees.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px 16px', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                  No additional degrees added yet. Click <strong>"+ Add Additional Degree"</strong> to add post-graduate degrees, fellowships, or special trainings.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button
+                type="button"
+                className="admin-btn admin-btn-outline"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '8px 18px', fontWeight: 600 }}
+                onClick={handleAddDegree}
+              >
+                <Plus size={15} /> + Add Another Degree (আরও ডিগ্রী যোগ করুন)
+              </button>
             </div>
           </div>
         </div>
@@ -1255,39 +1404,41 @@ export default function DoctorFormPage() {
           </div>
         </div>
 
-        {/* Global Settings */}
-        <div className="admin-card" style={{ border: '1px solid rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.03)' }}>
-          <div className="admin-card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#D97706' }}>⭐ Profile Promotion & Visibility</h3>
-              <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '4px 0 0' }}>Configure telemedicine access and platform status</p>
-            </div>
-            <div style={{ display: 'flex', gap: 40 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>Top 10 Doctor</span>
-                <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.top_10_doctor === 'yes'} onChange={(e) => setForm(f => ({ ...f, top_10_doctor: e.target.checked ? 'yes' : 'no' }))} />
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#6366F1' }}>Telemedicine</span>
-                <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.available_telemedicine === 'yes'} onChange={(e) => setForm(f => ({ ...f, available_telemedicine: e.target.checked ? 'yes' : 'no' }))} />
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981' }}>Active Profile</span>
-                <div 
-                  onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
-                  style={{
-                    width: 48, height: 26, borderRadius: 14, padding: 3, cursor: 'pointer',
-                    background: form.is_active ? '#10B981' : '#CBD5E1',
-                    display: 'flex', transition: '0.3s',
-                    justifyContent: form.is_active ? 'flex-end' : 'flex-start'
-                  }}
-                >
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white' }} />
+        {/* Global Settings — Only visible to and controllable by Administrators */}
+        {isAdmin && (
+          <div className="admin-card" style={{ border: '1px solid rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.03)' }}>
+            <div className="admin-card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#D97706' }}>⭐ Profile Promotion & Visibility</h3>
+                <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '4px 0 0' }}>Configure telemedicine access and platform status</p>
+              </div>
+              <div style={{ display: 'flex', gap: 40 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>Top 10 Doctor</span>
+                  <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.top_10_doctor === 'yes'} onChange={(e) => setForm(f => ({ ...f, top_10_doctor: e.target.checked ? 'yes' : 'no' }))} />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#6366F1' }}>Telemedicine</span>
+                  <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.available_telemedicine === 'yes'} onChange={(e) => setForm(f => ({ ...f, available_telemedicine: e.target.checked ? 'yes' : 'no' }))} />
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981' }}>Active Profile</span>
+                  <div 
+                    onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
+                    style={{
+                      width: 48, height: 26, borderRadius: 14, padding: 3, cursor: 'pointer',
+                      background: form.is_active ? '#10B981' : '#CBD5E1',
+                      display: 'flex', transition: '0.3s',
+                      justifyContent: form.is_active ? 'flex-end' : 'flex-start'
+                    }}
+                  >
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white' }} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginBottom: 60 }}>
           <Link to="/admin/doctors" className="admin-btn admin-btn-outline" style={{ padding: '14px 32px' }}>Discard Changes</Link>

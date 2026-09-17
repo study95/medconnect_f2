@@ -165,6 +165,7 @@ export default function BookAppointmentPage() {
   const [mobileNumber, setMobileNumber] = useState('')
   const [mobileWarning, setMobileWarning] = useState('')
   const [checkingMobile, setCheckingMobile] = useState(false)
+  const [isExistingPatient, setIsExistingPatient] = useState(false)
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const [otpError, setOtpError] = useState('')
   const [otpSending, setOtpSending] = useState(false)
@@ -387,18 +388,6 @@ export default function BookAppointmentPage() {
       if (isServerBooked) return true
     }
 
-    try {
-      const localAppts = JSON.parse(localStorage.getItem('my_appointments') || '[]')
-      const isLocalBooked = localAppts.some(app => 
-        String(app.doctor_id) === String(doctorId) &&
-        app.appointment_date === form.appointment_date &&
-        app.status !== 'cancelled' &&
-        app.status !== 'rejected' &&
-        toMinutes(app.appointment_time) === slotMins
-      )
-      if (isLocalBooked) return true
-    } catch {}
-
     return false
   }
 
@@ -408,24 +397,26 @@ export default function BookAppointmentPage() {
     }
   }, [bookedSlots, form.appointment_date])
 
-  // Generate 15-Minute Time Slots
+  // Generate Time Slots based on chamber slot duration (default 15 mins)
   const getGroupedTimeSlots = () => {
     if (!form.appointment_date || !selectedChamberId) return {}
     const chamber = chambers.find(c => c.id === selectedChamberId)
     if (!chamber) return {}
 
-    const generateSlots = (startStr, endStr) => {
+    const slotDuration = Math.max(1, Number(chamber.slot_duration_minutes) || 15)
+
+    const generateSlots = (startStr, endStr, duration = 15) => {
       try {
         const startMins = parseTime(startStr)
         let endMins = parseTime(endStr)
         if (endMins < startMins) endMins += 24 * 60
         let slots = []
-        for (let cur = startMins; cur <= endMins; cur += 15) slots.push(formatTime(cur))
+        for (let cur = startMins; cur <= endMins; cur += duration) slots.push(formatTime(cur))
         return slots
       } catch { return [] }
     }
 
-    const slots = generateSlots(chamber.start_time, chamber.end_time)
+    const slots = generateSlots(chamber.start_time, chamber.end_time, slotDuration)
     
     // Group slots
     const grouped = { morning: [], noon: [], afternoon: [], evening: [] }
@@ -554,12 +545,6 @@ export default function BookAppointmentPage() {
         status: 'pending',
         created_at: new Date().toISOString()
       }
-      if (!user) {
-        try {
-          const existing = JSON.parse(localStorage.getItem('my_appointments') || '[]')
-          localStorage.setItem('my_appointments', JSON.stringify([newAppt, ...existing]))
-        } catch (e) {}
-      }
 
       setSuccess(true)
       setShowAuthModal(false)
@@ -607,37 +592,64 @@ export default function BookAppointmentPage() {
   const handleSendOtp = async () => {
     const trimmed = (mobileNumber || '').trim()
     setMobileWarning('')
-    if (!trimmed || trimmed.length < 11) {
-      setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন।')
+    if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
+      setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
       return
     }
     setOtpSending(true)
     setOtpError('')
     
-    // Check if number is already registered as patient
+    // Check if number is registered as patient BEFORE sending OTP
+    let isRegistered = false
     try {
       const checkRes = await patientCheckIdentifier({ identifier: trimmed, role: 'patient' })
-      if (checkRes.data?.success) {
-        setMobileWarning('এই মোবাইল নম্বরটি ইতিমধ্যে রোগী হিসেবে নিবন্ধিত! সরাসরি লগইন করুন বা অন্য নম্বর দিন।')
-        setOtpSending(false)
-        return
+      if (checkRes.data?.is_registered || checkRes.data?.success) {
+        isRegistered = true
       }
     } catch (e) {
-      // 404 means not registered yet, which is expected for new registration flow
+      // 404 means not registered yet
+      isRegistered = false
     }
+
+    if (isRegistered) {
+      setIsExistingPatient(true)
+      setMobileWarning('এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে পাসওয়ার্ড দিয়ে সরাসরি লগইন করুন অথবা OTP দিয়ে লগইন করুন।')
+      setOtpSending(false)
+      return
+    }
+
+    setIsExistingPatient(false)
 
     try {
       await sendOtp({ mobile: trimmed, type: 'registration' })
       setAuthMode('otp-verify')
       setOtpTimer(60)
       setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
-      console.error(err)
-      if (err.response?.data?.already_registered) {
-        setMobileWarning(translateApiError(err.response?.data?.message) || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।')
-      } else {
-        setMobileWarning(err.response?.data?.message || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
-      }
+      console.error('sendOtp error:', err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error
+      setMobileWarning(translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  const handleSendLoginOtp = async () => {
+    const trimmed = (mobileNumber || '').trim()
+    setOtpSending(true)
+    setOtpError('')
+    try {
+      await sendOtp({ mobile: trimmed, type: 'appointment' })
+      setIsExistingPatient(true)
+      setAuthMode('otp-verify')
+      setOtpTimer(60)
+      setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+    } catch (err) {
+      console.error('Login OTP error:', err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error
+      setMobileWarning(translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
     } finally {
       setOtpSending(false)
     }
@@ -646,14 +658,14 @@ export default function BookAppointmentPage() {
   const handleResendOtp = async () => {
     if (otpTimer > 0 || otpSending) return
     const trimmed = (mobileNumber || '').trim()
-    if (!trimmed || trimmed.length < 11) {
+    if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
       setOtpError('অনুগ্রহ করে সঠিক মোবাইল নম্বর দিন।')
       return
     }
     setOtpSending(true)
     setOtpError('')
     try {
-      await sendOtp({ mobile: trimmed, type: 'registration' })
+      await sendOtp({ mobile: trimmed, type: 'appointment' })
       setOtpTimer(60)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
@@ -683,6 +695,10 @@ export default function BookAppointmentPage() {
         await submitAppointment()
       } else {
         // Unregistered patient -> Show Account Details Step
+        setRegForm(prev => ({
+          ...prev,
+          name: prev.name || (form.booking_for === 'myself' ? form.patient_name : '')
+        }))
         setAuthMode('account-details')
       }
     } catch (err) {
@@ -1059,7 +1075,7 @@ export default function BookAppointmentPage() {
                     <IconAlertTriangle size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>{mobileWarning}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -1072,7 +1088,7 @@ export default function BookAppointmentPage() {
                         color: 'white',
                         border: 'none',
                         borderRadius: 8,
-                        padding: '6px 14px',
+                        padding: '7px 14px',
                         fontSize: 12.5,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -1083,6 +1099,28 @@ export default function BookAppointmentPage() {
                     >
                       <IconLock size={14} /> সরাসরি লগইন করুন
                     </button>
+                    {isExistingPatient && (
+                      <button
+                        type="button"
+                        onClick={handleSendLoginOtp}
+                        disabled={otpSending}
+                        style={{
+                          background: '#00B875',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '7px 14px',
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: otpSending ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                      >
+                        {otpSending ? <IconLoader2 size={14} className="spin-icon" /> : <IconDeviceMobile size={14} />} OTP দিয়ে এগিয়ে যান
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1112,7 +1150,12 @@ export default function BookAppointmentPage() {
           )}
           {authMode === 'otp-verify' && (
             <div>
-              <label style={{ fontSize: 14, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 12, textAlign: 'center' }}>OTP কোড দিন</label>
+              <label style={{ fontSize: 14, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4, textAlign: 'center' }}>
+                {isExistingPatient ? 'অ্যাকাউন্টে লগইন করতে OTP কোড দিন' : 'যাচাই করতে OTP কোড দিন'}
+              </label>
+              <div style={{ textAlign: 'center', fontSize: 12.5, color: '#64748B', marginBottom: 14 }}>
+                <span style={{ color: '#00B875', fontWeight: 700 }}>{mobileNumber}</span> নম্বরে পাঠানো ৬ সংখ্যার কোডটি লিখুন
+              </div>
               <div style={{display: 'flex', gap: 8, justifyContent: 'center', marginBottom: otpError ? 12 : 24, flexWrap: 'nowrap'}} onPaste={handleOtpPaste}>
                  {otpDigits.map((d, i) => (
                    <input
@@ -1790,6 +1833,21 @@ export default function BookAppointmentPage() {
                                       <IconClock size={13} color="#00B875" />
                                       {formatTimeBn(sch.start_time)} - {formatTimeBn(sch.end_time)}
                                     </span>
+                                    {sch.slot_duration_minutes && (
+                                      <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: '#0369A1',
+                                        background: '#E0F2FE',
+                                        padding: '1px 7px',
+                                        borderRadius: 6,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 3
+                                      }}>
+                                        ⏱️ {toBnNum(sch.slot_duration_minutes)} মি. স্লট
+                                      </span>
+                                    )}
                                   </div>
 
                                   {/* Row 2: Fee + Select Button */}
@@ -1909,7 +1967,9 @@ export default function BookAppointmentPage() {
 
                         {/* Right: Time Slots Accordion */}
                         <Col md={6}>
-                           <h6 style={{ fontWeight: 800, color: '#00B875', marginBottom: 4 }}>সময় স্লট নির্বাচন করুন (১০ মিনিট)</h6>
+                           <h6 style={{ fontWeight: 800, color: '#00B875', marginBottom: 4 }}>
+                             সময় স্লট নির্বাচন করুন ({toBnNum(selectedChamber?.slot_duration_minutes || 15)} মিনিট)
+                           </h6>
                            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>একটি সময় স্লট নির্বাচন করুন</p>
                            
                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingRight: '4px' }}>

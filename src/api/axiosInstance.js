@@ -49,7 +49,9 @@ axiosInstance.interceptors.response.use(
       window.dispatchEvent(new Event('auth-expired'))
     }
 
-    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login')) {
+    const skipGlobalToast = error.config?.skipGlobalToast || url.includes('/check-identifier')
+
+    if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/login') && !skipGlobalToast) {
       // Skip global toast for 422 validation errors so pages can handle inline errors & auto-scroll cleanly
       if (error.response?.status !== 422 && error.response?.status !== 401) {
         const serverErr = error.response?.data?.message || error.response?.data?.error

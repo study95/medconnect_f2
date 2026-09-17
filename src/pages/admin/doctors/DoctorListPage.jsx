@@ -1,6 +1,6 @@
 // DoctorListPage.jsx — Admin doctor management + Doctor own profile
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, Award } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -207,7 +207,7 @@ export default function DoctorListPage() {
       const name = String(d.name || '').toLowerCase()
       const nameBn = String(d.name_bn || '').toLowerCase()
       const specialtyName = String(d.specialty?.name || '').toLowerCase()
-      const specialtyBn = String(d.specialty_bn || '').toLowerCase()
+      const specialtyBn = String(d.specialty?.name_bn || d.specialty?.bangla_name || '').toLowerCase()
       const workplace = String(d.workplace || '').toLowerCase()
       const workplaceBn = String(d.workplace_bn || '').toLowerCase()
       const bmdc = String(d.bmdc || '').toLowerCase()
@@ -239,6 +239,13 @@ export default function DoctorListPage() {
   }, [allowedDoctors, search])
 
   const myProfile = isDoctorOnly ? allowedDoctors[0] : null
+
+  // Ensure doctor's own profile view is always freshly fetched on mount
+  useEffect(() => {
+    if (isDoctorOnly) {
+      fetchDoctors()
+    }
+  }, [isDoctorOnly])
 
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
@@ -272,80 +279,801 @@ export default function DoctorListPage() {
     }
 
     return (
-      <div className="admin-container">
-        <div className="admin-page-header">
-          <div>
-            <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>My Profile</h2>
-            <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>View and manage your doctor information</p>
+      <div className="dr-profile-wrapper">
+        <style>{`
+          .dr-profile-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 12px 48px;
+            animation: fadeIn 0.4s ease-out;
+          }
+          .dr-page-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+          }
+          .dr-page-top-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .dr-page-top-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.02em;
+          }
+          .dr-page-top-sub {
+            font-size: 13.5px;
+            color: #64748b;
+            margin: 0;
+          }
+          .dr-edit-btn {
+            background: linear-gradient(135deg, #00A88C 0%, #0284c7 100%);
+            color: #ffffff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 13.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 168, 140, 0.25);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+          }
+          .dr-edit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 168, 140, 0.35);
+            filter: brightness(1.06);
+          }
+          .dr-profile-header-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            position: relative;
+            overflow: hidden;
+            padding: 26px 30px;
+            display: flex;
+            align-items: center;
+            gap: 26px;
+            flex-wrap: wrap;
+          }
+          .dr-profile-header-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #00A88C 0%, #0284c7 50%, #38bdf8 100%);
+          }
+          .dr-avatar-container {
+            width: 125px;
+            height: 155px;
+            border-radius: 16px;
+            border: 2px solid #f1f5f9;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.07);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #00A88C, #00C9A7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+          }
+          .dr-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .dr-header-meta {
+            flex: 1;
+            min-width: 260px;
+          }
+          .dr-name-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 0 0 6px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          .dr-name-bn {
+            font-size: 19px;
+            font-weight: 600;
+            color: #64748b;
+          }
+          .dr-meta-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+          }
+          .dr-meta-pill {
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+          }
+          .dr-quick-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+          }
+          .dr-stat-tile {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .dr-stat-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+          }
+          .dr-stat-icon-wrap {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+          }
+          .dr-stat-value {
+            font-size: 19px;
+            font-weight: 900;
+            color: #0f172a;
+            line-height: 1.2;
+          }
+          .dr-stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .dr-main-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 22px;
+            margin-top: 22px;
+            align-items: flex-start;
+          }
+          .dr-card {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            padding: 22px 24px;
+            margin-bottom: 20px;
+          }
+          .dr-card-title {
+            font-size: 14.5px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            white-space: nowrap;
+          }
+          .dr-card-title-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+          }
+          .dr-sig-box {
+            background: #f8fafc;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90px;
+            transition: all 0.2s ease;
+          }
+          .dr-sig-box:hover {
+            border-color: #00A88C;
+            background: #f0fdfa;
+          }
+          .dr-sig-img {
+            max-width: 100%;
+            max-height: 70px;
+            object-fit: contain;
+            display: block;
+          }
+          .dr-contact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+          }
+          .dr-contact-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 13.5px;
+          }
+          .dr-contact-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+          }
+          .dr-contact-text-label {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .dr-contact-text-val {
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 1px;
+            word-break: break-word;
+          }
+          .dr-chamber-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 12px;
+          }
+          .dr-chamber-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+          }
+          .dr-chamber-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #b91c1c;
+          }
+          .dr-chamber-address {
+            font-size: 12.5px;
+            color: #64748b;
+            margin-top: 3px;
+          }
+          .dr-schedule-chip {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-top: 6px;
+          }
+
+          /* Tablet & Mobile Responsiveness */
+          @media (max-width: 900px) {
+            .dr-main-grid {
+              grid-template-columns: 1fr;
+              gap: 16px;
+            }
+            .dr-quick-stats-grid {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+            }
+          }
+          @media (max-width: 640px) {
+            .dr-page-top-bar {
+              flex-direction: column;
+              align-items: stretch;
+              text-align: center;
+            }
+            .dr-edit-btn {
+              justify-content: center;
+            }
+            .dr-profile-header-card {
+              padding: 20px 16px;
+              flex-direction: column;
+              text-align: center;
+              gap: 16px;
+            }
+            .dr-avatar-container {
+              width: 110px;
+              height: 140px;
+              margin: 0 auto;
+            }
+            .dr-name-title {
+              font-size: 22px;
+              justify-content: center;
+            }
+            .dr-meta-badges {
+              justify-content: center;
+            }
+            .dr-quick-stats-grid {
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+            }
+            .dr-stat-tile {
+              padding: 14px 12px;
+              gap: 10px;
+            }
+            .dr-stat-icon-wrap {
+              width: 40px;
+              height: 40px;
+              font-size: 18px;
+            }
+            .dr-stat-value {
+              font-size: 16px;
+            }
+            .dr-card {
+              padding: 18px 16px;
+              border-radius: 16px;
+            }
+          }
+        `}</style>
+
+        {/* 1. Page Header Bar */}
+        <div className="dr-page-top-bar">
+          <div className="dr-page-top-info">
+            <h2 className="dr-page-top-title">
+              <span>👨‍⚕️</span> My Profile
+            </h2>
+            <p className="dr-page-top-sub">
+              Manage your credentials, visiting chambers, and clinical practice
+            </p>
           </div>
+
           <button
-            className="admin-btn admin-btn-primary"
-            onClick={() => navigate(`/admin/doctors/edit/${myProfile.id}`)}
+            className="dr-edit-btn"
+            onClick={() => navigate(`/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
           >
             ✏️ Edit Profile
           </button>
         </div>
 
-        <div className="admin-card">
-          <div className="admin-card-body" style={{ padding: 40 }}>
-            <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div style={{
-                width: 140, height: 180, borderRadius: 20,
-                background: 'linear-gradient(135deg, #00A88C, #00C9A7)',
-                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,168,140,0.2)', flexShrink: 0
+        {/* 2. Unified Doctor Profile Card */}
+        <div className="dr-profile-header-card">
+          {/* Avatar Photo */}
+          <div className="dr-avatar-container">
+            {myProfile.photo ? (
+              <img 
+                src={getMediaUrl(myProfile.photo)} 
+                alt={myProfile.name} 
+                onError={(e) => { e.target.onerror = null; e.target.src = DEMO_AVATAR; }} 
+                className="dr-avatar-img"
+              />
+            ) : (
+              <span style={{ fontSize: 56, fontWeight: 900 }}>{myProfile.name?.charAt(0)?.toUpperCase()}</span>
+            )}
+          </div>
+
+          {/* Header Meta */}
+          <div className="dr-header-meta">
+            <h1 className="dr-name-title">
+              <span>{myProfile.name}</span>
+              {myProfile.name_bn && (
+                <span className="dr-name-bn">({myProfile.name_bn})</span>
+              )}
+            </h1>
+
+            <div style={{ fontSize: 14.5, color: '#00A88C', fontWeight: 800, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span>🩺 {myProfile.specialty?.name || 'General Physician'}</span>
+              {(myProfile.specialty?.name_bn || myProfile.specialty?.bangla_name) && (
+                <span style={{ color: '#64748b', fontWeight: 600 }}>({myProfile.specialty?.name_bn || myProfile.specialty?.bangla_name})</span>
+              )}
+            </div>
+
+            <div className="dr-meta-badges">
+              {/* Active Practitioner Status */}
+              <span className="dr-meta-pill" style={{ 
+                background: myProfile.is_active !== false && myProfile.is_active !== 0 && myProfile.is_active !== '0' && myProfile.is_active !== 'no' ? '#ecfdf5' : '#fef2f2', 
+                color: myProfile.is_active !== false && myProfile.is_active !== 0 && myProfile.is_active !== '0' && myProfile.is_active !== 'no' ? '#065f46' : '#991b1b', 
+                border: myProfile.is_active !== false && myProfile.is_active !== 0 && myProfile.is_active !== '0' && myProfile.is_active !== 'no' ? '1px solid #a7f3d0' : '1px solid #fecaca' 
               }}>
-                {myProfile.photo ? (
-                  <img src={getMediaUrl(myProfile.photo)} alt={myProfile.name} onError={(e) => { e.target.onerror = null; e.target.src = DEMO_AVATAR; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontSize: 64, fontWeight: 900 }}>{myProfile.name?.charAt(0)?.toUpperCase()}</span>
+                <span style={{ 
+                  color: myProfile.is_active !== false && myProfile.is_active !== 0 && myProfile.is_active !== '0' && myProfile.is_active !== 'no' ? '#10b981' : '#ef4444', 
+                  fontSize: 10 
+                }}>●</span> {myProfile.is_active !== false && myProfile.is_active !== 0 && myProfile.is_active !== '0' && myProfile.is_active !== 'no' ? 'Active Practitioner' : 'Inactive'}
+              </span>
+
+              {/* Telemedicine: ONLY if strictly enabled ('yes' or true) */}
+              {(myProfile.available_telemedicine === 'yes' || myProfile.available_telemedicine === true || myProfile.available_telemedicine === 1 || myProfile.available_telemedicine === '1') && (
+                <span className="dr-meta-pill" style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}>
+                  📱 Telemedicine Enabled
+                </span>
+              )}
+
+              {/* Verified Profile */}
+              <span className="dr-meta-pill" style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>
+                🛡️ Verified Profile
+              </span>
+
+              {/* BMDC */}
+              {myProfile.bmdc && (
+                <span className="dr-meta-pill" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Award size={13} color="#1d4ed8" style={{ flexShrink: 0 }} /> BMDC: <strong>{myProfile.bmdc}</strong>
+                </span>
+              )}
+
+              {/* Experience */}
+              {myProfile.experience ? (
+                <span className="dr-meta-pill" style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}>
+                  ⭐ {myProfile.experience} Years Experience
+                </span>
+              ) : null}
+
+              {/* Workplace */}
+              {myProfile.workplace && (
+                <span className="dr-meta-pill" style={{ background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0' }}>
+                  🏥 {myProfile.workplace}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Quick Stat Tiles */}
+        <div className="dr-quick-stats-grid">
+          <div className="dr-stat-tile">
+            <div className="dr-stat-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
+              ⭐
+            </div>
+            <div>
+              <div className="dr-stat-value" style={{ color: '#b45309' }}>
+                {myProfile.experience || 1}
+              </div>
+              <div className="dr-stat-label">Years Experience</div>
+            </div>
+          </div>
+
+          <div className="dr-stat-tile">
+            <div className="dr-stat-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1' }}>
+              🏥
+            </div>
+            <div>
+              <div className="dr-stat-value">
+                {myProfile.grouped_chambers?.length || (myProfile.chambers?.length ? 1 : 0)}
+              </div>
+              <div className="dr-stat-label">Active Chambers</div>
+            </div>
+          </div>
+
+          <div className="dr-stat-tile">
+            <div className="dr-stat-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              🎓
+            </div>
+            <div>
+              <div className="dr-stat-value" style={{ fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
+                {myProfile.degree || 'MBBS'}
+              </div>
+              <div className="dr-stat-label">Primary Degree</div>
+            </div>
+          </div>
+
+          <div className="dr-stat-tile">
+            <div className="dr-stat-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+              📍
+            </div>
+            <div>
+              <div className="dr-stat-value" style={{ fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
+                {myProfile.district?.name || myProfile.upazila?.name || 'Bangladesh'}
+              </div>
+              <div className="dr-stat-label">Location Area</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Main 2-Column Responsive Body */}
+        <div className="dr-main-grid">
+          
+          {/* Left Column: Official Digital Signature & Contact */}
+          <div>
+            {/* Signature Card (Exact Markable Area) */}
+            <div className="dr-card">
+              <div className="dr-card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap', flexWrap: 'nowrap', gap: 8 }}>
+                <div className="dr-card-title-left" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+                  <span>✍️</span> Official Digital Signature
+                </div>
+                {(myProfile.signature_photo || myProfile.signature) && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    ✓ Active on Rx
+                  </span>
                 )}
               </div>
 
-              <div style={{ flex: 1, minWidth: 300 }}>
-                <h3 style={{ fontWeight: 800, fontSize: 32, margin: '0 0 6px', color: 'var(--admin-text)', letterSpacing: '-0.5px' }}>
-                  {myProfile.name}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 24px' }}>
-                  <span style={{ background: 'rgba(0, 168, 140, 0.1)', color: '#00A88C', padding: '4px 12px', borderRadius: 20, fontWeight: 700, fontSize: 13 }}>
-                    {myProfile.specialty?.name || 'General Physician'}
-                  </span>
-                  <span style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', padding: '4px 12px', borderRadius: 20, fontWeight: 700, fontSize: 13 }}>
-                    BMDC: {myProfile.bmdc || '—'}
-                  </span>
+              <div className="dr-sig-box">
+                {(myProfile.signature_photo || myProfile.signature) ? (
+                  <img 
+                    src={getMediaUrl(myProfile.signature_photo || myProfile.signature)} 
+                    alt="Official Signature" 
+                    className="dr-sig-img"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div style={{ padding: '12px 0' }}>
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>📝</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>No signature uploaded yet</div>
+                    <button
+                      onClick={() => navigate(`/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
+                      style={{ marginTop: 8, fontSize: 11.5, color: '#00A88C', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      + Upload Signature
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 11.5, color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>
+                This signature is automatically placed onto your digital prescriptions and clinical tickets.
+              </p>
+            </div>
+
+            {/* Contact Information Card */}
+            <div className="dr-card">
+              <div className="dr-card-title">
+                <div className="dr-card-title-left">
+                  <span>📞</span> Contact &amp; Clinical Workplace
+                </div>
+              </div>
+
+              <div className="dr-contact-list">
+                <div className="dr-contact-item">
+                  <div className="dr-contact-icon">🏥</div>
+                  <div>
+                    <div className="dr-contact-text-label">Workplace / Hospital</div>
+                    <div className="dr-contact-text-val">
+                      {myProfile.workplace || '—'}
+                      {myProfile.workplace_bn && (
+                        <span style={{ display: 'block', fontSize: 12.5, color: '#64748b', fontWeight: 500, marginTop: 2 }}>
+                          {myProfile.workplace_bn}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
-                  <div className="profile-info-group">
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Workplace</span>
-                    <p style={{ fontWeight: 600, color: 'var(--admin-text)', margin: '4px 0 0', fontSize: 15 }}>{myProfile.workplace || '—'}</p>
-                  </div>
-                  <div className="profile-info-group">
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Degree</span>
-                    <p style={{ fontWeight: 600, color: 'var(--admin-text)', margin: '4px 0 0', fontSize: 15 }}>{myProfile.degree || '—'}</p>
-                  </div>
-                  <div className="profile-info-group">
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Experience</span>
-                    <p style={{ fontWeight: 600, color: 'var(--admin-text)', margin: '4px 0 0', fontSize: 15 }}>{myProfile.experience ? `${myProfile.experience} years` : '—'}</p>
-                  </div>
-                  <div className="profile-info-group">
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Phone</span>
-                    <p style={{ fontWeight: 600, color: 'var(--admin-text)', margin: '4px 0 0', fontSize: 15 }}>{myProfile.phone || '—'}</p>
-                  </div>
-                  <div className="profile-info-group">
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</span>
-                    <p style={{ fontWeight: 600, color: 'var(--admin-text)', margin: '4px 0 0', fontSize: 15 }}>{myProfile.email || '—'}</p>
+                <div className="dr-contact-item">
+                  <div className="dr-contact-icon">📱</div>
+                  <div>
+                    <div className="dr-contact-text-label">Contact Phone</div>
+                    <div className="dr-contact-text-val">
+                      {myProfile.phone ? (
+                        <a href={`tel:${myProfile.phone}`} style={{ color: '#0f172a', textDecoration: 'none' }}>
+                          {myProfile.phone}
+                        </a>
+                      ) : '—'}
+                    </div>
                   </div>
                 </div>
 
-                {myProfile.bio && (
-                  <div style={{ marginTop: 28, padding: '20px', background: 'rgba(0,0,0,0.02)', borderRadius: 16, borderLeft: '4px solid #00A88C' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Short Biography</span>
-                    <p style={{ color: 'var(--admin-text)', margin: '8px 0 0', lineHeight: 1.6, fontSize: 14 }}>{myProfile.bio}</p>
+                <div className="dr-contact-item">
+                  <div className="dr-contact-icon">✉️</div>
+                  <div>
+                    <div className="dr-contact-text-label">Email Address</div>
+                    <div className="dr-contact-text-val">
+                      {myProfile.email ? (
+                        <a href={`mailto:${myProfile.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                          {myProfile.email}
+                        </a>
+                      ) : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dr-contact-item">
+                  <div className="dr-contact-icon">📍</div>
+                  <div>
+                    <div className="dr-contact-text-label">District &amp; Upazila</div>
+                    <div className="dr-contact-text-val">
+                      {[myProfile.upazila?.name, myProfile.district?.name, myProfile.division?.name].filter(Boolean).join(', ') || 'Bangladesh'}
+                    </div>
+                  </div>
+                </div>
+
+                {myProfile.hospital?.name && (
+                  <div className="dr-contact-item">
+                    <div className="dr-contact-icon">🏢</div>
+                    <div>
+                      <div className="dr-contact-text-label">Primary Hospital</div>
+                      <div className="dr-contact-text-val">
+                        {myProfile.hospital.name}
+                        {myProfile.hospital.address && (
+                          <span style={{ display: 'block', fontSize: 12, color: '#64748b', fontWeight: 500, marginTop: 2 }}>
+                            {myProfile.hospital.address}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Right Column: Qualifications, Chambers, Biography */}
+          <div>
+            {/* Degrees & Qualifications Card */}
+            <div className="dr-card">
+              <div className="dr-card-title">
+                <div className="dr-card-title-left">
+                  <span>🎓</span> Medical Degrees &amp; Qualifications
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24 }}>📜</div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Primary Degree</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginTop: 2 }}>
+                      {myProfile.degree || 'MBBS'}
+                      {myProfile.degree_bn && (
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginLeft: 8 }}>
+                          ({myProfile.degree_bn})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Degrees */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {[1, 2, 3, 4].map(num => {
+                    const en = myProfile[`degree${num}`]
+                    const bn = myProfile[`degree${num}_bn`]
+                    if (!en && !bn) return null
+                    return (
+                      <div key={num} style={{ background: 'rgba(0, 168, 140, 0.08)', color: '#00A88C', border: '1px solid rgba(0, 168, 140, 0.2)', padding: '6px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span>• {en || bn}</span>
+                        {en && bn && <span style={{ color: '#64748b', fontWeight: 500 }}>({bn})</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Chambers & Visiting Schedule Card */}
+            <div className="dr-card">
+              <div className="dr-card-title">
+                <div className="dr-card-title-left">
+                  <span>🏥</span> Chambers &amp; Visiting Schedules
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#00A88C' }}>
+                  {(() => {
+                    if (myProfile.grouped_chambers && myProfile.grouped_chambers.length > 0) return myProfile.grouped_chambers.length
+                    if (myProfile.chambers && myProfile.chambers.length > 0) {
+                      const hSet = new Set(myProfile.chambers.map(c => c.hospital_id || c.hospital?.id || 'default'))
+                      return hSet.size
+                    }
+                    return 0
+                  })()} {((myProfile.grouped_chambers?.length || myProfile.chambers?.length || 0) > 1) ? 'Branches' : 'Branch'}
+                </span>
+              </div>
+
+              {((myProfile.grouped_chambers && myProfile.grouped_chambers.length > 0) || (myProfile.chambers && myProfile.chambers.length > 0)) ? (
+                <div>
+                  {(() => {
+                    if (myProfile.grouped_chambers && myProfile.grouped_chambers.length > 0) {
+                      return myProfile.grouped_chambers
+                    }
+                    if (myProfile.chambers && myProfile.chambers.length > 0) {
+                      const grpMap = {}
+                      myProfile.chambers.forEach(c => {
+                        const hId = c.hospital?.id || c.hospital_id || 'default'
+                        if (!grpMap[hId]) {
+                          grpMap[hId] = {
+                            hospital_name: c.hospital?.name || myProfile.workplace || 'Chamber Branch',
+                            hospital_name_bn: c.hospital?.name_bn || null,
+                            address: c.hospital?.address || c.address || '',
+                            phone: c.hospital?.hotline || c.hospital?.phone || null,
+                            schedules: []
+                          }
+                        }
+                        grpMap[hId].schedules.push(c)
+                      })
+                      return Object.values(grpMap)
+                    }
+                    return []
+                  })().map((grp, idx) => (
+                    <div key={idx} className="dr-chamber-card">
+                      <div className="dr-chamber-header">
+                        <div>
+                          <div className="dr-chamber-name">
+                            {grp.hospital_name}
+                          </div>
+                          {grp.address && (
+                            <div className="dr-chamber-address">
+                              📍 {grp.address}
+                            </div>
+                          )}
+                        </div>
+                        {grp.phone && (
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', background: '#f0f9ff', padding: '4px 10px', borderRadius: 8 }}>
+                            📞 {grp.phone}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {(grp.schedules || []).map((sch, sIdx) => (
+                          <div key={sIdx} className="dr-schedule-chip">
+                            <span style={{ fontWeight: 800, color: '#0f172a' }}>
+                              🗓️ {sch.day_bn || sch.day}
+                              {sch.room_number && (
+                                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600, marginLeft: 8 }}>
+                                  (Room: {sch.room_number})
+                                </span>
+                              )}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ color: '#00A88C', fontWeight: 700, fontSize: 12.5 }}>
+                                ⏰ {sch.formatted_time || (sch.start_time_formatted ? `${sch.start_time_formatted} - ${sch.end_time_formatted}` : sch.start_time)}
+                              </span>
+                              {sch.fee && (
+                                <span style={{ background: '#ecfdf5', color: '#047857', fontWeight: 800, fontSize: 11.5, padding: '2px 8px', borderRadius: 6 }}>
+                                  ৳{sch.fee}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: 14 }}>
+                  No chamber schedules configured yet.
+                </div>
+              )}
+            </div>
+
+            {/* Short Biography Card */}
+            {myProfile.bio && (
+              <div className="dr-card">
+                <div className="dr-card-title">
+                  <div className="dr-card-title-left">
+                    <span>📝</span> Professional Biography
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: 14.5, color: '#334155', lineHeight: 1.7 }}>
+                  {myProfile.bio}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

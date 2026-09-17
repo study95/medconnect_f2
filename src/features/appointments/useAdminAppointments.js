@@ -37,15 +37,25 @@ export function useAdminAppointments(filters = {}) {
   const query = useQuery({
     queryKey: queryKeys.appointments.adminList(filters),
     queryFn: async () => {
-      const res = await getAppointments({ per_page: 5000, ...filters })
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
-      return Array.isArray(raw) ? raw : []
+      const res = await getAppointments(filters)
+      const rawData = res.data?.data?.data || res.data?.data || res.data || []
+      const appointments = Array.isArray(rawData) ? rawData : []
+      const meta = res.data?.meta || res.data?.data?.meta || null
+      return { appointments, meta }
     },
     placeholderData: keepPreviousData,
   })
 
+  const appointments = query.data?.appointments || (Array.isArray(query.data) ? query.data : [])
+  const meta = query.data?.meta || null
+  const total = meta?.total ?? appointments.length
+  const lastPage = meta?.last_page || 1
+
   return {
-    appointments: query.data || [],
+    appointments,
+    meta,
+    total,
+    lastPage,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

@@ -118,26 +118,16 @@ function MyAppointmentsPage() {
     refetchOnMount: 'always',
     staleTime: 0,
     queryFn: async () => {
-      if (isLoggedIn) {
-        try {
-          const res = await getAppointments()
-          let raw = res.data
-          if (raw && raw.data) raw = raw.data
-          if (raw && raw.data) raw = raw.data
-          if (raw && raw.appointments) raw = raw.appointments
-          if (raw && raw.items) raw = raw.items
-          return Array.isArray(raw) ? raw : []
-        } catch (e) {
-          console.error('Failed to load appointments:', e)
-          return []
-        }
-      }
-
-      // Guest users only
       try {
-        const rawLocal = JSON.parse(localStorage.getItem('my_appointments') || '[]')
-        return Array.isArray(rawLocal) ? rawLocal : []
+        const res = await getAppointments()
+        let raw = res.data
+        if (raw && raw.data) raw = raw.data
+        if (raw && raw.data) raw = raw.data
+        if (raw && raw.appointments) raw = raw.appointments
+        if (raw && raw.items) raw = raw.items
+        return Array.isArray(raw) ? raw : []
       } catch (e) {
+        console.error('Failed to load appointments:', e)
         return []
       }
     },

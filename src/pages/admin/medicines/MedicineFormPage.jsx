@@ -1,11 +1,42 @@
-// MedicineFormPage.jsx — Add/Edit medicine form with live full_name preview
+// MedicineFormPage.jsx — Add/Edit medicine form with live preview
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { getMedicine, createMedicine, updateMedicine } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
-const DOSAGE_TYPES = ['TAB', 'SYP', 'DROP', 'CAP', 'INJ', 'SUSP', 'SUPP']
+const DOSAGE_TYPES = [
+  { value: 'TAB', label: 'TAB (Tablet)', display: 'Tablet' },
+  { value: 'CAP', label: 'CAP (Capsule)', display: 'Capsule' },
+  { value: 'SYP', label: 'SYP (Syrup)', display: 'Syrup' },
+  { value: 'DROP', label: 'DROP (Drop)', display: 'Drop' },
+  { value: 'INJ', label: 'INJ (Injection)', display: 'Injection' },
+  { value: 'SUSP', label: 'SUSP (Suspension)', display: 'Suspension' },
+  { value: 'SUPP', label: 'SUPP (Suppository)', display: 'Suppository' },
+]
+
+const DOSAGE_DISPLAY_MAP = {
+  TAB: 'Tablet',
+  TABLET: 'Tablet',
+  CAP: 'Capsule',
+  CAPSULE: 'Capsule',
+  SYP: 'Syrup',
+  SYRUP: 'Syrup',
+  DROP: 'Drop',
+  DROPS: 'Drop',
+  INJ: 'Injection',
+  INJECTION: 'Injection',
+  SUSP: 'Suspension',
+  SUSPENSION: 'Suspension',
+  SUPP: 'Suppository',
+  SUPPOSITORY: 'Suppository',
+}
+
+const getDosageDisplay = (type) => {
+  if (!type) return ''
+  const upper = String(type).trim().toUpperCase()
+  return DOSAGE_DISPLAY_MAP[upper] || type
+}
 
 export default function MedicineFormPage() {
   const { id } = useParams()
@@ -19,7 +50,6 @@ export default function MedicineFormPage() {
       const canUpdate = isEdit && (isAdmin || hasPermission('medicine.update'))
       
       if (!isAdmin && !canCreate && !canUpdate) {
-        
         navigate('/admin/medicines')
       }
     }
@@ -53,7 +83,8 @@ export default function MedicineFormPage() {
         company_name: med.company_name || '',
       })
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setLoading(false)
     }
   }
@@ -81,20 +112,16 @@ export default function MedicineFormPage() {
     try {
       if (isEdit) {
         await updateMedicine(id, form)
-        
       } else {
         await createMedicine(form)
-        
       }
       setTimeout(() => navigate('/admin/medicines'), 600)
     } catch (err) {
-} finally {
+      console.error(err)
+    } finally {
       setSaving(false)
     }
   }
-
-  // Computed full name preview
-  const fullName = [form.dosage_type, form.medicine_name, form.strength].filter(Boolean).join(' ')
 
   if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
 
@@ -110,8 +137,8 @@ export default function MedicineFormPage() {
 
       <div className="admin-card">
         <div className="admin-card-body" style={{ padding: 32 }}>
-          {/* Live Preview */}
-          {fullName && (
+          {/* Live Preview — Styled like Image 1: Name [Badge] Strength */}
+          {(form.medicine_name || form.dosage_type || form.strength) && (
             <div style={{
               background: 'linear-gradient(135deg, #E6F6F4, #F0F7FF)',
               border: '1px solid #B2DFDB',
@@ -120,12 +147,50 @@ export default function MedicineFormPage() {
               marginBottom: 28,
               display: 'flex',
               alignItems: 'center',
-              gap: 12
+              gap: 14
             }}>
               <span style={{ fontSize: 24 }}>💊</span>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Preview — Full Name</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 2 }}>{fullName}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Preview — Medicine View
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#0F172A' }}>
+                    {form.medicine_name || (form.generic_name ? form.generic_name : 'Medicine Name')}
+                  </span>
+                  {form.dosage_type && (
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: '#F1F5F9',
+                      color: '#475569',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      lineHeight: '18px',
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}>
+                      {getDosageDisplay(form.dosage_type)}
+                    </span>
+                  )}
+                  {form.strength && (
+                    <span style={{ fontSize: 15, fontWeight: 500, color: '#64748B' }}>
+                      {form.strength}
+                    </span>
+                  )}
+                </div>
+                {(form.generic_name || form.company_name) && (
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                    {form.generic_name && form.medicine_name && (
+                      <span>Generic: <strong style={{ color: '#334155' }}>{form.generic_name}</strong></span>
+                    )}
+                    {form.generic_name && form.medicine_name && form.company_name && <span> • </span>}
+                    {form.company_name && (
+                      <span>Company: <strong style={{ color: '#334155' }}>{form.company_name}</strong></span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -168,8 +233,11 @@ export default function MedicineFormPage() {
                 >
                   <option value="">Select type</option>
                   {DOSAGE_TYPES.map(t => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
+                  {form.dosage_type && !DOSAGE_TYPES.some(t => t.value === form.dosage_type) && (
+                    <option value={form.dosage_type}>{form.dosage_type}</option>
+                  )}
                 </select>
                 {errors.dosage_type && <div className="admin-form-error">{errors.dosage_type}</div>}
               </div>

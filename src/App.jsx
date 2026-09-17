@@ -103,14 +103,27 @@ const AdminDoctorLeavePage = lazy(() => import('./pages/admin/leaves/AdminDoctor
 
 // Subscription pages
 const SubscriptionPage       = lazy(() => import('./pages/admin/subscription/SubscriptionPage'))
+const DoctorSubscriptionExperiencePage = lazy(() => import('./pages/admin/subscription/DoctorSubscriptionExperiencePage'))
+const HospitalSubscriptionExperiencePage = lazy(() => import('./pages/admin/subscription/HospitalSubscriptionExperiencePage'))
 const CheckoutPage           = lazy(() => import('./pages/admin/subscription/CheckoutPage'))
 const SubscriptionHistoryPage = lazy(() => import('./pages/admin/subscription/SubscriptionHistoryPage'))
+
 const AdminSubscriptionListPage = lazy(() => import('./pages/admin/subscription/AdminSubscriptionListPage'))
 const NotificationsPage      = lazy(() => import('./pages/admin/subscription/NotificationsPage'))
 const AdminPackagesPage      = lazy(() => import('./pages/admin/subscription/AdminPackagesPage'))
 const AdminPromoCodesPage    = lazy(() => import('./pages/admin/subscription/AdminPromoCodesPage'))
 const AdminTrialDaysPage     = lazy(() => import('./pages/admin/subscription/AdminTrialDaysPage'))
 const AdminMessagesPage      = lazy(() => import('./pages/admin/subscription/AdminMessagesPage'))
+
+// Enterprise Admin Billing Management (Phase 3)
+const AdminBillingDashboardPage  = lazy(() => import('./pages/admin/billing/AdminBillingDashboardPage'))
+const AdminPlansPage             = lazy(() => import('./pages/admin/billing/AdminPlansPage'))
+const AdminFeatureMatrixPage     = lazy(() => import('./pages/admin/billing/AdminFeatureMatrixPage'))
+const AdminSubscribersPage       = lazy(() => import('./pages/admin/billing/AdminSubscribersPage'))
+const AdminInvoicesPage          = lazy(() => import('./pages/admin/billing/AdminInvoicesPage'))
+const AdminTransactionsPage      = lazy(() => import('./pages/admin/billing/AdminTransactionsPage'))
+const AdminCouponsPage           = lazy(() => import('./pages/admin/billing/AdminCouponsPage'))
+const AdminBillingSettingsPage   = lazy(() => import('./pages/admin/billing/AdminBillingSettingsPage'))
 
 // Commission & Service Management
 const ServiceEnablementPage  = lazy(() => import('./pages/admin/commission/ServiceEnablementPage'))
@@ -338,10 +351,14 @@ function App() {
             <Route path="services/edit/:id" element={<ServiceFormPage />} />
 
             {/* Subscription System */}
-            <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="subscription" element={<DoctorSubscriptionExperiencePage />} />
+            <Route path="hospital-subscription" element={<HospitalSubscriptionExperiencePage />} />
+            <Route path="subscription/packages" element={<SubscriptionPage />} />
+            <Route path="subscription/checkout" element={<CheckoutPage />} />
             <Route path="subscription/checkout/:packageId" element={<CheckoutPage />} />
             <Route path="subscription/history" element={<SubscriptionHistoryPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+
 
             {/* Admin Subscription Management */}
             <Route path="subscriptions" element={<AdminSubscriptionListPage />} />
@@ -350,6 +367,17 @@ function App() {
             <Route path="trial-days" element={<AdminTrialDaysPage />} />
             <Route path="highlights" element={<HighlightManagementPage />} />
             <Route path="messages" element={<AdminMessagesPage />} />
+
+            {/* Enterprise Admin Billing Management (Phase 3) */}
+            <Route path="billing/dashboard" element={<AdminBillingDashboardPage />} />
+            <Route path="billing/plans" element={<AdminPlansPage />} />
+            <Route path="billing/matrix" element={<AdminFeatureMatrixPage />} />
+            <Route path="billing/subscribers" element={<AdminSubscribersPage />} />
+            <Route path="billing/invoices" element={<AdminInvoicesPage />} />
+            <Route path="billing/transactions" element={<AdminTransactionsPage />} />
+            <Route path="billing/coupons" element={<AdminCouponsPage />} />
+            <Route path="billing/settings" element={<AdminBillingSettingsPage />} />
+
 
             {/* Commission & Service Management */}
             <Route path="commission" element={<ServiceEnablementPage />} />

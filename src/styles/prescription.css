@@ -230,9 +230,9 @@
 }
 
 .rx-header-left .rx-bmdc {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--rx-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1d4ed8;
   margin-top: 6px;
 }
 
@@ -295,9 +295,9 @@
 }
 
 .rx-header-right .rx-bmdc {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--rx-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1d4ed8;
   margin-top: 6px;
 }
 
@@ -307,9 +307,10 @@
   box-sizing: border-box;
   border-bottom: 1.5px solid var(--rx-border);
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
-  align-items: baseline;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
   font-family: var(--rx-font-en);
   background: var(--rx-bg-subtle);
 }
@@ -1474,15 +1475,90 @@
 .dr-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
+  gap: 6px;
+  padding: 4px 12px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
   color: #16a34a;
-  margin-left: 6px;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dr-status-pill:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
+}
+
+.dr-status-pill.is-saving {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.dr-status-pill.has-unsaved {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #d97706;
+}
+
+.dr-status-pill.has-unsaved:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.dr-patient-meta-interactive {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.dr-patient-meta-interactive:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dr-badge-assign-age {
+  background: #fef3c7;
+  color: #b45309;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #fde68a;
+  transition: all 0.15s ease;
+}
+
+.dr-badge-assign-age:hover {
+  background: #fde68a;
+}
+
+.dr-spin {
+  animation: dr-spin-kf 1s linear infinite;
+}
+
+@keyframes dr-spin-kf {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dr-header-actions {
@@ -1703,6 +1779,28 @@
   color: #2563eb;
   border-bottom-color: #2563eb;
   font-weight: 700;
+}
+
+.dr-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  line-height: 1;
+}
+
+.dr-tab-btn.active .dr-tab-badge {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
 /* --- 4. Main Workspace Two-Column Grid --- */

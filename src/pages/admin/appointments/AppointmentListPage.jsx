@@ -1,5 +1,4 @@
-// AppointmentListPage.jsx — Admin appointment management with premium filters
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
@@ -10,95 +9,8 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
-
-// Custom Searchable Dropdown Component (Premium Select)
-function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const dropdownRef = useRef(null)
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const selectedOption = options.find(opt => opt.id.toString() === value.toString())
-  const filteredOptions = options
-    .filter(opt => opt.name?.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-
-  return (
-    <div className="searchable-select-container" ref={dropdownRef} style={{ position: 'relative', flex: '1 1 200px', opacity: disabled ? 0.6 : 1 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
-      <div 
-        className="status-select" 
-        style={{ 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'var(--admin-bg)' : 'var(--admin-card-bg)', 
-          height: 42, padding: '0 14px', border: '1px solid var(--admin-border)', borderRadius: 10, 
-          fontSize: 13, fontWeight: 500, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'all 0.2s',
-          color: 'var(--admin-text)'
-        }}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        <span style={{ color: selectedOption ? 'var(--admin-text)' : 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedOption ? selectedOption.name : placeholder}
-        </span>
-        <span style={{ fontSize: 10, color: 'var(--admin-text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
-      </div>
-
-      {isOpen && (
-        <div style={{ 
-          position: 'absolute', top: '100%', left: 0, right: 0,
-          background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 12, marginTop: 6,
-          boxShadow: 'var(--admin-shadow-lg)', overflow: 'hidden', zIndex: 1000
-        }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: 'var(--admin-text-muted)' }}>🔍</span>
-            <input 
-              ref={inputRef}
-              type="text" 
-              autoFocus
-              placeholder="Type to search..." 
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, width: '100%', color: 'var(--admin-text)' }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <div style={{ maxHeight: 250, overflowY: 'auto' }}>
-            {filteredOptions.length === 0 ? (
-              <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>No matching results</div>
-            ) : (
-              filteredOptions.map(opt => (
-                <div 
-                  key={opt.id} 
-                  style={{ 
-                    padding: '10px 14px', fontSize: 13, cursor: 'pointer', 
-                    background: value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent',
-                    borderBottom: '1px solid var(--admin-border)'
-                  }}
-                  onMouseEnter={(e) => e.target.style.background = 'rgba(0, 168, 140, 0.05)'}
-                  onMouseLeave={(e) => e.target.style.background = value.toString() === opt.id.toString() ? 'rgba(0, 168, 140, 0.1)' : 'transparent'}
-                  onClick={() => {
-                    onChange(opt.id.toString())
-                    setIsOpen(false)
-                    setSearch('')
-                  }}
-                >
-                  <div style={{ fontWeight: value.toString() === opt.id.toString() ? 700 : 500, color: 'var(--admin-text)' }}>{opt.name}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+import SearchableSelect from '../../../components/common/SearchableSelect'
+import useDebounce from '../../../hooks/useDebounce'
 
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
@@ -109,6 +21,7 @@ export default function AppointmentListPage() {
 
   // Filters State
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [date, setDate] = useState('')
   const [month, setMonth] = useState('')
   const [year, setYear] = useState('')
@@ -119,9 +32,18 @@ export default function AppointmentListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Reset to page 1 whenever any filter or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, activeTab])
+
   // Memoized server filters for TanStack Query
   const serverFilters = useMemo(() => {
-    const params = {}
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+    }
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     if (date) params.date = date
     if (month) params.month = month
     if (year) params.year = year
@@ -130,10 +52,10 @@ export default function AppointmentListPage() {
     if (roleFilter) params.role = roleFilter
     if (activeTab !== 'all') params.status = activeTab
     return params
-  }, [date, month, year, doctorId, hospitalId, roleFilter, activeTab])
+  }, [currentPage, perPage, debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, activeTab])
 
   // Enterprise TanStack Query Hooks
-  const { appointments, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
+  const { appointments, total, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
   const { doctors, hospitals } = useAdminAppointmentLookups()
   const { deleteAppointment, isDeleting: deleting, updateAppointmentStatus } = useAdminAppointmentMutations()
 
@@ -186,37 +108,6 @@ export default function AppointmentListPage() {
 
   const years = Array.from({ length: 5 }, (_, i) => ({ id: new Date().getFullYear() + i, name: String(new Date().getFullYear() + i) }))
 
-  const filtered = appointments.filter(appt => {
-    if (!search) return true
-    const q = search.toLowerCase().trim()
-    const id = String(appt.public_id || appt.id || '').toLowerCase()
-    const patientName = String(appt.patient_name || appt.patient?.name || appt.user_name || appt.user?.name || '').toLowerCase()
-    const patientPhone = String(appt.patient_phone || appt.patient?.phone || appt.patient?.mobile || appt.user_phone || appt.user?.phone || appt.payment_number || '').toLowerCase()
-    const doctorName = String(appt.doctor_name || appt.doctor?.name || '').toLowerCase()
-    const specialtyName = String(appt.doctor?.specialty?.name || '').toLowerCase()
-    const hospitalName = String(appt.hospital_name || appt.hospital?.name || appt.chamber?.hospital?.name || appt.chamber_name || '').toLowerCase()
-    const serial = String(appt.serial_number || '').toLowerCase()
-    const bookedBy = String(appt.created_by_user?.name || appt.created_by_name || appt.created_by_role || '').toLowerCase()
-    const regId = String(appt.registration_id || '').toLowerCase()
-    const txId = String(appt.transaction_id || '').toLowerCase()
-
-    return id.includes(q) ||
-      patientName.includes(q) ||
-      patientPhone.includes(q) ||
-      doctorName.includes(q) ||
-      specialtyName.includes(q) ||
-      hospitalName.includes(q) ||
-      serial.includes(q) ||
-      bookedBy.includes(q) ||
-      regId.includes(q) ||
-      txId.includes(q)
-  })
-
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -277,14 +168,14 @@ export default function AppointmentListPage() {
         <div className="admin-card-header">
           <h3 className="admin-card-title">Patient Appointments</h3>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
-            {filtered.length} Results
+            {total} Results
           </span>
         </div>
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
             <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '18%', '12%', '16%']} headers={['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
-          ) : filtered.length === 0 ? (
+          ) : appointments.length === 0 ? (
             <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
           ) : (
             <div className="admin-table-wrapper">
@@ -302,7 +193,7 @@ export default function AppointmentListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedData.map(appt => (
+                  {appointments.map(appt => (
                     <tr key={appt.id}>
                       <td style={{ paddingLeft: 24 }}><CompactUlid value={appt.public_id || appt.id} /></td>
                       <td>
@@ -393,11 +284,14 @@ export default function AppointmentListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={total}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
-        setPerPage={setPerPage}
+        setPerPage={(val) => {
+          setPerPage(val)
+          setCurrentPage(1)
+        }}
       />
 
       <DeleteModal

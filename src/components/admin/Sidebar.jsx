@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff } from 'lucide-react'
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -157,15 +157,37 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               </NavLink>
 
               {isManager && (
-                <NavLink
-                  to="/admin/hospital-reviews"
-                  className={`sidebar-nav-item ${isActive('/admin/hospital-reviews') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? 'Hospital Reviews' : undefined}
-                >
-                  <span className="nav-icon"><MessageSquare size={18} /></span>
-                  <span className="nav-text">Hospital Reviews</span>
-                </NavLink>
+                <>
+                  <NavLink
+                    to="/admin/hospital-subscription"
+                    className={`sidebar-nav-item ${isActive('/admin/hospital-subscription') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Hospital Plan & Seats' : undefined}
+                  >
+                    <span className="nav-icon"><Zap size={18} /></span>
+                    <span className="nav-text">Hospital Plan & Seats</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/subscription/history"
+                    className={`sidebar-nav-item ${isActive('/admin/subscription/history') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Subscription History' : undefined}
+                  >
+                    <span className="nav-icon"><History size={18} /></span>
+                    <span className="nav-text">Subscription History</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/hospital-reviews"
+                    className={`sidebar-nav-item ${isActive('/admin/hospital-reviews') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Hospital Reviews' : undefined}
+                  >
+                    <span className="nav-icon"><MessageSquare size={18} /></span>
+                    <span className="nav-text">Hospital Reviews</span>
+                  </NavLink>
+                </>
               )}
             </>
           )}
@@ -538,11 +560,95 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><MessageSquare size={18} /></span>
                 <span className="nav-text">Messages</span>
               </NavLink>
+
+              {/* ===== ENTERPRISE BILLING & REVENUE (PHASE 3) ===== */}
+              <div className="sidebar-section-title">ENTERPRISE BILLING</div>
+
+              <NavLink
+                to="/admin/billing/dashboard"
+                className={`sidebar-nav-item ${isActive('/admin/billing/dashboard') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Revenue Analytics' : undefined}
+              >
+                <span className="nav-icon"><DollarSign size={18} /></span>
+                <span className="nav-text">Revenue Analytics</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/plans"
+                className={`sidebar-nav-item ${isActive('/admin/billing/plans') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Subscription Plans' : undefined}
+              >
+                <span className="nav-icon"><CreditCard size={18} /></span>
+                <span className="nav-text">Subscription Plans</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/matrix"
+                className={`sidebar-nav-item ${isActive('/admin/billing/matrix') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Feature Matrix' : undefined}
+              >
+                <span className="nav-icon"><Layers size={18} /></span>
+                <span className="nav-text">Feature Matrix</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/subscribers"
+                className={`sidebar-nav-item ${isActive('/admin/billing/subscribers') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Subscribers & Lifecycle' : undefined}
+              >
+                <span className="nav-icon"><Users size={18} /></span>
+                <span className="nav-text">Subscribers & Lifecycle</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/invoices"
+                className={`sidebar-nav-item ${isActive('/admin/billing/invoices') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Invoices' : undefined}
+              >
+                <span className="nav-icon"><FileText size={18} /></span>
+                <span className="nav-text">Invoices</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/transactions"
+                className={`sidebar-nav-item ${isActive('/admin/billing/transactions') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Transactions & Fraud' : undefined}
+              >
+                <span className="nav-icon"><Shield size={18} /></span>
+                <span className="nav-text">Transactions & Fraud</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/coupons"
+                className={`sidebar-nav-item ${isActive('/admin/billing/coupons') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Coupons & Vouchers' : undefined}
+              >
+                <span className="nav-icon"><Tag size={18} /></span>
+                <span className="nav-text">Coupons & Vouchers</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/billing/settings"
+                className={`sidebar-nav-item ${isActive('/admin/billing/settings') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Billing Settings' : undefined}
+              >
+                <span className="nav-icon"><Settings size={18} /></span>
+                <span className="nav-text">Billing Settings</span>
+              </NavLink>
             </>
           )}
         </nav>
 
       </aside>
+
     </>
   )
 }

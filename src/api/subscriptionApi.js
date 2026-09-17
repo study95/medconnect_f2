@@ -43,3 +43,90 @@ export const deleteAdminSubscription = (id) => axiosInstance.delete(`/admin/subs
 export const getAdminNotifications = () => axiosInstance.get('/admin/sent-notifications')
 export const sendAdminNotification = (data) => axiosInstance.post('/admin/send-notification', data)
 export const deleteAdminNotification = (id) => axiosInstance.delete(`/admin/notifications/${id}`)
+
+// ===== DOCTOR ENTERPRISE BILLING (PHASE 4.1) =====
+export const getDoctorBillingOverview = () => 
+  axiosInstance.get('/doctor/billing/overview').then(res => res.data)
+
+export const getDoctorAvailablePlans = () => 
+  axiosInstance.get('/doctor/billing/plans').then(res => res.data)
+
+export const previewDoctorPlanChange = (planId, billingCycle = 'monthly') => 
+  axiosInstance.post('/doctor/billing/preview-plan-change', { plan_id: planId, billing_cycle: billingCycle }).then(res => res.data)
+
+export const changeDoctorPlan = (planId, billingCycle = 'monthly') => 
+  axiosInstance.post('/doctor/billing/change-plan', { plan_id: planId, billing_cycle: billingCycle }).then(res => res.data)
+
+export const cancelDoctorBillingSubscription = (immediately = false) => 
+  axiosInstance.post('/doctor/billing/cancel', { immediately }).then(res => res.data)
+
+export const emailDoctorInvoice = (invoiceId) => 
+  axiosInstance.post(`/doctor/billing/invoices/${invoiceId}/email`).then(res => res.data)
+
+export const downloadDoctorInvoice = (invoiceId) => 
+  axiosInstance.get(`/doctor/billing/invoices/${invoiceId}/download`).then(res => res.data)
+
+// ===== HOSPITAL ENTERPRISE BILLING (PHASE 4.2) =====
+export const getHospitalBillingOverview = () => 
+  axiosInstance.get('/hospital/billing/overview').then(res => res.data)
+
+export const getHospitalAvailablePlans = () => 
+  axiosInstance.get('/hospital/billing/plans').then(res => res.data)
+
+export const previewHospitalPlanChange = (planId, billingCycle = 'monthly') => 
+  axiosInstance.post('/hospital/billing/preview-plan-change', { plan_id: planId, billing_cycle: billingCycle }).then(res => res.data)
+
+export const changeHospitalPlan = (planId, billingCycle = 'monthly') => 
+  axiosInstance.post('/hospital/billing/change-plan', { plan_id: planId, billing_cycle: billingCycle }).then(res => res.data)
+
+export const cancelHospitalBillingSubscription = (immediately = false) => 
+  axiosInstance.post('/hospital/billing/cancel', { immediately }).then(res => res.data)
+
+export const allocateHospitalDoctorSeat = (doctorId) => 
+  axiosInstance.post('/hospital/billing/allocate-doctor', { doctor_id: doctorId }).then(res => res.data)
+
+export const revokeHospitalDoctorSeat = (doctorId) => 
+  axiosInstance.post('/hospital/billing/revoke-doctor', { doctor_id: doctorId }).then(res => res.data)
+
+export const getHospitalInvoiceDownloadPayload = (invoiceId) => 
+  axiosInstance.get(`/hospital/billing/invoices/${invoiceId}/download`).then(res => res.data)
+
+export const emailHospitalInvoice = (invoiceId) => 
+  axiosInstance.post(`/hospital/billing/invoices/${invoiceId}/email`).then(res => res.data)
+
+// ===== ENTERPRISE CHECKOUT (PHASE 4.3) =====
+export const getCheckoutSummary = (planId, billingCycle = 'monthly', couponCode = '') =>
+  axiosInstance.get('/billing/checkout/summary', {
+    params: { plan_id: planId, billing_cycle: billingCycle, coupon_code: couponCode || undefined }
+  }).then(res => res.data)
+
+export const applyCheckoutCoupon = (planId, couponCode, billingCycle = 'monthly') =>
+  axiosInstance.post('/billing/checkout/apply-coupon', {
+    plan_id: planId,
+    coupon_code: couponCode,
+    billing_cycle: billingCycle
+  }).then(res => res.data)
+
+export const createCheckoutSession = (data) =>
+  axiosInstance.post('/billing/checkout/create-session', data).then(res => res.data)
+
+export const cancelCheckoutSession = (sessionId) =>
+  axiosInstance.post('/billing/checkout/cancel', { session_id: sessionId }).then(res => res.data)
+
+export const getCheckoutInvoicePreview = (planId, billingCycle = 'monthly', couponCode = '', billingAddress = null) =>
+  axiosInstance.get('/billing/checkout/invoice-preview', {
+    params: {
+      plan_id: planId,
+      billing_cycle: billingCycle,
+      coupon_code: couponCode || undefined,
+      billing_address: billingAddress || undefined,
+    }
+  }).then(res => res.data)
+
+// ===== MANUAL BILLING & OFFLINE PAYMENT (PHASE 4.4) =====
+export const submitManualPayment = (formData) =>
+  axiosInstance.post('/billing/manual-payment', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data)
+
+

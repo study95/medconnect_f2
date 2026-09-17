@@ -83,14 +83,31 @@ export const createAdminPatient = (data) => axiosInstance.post('/admin/patients'
 export const updateAdminPatient = (id, data) => axiosInstance.post(`/admin/patients/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteAdminPatient = (id) => axiosInstance.delete(`/admin/patients/${id}`)
 
-// ===== PRESCRIPTIONS =====
 export const getPrescriptions = (params) => axiosInstance.get('/prescriptions', { params })
 export const getPrescription = (id) => axiosInstance.get(`/prescriptions/${id}`)
 export const createPrescription = (data) => axiosInstance.post('/prescriptions', data)
 export const updatePrescription = (id, data) => axiosInstance.put(`/prescriptions/${id}`, data)
 export const deletePrescription = (id) => axiosInstance.delete(`/prescriptions/${id}`)
+export const copyPrescriptionMedicines = (prescriptionId, data = {}) => axiosInstance.post(`/prescriptions/${prescriptionId}/copy-medicines`, data)
+
+// ===== PATIENT CLINICAL TIMELINE (EMR/HIS) =====
+export const getPatientClinicalTimeline = (patientId, params) => axiosInstance.get(`/patients/${patientId}/clinical-timeline`, { params })
 
 export const createWalkInPatient = (data) => axiosInstance.post('/doctor/patients', data)
+
+// ===== DOCTOR FAVORITE MEDICINES & QUICK TEMPLATES (DATABASE-BACKED) =====
+export const getDoctorFavoriteMedicines = () => axiosInstance.get('/doctor/favorite-medicines')
+export const createDoctorFavoriteMedicine = (data) => axiosInstance.post('/doctor/favorite-medicines', data)
+export const updateDoctorFavoriteMedicine = (id, data) => axiosInstance.put(`/doctor/favorite-medicines/${id}`, data)
+export const deleteDoctorFavoriteMedicine = (id) => axiosInstance.delete(`/doctor/favorite-medicines/${id}`)
+
+export const getDoctorQuickTemplates = () => axiosInstance.get('/doctor/quick-templates')
+export const createDoctorQuickTemplate = (data) => axiosInstance.post('/doctor/quick-templates', data)
+export const deleteDoctorQuickTemplate = (id) => axiosInstance.delete(`/doctor/quick-templates/${id}`)
+
+export const getDoctorClinicalPresets = (params) => axiosInstance.get('/doctor/clinical-presets', { params })
+export const createDoctorClinicalPreset = (data) => axiosInstance.post('/doctor/clinical-presets', data)
+export const deleteDoctorClinicalPreset = (id) => axiosInstance.delete(`/doctor/clinical-presets/${id}`)
 
 // ===== MEDICINES (Full CRUD + Search) =====
 export const getMedicines = (params) => axiosInstance.get('/medicines', { params })

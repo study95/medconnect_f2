@@ -1067,6 +1067,21 @@ function DoctorDetailPageContent() {
                                         ৳{feeBn} ফি
                                       </span>
                                     )}
+
+                                    {/* Slot Duration Badge on Desktop */}
+                                    {sch?.slot_duration_minutes && (
+                                      <span className="d-none d-sm-inline-flex align-items-center" style={{
+                                        fontSize: 11.5,
+                                        fontWeight: 700,
+                                        color: '#0369A1',
+                                        background: '#E0F2FE',
+                                        padding: '2px 8px',
+                                        borderRadius: 6,
+                                        border: '1px solid #BAE6FD'
+                                      }}>
+                                        ⏱️ {toBnNum(sch.slot_duration_minutes)} মি. স্লট
+                                      </span>
+                                    )}
                                   </div>
 
                                   {/* Bottom / Right Group: Mobile Fee + Booking Button */}

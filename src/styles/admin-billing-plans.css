@@ -1,0 +1,930 @@
+/* ===================================================================
+   ADMIN BILLING PLANS — Stripe & Linear Inspired SaaS Pricing Manager
+   =================================================================== */
+
+:root {
+  --abp-bg: #f8fafc;
+  --abp-card-bg: #ffffff;
+  --abp-card-header: #fafafa;
+  --abp-border: #e2e8f0;
+  --abp-border-hover: #cbd5e1;
+  --abp-text: #0f172a;
+  --abp-text-muted: #64748b;
+  --abp-text-dim: #94a3b8;
+  --abp-input-bg: #ffffff;
+  --abp-input-border: #e2e8f0;
+  --abp-pill-bg: #f1f5f9;
+  --abp-pill-border: #e2e8f0;
+}
+
+[data-theme='dark'] {
+  --abp-bg: #0b0f17;
+  --abp-card-bg: #111827;
+  --abp-card-header: #161f30;
+  --abp-border: #1f2937;
+  --abp-border-hover: #374151;
+  --abp-text: #f9fafb;
+  --abp-text-muted: #9ca3af;
+  --abp-text-dim: #6b7280;
+  --abp-input-bg: #1e293b;
+  --abp-input-border: #334155;
+  --abp-pill-bg: #1e293b;
+  --abp-pill-border: #334155;
+}
+
+.abp-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 24px 80px 24px;
+  color: var(--abp-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes abpFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes abpPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.15); }
+}
+
+@keyframes abpShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.abp-fade-in {
+  animation: abpFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── HEADER & CONTROLS ─── */
+.abp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.abp-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: var(--abp-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abp-title-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(0, 184, 117, 0.12);
+  color: #00b875;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.abp-subtitle {
+  font-size: 13.5px;
+  color: var(--abp-text-muted);
+  margin: 4px 0 0 0;
+}
+
+.abp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abp-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--abp-border);
+  background: var(--abp-card-bg);
+  color: var(--abp-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.abp-btn-refresh:hover {
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+}
+
+.abp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 9px;
+  background: #00b875;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
+}
+
+.abp-btn-primary:hover {
+  background: #009e63;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 184, 117, 0.35);
+}
+
+/* ─── QUICK NAVIGATION BAR ─── */
+.abp-quick-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--abp-border);
+}
+
+.abp-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--abp-text-muted);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.abp-nav-pill:hover {
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+}
+
+.abp-nav-pill.active {
+  background: rgba(0, 184, 117, 0.1);
+  color: #00b875;
+  font-weight: 700;
+}
+
+/* ─── KPI METRICS DECK ─── */
+.abp-kpi-deck {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .abp-kpi-deck {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .abp-kpi-deck {
+    grid-template-columns: 1fr;
+  }
+}
+
+.abp-kpi-card {
+  background: var(--abp-card-bg);
+  border: 1px solid var(--abp-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.abp-kpi-card:hover {
+  border-color: var(--abp-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+}
+
+.abp-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--abp-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.abp-kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--abp-text);
+  margin: 6px 0 2px 0;
+}
+
+.abp-kpi-footnote {
+  font-size: 12px;
+  color: var(--abp-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── TOOLBAR (FILTER / SEGMENTED CONTROL / SEARCH) ─── */
+.abp-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: var(--abp-card-bg);
+  border: 1px solid var(--abp-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.abp-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.abp-segmented-group {
+  display: inline-flex;
+  background: var(--abp-pill-bg);
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--abp-border);
+}
+
+.abp-segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--abp-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.abp-segmented-btn.active {
+  background: var(--abp-card-bg);
+  color: var(--abp-text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.abp-counter-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .abp-counter-chip {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.abp-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.abp-search-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.abp-search-box svg {
+  position: absolute;
+  left: 10px;
+  color: var(--abp-text-muted);
+  pointer-events: none;
+}
+
+.abp-search-input {
+  padding: 7px 12px 7px 34px;
+  border-radius: 8px;
+  border: 1px solid var(--abp-input-border);
+  background: var(--abp-input-bg);
+  color: var(--abp-text);
+  font-size: 13px;
+  width: 220px;
+  transition: all 0.15s ease;
+}
+
+.abp-search-input:focus {
+  outline: none;
+  border-color: #00b875;
+  box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
+  width: 260px;
+}
+
+.abp-select-filter {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--abp-input-border);
+  background: var(--abp-input-bg);
+  color: var(--abp-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ─── PLANS CATALOG GRID ─── */
+.abp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1100px) {
+  .abp-plans-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .abp-plans-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── PLAN CARD ─── */
+.abp-card {
+  background: var(--abp-card-bg);
+  border: 1px solid var(--abp-border);
+  border-radius: 16px;
+  display: flex;
+  flex-col: column;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.abp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  border-color: var(--abp-border-hover);
+}
+
+.abp-card-top-bar {
+  height: 4px;
+  width: 100%;
+}
+
+.abp-card.tier-free .abp-card-top-bar { background: #94a3b8; }
+.abp-card.tier-starter .abp-card-top-bar { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.abp-card.tier-professional .abp-card-top-bar { background: linear-gradient(90deg, #8b5cf6, #a855f7); }
+.abp-card.tier-enterprise .abp-card-top-bar { background: linear-gradient(90deg, #10b981, #059669); }
+
+.abp-card-body {
+  padding: 22px 22px 16px 22px;
+  flex: 1;
+}
+
+.abp-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.abp-entity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.abp-entity-doctor {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+[data-theme='dark'] .abp-entity-doctor {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.abp-entity-hospital {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+[data-theme='dark'] .abp-entity-hospital {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c084fc;
+}
+
+.abp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.abp-status-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+[data-theme='dark'] .abp-status-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.abp-status-active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: abpPulse 2s infinite;
+}
+
+.abp-status-inactive {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+}
+
+.abp-card-title {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--abp-text);
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.abp-card-slug {
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--abp-text-dim);
+  background: var(--abp-pill-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.abp-card-desc {
+  font-size: 12.5px;
+  color: var(--abp-text-muted);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  min-height: 38px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── PRICING BLOCKS ─── */
+.abp-pricing-box {
+  background: var(--abp-card-header);
+  border: 1px solid var(--abp-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.abp-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.abp-price-main {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--abp-text);
+  letter-spacing: -0.5px;
+}
+
+.abp-price-cycle {
+  font-size: 12px;
+  color: var(--abp-text-muted);
+  font-weight: 500;
+  margin-left: 3px;
+}
+
+.abp-price-annual-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--abp-border);
+  font-size: 11.5px;
+  color: var(--abp-text-muted);
+}
+
+.abp-discount-tag {
+  background: rgba(0, 184, 117, 0.12);
+  color: #00b875;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+}
+
+/* ─── HIGHLIGHT METRICS ─── */
+.abp-plan-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.abp-plan-metric-pill {
+  background: var(--abp-pill-bg);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: var(--abp-text-muted);
+}
+
+.abp-plan-metric-pill strong {
+  display: block;
+  font-size: 14px;
+  color: var(--abp-text);
+  font-weight: 700;
+}
+
+/* ─── FEATURES PREVIEW ─── */
+.abp-features-header {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--abp-text-dim);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.abp-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.abp-feature-item {
+  font-size: 12px;
+  color: var(--abp-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.abp-feature-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abp-feature-quota {
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* ─── CARD FOOTER / ACTIONS ─── */
+.abp-card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--abp-border);
+  background: var(--abp-card-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.abp-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--abp-border);
+  background: var(--abp-card-bg);
+  color: var(--abp-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.abp-btn-edit:hover {
+  background: var(--abp-pill-bg);
+  border-color: var(--abp-border-hover);
+}
+
+.abp-btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.abp-btn-delete:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+}
+
+/* ─── FEATURE MATRIX VIEW ─── */
+.abp-matrix-card {
+  background: var(--abp-card-bg);
+  border: 1px solid var(--abp-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.abp-matrix-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--abp-border);
+  background: var(--abp-card-header);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.abp-table-responsive {
+  overflow-x: auto;
+}
+
+.abp-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.abp-matrix-table th {
+  padding: 14px 18px;
+  background: var(--abp-card-header);
+  border-bottom: 1px solid var(--abp-border);
+  color: var(--abp-text-muted);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.abp-matrix-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--abp-border);
+  color: var(--abp-text);
+  vertical-align: middle;
+}
+
+.abp-matrix-table tr:hover td {
+  background: rgba(0, 184, 117, 0.02);
+}
+
+[data-theme='dark'] .abp-matrix-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.abp-matrix-feature-col {
+  min-width: 240px;
+  font-weight: 600;
+}
+
+.abp-matrix-feature-key {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--abp-text-dim);
+}
+
+.abp-quota-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.abp-quota-unlimited {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.abp-quota-numeric {
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+}
+
+.abp-quota-disabled {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* ─── MODAL DIALOG ─── */
+.abp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.abp-modal-content {
+  background: var(--abp-card-bg);
+  border: 1px solid var(--abp-border);
+  border-radius: 20px;
+  max-width: 680px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  animation: abpFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.abp-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--abp-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.abp-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--abp-text);
+  margin: 0;
+}
+
+.abp-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--abp-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.abp-modal-close:hover {
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+}
+
+.abp-modal-tabs {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--abp-border);
+  gap: 16px;
+  background: var(--abp-card-header);
+}
+
+.abp-modal-tab {
+  padding: 12px 4px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--abp-text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.abp-modal-tab.active {
+  color: #00b875;
+  border-bottom-color: #00b875;
+}
+
+.abp-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.abp-form-group {
+  margin-bottom: 16px;
+}
+
+.abp-form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--abp-text);
+  margin-bottom: 6px;
+}
+
+.abp-form-input,
+.abp-form-select,
+.abp-form-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--abp-input-border);
+  background: var(--abp-input-bg);
+  color: var(--abp-text);
+  font-size: 13.5px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.abp-form-input:focus,
+.abp-form-select:focus,
+.abp-form-textarea:focus {
+  outline: none;
+  border-color: #00b875;
+  box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
+}
+
+.abp-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.abp-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--abp-border);
+  background: var(--abp-card-header);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.abp-btn-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--abp-border);
+  background: var(--abp-card-bg);
+  color: var(--abp-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.abp-btn-cancel:hover {
+  background: var(--abp-pill-bg);
+  color: var(--abp-text);
+}
