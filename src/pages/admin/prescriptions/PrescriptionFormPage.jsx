@@ -1,5 +1,5 @@
 // PrescriptionFormPage.jsx — Modern Clinical Prescription Workspace (Interactive Markable Sections)
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { 
   User, Calendar, Clock, Phone, Activity, Scale, 
@@ -29,7 +29,10 @@ import {
   deleteDoctorQuickTemplate,
   getDoctorClinicalPresets,
   createDoctorClinicalPreset,
-  deleteDoctorClinicalPreset
+  deleteDoctorClinicalPreset,
+  checkPatientPhone,
+  quickRegisterPatient,
+  getChambers
 } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useDialog } from '../../../hooks/useDialog'
@@ -122,7 +125,7 @@ const MEAL_OPTIONS_EN = [
 const MEAL_OPTIONS = [...MEAL_OPTIONS_BN, ...MEAL_OPTIONS_EN]
 
 const matchOptionValue = (options, val) => {
-  if (!val) return options[0]
+  if (!val) return ''
   if (options.includes(val)) return val
   const normalized = String(val).trim().toLowerCase()
   const matched = options.find(opt => opt.toLowerCase() === normalized)
@@ -180,12 +183,12 @@ const QUICK_TEMPLATES = []
 const emptyMedicine = () => ({
   _id: Math.random().toString(36).substring(2, 9),
   medicine_name: '',
-  type: 'Tablet',
+  type: '',
   strength: '',
-  dose: '1 Tablet',
-  dosage: '1+0+1',
-  duration: '5 Days',
-  meal: 'After Meal',
+  dose: '',
+  dosage: '',
+  duration: '',
+  meal: '',
   instructions: ''
 })
 
@@ -226,6 +229,64 @@ const calculateDobFromAge = (ageYears, existingDobStr = null) => {
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')
   return `${targetYear}-${month}-${day}`
+}
+
+// Validate Bangladeshi mobile phone format (013-019 followed by 8 digits, optional +88/88)
+const isValidBdMobile = (phone) => {
+  if (!phone) return false
+  const clean = String(phone).replace(/[\s\-\(\)]/g, '')
+  return /^(?:\+?8801|8801|01)[3-9]\d{8}$/.test(clean)
+}
+
+// Normalize Bangladeshi mobile phone number to standard 11 digits (01XXXXXXXXX)
+const normalizeBdMobile = (phone) => {
+  if (!phone) return ''
+  let clean = String(phone).replace(/[\s\-\(\)]/g, '')
+  if (clean.startsWith('+88')) clean = clean.slice(3)
+  else if (clean.startsWith('88')) clean = clean.slice(2)
+  return clean
+}
+
+// Parse structured vitals from examination/oe string or weights
+const parseVitalsFromOe = (oe, fallbackWeight = '') => {
+  const result = {
+    bp_systolic: '',
+    bp_diastolic: '',
+    pulse: '',
+    temp: '',
+    weight: fallbackWeight || '',
+    height_ft: '',
+    recorded_at: ''
+  }
+  if (!oe || typeof oe !== 'string') return result
+
+  const bpMatch = oe.match(/BP:\s*(\d+)(?:\/(\d+))?/i)
+  if (bpMatch) {
+    result.bp_systolic = bpMatch[1] || ''
+    result.bp_diastolic = bpMatch[2] || ''
+  }
+
+  const pulseMatch = oe.match(/Pulse:\s*(\d+)/i)
+  if (pulseMatch) {
+    result.pulse = pulseMatch[1] || ''
+  }
+
+  const tempMatch = oe.match(/Temp:\s*([0-9.]+)/i)
+  if (tempMatch) {
+    result.temp = tempMatch[1] || ''
+  }
+
+  const wtMatch = oe.match(/(?:Wt|Weight):\s*([0-9.]+)/i)
+  if (wtMatch && !result.weight) {
+    result.weight = wtMatch[1] || ''
+  }
+
+  const htMatch = oe.match(/(?:Ht|Height):\s*([0-9.]+)/i)
+  if (htMatch) {
+    result.height_ft = htMatch[1] || ''
+  }
+
+  return result
 }
 
 export default function PrescriptionFormPage() {
@@ -279,12 +340,19 @@ export default function PrescriptionFormPage() {
   const [isZenMode, setIsZenMode] = useState(false)
 
   // Auto-Save & Draft State
-  const draftKey = `dr_rx_draft_${doctorScopeId}_${appointmentId || (id ? `rx_${id}` : 'walkin')}`
+  const [activeDraftId, setActiveDraftId] = useState(() => (isEdit && id ? id : null))
+  const [isDraftStatus, setIsDraftStatus] = useState(false)
+  // draftKey is stable even when doctorScopeId is null — uses 'anon' as fallback so the restore
+  // effect fires once when doctorScopeId resolves to a real value (changes from null)
+  const draftKey = doctorScopeId
+    ? `dr_rx_draft_${doctorScopeId}_${appointmentId || (activeDraftId || id ? `rx_${activeDraftId || id}` : 'walkin')}`
+    : `dr_rx_draft_anon_${appointmentId || (activeDraftId || id ? `rx_${activeDraftId || id}` : 'walkin')}`
   const [autoSaveStatus, setAutoSaveStatus] = useState('saved') // 'saved' | 'saving' | 'unsaved'
   const [lastSavedTime, setLastSavedTime] = useState(Date.now())
   const [autoSaveLabel, setAutoSaveLabel] = useState('Auto saved just now')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const autoSaveTimerRef = useRef(null)
+  const draftRestoredRef = useRef(false)
 
   // Assign / Edit Patient Age & Gender Modal State
   const [showAssignAgeModal, setShowAssignAgeModal] = useState(false)
@@ -310,9 +378,44 @@ export default function PrescriptionFormPage() {
   const isWalkIn = !appointmentId && !isEdit
   const [walkInPatientInfo, setWalkInPatientInfo] = useState(null) // null = not filled yet
   const [showWalkInModal, setShowWalkInModal] = useState(false)
-  const [walkInForm, setWalkInForm] = useState({
-    name: '', age: '', sex: 'Male', phone: '', address: '', registration_no: ''
+  // Doctor's Own Chambers for Walk-in Consultation
+  const [doctorChambers, setDoctorChambers] = useState(() => {
+    if (user?.doctor?.chambers && Array.isArray(user.doctor.chambers)) {
+      return user.doctor.chambers
+    }
+    return []
   })
+  const [loadingChambers, setLoadingChambers] = useState(false)
+
+  const [walkInForm, setWalkInForm] = useState(() => {
+    const initialChambers = user?.doctor?.chambers || []
+    const firstChamber = initialChambers.find(c => c.is_active) || initialChambers[0] || null
+    const hosp = firstChamber?.hospital || {}
+    return {
+      name: '',
+      age: '',
+      sex: 'Male',
+      phone: '',
+      address: '',
+      registration_no: '',
+      chamber_id: firstChamber?.id || firstChamber?.public_id || '',
+      chamber_name: firstChamber?.chamber_name || hosp.name || '',
+      chamber_address: hosp.address || firstChamber?.address || '',
+      chamber_phone: hosp.phone || hosp.hotline || firstChamber?.phone || '',
+      chamber_hotline: hosp.hotline || hosp.phone || '',
+      chamber_website: hosp.url || hosp.website || '',
+      chamber_logo: hosp.hospital_logo || hosp.photo_url || hosp.photo || '',
+      hospital_id: firstChamber?.hospital_id || hosp.id || '',
+      hospital_name: hosp.name || '',
+      hospital_address: hosp.address || '',
+      hospital_phone: hosp.phone || hosp.hotline || '',
+      hospital_hotline: hosp.hotline || hosp.phone || '',
+      hospital_website: hosp.url || hosp.website || '',
+      hospital_logo: hosp.hospital_logo || hosp.photo_url || hosp.photo || '',
+    }
+  })
+  const [isCheckingWalkInPhone, setIsCheckingWalkInPhone] = useState(false)
+  const [walkInErrors, setWalkInErrors] = useState({})
 
   // Dynamic Favorites Medicines with LocalStorage Persistence (Strictly Doctor-Scoped, Empty by default)
   const [favoriteMedicines, setFavoriteMedicines] = useState(() => {
@@ -867,10 +970,102 @@ export default function PrescriptionFormPage() {
     weight: '',
     registration_no: '',
     patient_id: '',
-    hospital_name: '', hospital_address: '', hospital_phone: '', hospital_email: '',
+    chamber_id: '',
     chamber_name: '',
+    chamber_name_bn: '',
+    chamber_address: '',
+    chamber_phone: '',
+    chamber_hotline: '',
+    chamber_website: '',
+    chamber_logo: '',
+    hospital_id: '',
+    hospital_name: '',
+    hospital_name_bn: '',
+    hospital_address: '',
+    hospital_phone: '',
+    hospital_hotline: '',
+    hospital_email: '',
+    hospital_website: '',
+    hospital_logo: '',
     medicines: [emptyMedicine()]
   })
+
+  // Chamber selection handler — dynamically switches consulting chamber and updates all footer info
+  const handleSelectChamber = (selectedId) => {
+    if (!selectedId) return
+    const found = doctorChambers.find(c => String(c.id) === String(selectedId) || String(c.public_id) === String(selectedId))
+    if (!found) return
+
+    const hosp = found.hospital || {}
+    const chName = found.chamber_name || hosp.name || `Chamber #${found.room_number || found.id}`
+    const hospName = hosp.name || found.hospital_name || chName
+    const hospAddr = hosp.address || found.address || found.hospital_address || ''
+    const hospPhone = hosp.phone || hosp.hotline || found.phone || ''
+    const hospHotline = hosp.hotline || hosp.phone || found.hotline || found.phone || ''
+    const hospWeb = hosp.url || hosp.website || found.website || (hosp.slug ? `www.${hosp.slug}.com` : '')
+    const hospLogo = hosp.hospital_logo || hosp.photo_url || hosp.photo || found.photo || ''
+
+    setForm(prev => ({
+      ...prev,
+      chamber_id: found.id || found.public_id,
+      chamber_name: chName,
+      chamber_name_bn: found.chamber_name_bn || hosp.name_bn || '',
+      chamber_address: hospAddr,
+      chamber_phone: hospPhone,
+      chamber_hotline: hospHotline,
+      chamber_website: hospWeb,
+      chamber_logo: hospLogo,
+      hospital_id: found.hospital_id || hosp.id || prev.hospital_id,
+      hospital_name: hospName,
+      hospital_name_bn: hosp.name_bn || prev.hospital_name_bn || '',
+      hospital_address: hospAddr,
+      hospital_phone: hospPhone,
+      hospital_hotline: hospHotline,
+      hospital_website: hospWeb,
+      hospital_logo: hospLogo,
+    }))
+
+    setWalkInForm(prev => ({
+      ...prev,
+      chamber_id: found.id || found.public_id,
+      chamber_name: chName,
+      chamber_address: hospAddr,
+      chamber_phone: hospPhone,
+      chamber_hotline: hospHotline,
+      chamber_website: hospWeb,
+      chamber_logo: hospLogo,
+      hospital_id: found.hospital_id || hosp.id || prev.hospital_id,
+      hospital_name: hospName,
+      hospital_address: hospAddr,
+      hospital_phone: hospPhone,
+      hospital_hotline: hospHotline,
+      hospital_website: hospWeb,
+      hospital_logo: hospLogo,
+    }))
+
+    if (walkInPatientInfo) {
+      setWalkInPatientInfo(prev => ({
+        ...prev,
+        chamber_id: found.id || found.public_id,
+        chamber_name: chName,
+        hospital_name: hospName,
+      }))
+    }
+
+    setAppointmentInfo(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        chamber_id: found.id,
+        chamber: {
+          ...(prev.chamber || {}),
+          ...found,
+          hospital: hosp
+        },
+        hospital: hosp
+      }
+    })
+  }
 
   // Parsed Investigations & Advice — starts empty, counted only when doctor adds
   const [investigationList, setInvestigationList] = useState([])
@@ -881,6 +1076,54 @@ export default function PrescriptionFormPage() {
   const [diagnosisSearchInput, setDiagnosisSearchInput] = useState('')
   const [tableSearchFilter, setTableSearchFilter] = useState('')
   const [investigationSearchQuery, setInvestigationSearchQuery] = useState('')
+
+  // Multi-Diagnosis Management Helpers
+  const parseDiagnosisList = (diagStr) => {
+    if (!diagStr || typeof diagStr !== 'string') return []
+    return diagStr
+      .split(/,\s*|\n+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+  }
+
+  const diagnosisList = useMemo(() => {
+    return parseDiagnosisList(form.diagnosis)
+  }, [form.diagnosis])
+
+  const handleAddDiagnosis = (val) => {
+    if (!val) return
+    const items = val.split(/,\s*|\n+/).map(s => s.trim()).filter(Boolean)
+    if (items.length === 0) return
+
+    setForm(prev => {
+      const existing = parseDiagnosisList(prev.diagnosis)
+      const combined = [...existing]
+      items.forEach(item => {
+        if (!combined.some(c => c.toLowerCase() === item.toLowerCase())) {
+          combined.push(item)
+        }
+      })
+      return { ...prev, diagnosis: combined.join(', ') }
+    })
+  }
+
+  const handleRemoveDiagnosis = (targetDiag) => {
+    setForm(prev => {
+      const existing = parseDiagnosisList(prev.diagnosis)
+      const filtered = existing.filter(c => c.toLowerCase() !== targetDiag.toLowerCase())
+      return { ...prev, diagnosis: filtered.join(', ') }
+    })
+  }
+
+  const handleToggleDiagnosisPreset = (presetContent) => {
+    if (!presetContent) return
+    const isSelected = diagnosisList.some(c => c.toLowerCase() === presetContent.toLowerCase())
+    if (isSelected) {
+      handleRemoveDiagnosis(presetContent)
+    } else {
+      handleAddDiagnosis(presetContent)
+    }
+  }
 
   // Medicine Autocomplete
   const [medicineSuggestions, setMedicineSuggestions] = useState([])
@@ -953,6 +1196,83 @@ export default function PrescriptionFormPage() {
     }
   }, [doctorScopeId])
 
+  // Load Doctor's Own Chambers for Walk-in Consultation
+  useEffect(() => {
+    const docId = user?.doctor?.id || user?.doctor_id || user?.doctor?.public_id
+    if (!docId) return
+
+    setLoadingChambers(true)
+    getChambers({ doctor_id: docId, per_page: 50 })
+      .then(res => {
+        const list = res.data?.data || res.data || []
+        if (Array.isArray(list) && list.length > 0) {
+          setDoctorChambers(list)
+          const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+          const match = list.find(c => (c.day || '').toLowerCase() === todayDay && c.is_active) 
+            || list.find(c => c.is_active) 
+            || list[0]
+          if (match) {
+            const hosp = match.hospital || {}
+            const chName = match.chamber_name || hosp.name || ''
+            const hospName = hosp.name || match.hospital_name || chName
+            const hospAddr = hosp.address || match.address || ''
+            const hospPhone = hosp.phone || hosp.hotline || match.phone || ''
+            const hospHotline = hosp.hotline || hosp.phone || match.hotline || ''
+            const hospWeb = hosp.url || hosp.website || match.website || (hosp.slug ? `www.${hosp.slug}.com` : '')
+            const hospLogo = hosp.hospital_logo || hosp.photo_url || hosp.photo || match.photo || ''
+
+            setWalkInForm(prev => {
+              if (prev.chamber_id) return prev
+              return {
+                ...prev,
+                chamber_id: match.id || match.public_id,
+                chamber_name: chName,
+                chamber_address: hospAddr,
+                chamber_phone: hospPhone,
+                chamber_hotline: hospHotline,
+                chamber_website: hospWeb,
+                chamber_logo: hospLogo,
+                hospital_id: match.hospital_id || hosp.id || '',
+                hospital_name: hospName,
+                hospital_address: hospAddr,
+                hospital_phone: hospPhone,
+                hospital_hotline: hospHotline,
+                hospital_website: hospWeb,
+                hospital_logo: hospLogo,
+              }
+            })
+
+            setForm(prev => {
+              if (prev.chamber_id) return prev
+              return {
+                ...prev,
+                chamber_id: match.id || match.public_id,
+                chamber_name: chName,
+                chamber_name_bn: match.chamber_name_bn || hosp.name_bn || '',
+                chamber_address: hospAddr,
+                chamber_phone: hospPhone,
+                chamber_hotline: hospHotline,
+                chamber_website: hospWeb,
+                chamber_logo: hospLogo,
+                hospital_id: match.hospital_id || hosp.id || prev.hospital_id,
+                hospital_name: hospName,
+                hospital_name_bn: hosp.name_bn || prev.hospital_name_bn || '',
+                hospital_address: hospAddr,
+                hospital_phone: hospPhone,
+                hospital_hotline: hospHotline,
+                hospital_website: hospWeb,
+                hospital_logo: hospLogo,
+              }
+            })
+          }
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to fetch doctor chambers:', err)
+      })
+      .finally(() => setLoadingChambers(false))
+  }, [user?.doctor?.id, user?.doctor_id, user?.doctor?.public_id])
+
   // Fetch Appointment or Existing Prescription
   useEffect(() => {
     if (isEdit && id) {
@@ -963,6 +1283,11 @@ export default function PrescriptionFormPage() {
           if (p) {
             setPrescriptionDoctorId(p.doctor_id || p.doctor_public_id || null)
             setPrescriptionDoctorName(p.doctor_name || '')
+
+            if (p.status === 'draft') {
+              setIsDraftStatus(true)
+              setActiveDraftId(p.id)
+            }
 
             // Enforce note privacy: only the authoring doctor or admin can see confidential notes
             let viewNotesAllowed = true
@@ -993,21 +1318,33 @@ export default function PrescriptionFormPage() {
               weight: p.patient_weight || p.weight || '',
               registration_no: p.patient_public_id || p.patient?.public_id || p.registration_no || p.patient_id || '',
               patient_id: p.patient_public_id || p.patient?.public_id || p.patient_id || p.patient?.patient_id || p.patient?.id || p.registration_no || '',
-              hospital_name: p.hospital_name || '',
-              hospital_address: p.hospital_address || '',
-              hospital_phone: p.hospital_phone || '',
+              chamber_id: p.chamber_id || p.appointment?.chamber_id || p.appointment?.chamber?.id || '',
+              chamber_name: p.chamber_name || p.appointment?.chamber?.chamber_name || p.appointment?.chamber?.hospital?.name || '',
+              chamber_name_bn: p.chamber_name_bn || p.appointment?.chamber?.hospital?.name_bn || '',
+              chamber_address: p.chamber_address || p.appointment?.chamber?.hospital?.address || '',
+              chamber_phone: p.chamber_phone || p.appointment?.chamber?.hospital?.phone || '',
+              chamber_hotline: p.chamber_hotline || p.appointment?.chamber?.hospital?.hotline || '',
+              chamber_website: p.chamber_website || p.appointment?.chamber?.hospital?.url || '',
+              chamber_logo: p.chamber_logo || p.appointment?.chamber?.hospital?.hospital_logo || '',
+              hospital_id: p.hospital_id || p.appointment?.hospital_id || p.appointment?.chamber?.hospital_id || '',
+              hospital_name: p.hospital_name || p.appointment?.chamber?.hospital?.name || p.appointment?.hospital?.name || '',
+              hospital_name_bn: p.hospital_name_bn || p.appointment?.chamber?.hospital?.name_bn || '',
+              hospital_address: p.hospital_address || p.appointment?.chamber?.hospital?.address || '',
+              hospital_phone: p.hospital_phone || p.appointment?.chamber?.hospital?.phone || '',
+              hospital_hotline: p.hospital_hotline || p.appointment?.chamber?.hospital?.hotline || '',
               hospital_email: p.hospital_email || '',
-              chamber_name: p.chamber_name || '',
+              hospital_website: p.hospital_website || p.appointment?.chamber?.hospital?.url || '',
+              hospital_logo: p.hospital_logo || p.appointment?.chamber?.hospital?.hospital_logo || '',
               medicines: Array.isArray(p.medicines) && p.medicines.length > 0 
                 ? p.medicines.map(m => ({
                     _id: Math.random().toString(36).substring(2, 9),
                     medicine_name: m.medicine_name || '',
-                    type: m.type || 'Tablet',
+                    type: m.type || '',
                     strength: m.strength || '',
-                    dose: m.dose || '1 Tablet',
-                    dosage: m.dosage || '1+0+1',
-                    duration: m.duration || '5 Days',
-                    meal: m.meal || 'After Meal',
+                    dose: m.dose || '',
+                    dosage: m.dosage || '',
+                    duration: m.duration || '',
+                    meal: m.meal || '',
                     instructions: m.instructions || ''
                   }))
                 : [emptyMedicine()]
@@ -1027,6 +1364,15 @@ export default function PrescriptionFormPage() {
             if (p.appointment) {
               setAppointmentInfo(p.appointment)
             }
+
+            if (p.vitals && typeof p.vitals === 'object' && Object.keys(p.vitals).length > 0) {
+              setVitals(prev => ({ ...prev, ...p.vitals }))
+            } else if (p.oe || p.weight || p.patient_weight) {
+              const parsed = parseVitalsFromOe(p.oe, p.patient_weight || p.weight)
+              if (parsed.bp_systolic || parsed.pulse || parsed.temp || parsed.weight || parsed.height_ft) {
+                setVitals(prev => ({ ...prev, ...parsed }))
+              }
+            }
           }
         })
         .catch(err => {
@@ -1044,17 +1390,114 @@ export default function PrescriptionFormPage() {
             if (!resolvedAge && dob) {
               resolvedAge = calculateAgeFromDob(dob) || ''
             }
-            setForm(prev => ({
-              ...prev,
-              appointment_id: appointmentId,
-              age: resolvedAge || prev.age,
-              sex: a.patient_sex || a.patient?.gender || prev.sex,
-              weight: a.patient_weight || prev.weight,
-              chamber_name: a.chamber?.chamber_name || a.chamber_name || '',
-              hospital_name: a.chamber?.hospital?.name || a.hospital_name || '',
-              patient_id: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.patient_id || a.user?.patient_id || a.patient?.id || a.user_id || '',
-              registration_no: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.registration_id || a.patient_id || ''
-            }))
+            const ch = a.chamber || {}
+            const hosp = ch.hospital || a.hospital || {}
+            const chName = ch.chamber_name || ch.name || hosp.name || a.chamber_name || ''
+            const hospName = hosp.name || a.hospital_name || chName
+            const hospAddr = hosp.address || ch.address || a.hospital_address || ''
+            const hospPhone = hosp.phone || hosp.hotline || ch.phone || a.hospital_phone || ''
+            const hospHotline = hosp.hotline || hosp.phone || ch.hotline || a.hospital_phone || ''
+            const hospWeb = hosp.url || hosp.website || (hosp.slug ? `www.${hosp.slug}.com` : '') || ''
+            const hospLogo = hosp.hospital_logo || hosp.photo_url || hosp.photo || ''
+
+            const p = a.prescription
+            if (p && p.status === 'draft') {
+              setIsDraftStatus(true)
+              setActiveDraftId(p.id)
+              setForm(prev => ({
+                ...prev,
+                appointment_id: appointmentId,
+                diagnosis: p.diagnosis || '',
+                advice: p.advice || '',
+                follow_up_date: p.follow_up_date ? p.follow_up_date.split('T')[0] : '',
+                follow_up_offset: '5 Days',
+                cc: p.cc || '',
+                oe: p.oe || '',
+                oh: p.oh || '',
+                mh: p.mh || '',
+                notes: p.notes || '',
+                investigation: p.investigation || '',
+                age: resolvedAge || p.patient_age || p.age || prev.age,
+                sex: a.patient_sex || a.patient?.gender || p.patient_sex || p.sex || prev.sex,
+                weight: a.patient_weight || p.patient_weight || p.weight || prev.weight,
+                chamber_id: p.chamber_id || ch.id || ch.public_id || a.chamber_id || prev.chamber_id || '',
+                chamber_name: p.chamber_name || chName || prev.chamber_name || '',
+                chamber_name_bn: p.chamber_name_bn || ch.name_bn || hosp.name_bn || prev.chamber_name_bn || '',
+                chamber_address: p.chamber_address || hospAddr || prev.chamber_address || '',
+                chamber_phone: p.chamber_phone || hospPhone || prev.chamber_phone || '',
+                chamber_hotline: p.chamber_hotline || hospHotline || prev.chamber_hotline || '',
+                chamber_website: p.chamber_website || hospWeb || prev.chamber_website || '',
+                chamber_logo: p.chamber_logo || hospLogo || prev.chamber_logo || '',
+                hospital_id: p.hospital_id || hosp.id || prev.hospital_id || '',
+                hospital_name: p.hospital_name || hospName || prev.hospital_name || '',
+                hospital_name_bn: p.hospital_name_bn || hosp.name_bn || prev.hospital_name_bn || '',
+                hospital_address: p.hospital_address || hospAddr || prev.hospital_address || '',
+                hospital_phone: p.hospital_phone || hospPhone || prev.hospital_phone || '',
+                hospital_hotline: p.hospital_hotline || hospHotline || prev.hospital_hotline || '',
+                hospital_website: p.hospital_website || hospWeb || prev.hospital_website || '',
+                hospital_logo: p.hospital_logo || hospLogo || prev.hospital_logo || '',
+                patient_id: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.patient_id || a.user?.patient_id || a.patient?.id || a.user_id || '',
+                registration_no: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.registration_id || a.patient_id || '',
+                medicines: Array.isArray(p.medicines) && p.medicines.length > 0 
+                  ? p.medicines.map(m => ({
+                      _id: Math.random().toString(36).substring(2, 9),
+                      medicine_name: m.medicine_name || '',
+                      type: m.type || '',
+                      strength: m.strength || '',
+                      dose: m.dose || '',
+                      dosage: m.dosage || '',
+                      duration: m.duration || '',
+                      meal: m.meal || '',
+                      instructions: m.instructions || ''
+                    }))
+                  : (prev.medicines?.length ? prev.medicines : [emptyMedicine()])
+              }))
+
+              if (p.investigation) {
+                setInvestigationList(p.investigation.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))
+              }
+              if (p.advice) {
+                const lines = p.advice.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
+                setAdviceChecklist(lines.map((l, i) => ({ id: `adv_${i}`, text: l, checked: true })))
+              }
+              if (p.vitals && typeof p.vitals === 'object' && Object.keys(p.vitals).length > 0) {
+                setVitals(prev => ({ ...prev, ...p.vitals }))
+              } else if (p.oe || p.weight || a.patient_weight) {
+                const parsed = parseVitalsFromOe(p.oe, p.weight || a.patient_weight)
+                if (parsed.bp_systolic || parsed.pulse || parsed.temp || parsed.weight || parsed.height_ft) {
+                  setVitals(prev => ({ ...prev, ...parsed }))
+                }
+              }
+            } else {
+              if (a.patient_weight) {
+                setVitals(prev => ({ ...prev, weight: a.patient_weight }))
+              }
+              setForm(prev => ({
+                ...prev,
+                appointment_id: appointmentId,
+                age: resolvedAge || prev.age,
+                sex: a.patient_sex || a.patient?.gender || prev.sex,
+                weight: a.patient_weight || prev.weight,
+                chamber_id: ch.id || ch.public_id || a.chamber_id || prev.chamber_id || '',
+                chamber_name: chName || prev.chamber_name || '',
+                chamber_name_bn: ch.name_bn || hosp.name_bn || prev.chamber_name_bn || '',
+                chamber_address: hospAddr || prev.chamber_address || '',
+                chamber_phone: hospPhone || prev.chamber_phone || '',
+                chamber_hotline: hospHotline || prev.chamber_hotline || '',
+                chamber_website: hospWeb || prev.chamber_website || '',
+                chamber_logo: hospLogo || prev.chamber_logo || '',
+                hospital_id: hosp.id || prev.hospital_id || '',
+                hospital_name: hospName || prev.hospital_name || '',
+                hospital_name_bn: hosp.name_bn || prev.hospital_name_bn || '',
+                hospital_address: hospAddr || prev.hospital_address || '',
+                hospital_phone: hospPhone || prev.hospital_phone || '',
+                hospital_hotline: hospHotline || prev.hospital_hotline || '',
+                hospital_website: hospWeb || prev.hospital_website || '',
+                hospital_logo: hospLogo || prev.hospital_logo || '',
+                patient_id: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.patient_id || a.user?.patient_id || a.patient?.id || a.user_id || '',
+                registration_no: a.patient_public_id || a.patient?.public_id || a.patient?.patient_id || a.registration_id || a.patient_id || ''
+              }))
+            }
           }
         })
         .catch(() => {})
@@ -1247,55 +1690,260 @@ export default function PrescriptionFormPage() {
   }
 
   // Auto-Save & Draft Storage Handler
-  const performSaveDraft = (silent = false) => {
+  const performSaveDraft = async (silent = false, overrideApptId = null, overrideForm = null) => {
     setAutoSaveStatus('saving')
     try {
+      const activeForm = overrideForm || form
+      // 1. Client-side backup
       const draftData = {
-        form,
+        form: activeForm,
         investigationList,
         adviceChecklist,
         customSections,
+        walkInPatientInfo,
+        walkInForm,
+        appointmentInfo,
+        vitals,
+        activeDraftId: activeDraftId || undefined,
         savedAt: new Date().toISOString()
       }
       localStorage.setItem(draftKey, JSON.stringify(draftData))
       const now = Date.now()
       setLastSavedTime(now)
       setHasUnsavedChanges(false)
+
+      // 2. Database Draft Sync (if appointment exists)
+      // Use the public_id (string) for the appointment identifier — backend resolves it via IdentifierResolver
+      const rawApptId = overrideApptId
+        || appointmentInfo?.public_id || appointmentInfo?.id
+        || activeForm.appointment_id
+        || appointmentId
+        || undefined
+      const targetApptId = rawApptId  // used for label only
+      if (rawApptId) {
+        const cleanMeds = (activeForm.medicines || [])
+          .filter(m => m.medicine_name && m.medicine_name.trim())
+          .map(m => ({
+            medicine_name: m.medicine_name.trim(),
+            type: m.type || 'Tablet',
+            strength: m.strength || '',
+            dose: m.dose || '1 Tablet',
+            dosage: m.dosage || m.frequency || '1+0+1',
+            duration: m.duration || '5 Days',
+            meal: m.meal || 'After Meal',
+            instructions: m.instructions || ''
+          }))
+
+        const currentDraftId = activeDraftId || (isEdit && id ? id : null)
+
+        if (currentDraftId) {
+          // UPDATE — don't need appointment_id, add chamber_id for syncing
+          const updatePayload = {
+            chamber_id: activeForm.chamber_id || undefined,
+            status: 'draft',
+            diagnosis: activeForm.diagnosis || '',
+            medicines: cleanMeds,
+            advice: activeForm.advice || '',
+            follow_up_date: activeForm.follow_up_date || undefined,
+            cc: activeForm.cc || '',
+            oe: activeForm.oe || '',
+            oh: activeForm.oh || '',
+            mh: activeForm.mh || '',
+            ...(canViewNotes ? { notes: activeForm.notes } : {}),
+            investigation: activeForm.investigation || '',
+            vitals: vitals || undefined,
+            age: activeForm.age || '',
+            sex: activeForm.sex || 'Male',
+            weight: activeForm.weight || '',
+            registration_no: activeForm.registration_no || activeForm.patient_public_id || '',
+            visited_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          }
+          await updatePrescription(currentDraftId, updatePayload)
+          setIsDraftStatus(true)
+        } else {
+          // CREATE — use appointment_public_id for backend resolution
+          const createPayload = {
+            appointment_public_id: rawApptId,
+            chamber_id: activeForm.chamber_id || undefined,
+            status: 'draft',
+            diagnosis: activeForm.diagnosis || '',
+            medicines: cleanMeds,
+            advice: activeForm.advice || '',
+            follow_up_date: activeForm.follow_up_date || undefined,
+            cc: activeForm.cc || '',
+            oe: activeForm.oe || '',
+            oh: activeForm.oh || '',
+            mh: activeForm.mh || '',
+            ...(canViewNotes ? { notes: activeForm.notes } : {}),
+            investigation: activeForm.investigation || '',
+            vitals: vitals || undefined,
+            age: activeForm.age || '',
+            sex: activeForm.sex || 'Male',
+            weight: activeForm.weight || '',
+            registration_no: activeForm.registration_no || activeForm.patient_public_id || '',
+            visited_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          }
+          const res = await createPrescription(createPayload)
+          const newDraftId = res.data?.data?.id || res.data?.id
+          if (newDraftId) {
+            setActiveDraftId(newDraftId)
+            setIsDraftStatus(true)
+            window.history.replaceState(null, '', `/admin/prescriptions/edit/${newDraftId}`)
+          }
+        }
+      }
+
       setAutoSaveStatus('saved')
-      setAutoSaveLabel('Auto saved just now')
+      setAutoSaveLabel(targetApptId ? 'Draft saved to Doctor Panel' : 'Auto saved locally')
       if (!silent) {
-        showSuccess({ title: 'Draft Saved', message: 'Prescription draft saved to local storage.' })
+        showSuccess({
+          title: 'Draft Saved',
+          message: targetApptId
+            ? 'Prescription draft saved to your Doctor Panel.'
+            : 'Prescription draft saved to local browser storage.'
+        })
       }
     } catch (err) {
       console.error('Failed to save draft:', err)
       setAutoSaveStatus('unsaved')
       if (!silent) {
-        showError({ title: 'Save Error', message: 'Could not save draft to local storage.' })
+        showError({ title: 'Save Error', message: getErrorMessage(err, 'Could not save draft.') })
       }
     }
   }
 
+  // Ref tracking latest state for clean unmount/navigation auto-save
+  const latestDraftRef = useRef({})
+  useEffect(() => {
+    latestDraftRef.current = {
+      form,
+      investigationList,
+      adviceChecklist,
+      customSections,
+      walkInPatientInfo,
+      walkInForm,
+      appointmentInfo,
+      vitals,
+      activeDraftId,
+      // Prefer public_id (string) so backend IdentifierResolver can resolve it
+      targetApptId: appointmentInfo?.public_id || form.appointment_id || appointmentId,
+      hasUnsavedChanges,
+      isEdit,
+      id
+    }
+  })
+
+  // Flush draft on unmount / page navigation / beforeunload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const state = latestDraftRef.current
+      if (state?.form) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify({
+            form: state.form,
+            investigationList: state.investigationList,
+            adviceChecklist: state.adviceChecklist,
+            customSections: state.customSections,
+            walkInPatientInfo: state.walkInPatientInfo,
+            walkInForm: state.walkInForm,
+            appointmentInfo: state.appointmentInfo,
+            vitals: state.vitals,
+            activeDraftId: state.activeDraftId,
+            savedAt: new Date().toISOString()
+          }))
+        } catch (e) {}
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      const state = latestDraftRef.current
+      if (state?.hasUnsavedChanges) {
+        const cleanMeds = (state.form.medicines || [])
+          .filter(m => m.medicine_name && m.medicine_name.trim())
+          .map(m => ({
+            medicine_name: m.medicine_name.trim(),
+            type: m.type || 'Tablet',
+            strength: m.strength || '',
+            dose: m.dose || '1 Tablet',
+            dosage: m.dosage || m.frequency || '1+0+1',
+            duration: m.duration || '5 Days',
+            meal: m.meal || 'After Meal',
+            instructions: m.instructions || ''
+          }))
+
+        const basePayload = {
+          chamber_id: state.form.chamber_id || undefined,
+          status: 'draft',
+          diagnosis: state.form.diagnosis || '',
+          medicines: cleanMeds,
+          advice: state.form.advice || '',
+          follow_up_date: state.form.follow_up_date || undefined,
+          cc: state.form.cc || '',
+          oe: state.form.oe || '',
+          oh: state.form.oh || '',
+          mh: state.form.mh || '',
+          investigation: state.form.investigation || '',
+          vitals: state.vitals || undefined,
+          age: state.form.age || '',
+          sex: state.form.sex || 'Male',
+          weight: state.form.weight || '',
+          registration_no: state.form.registration_no || state.form.patient_public_id || '',
+          visited_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        }
+
+        const draftId = state.activeDraftId || (state.isEdit && state.id ? state.id : null)
+        if (draftId) {
+          updatePrescription(draftId, basePayload).catch(e => console.warn('Unmount update draft error', e))
+        } else if (state.targetApptId) {
+          createPrescription({ ...basePayload, appointment_public_id: state.targetApptId }).catch(e => console.warn('Unmount create draft error', e))
+        }
+      }
+    }
+  }, [draftKey])
+
   // Restore draft on mount if available (for new prescriptions)
+  // This effect re-runs when draftKey changes (i.e. when doctorScopeId becomes available after login)
+  // Uses draftRestoredRef to prevent double-restore — only restores once
   useEffect(() => {
     if (isEdit && id) return
+    // Only restore once — prevent overwriting if appointment data already loaded
+    if (draftRestoredRef.current) return
     try {
-      const saved = localStorage.getItem(draftKey)
+      // Try the current (possibly scoped) draftKey first; fallback to 'anon' key if doctorScopeId just resolved
+      const anonKey = `dr_rx_draft_anon_${appointmentId || (activeDraftId || id ? `rx_${activeDraftId || id}` : 'walkin')}`
+      const saved = localStorage.getItem(draftKey) || (doctorScopeId ? localStorage.getItem(anonKey) : null)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed?.form) {
           const hasMeds = Array.isArray(parsed.form.medicines) && parsed.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
-          const hasText = !!(parsed.form.diagnosis?.trim() || parsed.form.advice?.trim() || parsed.form.cc?.trim())
+          const hasText = !!(parsed.form.diagnosis?.trim() || parsed.form.advice?.trim() || parsed.form.cc?.trim() || parsed.form.patient_name?.trim())
           if (hasMeds || hasText) {
+            draftRestoredRef.current = true
             setForm(prev => ({ ...prev, ...parsed.form }))
             if (Array.isArray(parsed.investigationList)) setInvestigationList(parsed.investigationList)
             if (Array.isArray(parsed.adviceChecklist)) setAdviceChecklist(parsed.adviceChecklist)
             if (Array.isArray(parsed.customSections)) setCustomSections(parsed.customSections)
+            if (parsed.walkInPatientInfo) setWalkInPatientInfo(parsed.walkInPatientInfo)
+            if (parsed.walkInForm) setWalkInForm(parsed.walkInForm)
+            if (parsed.appointmentInfo) setAppointmentInfo(parsed.appointmentInfo)
+            if (parsed.vitals && typeof parsed.vitals === 'object') setVitals(parsed.vitals)
+            if (parsed.activeDraftId) {
+              setActiveDraftId(parsed.activeDraftId)
+              setIsDraftStatus(true)
+            }
             if (parsed.savedAt) setLastSavedTime(new Date(parsed.savedAt).getTime())
+            // Migrate anon key to scoped key if needed
+            if (doctorScopeId && !localStorage.getItem(draftKey)) {
+              localStorage.setItem(draftKey, saved)
+              localStorage.removeItem(anonKey)
+            }
           }
         }
       }
     } catch (e) {}
-  }, [draftKey])
+  }, [draftKey, doctorScopeId])
 
   // Relative time ticker for Auto-save pill
   useEffect(() => {
@@ -1314,7 +1962,7 @@ export default function PrescriptionFormPage() {
     return () => clearInterval(timer)
   }, [lastSavedTime])
 
-  // Debounced background auto-save on modifications
+  // Debounced background auto-save on modifications (800ms debounce)
   const isInitialMount = useRef(true)
   useEffect(() => {
     if (isInitialMount.current) {
@@ -1326,12 +1974,12 @@ export default function PrescriptionFormPage() {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     autoSaveTimerRef.current = setTimeout(() => {
       performSaveDraft(true)
-    }, 12000)
+    }, 800)
 
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
-  }, [form, investigationList, adviceChecklist, customSections])
+  }, [form, investigationList, adviceChecklist, customSections, vitals])
 
   // Modal Handlers for Assigning/Updating Age & Gender (Bidirectional Age & DOB Sync)
   const handleOpenAssignAgeModal = () => {
@@ -2110,13 +2758,19 @@ export default function PrescriptionFormPage() {
 
   const handleSaveVitals = (e) => {
     e.preventDefault()
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const updatedVitals = { ...vitals, recorded_at: vitals.recorded_at || nowStr }
+    setVitals(updatedVitals)
     setForm(prev => ({
       ...prev,
-      weight: vitals.weight,
-      oe: `BP: ${vitals.bp_systolic}/${vitals.bp_diastolic} mmHg, Pulse: ${vitals.pulse} bpm, Temp: ${vitals.temp}°F, Wt: ${vitals.weight} kg, Ht: ${vitals.height_ft} ft (BMI: ${currentBMI.val})`
+      weight: updatedVitals.weight,
+      oe: `BP: ${updatedVitals.bp_systolic}/${updatedVitals.bp_diastolic} mmHg, Pulse: ${updatedVitals.pulse} bpm, Temp: ${updatedVitals.temp}°F, Wt: ${updatedVitals.weight} kg, Ht: ${updatedVitals.height_ft} ft (BMI: ${currentBMI.val})`
     }))
     setShowVitalsModal(false)
     showSuccess({ title: 'Vitals Updated', message: 'Patient vitals recorded and synced to examination notes.' })
+    setTimeout(() => {
+      performSaveDraft(true)
+    }, 100)
   }
 
   const handleSubmit = async (e) => {
@@ -2130,9 +2784,13 @@ export default function PrescriptionFormPage() {
       .filter(m => m.medicine_name && m.medicine_name.trim())
       .map(m => ({
         medicine_name: m.medicine_name.trim(),
+        type: m.type || 'Tablet',
+        strength: m.strength || '',
+        dose: m.dose || '1 Tablet',
         dosage: m.dosage || m.frequency || '1+0+1',
         duration: m.duration || '5 Days',
-        instructions: m.instructions ? `${m.meal ? m.meal + ' - ' : ''}${m.instructions}` : (m.meal || 'After Meal')
+        meal: m.meal || 'After Meal',
+        instructions: m.instructions || ''
       }))
 
     if (cleanMeds.length === 0) {
@@ -2141,9 +2799,11 @@ export default function PrescriptionFormPage() {
     }
 
     setSaving(true)
-    const payload = {
-      appointment_id: form.appointment_id || undefined,
-      diagnosis: form.diagnosis,
+    // Base payload — no appointment_id (backend doesn't need it for updates; for creates we use appointment_public_id)
+    const basePayload = {
+      chamber_id: form.chamber_id || undefined,
+      status: 'finalized',
+      diagnosis: form.diagnosis.trim(),
       medicines: cleanMeds,
       advice: form.advice,
       follow_up_date: form.follow_up_date || undefined,
@@ -2153,26 +2813,36 @@ export default function PrescriptionFormPage() {
       mh: form.mh,
       ...(canViewNotes ? { notes: form.notes } : {}),
       investigation: form.investigation,
+      vitals: vitals || undefined,
       age: form.age,
       sex: form.sex,
       weight: form.weight,
+      registration_no: form.registration_no || form.patient_public_id,
       visited_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     }
 
     try {
-      if (isEdit && id) {
-        await updatePrescription(id, payload)
+      const targetId = activeDraftId || (isEdit && id ? id : null)
+      if (targetId) {
+        await updatePrescription(targetId, basePayload)
         showSuccess({
-          title: DIALOG_MESSAGES.UPDATE_SUCCESS.title,
-          message: 'Prescription updated successfully.'
+          title: 'Prescription Completed',
+          message: 'Prescription finalized successfully and moved out of drafts.'
         })
-        navigate(returnTo)
+        try {
+          localStorage.removeItem(draftKey)
+        } catch (e) {}
+        navigate(`/admin/prescriptions/view/${targetId}`)
       } else {
-        const res = await createPrescription(payload)
+        const rawApptId = appointmentInfo?.public_id || form.appointment_id || appointmentId
+        const res = await createPrescription(rawApptId
+          ? { ...basePayload, appointment_public_id: rawApptId }
+          : basePayload
+        )
         const newId = res.data?.data?.id || res.data?.id
         showSuccess({
-          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-          message: 'Prescription created successfully.'
+          title: 'Prescription Completed',
+          message: 'Prescription created and finalized successfully.'
         })
         try {
           localStorage.removeItem(draftKey)
@@ -2252,6 +2922,258 @@ export default function PrescriptionFormPage() {
     }
   }
 
+  const handleConfirmWalkInPatient = async (e) => {
+    e.preventDefault()
+
+    const errors = {}
+    const trimmedName = (walkInForm.name || '').trim()
+    const trimmedAge = String(walkInForm.age || '').trim()
+    const trimmedPhone = (walkInForm.phone || '').trim()
+
+    // Required Field 1: Full Name
+    if (!trimmedName) {
+      errors.name = 'Please enter patient full name.'
+    }
+
+    // Required Field 2: Age (years)
+    if (!trimmedAge) {
+      errors.age = 'Please enter patient age.'
+    } else {
+      const numAge = parseInt(trimmedAge, 10)
+      if (isNaN(numAge) || numAge < 0 || numAge > 150) {
+        errors.age = 'Please enter a valid age (0–150).'
+      }
+    }
+
+    // Required Field 3: Phone Number (must be verified Bangladeshi mobile number)
+    if (!trimmedPhone) {
+      errors.phone = 'Please enter mobile number.'
+    } else if (!isValidBdMobile(trimmedPhone)) {
+      errors.phone = 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01712-345678).'
+    }
+
+    // Required Field 4: Visiting Chamber (if doctor has registered chambers)
+    if (doctorChambers.length > 0 && !walkInForm.chamber_id) {
+      errors.chamber_id = 'Please select a chamber where you are consulting.'
+    }
+
+    // If any validation error exists, show below field and abort without popup
+    if (Object.keys(errors).length > 0) {
+      setWalkInErrors(errors)
+      return
+    }
+
+    setWalkInErrors({})
+    const normalizedPhone = normalizeBdMobile(trimmedPhone)
+
+    setIsCheckingWalkInPhone(true)
+    try {
+      const checkRes = await checkPatientPhone(normalizedPhone)
+      setIsCheckingWalkInPhone(false)
+
+      if (checkRes.data?.registered) {
+        const pData = checkRes.data.data
+        // Connect patient to doctor via appointment
+        setIsCheckingWalkInPhone(true)
+        let regData = null
+        try {
+          const regRes = await quickRegisterPatient({
+            name: pData.name || trimmedName,
+            phone: normalizedPhone,
+            age: pData.age ? String(pData.age) : trimmedAge,
+            sex: walkInForm.sex,
+            address: pData.address || walkInForm.address,
+            chamber_id: walkInForm.chamber_id || undefined,
+            doctor_id: user?.doctor?.id || undefined,
+          })
+          regData = regRes.data?.data
+        } catch (e) {
+          console.warn('Quick register existing patient error:', e)
+        }
+        setIsCheckingWalkInPhone(false)
+
+        const apptId = regData?.appointment_public_id || regData?.appointment_id || undefined
+        const pPublicId = regData?.patient_public_id || regData?.public_id || pData.public_id
+
+        showSuccess({
+          title: 'নিবন্ধিত রোগী পাওয়া গেছে',
+          message: `রোগী: ${pData.name || trimmedName} (ID: ${pPublicId})। কনসালটেশন অ্যাপয়েন্টমেন্ট তৈরি হয়েছে।`,
+          autoCloseMs: 3500,
+        })
+
+        const info = {
+          ...walkInForm,
+          name: pData.name || trimmedName,
+          phone: pData.phone || normalizedPhone,
+          registration_no: pPublicId,
+          patient_id: pPublicId,
+          age: pData.age ? String(pData.age) : trimmedAge,
+          sex: pData.gender ? (pData.gender.toLowerCase() === 'female' ? 'Female' : (pData.gender.toLowerCase() === 'other' ? 'Other' : 'Male')) : walkInForm.sex,
+          address: pData.address || walkInForm.address,
+          chamber_id: regData?.chamber_id || walkInForm.chamber_id,
+          chamber_name: regData?.chamber_name || walkInForm.chamber_name,
+          hospital_name: regData?.hospital_name || walkInForm.hospital_name,
+          hospital_address: regData?.hospital_address || walkInForm.hospital_address,
+          hospital_phone: regData?.hospital_phone || walkInForm.hospital_phone,
+        }
+        setWalkInPatientInfo(info)
+        setWalkInForm(info)
+
+        if (regData?.appointment_id || regData?.appointment_public_id) {
+          setAppointmentInfo(prev => ({
+            ...(prev || {}),
+            id: regData.appointment_id,
+            public_id: regData.appointment_public_id,
+            chamber_id: regData.chamber_id || walkInForm.chamber_id,
+            chamber_name: regData.chamber_name || walkInForm.chamber_name,
+            hospital_name: regData.hospital_name || walkInForm.hospital_name,
+          }))
+        }
+
+        const updatedForm = {
+          ...form,
+          appointment_id: apptId || form.appointment_id,
+          patient_name: info.name,
+          patient_public_id: pPublicId,
+          registration_no: pPublicId,
+          age: info.age || form.age,
+          sex: info.sex || form.sex,
+          chamber_id: info.chamber_id || form.chamber_id,
+          chamber_name: info.chamber_name || form.chamber_name,
+          hospital_name: info.hospital_name || form.hospital_name,
+          hospital_address: info.hospital_address || form.hospital_address,
+          hospital_phone: info.hospital_phone || form.hospital_phone,
+        }
+        setForm(updatedForm)
+        setShowWalkInModal(false)
+
+        // Immediately auto-save draft to Doctor Panel
+        if (apptId) {
+          setTimeout(() => {
+            performSaveDraft(true, apptId, updatedForm)
+          }, 300)
+        }
+        return
+      } else {
+        // Phone is NOT registered — prompt doctor for confirmation
+        const shouldCreate = await confirm({
+          title: 'নতুন রোগী হিসেবে ডাটাবেজে সংরক্ষণ করবেন?',
+          message: `"${normalizedPhone}" মোবাইল নম্বরটি ডাটাবেজে নিবন্ধিত নেই। আপনি কি "${trimmedName}"-কে Public ID সহ ডাটাবেজে নতুন রোগী হিসেবে তৈরি করতে চান?`,
+          confirmText: 'হ্যাঁ, তৈরি করুন',
+          cancelText: 'না, শুধু প্রেসক্রিপশনে রাখুন',
+          variant: 'primary',
+        })
+
+        if (shouldCreate) {
+          setIsCheckingWalkInPhone(true)
+          try {
+            const regRes = await quickRegisterPatient({
+              name: trimmedName,
+              phone: normalizedPhone,
+              age: trimmedAge,
+              sex: walkInForm.sex,
+              address: walkInForm.address,
+              chamber_id: walkInForm.chamber_id || undefined,
+              doctor_id: user?.doctor?.id || undefined,
+            })
+            setIsCheckingWalkInPhone(false)
+            const newPatient = regRes.data?.data
+            const newPublicId = newPatient?.public_id || newPatient?.patient_public_id
+            const apptId = newPatient?.appointment_public_id || newPatient?.appointment_id || undefined
+
+            showSuccess({
+              title: 'রোগী ডাটাবেজে সংরক্ষিত হয়েছে',
+              message: `রোগী সফলভাবে সংরক্ষিত হয়েছে! Public ID: ${newPublicId}`,
+            })
+
+            const info = {
+              ...walkInForm,
+              name: trimmedName,
+              phone: normalizedPhone,
+              age: trimmedAge,
+              registration_no: newPublicId,
+              patient_id: newPublicId,
+              chamber_id: newPatient?.chamber_id || walkInForm.chamber_id,
+              chamber_name: newPatient?.chamber_name || walkInForm.chamber_name,
+              hospital_name: newPatient?.hospital_name || walkInForm.hospital_name,
+              hospital_address: newPatient?.hospital_address || walkInForm.hospital_address,
+              hospital_phone: newPatient?.hospital_phone || walkInForm.hospital_phone,
+            }
+            setWalkInPatientInfo(info)
+            setWalkInForm(info)
+            if (newPatient?.appointment_id || newPatient?.appointment_public_id) {
+              setAppointmentInfo(prev => ({
+                ...(prev || {}),
+                id: newPatient.appointment_id,
+                public_id: newPatient.appointment_public_id,
+                chamber_id: newPatient.chamber_id || walkInForm.chamber_id,
+                chamber_name: newPatient.chamber_name || walkInForm.chamber_name,
+                hospital_name: newPatient.hospital_name || walkInForm.hospital_name,
+              }))
+            }
+            const updatedForm = {
+              ...form,
+              appointment_id: apptId || form.appointment_id,
+              patient_name: info.name,
+              patient_public_id: newPublicId,
+              registration_no: newPublicId,
+              age: info.age || form.age,
+              sex: info.sex || form.sex,
+              chamber_id: info.chamber_id || form.chamber_id,
+              chamber_name: info.chamber_name || form.chamber_name,
+              hospital_name: info.hospital_name || form.hospital_name,
+              hospital_address: info.hospital_address || form.hospital_address,
+              hospital_phone: info.hospital_phone || form.hospital_phone,
+            }
+            setForm(updatedForm)
+            setShowWalkInModal(false)
+
+            // Immediately auto-save draft to Doctor Panel
+            if (apptId) {
+              setTimeout(() => {
+                performSaveDraft(true, apptId, updatedForm)
+              }, 300)
+            }
+            return
+          } catch (regErr) {
+            setIsCheckingWalkInPhone(false)
+            showError({
+              title: 'Registration Error',
+              message: getErrorMessage(regErr, 'Failed to register patient in database.')
+            })
+            return
+          }
+        }
+      }
+    } catch (chkErr) {
+      setIsCheckingWalkInPhone(false)
+      console.error('Phone check error:', chkErr)
+    }
+
+    // Fallback or doctor chose "No": just save to local walk-in state
+    const info = {
+      ...walkInForm,
+      name: trimmedName,
+      phone: normalizedPhone,
+      age: trimmedAge
+    }
+    setWalkInPatientInfo(info)
+    setWalkInForm(info)
+    setForm(prev => ({
+      ...prev,
+      patient_name: info.name,
+      age: info.age || prev.age,
+      sex: info.sex || prev.sex,
+      registration_no: info.registration_no || prev.registration_no,
+      chamber_id: info.chamber_id || prev.chamber_id,
+      chamber_name: info.chamber_name || prev.chamber_name,
+      hospital_name: info.hospital_name || prev.hospital_name,
+      hospital_address: info.hospital_address || prev.hospital_address,
+      hospital_phone: info.hospital_phone || prev.hospital_phone,
+    }))
+    setShowWalkInModal(false)
+  }
+
   if (loading) {
     return (
       <div className="admin-loading">
@@ -2269,7 +3191,22 @@ export default function PrescriptionFormPage() {
           <div className="dr-brand-icon">
             <PenLine size={16} color="#2563eb" strokeWidth={2.5} />
           </div>
-          <h1 className="dr-header-title">{isEdit ? 'Edit Prescription' : 'Prescription'}</h1>
+          <h1 className="dr-header-title">{isDraftStatus ? 'Draft Prescription' : isEdit ? 'Edit Prescription' : 'Prescription'}</h1>
+          {isDraftStatus && (
+            <span style={{
+              fontSize: 11,
+              fontWeight: 800,
+              background: '#fef3c7',
+              color: '#d97706',
+              border: '1px solid #fcd34d',
+              padding: '2px 8px',
+              borderRadius: 6,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Draft / খসড়া
+            </span>
+          )}
           <button 
             type="button" 
             className={`dr-status-pill dr-auto-save-btn ${autoSaveStatus === 'saving' ? 'is-saving' : ''} ${hasUnsavedChanges ? 'has-unsaved' : 'is-saved'}`}
@@ -2398,7 +3335,10 @@ export default function PrescriptionFormPage() {
             </div>
             <button
               type="button"
-              onClick={() => setShowWalkInModal(true)}
+              onClick={() => {
+                setWalkInErrors({})
+                setShowWalkInModal(true)
+              }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 20px', borderRadius: 8,
@@ -2503,6 +3443,47 @@ export default function PrescriptionFormPage() {
               <span className="dr-meta-value">{patientAddress}</span>
             </div>
 
+            <div className="dr-patient-meta-block" title="Visiting Chamber for this prescription" style={{ minWidth: 160 }}>
+              <span className="dr-meta-label">Consulting Chamber (চেম্বার)</span>
+              {doctorChambers && doctorChambers.length > 1 ? (
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 2 }}>
+                  <MapPin size={11} style={{ position: 'absolute', left: 7, color: '#2563eb', pointerEvents: 'none', zIndex: 1 }} />
+                  <select
+                    value={form.chamber_id || ''}
+                    onChange={(e) => handleSelectChamber(e.target.value)}
+                    aria-label="Select Consulting Chamber"
+                    style={{
+                      padding: '2px 8px 2px 22px',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: '#1e40af',
+                      background: '#eff6ff',
+                      border: '1.5px solid #93c5fd',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      maxWidth: 240,
+                      outline: 'none',
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {doctorChambers.map(ch => {
+                      const chName = ch.chamber_name || ch.hospital?.name || `Chamber #${ch.room_number || ch.id}`
+                      return (
+                        <option key={ch.id || ch.public_id} value={ch.id || ch.public_id}>
+                          {chName} {ch.room_number ? `(Room ${ch.room_number})` : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+              ) : (
+                <span className="dr-meta-value" style={{ color: '#2563eb', fontWeight: 600 }}>
+                  <MapPin size={11} style={{ display: 'inline', marginRight: 4 }} />
+                  {form.chamber_name || form.hospital_name || doctorChambers[0]?.chamber_name || doctorChambers[0]?.hospital?.name || walkInPatientInfo?.chamber_name || walkInPatientInfo?.hospital_name || 'Main Chamber'}
+                </span>
+              )}
+            </div>
+
             <div className="dr-patient-meta-block">
               <span className="dr-meta-label">Visit & Time</span>
               <span className="dr-meta-value" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0d9488', fontWeight: 700 }}>
@@ -2530,6 +3511,7 @@ export default function PrescriptionFormPage() {
                   type="button"
                   className="dr-view-profile-btn"
                   onClick={() => {
+                    setWalkInErrors({})
                     setWalkInForm({ ...walkInPatientInfo })
                     setShowWalkInModal(true)
                   }}
@@ -2632,38 +3614,24 @@ export default function PrescriptionFormPage() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && diagnosisSearchInput.trim()) {
                           e.preventDefault()
-                          setForm(prev => ({ ...prev, diagnosis: diagnosisSearchInput.trim() }))
+                          handleAddDiagnosis(diagnosisSearchInput.trim())
                           setDiagnosisSearchInput('')
                         }
                       }}
                     />
                   </div>
 
-                  {form.diagnosis && (
-                    <div className="dr-diagnosis-chip">
-                      <span>{form.diagnosis}</span>
-                      <button 
-                        type="button" 
-                        className="dr-chip-remove" 
-                        onClick={() => setForm(prev => ({ ...prev, diagnosis: '' }))}
-                        title="Clear Diagnosis"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  )}
-
                   <button 
                     type="button" 
                     className="dr-btn-blue-outline"
                     onClick={() => {
                       if (diagnosisSearchInput.trim()) {
-                        setForm(prev => ({ ...prev, diagnosis: diagnosisSearchInput.trim() }))
+                        handleAddDiagnosis(diagnosisSearchInput.trim())
                         setDiagnosisSearchInput('')
                       }
                     }}
                   >
-                    <Plus size={14} /> Set Diagnosis
+                    <Plus size={14} /> Add Diagnosis
                   </button>
 
                   {diagnosisSearchInput.trim() && (
@@ -2674,7 +3642,7 @@ export default function PrescriptionFormPage() {
                       onClick={() => {
                         const val = diagnosisSearchInput.trim()
                         handleSaveClinicalPreset('diagnosis', val)
-                        setForm(prev => ({ ...prev, diagnosis: val }))
+                        handleAddDiagnosis(val)
                         setDiagnosisSearchInput('')
                       }}
                     >
@@ -2683,6 +3651,36 @@ export default function PrescriptionFormPage() {
                   )}
                 </div>
 
+                {/* Selected Diagnoses Chips */}
+                {diagnosisList.length > 0 && (
+                  <div className="dr-chips-wrap" style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginRight: 4 }}>
+                      Selected ({diagnosisList.length}):
+                    </span>
+                    {diagnosisList.map((diag, idx) => (
+                      <div key={idx} className="dr-diagnosis-chip" style={{ flex: '0 0 auto', background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
+                        <span>{diag}</span>
+                        <button 
+                          type="button" 
+                          className="dr-chip-remove" 
+                          onClick={() => handleRemoveDiagnosis(diag)}
+                          title={`Remove "${diag}"`}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                    <button 
+                      type="button" 
+                      style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', fontWeight: 600 }}
+                      onClick={() => setForm(prev => ({ ...prev, diagnosis: '' }))}
+                      title="Clear all diagnoses"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                )}
+
                 {/* Doctor's Saved Diagnosis Presets */}
                 {diagnosisPresets.length > 0 && (
                   <div className="dr-chips-wrap" style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
@@ -2690,15 +3688,15 @@ export default function PrescriptionFormPage() {
                       <Star size={11} color="#f59e0b" fill="#f59e0b" /> My Presets:
                     </span>
                     {diagnosisPresets.map(preset => {
-                      const isSelected = form.diagnosis === preset.content
+                      const isSelected = diagnosisList.some(c => c.toLowerCase() === preset.content.toLowerCase())
                       return (
                         <span key={preset.id} className="dr-chip-custom" style={{ background: isSelected ? '#eff6ff' : '#ffffff', borderColor: isSelected ? '#2563eb' : '#cbd5e1' }}>
                           <button 
                             type="button" 
                             className="dr-chip-btn" 
                             style={{ color: isSelected ? '#2563eb' : '#334155', fontWeight: isSelected ? 700 : 500 }}
-                            onClick={() => setForm(prev => ({ ...prev, diagnosis: preset.content }))}
-                            title="Click to apply diagnosis"
+                            onClick={() => handleToggleDiagnosisPreset(preset.content)}
+                            title={isSelected ? `Click to remove "${preset.content}"` : `Click to add "${preset.content}"`}
                           >
                             {isSelected ? '✓ ' : '+ '}{preset.content}
                           </button>
@@ -2941,6 +3939,7 @@ export default function PrescriptionFormPage() {
                               value={matchOptionValue(FREQUENCY_OPTIONS, med.dosage)}
                               onChange={(e) => handleMedicineChange(index, 'dosage', e.target.value)}
                             >
+                              <option value="">{tableLanguage === 'bn' ? '— মাত্রা —' : '— Frequency —'}</option>
                               {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                           </td>
@@ -2951,6 +3950,7 @@ export default function PrescriptionFormPage() {
                               value={matchOptionValue(DURATION_OPTIONS, med.duration)}
                               onChange={(e) => handleMedicineChange(index, 'duration', e.target.value)}
                             >
+                              <option value="">{tableLanguage === 'bn' ? '— মেয়াদ —' : '— Duration —'}</option>
                               {tableLanguage === 'bn' ? (
                                 <>
                                   {DURATION_OPTIONS_EN.includes(med.duration) && (
@@ -2975,6 +3975,7 @@ export default function PrescriptionFormPage() {
                               value={matchOptionValue(MEAL_OPTIONS, med.meal)}
                               onChange={(e) => handleMedicineChange(index, 'meal', e.target.value)}
                             >
+                              <option value="">{tableLanguage === 'bn' ? '— খাওয়ার নিয়ম —' : '— Meal —'}</option>
                               {tableLanguage === 'bn' ? (
                                 <>
                                   {MEAL_OPTIONS_EN.includes(med.meal) && (
@@ -4456,8 +5457,8 @@ export default function PrescriptionFormPage() {
               onClick={handleSubmit}
               disabled={saving}
             >
-              <FileText size={15} /> 
-              <span>{saving ? 'Saving...' : 'Save & Print'}</span>
+              <CheckCircle2 size={15} /> 
+              <span>{saving ? 'Completing...' : 'Complete & Print'}</span>
               <span className="dr-kbd-hint-light">Ctrl + Enter</span>
               <ChevronDown size={14} />
             </button>
@@ -4590,21 +5591,34 @@ export default function PrescriptionFormPage() {
                   doctor_workplace_bn: user?.doctor?.workplace_bn || appointmentInfo?.doctor?.workplace_bn || '',
                   doctor_bmdc: user?.doctor?.bmdc || appointmentInfo?.doctor?.bmdc || '',
                   doctor_signature: user?.doctor?.signature_photo || appointmentInfo?.doctor?.signature_photo || appointmentInfo?.doctor_signature || user?.doctor?.signature || '',
-                  hospital: appointmentInfo?.chamber?.hospital || appointmentInfo?.hospital || user?.doctor?.hospital || {},
-                  hospital_name: appointmentInfo?.chamber?.hospital?.name || appointmentInfo?.hospital?.name || appointmentInfo?.hospital_name || appointmentInfo?.chamber?.name || appointmentInfo?.chamber_name || user?.doctor?.hospital?.name || user?.doctor?.workplace || '',
-                  hospital_name_bn: appointmentInfo?.chamber?.hospital?.name_bn || appointmentInfo?.hospital?.name_bn || appointmentInfo?.hospital_name_bn || '',
-                  hospital_address: appointmentInfo?.chamber?.hospital?.address || appointmentInfo?.hospital?.address || appointmentInfo?.hospital_address || user?.doctor?.hospital?.address || '',
-                  hospital_phone: appointmentInfo?.chamber?.hospital?.phone || appointmentInfo?.hospital?.phone || appointmentInfo?.hospital_phone || user?.doctor?.hospital?.phone || '',
-                  hospital_hotline: appointmentInfo?.chamber?.hospital?.hotline || appointmentInfo?.hospital?.hotline || appointmentInfo?.hospital_hotline || appointmentInfo?.hospital_phone || '',
-                  hospital_website: appointmentInfo?.chamber?.hospital?.url || appointmentInfo?.hospital?.url || appointmentInfo?.chamber?.hospital?.website || appointmentInfo?.hospital?.website || appointmentInfo?.hospital_website || 'www.goodhealthhospital.com',
-                  hospital_logo: appointmentInfo?.chamber?.hospital?.hospital_logo || appointmentInfo?.chamber?.hospital?.photo_url || appointmentInfo?.hospital?.hospital_logo || appointmentInfo?.hospital?.photo_url || appointmentInfo?.hospital_logo || user?.doctor?.hospital?.photo_url || '',
-                  chamber_name: appointmentInfo?.chamber?.hospital?.name || appointmentInfo?.hospital?.name || appointmentInfo?.chamber_name || appointmentInfo?.hospital_name || user?.doctor?.workplace || '',
-                  chamber_name_bn: appointmentInfo?.chamber?.hospital?.name_bn || appointmentInfo?.hospital?.name_bn || appointmentInfo?.chamber_name_bn || '',
-                  chamber_address: appointmentInfo?.chamber?.hospital?.address || appointmentInfo?.hospital?.address || appointmentInfo?.chamber_address || '',
-                  chamber_phone: appointmentInfo?.chamber?.hospital?.phone || appointmentInfo?.hospital?.phone || appointmentInfo?.chamber_phone || '',
-                  chamber_hotline: appointmentInfo?.chamber?.hospital?.hotline || appointmentInfo?.hospital?.hotline || appointmentInfo?.chamber_hotline || '',
-                  chamber_website: appointmentInfo?.chamber?.hospital?.url || appointmentInfo?.hospital?.url || appointmentInfo?.chamber?.hospital?.website || appointmentInfo?.hospital?.website || appointmentInfo?.chamber_website || 'www.goodhealthhospital.com',
-                  chamber_logo: appointmentInfo?.chamber?.hospital?.hospital_logo || appointmentInfo?.chamber?.hospital?.photo_url || appointmentInfo?.hospital?.hospital_logo || appointmentInfo?.hospital?.photo_url || appointmentInfo?.chamber_logo || '',
+                  hospital: form.hospital_name ? {
+                    id: form.hospital_id,
+                    name: form.hospital_name,
+                    name_bn: form.hospital_name_bn,
+                    address: form.hospital_address,
+                    phone: form.hospital_phone,
+                    hotline: form.hospital_hotline,
+                    url: form.hospital_website,
+                    website: form.hospital_website,
+                    hospital_logo: form.hospital_logo,
+                    photo_url: form.hospital_logo,
+                  } : (appointmentInfo?.chamber?.hospital || appointmentInfo?.hospital || user?.doctor?.hospital || {}),
+                  hospital_name: form.hospital_name || form.chamber_name || appointmentInfo?.chamber?.hospital?.name || appointmentInfo?.hospital?.name || user?.doctor?.hospital?.name || user?.doctor?.workplace || '',
+                  hospital_name_bn: form.hospital_name_bn || form.chamber_name_bn || appointmentInfo?.chamber?.hospital?.name_bn || appointmentInfo?.hospital?.name_bn || '',
+                  hospital_address: form.hospital_address || form.chamber_address || appointmentInfo?.chamber?.hospital?.address || appointmentInfo?.hospital?.address || user?.doctor?.hospital?.address || '',
+                  hospital_phone: form.hospital_phone || form.chamber_phone || appointmentInfo?.chamber?.hospital?.phone || appointmentInfo?.hospital?.phone || user?.doctor?.hospital?.phone || '',
+                  hospital_hotline: form.hospital_hotline || form.chamber_hotline || appointmentInfo?.chamber?.hospital?.hotline || appointmentInfo?.hospital?.hotline || '',
+                  hospital_website: form.hospital_website || form.chamber_website || appointmentInfo?.chamber?.hospital?.url || appointmentInfo?.hospital?.url || 'www.goodhealthhospital.com',
+                  hospital_logo: form.hospital_logo || form.chamber_logo || appointmentInfo?.chamber?.hospital?.hospital_logo || appointmentInfo?.chamber?.hospital?.photo_url || appointmentInfo?.hospital?.hospital_logo || user?.doctor?.hospital?.photo_url || '',
+                  chamber_id: form.chamber_id,
+                  chamber_name: form.chamber_name || form.hospital_name || appointmentInfo?.chamber?.hospital?.name || appointmentInfo?.hospital?.name || user?.doctor?.workplace || '',
+                  chamber_name_bn: form.chamber_name_bn || form.hospital_name_bn || appointmentInfo?.chamber?.hospital?.name_bn || appointmentInfo?.hospital?.name_bn || '',
+                  chamber_address: form.chamber_address || form.hospital_address || appointmentInfo?.chamber?.hospital?.address || appointmentInfo?.hospital?.address || '',
+                  chamber_phone: form.chamber_phone || form.hospital_phone || appointmentInfo?.chamber?.hospital?.phone || appointmentInfo?.hospital?.phone || '',
+                  chamber_hotline: form.chamber_hotline || form.hospital_hotline || appointmentInfo?.chamber?.hospital?.hotline || appointmentInfo?.hospital?.hotline || '',
+                  chamber_website: form.chamber_website || form.hospital_website || appointmentInfo?.chamber?.hospital?.url || appointmentInfo?.hospital?.url || 'www.goodhealthhospital.com',
+                  chamber_logo: form.chamber_logo || form.hospital_logo || appointmentInfo?.chamber?.hospital?.hospital_logo || appointmentInfo?.chamber?.hospital?.photo_url || '',
+                  chamber: doctorChambers.find(c => String(c.id) === String(form.chamber_id) || String(c.public_id) === String(form.chamber_id)) || appointmentInfo?.chamber || null,
                   appointment: appointmentInfo || null
                 }}
                 hideAll={false}
@@ -5337,51 +6351,74 @@ export default function PrescriptionFormPage() {
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              const info = { ...walkInForm }
-              setWalkInPatientInfo(info)
-              // Sync age & sex to main form
-              setForm(prev => ({
-                ...prev,
-                age: info.age || prev.age,
-                sex: info.sex || prev.sex,
-                registration_no: info.registration_no || prev.registration_no
-              }))
-              setShowWalkInModal(false)
-            }}>
+            <form onSubmit={handleConfirmWalkInPatient} noValidate>
               <div className="dr-modal-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   {/* Full Name */}
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="dr-form-label">Full Name</label>
+                    <label className="dr-form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>Full Name</span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    </label>
                     <input
                       type="text"
                       className="dr-input-field"
+                      style={{
+                        borderColor: walkInErrors.name ? '#ef4444' : undefined,
+                        boxShadow: walkInErrors.name ? '0 0 0 1px #ef4444' : undefined
+                      }}
                       placeholder="e.g. Md. Arifur Rahman"
                       value={walkInForm.name}
-                      onChange={e => setWalkInForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={e => {
+                        setWalkInForm(prev => ({ ...prev, name: e.target.value }))
+                        if (walkInErrors.name) setWalkInErrors(prev => ({ ...prev, name: null }))
+                      }}
                       autoFocus
                     />
+                    {walkInErrors.name && (
+                      <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                        <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                        <span>{walkInErrors.name}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Age */}
                   <div>
-                    <label className="dr-form-label">Age (years)</label>
+                    <label className="dr-form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>Age (years)</span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    </label>
                     <input
                       type="number"
                       className="dr-input-field"
+                      style={{
+                        borderColor: walkInErrors.age ? '#ef4444' : undefined,
+                        boxShadow: walkInErrors.age ? '0 0 0 1px #ef4444' : undefined
+                      }}
                       placeholder="e.g. 35"
                       min="0"
                       max="150"
                       value={walkInForm.age}
-                      onChange={e => setWalkInForm(prev => ({ ...prev, age: e.target.value }))}
+                      onChange={e => {
+                        setWalkInForm(prev => ({ ...prev, age: e.target.value }))
+                        if (walkInErrors.age) setWalkInErrors(prev => ({ ...prev, age: null }))
+                      }}
                     />
+                    {walkInErrors.age && (
+                      <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                        <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                        <span>{walkInErrors.age}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Sex */}
                   <div>
-                    <label className="dr-form-label">Sex</label>
+                    <label className="dr-form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>Sex</span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    </label>
                     <select
                       className="dr-input-field"
                       value={walkInForm.sex}
@@ -5395,14 +6432,30 @@ export default function PrescriptionFormPage() {
 
                   {/* Phone */}
                   <div>
-                    <label className="dr-form-label">Phone Number</label>
+                    <label className="dr-form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>Phone Number</span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    </label>
                     <input
                       type="text"
                       className="dr-input-field"
+                      style={{
+                        borderColor: walkInErrors.phone ? '#ef4444' : undefined,
+                        boxShadow: walkInErrors.phone ? '0 0 0 1px #ef4444' : undefined
+                      }}
                       placeholder="e.g. 01712-345678"
                       value={walkInForm.phone}
-                      onChange={e => setWalkInForm(prev => ({ ...prev, phone: e.target.value }))}
+                      onChange={e => {
+                        setWalkInForm(prev => ({ ...prev, phone: e.target.value }))
+                        if (walkInErrors.phone) setWalkInErrors(prev => ({ ...prev, phone: null }))
+                      }}
                     />
+                    {walkInErrors.phone && (
+                      <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                        <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                        <span>{walkInErrors.phone}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Registration No */}
@@ -5415,6 +6468,54 @@ export default function PrescriptionFormPage() {
                       value={walkInForm.registration_no}
                       onChange={e => setWalkInForm(prev => ({ ...prev, registration_no: e.target.value }))}
                     />
+                  </div>
+
+                  {/* Doctor's Chamber */}
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="dr-form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MapPin size={13} color="#2563eb" />
+                      <span>Doctor's Chamber</span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    </label>
+                    <select
+                      className="dr-input-field"
+                      style={{
+                        borderColor: walkInErrors.chamber_id ? '#ef4444' : undefined,
+                        boxShadow: walkInErrors.chamber_id ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      value={walkInForm.chamber_id || ''}
+                      onChange={e => {
+                        const selectedId = e.target.value
+                        handleSelectChamber(selectedId)
+                        if (walkInErrors.chamber_id) setWalkInErrors(prev => ({ ...prev, chamber_id: null }))
+                      }}
+                    >
+                      {doctorChambers.length === 0 ? (
+                        <option value="">{loadingChambers ? 'চেম্বার লোড হচ্ছে...' : 'কোনো চেম্বার পাওয়া যায়নি (ডিফল্ট চেম্বার)'}</option>
+                      ) : (
+                        <>
+                          <option value="">-- চেম্বার নির্বাচন করুন (Select Chamber) --</option>
+                          {doctorChambers.map(c => {
+                            const cid = c.id || c.public_id
+                            const hosp = c.hospital?.name || c.hospital_name || c.chamber_name || 'Chamber'
+                            const room = c.room_number ? ` • Room ${c.room_number}` : ''
+                            const day = c.day ? ` (${c.day})` : ''
+                            const time = c.formatted_time || c.start_time_formatted ? ` [${c.formatted_time || c.start_time_formatted}]` : ''
+                            return (
+                              <option key={cid} value={cid}>
+                                {hosp}{room}{day}{time}
+                              </option>
+                            )
+                          })}
+                        </>
+                      )}
+                    </select>
+                    {walkInErrors.chamber_id && (
+                      <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                        <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                        <span>{walkInErrors.chamber_id}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Address */}
@@ -5431,11 +6532,18 @@ export default function PrescriptionFormPage() {
                 </div>
               </div>
               <div className="dr-modal-footer">
-                <button type="button" className="dr-btn-white" onClick={() => setShowWalkInModal(false)}>
+                <button type="button" className="dr-btn-white" onClick={() => {
+                  setWalkInErrors({})
+                  setShowWalkInModal(false)
+                }} disabled={isCheckingWalkInPhone}>
                   Cancel
                 </button>
-                <button type="submit" className="dr-btn-primary">
-                  <User size={14} /> Confirm Patient
+                <button type="submit" className="dr-btn-primary" disabled={isCheckingWalkInPhone}>
+                  {isCheckingWalkInPhone ? (
+                    <><RefreshCw size={14} className="dr-spin" /> Checking...</>
+                  ) : (
+                    <><User size={14} /> Confirm Patient</>
+                  )}
                 </button>
               </div>
             </form>

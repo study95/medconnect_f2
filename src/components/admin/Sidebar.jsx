@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag } from 'lucide-react'
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag, Clock } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -251,6 +251,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             {isDoctor ? 'My Patients' : 'Bookings'}
           </div>
 
+          {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
+            <NavLink
+              to="/admin/patients"
+              className={`sidebar-nav-item ${isActive('/admin/patients') ? 'active' : ''}`}
+              onClick={onClose}
+              title={isCollapsed ? (isDoctor ? 'My Patients' : 'Patients') : undefined}
+            >
+              <span className="nav-icon"><Users size={18} /></span>
+              <span className="nav-text">{isDoctor ? 'My Patients' : 'Patients'}</span>
+            </NavLink>
+          )}
+
           {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
             <>
               <NavLink
@@ -288,15 +300,30 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           )}
 
           {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (
-            <NavLink
-              to="/admin/prescriptions"
-              className={`sidebar-nav-item ${isActive('/admin/prescriptions') ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Prescriptions' : undefined}
-            >
-              <span className="nav-icon"><FileText size={18} /></span>
-              <span className="nav-text">Prescriptions</span>
-            </NavLink>
+            <>
+              <NavLink
+                to="/admin/prescriptions"
+                className={`sidebar-nav-item ${isActive('/admin/prescriptions') && !location.search.includes('tab=draft') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Prescriptions' : undefined}
+              >
+                <span className="nav-icon"><FileText size={18} /></span>
+                <span className="nav-text">Prescriptions</span>
+              </NavLink>
+
+              {isDoctor && (
+                <NavLink
+                  to="/admin/prescriptions?tab=draft"
+                  className={`sidebar-nav-item ${location.pathname === '/admin/prescriptions' && location.search.includes('tab=draft') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Prescription Drafts' : undefined}
+                  style={{ paddingLeft: isCollapsed ? undefined : 32, fontSize: 13 }}
+                >
+                  <span className="nav-icon"><Clock size={15} color="#f59e0b" /></span>
+                  <span className="nav-text" style={{ color: '#f59e0b', fontWeight: 600 }}>Rx Drafts (খসড়া)</span>
+                </NavLink>
+              )}
+            </>
           )}
 
           {isDoctor && (
@@ -414,7 +441,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <>
               <div className="sidebar-section-title">System</div>
 
-              {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
+              {!isDoctor && (isAdmin || isManager || hasPermission('patient.view')) && (
                 <NavLink
                   to="/admin/patients"
                   className={`sidebar-nav-item ${isActive('/admin/patients') ? 'active' : ''}`}

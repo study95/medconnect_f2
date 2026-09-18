@@ -88,12 +88,15 @@ export const getPrescription = (id) => axiosInstance.get(`/prescriptions/${id}`)
 export const createPrescription = (data) => axiosInstance.post('/prescriptions', data)
 export const updatePrescription = (id, data) => axiosInstance.put(`/prescriptions/${id}`, data)
 export const deletePrescription = (id) => axiosInstance.delete(`/prescriptions/${id}`)
+export const finalizePrescription = (id, data = {}) => axiosInstance.post(`/prescriptions/${id}/finalize`, data)
 export const copyPrescriptionMedicines = (prescriptionId, data = {}) => axiosInstance.post(`/prescriptions/${prescriptionId}/copy-medicines`, data)
 
 // ===== PATIENT CLINICAL TIMELINE (EMR/HIS) =====
 export const getPatientClinicalTimeline = (patientId, params) => axiosInstance.get(`/patients/${patientId}/clinical-timeline`, { params })
 
 export const createWalkInPatient = (data) => axiosInstance.post('/doctor/patients', data)
+export const checkPatientPhone = (phone) => axiosInstance.get('/patients/check-phone', { params: { phone } })
+export const quickRegisterPatient = (data) => axiosInstance.post('/doctor/patients/quick-register', data)
 
 // ===== DOCTOR FAVORITE MEDICINES & QUICK TEMPLATES (DATABASE-BACKED) =====
 export const getDoctorFavoriteMedicines = () => axiosInstance.get('/doctor/favorite-medicines')

@@ -162,57 +162,101 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 
     || docObj.signature_photo_url 
     || null;
 
-  // 6. Chamber / Hospital Footer Information (Patient's appointed chamber takes absolute priority)
-  const apptChamberHosp = rx.appointment?.chamber?.hospital || rx.appointment?.hospital || {};
-  const hospObj = Object.keys(apptChamberHosp).length > 0 ? apptChamberHosp : (rx.hospital || rx.doctor?.hospital || {});
+  // 6. Chamber / Hospital Footer Information (Selected Chamber takes absolute top priority)
+  const selectedChamberObj = rx.chamber || rx.selectedChamber || {};
+  const selectedChamberHosp = selectedChamberObj.hospital || {};
+
+  const apptChamber = rx.appointment?.chamber || {};
+  const apptChamberHosp = apptChamber.hospital || rx.appointment?.hospital || {};
+
+  const docHosp = rx.hospital || rx.doctor?.hospital || {};
+  const docFirstChamber = rx.doctor?.chambers?.[0] || {};
+  const docFirstChamberHosp = docFirstChamber.hospital || {};
 
   const hospLogo = rx.chamber_logo 
     || rx.hospital_logo 
+    || selectedChamberHosp.hospital_logo 
+    || selectedChamberHosp.photo_url 
+    || selectedChamberHosp.photo 
+    || selectedChamberObj.hospital_logo 
+    || selectedChamberObj.photo_url 
+    || selectedChamberObj.photo 
     || apptChamberHosp.hospital_logo 
     || apptChamberHosp.photo_url 
     || apptChamberHosp.photo 
-    || hospObj.hospital_logo 
-    || hospObj.photo_url 
-    || hospObj.photo 
+    || docHosp.hospital_logo 
+    || docHosp.photo_url 
+    || docHosp.photo 
+    || docFirstChamberHosp.hospital_logo 
+    || docFirstChamberHosp.photo_url 
     || null;
 
-  const hospName = apptChamberHosp.name_bn 
-    || apptChamberHosp.name 
-    || rx.chamber_name_bn 
+  const hospName = rx.chamber_name_bn 
     || rx.chamber_name 
     || rx.hospital_name_bn 
     || rx.hospital_name 
-    || hospObj.name_bn 
-    || hospObj.name 
+    || selectedChamberHosp.name_bn 
+    || selectedChamberHosp.name 
+    || selectedChamberObj.chamber_name 
+    || selectedChamberObj.name_bn 
+    || selectedChamberObj.name 
+    || apptChamberHosp.name_bn 
+    || apptChamberHosp.name 
+    || apptChamber.chamber_name 
+    || docHosp.name_bn 
+    || docHosp.name 
+    || docFirstChamberHosp.name_bn 
+    || docFirstChamberHosp.name 
+    || docFirstChamber.chamber_name 
     || 'সেন্ট্রাল হাসপাতাল ও চেম্বার';
 
-  const hospAddress = apptChamberHosp.address_bn 
-    || apptChamberHosp.address 
-    || rx.chamber_address_bn 
+  const hospAddress = rx.chamber_address_bn 
     || rx.chamber_address 
     || rx.hospital_address_bn 
     || rx.hospital_address 
-    || hospObj.address_bn 
-    || hospObj.address 
+    || selectedChamberHosp.address_bn 
+    || selectedChamberHosp.address 
+    || selectedChamberObj.address_bn 
+    || selectedChamberObj.address 
+    || apptChamberHosp.address_bn 
+    || apptChamberHosp.address 
+    || apptChamber.address 
+    || docHosp.address_bn 
+    || docHosp.address 
+    || docFirstChamberHosp.address_bn 
+    || docFirstChamberHosp.address 
     || '';
 
-  const hospHotline = apptChamberHosp.hotline 
-    || apptChamberHosp.phone 
-    || rx.chamber_hotline 
+  const hospHotline = rx.chamber_hotline 
     || rx.chamber_phone 
     || rx.hospital_hotline 
     || rx.hospital_phone 
-    || hospObj.hotline 
-    || hospObj.phone 
+    || selectedChamberHosp.hotline 
+    || selectedChamberHosp.phone 
+    || selectedChamberObj.hotline 
+    || selectedChamberObj.phone 
+    || apptChamberHosp.hotline 
+    || apptChamberHosp.phone 
+    || apptChamber.phone 
+    || docHosp.hotline 
+    || docHosp.phone 
+    || docFirstChamberHosp.hotline 
+    || docFirstChamberHosp.phone 
     || '';
 
-  const hospWebsite = apptChamberHosp.url 
-    || apptChamberHosp.website 
-    || rx.chamber_website 
+  const hospWebsite = rx.chamber_website 
     || rx.hospital_website 
-    || hospObj.url 
-    || hospObj.website 
-    || (hospObj.slug ? `www.${hospObj.slug}.com` : '');
+    || selectedChamberHosp.url 
+    || selectedChamberHosp.website 
+    || selectedChamberObj.url 
+    || selectedChamberObj.website 
+    || apptChamberHosp.url 
+    || apptChamberHosp.website 
+    || docHosp.url 
+    || docHosp.website 
+    || (selectedChamberHosp.slug ? `www.${selectedChamberHosp.slug}.com` : '')
+    || (apptChamberHosp.slug ? `www.${apptChamberHosp.slug}.com` : '')
+    || (docHosp.slug ? `www.${docHosp.slug}.com` : '');
 
   return (
     <div 
