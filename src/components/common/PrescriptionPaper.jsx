@@ -104,12 +104,24 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 
   const validMedicines = (rx.medicines || []).filter(m => (m.medicine_name || '').trim().length > 0);
 
   const clinicalSections = [
-    { key: 'cc', label: 'C/C' },
-    { key: 'oe', label: 'O/E' },
-    { key: 'oh', label: 'O/H' },
-    { key: 'mh', label: 'M/H' },
-    { key: 'investigation', label: 'Investigation' },
-  ].filter(s => rx[s.key]);
+    { key: 'cc', label: 'C/C', content: rx.cc },
+    { key: 'oe', label: 'O/E', content: rx.oe },
+    { key: 'oh', label: 'O/H', content: rx.oh },
+    { key: 'mh', label: 'M/H', content: rx.mh },
+    { key: 'investigation', label: 'Investigation', content: rx.investigation },
+  ].filter(s => s.content);
+
+  const customClinicalSections = Array.isArray(rx.custom_sections)
+    ? rx.custom_sections
+        .filter(s => s && s.title && (s.text || '').trim().length > 0)
+        .map(s => ({
+          key: `custom_${s.id || s.title}`,
+          label: s.title,
+          content: s.text
+        }))
+    : [];
+
+  const allDisplaySections = [...clinicalSections, ...customClinicalSections];
 
   const toBengaliNumber = (str) => {
     if (!str) return '';
@@ -517,14 +529,14 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 
             boxSizing: 'border-box'
           }}
         >
-          {clinicalSections.map(section => (
+          {allDisplaySections.map(section => (
             <div className="rx-clinical-section" key={section.key} style={{ marginBottom: 14 }}>
               <div className="rx-clinical-title" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 {!isPadPrint && <div className="rx-indicator" style={{ width: 3, height: 14, background: '#00A88C', borderRadius: 2, flexShrink: 0 }} />}
                 <h6 style={{ fontWeight: 800, margin: 0, fontSize: 12, color: '#1e293b', textTransform: 'uppercase' }}>{section.label}</h6>
               </div>
               <div className="rx-clinical-content" style={{ fontSize: 12, color: '#334155', lineHeight: 1.4, paddingLeft: isPadPrint ? 0 : 9 }}>
-                {rx[section.key]}
+                {section.content}
               </div>
             </div>
           ))}

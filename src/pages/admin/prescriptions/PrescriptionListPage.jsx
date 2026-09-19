@@ -121,6 +121,12 @@ export default function PrescriptionListPage() {
   const draftCount = prescriptions.filter(p => p.status === 'draft').length
   const completedCount = prescriptions.filter(p => p.status !== 'draft').length
 
+  useEffect(() => {
+    if (!loading) {
+      window.dispatchEvent(new CustomEvent('rx-draft-count-updated', { detail: draftCount }))
+    }
+  }, [draftCount, loading])
+
   const filtered = prescriptions.filter(p => {
     if (statusTab === 'draft' && p.status !== 'draft') return false
     if (statusTab === 'finalized' && p.status === 'draft') return false

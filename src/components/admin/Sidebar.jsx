@@ -1,9 +1,11 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
+import { getPrescriptions } from '../../api/adminApi'
 
 import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag, Clock } from 'lucide-react'
 
@@ -27,6 +29,77 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
   const roleName = getRoles()[0] || 'user'
+
+  const doctorScopeId = user?.doctor?.id
+    ? `doc_${user.doctor.id}`
+    : (user?.doctor_id ? `doc_${user.doctor_id}` : (user?.id ? `usr_${user.id}` : null))
+
+  // Prescription Drafts Count Badge
+  const [rxDraftCount, setRxDraftCount] = useState(0)
+
+  const updateRxDraftCount = useCallback(async () => {
+    if (!isDoctor) return
+    try {
+      const res = await getPrescriptions({ status: 'draft', per_page: 100 })
+      const dbDrafts = res.data?.data?.data || res.data?.data || res.data || []
+      let count = Array.isArray(dbDrafts) ? dbDrafts.filter(p => p.status === 'draft').length : 0
+
+      // Also check local browser drafts
+      if (doctorScopeId) {
+        try {
+          const prefix = `dr_rx_draft_${doctorScopeId}_`
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && key.startsWith(prefix)) {
+              const item = JSON.parse(localStorage.getItem(key))
+              if (item?.form) {
+                const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
+                const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
+                const inDb = item.activeDraftId && Array.isArray(dbDrafts) && dbDrafts.some(p => String(p.id) === String(item.activeDraftId))
+                if (hasContent && !inDb) {
+                  count++
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      setRxDraftCount(count)
+    } catch (e) {
+      if (doctorScopeId) {
+        try {
+          let localCount = 0
+          const prefix = `dr_rx_draft_${doctorScopeId}_`
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && key.startsWith(prefix)) {
+              const item = JSON.parse(localStorage.getItem(key))
+              if (item?.form) {
+                const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
+                const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
+                if (hasContent) localCount++
+              }
+            }
+          }
+          setRxDraftCount(localCount)
+        } catch (err) {}
+      }
+    }
+  }, [isDoctor, doctorScopeId])
+
+  useEffect(() => {
+    updateRxDraftCount()
+
+    const handleDraftEvent = (e) => {
+      if (typeof e.detail === 'number') {
+        setRxDraftCount(e.detail)
+      } else {
+        updateRxDraftCount()
+      }
+    }
+    window.addEventListener('rx-draft-count-updated', handleDraftEvent)
+    return () => window.removeEventListener('rx-draft-count-updated', handleDraftEvent)
+  }, [updateRxDraftCount, location.pathname])
 
   return (
     <>
@@ -299,32 +372,59 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </NavLink>
           )}
 
-          {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (
-            <>
-              <NavLink
-                to="/admin/prescriptions"
-                className={`sidebar-nav-item ${isActive('/admin/prescriptions') && !location.search.includes('tab=draft') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Prescriptions' : undefined}
-              >
-                <span className="nav-icon"><FileText size={18} /></span>
-                <span className="nav-text">Prescriptions</span>
-              </NavLink>
+          {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (() => {
+            const isDraftActive = location.pathname === '/admin/prescriptions' && location.search.includes('tab=draft')
+            const isMainPrescriptionActive = (location.pathname === '/admin/prescriptions' || location.pathname.startsWith('/admin/prescriptions/')) && !isDraftActive
 
-              {isDoctor && (
-                <NavLink
-                  to="/admin/prescriptions?tab=draft"
-                  className={`sidebar-nav-item ${location.pathname === '/admin/prescriptions' && location.search.includes('tab=draft') ? 'active' : ''}`}
+            return (
+              <>
+                <Link
+                  to="/admin/prescriptions"
+                  className={`sidebar-nav-item ${isMainPrescriptionActive ? 'active' : ''}`}
                   onClick={onClose}
-                  title={isCollapsed ? 'Prescription Drafts' : undefined}
-                  style={{ paddingLeft: isCollapsed ? undefined : 32, fontSize: 13 }}
+                  title={isCollapsed ? 'Prescriptions' : undefined}
                 >
-                  <span className="nav-icon"><Clock size={15} color="#f59e0b" /></span>
-                  <span className="nav-text" style={{ color: '#f59e0b', fontWeight: 600 }}>Rx Drafts (খসড়া)</span>
-                </NavLink>
-              )}
-            </>
-          )}
+                  <span className="nav-icon"><FileText size={18} /></span>
+                  <span className="nav-text">Prescriptions</span>
+                </Link>
+
+                {isDoctor && (
+                  <Link
+                    to="/admin/prescriptions?tab=draft"
+                    className={`sidebar-nav-item ${isDraftActive ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? `Prescription Drafts (${rxDraftCount})` : undefined}
+                  >
+                    <span className="nav-icon">
+                      <Clock size={18} />
+                    </span>
+                    <span className="nav-text">Rx Drafts (খসড়া)</span>
+                    {!isCollapsed && (
+                      <span 
+                        style={{
+                          marginLeft: 'auto',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '1.5px 7px',
+                          borderRadius: 10,
+                          lineHeight: '14px',
+                          background: isDraftActive ? '#ffffff' : '#FEF3C7',
+                          color: isDraftActive ? '#00B875' : '#D97706',
+                          border: isDraftActive ? 'none' : '1px solid #FDE68A',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        {rxDraftCount}
+                      </span>
+                    )}
+                  </Link>
+                )}
+              </>
+            )
+          })()}
 
           {isDoctor && (
             <NavLink

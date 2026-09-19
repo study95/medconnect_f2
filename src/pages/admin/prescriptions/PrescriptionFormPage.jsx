@@ -1,5 +1,6 @@
 // PrescriptionFormPage.jsx — Modern Clinical Prescription Workspace (Interactive Markable Sections)
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { 
   User, Calendar, Clock, Phone, Activity, Scale, 
@@ -30,6 +31,10 @@ import {
   getDoctorClinicalPresets,
   createDoctorClinicalPreset,
   deleteDoctorClinicalPreset,
+  getDoctorCustomSections,
+  createDoctorCustomSection,
+  updateDoctorCustomSection,
+  deleteDoctorCustomSection,
   checkPatientPhone,
   quickRegisterPatient,
   getChambers
@@ -843,86 +848,253 @@ export default function PrescriptionFormPage() {
   const [showDoseCol, setShowDoseCol] = useState(false)
   const [showColMenu, setShowColMenu] = useState(false)
 
-  // Custom Sections — doctors can add entirely new sections
-  const [customSections, setCustomSections] = useState([])
+  // Custom Sections — doctors can add entirely new sections (Database Synced per Doctor)
+  const [customSections, setCustomSections] = useState(() => {
+    try {
+      if (doctorScopeId) {
+        const saved = localStorage.getItem(`dr_custom_sections_clinical_${doctorScopeId}`)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) return parsed
+        }
+      }
+    } catch (e) {}
+    return []
+  })
   const [showAddSectionInput, setShowAddSectionInput] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
 
-  const addCustomSection = () => {
+  const addCustomSection = async () => {
     const title = newSectionTitle.trim()
     if (!title) return
-    const id = `custom_${Date.now()}`
-    setCustomSections(prev => [...prev, { id, title, chips: [], text: '', chipInput: '', showChipInput: false }])
+    if (customSections.some(s => s.title.toLowerCase() === title.toLowerCase())) {
+      showError({ title: 'Already Exists', message: `Section "${title}" already exists.` })
+      return
+    }
+    const tempId = `custom_${Date.now()}`
+    const newSec = { id: tempId, title, chips: [], text: '', chipInput: '', showChipInput: false }
+    const updated = [...customSections, newSec]
+    setCustomSections(updated)
     setNewSectionTitle('')
     setShowAddSectionInput(false)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    try {
+      const res = await createDoctorCustomSection({ type: 'clinical', title, chips: [] })
+      if (res.data?.data?.id) {
+        setCustomSections(prev => prev.map(s => s.id === tempId ? { ...s, id: res.data.data.id } : s))
+      }
+      showSuccess({ title: 'Section Created', message: `"${title}" saved to your database sections!` })
+    } catch (err) {
+      console.warn('Failed to save custom section to backend:', err)
+      showSuccess({ title: 'Section Created', message: `"${title}" created.` })
+    }
   }
 
-  const removeCustomSection = (id) => {
-    setCustomSections(prev => prev.filter(s => s.id !== id))
+  const removeCustomSection = async (id) => {
+    const sec = customSections.find(s => s.id === id)
+    const updated = customSections.filter(s => s.id !== id)
+    setCustomSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('custom_'))) {
+      try {
+        await deleteDoctorCustomSection(id)
+      } catch (err) {
+        console.warn('Failed to delete section from backend:', err)
+      }
+    }
+    showSuccess({ title: 'Section Removed', message: `Section "${sec?.title || ''}" removed from database.` })
   }
 
   const updateCustomSection = (id, field, value) => {
     setCustomSections(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s))
   }
 
-  const addCustomSectionChip = (id) => {
-    setCustomSections(prev => prev.map(s => {
-      if (s.id !== id) return s
-      const val = (s.chipInput || '').trim()
-      if (!val) return s
-      return { ...s, chips: [...s.chips, val], chipInput: '', showChipInput: false }
-    }))
+  const addCustomSectionChip = async (id) => {
+    const sec = customSections.find(s => s.id === id)
+    if (!sec) return
+    const val = (sec.chipInput || '').trim()
+    if (!val) return
+    if (sec.chips.includes(val)) {
+      showError({ title: 'Already Exists', message: `Chip "${val}" already exists in this section.` })
+      return
+    }
+    const newChips = [...sec.chips, val]
+    const updated = customSections.map(s => s.id === id ? { ...s, chips: newChips, chipInput: '', showChipInput: false } : s)
+    setCustomSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('custom_'))) {
+      try {
+        await updateDoctorCustomSection(id, { chips: newChips })
+      } catch (err) {
+        console.warn('Failed to update section chips in backend:', err)
+      }
+    }
   }
 
-  const removeCustomSectionChip = (id, chip) => {
-    setCustomSections(prev => prev.map(s => s.id === id ? { ...s, chips: s.chips.filter(c => c !== chip) } : s))
+  const removeCustomSectionChip = async (id, chip) => {
+    const sec = customSections.find(s => s.id === id)
+    if (!sec) return
+    const newChips = sec.chips.filter(c => c !== chip)
+    const updated = customSections.map(s => s.id === id ? { ...s, chips: newChips } : s)
+    setCustomSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('custom_'))) {
+      try {
+        await updateDoctorCustomSection(id, { chips: newChips })
+      } catch (err) {
+        console.warn('Failed to update section chips in backend:', err)
+      }
+    }
   }
 
   const appendCustomSectionChip = (id, chip) => {
-    setCustomSections(prev => prev.map(s => s.id === id ? { ...s, text: s.text ? s.text + ', ' + chip : chip } : s))
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== id) return s
+      const current = (s.text || '').trim()
+      const items = current ? current.split(/,\s*/).map(x => x.trim()).filter(Boolean) : []
+      const exists = items.some(x => x.toLowerCase() === chip.toLowerCase())
+      let updatedText = ''
+      if (exists) {
+        updatedText = items.filter(x => x.toLowerCase() !== chip.toLowerCase()).join(', ')
+      } else {
+        updatedText = current ? `${current}, ${chip}` : chip
+      }
+      return { ...s, text: updatedText }
+    }))
   }
 
-  // Custom Investigation Sections — same pattern as clinical sections
-  const [customInvSections, setCustomInvSections] = useState([])
+  // Custom Investigation Sections — same pattern as clinical sections (Database Synced per Doctor)
+  const [customInvSections, setCustomInvSections] = useState(() => {
+    try {
+      if (doctorScopeId) {
+        const saved = localStorage.getItem(`dr_custom_sections_inv_${doctorScopeId}`)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) return parsed
+        }
+      }
+    } catch (e) {}
+    return []
+  })
   const [showAddInvSectionInput, setShowAddInvSectionInput] = useState(false)
   const [newInvSectionTitle, setNewInvSectionTitle] = useState('')
 
-  const addCustomInvSection = () => {
+  const addCustomInvSection = async () => {
     const title = newInvSectionTitle.trim()
     if (!title) return
-    const id = `inv_custom_${Date.now()}`
-    setCustomInvSections(prev => [...prev, { id, title, chips: [], chipInput: '', showChipInput: false }])
+    if (customInvSections.some(s => s.title.toLowerCase() === title.toLowerCase())) {
+      showError({ title: 'Already Exists', message: `Investigation section "${title}" already exists.` })
+      return
+    }
+    const tempId = `inv_custom_${Date.now()}`
+    const newSec = { id: tempId, title, chips: [], selected: [], chipInput: '', showChipInput: false }
+    const updated = [...customInvSections, newSec]
+    setCustomInvSections(updated)
     setNewInvSectionTitle('')
     setShowAddInvSectionInput(false)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    try {
+      const res = await createDoctorCustomSection({ type: 'investigation', title, chips: [] })
+      if (res.data?.data?.id) {
+        setCustomInvSections(prev => prev.map(s => s.id === tempId ? { ...s, id: res.data.data.id } : s))
+      }
+      showSuccess({ title: 'Section Created', message: `"${title}" saved to your database investigation sections!` })
+    } catch (err) {
+      console.warn('Failed to save custom inv section to backend:', err)
+      showSuccess({ title: 'Section Created', message: `"${title}" created.` })
+    }
   }
 
-  const removeCustomInvSection = (id) => {
-    setCustomInvSections(prev => prev.filter(s => s.id !== id))
+  const removeCustomInvSection = async (id) => {
+    const sec = customInvSections.find(s => s.id === id)
+    const updated = customInvSections.filter(s => s.id !== id)
+    setCustomInvSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('inv_custom_'))) {
+      try {
+        await deleteDoctorCustomSection(id)
+      } catch (err) {
+        console.warn('Failed to delete inv section from backend:', err)
+      }
+    }
+    showSuccess({ title: 'Section Removed', message: `Section "${sec?.title || ''}" removed from database.` })
   }
 
   const updateCustomInvSection = (id, field, value) => {
     setCustomInvSections(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s))
   }
 
-  const addCustomInvSectionChip = (id) => {
-    setCustomInvSections(prev => prev.map(s => {
-      if (s.id !== id) return s
-      const val = (s.chipInput || '').trim()
-      if (!val) return s
-      return { ...s, chips: [...s.chips, val], chipInput: '', showChipInput: false }
-    }))
+  const addCustomInvSectionChip = async (id) => {
+    const sec = customInvSections.find(s => s.id === id)
+    if (!sec) return
+    const val = (sec.chipInput || '').trim()
+    if (!val) return
+    if (sec.chips.includes(val)) {
+      showError({ title: 'Already Exists', message: `Test "${val}" already exists in this section.` })
+      return
+    }
+    const newChips = [...sec.chips, val]
+    const updated = customInvSections.map(s => s.id === id ? { ...s, chips: newChips, chipInput: '', showChipInput: false } : s)
+    setCustomInvSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('inv_custom_'))) {
+      try {
+        await updateDoctorCustomSection(id, { chips: newChips })
+      } catch (err) {
+        console.warn('Failed to update inv section chips in backend:', err)
+      }
+    }
   }
 
-  const removeCustomInvSectionChip = (id, chip) => {
-    setCustomInvSections(prev => prev.map(s => s.id === id ? { ...s, chips: s.chips.filter(c => c !== chip) } : s))
+  const removeCustomInvSectionChip = async (id, chip) => {
+    const sec = customInvSections.find(s => s.id === id)
+    if (!sec) return
+    const newChips = sec.chips.filter(c => c !== chip)
+    const updated = customInvSections.map(s => s.id === id ? { ...s, chips: newChips } : s)
+    setCustomInvSections(updated)
+    if (doctorScopeId) {
+      try { localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(updated)) } catch (e) {}
+    }
+
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('inv_custom_'))) {
+      try {
+        await updateDoctorCustomSection(id, { chips: newChips })
+      } catch (err) {
+        console.warn('Failed to update inv section chips in backend:', err)
+      }
+    }
   }
 
   const toggleCustomInvChip = (id, chip) => {
+    // 1. Toggle inside sec.selected
     setCustomInvSections(prev => prev.map(s => {
       if (s.id !== id) return s
       const alreadySelected = (s.selected || []).includes(chip)
       return { ...s, selected: alreadySelected ? s.selected.filter(c => c !== chip) : [...(s.selected || []), chip] }
     }))
+    // 2. Also toggle in global investigationList so it appears in the active investigation grid & tab badge
+    toggleInvestigationItem(chip)
   }
 
   // Per-category custom chips for existing investigation library categories
@@ -1072,6 +1244,11 @@ export default function PrescriptionFormPage() {
 
   const [adviceChecklist, setAdviceChecklist] = useState([])
 
+  // Parsed Notes List — starts empty, counted only when doctor adds
+  const [noteList, setNoteList] = useState([])
+  const [newNoteInput, setNewNoteInput] = useState('')
+  const [showAddCustomNote, setShowAddCustomNote] = useState(false)
+
   const [newAdviceInput, setNewAdviceInput] = useState('')
   const [diagnosisSearchInput, setDiagnosisSearchInput] = useState('')
   const [tableSearchFilter, setTableSearchFilter] = useState('')
@@ -1134,6 +1311,55 @@ export default function PrescriptionFormPage() {
   const medicineInputRefs = useRef([])
   const formRef = useRef(null)
 
+  // Floating coordinates for Medicine Autocomplete Dropdown (bypasses table overflow clipping)
+  const [dropdownCoords, setDropdownCoords] = useState(null)
+
+  useEffect(() => {
+    if (activeMedicineIndex === null || medicineSuggestions.length === 0) {
+      setDropdownCoords(null)
+      return
+    }
+
+    const updateCoords = () => {
+      const inputEl = medicineInputRefs.current[activeMedicineIndex]
+      if (!inputEl) return
+      const rect = inputEl.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const openUpward = spaceBelow < 280 && rect.top > 280
+
+      setDropdownCoords({
+        top: openUpward ? 'auto' : `${rect.bottom + 4}px`,
+        bottom: openUpward ? `${window.innerHeight - rect.top + 4}px` : 'auto',
+        left: `${rect.left}px`,
+        width: `${Math.max(rect.width, 360)}px`
+      })
+    }
+
+    updateCoords()
+    window.addEventListener('scroll', updateCoords, true)
+    window.addEventListener('resize', updateCoords)
+    return () => {
+      window.removeEventListener('scroll', updateCoords, true)
+      window.removeEventListener('resize', updateCoords)
+    }
+  }, [activeMedicineIndex, medicineSuggestions])
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (
+        suggestionsRef.current && 
+        !suggestionsRef.current.contains(e.target) &&
+        !medicineInputRefs.current.some(el => el && el.contains(e.target))
+      ) {
+        setActiveMedicineIndex(null)
+        setMedicineSuggestions([])
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
+
   // Synchronize doctor-scoped favorites, combos, templates & notes when doctorScopeId changes
   useEffect(() => {
     // Purge legacy shared global keys to prevent any cross-doctor data leaks
@@ -1187,12 +1413,76 @@ export default function PrescriptionFormPage() {
       } else {
         setClinicalPresets([])
       }
+
+      const customClinicalKey = `dr_custom_sections_clinical_${doctorScopeId}`
+      const savedCustomClinical = localStorage.getItem(customClinicalKey)
+      if (savedCustomClinical) {
+        try {
+          const parsed = JSON.parse(savedCustomClinical)
+          if (Array.isArray(parsed)) setCustomSections(parsed)
+        } catch (e) {}
+      }
+
+      const customInvKey = `dr_custom_sections_inv_${doctorScopeId}`
+      const savedCustomInv = localStorage.getItem(customInvKey)
+      if (savedCustomInv) {
+        try {
+          const parsed = JSON.parse(savedCustomInv)
+          if (Array.isArray(parsed)) setCustomInvSections(parsed)
+        } catch (e) {}
+      }
+
+      // Fetch latest custom sections doctor-wise from database
+      getDoctorCustomSections()
+        .then(res => {
+          const sections = res.data?.data || []
+          if (Array.isArray(sections) && sections.length > 0) {
+            const clinical = sections.filter(s => s.type === 'clinical').map(s => ({
+              id: s.id,
+              title: s.title,
+              chips: Array.isArray(s.chips) ? s.chips : [],
+              text: '',
+              chipInput: '',
+              showChipInput: false
+            }))
+            const inv = sections.filter(s => s.type === 'investigation').map(s => ({
+              id: s.id,
+              title: s.title,
+              chips: Array.isArray(s.chips) ? s.chips : [],
+              selected: [],
+              chipInput: '',
+              showChipInput: false
+            }))
+
+            if (clinical.length > 0) {
+              setCustomSections(prev => {
+                return clinical.map(c => {
+                  const existing = prev.find(p => p.id === c.id || (p.title && p.title.toLowerCase() === c.title.toLowerCase()))
+                  return existing ? { ...c, text: existing.text || '' } : c
+                })
+              })
+              try { localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(clinical)) } catch (e) {}
+            }
+            if (inv.length > 0) {
+              setCustomInvSections(prev => {
+                return inv.map(i => {
+                  const existing = prev.find(p => p.id === i.id || (p.title && p.title.toLowerCase() === i.title.toLowerCase()))
+                  return existing ? { ...i, selected: existing.selected || [] } : i
+                })
+              })
+              try { localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(inv)) } catch (e) {}
+            }
+          }
+        })
+        .catch(err => console.warn('Failed to fetch doctor custom sections from API:', err))
     } catch (e) {
       console.error('Error syncing doctor storage', e)
       setFavoriteMedicines([])
       setQuickCombos([])
       setQuickTemplates([])
       setClinicalPresets([])
+      setCustomSections([])
+      setCustomInvSections([])
     }
   }, [doctorScopeId])
 
@@ -1355,6 +1645,11 @@ export default function PrescriptionFormPage() {
             } else {
               setInvestigationList([])
             }
+            if (p.notes && viewNotesAllowed) {
+              setNoteList(p.notes.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))
+            } else {
+              setNoteList([])
+            }
             if (p.advice) {
               const lines = p.advice.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
               setAdviceChecklist(lines.map((l, i) => ({ id: `adv_${i}`, text: l, checked: true })))
@@ -1363,6 +1658,28 @@ export default function PrescriptionFormPage() {
             }
             if (p.appointment) {
               setAppointmentInfo(p.appointment)
+            }
+
+            if (Array.isArray(p.custom_sections) && p.custom_sections.length > 0) {
+              setCustomSections(prev => {
+                const updated = [...prev]
+                p.custom_sections.forEach(savedSec => {
+                  const idx = updated.findIndex(u => u.id === savedSec.id || (u.title && u.title.toLowerCase() === (savedSec.title || '').toLowerCase()))
+                  if (idx !== -1) {
+                    updated[idx] = { ...updated[idx], text: savedSec.text || '' }
+                  } else if (savedSec.title) {
+                    updated.push({
+                      id: savedSec.id || `custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                      title: savedSec.title,
+                      chips: savedSec.chips || [],
+                      text: savedSec.text || '',
+                      chipInput: '',
+                      showChipInput: false
+                    })
+                  }
+                })
+                return updated
+              })
             }
 
             if (p.vitals && typeof p.vitals === 'object' && Object.keys(p.vitals).length > 0) {
@@ -1456,9 +1773,33 @@ export default function PrescriptionFormPage() {
               if (p.investigation) {
                 setInvestigationList(p.investigation.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))
               }
+              if (p.notes) {
+                setNoteList(p.notes.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))
+              }
               if (p.advice) {
                 const lines = p.advice.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
                 setAdviceChecklist(lines.map((l, i) => ({ id: `adv_${i}`, text: l, checked: true })))
+              }
+              if (Array.isArray(p.custom_sections) && p.custom_sections.length > 0) {
+                setCustomSections(prev => {
+                  const updated = [...prev]
+                  p.custom_sections.forEach(savedSec => {
+                    const idx = updated.findIndex(u => u.id === savedSec.id || (u.title && u.title.toLowerCase() === (savedSec.title || '').toLowerCase()))
+                    if (idx !== -1) {
+                      updated[idx] = { ...updated[idx], text: savedSec.text || '' }
+                    } else if (savedSec.title) {
+                      updated.push({
+                        id: savedSec.id || `custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                        title: savedSec.title,
+                        chips: savedSec.chips || [],
+                        text: savedSec.text || '',
+                        chipInput: '',
+                        showChipInput: false
+                      })
+                    }
+                  })
+                  return updated
+                })
               }
               if (p.vitals && typeof p.vitals === 'object' && Object.keys(p.vitals).length > 0) {
                 setVitals(prev => ({ ...prev, ...p.vitals }))
@@ -1606,6 +1947,53 @@ export default function PrescriptionFormPage() {
         console.warn('Could not load database clinical presets, using local cache:', err)
       })
 
+    // Fetch doctor custom sections (Clinical & Investigation)
+    getDoctorCustomSections()
+      .then(res => {
+        if (!isMounted) return
+        const allSections = Array.isArray(res.data?.data) ? res.data.data : []
+        const clinicalSecs = allSections.filter(s => s.type === 'clinical').map(s => ({
+          ...s,
+          chips: Array.isArray(s.chips) ? s.chips : [],
+          text: '',
+          chipInput: '',
+          showChipInput: false
+        }))
+        const invSecs = allSections.filter(s => s.type === 'investigation').map(s => ({
+          ...s,
+          chips: Array.isArray(s.chips) ? s.chips : [],
+          selected: [],
+          chipInput: '',
+          showChipInput: false
+        }))
+
+        // Merge with existing text/selection in current prescription form
+        setCustomSections(prev => {
+          if (clinicalSecs.length === 0 && prev.length > 0) return prev
+          return clinicalSecs.map(cs => {
+            const existing = prev.find(p => p.id === cs.id || p.title === cs.title)
+            return existing ? { ...cs, text: existing.text || '', chips: cs.chips } : cs
+          })
+        })
+        setCustomInvSections(prev => {
+          if (invSecs.length === 0 && prev.length > 0) return prev
+          return invSecs.map(is => {
+            const existing = prev.find(p => p.id === is.id || p.title === is.title)
+            return existing ? { ...is, selected: existing.selected || [], chips: is.chips } : is
+          })
+        })
+
+        if (doctorScopeId) {
+          try {
+            localStorage.setItem(`dr_custom_sections_clinical_${doctorScopeId}`, JSON.stringify(clinicalSecs))
+            localStorage.setItem(`dr_custom_sections_inv_${doctorScopeId}`, JSON.stringify(invSecs))
+          } catch (e) {}
+        }
+      })
+      .catch(err => {
+        console.warn('Could not load database custom sections, using local cache:', err)
+      })
+
     return () => {
       isMounted = false
     }
@@ -1699,7 +2087,9 @@ export default function PrescriptionFormPage() {
         form: activeForm,
         investigationList,
         adviceChecklist,
+        noteList,
         customSections,
+        customInvSections,
         walkInPatientInfo,
         walkInForm,
         appointmentInfo,
@@ -1735,6 +2125,7 @@ export default function PrescriptionFormPage() {
           }))
 
         const currentDraftId = activeDraftId || (isEdit && id ? id : null)
+        const customSecPayload = (customSections || []).map(s => ({ id: s.id, title: s.title, text: s.text }))
 
         if (currentDraftId) {
           // UPDATE — don't need appointment_id, add chamber_id for syncing
@@ -1749,6 +2140,7 @@ export default function PrescriptionFormPage() {
             oe: activeForm.oe || '',
             oh: activeForm.oh || '',
             mh: activeForm.mh || '',
+            custom_sections: customSecPayload,
             ...(canViewNotes ? { notes: activeForm.notes } : {}),
             investigation: activeForm.investigation || '',
             vitals: vitals || undefined,
@@ -1774,6 +2166,7 @@ export default function PrescriptionFormPage() {
             oe: activeForm.oe || '',
             oh: activeForm.oh || '',
             mh: activeForm.mh || '',
+            custom_sections: customSecPayload,
             ...(canViewNotes ? { notes: activeForm.notes } : {}),
             investigation: activeForm.investigation || '',
             vitals: vitals || undefined,
@@ -1795,6 +2188,7 @@ export default function PrescriptionFormPage() {
 
       setAutoSaveStatus('saved')
       setAutoSaveLabel(targetApptId ? 'Draft saved to Doctor Panel' : 'Auto saved locally')
+      window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
       if (!silent) {
         showSuccess({
           title: 'Draft Saved',
@@ -1819,7 +2213,9 @@ export default function PrescriptionFormPage() {
       form,
       investigationList,
       adviceChecklist,
+      noteList,
       customSections,
+      customInvSections,
       walkInPatientInfo,
       walkInForm,
       appointmentInfo,
@@ -1843,7 +2239,9 @@ export default function PrescriptionFormPage() {
             form: state.form,
             investigationList: state.investigationList,
             adviceChecklist: state.adviceChecklist,
+            noteList: state.noteList,
             customSections: state.customSections,
+            customInvSections: state.customInvSections,
             walkInPatientInfo: state.walkInPatientInfo,
             walkInForm: state.walkInForm,
             appointmentInfo: state.appointmentInfo,
@@ -1884,6 +2282,7 @@ export default function PrescriptionFormPage() {
           oe: state.form.oe || '',
           oh: state.form.oh || '',
           mh: state.form.mh || '',
+          custom_sections: (state.customSections || []).map(s => ({ id: s.id, title: s.title, text: s.text })),
           investigation: state.form.investigation || '',
           vitals: state.vitals || undefined,
           age: state.form.age || '',
@@ -1924,7 +2323,13 @@ export default function PrescriptionFormPage() {
             setForm(prev => ({ ...prev, ...parsed.form }))
             if (Array.isArray(parsed.investigationList)) setInvestigationList(parsed.investigationList)
             if (Array.isArray(parsed.adviceChecklist)) setAdviceChecklist(parsed.adviceChecklist)
+            if (Array.isArray(parsed.noteList)) {
+              setNoteList(parsed.noteList)
+            } else if (parsed.form?.notes) {
+              setNoteList(parsed.form.notes.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))
+            }
             if (Array.isArray(parsed.customSections)) setCustomSections(parsed.customSections)
+            if (Array.isArray(parsed.customInvSections)) setCustomInvSections(parsed.customInvSections)
             if (parsed.walkInPatientInfo) setWalkInPatientInfo(parsed.walkInPatientInfo)
             if (parsed.walkInForm) setWalkInForm(parsed.walkInForm)
             if (parsed.appointmentInfo) setAppointmentInfo(parsed.appointmentInfo)
@@ -1979,7 +2384,7 @@ export default function PrescriptionFormPage() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
-  }, [form, investigationList, adviceChecklist, customSections, vitals])
+  }, [form, investigationList, adviceChecklist, noteList, customSections, vitals])
 
   // Modal Handlers for Assigning/Updating Age & Gender (Bidirectional Age & DOB Sync)
   const handleOpenAssignAgeModal = () => {
@@ -2180,12 +2585,74 @@ export default function PrescriptionFormPage() {
     }
   }
 
+  // Sync Notes to form state (mirroring syncInvestigations)
+  const syncNotes = (list) => {
+    setNoteList(list)
+    setForm(prev => ({ ...prev, notes: list.join(', ') }))
+  }
+
+  const toggleNoteItem = (noteText) => {
+    const trimmed = (noteText || '').trim()
+    if (!trimmed) return
+    const isIncluded = noteList.some(n => n.toLowerCase() === trimmed.toLowerCase())
+    if (isIncluded) {
+      syncNotes(noteList.filter(n => n.toLowerCase() !== trimmed.toLowerCase()))
+    } else {
+      syncNotes([...noteList, trimmed])
+    }
+  }
+
+  const handleRemoveNote = (index) => {
+    syncNotes(noteList.filter((_, i) => i !== index))
+  }
+
+  const handleAddCustomNoteDirect = () => {
+    const trimmed = (newNoteInput || '').trim()
+    if (!trimmed) return
+    if (!noteList.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+      syncNotes([...noteList, trimmed])
+    }
+    setNewNoteInput('')
+    setShowAddCustomNote(false)
+  }
+
+  const handleAddAndSaveCustomNote = async () => {
+    const trimmed = (newNoteInput || '').trim()
+    if (!trimmed) return
+    if (!noteList.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+      syncNotes([...noteList, trimmed])
+    }
+    await handleSaveClinicalPreset('note', trimmed)
+    setNewNoteInput('')
+    setShowAddCustomNote(false)
+  }
+
+  const handleNotesTextareaChange = (value) => {
+    setForm(prev => ({ ...prev, notes: value }))
+    const items = value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+    setNoteList(items)
+  }
+
   const handleAppendClinicalTag = (field, tagText) => {
+    const trimmed = (tagText || '').trim()
+    if (!trimmed) return
+    if (field === 'notes') {
+      toggleNoteItem(trimmed)
+      return
+    }
     setForm(prev => {
       const current = prev[field] ? prev[field].trim() : ''
-      if (current.includes(tagText)) return prev
-      const updated = current ? `${current}, ${tagText}` : tagText
-      return { ...prev, [field]: updated }
+      const items = current ? current.split(/,\s*/).map(s => s.trim()).filter(Boolean) : []
+      const exists = items.some(item => item.toLowerCase() === trimmed.toLowerCase())
+      if (exists) {
+        // Toggle OFF: remove it
+        const remaining = items.filter(item => item.toLowerCase() !== trimmed.toLowerCase())
+        return { ...prev, [field]: remaining.join(', ') }
+      } else {
+        // Toggle ON: add it
+        const updated = current ? `${current}, ${trimmed}` : trimmed
+        return { ...prev, [field]: updated }
+      }
     })
   }
 
@@ -2741,7 +3208,7 @@ export default function PrescriptionFormPage() {
 
   const selectMedicine = (index, med) => {
     const name = med.name || med.medicine_name || ''
-    const type = med.type || med.form || 'Tablet'
+    const type = med.type || med.dosage_type || med.form || ''
     const strength = med.strength || ''
 
     const updated = [...form.medicines]
@@ -2811,6 +3278,7 @@ export default function PrescriptionFormPage() {
       oe: form.oe,
       oh: form.oh,
       mh: form.mh,
+      custom_sections: (customSections || []).map(s => ({ id: s.id, title: s.title, text: s.text })),
       ...(canViewNotes ? { notes: form.notes } : {}),
       investigation: form.investigation,
       vitals: vitals || undefined,
@@ -2829,6 +3297,7 @@ export default function PrescriptionFormPage() {
           title: 'Prescription Completed',
           message: 'Prescription finalized successfully and moved out of drafts.'
         })
+        window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
         try {
           localStorage.removeItem(draftKey)
         } catch (e) {}
@@ -3574,7 +4043,7 @@ export default function PrescriptionFormPage() {
           className={`dr-tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
           onClick={() => setActiveTab('notes')}
         >
-          <FileText size={15} /> Notes {form.notes?.trim() ? <span className="dr-tab-badge">1</span> : null}
+          <FileText size={15} /> Notes {noteList.length > 0 ? <span className="dr-tab-badge">{noteList.length}</span> : (form.notes?.trim() ? <span className="dr-tab-badge">1</span> : null)}
         </button>
       </nav>
 
@@ -3910,26 +4379,62 @@ export default function PrescriptionFormPage() {
                               </div>
                             )}
 
-                            {/* Autocomplete Dropdown */}
-                            {activeMedicineIndex === index && medicineSuggestions.length > 0 && (
+                            {/* Autocomplete Dropdown (Rendered via portal to avoid table overflow clipping) */}
+                            {activeMedicineIndex === index && medicineSuggestions.length > 0 && dropdownCoords && createPortal(
                               <div 
-                                className="ecw-suggestions-card" 
-                                ref={suggestionsRef} 
-                                style={{ top: '100%', left: 0, zIndex: 1000 }}
+                                className="dr-med-autocomplete-card" 
+                                ref={suggestionsRef}
+                                style={{
+                                  position: 'fixed',
+                                  top: dropdownCoords.top,
+                                  bottom: dropdownCoords.bottom,
+                                  left: dropdownCoords.left,
+                                  width: dropdownCoords.width,
+                                  zIndex: 999999
+                                }}
                               >
-                                {medicineSuggestions.map((item, sIdx) => (
-                                  <div
-                                    key={item.id || sIdx}
-                                    className={`ecw-suggestion-item ${highlightedSuggestion === sIdx ? 'selected' : ''}`}
-                                    onClick={() => selectMedicine(index, item)}
-                                  >
-                                    <strong>{item.name || item.medicine_name}</strong>
-                                    <span className="ecw-suggestion-meta">
-                                      {item.generic_name || item.type || ''} • {item.strength || ''}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                                {medicineSuggestions.map((item, sIdx) => {
+                                  const medName = item.name || item.medicine_name || ''
+                                  const medType = item.type || item.dosage_type || item.form || ''
+                                  const medStrength = item.strength || ''
+                                  const medGeneric = item.generic_name || ''
+
+                                  return (
+                                    <div
+                                      key={item.id || sIdx}
+                                      className={`dr-med-autocomplete-item ${highlightedSuggestion === sIdx ? 'selected' : ''}`}
+                                      onClick={() => selectMedicine(index, item)}
+                                    >
+                                      <div className="dr-med-item-top">
+                                        <span className="dr-med-item-name">{medName}</span>
+                                        <div className="dr-med-item-badges">
+                                          {medType && (
+                                            <span className="dr-med-item-type-badge">{medType}</span>
+                                          )}
+                                          {medStrength && (
+                                            <span className="dr-med-item-strength">{medStrength}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {(medGeneric || item.company_name) && (
+                                        <div className="dr-med-item-bottom">
+                                          {medGeneric ? (
+                                            <span className="dr-med-item-generic" title={medGeneric}>
+                                              {medGeneric}
+                                            </span>
+                                          ) : <span />}
+                                          {item.company_name && (
+                                            <span className="dr-med-item-company" title={item.company_name}>
+                                              {item.company_name}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>,
+                              document.body
                             )}
                           </td>
 
@@ -4219,7 +4724,7 @@ export default function PrescriptionFormPage() {
                       className="dr-notes-area"
                       placeholder="Add private clinical remarks / doctor notes (confidential to you)..."
                       value={form.notes || ''}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      onChange={(e) => handleNotesTextareaChange(e.target.value)}
                       rows={3}
                     />
                   )}
@@ -4243,12 +4748,26 @@ export default function PrescriptionFormPage() {
 
                 {/* CC Chips */}
                 <div className="dr-chips-wrap">
-                  {ccPresets.map((preset) => (
-                    <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#2563eb' }}>
-                      <button type="button" className="dr-chip-btn" style={{ fontWeight: 600, color: '#1d4ed8' }} onClick={() => handleAppendClinicalTag('cc', preset.content)}>+ {preset.content}</button>
-                      <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
-                    </span>
-                  ))}
+                  {ccPresets.map((preset) => {
+                    const isSelected = (form.cc || '').toLowerCase().includes(preset.content.toLowerCase())
+                    return (
+                      <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#2563eb' }}>
+                        <button
+                          type="button"
+                          className="dr-chip-btn"
+                          style={{
+                            fontWeight: isSelected ? 700 : 600,
+                            color: '#1d4ed8',
+                            background: isSelected ? '#eff6ff' : undefined
+                          }}
+                          onClick={() => handleAppendClinicalTag('cc', preset.content)}
+                        >
+                          {isSelected ? '✓ ' : '+ '} {preset.content}
+                        </button>
+                        <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
+                      </span>
+                    )
+                  })}
                   {ccPresets.length === 0 && !showChipInput.cc && (
                     <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '3px 0' }}>No saved complaints presets. Click "+ Add Preset" to create your own.</span>
                   )}
@@ -4282,12 +4801,26 @@ export default function PrescriptionFormPage() {
 
                 {/* OE Chips */}
                 <div className="dr-chips-wrap">
-                  {oePresets.map((preset) => (
-                    <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#16a34a' }}>
-                      <button type="button" className="dr-chip-btn" style={{ fontWeight: 600, color: '#15803d' }} onClick={() => handleAppendClinicalTag('oe', preset.content)}>+ {preset.content}</button>
-                      <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
-                    </span>
-                  ))}
+                  {oePresets.map((preset) => {
+                    const isSelected = (form.oe || '').toLowerCase().includes(preset.content.toLowerCase())
+                    return (
+                      <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#16a34a' }}>
+                        <button
+                          type="button"
+                          className="dr-chip-btn"
+                          style={{
+                            fontWeight: isSelected ? 700 : 600,
+                            color: '#15803d',
+                            background: isSelected ? '#f0fdf4' : undefined
+                          }}
+                          onClick={() => handleAppendClinicalTag('oe', preset.content)}
+                        >
+                          {isSelected ? '✓ ' : '+ '} {preset.content}
+                        </button>
+                        <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
+                      </span>
+                    )
+                  })}
                   {oePresets.length === 0 && !showChipInput.oe && (
                     <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '3px 0' }}>No examination presets saved. Click "+ Add Preset" to create your own.</span>
                   )}
@@ -4316,12 +4849,26 @@ export default function PrescriptionFormPage() {
                   <h3 className="dr-section-title">Past Medical History (MH)</h3>
                   {/* MH Chips */}
                   <div className="dr-chips-wrap">
-                    {mhPresets.map((preset) => (
-                      <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#6366f1' }}>
-                        <button type="button" className="dr-chip-btn" style={{ fontWeight: 600, color: '#4f46e5' }} onClick={() => handleAppendClinicalTag('mh', preset.content)}>+ {preset.content}</button>
-                        <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
-                      </span>
-                    ))}
+                    {mhPresets.map((preset) => {
+                      const isSelected = (form.mh || '').toLowerCase().includes(preset.content.toLowerCase())
+                      return (
+                        <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#6366f1' }}>
+                          <button
+                            type="button"
+                            className="dr-chip-btn"
+                            style={{
+                              fontWeight: isSelected ? 700 : 600,
+                              color: '#4f46e5',
+                              background: isSelected ? '#eef2ff' : undefined
+                            }}
+                            onClick={() => handleAppendClinicalTag('mh', preset.content)}
+                          >
+                            {isSelected ? '✓ ' : '+ '} {preset.content}
+                          </button>
+                          <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
+                        </span>
+                      )
+                    })}
                     {mhPresets.length === 0 && !showChipInput.mh && (
                       <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '3px 0' }}>No medical history presets saved. Click "+ Add Preset" to add.</span>
                     )}
@@ -4348,12 +4895,26 @@ export default function PrescriptionFormPage() {
                   <h3 className="dr-section-title">Other History / Family History (OH)</h3>
                   {/* OH Chips */}
                   <div className="dr-chips-wrap">
-                    {ohPresets.map((preset) => (
-                      <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#0ea5e9' }}>
-                        <button type="button" className="dr-chip-btn" style={{ fontWeight: 600, color: '#0284c7' }} onClick={() => handleAppendClinicalTag('oh', preset.content)}>+ {preset.content}</button>
-                        <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
-                      </span>
-                    ))}
+                    {ohPresets.map((preset) => {
+                      const isSelected = (form.oh || '').toLowerCase().includes(preset.content.toLowerCase())
+                      return (
+                        <span key={preset.id} className="dr-chip-custom" style={{ borderColor: '#0ea5e9' }}>
+                          <button
+                            type="button"
+                            className="dr-chip-btn"
+                            style={{
+                              fontWeight: isSelected ? 700 : 600,
+                              color: '#0284c7',
+                              background: isSelected ? '#f0f9ff' : undefined
+                            }}
+                            onClick={() => handleAppendClinicalTag('oh', preset.content)}
+                          >
+                            {isSelected ? '✓ ' : '+ '} {preset.content}
+                          </button>
+                          <button type="button" className="dr-chip-remove-btn" onClick={(e) => handleDeleteClinicalPreset(preset.id, e)} title="Remove preset from database">×</button>
+                        </span>
+                      )
+                    })}
                     {ohPresets.length === 0 && !showChipInput.oh && (
                       <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '3px 0' }}>No other history presets saved. Click "+ Add Preset" to add.</span>
                     )}
@@ -4387,12 +4948,26 @@ export default function PrescriptionFormPage() {
                     </button>
                   </div>
                   <div className="dr-chips-wrap">
-                    {sec.chips.map((chip) => (
-                      <span key={chip} className="dr-chip-custom">
-                        <button type="button" className="dr-chip-btn" onClick={() => appendCustomSectionChip(sec.id, chip)}>+ {chip}</button>
-                        <button type="button" className="dr-chip-remove-btn" onClick={() => removeCustomSectionChip(sec.id, chip)} title="Remove">×</button>
-                      </span>
-                    ))}
+                    {sec.chips.map((chip) => {
+                      const isSelected = (sec.text || '').toLowerCase().includes(chip.toLowerCase())
+                      return (
+                        <span key={chip} className="dr-chip-custom" style={{ borderColor: isSelected ? '#2563eb' : undefined }}>
+                          <button
+                            type="button"
+                            className="dr-chip-btn"
+                            style={{
+                              fontWeight: isSelected ? 700 : 500,
+                              color: isSelected ? '#1d4ed8' : '#334155',
+                              background: isSelected ? '#eff6ff' : undefined
+                            }}
+                            onClick={() => appendCustomSectionChip(sec.id, chip)}
+                          >
+                            {isSelected ? '✓ ' : '+ '}{chip}
+                          </button>
+                          <button type="button" className="dr-chip-remove-btn" onClick={() => removeCustomSectionChip(sec.id, chip)} title="Delete chip from database">×</button>
+                        </span>
+                      )
+                    })}
                     {sec.showChipInput ? (
                       <span className="dr-chip-input-wrap">
                         <input
@@ -4994,16 +5569,25 @@ export default function PrescriptionFormPage() {
                     'Report to Hospital if severe shortness of breath or chest tightness',
                     'Report to Emergency if continuous vomiting or unable to retain oral fluids',
                     'Bring all previous lab reports & medicine strips on next visit'
-                  ].map(msg => (
-                    <button
-                      key={msg}
-                      type="button"
-                      className="dr-chip-btn"
-                      onClick={() => handleAppendClinicalTag('notes', msg)}
-                    >
-                      + {msg}
-                    </button>
-                  ))}
+                  ].map(msg => {
+                    const isSelected = noteList.some(n => n.toLowerCase() === msg.toLowerCase())
+                    return (
+                      <button
+                        key={msg}
+                        type="button"
+                        className={`dr-chip-btn ${isSelected ? 'active-pill' : ''}`}
+                        style={{
+                          fontWeight: isSelected ? 700 : 500,
+                          background: isSelected ? '#eff6ff' : undefined,
+                          borderColor: isSelected ? '#2563eb' : undefined,
+                          color: isSelected ? '#1d4ed8' : undefined
+                        }}
+                        onClick={() => toggleNoteItem(msg)}
+                      >
+                        {isSelected ? '✓ ' : '+ '} {msg}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -5017,9 +5601,17 @@ export default function PrescriptionFormPage() {
               <div className="dr-card">
                 <div className="dr-card-header">
                   <h3 className="dr-section-title">
-                    <FileText size={16} color="#2563eb" /> Doctor's Clinical & Confidential Notes
+                    <FileText size={16} color="#2563eb" /> Doctor's Clinical & Confidential Notes {noteList.length > 0 && `(${noteList.length})`}
                   </h3>
-                  <span className="dr-helper-text">Internal consultation remarks & case summary</span>
+                  {canViewNotes && !showAddCustomNote && (
+                    <button
+                      type="button"
+                      className="dr-btn-blue-outline-sm"
+                      onClick={() => setShowAddCustomNote(true)}
+                    >
+                      <Plus size={13} /> Add Custom Note
+                    </button>
+                  )}
                 </div>
 
                 {!canViewNotes ? (
@@ -5033,102 +5625,207 @@ export default function PrescriptionFormPage() {
                     </div>
                   </div>
                 ) : (
-                  <textarea
-                    className="dr-full-textarea"
-                    rows={6}
-                    placeholder="Type any private clinical observations, response to previous treatment, differential diagnosis thoughts, or referral recommendations..."
-                    value={form.notes || ''}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  />
+                  <>
+                    {/* Add Custom Note Input Bar (like in Investigation) */}
+                    {showAddCustomNote && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                        <input
+                          autoFocus
+                          type="text"
+                          className="dr-input-field"
+                          style={{ flex: '1 1 240px', minWidth: 200 }}
+                          placeholder="Type clinical note / remark and press enter..."
+                          value={newNoteInput}
+                          onChange={(e) => setNewNoteInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleAddCustomNoteDirect()
+                            }
+                            if (e.key === 'Escape') {
+                              setShowAddCustomNote(false)
+                              setNewNoteInput('')
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="dr-btn-primary"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                          onClick={handleAddCustomNoteDirect}
+                        >
+                          <Plus size={14} /> Add Note
+                        </button>
+                        <button
+                          type="button"
+                          className="dr-btn-amber-outline"
+                          title="Add note and save permanently to your snippets library"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                          onClick={handleAddAndSaveCustomNote}
+                        >
+                          <Star size={13} color="#f59e0b" fill="#f59e0b" /> Add &amp; Save Snippet
+                        </button>
+                        <button
+                          type="button"
+                          className="dr-btn-gray-outline"
+                          onClick={() => { setShowAddCustomNote(false); setNewNoteInput('') }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Active Notes Grid — EXACTLY LIKE INVESTIGATION (cards with remove X button) */}
+                    {noteList.length > 0 ? (
+                      <div className="dr-inv-active-grid" style={{ marginBottom: 16 }}>
+                        {noteList.map((note, i) => (
+                          <div key={i} className="dr-inv-active-card">
+                            <div className="dr-inv-active-left">
+                              <FileText size={15} color="#2563eb" />
+                              <span className="dr-inv-active-name">{note}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="dr-chip-remove"
+                              onClick={() => handleRemoveNote(i)}
+                              title="Remove note"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="dr-empty-box" style={{ marginBottom: 16 }}>
+                        <FileText size={24} color="#94a3b8" />
+                        <p>No confidential notes added yet. Click on any quick snippet below or click "+ Add Custom Note".</p>
+                      </div>
+                    )}
+
+                    {/* Freeform/Full textarea for editing remarks */}
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                          Full Note Summary / Additional Free-form Remarks
+                        </label>
+                        {noteList.length > 0 && (
+                          <button
+                            type="button"
+                            style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 12, cursor: 'pointer', padding: 0 }}
+                            onClick={() => syncNotes([])}
+                          >
+                            Clear All Notes
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        className="dr-full-textarea"
+                        rows={3}
+                        placeholder="Type any private clinical observations, response to previous treatment, differential diagnosis thoughts, or referral recommendations..."
+                        value={form.notes || ''}
+                        onChange={(e) => handleNotesTextareaChange(e.target.value)}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
 
               {canViewNotes && (
                 <div className="dr-card">
-                <div className="dr-card-header" style={{ marginBottom: 12 }}>
-                  <h3 className="dr-section-title">
-                    <Sparkles size={15} color="#2563eb" /> Quick Note Snippets
-                  </h3>
-                  <button
-                    type="button"
-                    className="dr-btn-primary"
-                    style={{ padding: '4px 10px', fontSize: 12, height: 30, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => setShowAddNoteSnippet(prev => !prev)}
-                  >
-                    <Plus size={13} /> Add Note
-                  </button>
-                </div>
-
-                <div className="dr-chips-wrap">
-                  {notePresets.map(preset => (
-                    <div key={preset.id} className="dr-chip-item-group" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      <button
-                        type="button"
-                        className="dr-chip-btn"
-                        onClick={() => handleAppendClinicalTag('notes', preset.content)}
-                      >
-                        + {preset.content}
-                      </button>
-                      <button
-                        type="button"
-                        className="dr-chip-remove"
-                        style={{ padding: '2px 5px', color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                        title="Delete note snippet from database"
-                        onClick={(e) => handleDeleteClinicalPreset(preset.id, e)}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-
-                  {!showAddNoteSnippet && (
+                  <div className="dr-card-header" style={{ marginBottom: 12 }}>
+                    <h3 className="dr-section-title">
+                      <Sparkles size={15} color="#2563eb" /> Quick Note Snippets ({notePresets.length})
+                    </h3>
                     <button
                       type="button"
-                      className="dr-chip-btn dr-chip-add-btn"
-                      style={{ border: '1px dashed #2563eb', color: '#2563eb', background: '#eff6ff', fontWeight: 600 }}
-                      onClick={() => setShowAddNoteSnippet(true)}
+                      className="dr-btn-primary"
+                      style={{ padding: '4px 10px', fontSize: 12, height: 30, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      onClick={() => setShowAddNoteSnippet(prev => !prev)}
                     >
-                      <Plus size={13} /> Add Note
-                    </button>
-                  )}
-                </div>
-
-                {showAddNoteSnippet && (
-                  <div className="dr-advice-add-bar" style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      className="dr-advice-input-full"
-                      style={{ flex: 1, padding: '7px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
-                      placeholder="Type custom note snippet (e.g. Advised periodic blood sugar monitoring) and press Enter..."
-                      value={newNoteSnippetInput}
-                      autoFocus
-                      onChange={(e) => setNewNoteSnippetInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddNoteSnippet()
-                        } else if (e.key === 'Escape') {
-                          setShowAddNoteSnippet(false)
-                        }
-                      }}
-                    />
-                    <button type="button" className="dr-btn-primary" style={{ padding: '6px 14px', fontSize: 13 }} onClick={handleAddNoteSnippet}>
-                      <Plus size={14} /> Save
-                    </button>
-                    <button
-                      type="button"
-                      className="dr-btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: 13 }}
-                      onClick={() => {
-                        setShowAddNoteSnippet(false)
-                        setNewNoteSnippetInput('')
-                      }}
-                    >
-                      Cancel
+                      <Plus size={13} /> Add Snippet
                     </button>
                   </div>
-                )}
-              </div>
+
+                  <div className="dr-chips-wrap">
+                    {notePresets.map(preset => {
+                      const isSelected = noteList.some(n => n.toLowerCase() === preset.content.trim().toLowerCase())
+                      return (
+                        <div key={preset.id} className="dr-chip-item-group" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                          <button
+                            type="button"
+                            className={`dr-chip-btn ${isSelected ? 'active-pill' : ''}`}
+                            style={{
+                              fontWeight: isSelected ? 700 : 500,
+                              background: isSelected ? '#eff6ff' : undefined,
+                              borderColor: isSelected ? '#2563eb' : undefined,
+                              color: isSelected ? '#1d4ed8' : undefined
+                            }}
+                            onClick={() => toggleNoteItem(preset.content)}
+                            title={isSelected ? 'Click to remove from notes' : 'Click to add to notes'}
+                          >
+                            {isSelected ? '✓ ' : '+ '} {preset.content}
+                          </button>
+                          <button
+                            type="button"
+                            className="dr-chip-remove"
+                            style={{ padding: '2px 5px', color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                            title="Delete snippet permanently from database library"
+                            onClick={(e) => handleDeleteClinicalPreset(preset.id, e)}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )
+                    })}
+
+                    {!showAddNoteSnippet && (
+                      <button
+                        type="button"
+                        className="dr-chip-btn dr-chip-add-btn"
+                        style={{ border: '1px dashed #2563eb', color: '#2563eb', background: '#eff6ff', fontWeight: 600 }}
+                        onClick={() => setShowAddNoteSnippet(true)}
+                      >
+                        <Plus size={13} /> Add Snippet
+                      </button>
+                    )}
+                  </div>
+
+                  {showAddNoteSnippet && (
+                    <div className="dr-advice-add-bar" style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="dr-advice-input-full"
+                        style={{ flex: 1, padding: '7px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                        placeholder="Type custom note snippet (e.g. Advised periodic blood sugar monitoring) and press Enter..."
+                        value={newNoteSnippetInput}
+                        autoFocus
+                        onChange={(e) => setNewNoteSnippetInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddNoteSnippet()
+                          } else if (e.key === 'Escape') {
+                            setShowAddNoteSnippet(false)
+                          }
+                        }}
+                      />
+                      <button type="button" className="dr-btn-primary" style={{ padding: '6px 14px', fontSize: 13 }} onClick={handleAddNoteSnippet}>
+                        <Plus size={14} /> Save
+                      </button>
+                      <button
+                        type="button"
+                        className="dr-btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: 13 }}
+                        onClick={() => {
+                          setShowAddNoteSnippet(false)
+                          setNewNoteSnippetInput('')
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

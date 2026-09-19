@@ -112,13 +112,20 @@ export const getDoctorClinicalPresets = (params) => axiosInstance.get('/doctor/c
 export const createDoctorClinicalPreset = (data) => axiosInstance.post('/doctor/clinical-presets', data)
 export const deleteDoctorClinicalPreset = (id) => axiosInstance.delete(`/doctor/clinical-presets/${id}`)
 
+export const getDoctorCustomSections = (params) => axiosInstance.get('/doctor/custom-sections', { params })
+export const createDoctorCustomSection = (data) => axiosInstance.post('/doctor/custom-sections', data)
+export const updateDoctorCustomSection = (id, data) => axiosInstance.put(`/doctor/custom-sections/${id}`, data)
+export const deleteDoctorCustomSection = (id) => axiosInstance.delete(`/doctor/custom-sections/${id}`)
+
 // ===== MEDICINES (Full CRUD + Search) =====
 export const getMedicines = (params) => axiosInstance.get('/medicines', { params })
 export const getMedicine = (id) => axiosInstance.get(`/medicines/${id}`)
 export const createMedicine = (data) => axiosInstance.post('/medicines', data)
 export const updateMedicine = (id, data) => axiosInstance.put(`/medicines/${id}`, data)
 export const deleteMedicine = (id) => axiosInstance.delete(`/medicines/${id}`)
+export const bulkDeleteMedicines = (ids) => axiosInstance.post('/medicines/bulk-delete', { ids })
 export const searchMedicines = (params) => axiosInstance.get('/medicines', { params })
+export const getMedicineSuggestions = (params) => axiosInstance.get('/medicines/suggestions', { params })
 
 // ===== PAYMENTS (filtered appointments view) =====
 export const getPayments = (params) => axiosInstance.get('/appointments', { params: { ...params, per_page: 50 } })
