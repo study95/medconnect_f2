@@ -12,6 +12,83 @@ import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import toast from 'react-hot-toast'
+
+function TableCheckbox({ checked, indeterminate, onChange, title }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        margin: 0,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle',
+      }}
+      title={title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0,
+          margin: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #D1D5DB',
+          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        {checked && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {!checked && indeterminate && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </span>
+    </label>
+  )
+}
 
 const ROLES = ['admin', 'manager', 'doctor', 'user']
 const ROLE_LABELS = { admin: 'ADMIN', manager: 'HOSPITAL', doctor: 'DOCTOR', user: 'USER' }
@@ -60,6 +137,8 @@ export default function UserListPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [typeFilter, setTypeFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [changingRole, setChangingRole] = useState(null)
   
   // Permissions State
@@ -89,6 +168,8 @@ export default function UserListPage() {
     isUpdatingPermissions: savingPerms,
     deleteUser: saveDeleteUser,
     isDeleting: deleting,
+    bulkDeleteUsers,
+    isBulkDeleting: bulkDeleting,
   } = useAdminUserMutations()
 
   const clearFilters = () => {
@@ -125,10 +206,26 @@ export default function UserListPage() {
     if (!deleteTarget) return
     try {
       await saveDeleteUser(deleteTarget.id)
+      toast.success('User deleted successfully.')
+      setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
     } catch (err) {
       console.error('Failed to delete user:', err)
+      toast.error('Failed to delete user.')
     } finally {
       setDeleteTarget(null)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    try {
+      const res = await bulkDeleteUsers(selectedIds)
+      toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} user(s).`)
+      setSelectedIds([])
+      setShowBulkDeleteModal(false)
+    } catch (err) {
+      console.error('Failed to delete selected users:', err)
+      toast.error(err.response?.data?.message || 'Failed to delete selected users')
     }
   }
 
@@ -245,6 +342,27 @@ export default function UserListPage() {
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
+  const selectableData = paginatedData.filter(u => u.id !== currentUser?.id)
+  const isAllSelected = selectableData.length > 0 && selectableData.every(u => selectedIds.includes(u.id))
+  const isSomeSelected = selectableData.some(u => selectedIds.includes(u.id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = selectableData.map(u => u.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const newIds = selectableData.map(u => u.id).filter(id => !selectedIds.includes(id))
+      setSelectedIds(prev => [...prev, ...newIds])
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    if (id === currentUser?.id) return
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
+  }
+
   useEffect(() => {
     setCurrentPage(1)
   }, [filtered.length])
@@ -307,14 +425,144 @@ export default function UserListPage() {
       </ListToolbar>
 
       <div className="admin-card">
-        <div className="admin-card-header">
-          <h3 className="admin-card-title">User Accounts</h3>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{filtered.length} total found</span>
+        <div
+          className="admin-card-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '14px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="admin-card-title" style={{ margin: 0 }}>User Accounts</h3>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
+                  border: '1px solid #FECDD3',
+                  borderRadius: 20,
+                  padding: '4px 6px 4px 14px',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
+                  animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#E11D48',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#9F1239', letterSpacing: '-0.01em' }}>
+                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#BE123C' }}>selected</span>
+                  </span>
+                </div>
+
+                <div style={{ width: 1, height: 16, background: '#FDA4AF', opacity: 0.6 }} />
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9F1239',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(225, 29, 72, 0.1)'
+                    e.currentTarget.style.color = '#881337'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#9F1239'
+                  }}
+                >
+                  Deselect
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 14px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+                      transition: 'transform 0.1s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(225, 29, 72, 0.35)'
+                      e.currentTarget.style.transform = 'translateY(-0.5px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(225, 29, 72, 0.25)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                    <span>Delete ({selectedIds.length})</span>
+                  </button>
+                )}
+              </div>
+            )}
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--admin-text-muted, #64748B)',
+                background: 'var(--admin-bg, #F8FAFC)',
+                padding: '4px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--admin-border, #E2E8F0)',
+              }}
+            >
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Users Found
+            </div>
+          </div>
         </div>
         
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '18%', '16%', '14%', '10%']} headers={['User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '18%', '16%', '14%', '10%']} headers={['', 'User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(roleFilter || typeFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." />
         ) : (
@@ -322,7 +570,15 @@ export default function UserListPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: 24, minWidth: 200 }}>Profile</th>
+                    <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                      <TableCheckbox
+                        checked={isAllSelected}
+                        indeterminate={isSomeSelected && !isAllSelected}
+                        onChange={toggleSelectAll}
+                        title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
+                      />
+                    </th>
+                    <th style={{ paddingLeft: 16, minWidth: 200 }}>Profile</th>
                     <th>Contact Info</th>
                     <th>Identity Type</th>
                     <th>Access Role</th>
@@ -332,9 +588,28 @@ export default function UserListPage() {
                 <tbody>
                   {paginatedData.map(u => {
                     const type = getTypeStyles(u.registration_type)
+                    const isSelected = selectedIds.includes(u.id)
+                    const isSelf = u.id === currentUser?.id
                     return (
-                      <tr key={u.id}>
-                        <td style={{ paddingLeft: 24 }}>
+                      <tr
+                        key={u.id}
+                        style={{
+                          background: isSelected ? 'rgba(16, 185, 129, 0.06)' : undefined,
+                          transition: 'background 0.15s'
+                        }}
+                      >
+                        <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                          {isSelf ? (
+                            <span title="You cannot select or delete your own account" style={{ opacity: 0.3, cursor: 'not-allowed', fontSize: 13 }}>🚫</span>
+                          ) : (
+                            <TableCheckbox
+                              checked={isSelected}
+                              onChange={() => toggleSelectOne(u.id)}
+                              title="Select row"
+                            />
+                          )}
+                        </td>
+                        <td style={{ paddingLeft: 16 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <div style={{ 
                               width: 40, height: 40, borderRadius: 12, overflow: 'hidden',
@@ -514,6 +789,15 @@ export default function UserListPage() {
         onConfirm={handleDelete} 
         onCancel={() => setDeleteTarget(null)} 
         loading={deleting} 
+      />
+
+      <DeleteModal 
+        show={showBulkDeleteModal} 
+        title="Bulk Delete Users" 
+        message={`Warning: You are about to permanently delete ${selectedIds.length} selected user(s). This will remove all associated credentials and profiles. This action is irreversible.`}
+        onConfirm={handleBulkDelete} 
+        onCancel={() => setShowBulkDeleteModal(false)} 
+        loading={bulkDeleting} 
       />
 
       <style dangerouslySetInnerHTML={{ __html: `

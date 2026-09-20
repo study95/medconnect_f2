@@ -11,6 +11,7 @@ export const getDoctor = (id) => axiosInstance.get(`/doctors/${id}`)
 export const createDoctor = (data) => axiosInstance.post('/doctors', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateDoctor = (id, data) => axiosInstance.post(`/doctors/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteDoctor = (id) => axiosInstance.delete(`/doctors/${id}`)
+export const bulkDeleteDoctors = (ids) => axiosInstance.post('/doctors/bulk-delete', { ids })
 
 // ===== HOSPITALS =====
 export const getHospitals = (params) => axiosInstance.get('/hospitals', { params })
@@ -18,6 +19,7 @@ export const getHospital = (id) => axiosInstance.get(`/hospitals/${id}`)
 export const createHospital = (data) => axiosInstance.post('/hospitals', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateHospital = (id, data) => axiosInstance.post(`/hospitals/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteHospital = (id) => axiosInstance.delete(`/hospitals/${id}`)
+export const bulkDeleteHospitals = (ids) => axiosInstance.post('/hospitals/bulk-delete', { ids })
 
 // ===== SPECIALTIES =====
 export const getSpecialties = (params) => axiosInstance.get('/specialties', { params })
@@ -67,12 +69,14 @@ export const getAppointment = (id) => axiosInstance.get(`/appointments/${id}`)
 export const createAppointment = (data) => axiosInstance.post('/appointments', data)
 export const updateAppointment = (id, data) => axiosInstance.put(`/appointments/${id}`, data)
 export const deleteAppointment = (id) => axiosInstance.delete(`/appointments/${id}`)
+export const bulkDeleteAppointments = (ids) => axiosInstance.post('/appointments/bulk-delete', { ids })
 
 // ===== USERS =====
 export const getUsers = (params) => axiosInstance.get('/users', { params })
 export const getUser = (id) => axiosInstance.get(`/users/${id}`)
 export const updateUserRole = (id, role) => axiosInstance.put(`/users/${id}/role`, { role })
 export const deleteUser = (id) => axiosInstance.delete(`/users/${id}`)
+export const bulkDeleteUsers = (ids) => axiosInstance.post('/users/bulk-delete', { ids })
 export const getAllPermissions = () => axiosInstance.get('/permissions')
 export const updateUserPermissions = (id, permissions) => axiosInstance.put(`/users/${id}/permissions`, { permissions })
 
@@ -82,6 +86,7 @@ export const getAdminPatient = (id) => axiosInstance.get(`/admin/patients/${id}`
 export const createAdminPatient = (data) => axiosInstance.post('/admin/patients', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateAdminPatient = (id, data) => axiosInstance.post(`/admin/patients/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteAdminPatient = (id) => axiosInstance.delete(`/admin/patients/${id}`)
+export const bulkDeleteAdminPatients = (ids) => axiosInstance.post('/admin/patients/bulk-delete', { ids })
 
 export const getPrescriptions = (params) => axiosInstance.get('/prescriptions', { params })
 export const getPrescription = (id) => axiosInstance.get(`/prescriptions/${id}`)
@@ -131,6 +136,7 @@ export const getMedicineSuggestions = (params) => axiosInstance.get('/medicines/
 export const getPayments = (params) => axiosInstance.get('/appointments', { params: { ...params, per_page: 50 } })
 export const updatePayment = (id, data) => axiosInstance.put(`/appointments/${id}`, data)
 export const deletePayment = (id) => axiosInstance.delete(`/appointments/${id}`)
+export const bulkDeletePayments = (ids) => axiosInstance.post('/appointments/bulk-delete', { ids })
 
 // ===== COMMISSION & SERVICE ENABLEMENT =====
 // Doctor service enablement

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import StatusBadge from '../../../components/admin/StatusBadge'
@@ -12,12 +13,90 @@ import TableFooter from '../../../components/admin/TableFooter'
 import SearchableSelect from '../../../components/common/SearchableSelect'
 import useDebounce from '../../../hooks/useDebounce'
 
+function TableCheckbox({ checked, indeterminate, onChange, title }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        margin: 0,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle',
+      }}
+      title={title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0,
+          margin: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #D1D5DB',
+          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        {checked && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {!checked && indeterminate && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </span>
+    </label>
+  )
+}
+
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [changingStatus, setChangingStatus] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
   // Filters State
   const [search, setSearch] = useState('')
@@ -57,7 +136,13 @@ export default function AppointmentListPage() {
   // Enterprise TanStack Query Hooks
   const { appointments, total, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
   const { doctors, hospitals } = useAdminAppointmentLookups()
-  const { deleteAppointment, isDeleting: deleting, updateAppointmentStatus } = useAdminAppointmentMutations()
+  const {
+    deleteAppointment,
+    isDeleting: deleting,
+    bulkDeleteAppointments,
+    isBulkDeleting: bulkDeleting,
+    updateAppointmentStatus,
+  } = useAdminAppointmentMutations()
 
   const handleStatusChange = async (id, newStatus) => {
     setChangingStatus(id)
@@ -74,11 +159,46 @@ export default function AppointmentListPage() {
     if (!deleteTarget) return
     try {
       await deleteAppointment(deleteTarget.id)
+      toast.success('Appointment deleted successfully')
+      setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
     } catch (err) {
       console.error('Failed to delete appointment', err)
+      toast.error('Failed to delete appointment')
     } finally {
       setDeleteTarget(null)
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    try {
+      const res = await bulkDeleteAppointments(selectedIds)
+      toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} appointment(s)`)
+      setSelectedIds([])
+      setShowBulkDeleteModal(false)
+    } catch (err) {
+      console.error('Failed to delete selected appointments', err)
+      toast.error(err.response?.data?.message || 'Failed to delete selected appointments')
+    }
+  }
+
+  const isAllSelected = appointments.length > 0 && appointments.every(a => selectedIds.includes(a.id))
+  const isSomeSelected = appointments.some(a => selectedIds.includes(a.id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = appointments.map(a => a.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const newIds = appointments.map(a => a.id).filter(id => !selectedIds.includes(id))
+      setSelectedIds(prev => [...prev, ...newIds])
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
   }
 
   const clearFilters = () => {
@@ -165,16 +285,144 @@ export default function AppointmentListPage() {
       </ListToolbar>
 
       <div className="admin-card">
-        <div className="admin-card-header">
-          <h3 className="admin-card-title">Patient Appointments</h3>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', padding: '4px 10px', borderRadius: 20 }}>
-            {total} Results
-          </span>
+        <div
+          className="admin-card-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '14px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="admin-card-title" style={{ margin: 0 }}>Patient Appointments</h3>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
+                  border: '1px solid #FECDD3',
+                  borderRadius: 20,
+                  padding: '4px 6px 4px 14px',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
+                  animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#E11D48',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#9F1239', letterSpacing: '-0.01em' }}>
+                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#BE123C' }}>selected</span>
+                  </span>
+                </div>
+
+                <div style={{ width: 1, height: 16, background: '#FDA4AF', opacity: 0.6 }} />
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9F1239',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(225, 29, 72, 0.1)'
+                    e.currentTarget.style.color = '#881337'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#9F1239'
+                  }}
+                >
+                  Deselect
+                </button>
+
+                {(isAdmin || isManager) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 14px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+                      transition: 'transform 0.1s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(225, 29, 72, 0.35)'
+                      e.currentTarget.style.transform = 'translateY(-0.5px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(225, 29, 72, 0.25)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                    <span>Delete ({selectedIds.length})</span>
+                  </button>
+                )}
+              </div>
+            )}
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--admin-text-muted, #64748B)',
+                background: 'var(--admin-bg, #F8FAFC)',
+                padding: '4px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--admin-border, #E2E8F0)',
+              }}
+            >
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong> Results
+            </div>
+          </div>
         </div>
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '18%', '12%', '16%']} headers={['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
+            <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '20%', '18%', '12%', '16%']} headers={['', 'ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
           ) : appointments.length === 0 ? (
             <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
           ) : (
@@ -182,7 +430,15 @@ export default function AppointmentListPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: 24, width: 135 }}>ID</th>
+                    <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                      <TableCheckbox
+                        checked={isAllSelected}
+                        indeterminate={isSomeSelected && !isAllSelected}
+                        onChange={toggleSelectAll}
+                        title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
+                      />
+                    </th>
+                    <th style={{ width: 135 }}>ID</th>
                     <th style={{ minWidth: 170 }}>Patient Details</th>
                     <th style={{ minWidth: 160 }}>Doctor Information</th>
                     <th style={{ minWidth: 170 }}>Facility & Venue</th>
@@ -193,9 +449,24 @@ export default function AppointmentListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {appointments.map(appt => (
-                    <tr key={appt.id}>
-                      <td style={{ paddingLeft: 24, whiteSpace: 'nowrap' }}><CompactUlid value={appt.public_id || appt.id} /></td>
+                  {appointments.map(appt => {
+                    const isSelected = selectedIds.includes(appt.id)
+                    return (
+                    <tr
+                      key={appt.id}
+                      style={{
+                        background: isSelected ? 'rgba(16, 185, 129, 0.06)' : undefined,
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                        <TableCheckbox
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(appt.id)}
+                          title="Select row"
+                        />
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}><CompactUlid value={appt.public_id || appt.id} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--admin-text)', flexShrink: 0 }}>
@@ -296,7 +567,8 @@ export default function AppointmentListPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -322,6 +594,15 @@ export default function AppointmentListPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
+      />
+
+      <DeleteModal
+        show={showBulkDeleteModal}
+        title="Bulk Delete Appointments"
+        message={`Are you sure you want to delete ${selectedIds.length} selected appointment(s)? This action cannot be undone.`}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        loading={bulkDeleting}
       />
 
       <style dangerouslySetInnerHTML={{ __html: `

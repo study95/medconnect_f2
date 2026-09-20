@@ -21,6 +21,7 @@ import {
   createAdminPatient,
   updateAdminPatient,
   deleteAdminPatient,
+  bulkDeleteAdminPatients,
   getUser,
   getAppointments,
   getPrescriptions,
@@ -227,9 +228,19 @@ export function useAdminPatientMutations() {
     },
   })
 
+  // Bulk Delete Patients mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkDeleteAdminPatients(ids),
+    onSuccess: () => {
+      invalidatePatients(queryClient)
+    },
+  })
+
   return {
     deletePatient: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    bulkDeletePatients: bulkDeleteMutation.mutateAsync,
+    isBulkDeleting: bulkDeleteMutation.isPending,
     createPatient: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     updatePatient: updateMutation.mutateAsync,

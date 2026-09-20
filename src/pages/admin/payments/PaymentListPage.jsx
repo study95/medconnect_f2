@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { getPayments, updatePayment, deletePayment } from '../../../api/adminApi'
+import { getPayments, updatePayment, deletePayment, bulkDeletePayments } from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -10,6 +10,83 @@ import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import toast from 'react-hot-toast'
+
+function TableCheckbox({ checked, indeterminate, onChange, title }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        margin: 0,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle',
+      }}
+      title={title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0,
+          margin: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #D1D5DB',
+          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        {checked && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {!checked && indeterminate && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </span>
+    </label>
+  )
+}
 
 const PAYMENT_METHODS = ['all', 'bkash', 'nagad', 'rocket', 'cash', 'card', 'online', 'bank_transfer']
 const PAYMENT_STATUSES = ['all', 'paid', 'unpaid', 'refunded', 'partial']
@@ -25,7 +102,10 @@ export default function PaymentListPage() {
   const [dateTo, setDateTo] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -54,11 +134,32 @@ export default function PaymentListPage() {
     setDeleting(true)
     try {
       await deletePayment(deleteTarget.id)
-      setPayments(payments.filter(p => p.id !== deleteTarget.id))
+      toast.success('Payment record deleted successfully.')
+      setPayments(prev => prev.filter(p => p.id !== deleteTarget.id))
+      setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
     } catch (err) {
+      console.error('Failed to delete payment', err)
+      toast.error('Failed to delete payment record.')
     } finally {
       setDeleting(false)
       setDeleteTarget(null)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setBulkDeleting(true)
+    try {
+      const res = await bulkDeletePayments(selectedIds)
+      toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} payment record(s).`)
+      setPayments(prev => prev.filter(p => !selectedIds.includes(p.id)))
+      setSelectedIds([])
+      setShowBulkDeleteModal(false)
+    } catch (err) {
+      console.error('Failed to delete selected payment records', err)
+      toast.error(err.response?.data?.message || 'Failed to delete selected payment records.')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -93,12 +194,31 @@ export default function PaymentListPage() {
   useEffect(() => { setCurrentPage(1) }, [filtered.length])
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
+  const isAllSelected = paginatedData.length > 0 && paginatedData.every(p => selectedIds.includes(p.id))
+  const isSomeSelected = paginatedData.some(p => selectedIds.includes(p.id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = paginatedData.map(p => p.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const newIds = paginatedData.map(p => p.id).filter(id => !selectedIds.includes(id))
+      setSelectedIds(prev => [...prev, ...newIds])
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
+  }
+
   const totalAmount = filtered.reduce((sum, p) => sum + Number(p.fee || p.amount || p.total_amount || 0), 0)
   const paidCount = filtered.filter(p => p.payment_status === 'paid').length
   const unpaidCount = filtered.filter(p => p.payment_status === 'unpaid' || !p.payment_status).length
 
   return (
-    <div>
+    <div className="admin-container">
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
@@ -164,13 +284,143 @@ export default function PaymentListPage() {
       </ListToolbar>
 
       <div className="admin-card">
-        <div className="admin-card-header">
-          <h3 className="admin-card-title">Transaction Ledger</h3>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{filtered.length} total</span>
+        <div
+          className="admin-card-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '14px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="admin-card-title" style={{ margin: 0 }}>Transaction Ledger</h3>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
+                  border: '1px solid #FECDD3',
+                  borderRadius: 20,
+                  padding: '4px 6px 4px 14px',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
+                  animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#E11D48',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#9F1239', letterSpacing: '-0.01em' }}>
+                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#BE123C' }}>selected</span>
+                  </span>
+                </div>
+
+                <div style={{ width: 1, height: 16, background: '#FDA4AF', opacity: 0.6 }} />
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9F1239',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(225, 29, 72, 0.1)'
+                    e.currentTarget.style.color = '#881337'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#9F1239'
+                  }}
+                >
+                  Deselect
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 14px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+                      transition: 'transform 0.1s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(225, 29, 72, 0.35)'
+                      e.currentTarget.style.transform = 'translateY(-0.5px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(225, 29, 72, 0.25)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                    <span>Delete ({selectedIds.length})</span>
+                  </button>
+                )}
+              </div>
+            )}
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--admin-text-muted, #64748B)',
+                background: 'var(--admin-bg, #F8FAFC)',
+                padding: '4px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--admin-border, #E2E8F0)',
+              }}
+            >
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Records Found
+            </div>
+          </div>
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['120px', '22%', '20%', '14%', '12%', '12%', '8%']} headers={['Transaction', 'Payer / Patient', 'Doctor / Service', 'Amount', 'Method', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '20%', '14%', '12%', '12%', '8%']} headers={['', 'Transaction', 'Payer / Patient', 'Doctor / Service', 'Amount', 'Method', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(methodFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="💳" title="No payment records found" description="No transactions match your search or filter settings." />
         ) : (
@@ -178,6 +428,14 @@ export default function PaymentListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                    <TableCheckbox
+                      checked={isAllSelected}
+                      indeterminate={isSomeSelected && !isAllSelected}
+                      onChange={toggleSelectAll}
+                      title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
+                    />
+                  </th>
                   <th>Transaction ID</th>
                   <th>Patient Details</th>
                   <th>Doctor / Service</th>
@@ -188,8 +446,23 @@ export default function PaymentListPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(pay => (
-                  <tr key={pay.id}>
+                {paginatedData.map(pay => {
+                  const isSelected = selectedIds.includes(pay.id)
+                  return (
+                  <tr
+                    key={pay.id}
+                    style={{
+                      background: isSelected ? 'rgba(16, 185, 129, 0.06)' : undefined,
+                      transition: 'background 0.15s'
+                    }}
+                  >
+                    <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                      <TableCheckbox
+                        checked={isSelected}
+                        onChange={() => toggleSelectOne(pay.id)}
+                        title="Select row"
+                      />
+                    </td>
                     <td>
                       <CompactUlid value={pay.transaction_id || `TXN-${pay.id}`} />
                     </td>
@@ -242,7 +515,8 @@ export default function PaymentListPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -264,6 +538,15 @@ export default function PaymentListPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
+      />
+
+      <DeleteModal
+        show={showBulkDeleteModal}
+        title="Bulk Delete Payment Records"
+        message={`Are you sure you want to delete ${selectedIds.length} selected payment transaction(s)? All associated billing logs will be affected. This action is permanent.`}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        loading={bulkDeleting}
       />
     </div>
   )

@@ -21,6 +21,7 @@ import {
   createHospital,
   updateHospital,
   deleteHospital,
+  bulkDeleteHospitals,
   getDivisions,
   getDistricts,
   getUpazilas,
@@ -223,9 +224,20 @@ export function useAdminHospitalMutations() {
     },
   })
 
+  // Bulk delete hospitals mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkDeleteHospitals(ids),
+    onSuccess: () => {
+      invalidateHospitals(queryClient, { includeChambers: true })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.all, refetchType: 'all' })
+    },
+  })
+
   return {
     deleteHospital: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    bulkDeleteHospitals: bulkDeleteMutation.mutateAsync,
+    isBulkDeleting: bulkDeleteMutation.isPending,
     toggleStatus: toggleStatusMutation.mutateAsync,
     isToggling: toggleStatusMutation.isPending,
     createHospital: createMutation.mutateAsync,

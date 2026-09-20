@@ -20,6 +20,7 @@ import {
   getUser,
   updateUserRole,
   deleteUser,
+  bulkDeleteUsers,
   getAllPermissions,
   updateUserPermissions,
 } from '../../api/adminApi'
@@ -102,6 +103,15 @@ export function useAdminUserMutations() {
     },
   })
 
+  // Bulk Delete Users Mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkDeleteUsers(ids),
+    onSuccess: () => {
+      invalidateUsers(queryClient)
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all, refetchType: 'all' })
+    },
+  })
+
   return {
     updateUserRole: roleMutation.mutateAsync,
     isUpdatingRole: roleMutation.isPending,
@@ -109,5 +119,7 @@ export function useAdminUserMutations() {
     isUpdatingPermissions: permissionsMutation.isPending,
     deleteUser: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    bulkDeleteUsers: bulkDeleteMutation.mutateAsync,
+    isBulkDeleting: bulkDeleteMutation.isPending,
   }
 }

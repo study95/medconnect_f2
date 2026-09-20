@@ -22,6 +22,7 @@ import {
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  bulkDeleteAppointments,
   createWalkInPatient,
   getDoctors,
   getHospitals,
@@ -231,6 +232,14 @@ export function useAdminAppointmentMutations() {
     },
   })
 
+  // Bulk Delete Appointments
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => bulkDeleteAppointments(ids),
+    onSuccess: () => {
+      invalidateAppointments(queryClient, {})
+    },
+  })
+
   return {
     createAppointment: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
@@ -238,6 +247,8 @@ export function useAdminAppointmentMutations() {
     isUpdating: updateMutation.isPending,
     deleteAppointment: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    bulkDeleteAppointments: bulkDeleteMutation.mutateAsync,
+    isBulkDeleting: bulkDeleteMutation.isPending,
     updateAppointmentStatus: updateStatusMutation.mutateAsync,
     isUpdatingStatus: updateStatusMutation.isPending,
     createWalkInPatient: createWalkInMutation.mutateAsync,
