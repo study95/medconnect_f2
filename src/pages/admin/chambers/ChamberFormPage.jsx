@@ -6,6 +6,7 @@ import {
   ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Info, X
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { toast } from 'react-hot-toast'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getChamber } from '../../../api/adminApi'
@@ -255,6 +256,19 @@ export default function ChamberFormPage() {
     return exists ? lookupHospitals : [editHospital, ...lookupHospitals]
   }, [lookupHospitals, editHospital])
 
+  const hasAlertedRef = useRef(false)
+
+  // Security Guard: Hospital managers have view-only access to chambers
+  useEffect(() => {
+    if (isManager && !isAdmin) {
+      if (!hasAlertedRef.current) {
+        hasAlertedRef.current = true
+        toast.error('হসপিটাল ম্যানেজার চেম্বার তৈরি বা এডিট করতে পারেন না।', { id: 'chamber-manager-restricted' })
+      }
+      navigate('/admin/chambers', { replace: true })
+    }
+  }, [isManager, isAdmin, navigate])
+
   useEffect(() => {
     if (isDoctorOnly && !isEdit && lookupDoctors.length > 0) {
       const myDoc = lookupDoctors.find(d =>
@@ -486,6 +500,10 @@ export default function ChamberFormPage() {
     const slot = Number(form.slot_duration_minutes) || 15
     return Math.floor(totalMin / Math.max(1, slot)) + 1
   }, [form.start_time, form.end_time, form.slot_duration_minutes])
+
+  if (isManager && !isAdmin) {
+    return null
+  }
 
   if (loading) {
     return (

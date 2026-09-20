@@ -7,7 +7,7 @@ import CompactUlid from '../../../components/common/CompactUlid'
 
 export default function AppointmentViewPage() {
   const { id } = useParams()
-  const { isAdmin, isDoctor } = useAuth()
+  const { isAdmin, isDoctor, isManager } = useAuth()
   const navigate = useNavigate()
   const { appointment: appt, isLoading: loading } = useAdminAppointmentDetail(id)
   const { updateAppointmentStatus, isUpdatingStatus: updating } = useAdminAppointmentMutations()
@@ -38,7 +38,9 @@ export default function AppointmentViewPage() {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <Link to="/admin/appointments" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← List</Link>
-          <Link to={`/admin/appointments/edit/${appt.public_id || appt.id || id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit</Link>
+          {isAdmin && (
+            <Link to={`/admin/appointments/edit/${appt.public_id || appt.id || id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit</Link>
+          )}
         </div>
       </div>
 
@@ -55,7 +57,7 @@ export default function AppointmentViewPage() {
                 <div style={{ marginTop: 8 }}><StatusBadge status={appt.status} /></div>
               </div>
               
-              {(isAdmin || isDoctor) && (
+              {(isAdmin || isDoctor || isManager) && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button 
                     disabled={updating || appt.status === 'confirmed'} 

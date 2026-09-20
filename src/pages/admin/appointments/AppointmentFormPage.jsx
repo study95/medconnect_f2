@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Link, useSearchParams, useParams } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { getAppointment } from '../../../api/adminApi'
 import { useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
@@ -48,6 +49,18 @@ export default function AppointmentFormPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
+
+  const hasAlertedRef = useRef(false)
+
+  useEffect(() => {
+    if (isEdit && !isAdmin) {
+      if (!hasAlertedRef.current) {
+        hasAlertedRef.current = true
+        toast.error('অ্যাপয়েন্টমেন্ট এডিট করার অনুমতি শুধুমাত্র অ্যাডমিনের রয়েছে।', { id: 'appt-edit-restricted' })
+      }
+      navigate('/admin/appointments', { replace: true })
+    }
+  }, [isEdit, isAdmin, navigate])
 
   useEffect(() => {
     if (isEdit) loadAppointment()
@@ -113,6 +126,10 @@ export default function AppointmentFormPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (isEdit && !isAdmin) {
+    return null
   }
 
   if (loading) return <div className="admin-loading" style={{ padding: 100 }}><div className="admin-spinner"></div> Loading...</div>

@@ -95,18 +95,18 @@ export function useAdminAppointmentDetail(id) {
 export function useAdminAppointmentLookups({ doctorId = '' } = {}) {
   // Doctors lookup
   const doctorsQuery = useLookupQuery({
-    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryKey: queryKeys.doctors.list({ per_page: 500, admin_view: 1 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500 })
+      const res = await getDoctors({ per_page: 500, admin_view: 1 })
       return res.data?.data?.data || res.data?.data || []
     },
   })
 
   // Hospitals lookup
   const hospitalsQuery = useLookupQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryKey: queryKeys.hospitals.list({ per_page: 500, admin_view: 1 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500 })
+      const res = await getHospitals({ per_page: 500, admin_view: 1 })
       return res.data?.data?.data || res.data?.data || []
     },
   })

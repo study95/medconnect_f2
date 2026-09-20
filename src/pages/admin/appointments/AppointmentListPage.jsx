@@ -280,7 +280,9 @@ export default function AppointmentListPage() {
           </select>
         </div>
         <SearchableSelect label="Doctor" placeholder="All Doctors" options={doctors} value={doctorId} onChange={setDoctorId} />
-        <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
+        {!isManager && (
+          <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
+        )}
         <SearchableSelect label="Role" placeholder="All Roles" options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
       </ListToolbar>
 
@@ -365,7 +367,7 @@ export default function AppointmentListPage() {
                   Deselect
                 </button>
 
-                {(isAdmin || isManager) && (
+                {isAdmin && (
                   <button
                     type="button"
                     onClick={() => setShowBulkDeleteModal(true)}
@@ -422,7 +424,11 @@ export default function AppointmentListPage() {
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '20%', '18%', '12%', '16%']} headers={['', 'ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} />
+            <TableSkeleton 
+              rowCount={8} 
+              columnWidths={isAdmin ? ['44px', '120px', '22%', '20%', '18%', '12%', '16%'] : ['120px', '22%', '20%', '18%', '12%', '16%']} 
+              headers={isAdmin ? ['', 'ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions'] : ['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} 
+            />
           ) : appointments.length === 0 ? (
             <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
           ) : (
@@ -430,14 +436,16 @@ export default function AppointmentListPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
-                      <TableCheckbox
-                        checked={isAllSelected}
-                        indeterminate={isSomeSelected && !isAllSelected}
-                        onChange={toggleSelectAll}
-                        title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
-                      />
-                    </th>
+                    {isAdmin && (
+                      <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                        <TableCheckbox
+                          checked={isAllSelected}
+                          indeterminate={isSomeSelected && !isAllSelected}
+                          onChange={toggleSelectAll}
+                          title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
+                        />
+                      </th>
+                    )}
                     <th style={{ width: 135 }}>ID</th>
                     <th style={{ minWidth: 170 }}>Patient Details</th>
                     <th style={{ minWidth: 160 }}>Doctor Information</th>
@@ -459,13 +467,15 @@ export default function AppointmentListPage() {
                         transition: 'background 0.15s',
                       }}
                     >
-                      <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
-                        <TableCheckbox
-                          checked={isSelected}
-                          onChange={() => toggleSelectOne(appt.id)}
-                          title="Select row"
-                        />
-                      </td>
+                      {isAdmin && (
+                        <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                          <TableCheckbox
+                            checked={isSelected}
+                            onChange={() => toggleSelectOne(appt.id)}
+                            title="Select row"
+                          />
+                        </td>
+                      )}
                       <td style={{ whiteSpace: 'nowrap' }}><CompactUlid value={appt.public_id || appt.id} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -559,7 +569,7 @@ export default function AppointmentListPage() {
                               Rx
                             </Link>
                           )}
-                          {(isAdmin || isManager) && (
+                          {isAdmin && (
                             <button className="admin-action-btn admin-action-btn-delete" title="Delete" onClick={() => setDeleteTarget(appt)}>
                               <img src="/icons/delete.png" alt="Delete" />
                             </button>

@@ -392,10 +392,7 @@ export default function ChamberListPage() {
 
   const canCreateChamber = Boolean(
     isAdmin || 
-    isDoctor || 
-    isManager || 
-    hasPermission('chamber.create') || 
-    hasPermission('doctor_chamber.create')
+    (isDoctor && !isManager)
   )
 
   const handleStatusChange = (newStatus) => {
@@ -468,13 +465,9 @@ export default function ChamberListPage() {
       return true
     }
 
-    // Hospital Manager: manages their hospital's chambers
-    if (isManager || user?.registration_type === 'hospital' || user?.registration_type === 'manager') {
-      if (user?.public_id && (chamber.hospital_id === user.public_id || chamber.hospital?.id === user.public_id || chamber.hospital?.public_id === user.public_id)) return true
-      if (user?.hospital_id && (String(chamber.hospital_id) === String(user.hospital_id) || String(chamber.hospital?.id) === String(user.hospital_id))) return true
-      if (chamber.hospital?.user_id && String(chamber.hospital.user_id) === String(user?.id)) return true
-      if (!isAdmin && !isDoctor) return true
-      return true
+    // Hospital Manager cannot toggle chambers (view-only)
+    if (isManager && !isAdmin) {
+      return false
     }
 
     return false
@@ -813,14 +806,16 @@ export default function ChamberListPage() {
                         >
                           <img src="/icons/view.png" alt="View" />
                         </button>
-                        <button
-                          onClick={() => navigate(`/admin/chambers/edit/${chamber.public_id || chamber.id}`)}
-                          className="admin-action-btn admin-action-btn-edit"
-                          aria-label="Edit chamber routine"
-                          title="Edit chamber routine"
-                        >
-                          <img src="/icons/edit.png" alt="Edit" />
-                        </button>
+                        {(!isManager || isAdmin) && (
+                          <button
+                            onClick={() => navigate(`/admin/chambers/edit/${chamber.public_id || chamber.id}`)}
+                            className="admin-action-btn admin-action-btn-edit"
+                            aria-label="Edit chamber routine"
+                            title="Edit chamber routine"
+                          >
+                            <img src="/icons/edit.png" alt="Edit" />
+                          </button>
+                        )}
                         {(isAdmin || hasPermission('chamber.delete')) && (
                           <button
                             onClick={() => setDeleteTarget(chamber)}
@@ -853,7 +848,7 @@ export default function ChamberListPage() {
         chamber={viewTarget}
         onClose={() => setViewTarget(null)}
         onEdit={(editId) => navigate(`/admin/chambers/edit/${editId}`)}
-        canEdit={isAdmin || hasPermission('chamber.edit') || hasPermission('chamber.update') || isDoctor || isManager}
+        canEdit={isAdmin || (isDoctor && !isManager)}
       />
 
       <DeleteModal

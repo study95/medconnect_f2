@@ -123,11 +123,21 @@ export default function PatientFormPage() {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  const hasAlertedRef = useRef(false)
+
   useEffect(() => {
     if (!isAdmin) {
-      navigate('/admin/patients')
+      if (!hasAlertedRef.current) {
+        hasAlertedRef.current = true
+        toast.error('রোগীর প্রোফাইল তৈরি বা পরিবর্তন করার অনুমতি শুধুমাত্র অ্যাডমিনের রয়েছে।', { id: 'patient-restricted' })
+      }
+      navigate('/admin/patients', { replace: true })
     }
   }, [isAdmin, navigate])
+
+  if (!isAdmin) {
+    return null
+  }
 
   const ageInfo = calculateAge(form.date_of_birth)
 

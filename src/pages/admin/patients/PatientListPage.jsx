@@ -501,7 +501,11 @@ export default function PatientListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '110px', '20%', '18%', '16%', '20%', '14%', '130px']} headers={['', 'ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions']} />
+          <TableSkeleton 
+            rowCount={8} 
+            columnWidths={isAdmin ? ['44px', '110px', '20%', '18%', '16%', '20%', '14%', '130px'] : ['110px', '22%', '20%', '18%', '20%', '15%', '80px']} 
+            headers={isAdmin ? ['', 'ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions'] : ['ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions']} 
+          />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
         ) : (
@@ -509,21 +513,23 @@ export default function PatientListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
-                    <TableCheckbox
-                      checked={isAllSelected}
-                      indeterminate={isSomeSelected && !isAllSelected}
-                      onChange={toggleSelectAll}
-                      title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
-                    />
-                  </th>
+                  {isAdmin && (
+                    <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                      <TableCheckbox
+                        checked={isAllSelected}
+                        indeterminate={isSomeSelected && !isAllSelected}
+                        onChange={toggleSelectAll}
+                        title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
+                      />
+                    </th>
+                  )}
                   <th style={{ width: 130, color: 'var(--admin-text-muted)' }}>ID</th>
                   <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Patient</th>
                   <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
                   <th style={{ width: '16%', color: 'var(--admin-text-muted)' }}>Clinical Info</th>
                   <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Location Profile</th>
                   <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Registered</th>
-                  <th style={{ width: 130, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
+                  <th style={{ width: isAdmin ? 130 : 80, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -541,13 +547,15 @@ export default function PatientListPage() {
                         transition: 'background 0.15s'
                       }}
                     >
-                      <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
-                        <TableCheckbox
-                          checked={isSelected}
-                          onChange={() => toggleSelectOne(patient.id)}
-                          title="Select row"
-                        />
-                      </td>
+                      {isAdmin && (
+                        <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                          <TableCheckbox
+                            checked={isSelected}
+                            onChange={() => toggleSelectOne(patient.id)}
+                            title="Select row"
+                          />
+                        </td>
+                      )}
                       <td style={{ whiteSpace: 'nowrap' }}>
                         <CompactUlid value={patient.public_id || patient.id} />
                       </td>
@@ -561,22 +569,38 @@ export default function PatientListPage() {
                             )}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{displayName}</div>
-                            {patient.occupation && <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{patient.occupation}</div>}
+                            <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13.5 }}>{displayName}</div>
+                            {patient.patient_id && (
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>#{patient.patient_id}</div>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{displayPhone || '—'}</div>
-                        <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{displayEmail || 'No email registered'}</div>
+                        <div style={{ fontSize: 13, color: 'var(--admin-text)' }}>{displayPhone || '—'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{displayEmail || ''}</div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
-                            {patient.blood_group || 'N/A'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 700, 
+                            padding: '2px 8px', 
+                            borderRadius: 12, 
+                            background: patient.blood_group ? 'rgba(239, 68, 68, 0.1)' : 'rgba(100, 116, 139, 0.1)', 
+                            color: patient.blood_group ? '#EF4444' : 'var(--admin-text-muted)' 
+                          }}>
+                            {patient.blood_group || 'Blood N/A'}
                           </span>
-                          <span style={{ fontSize: 12, color: 'var(--admin-text)' }}>
-                            {patient.gender ? (patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)) : 'Unknown'}
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 600, 
+                            padding: '2px 8px', 
+                            borderRadius: 12, 
+                            background: 'rgba(99, 102, 241, 0.1)', 
+                            color: '#6366f1' 
+                          }}>
+                            {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : 'Gender N/A'}
                           </span>
                         </div>
                       </td>
@@ -605,13 +629,15 @@ export default function PatientListPage() {
                           >
                             <img src="/icons/view.png" alt="View" />
                           </Link>
-                          <Link
-                            to={`/admin/patients/edit/${patient.id}`}
-                            className="admin-action-btn admin-action-btn-edit"
-                            title="Edit patient profile"
-                          >
-                            <img src="/icons/edit.png" alt="Edit" />
-                          </Link>
+                          {isAdmin && (
+                            <Link
+                              to={`/admin/patients/edit/${patient.id}`}
+                              className="admin-action-btn admin-action-btn-edit"
+                              title="Edit patient profile"
+                            >
+                              <img src="/icons/edit.png" alt="Edit" />
+                            </Link>
+                          )}
                           {isAdmin && (
                             <button
                               onClick={() => setDeleteTarget(patient)}

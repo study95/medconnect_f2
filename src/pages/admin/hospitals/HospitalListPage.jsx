@@ -12,6 +12,7 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import HospitalManagerProfileView from './HospitalManagerProfileView'
 import toast from 'react-hot-toast'
 
 function TableCheckbox({ checked, indeterminate, onChange, title }) {
@@ -187,7 +188,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function HospitalListPage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
@@ -340,15 +341,43 @@ export default function HospitalListPage() {
     )
   }
 
+  // If the user is a hospital manager (not admin), show the dedicated executive profile dashboard directly
+  if (isManager && !isAdmin) {
+    if (loading) {
+      return (
+        <div className="admin-loading" style={{ padding: '80px 20px', textAlign: 'center' }}>
+          <div className="admin-spinner" style={{ margin: '0 auto 16px' }} />
+          <div style={{ color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 600 }}>Loading My Hospital Profile...</div>
+        </div>
+      )
+    }
+
+    if (hospitals.length === 0) {
+      return (
+        <div className="admin-card" style={{ textAlign: 'center', padding: '60px 20px', margin: '40px auto', maxWidth: 600 }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>🏥</div>
+          <h3 style={{ fontWeight: 800, color: 'var(--admin-text)', marginBottom: 8 }}>Hospital Profile Not Found</h3>
+          <p style={{ color: 'var(--admin-text-muted)', fontSize: 14 }}>
+            No registered hospital facility is currently associated with your account.
+          </p>
+        </div>
+      )
+    }
+
+    return <HospitalManagerProfileView hospitalId={hospitals[0]?.id} />
+  }
+
   return (
     <div className="admin-container">
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
             <span style={{ marginRight: 12 }}>🏥</span>
-            Hospital Management
+            {isManager ? 'My Hospital' : 'Hospital Management'}
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>{hospitals.length} total facilities registered</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>
+            {isManager ? 'Manage facility details and clinical settings' : `${hospitals.length} total facilities registered`}
+          </p>
         </div>
       </div>
 
@@ -382,7 +411,9 @@ export default function HospitalListPage() {
         <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={handleDistrictChange} disabled={!divisionId} />
         <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={handleUpazilaChange} disabled={!districtId} />
         <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
-        <SearchableSelect label="Hospital / Clinic" placeholder="All Facilities" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} />
+        {!isManager && (
+          <SearchableSelect label="Hospital / Clinic" placeholder="All Facilities" options={hospitalsOptions} value={hospitalIdFilter} onChange={setHospitalIdFilter} />
+        )}
         <div style={{ flex: '1 1 140px', minWidth: 120 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
           <select className="status-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 10, padding: '0 14px', fontSize: 13, fontWeight: 500, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
@@ -406,7 +437,9 @@ export default function HospitalListPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h3 className="admin-card-title" style={{ margin: 0 }}>Registered Facilities</h3>
+            <h3 className="admin-card-title" style={{ margin: 0 }}>
+              {isManager ? 'My Facility' : 'Registered Facilities'}
+            </h3>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
