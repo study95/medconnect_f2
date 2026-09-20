@@ -379,8 +379,8 @@ function AppNavbar() {
                 <span>সহায়তা কেন্দ্র</span>
               </Link>
 
-              {isLoggedIn && (
-                <NotificationDropdown targetPath={isStaff ? "/admin/notifications" : "/profile"} iconColor="#ffffff" />
+              {isLoggedIn && isStaff && (
+                <NotificationDropdown targetPath="/admin/notifications" iconColor="#ffffff" />
               )}
 
               {isLoggedIn ? (
