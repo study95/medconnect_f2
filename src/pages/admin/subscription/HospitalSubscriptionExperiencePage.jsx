@@ -1,4 +1,4 @@
-// HospitalSubscriptionExperiencePage.jsx — Phase 4.2 & 4.4 Enterprise Hospital Subscription & Capacity Experience
+// HospitalSubscriptionExperiencePage.jsx — Phase 4.2, 4.4 & Phase 6 Enterprise Hospital Subscription & Capacity Experience
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -8,7 +8,14 @@ import {
   cancelHospitalBillingSubscription,
   allocateHospitalDoctorSeat,
   revokeHospitalDoctorSeat,
-  emailHospitalInvoice
+  emailHospitalInvoice,
+  getHospitalSeatSummary,
+  getHospitalAllocatedDoctors,
+  getHospitalSeatInvitations,
+  sendHospitalDoctorInvitation,
+  cancelHospitalDoctorInvitation,
+  revokeHospitalDoctorSeatRecord,
+  getHospitalSeatHistory
 } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/doctorApi'
 import {
@@ -16,7 +23,7 @@ import {
   RefreshCw, Lock, FileText, Calendar, Info, AlertCircle,
   CheckCircle2, ChevronRight, X, UserPlus, UserMinus, Monitor,
   Activity, PhoneCall, Mail, Headphones, History, Search,
-  Printer, Sparkles
+  Printer, Sparkles, Send, UserCheck, XCircle, Tag, CheckCircle
 } from 'lucide-react'
 import '../../../styles/hospital-subscription.css'
 
@@ -32,7 +39,18 @@ export default function HospitalSubscriptionExperiencePage() {
   const [actionFeedback, setActionFeedback] = useState(null)
   const [showTimeline, setShowTimeline] = useState(false)
 
-  // Doctor Seat Management states
+  // Doctor Seat Management states (Phase 6)
+  const [seatSummary, setSeatSummary] = useState(null)
+  const [seatTab, setSeatTab] = useState('roster') // 'roster' | 'invitations' | 'history'
+  const [invitations, setInvitations] = useState([])
+  const [invitationsFilter, setInvitationsFilter] = useState('all')
+  const [invitationNotes, setInvitationNotes] = useState('')
+  const [cancellingInvitationId, setCancellingInvitationId] = useState(null)
+  const [seatHistory, setSeatHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [liveAllocatedDoctors, setLiveAllocatedDoctors] = useState(null)
+
   const [doctorSearch, setDoctorSearch] = useState('')
   const [showAllocateModal, setShowAllocateModal] = useState(false)
   const [newDoctorId, setNewDoctorId] = useState('')
@@ -55,12 +73,28 @@ export default function HospitalSubscriptionExperiencePage() {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
 
-      const [overviewRes, plansRes] = await Promise.all([
+      const [overviewRes, plansRes, summaryRes, invitationsRes, allocatedDocsRes] = await Promise.all([
         getHospitalBillingOverview(),
-        getHospitalAvailablePlans()
+        getHospitalAvailablePlans(),
+        getHospitalSeatSummary().catch(() => null),
+        getHospitalSeatInvitations().catch(() => null),
+        getHospitalAllocatedDoctors().catch(() => null)
       ])
       setOverview(overviewRes.data)
       setPlans(plansRes.data || [])
+
+      if (summaryRes?.data?.summary) {
+        setSeatSummary(summaryRes.data.summary)
+      }
+      if (invitationsRes?.data) {
+        const invList = Array.isArray(invitationsRes.data?.data)
+          ? invitationsRes.data.data
+          : (Array.isArray(invitationsRes.data) ? invitationsRes.data : [])
+        setInvitations(invList)
+      }
+      if (allocatedDocsRes?.data) {
+        setLiveAllocatedDoctors(Array.isArray(allocatedDocsRes.data) ? allocatedDocsRes.data : null)
+      }
     } catch (err) {
       console.error('Failed to load hospital billing data:', err)
       setActionFeedback({
@@ -73,9 +107,30 @@ export default function HospitalSubscriptionExperiencePage() {
     }
   }
 
+  const loadSeatHistory = async () => {
+    try {
+      setLoadingHistory(true)
+      const res = await getHospitalSeatHistory({ per_page: 30 })
+      const historyList = Array.isArray(res?.data?.data)
+        ? res.data.data
+        : (Array.isArray(res?.data) ? res.data : [])
+      setSeatHistory(historyList)
+    } catch (err) {
+      console.error('Failed to load seat history:', err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (seatTab === 'history') {
+      loadSeatHistory()
+    }
+  }, [seatTab])
 
   // Auto-dismiss feedback after 6 seconds
   useEffect(() => {
@@ -113,28 +168,53 @@ export default function HospitalSubscriptionExperiencePage() {
     navigate(`/admin/subscription/checkout?plan_id=${plan.id}&cycle=${billingCycle}`)
   }
 
-  const handleAllocateDoctor = async (e) => {
+  // Phase 6: Official Seat Invitation
+  const handleSendDoctorInvitation = async (e) => {
     if (e) e.preventDefault()
     if (!newDoctorId) return
     try {
       setAllocatingSeat(true)
-      await allocateHospitalDoctorSeat(Number(newDoctorId))
+      const res = await sendHospitalDoctorInvitation({
+        doctor_id: Number(newDoctorId),
+        notes: invitationNotes.trim() || undefined
+      })
       setActionFeedback({
         type: 'success',
-        text: `Doctor seat (ID #${newDoctorId}) allocated successfully to the facility roster!`
+        text: res.message || `Official invitation sent to Doctor ID #${newDoctorId}! Seat reserved.`
       })
       setNewDoctorId('')
       setDoctorSearchQuery('')
       setDoctorSearchResults([])
+      setInvitationNotes('')
       setShowAllocateModal(false)
       loadData(true)
     } catch (err) {
       setActionFeedback({
         type: 'error',
-        text: err.response?.data?.message || 'Failed to allocate doctor seat. Please check the Doctor ID.'
+        text: err.response?.data?.message || 'Failed to send doctor seat invitation. Please check doctor eligibility.'
       })
     } finally {
       setAllocatingSeat(false)
+    }
+  }
+
+  // Phase 6: Cancel Pending Invitation
+  const handleCancelInvitation = async (invitationId) => {
+    try {
+      setCancellingInvitationId(invitationId)
+      await cancelHospitalDoctorInvitation(invitationId)
+      setActionFeedback({
+        type: 'info',
+        text: 'Doctor seat invitation cancelled successfully. Reserved quota restored.'
+      })
+      loadData(true)
+    } catch (err) {
+      setActionFeedback({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to cancel invitation.'
+      })
+    } finally {
+      setCancellingInvitationId(null)
     }
   }
 
@@ -144,16 +224,28 @@ export default function HospitalSubscriptionExperiencePage() {
     setDoctorSearchResults([])
   }
 
+  // Phase 6: Revoke Doctor Seat with Mandatory Audit Reason
   const handleConfirmRevokeDoctor = async () => {
     if (!doctorToRevoke) return
+    if (!revokeReason.trim() || revokeReason.trim().length < 3) {
+      setActionFeedback({
+        type: 'error',
+        text: 'A mandatory audit reason of at least 3 characters is required to revoke a seat.'
+      })
+      return
+    }
     try {
       setRevokingSeat(true)
-      await revokeHospitalDoctorSeat(doctorToRevoke.id)
+      await revokeHospitalDoctorSeatRecord({
+        doctor_id: doctorToRevoke.id,
+        reason: revokeReason.trim()
+      })
       setActionFeedback({
         type: 'info',
-        text: `Doctor seat for Dr. ${doctorToRevoke.name} has been revoked.`
+        text: `Doctor seat for Dr. ${doctorToRevoke.name} has been revoked and recorded in audit trail.`
       })
       setDoctorToRevoke(null)
+      setRevokeReason('')
       loadData(true)
     } catch (err) {
       setActionFeedback({
@@ -264,12 +356,22 @@ export default function HospitalSubscriptionExperiencePage() {
   const hospital = overview?.hospital
   const banners = overview?.banners || {}
   const staged = banners?.staged_renewal
-  const seatAllocation = overview?.seat_allocation || {}
-  const allocatedDoctors = overview?.allocated_doctors || []
+  const seatAllocation = seatSummary || overview?.seat_allocation || {}
+  const allocatedDoctors = liveAllocatedDoctors || overview?.allocated_doctors || []
   const usages = overview?.usages || []
   const invoices = overview?.invoices || []
   const pendingRequest = overview?.pending_request
   const timeline = overview?.timeline || []
+
+  // Capacity metrics derived from backend API (Single Source of Truth)
+  const totalSeats = seatAllocation.total_seats ?? seatAllocation.total_seats_limit ?? 0
+  const allocatedSeats = seatAllocation.allocated_seats ?? allocatedDoctors.length
+  const pendingSeats = seatAllocation.pending_invitations ?? 0
+  const availableSeats = seatAllocation.available_seats ?? (seatAllocation.is_unlimited ? 999 : Math.max(0, totalSeats - allocatedSeats - pendingSeats))
+  const canAllocateMore = seatAllocation.can_allocate_more ?? (seatAllocation.is_unlimited || availableSeats > 0)
+  const isUnlimitedSeats = seatAllocation.is_unlimited ?? false
+  const seatPct = seatAllocation.utilization_pct ?? (totalSeats > 0 ? Math.round(((allocatedSeats + pendingSeats) / totalSeats) * 100) : 0)
+  const seatProgressColor = seatPct >= 90 ? 'rose' : seatPct >= 70 ? 'amber' : 'emerald'
 
   // Filter allocated doctors based on search
   const filteredDoctors = allocatedDoctors.filter(doc => {
@@ -285,9 +387,20 @@ export default function HospitalSubscriptionExperiencePage() {
     )
   })
 
-  // Utilization progress color calculation
-  const seatPct = seatAllocation.utilization_pct || 0
-  const seatProgressColor = seatPct >= 90 ? 'rose' : seatPct >= 70 ? 'amber' : 'emerald'
+  // Filter invitations based on tab filter & search
+  const filteredInvitations = invitations.filter(inv => {
+    if (invitationsFilter !== 'all' && inv.status !== invitationsFilter) return false
+    if (!doctorSearch.trim()) return true
+    const q = doctorSearch.toLowerCase()
+    return (
+      inv.doctor?.name?.toLowerCase().includes(q) ||
+      inv.doctor?.specialty?.name?.toLowerCase().includes(q) ||
+      String(inv.doctor_id).includes(q) ||
+      inv.invited_by_user?.name?.toLowerCase().includes(q)
+    )
+  })
+
+  const pendingInvitationsCount = invitations.filter(i => i.status === 'pending').length
 
   return (
     <div className="hosp-sub-container hosp-sub-fade-in">
@@ -571,15 +684,15 @@ export default function HospitalSubscriptionExperiencePage() {
 
       {/* ─── 3. CAPACITY & KPI METRIC DECK ─── */}
       <div className="hosp-sub-kpi-grid">
-        {/* Doctor Seats Utilization */}
+        {/* Doctor Seats Utilization (Phase 6) */}
         <div className="hosp-sub-kpi-card">
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                Doctor Seats
+                Doctor Seats Quota
               </div>
               <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                {seatAllocation.allocated_seats || 0} / {seatAllocation.is_unlimited ? '∞ Unlimited' : seatAllocation.total_seats_limit || 0}
+                {allocatedSeats} Active {pendingSeats > 0 && <span style={{ fontSize: '13px', fontWeight: 600, color: '#d97706' }}>(+{pendingSeats} reserved)</span>} / {isUnlimitedSeats ? '∞ Unlimited' : totalSeats}
               </div>
             </div>
             <div
@@ -602,10 +715,10 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>{seatPct}% roster allocated</span>
-            <span style={{ fontWeight: 700, color: seatAllocation.can_allocate_more ? '#059669' : '#d97706' }}>
-              {seatAllocation.can_allocate_more
-                ? `${(seatAllocation.total_seats_limit || 0) - (seatAllocation.allocated_seats || 0)} seats free`
+            <span>{seatPct}% quota committed</span>
+            <span style={{ fontWeight: 700, color: canAllocateMore ? '#059669' : '#d97706' }}>
+              {canAllocateMore
+                ? (isUnlimitedSeats ? 'Unlimited' : `${availableSeats} seats available`)
                 : 'Quota reached'}
             </span>
           </div>
@@ -748,9 +861,9 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>
       </div>
 
-      {/* ─── 4. AFFILIATED DOCTOR SEATS ROSTER & ALLOCATION MANAGER ─── */}
-      <div className="hosp-sub-card">
-        <div className="hosp-sub-card-header">
+      {/* ─── 4. HOSPITAL SEAT ALLOCATION & INVITATION WORKSPACE (PHASE 6) ─── */}
+      <div className="hosp-sub-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="hosp-sub-card-header" style={{ padding: '20px 24px', borderBottom: 'none' }}>
           <div className="d-flex align-items-center gap-3">
             <div
               style={{
@@ -764,10 +877,10 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
-                Affiliated Doctor Seats Roster
+                Hospital Seat Allocation & Doctor Invitations
               </h3>
               <p className="text-muted" style={{ fontSize: '12.5px', margin: '2px 0 0 0' }}>
-                Manage practitioner licenses actively practicing under your facility's institutional tier quota.
+                Manage practitioner licenses, dispatch official facility invitations, and view the audit history.
               </p>
             </div>
           </div>
@@ -780,7 +893,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 type="text"
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder="Search roster..."
+                placeholder={seatTab === 'invitations' ? "Filter invitations..." : "Search roster..."}
                 style={{
                   paddingLeft: '34px',
                   paddingRight: '12px',
@@ -796,26 +909,26 @@ export default function HospitalSubscriptionExperiencePage() {
               />
             </div>
 
-            {/* Allocate Seat Button */}
+            {/* Allocate / Invite Doctor Seat Button */}
             <button
               onClick={() => setShowAllocateModal(true)}
-              disabled={!seatAllocation.can_allocate_more}
+              disabled={!canAllocateMore}
               className="hosp-sub-btn-primary"
-              title={!seatAllocation.can_allocate_more ? 'Doctor seat quota limit reached' : 'Assign seat to a doctor'}
+              title={!canAllocateMore ? 'Doctor seat quota limit reached' : 'Invite or assign seat to a doctor'}
             >
               <UserPlus size={14} />
-              <span>Allocate Doctor Seat</span>
+              <span>Invite Doctor to Seat</span>
             </button>
           </div>
         </div>
 
         {/* Limit Warning Banner */}
-        {!seatAllocation.can_allocate_more && (
-          <div className="hosp-sub-banner warning mb-4" style={{ padding: '12px 16px' }}>
+        {!canAllocateMore && (
+          <div className="hosp-sub-banner warning mx-4 mb-3" style={{ padding: '12px 16px' }}>
             <div className="d-flex align-items-center gap-2">
               <AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} />
               <span style={{ fontSize: '12.5px' }}>
-                <strong>Doctor seat allocation quota reached ({seatAllocation.allocated_seats}/{seatAllocation.total_seats_limit}).</strong> Upgrade your institutional plan for higher practitioner capacity.
+                <strong>Doctor seat allocation quota reached ({allocatedSeats} active + {pendingSeats} reserved of {totalSeats} total).</strong> Upgrade your institutional plan for higher practitioner capacity.
               </span>
             </div>
             <button
@@ -827,99 +940,405 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
         )}
 
-        {/* Doctor Roster Table */}
-        <div className="hosp-sub-table-wrapper">
-          <table className="hosp-sub-table">
-            <thead>
-              <tr>
-                <th>Doctor</th>
-                <th>Specialty & Degree</th>
-                <th>Contact</th>
-                <th>Seat Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDoctors.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
-                    <div className="d-flex flex-column align-items-center justify-content-center">
-                      <Users size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
-                        {allocatedDoctors.length === 0
-                          ? 'No doctors currently assigned to this hospital quota'
-                          : 'No doctors match your search query'}
-                      </div>
-                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                        {allocatedDoctors.length === 0
-                          ? 'Click "Allocate Doctor Seat" above to assign a practitioner to your facility.'
-                          : 'Try adjusting the search filter.'}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredDoctors.map(doc => {
-                  const initials = doc.name
-                    ? doc.name.replace(/^(Dr\.|Prof\.|Assoc\.|Asst\.)\s+/i, '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-                    : 'DR'
+        {/* Phase 6 Workspace Tabs Navigation */}
+        <div className="hosp-sub-tabs-nav">
+          <button
+            type="button"
+            className={`hosp-sub-tab-btn ${seatTab === 'roster' ? 'active' : ''}`}
+            onClick={() => setSeatTab('roster')}
+          >
+            <UserCheck size={16} />
+            <span>Active Practicing Roster</span>
+            <span className="hosp-sub-tab-badge">{allocatedDoctors.length}</span>
+          </button>
 
-                  return (
-                    <tr key={doc.id}>
-                      <td>
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="hosp-sub-avatar">
-                            {initials}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                              {doc.name}
+          <button
+            type="button"
+            className={`hosp-sub-tab-btn ${seatTab === 'invitations' ? 'active' : ''}`}
+            onClick={() => setSeatTab('invitations')}
+          >
+            <Mail size={16} />
+            <span>Seat Invitations</span>
+            {pendingInvitationsCount > 0 ? (
+              <span className="hosp-sub-tab-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', fontWeight: 800 }}>
+                {pendingInvitationsCount} pending
+              </span>
+            ) : (
+              <span className="hosp-sub-tab-badge">{invitations.length}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className={`hosp-sub-tab-btn ${seatTab === 'history' ? 'active' : ''}`}
+            onClick={() => setSeatTab('history')}
+          >
+            <History size={16} />
+            <span>Forensic Audit Ledger</span>
+            {seatHistory.length > 0 && <span className="hosp-sub-tab-badge">{seatHistory.length}</span>}
+          </button>
+        </div>
+
+        {/* TAB 1: ACTIVE PRACTICING ROSTER */}
+        {seatTab === 'roster' && (
+          <div className="hosp-sub-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="hosp-sub-table">
+              <thead>
+                <tr>
+                  <th>Doctor</th>
+                  <th>Specialty & Degree</th>
+                  <th>Contact</th>
+                  <th>Seat Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDoctors.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                      <div className="d-flex flex-column align-items-center justify-content-center">
+                        <Users size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                        <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
+                          {allocatedDoctors.length === 0
+                            ? 'No doctors currently assigned to this hospital quota'
+                            : 'No doctors match your search query'}
+                        </div>
+                        <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                          {allocatedDoctors.length === 0
+                            ? 'Click "Invite Doctor to Seat" above to assign a practitioner to your facility.'
+                            : 'Try adjusting the search filter.'}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDoctors.map(doc => {
+                    const initials = doc.name
+                      ? doc.name.replace(/^(Dr\.|Prof\.|Assoc\.|Asst\.)\s+/i, '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                      : 'DR'
+
+                    return (
+                      <tr key={doc.id}>
+                        <td>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="hosp-sub-avatar">
+                              {initials}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                              Doctor ID: #{doc.id} {doc.bmdc_number ? `• BMDC: ${doc.bmdc_number}` : ''}
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
+                                {doc.name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                Doctor ID: #{doc.id} {doc.bmdc_number ? `• BMDC: ${doc.bmdc_number}` : ''}
+                              </div>
                             </div>
                           </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>
+                            {doc.specialty?.name || 'General Physician'}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                            {doc.degree || 'MBBS'}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '12px' }}>
+                            {doc.phone || 'No phone'}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                            {doc.email || 'No email registered'}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="hosp-sub-badge-status active">
+                            <span className="hosp-sub-dot" style={{ background: '#10b981' }} />
+                            Allocated Seat
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            onClick={() => setDoctorToRevoke(doc)}
+                            className="hosp-sub-btn-danger"
+                            title="Revoke doctor license seat"
+                          >
+                            <UserMinus size={13} />
+                            <span>Revoke Seat</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* TAB 2: SEAT INVITATIONS CENTER */}
+        {seatTab === 'invitations' && (
+          <div>
+            {/* Filter pills bar */}
+            <div className="d-flex align-items-center justify-content-between p-3 flex-wrap gap-2" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-bg, #f8fafc)' }}>
+              <div className="d-flex align-items-center gap-2">
+                <Filter size={14} style={{ color: '#64748b' }} />
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', marginRight: '4px' }}>Filter Status:</span>
+                {['all', 'pending', 'accepted', 'rejected', 'cancelled'].map(st => (
+                  <button
+                    key={st}
+                    type="button"
+                    className={`hosp-sub-filter-pill ${invitationsFilter === st ? 'active' : ''}`}
+                    onClick={() => setInvitationsFilter(st)}
+                  >
+                    {st.charAt(0).toUpperCase() + st.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                Showing {filteredInvitations.length} of {invitations.length} invitations
+              </div>
+            </div>
+
+            <div className="hosp-sub-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="hosp-sub-table">
+                <thead>
+                  <tr>
+                    <th>Doctor</th>
+                    <th>Invited By</th>
+                    <th>Assignment Notes</th>
+                    <th>Sent At / Expiry</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInvitations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                        <div className="d-flex flex-column align-items-center justify-content-center">
+                          <Mail size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
+                            No invitations match your filter criteria
+                          </div>
+                          <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                            Click "Invite Doctor to Seat" above to dispatch a formal invitation.
+                          </div>
                         </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>
-                          {doc.specialty?.name || 'General Physician'}
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                          {doc.degree || 'MBBS'}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '12px' }}>
-                          {doc.phone || 'No phone'}
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                          {doc.email || 'No email registered'}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="hosp-sub-badge-status active">
-                          <span className="hosp-sub-dot" style={{ background: '#10b981' }} />
-                          Allocated
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          onClick={() => setDoctorToRevoke(doc)}
-                          className="hosp-sub-btn-danger"
-                          title="Revoke doctor license seat"
-                        >
-                          <UserMinus size={13} />
-                          <span>Revoke</span>
-                        </button>
                       </td>
                     </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : (
+                    filteredInvitations.map(inv => {
+                      const status = inv.status || 'pending'
+                      return (
+                        <tr key={inv.id}>
+                          <td>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
+                              {inv.doctor?.name || `Doctor #${inv.doctor_id}`}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                              {inv.doctor?.specialty?.name || 'General Practitioner'} • ID: #{inv.doctor_id}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12px', fontWeight: 600 }}>
+                              {inv.invited_by_user?.name || 'Hospital Admin'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                              {inv.invited_by_user?.email || 'System'}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12px', maxWidth: '240px', wordBreak: 'break-word' }}>
+                              {inv.notes || <span className="text-muted italic">No specific notes</span>}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12px' }}>
+                              {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : 'N/A'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                              {inv.expires_at ? `Expires ${new Date(inv.expires_at).toLocaleDateString()}` : '7 days validity'}
+                            </div>
+                          </td>
+                          <td>
+                            {status === 'pending' && (
+                              <span className="hosp-sub-badge-status pending">
+                                <Clock size={11} />
+                                Pending (Seat Reserved)
+                              </span>
+                            )}
+                            {status === 'accepted' && (
+                              <span className="hosp-sub-badge-status active">
+                                <Check size={11} />
+                                Accepted
+                              </span>
+                            )}
+                            {status === 'rejected' && (
+                              <span className="hosp-sub-badge-status rejected">
+                                <XCircle size={11} />
+                                Rejected
+                              </span>
+                            )}
+                            {status === 'cancelled' && (
+                              <span className="hosp-sub-badge-status cancelled">
+                                <X size={11} />
+                                Cancelled
+                              </span>
+                            )}
+                            {status === 'expired' && (
+                              <span className="hosp-sub-badge-status expired">
+                                Expired
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {status === 'pending' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleCancelInvitation(inv.id)}
+                                disabled={cancellingInvitationId === inv.id}
+                                className="hosp-sub-btn-secondary"
+                                style={{ padding: '5px 12px', fontSize: '11.5px', color: '#dc2626' }}
+                                title="Cancel invitation and release reserved seat quota"
+                              >
+                                {cancellingInvitationId === inv.id ? (
+                                  <RefreshCw size={12} className="animate-spin" />
+                                ) : (
+                                  <X size={12} />
+                                )}
+                                <span>Cancel</span>
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: '#94a3b8' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: FORENSIC AUDIT LEDGER */}
+        {seatTab === 'history' && (
+          <div>
+            <div className="d-flex align-items-center justify-content-between p-3" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-bg, #f8fafc)' }}>
+              <div className="d-flex align-items-center gap-2">
+                <History size={15} style={{ color: '#2563eb' }} />
+                <span style={{ fontSize: '13px', fontWeight: 700 }}>Immutable Seat Audit Trail</span>
+                <span className="text-muted" style={{ fontSize: '12px' }}>• All seat allocations, revocations, and lifecycle events</span>
+              </div>
+              <button
+                type="button"
+                onClick={loadSeatHistory}
+                disabled={loadingHistory}
+                className="hosp-sub-btn-secondary"
+                style={{ padding: '4px 10px', fontSize: '11.5px' }}
+              >
+                <RefreshCw size={12} className={loadingHistory ? "animate-spin" : ""} />
+                <span>Refresh Trail</span>
+              </button>
+            </div>
+
+            <div className="hosp-sub-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="hosp-sub-table">
+                <thead>
+                  <tr>
+                    <th>Action Event</th>
+                    <th>Doctor</th>
+                    <th>Actor / Operator</th>
+                    <th>Reason / Audit Notes</th>
+                    <th style={{ textAlign: 'right' }}>Recorded At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingHistory ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center' }}>
+                        <RefreshCw size={24} className="animate-spin" style={{ color: '#2563eb', margin: '0 auto 8px auto' }} />
+                        <div style={{ fontSize: '12.5px', color: '#64748b' }}>Loading forensic audit trail...</div>
+                      </td>
+                    </tr>
+                  ) : seatHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                        <div className="d-flex flex-column align-items-center justify-content-center">
+                          <History size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
+                            No seat history recorded yet
+                          </div>
+                          <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                            Seat assignments and revocations will be permanently recorded here.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    seatHistory.map(item => {
+                      const action = String(item.action || '').toUpperCase()
+                      let badgeColor = '#2563eb'
+                      let badgeBg = 'rgba(37, 99, 235, 0.1)'
+                      if (action.includes('REVOKE')) {
+                        badgeColor = '#dc2626'
+                        badgeBg = 'rgba(239, 68, 68, 0.1)'
+                      } else if (action.includes('ALLOCAT') || action.includes('ASSIGN') || action.includes('ACCEPT')) {
+                        badgeColor = '#059669'
+                        badgeBg = 'rgba(16, 185, 129, 0.1)'
+                      } else if (action.includes('CANCEL')) {
+                        badgeColor = '#64748b'
+                        badgeBg = 'rgba(100, 116, 139, 0.1)'
+                      }
+
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                background: badgeBg,
+                                color: badgeColor
+                              }}
+                            >
+                              {action || 'EVENT'}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
+                              {item.doctor?.name || `Doctor #${item.doctor_id}`}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                              Doctor ID: #{item.doctor_id}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12px', fontWeight: 600 }}>
+                              {item.actor_type ? `${item.actor_type.split('\\').pop()} #${item.actor_id || ''}` : 'System'}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12px', maxWidth: '300px', wordBreak: 'break-word' }}>
+                              {item.reason || item.notes || <span className="text-muted">—</span>}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'right', fontSize: '12px', color: '#64748b' }}>
+                            {item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A'}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── 5. INSTITUTIONAL USAGE GAUGES & FORECASTING ─── */}
@@ -1289,7 +1708,7 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>
       </div>
 
-      {/* ─── 8. DOCTOR SEAT ALLOCATION MODAL (WITH LIVE SEARCH) ─── */}
+      {/* ─── 8. DOCTOR SEAT INVITATION / ALLOCATION MODAL (PHASE 6) ─── */}
       {showAllocateModal && (
         <div className="hosp-sub-modal-backdrop">
           <div className="hosp-sub-modal hosp-sub-fade-in">
@@ -1303,14 +1722,14 @@ export default function HospitalSubscriptionExperiencePage() {
                     color: '#2563eb'
                   }}
                 >
-                  <UserPlus size={18} />
+                  <Send size={18} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0 }}>
-                    Allocate Doctor License Seat
+                    Invite Doctor to Facility Seat
                   </h3>
                   <p className="text-muted" style={{ fontSize: '12px', margin: '2px 0 0 0' }}>
-                    Assign a practitioner to practice under your institutional quota.
+                    Send an official seat invitation to sponsor the practitioner under your institutional plan.
                   </p>
                 </div>
               </div>
@@ -1322,7 +1741,7 @@ export default function HospitalSubscriptionExperiencePage() {
               </button>
             </div>
 
-            <form onSubmit={handleAllocateDoctor}>
+            <form onSubmit={handleSendDoctorInvitation}>
               {/* Doctor Search input */}
               <div className="mb-3">
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
@@ -1404,6 +1823,29 @@ export default function HospitalSubscriptionExperiencePage() {
                 />
               </div>
 
+              {/* Invitation Notes */}
+              <div className="mb-3">
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
+                  Chamber / Assignment Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Assigned to Cardiology OPD Chamber 302..."
+                  value={invitationNotes}
+                  onChange={(e) => setInvitationNotes(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--admin-border, #e2e8f0)',
+                    background: 'var(--admin-bg, #f8fafc)',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
               <div
                 style={{
                   padding: '12px',
@@ -1415,7 +1857,7 @@ export default function HospitalSubscriptionExperiencePage() {
                   marginBottom: '20px'
                 }}
               >
-                Allocating a seat grants the practitioner full chamber scheduling, patient queue boards, and clinical prescription quotas within your hospital facility.
+                Sending an invitation reserves 1 seat from your facility's quota for 7 days. Once accepted, the doctor gains immediate access to clinical features and prescription quotas under your institutional tier.
               </div>
 
               <div className="d-flex justify-content-end gap-2 pt-3" style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
@@ -1431,8 +1873,8 @@ export default function HospitalSubscriptionExperiencePage() {
                   disabled={allocatingSeat || !newDoctorId}
                   className="hosp-sub-btn-primary"
                 >
-                  <UserPlus size={14} />
-                  <span>{allocatingSeat ? 'Assigning...' : 'Confirm Allocation'}</span>
+                  <Send size={14} />
+                  <span>{allocatingSeat ? 'Sending Invitation...' : 'Send Seat Invitation'}</span>
                 </button>
               </div>
             </form>
@@ -1440,7 +1882,7 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>
       )}
 
-      {/* ─── 9. REVOKE DOCTOR SEAT CONFIRMATION MODAL ─── */}
+      {/* ─── 9. REVOKE DOCTOR SEAT CONFIRMATION MODAL (PHASE 6 AUDITED) ─── */}
       {doctorToRevoke && (
         <div className="hosp-sub-modal-backdrop">
           <div className="hosp-sub-modal hosp-sub-fade-in">
@@ -1461,13 +1903,43 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
 
             <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
-              Are you sure you want to revoke the facility license seat for <strong>Dr. {doctorToRevoke.name}</strong> (Doctor ID #{doctorToRevoke.id})? This will unbind their access to this hospital's quota and free up 1 seat on your roster.
+              Are you sure you want to revoke the facility license seat for <strong>Dr. {doctorToRevoke.name}</strong> (Doctor ID #{doctorToRevoke.id})? This will unbind their access to this hospital's quota and immediately release 1 seat back to your roster.
             </p>
+
+            {/* Mandatory Reason Input */}
+            <div className="mb-3 mt-3">
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#dc2626', marginBottom: '6px' }}>
+                Mandatory Revocation Reason (Required for Compliance Audit)
+              </label>
+              <textarea
+                rows={2}
+                required
+                placeholder="e.g. Practitioner completed contract, transferred to external clinic, etc..."
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  fontSize: '13px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--admin-border, #e2e8f0)',
+                  background: 'var(--admin-bg, #f8fafc)',
+                  outline: 'none',
+                  resize: 'vertical'
+                }}
+              />
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                Minimum 3 characters required. Recorded in the forensic audit ledger.
+              </div>
+            </div>
 
             <div className="d-flex justify-content-end gap-2 pt-3 mt-4" style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
               <button
                 type="button"
-                onClick={() => setDoctorToRevoke(null)}
+                onClick={() => {
+                  setDoctorToRevoke(null)
+                  setRevokeReason('')
+                }}
                 className="hosp-sub-btn-secondary"
               >
                 Cancel
@@ -1475,7 +1947,7 @@ export default function HospitalSubscriptionExperiencePage() {
               <button
                 type="button"
                 onClick={handleConfirmRevokeDoctor}
-                disabled={revokingSeat}
+                disabled={revokingSeat || !revokeReason.trim() || revokeReason.trim().length < 3}
                 className="hosp-sub-btn-danger"
               >
                 <UserMinus size={14} />

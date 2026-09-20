@@ -758,3 +758,128 @@
 [data-theme='dark'] .hosp-sub-doc-item:hover {
   background: #1e293b;
 }
+
+/* ─── PHASE 6: SEAT MANAGEMENT TABS & WORKSPACE ─── */
+.hosp-sub-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  padding: 0 16px;
+  background: var(--admin-card-bg, #ffffff);
+}
+
+[data-theme='dark'] .hosp-sub-tabs-nav {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.hosp-sub-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hosp-sub-tab-btn:hover {
+  color: #2563eb;
+}
+
+.hosp-sub-tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .hosp-sub-tab-btn {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .hosp-sub-tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+.hosp-sub-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.hosp-sub-tab-btn.active .hosp-sub-tab-badge {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+[data-theme='dark'] .hosp-sub-tab-badge {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+.hosp-sub-filter-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  background: var(--admin-bg, #f8fafc);
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hosp-sub-filter-pill:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.hosp-sub-filter-pill.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+[data-theme='dark'] .hosp-sub-filter-pill {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .hosp-sub-filter-pill.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+.hosp-sub-badge-status.pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.hosp-sub-badge-status.rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.hosp-sub-badge-status.cancelled {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+

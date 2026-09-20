@@ -95,6 +95,28 @@ export const getHospitalInvoiceDownloadPayload = (invoiceId) =>
 export const emailHospitalInvoice = (invoiceId) => 
   axiosInstance.post(`/hospital/billing/invoices/${invoiceId}/email`).then(res => res.data)
 
+// ===== HOSPITAL SEAT & INVITATION MANAGEMENT (PHASE 6) =====
+export const getHospitalSeatSummary = () => 
+  axiosInstance.get('/hospital/billing/seats/summary').then(res => res.data)
+
+export const getHospitalAllocatedDoctors = () => 
+  axiosInstance.get('/hospital/billing/seats/doctors').then(res => res.data)
+
+export const getHospitalSeatInvitations = (params) => 
+  axiosInstance.get('/hospital/billing/seats/invitations', { params }).then(res => res.data)
+
+export const sendHospitalDoctorInvitation = (data) => 
+  axiosInstance.post('/hospital/billing/seats/invitations', data).then(res => res.data)
+
+export const cancelHospitalDoctorInvitation = (id) => 
+  axiosInstance.post(`/hospital/billing/seats/invitations/${id}/cancel`).then(res => res.data)
+
+export const revokeHospitalDoctorSeatRecord = (data) => 
+  axiosInstance.post('/hospital/billing/seats/revoke', data).then(res => res.data)
+
+export const getHospitalSeatHistory = (params) => 
+  axiosInstance.get('/hospital/billing/seats/history', { params }).then(res => res.data)
+
 // ===== ENTERPRISE CHECKOUT (PHASE 4.3) =====
 export const getCheckoutSummary = (planId, billingCycle = 'monthly', couponCode = '') =>
   axiosInstance.get('/billing/checkout/summary', {
