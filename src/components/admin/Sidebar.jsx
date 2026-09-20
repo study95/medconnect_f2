@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { getPrescriptions } from '../../api/adminApi'
 
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag, Clock } from 'lucide-react'
+import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag, Clock, Megaphone } from 'lucide-react'
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -633,61 +633,27 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </>
           )}
 
-          {/* Admin Subscription Management */}
+
+
+          {/* Admin Communication & Notices */}
           {isAdmin && (
             <>
-              <div className="sidebar-section-title">SUBSCRIPTION MGT</div>
-
-              <NavLink
-                to="/admin/subscriptions"
-                className={`sidebar-nav-item ${isActive('/admin/subscriptions') && location.pathname === '/admin/subscriptions' ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Doctor Subs' : undefined}
-              >
-                <span className="nav-icon"><CreditCard size={18} /></span>
-                <span className="nav-text">Doctor Subs</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/subscription-packages"
-                className={`sidebar-nav-item ${isActive('/admin/subscription-packages') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Packages' : undefined}
-              >
-                <span className="nav-icon"><Package size={18} /></span>
-                <span className="nav-text">Packages</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/promo-codes"
-                className={`sidebar-nav-item ${isActive('/admin/promo-codes') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Promo Codes' : undefined}
-              >
-                <span className="nav-icon"><Ticket size={18} /></span>
-                <span className="nav-text">Promo Codes</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/trial-days"
-                className={`sidebar-nav-item ${isActive('/admin/trial-days') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Trial Days' : undefined}
-              >
-                <span className="nav-icon"><Gift size={18} /></span>
-                <span className="nav-text">Trial Days</span>
-              </NavLink>
+              <div className="sidebar-section-title">COMMUNICATION</div>
 
               <NavLink
                 to="/admin/messages"
                 className={`sidebar-nav-item ${isActive('/admin/messages') ? 'active' : ''}`}
                 onClick={onClose}
-                title={isCollapsed ? 'Messages' : undefined}
+                title={isCollapsed ? 'Notices & Broadcasts' : undefined}
               >
-                <span className="nav-icon"><MessageSquare size={18} /></span>
-                <span className="nav-text">Messages</span>
+                <span className="nav-icon"><Megaphone size={18} /></span>
+                <span className="nav-text">Notices & Broadcasts</span>
               </NavLink>
+            </>
+          )}
 
+          {isAdmin && (
+            <>
               {/* ===== ENTERPRISE BILLING & REVENUE (PHASE 3) ===== */}
               <div className="sidebar-section-title">ENTERPRISE BILLING</div>
 

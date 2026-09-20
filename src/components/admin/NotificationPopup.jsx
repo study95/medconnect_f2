@@ -22,6 +22,13 @@ export default function NotificationPopup() {
 
   return (
     <div className="admin-modal-overlay" style={{ zIndex: 9999 }}>
+      <style>{`
+        .notification-html-body { text-align: left; }
+        .notification-html-body p { text-align: left; margin: 0 0 6px 0; }
+        .notification-html-body p:last-child { margin-bottom: 0; }
+        .notification-html-body ul, .notification-html-body ol { margin: 0 0 6px 0; padding-left: 18px; text-align: left; }
+        .notification-html-body a { color: #00A88C; text-decoration: underline; }
+      `}</style>
       <div className="admin-modal" style={{ maxWidth: 500, padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ 
           padding: '24px 32px',
@@ -53,13 +60,21 @@ export default function NotificationPopup() {
               }}>
                 {typeIcons[n.type] || 'ℹ️'}
               </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 15, color: 'var(--admin-text)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 15, color: 'var(--admin-text)' }}>
                   {n.title}
                 </h4>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-text-muted)', lineHeight: 1.6 }}>
-                  {n.message}
-                </p>
+                <div 
+                  className="notification-html-body"
+                  style={{ 
+                    margin: 0, 
+                    fontSize: 13, 
+                    color: 'var(--admin-text-muted)', 
+                    lineHeight: 1.6,
+                    wordBreak: 'break-word'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: n.message }}
+                />
                 <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
                     {n.created_at ? new Date(n.created_at).toLocaleString() : ''}

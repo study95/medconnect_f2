@@ -33,7 +33,8 @@ const NotificationItem = memo(function NotificationItem({
   }
 
   const title = notification.title || data.title || 'New Notification'
-  const message = notification.message || data.message || data.comment_preview || ''
+  const rawMessage = notification.message || data.message || data.comment_preview || ''
+  const message = typeof rawMessage === 'string' ? rawMessage.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : ''
   const createdAt = notification.created_at || data.created_at
 
   return (

@@ -70,28 +70,29 @@ export function SubscriptionProvider({ children }) {
 
   // Fetch unread notification count
   const refreshUnreadCount = useCallback(async () => {
-    if (!isLoggedIn || !isDoctor) return
+    if (!isLoggedIn) return
     try {
       const res = await getUnreadCount()
-      setUnreadCount(res.data?.count || 0)
+      const count = Number(res.data?.unread_count ?? res.data?.count ?? res.data?.data?.unread_count ?? res.data?.data?.count ?? 0)
+      setUnreadCount(count)
     } catch (err) {}
-  }, [isLoggedIn, isDoctor])
+  }, [isLoggedIn])
 
   // Fetch popup notifications on login
   const fetchPopups = useCallback(async () => {
-    if (!isLoggedIn || !isDoctor || popupDismissed) return
+    if (!isLoggedIn || popupDismissed) return
     try {
       const res = await getPopupNotifications()
       setPopupNotifications(res.data?.data || [])
     } catch (err) {}
-  }, [isLoggedIn, isDoctor, popupDismissed])
+  }, [isLoggedIn, popupDismissed])
 
   useEffect(() => {
-    if (isLoggedIn && isDoctor) {
+    if (isLoggedIn) {
       refreshUnreadCount()
       fetchPopups()
     }
-  }, [isLoggedIn, isDoctor, refreshUnreadCount, fetchPopups])
+  }, [isLoggedIn, refreshUnreadCount, fetchPopups])
 
   const dismissPopups = () => {
     setPopupDismissed(true)

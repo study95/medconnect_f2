@@ -15,6 +15,11 @@ const typeColors = {
   expiry: { bg: '#FEE2E2', color: '#991B1B' },
 }
 
+const stripHtml = (html) => {
+  if (!html) return ''
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export default function NotificationsPage() {
   const { refreshUnreadCount } = useSubscription()
   const [notifications, setNotifications] = useState([])
@@ -37,6 +42,7 @@ export default function NotificationsPage() {
       await markNotificationRead(id)
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
       refreshUnreadCount()
+      window.dispatchEvent(new Event('notification-read-updated'))
     } catch {}
   }
 
@@ -52,7 +58,7 @@ export default function NotificationsPage() {
       await markAllNotificationsRead()
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
       refreshUnreadCount()
-      
+      window.dispatchEvent(new Event('notification-read-updated'))
     } catch {}
   }
 
@@ -60,6 +66,13 @@ export default function NotificationsPage() {
 
   return (
     <div>
+      <style>{`
+        .notification-html-body { text-align: left; }
+        .notification-html-body p { text-align: left; margin: 0 0 8px 0; }
+        .notification-html-body p:last-child { margin-bottom: 0; }
+        .notification-html-body ul, .notification-html-body ol { margin: 0 0 8px 0; padding-left: 20px; text-align: left; }
+        .notification-html-body a { color: #00A88C; text-decoration: underline; }
+      `}</style>
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title">🔔 Notifications</h2>
@@ -121,7 +134,7 @@ export default function NotificationsPage() {
                         )}
                       </div>
                       <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--admin-text-muted)', lineHeight: 1.5 }}>
-                        {n.message}
+                        {stripHtml(n.message)}
                       </p>
                       <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
                         {n.created_at ? new Date(n.created_at).toLocaleString() : ''}
@@ -147,50 +160,119 @@ export default function NotificationsPage() {
 
       {/* Notification Detail Modal */}
       {selectedNotification && (
-        <div className="admin-modal-overlay" onClick={() => setSelectedNotification(null)} style={{ zIndex: 9999 }}>
-          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, borderRadius: 20 }}>
-            <div className="admin-modal-header" style={{ borderBottom: '1px solid var(--admin-border)', paddingBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 24 }}>{typeIcons[selectedNotification.type] || 'ℹ️'}</span>
-                <h3 className="admin-modal-title" style={{ fontSize: 18, fontWeight: 800 }}>Notification Detail</h3>
-              </div>
-              <button className="admin-modal-close" onClick={() => setSelectedNotification(null)}>✕</button>
-            </div>
-            
-            <div className="admin-modal-body" style={{ padding: '24px 0' }}>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ 
-                    background: typeColors[selectedNotification.type]?.bg, 
-                    color: typeColors[selectedNotification.type]?.color,
-                    padding: '2px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800,
-                    textTransform: 'uppercase'
-                  }}>
-                    {selectedNotification.type}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>
-                    {selectedNotification.created_at ? new Date(selectedNotification.created_at).toLocaleString() : ''}
+        <div 
+          className="admin-modal-overlay" 
+          onClick={() => setSelectedNotification(null)} 
+          style={{ 
+            position: 'fixed', inset: 0, 
+            background: 'rgba(15, 23, 42, 0.45)', 
+            backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            zIndex: 99999, padding: 16 
+          }}
+        >
+          <div 
+            className="admin-modal" 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              maxWidth: 500, 
+              width: '100%', 
+              background: '#FFFFFF', 
+              borderRadius: 16, 
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)', 
+              overflow: 'hidden',
+              border: '1px solid #E2E8F0'
+            }}
+          >
+            {/* Simple Clean Header: Sender & Date */}
+            <div style={{ 
+              padding: '16px 20px', 
+              borderBottom: '1px solid #F1F5F9', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(0, 168, 140, 0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, flexShrink: 0
+                }}>
+                  {typeIcons[selectedNotification.type] || '📩'}
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                    {selectedNotification.sender?.name || 'Administration'}
+                  </h4>
+                  <span style={{ fontSize: 12, color: '#94A3B8' }}>
+                    {selectedNotification.created_at ? new Date(selectedNotification.created_at).toLocaleString([], { 
+                      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                    }) : ''}
                   </span>
                 </div>
-                <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: 'var(--admin-text)', lineHeight: 1.3 }}>
-                  {selectedNotification.title}
-                </h4>
               </div>
 
-              <div style={{ 
-                background: 'var(--admin-sidebar-user-bg)', 
-                padding: 24, borderRadius: 16, border: '1px solid var(--admin-border)',
-                lineHeight: 1.6, color: 'var(--admin-text)', fontSize: 15,
-                whiteSpace: 'pre-line'
+              <button 
+                onClick={() => setSelectedNotification(null)}
+                style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  border: 'none', background: 'transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#94A3B8', fontSize: 15, transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0F172A' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8' }}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Natural Message Body */}
+            <div style={{ padding: '20px 24px', maxHeight: 'calc(80vh - 130px)', overflowY: 'auto' }}>
+              {/* Notice Title / Subject */}
+              <h3 style={{ 
+                margin: '0 0 12px', 
+                fontSize: 17, 
+                fontWeight: 700, 
+                color: '#0F172A', 
+                lineHeight: 1.4 
               }}>
-                {selectedNotification.message}
-              </div>
+                {selectedNotification.title}
+              </h3>
+
+              {/* Message Text: Natural & Clean Reading Experience */}
+              <div 
+                className="notification-html-body"
+                style={{ 
+                  color: '#334155', 
+                  fontSize: 14.5,
+                  lineHeight: 1.7,
+                  wordBreak: 'break-word'
+                }}
+                dangerouslySetInnerHTML={{ __html: selectedNotification.message }}
+              />
             </div>
 
-            <div className="admin-modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
+            {/* Simple Footer */}
+            <div style={{ 
+              padding: '12px 20px', 
+              borderTop: '1px solid #F1F5F9', 
+              display: 'flex', 
+              justifyContent: 'flex-end',
+              background: '#FAFBFD'
+            }}>
               <button 
-                className="admin-btn admin-btn-primary" 
-                style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                className="admin-btn admin-btn-outline" 
+                style={{ 
+                  padding: '7px 20px', 
+                  borderRadius: 8, 
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  background: '#FFFFFF'
+                }}
                 onClick={() => setSelectedNotification(null)}
               >
                 Close

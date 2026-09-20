@@ -42,6 +42,7 @@ export const deleteAdminSubscription = (id) => axiosInstance.delete(`/admin/subs
 // ===== ADMIN: MESSAGES =====
 export const getAdminNotifications = () => axiosInstance.get('/admin/sent-notifications')
 export const sendAdminNotification = (data) => axiosInstance.post('/admin/send-notification', data)
+export const updateAdminNotification = (id, data) => axiosInstance.put(`/admin/notifications/${id}`, data)
 export const deleteAdminNotification = (id) => axiosInstance.delete(`/admin/notifications/${id}`)
 
 // ===== DOCTOR ENTERPRISE BILLING (PHASE 4.1) =====

@@ -26,17 +26,32 @@ export default function NotificationDropdown({
     queryFn: async () => {
       try {
         const res = await axiosInstance.get('/v1/notifications/unread-count')
-        return res.data?.unread_count ?? res.data?.data?.unread_count ?? 0
+        return (
+          res.data?.unread_count ??
+          res.data?.count ??
+          res.data?.data?.unread_count ??
+          res.data?.data?.count ??
+          0
+        )
       } catch {
         return 0
       }
     },
-    refetchInterval: 1000 * 45, // poll every 45s
+    refetchInterval: 1000 * 15, // poll every 15s for responsiveness
   })
 
   const unreadCount = Number(countData) || 0
 
-  // 2. Fetch notifications list when open
+  // Listen to local read updates from NotificationsPage
+  useEffect(() => {
+    const handleUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    }
+    window.addEventListener('notification-read-updated', handleUpdate)
+    return () => window.removeEventListener('notification-read-updated', handleUpdate)
+  }, [queryClient])
+
+  // 2. Fetch notifications list when dropdown is open
   const { data: notificationsData, isLoading } = useQuery({
     queryKey: ['notifications', 'list'],
     queryFn: async () => {
@@ -45,7 +60,7 @@ export default function NotificationDropdown({
       return Array.isArray(raw) ? raw : raw.data || []
     },
     enabled: isOpen,
-    staleTime: 1000 * 20,
+    staleTime: 1000 * 10,
   })
 
   const notifications = Array.isArray(notificationsData) ? notificationsData : []
@@ -55,6 +70,7 @@ export default function NotificationDropdown({
     mutationFn: (id) => axiosInstance.put(`/v1/notifications/${id}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      window.dispatchEvent(new Event('notification-read-updated'))
     },
   })
 
@@ -63,6 +79,7 @@ export default function NotificationDropdown({
     mutationFn: () => axiosInstance.post('/v1/notifications/mark-all-read'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      window.dispatchEvent(new Event('notification-read-updated'))
       toast.success('All notifications marked as read')
     },
   })
@@ -94,23 +111,108 @@ export default function NotificationDropdown({
 
   return (
     <div className={`position-relative d-inline-block ${className}`} ref={dropdownRef}>
+      <style>{`
+        @keyframes bellPulseAura {
+          0% { transform: scale(0.9); opacity: 0.8; }
+          70% { transform: scale(1.7); opacity: 0; }
+          100% { transform: scale(1.9); opacity: 0; }
+        }
+        @keyframes bellBadgeBounce {
+          0% { transform: scale(0); }
+          70% { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+        @keyframes bellSubtleSwing {
+          0%, 100% { transform: rotate(0deg); }
+          15% { transform: rotate(12deg); }
+          30% { transform: rotate(-10deg); }
+          45% { transform: rotate(8deg); }
+          60% { transform: rotate(-4deg); }
+          75% { transform: rotate(0deg); }
+        }
+        .bell-has-unread {
+          animation: bellSubtleSwing 3s ease-in-out infinite;
+          transform-origin: top center;
+        }
+        .notification-bell-btn:hover {
+          background: rgba(0, 184, 117, 0.12) !important;
+          border-color: rgba(0, 184, 117, 0.35) !important;
+        }
+      `}</style>
+
       {/* Bell Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="btn p-0 border-0 bg-transparent position-relative d-flex align-items-center justify-content-center"
-        style={{ color: iconColor, outline: 'none' }}
+        className="notification-bell-btn position-relative d-flex align-items-center justify-content-center"
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: '1.5px solid var(--admin-border, rgba(0, 0, 0, 0.1))',
+          background: isOpen ? 'rgba(0, 184, 117, 0.12)' : 'transparent',
+          color: iconColor,
+          outline: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          transition: 'all 0.2s ease',
+        }}
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
-        <Bell size={20} />
+        <Bell
+          size={18}
+          className={unreadCount > 0 ? "bell-has-unread" : ""}
+          style={{ strokeWidth: 2.2 }}
+        />
+
         {unreadCount > 0 && (
-          <span
-            className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-            style={{ fontSize: '0.65rem', padding: '2px 5px' }}
-          >
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
+          <>
+            {/* Soft pulsing aura behind the badge */}
+            <span
+              style={{
+                position: 'absolute',
+                top: -1,
+                right: -1,
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                backgroundColor: '#EF4444',
+                animation: 'bellPulseAura 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Notification Badge with clear count */}
+            <span
+              style={{
+                position: 'absolute',
+                top: -3,
+                right: -3,
+                minWidth: 18,
+                height: 18,
+                padding: '0 4px',
+                borderRadius: '999px',
+                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 800,
+                lineHeight: '18px',
+                textAlign: 'center',
+                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.5), 0 0 0 2px var(--admin-card-bg, #ffffff)',
+                border: '1.5px solid #ffffff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2,
+                userSelect: 'none',
+                pointerEvents: 'none',
+                animation: 'bellBadgeBounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              }}
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          </>
         )}
       </button>
 
@@ -129,9 +231,13 @@ export default function NotificationDropdown({
           <div className="p-3 border-bottom border-light-subtle d-flex align-items-center justify-content-between bg-light">
             <div className="d-flex align-items-center gap-2">
               <h6 className="mb-0 fw-bold text-dark">Notifications</h6>
-              {unreadCount > 0 && (
-                <span className="badge bg-primary-subtle text-primary rounded-pill small">
-                  {unreadCount} new
+              {unreadCount > 0 ? (
+                <span className="badge rounded-pill bg-danger-subtle text-danger fw-bold small">
+                  {unreadCount} unread
+                </span>
+              ) : (
+                <span className="badge rounded-pill bg-secondary-subtle text-secondary fw-semibold small">
+                  All caught up
                 </span>
               )}
             </div>
@@ -142,6 +248,7 @@ export default function NotificationDropdown({
                 onClick={() => markAllReadMutation.mutate()}
                 disabled={markAllReadMutation.isPending}
                 className="btn btn-link p-0 text-decoration-none extra-small text-muted d-inline-flex align-items-center gap-1 hover-text-primary"
+                style={{ fontSize: '0.8rem' }}
               >
                 <CheckCheck size={14} />
                 Mark all read
@@ -157,7 +264,7 @@ export default function NotificationDropdown({
               <div className="text-center py-5 px-3 text-muted">
                 <BellOff size={32} className="mb-2 opacity-50 d-block mx-auto" />
                 <div className="fw-semibold small">No notifications yet</div>
-                <div className="extra-small text-muted">You will be notified of new reviews, replies, and updates here.</div>
+                <div className="extra-small text-muted">You will be notified of new notices and updates here.</div>
               </div>
             ) : (
               notifications.map((item) => (
