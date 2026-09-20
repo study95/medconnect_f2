@@ -59,9 +59,16 @@ export function AuthProvider({ children }) {
       if (response.data?.success) {
         const userData = response.data.user
         setUser(userData)
-        setUserType(userData.registration_type || null)
+        const rolesList = Array.isArray(userData.roles) 
+          ? userData.roles.map(r => typeof r === 'object' ? (r.name || '') : String(r)).map(s => s.toLowerCase())
+          : (userData.role ? [String(userData.role).toLowerCase()] : ['user'])
+        const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
+          : rolesList.includes('doctor') ? 'doctor' 
+          : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
+          : 'user'
+        setUserType(resolvedType)
         localStorage.setItem('user', JSON.stringify(userData))
-        if (userData.registration_type) localStorage.setItem('userType', userData.registration_type)
+        localStorage.setItem('userType', resolvedType)
       }
     } catch (err) {
       if (err.response?.status === 401) {
@@ -83,17 +90,24 @@ export function AuthProvider({ children }) {
   const storeAuth = (token, userData, type = null) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
-    if (type) localStorage.setItem('userType', type)
+    const rolesList = Array.isArray(userData?.roles) 
+      ? userData.roles.map(r => typeof r === 'object' ? (r.name || '') : String(r)).map(s => s.toLowerCase())
+      : (userData?.role ? [String(userData.role).toLowerCase()] : [])
+    const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
+      : rolesList.includes('doctor') ? 'doctor' 
+      : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
+      : (type || 'user')
+    localStorage.setItem('userType', resolvedType)
     setUser(userData)
-    setUserType(type)
+    setUserType(resolvedType)
   }
 
   const login = async (email, password, role = null) => {
     try {
       const response = await loginApi({ email, identifier: email, password, role, type: role })
       const { token, user: userData } = response.data
-      storeAuth(token, userData, role || userData.registration_type)
-      return { success: true }
+      storeAuth(token, userData)
+      return { success: true, user: userData }
     } catch (error) {
       const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       return { success: false, message }
@@ -162,7 +176,7 @@ export function AuthProvider({ children }) {
       const response = await doctorRegisterApi(formData)
       if (response.data?.token) {
         const { token, user: userData } = response.data
-        storeAuth(token, userData, 'doctor')
+        storeAuth(token, userData, 'user')
       }
       return { success: true, data: response.data }
     } catch (error) {
@@ -185,7 +199,7 @@ export function AuthProvider({ children }) {
       const response = await hospitalRegisterApi(formData)
       if (response.data?.token) {
         const { token, user: userData } = response.data
-        storeAuth(token, userData, 'hospital')
+        storeAuth(token, userData, 'user')
       }
       return { success: true, data: response.data }
     } catch (error) {
@@ -228,23 +242,20 @@ export function AuthProvider({ children }) {
   const hasRole = (role) => getRoles().includes(role.toLowerCase())
   
   const isAdmin = 
-    hasRole('admin') || user?.role_id === 1 || String(user?.role_id) === 'admin' || 
-    Boolean(user?.is_admin) || Boolean(user?.isAdmin) ||
-    user?.registration_type === 'admin' || userType === 'admin';
+    hasRole('admin') || hasRole('super-admin') || user?.role_id === 1 || String(user?.role_id) === 'admin' || 
+    Boolean(user?.is_admin) || Boolean(user?.isAdmin);
     
   const isDoctor = 
-    hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 
-    Boolean(user?.is_doctor) || Boolean(user?.isDoctor) ||
-    user?.registration_type === 'doctor' || userType === 'doctor';
+    !isAdmin && (hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 
+    Boolean(user?.is_doctor) || Boolean(user?.isDoctor));
     
   const isManager = 
-    hasRole('manager') || hasRole('hospital') || user?.role_id === 3 || String(user?.role_id) === 'manager' || 
-    Boolean(user?.is_manager) || Boolean(user?.isManager) ||
-    user?.registration_type === 'hospital' || user?.registration_type === 'manager' || userType === 'hospital';
+    !isAdmin && !isDoctor && (hasRole('manager') || hasRole('hospital') || user?.role_id === 3 || String(user?.role_id) === 'manager' || String(user?.role_id) === 'hospital' ||
+    Boolean(user?.is_manager) || Boolean(user?.isManager));
 
   const isPatient = !isAdmin && !isDoctor && !isManager;
     
-  const isStaff = isAdmin || isDoctor || isManager
+  const isStaff = isAdmin || isDoctor || isManager;
 
   const hasPermission = (permissionName) => {
     if (isAdmin) return true;

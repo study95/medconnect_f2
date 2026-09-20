@@ -7,6 +7,7 @@ import useLocations from '../../hooks/useLocations'
 import { getSpecialties } from '../../api/adminApi'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import PasswordInput from '../../components/common/PasswordInput'
+import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
 export default function DoctorRegisterPage() {
@@ -125,11 +126,14 @@ export default function DoctorRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      
-      navigate('/')
+      toast.success(
+        result.data?.message || 'নিবন্ধন সফল হয়েছে! অ্যাডমিন কর্তৃক আপনার বিএমডিসি ও প্রোফাইল অনুমোদনের পর ডক্টর প্যানেল সক্রিয় হবে।',
+        { duration: 6000 }
+      )
+      navigate('/', { replace: true })
     } else {
       if (result.errors) setErrors(result.errors)
-      
+      else if (result.message) toast.error(result.message)
     }
   }
 

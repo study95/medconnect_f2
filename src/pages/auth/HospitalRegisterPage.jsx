@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import useLocations from '../../hooks/useLocations'
 import PasswordInput from '../../components/common/PasswordInput'
+import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
 const HOSPITAL_TYPES = [
@@ -121,11 +122,14 @@ export default function HospitalRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      
-      navigate('/admin')
+      toast.success(
+        result.data?.message || 'নিবন্ধন সফল হয়েছে! অ্যাডমিনের অনুমোদনের পর হসপিটাল প্যানেল সক্রিয় হবে।',
+        { duration: 6000 }
+      )
+      navigate('/', { replace: true })
     } else {
       if (result.errors) setErrors(result.errors)
-      
+      else if (result.message) toast.error(result.message)
     }
   }
 

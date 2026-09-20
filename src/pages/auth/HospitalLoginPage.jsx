@@ -6,6 +6,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { hospitalCheckIdentifier } from '../../api/authApi'
 import { Eye, EyeOff } from 'lucide-react'
+import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
 export default function HospitalLoginPage() {
@@ -58,7 +59,21 @@ export default function HospitalLoginPage() {
     setLoading(false)
 
     if (result.success) {
-      
+      const rawRoles = result.user?.roles || result.user?.role || []
+      const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => 
+        typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
+      )
+      const isApproved = roles.includes('manager') || roles.includes('hospital') || roles.includes('admin') || roles.includes('super-admin') || result.user?.role_id === 1 || result.user?.role_id === 3
+
+      if (!isApproved) {
+        toast('আপনার হসপিটাল অ্যাকাউন্টটি এখনও অ্যাডমিন কর্তৃক অনুমোদিত হয়নি। অ্যাডমিনের অনুমোদনের পর প্যানেলে প্রবেশ করতে পারবেন।', {
+          icon: '⏳',
+          duration: 6000
+        })
+        navigate('/', { replace: true })
+        return
+      }
+
       navigate(from, { replace: true })
     } else {
       if (result.message && result.message.toLowerCase().includes('not finding')) {
