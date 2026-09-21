@@ -9,7 +9,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { toast } from 'react-hot-toast'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
-import { getChamber } from '../../../api/adminApi'
+import { getChamber, getDistricts, getUpazilas, getDivisions } from '../../../api/adminApi'
 import { useAdminChamberLookups, useAdminChamberMutations } from '../../../features/chambers/useAdminChambers'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -224,6 +224,14 @@ export default function ChamberFormPage() {
   const [form, setForm] = useState({ 
     doctor_id: '', 
     hospital_id: '', 
+    chamber_name: '',
+    division_id: '',
+    district_id: '',
+    upazila_id: '',
+    address: '',
+    is_primary: false,
+    display_order: '0',
+    consultation_type: 'hospital',
     room_number: '',
     day: 'Monday', 
     start_time: '17:00', 
@@ -235,6 +243,9 @@ export default function ChamberFormPage() {
   const { doctors: lookupDoctors, hospitals: lookupHospitals } = useAdminChamberLookups()
   const { createChamber: saveNewChamber, updateChamber: saveUpdatedChamber } = useAdminChamberMutations()
 
+  const [divisionsList, setDivisionsList] = useState([])
+  const [districtsList, setDistrictsList] = useState([])
+  const [upazilasList, setUpazilasList] = useState([])
   const [editDoctor, setEditDoctor] = useState(null)
   const [editHospital, setEditHospital] = useState(null)
   const [chamberData, setChamberData] = useState(null)
@@ -243,6 +254,37 @@ export default function ChamberFormPage() {
   const [errors, setErrors] = useState({})
   const [serverFeedback, setServerFeedback] = useState(null)
   const [myDoctorProfile, setMyDoctorProfile] = useState(null)
+
+  // Load divisions and districts on mount
+  useEffect(() => {
+    getDivisions().then(res => {
+      const data = res.data?.data?.data || res.data?.data || res.data || []
+      setDivisionsList(Array.isArray(data) ? data : [])
+    }).catch(() => {})
+
+    getDistricts({ per_page: 200 }).then(res => {
+      const data = res.data?.data?.data || res.data?.data || res.data || []
+      setDistrictsList(Array.isArray(data) ? data : [])
+    }).catch(() => {})
+  }, [])
+
+  // Filter districts based on selected division
+  const filteredDistricts = useMemo(() => {
+    if (!form.division_id) return districtsList
+    return districtsList.filter(d => String(d.division_id) === String(form.division_id))
+  }, [districtsList, form.division_id])
+
+  // Load upazilas when district changes
+  useEffect(() => {
+    if (form.district_id) {
+      getUpazilas({ district_id: form.district_id, per_page: 200 }).then(res => {
+        const data = res.data?.data?.data || res.data?.data || res.data || []
+        setUpazilasList(Array.isArray(data) ? data : [])
+      }).catch(() => setUpazilasList([]))
+    } else {
+      setUpazilasList([])
+    }
+  }, [form.district_id])
 
   const doctors = useMemo(() => {
     if (!editDoctor) return lookupDoctors
@@ -320,6 +362,14 @@ export default function ChamberFormPage() {
       setForm({
         doctor_id: docIdentifier,
         hospital_id: hospIdentifier,
+        chamber_name: d.chamber_name || '',
+        division_id: d.division_id ? String(d.division_id) : (d.division?.id ? String(d.division.id) : (d.district?.division_id ? String(d.district.division_id) : '')),
+        district_id: d.district_id ? String(d.district_id) : (d.district?.id ? String(d.district.id) : ''),
+        upazila_id: d.upazila_id ? String(d.upazila_id) : (d.upazila?.id ? String(d.upazila.id) : ''),
+        address: d.address || '',
+        is_primary: Boolean(d.is_primary),
+        display_order: String(d.display_order ?? '0'),
+        consultation_type: d.consultation_type || (hospIdentifier ? 'hospital' : 'physical'),
         room_number: d.room_number || '',
         day: d.day || 'Monday',
         start_time: d.start_time ? d.start_time.substring(0, 5) : '17:00',
@@ -377,7 +427,13 @@ export default function ChamberFormPage() {
   const validate = () => {
     const errs = {}
     if (!form.doctor_id) errs.doctor_id = 'Please select a practitioner/doctor'
-    if (!form.hospital_id) errs.hospital_id = 'Please select a hospital/clinical facility'
+    
+    // If not affiliated with hospital, personal chamber name, district, and address are required
+    if (!form.hospital_id) {
+      if (!form.chamber_name || !form.chamber_name.trim()) errs.chamber_name = 'Please provide a chamber or clinic name'
+      if (!form.district_id) errs.district_id = 'Please select a district'
+      if (!form.address || !form.address.trim()) errs.address = 'Please provide chamber address'
+    }
     
     if (form.room_number && form.room_number.length > 50) {
       errs.room_number = 'Room number must not exceed 50 characters.'
@@ -405,20 +461,37 @@ export default function ChamberFormPage() {
     if (!validate()) return
     setSaving(true)
 
+    const selectedDist = districtsList.find(d => String(d.id) === String(form.district_id))
+    const resolvedDivisionId = form.division_id 
+      ? Number(form.division_id) 
+      : (selectedDist?.division_id ? Number(selectedDist.division_id) : null)
+
+    const payloadBase = {
+      doctor_id: form.doctor_id,
+      hospital_id: form.hospital_id || null,
+      chamber_name: form.chamber_name ? form.chamber_name.trim() : null,
+      division_id: resolvedDivisionId,
+      district_id: form.district_id ? Number(form.district_id) : null,
+      upazila_id: form.upazila_id ? Number(form.upazila_id) : null,
+      address: form.address ? form.address.trim() : null,
+      is_primary: Boolean(form.is_primary),
+      display_order: Number(form.display_order) || 0,
+      consultation_type: form.consultation_type || (form.hospital_id ? 'hospital' : 'physical'),
+      room_number: form.room_number ? form.room_number.trim() : null,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      fee: form.fee,
+      slot_duration_minutes: Number(form.slot_duration_minutes) || 15
+    }
+
     try {
       if (isEdit) {
         // Single update using public_id
         await saveUpdatedChamber({
           id: chamberData?.public_id || id,
           data: {
-            doctor_id: form.doctor_id,
-            hospital_id: form.hospital_id,
-            room_number: form.room_number ? form.room_number.trim() : null,
-            day: form.day,
-            start_time: form.start_time,
-            end_time: form.end_time,
-            fee: form.fee,
-            slot_duration_minutes: Number(form.slot_duration_minutes) || 15
+            ...payloadBase,
+            day: form.day
           }
         })
         showSuccess({
@@ -427,47 +500,17 @@ export default function ChamberFormPage() {
         })
         setTimeout(() => navigate('/admin/chambers'), 700)
       } else {
-        // Multi-day create: Create a chamber entry for each selected day
-        const results = await Promise.allSettled(
-          selectedDays.map(day => saveNewChamber({
-            doctor_id: form.doctor_id,
-            hospital_id: form.hospital_id,
-            room_number: form.room_number ? form.room_number.trim() : null,
-            day: day,
-            start_time: form.start_time,
-            end_time: form.end_time,
-            fee: form.fee,
-            slot_duration_minutes: Number(form.slot_duration_minutes) || 15
-          }))
-        )
+        // Multi-day atomic batch create: Send days array in a single atomic transaction
+        await saveNewChamber({
+          ...payloadBase,
+          days: selectedDays
+        })
 
-        const succeeded = results.filter(r => r.status === 'fulfilled')
-        const failed = results.filter(r => r.status === 'rejected')
-
-        if (failed.length === 0) {
-          // All succeeded
-          showSuccess({
-            title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
-            message: `${selectedDays.length}টি দিনের চেম্বার শিডিউল সফলভাবে তৈরি করা হয়েছে।`,
-          })
-          setTimeout(() => navigate('/admin/chambers'), 700)
-        } else if (succeeded.length > 0) {
-          // Partial success
-          const failedDays = selectedDays.filter((_, idx) => results[idx].status === 'rejected')
-          setServerFeedback({
-            type: 'warning',
-            message: `Created schedule for ${succeeded.length} day(s). Some days (${failedDays.join(', ')}) could not be added because a chamber schedule for this doctor and hospital already exists on those days.`
-          })
-          // Keep only failed days selected so user can see
-          setSelectedDays(failedDays)
-        } else {
-          // All failed
-          const firstErr = results[0]?.reason
-          setServerFeedback({
-            type: 'error',
-            message: getErrorMessage(firstErr, 'Failed to create chamber schedules. The doctor may already be scheduled at this hospital on these days.')
-          })
-        }
+        showSuccess({
+          title: DIALOG_MESSAGES.SAVE_SUCCESS.title,
+          message: `${selectedDays.length}টি দিনের চেম্বার শিডিউল সফলভাবে তৈরি করা হয়েছে।`,
+        })
+        setTimeout(() => navigate('/admin/chambers'), 700)
       }
     } catch (err) {
       setServerFeedback({
@@ -675,16 +718,168 @@ export default function ChamberFormPage() {
                 )}
               </div>
 
-              {/* Hospital Selection */}
+              {/* Hospital or Personal Chamber Mode */}
               <div>
                 <SearchableSelect 
-                  label="Select Hospital / Facility *" 
+                  label="Hospital / Clinic Facility (Leave empty if Private Chamber)" 
                   icon={<Building2 size={14} color="#6366f1" />}
-                  placeholder="Search hospital by name or area..." 
-                  options={hospitals} 
+                  placeholder="Search hospital (or leave blank for Private Chamber)..." 
+                  options={[{ id: '', name: '— Private Practice / Personal Chamber (No Hospital) —' }, ...hospitals]} 
                   value={form.hospital_id} 
                   onChange={val => { setForm({ ...form, hospital_id: val }); setErrors({ ...errors, hospital_id: '' }) }} 
                   error={errors.hospital_id}
+                />
+              </div>
+            </div>
+
+            {/* Custom Location Inputs for Personal Practice */}
+            {!form.hospital_id && (
+              <div style={{ marginTop: 20, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #cbd5e1' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#334155', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  🏥 Private Chamber Location & Details
+                </div>
+                {/* Chamber Name */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                    Chamber / Clinic Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Dr. Rahman's Private Care" 
+                    value={form.chamber_name}
+                    onChange={e => { setForm({ ...form, chamber_name: e.target.value }); setErrors({ ...errors, chamber_name: '' }) }}
+                    style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.chamber_name ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none' }}
+                  />
+                  {errors.chamber_name && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.chamber_name}</div>}
+                </div>
+
+                {/* Cascading Location Hierarchy: Division -> District -> Upazila */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
+                  {/* Division */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Division (বিভাগ)
+                    </label>
+                    <select
+                      value={form.division_id}
+                      onChange={e => {
+                        const newDiv = e.target.value
+                        setForm(prev => ({
+                          ...prev,
+                          division_id: newDiv,
+                          district_id: '',
+                          upazila_id: ''
+                        }))
+                        setErrors(prev => ({ ...prev, district_id: '' }))
+                      }}
+                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
+                    >
+                      <option value="">-- All Divisions (সব বিভাগ) --</option>
+                      {divisionsList.map(div => (
+                        <option key={div.id} value={div.id}>
+                          {div.name} {div.bangla_name ? `(${div.bangla_name})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* District (Filtered by Division) */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      District (জেলা) *
+                    </label>
+                    <select
+                      value={form.district_id}
+                      onChange={e => {
+                        const distId = e.target.value
+                        const matched = districtsList.find(d => String(d.id) === String(distId))
+                        setForm(prev => ({
+                          ...prev,
+                          district_id: distId,
+                          upazila_id: '',
+                          division_id: (matched?.division_id ? String(matched.division_id) : prev.division_id)
+                        }))
+                        setErrors(prev => ({ ...prev, district_id: '' }))
+                      }}
+                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.district_id ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
+                    >
+                      <option value="">
+                        {form.division_id 
+                          ? `-- Select District (${filteredDistricts.length} available) --` 
+                          : '-- Select District (বা বিভাগ বেছে নিন) --'
+                        }
+                      </option>
+                      {filteredDistricts.map(d => (
+                        <option key={d.id} value={d.id}>{d.name} {d.bangla_name ? `(${d.bangla_name})` : ''}</option>
+                      ))}
+                    </select>
+                    {errors.district_id && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.district_id}</div>}
+                  </div>
+
+                  {/* Upazila */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Upazila / Area (উপজেলা - Optional)
+                    </label>
+                    <select
+                      value={form.upazila_id}
+                      onChange={e => setForm(prev => ({ ...prev, upazila_id: e.target.value }))}
+                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
+                      disabled={!form.district_id}
+                    >
+                      <option value="">-- Select Upazila --</option>
+                      {upazilasList.map(u => (
+                        <option key={u.id} value={u.id}>{u.name} {u.bangla_name ? `(${u.bangla_name})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                    Full Address *
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. House 14, Road 5, Block B, Mirpur 12" 
+                    value={form.address}
+                    onChange={e => { setForm({ ...form, address: e.target.value }); setErrors({ ...errors, address: '' }) }}
+                    style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.address ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none' }}
+                  />
+                  {errors.address && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.address}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Primary Chamber & Display Order Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                <input 
+                  type="checkbox" 
+                  id="is_primary"
+                  checked={form.is_primary}
+                  onChange={e => setForm({ ...form, is_primary: e.target.checked })}
+                  style={{ width: 18, height: 18, accentColor: '#00B875', cursor: 'pointer' }}
+                />
+                <label htmlFor="is_primary" style={{ cursor: 'pointer', margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                  Set as Primary Chamber ⭐
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#64748b' }}>
+                    Used for doctor canonical URL and search cards
+                  </span>
+                </label>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                  Display Order
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  placeholder="0" 
+                  value={form.display_order}
+                  onChange={e => setForm({ ...form, display_order: e.target.value })}
+                  style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none' }}
                 />
               </div>
             </div>

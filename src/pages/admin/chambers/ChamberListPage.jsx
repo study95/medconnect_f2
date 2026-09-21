@@ -260,16 +260,16 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
                 🏥 Hospital & Facility
               </div>
               <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text, #0f172a)' }}>
-                {chamber.hospital?.name || 'Independent Clinic'}
+                {chamber.chamber_name || chamber.hospital?.name || 'ব্যক্তিগত চেম্বার'}
               </div>
               {(chamber.hospital?.public_id || chamber.hospital_id) && (
                 <div style={{ marginTop: 4 }}>
                   <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />
                 </div>
               )}
-              {chamber.hospital?.address && (
+              {(chamber.address || chamber.hospital?.address) && (
                 <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
-                  {chamber.hospital.address}
+                  {chamber.address || chamber.hospital?.address}
                 </div>
               )}
             </div>
@@ -698,7 +698,7 @@ export default function ChamberListPage() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{chamber.hospital?.name || 'Independent Clinic'}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{chamber.chamber_name || chamber.hospital?.name || 'ব্যক্তিগত চেম্বার'}</div>
                       {(chamber.hospital?.public_id || chamber.hospital_id) && (
                         <div style={{ marginTop: 2 }}>
                           <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />

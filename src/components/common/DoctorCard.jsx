@@ -130,7 +130,10 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const formattedRatingText = `${toBnNum(ratingValue)} (${toBnNum(reviewCountValue)})`
 
   const degrees = doctor.degree || doctor.qualifications || 'MBBS, MD'
-  const fee = toBnNum(doctor.fee || '৫০০')
+
+  // Contextual chamber matching: if matched_chamber is returned, prioritize it
+  const matchedChamber = doctor?.matched_chamber || null
+  const fee = toBnNum(matchedChamber?.fee ?? doctor?.fee ?? doctor?.fees?.consultation ?? doctor?.fees?.min ?? '৫০০')
 
   // Find the currently-working experience entry
   const currentExp = (() => {
@@ -144,6 +147,16 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   })()
 
   const locationText = (() => {
+    if (matchedChamber) {
+      const upa = matchedChamber.upazila?.name_bn || matchedChamber.upazila?.name || matchedChamber.hospital?.upazila?.name_bn
+      const dist = matchedChamber.district?.name_bn || matchedChamber.district?.name || matchedChamber.hospital?.district?.name_bn
+      if (upa || dist) {
+        return [upa, dist].filter(Boolean).join(', ')
+      }
+      if (matchedChamber.address_bn || matchedChamber.address) {
+        return matchedChamber.address_bn || matchedChamber.address
+      }
+    }
     if (currentExp?.address) return currentExp.address
     return [
       doctor.upazila?.name_bn || doctor.upazila?.name,
@@ -151,7 +164,11 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     ].filter(Boolean).join(', ')
   })()
 
-  const primaryHospital = currentExp?.hospital_name ||
+  const primaryHospital = matchedChamber?.chamber_name_bn ||
+    matchedChamber?.chamber_name ||
+    matchedChamber?.hospital?.name_bn ||
+    matchedChamber?.hospital?.name ||
+    currentExp?.hospital_name ||
     doctor.workplace || doctor.workplace_bn ||
     doctor.hospital?.name || doctor.chambers?.[0]?.hospital_name ||
     doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'

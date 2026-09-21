@@ -435,7 +435,7 @@ function DoctorDetailPageContent() {
           <div style={{ fontSize: 11, color: mutedTextColor, fontWeight: 600 }}>
             কর্মরত আছেন
             <div style={{ fontSize: 13, fontWeight: 800, color: darkTextColor, marginTop: 2 }}>
-              {groupedChambers?.[0]?.hospital_name || doctor?.hospital?.name || doctor?.workplace_bn || doctor?.workplace || 'তথ্য উপলব্ধ নয়'}
+              {doctor?.workplace_bn || doctor?.workplace || doctor?.hospital?.name || groupedChambers?.[0]?.chamber_name || groupedChambers?.[0]?.hospital_name || 'তথ্য উপলব্ধ নয়'}
             </div>
           </div>
         </div>
@@ -1008,7 +1008,7 @@ function DoctorDetailPageContent() {
                               </div>
                               <div>
                                 <h4 style={{ fontSize: 16.5, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0' }}>
-                                  {group.hospital_name || group.hospitalName || 'চেম্বার'}
+                                  {group.chamber_name || group.name || group.hospital_name || group.hospitalName || 'চেম্বার'}
                                 </h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: mutedTextColor, fontSize: 13, fontWeight: 600 }}>
                                   <IconMapPin size={14} color={primaryGreen} style={{ flexShrink: 0 }} />
@@ -1017,19 +1017,34 @@ function DoctorDetailPageContent() {
                               </div>
                             </div>
 
-                            {group.schedules.length > 1 && (
-                              <span style={{
-                                background: '#F1F5F9',
-                                color: '#334155',
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: '3px 10px',
-                                borderRadius: 6,
-                                border: '1px solid #E2E8F0'
-                              }}>
-                                {group.schedules.length}টি সময়সূচি
-                              </span>
-                            )}
+                            <div className="d-flex align-items-center gap-2">
+                              {group.is_personal && (
+                                <span style={{
+                                  background: '#EFF6FF',
+                                  color: '#1D4ED8',
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  padding: '3px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid #DBEAFE'
+                                }}>
+                                  ব্যক্তিগত চেম্বার
+                                </span>
+                              )}
+                              {group.schedules.length > 1 && (
+                                <span style={{
+                                  background: '#F1F5F9',
+                                  color: '#334155',
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  padding: '3px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid #E2E8F0'
+                                }}>
+                                  {group.schedules.length}টি সময়সূচি
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Visiting Schedules list */}

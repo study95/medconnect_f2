@@ -132,25 +132,28 @@ export default function BookAppointmentPage() {
   const [chamberFilter, setChamberFilter] = useState('')
 
   const uniqueHospitals = useMemo(() => {
-    const names = chambers.map(c => c.hospital?.name).filter(Boolean);
+    const names = chambers.map(c => c.chamber_name || c.hospital?.name).filter(Boolean);
     return [...new Set(names)];
   }, [chambers]);
 
   const filteredChambers = useMemo(() => {
     if (!chamberFilter) return chambers;
-    return chambers.filter(c => c.hospital?.name === chamberFilter);
+    return chambers.filter(c => (c.chamber_name || c.hospital?.name) === chamberFilter);
   }, [chambers, chamberFilter]);
 
   const groupedChambers = useMemo(() => {
     if (!filteredChambers || filteredChambers.length === 0) return []
     const map = new Map()
     filteredChambers.forEach((chamber) => {
-      const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.hospital?.name || chamber.address || 'default'
+      const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.chamber_name || chamber.address || 'default'
       if (!map.has(hospId)) {
+        const chamberName = chamber.chamber_name || chamber.hospital?.name || 'চেম্বার'
         map.set(hospId, {
           hospitalId: chamber.hospital_id || chamber.hospital?.id,
-          hospitalName: chamber.hospital?.name || 'চেম্বার',
-          address: chamber.hospital?.address || chamber.address || chamber.hospital?.location || 'ঢাকা, বাংলাদেশ',
+          chamber_name: chamberName,
+          hospitalName: chamberName,
+          is_personal: !chamber.hospital_id && !chamber.hospital?.id,
+          address: chamber.address || chamber.hospital?.address || chamber.hospital?.location || 'ঢাকা, বাংলাদেশ',
           schedules: []
         })
       }
@@ -529,7 +532,7 @@ export default function BookAppointmentPage() {
         doctor_name: doctor?.name || 'ডাক্তার',
         specialty: doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা',
         degree: doctor?.degree || 'MBBS',
-        hospital_name: selectedChamber?.hospital?.name || doctor?.workplace || 'হাসপাতাল / চেম্বার',
+        hospital_name: selectedChamber?.chamber_name || selectedChamber?.hospital?.name || doctor?.workplace || 'হাসপাতাল / চেম্বার',
         chamber_address: selectedChamber?.address || selectedChamber?.hospital?.address || 'ঢাকা, বাংলাদেশ',
         appointment_date: payload.appointment_date,
         appointment_time: payload.appointment_time,
@@ -1764,7 +1767,7 @@ export default function BookAppointmentPage() {
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <h6 className="chamber-hospital-name">
-                                    {group.hospitalName}
+                                    {group.chamber_name || group.hospitalName}
                                   </h6>
                                 </div>
                               </div>
@@ -2451,7 +2454,7 @@ export default function BookAppointmentPage() {
                             <IconBuildingHospital size={20} color="#00B875" />
                             <div>
                               <small style={{ color: '#64748B', display: 'block', fontSize: 11 }}>নির্বাচিত চেম্বার</small>
-                              <strong style={{ color: '#00B875', fontSize: 13.5 }}>{selectedChamber?.hospital?.name || 'চেম্বার'}</strong>
+                              <strong style={{ color: '#00B875', fontSize: 13.5 }}>{selectedChamber?.chamber_name || selectedChamber?.hospital?.name || 'চেম্বার'}</strong>
                             </div>
                           </div>
                           
