@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck
+  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase
 } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -146,32 +146,51 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     ) || null
   })()
 
-  const locationText = (() => {
-    if (matchedChamber) {
-      const upa = matchedChamber.upazila?.name_bn || matchedChamber.upazila?.name || matchedChamber.hospital?.upazila?.name_bn
-      const dist = matchedChamber.district?.name_bn || matchedChamber.district?.name || matchedChamber.hospital?.district?.name_bn
-      if (upa || dist) {
-        return [upa, dist].filter(Boolean).join(', ')
+  // 1. Official Institutional Workplace (hospital/medical college where doctor works)
+  const workplaceName = doctor.workplace_bn ||
+    doctor.workplace ||
+    currentExp?.hospital_name ||
+    doctor.hospital?.name ||
+    null
+
+  // 2. Active Chamber (where patients can book appointment)
+  const activeChamber = matchedChamber ||
+    doctor?.primary_chamber ||
+    (Array.isArray(doctor?.chambers) ? doctor.chambers.find(c => c.is_active !== false) : null) ||
+    null
+
+  const rawChamberName = activeChamber?.chamber_name_bn ||
+    activeChamber?.chamber_name ||
+    activeChamber?.hospital?.name_bn ||
+    activeChamber?.hospital?.name ||
+    null
+
+  const hasChamber = Boolean(rawChamberName)
+  const chamberName = rawChamberName || 'চেম্বার'
+
+  // 3. Chamber Location
+  const chamberLocation = (() => {
+    if (activeChamber) {
+      const upa = activeChamber.upazila?.name_bn || activeChamber.upazila?.name || activeChamber.hospital?.upazila?.name_bn
+      const dist = activeChamber.district?.name_bn || activeChamber.district?.name || activeChamber.hospital?.district?.name_bn
+      if (upa && dist && upa !== dist) {
+        return `${upa}, ${dist}`
       }
-      if (matchedChamber.address_bn || matchedChamber.address) {
-        return matchedChamber.address_bn || matchedChamber.address
+      if (dist || upa) {
+        return dist || upa
+      }
+      if (activeChamber.address_bn || activeChamber.address) {
+        return activeChamber.address_bn || activeChamber.address
       }
     }
-    if (currentExp?.address) return currentExp.address
-    return [
-      doctor.upazila?.name_bn || doctor.upazila?.name,
-      doctor.district?.name_bn || doctor.district?.name || doctor.hospital?.district?.name_bn || 'ঢাকা'
-    ].filter(Boolean).join(', ')
+    return null
   })()
 
-  const primaryHospital = matchedChamber?.chamber_name_bn ||
-    matchedChamber?.chamber_name ||
-    matchedChamber?.hospital?.name_bn ||
-    matchedChamber?.hospital?.name ||
-    currentExp?.hospital_name ||
-    doctor.workplace || doctor.workplace_bn ||
-    doctor.hospital?.name || doctor.chambers?.[0]?.hospital_name ||
-    doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'
+  // 4. General Location (fallback if no chamber location)
+  const doctorGeneralLocation = [
+    doctor.upazila?.name_bn || doctor.upazila?.name,
+    doctor.district?.name_bn || doctor.district?.name || doctor.hospital?.district?.name_bn || 'ঢাকা'
+  ].filter(Boolean).join(', ')
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
@@ -459,35 +478,56 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     {degrees}
                   </div>
 
-                  {/* Hospital Name */}
-                  <div style={{
-                    fontSize: 12.5,
-                    color: '#334155',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    marginTop: 2
-                  }}>
-                    <IconBuildingHospital size={15} color="#64748B" />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{primaryHospital}</span>
-                  </div>
+                  {/* Official Workplace (if available and distinct from chamber) */}
+                  {workplaceName && (!hasChamber || workplaceName.trim().toLowerCase() !== chamberName.trim().toLowerCase()) && (
+                    <div style={{
+                      fontSize: 12.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      marginTop: 2
+                    }}>
+                      <IconBriefcase size={14} color="#64748B" style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`কর্মরত: ${workplaceName}`}>
+                        <span style={{ color: '#64748B', fontWeight: 600 }}>কর্মরত: </span>
+                        <span style={{ color: '#334155', fontWeight: 600 }}>{workplaceName}</span>
+                      </span>
+                    </div>
+                  )}
 
-                  {/* Location */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    color: '#64748B',
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    marginTop: 3
-                  }}>
-                    <IconMapPin size={14} color="#94A3B8" />
-                    <span>{locationText || 'ঢাকা'}</span>
-                  </div>
+                  {/* Chamber & Location (or general location if no chamber) */}
+                  {hasChamber ? (
+                    <div style={{
+                      fontSize: 12.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      marginTop: 2
+                    }}>
+                      <IconBuildingHospital size={15} color="#0D9488" style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${chamberName}${chamberLocation ? ` (${chamberLocation})` : ''}`}>
+                        <span style={{ color: '#0F766E', fontWeight: 700 }}>চেম্বার: </span>
+                        <span style={{ color: '#0F172A', fontWeight: 700 }}>{chamberName}</span>
+                        {chamberLocation && <span style={{ color: '#64748B', fontWeight: 500 }}> • {chamberLocation}</span>}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      color: '#64748B',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      marginTop: 2
+                    }}>
+                      <IconMapPin size={14} color="#0D9488" style={{ flexShrink: 0 }} />
+                      <span>{doctorGeneralLocation || 'ঢাকা'}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Share & Heart Action Icons */}
@@ -554,7 +594,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                   borderRadius: 4,
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
-                  ফি ৳{fee}
+                  ফি: ৳ {fee}
                 </span>
               </div>
             </div>
@@ -671,12 +711,13 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, paddingRight: 24 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
           <h4 style={{
             fontWeight: 800, color: '#0F172A', fontSize: 15.5,
             margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             fontFamily: "'Hind Siliguri', sans-serif",
-            lineHeight: 1.25
+            lineHeight: 1.25,
+            paddingRight: 26
           }} title={doctor.name}>
             {doctor.name}
           </h4>
@@ -705,22 +746,61 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             {degrees}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 12, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconBuildingHospital size={14} color="#64748B" style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {primaryHospital}
-            </span>
-          </div>
+          {/* Official Workplace (if available and distinct from chamber) */}
+          {workplaceName && (!hasChamber || workplaceName.trim().toLowerCase() !== chamberName.trim().toLowerCase()) && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: 12,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              marginTop: 1
+            }}>
+              <IconBriefcase size={14} color="#64748B" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`কর্মরত: ${workplaceName}`}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>কর্মরত: </span>
+                <span style={{ color: '#334155', fontWeight: 600 }}>{workplaceName}</span>
+              </span>
+            </div>
+          )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 12, fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconMapPin size={14} color="#00B875" style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {locationText || 'ঢাকা'}
-            </span>
-          </div>
+          {/* Chamber & Location (or general location if no chamber) */}
+          {hasChamber ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: 12,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              marginTop: 1
+            }}>
+              <IconBuildingHospital size={14} color="#0D9488" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${chamberName}${chamberLocation ? ` (${chamberLocation})` : ''}`}>
+                <span style={{ color: '#0F766E', fontWeight: 700 }}>চেম্বার: </span>
+                <span style={{ color: '#0F172A', fontWeight: 700 }}>{chamberName}</span>
+                {chamberLocation && <span style={{ color: '#64748B', fontWeight: 500 }}> • {chamberLocation}</span>}
+              </span>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              color: '#64748B',
+              fontSize: 12,
+              fontWeight: 500,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              marginTop: 1
+            }}>
+              <IconMapPin size={14} color="#0D9488" style={{ flexShrink: 0 }} />
+              <span>{doctorGeneralLocation || 'ঢাকা'}</span>
+            </div>
+          )}
 
-          <div style={{ fontSize: 12, color: '#334155', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 1 }}>
-            {experience} বছর অভিজ্ঞতা • ৳{fee} ফি
+          <div style={{ fontSize: 12, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 2 }}>
+            <span style={{ color: '#475569', fontWeight: 600 }}>{experience} বছর অভিজ্ঞতা</span>
+            <span style={{ color: '#CBD5E1', margin: '0 5px' }}>•</span>
+            <span style={{ color: '#0F172A', fontWeight: 700 }}>ফি: ৳ {fee}</span>
           </div>
         </div>
       </div>
