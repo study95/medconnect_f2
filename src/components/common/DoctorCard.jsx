@@ -156,7 +156,11 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   // 2. Active Chamber (where patients can book appointment)
   const activeChamber = matchedChamber ||
     doctor?.primary_chamber ||
-    (Array.isArray(doctor?.chambers) ? doctor.chambers.find(c => c.is_active !== false) : null) ||
+    (Array.isArray(doctor?.chambers) ? (
+      doctor.chambers.find(c => c.is_primary && c.is_active !== false) ||
+      doctor.chambers.find(c => c.is_personal && c.is_active !== false) ||
+      doctor.chambers.find(c => c.is_active !== false)
+    ) : null) ||
     null
 
   const rawChamberName = activeChamber?.chamber_name_bn ||
@@ -191,6 +195,10 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     doctor.upazila?.name_bn || doctor.upazila?.name,
     doctor.district?.name_bn || doctor.district?.name || doctor.hospital?.district?.name_bn || 'ঢাকা'
   ].filter(Boolean).join(', ')
+
+  const primaryHospital = rawChamberName || workplaceName || doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'
+
+  const locationText = chamberLocation || currentExp?.address || doctorGeneralLocation
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
@@ -478,56 +486,35 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     {degrees}
                   </div>
 
-                  {/* Official Workplace (if available and distinct from chamber) */}
-                  {workplaceName && (!hasChamber || workplaceName.trim().toLowerCase() !== chamberName.trim().toLowerCase()) && (
-                    <div style={{
-                      fontSize: 12.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      marginTop: 2
-                    }}>
-                      <IconBriefcase size={14} color="#64748B" style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`কর্মরত: ${workplaceName}`}>
-                        <span style={{ color: '#64748B', fontWeight: 600 }}>কর্মরত: </span>
-                        <span style={{ color: '#334155', fontWeight: 600 }}>{workplaceName}</span>
-                      </span>
-                    </div>
-                  )}
+                  {/* Hospital Name */}
+                  <div style={{
+                    fontSize: 12.5,
+                    color: '#334155',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    marginTop: 2
+                  }}>
+                    <IconBuildingHospital size={15} color="#64748B" />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>{primaryHospital}</span>
+                  </div>
 
-                  {/* Chamber & Location (or general location if no chamber) */}
-                  {hasChamber ? (
-                    <div style={{
-                      fontSize: 12.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      marginTop: 2
-                    }}>
-                      <IconBuildingHospital size={15} color="#0D9488" style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${chamberName}${chamberLocation ? ` (${chamberLocation})` : ''}`}>
-                        <span style={{ color: '#0F766E', fontWeight: 700 }}>চেম্বার: </span>
-                        <span style={{ color: '#0F172A', fontWeight: 700 }}>{chamberName}</span>
-                        {chamberLocation && <span style={{ color: '#64748B', fontWeight: 500 }}> • {chamberLocation}</span>}
-                      </span>
-                    </div>
-                  ) : (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      color: '#64748B',
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      marginTop: 2
-                    }}>
-                      <IconMapPin size={14} color="#0D9488" style={{ flexShrink: 0 }} />
-                      <span>{doctorGeneralLocation || 'ঢাকা'}</span>
-                    </div>
-                  )}
+                  {/* Location */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    color: '#64748B',
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    marginTop: 3
+                  }}>
+                    <IconMapPin size={14} color="#00B875" />
+                    <span>{locationText || 'ঢাকা'}</span>
+                  </div>
                 </div>
 
                 {/* Share & Heart Action Icons */}
@@ -711,13 +698,12 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, paddingRight: 24 }}>
           <h4 style={{
             fontWeight: 800, color: '#0F172A', fontSize: 15.5,
             margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             fontFamily: "'Hind Siliguri', sans-serif",
-            lineHeight: 1.25,
-            paddingRight: 26
+            lineHeight: 1.25
           }} title={doctor.name}>
             {doctor.name}
           </h4>
@@ -746,61 +732,22 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             {degrees}
           </div>
 
-          {/* Official Workplace (if available and distinct from chamber) */}
-          {workplaceName && (!hasChamber || workplaceName.trim().toLowerCase() !== chamberName.trim().toLowerCase()) && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: 12,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              marginTop: 1
-            }}>
-              <IconBriefcase size={14} color="#64748B" style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`কর্মরত: ${workplaceName}`}>
-                <span style={{ color: '#64748B', fontWeight: 600 }}>কর্মরত: </span>
-                <span style={{ color: '#334155', fontWeight: 600 }}>{workplaceName}</span>
-              </span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 12, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            <IconBuildingHospital size={14} color="#64748B" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>
+              {primaryHospital}
+            </span>
+          </div>
 
-          {/* Chamber & Location (or general location if no chamber) */}
-          {hasChamber ? (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: 12,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              marginTop: 1
-            }}>
-              <IconBuildingHospital size={14} color="#0D9488" style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${chamberName}${chamberLocation ? ` (${chamberLocation})` : ''}`}>
-                <span style={{ color: '#0F766E', fontWeight: 700 }}>চেম্বার: </span>
-                <span style={{ color: '#0F172A', fontWeight: 700 }}>{chamberName}</span>
-                {chamberLocation && <span style={{ color: '#64748B', fontWeight: 500 }}> • {chamberLocation}</span>}
-              </span>
-            </div>
-          ) : (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              color: '#64748B',
-              fontSize: 12,
-              fontWeight: 500,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              marginTop: 1
-            }}>
-              <IconMapPin size={14} color="#0D9488" style={{ flexShrink: 0 }} />
-              <span>{doctorGeneralLocation || 'ঢাকা'}</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 12, fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            <IconMapPin size={14} color="#00B875" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {locationText || 'ঢাকা'}
+            </span>
+          </div>
 
-          <div style={{ fontSize: 12, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 2 }}>
-            <span style={{ color: '#475569', fontWeight: 600 }}>{experience} বছর অভিজ্ঞতা</span>
-            <span style={{ color: '#CBD5E1', margin: '0 5px' }}>•</span>
-            <span style={{ color: '#0F172A', fontWeight: 700 }}>ফি: ৳ {fee}</span>
+          <div style={{ fontSize: 12, color: '#334155', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 1 }}>
+            {experience} বছর অভিজ্ঞতা • ৳ {fee} ফি
           </div>
         </div>
       </div>
