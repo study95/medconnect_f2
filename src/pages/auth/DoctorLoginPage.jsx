@@ -67,15 +67,15 @@ export default function DoctorLoginPage() {
       const isApproved = roles.includes('doctor') || roles.includes('admin') || roles.includes('super-admin') || result.user?.role_id === 1 || result.user?.role_id === 2
 
       if (!isApproved) {
-        toast('আপনার অ্যাকাউন্টটি এখনও অ্যাডমিন কর্তৃক অনুমোদিত হয়নি। অ্যাডমিনের অনুমোদনের পর ডক্টর প্যানেল সক্রিয় হবে।', {
-          icon: '⏳',
-          duration: 6000
+        navigate('/pending-verification', {
+          replace: true,
+          state: { type: 'doctor', name: result.user?.name || '' }
         })
-        navigate('/', { replace: true })
         return
       }
 
-      navigate(from, { replace: true })
+      const target = from && from !== '/' && !from.startsWith('/login') ? from : '/admin'
+      navigate(target, { replace: true })
     } else {
       setError(result.message || 'Invalid credentials. Please try again.')
     }

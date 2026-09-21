@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   IconX,
   IconStethoscope,
@@ -12,8 +12,16 @@ import {
 export default function WelcomeModal() {
   const [isOpen, setIsOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const isAuthPage = location.pathname.startsWith('/login') ||
+                     location.pathname.startsWith('/register') ||
+                     location.pathname.startsWith('/pending-verification') ||
+                     location.pathname.startsWith('/forgot-password') ||
+                     location.pathname.startsWith('/reset-password')
 
   useEffect(() => {
+    if (isAuthPage) return
     const hasSeen = sessionStorage.getItem('db_welcome_modal_shown')
     if (!hasSeen) {
       const timer = setTimeout(() => {
@@ -21,7 +29,9 @@ export default function WelcomeModal() {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [])
+  }, [isAuthPage])
+
+  if (isAuthPage) return null
 
   const handleClose = () => {
     setIsOpen(false)

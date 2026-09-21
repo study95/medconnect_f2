@@ -32,7 +32,13 @@ function Footer() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  if (['/login', '/register'].includes(location.pathname)) {
+  const isAuthPage = location.pathname.startsWith('/login') ||
+                     location.pathname.startsWith('/register') ||
+                     location.pathname.startsWith('/pending-verification') ||
+                     location.pathname.startsWith('/forgot-password') ||
+                     location.pathname.startsWith('/reset-password')
+
+  if (isAuthPage) {
     return null
   }
 

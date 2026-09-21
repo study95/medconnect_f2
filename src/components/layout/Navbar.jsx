@@ -18,7 +18,11 @@ function AppNavbar() {
   const [scrolled, setScrolled] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const cms = getContent()
-  const isAuthPage = ['/login', '/register'].includes(location.pathname)
+  const isAuthPage = location.pathname.startsWith('/login') ||
+                     location.pathname.startsWith('/register') ||
+                     location.pathname.startsWith('/pending-verification') ||
+                     location.pathname.startsWith('/forgot-password') ||
+                     location.pathname.startsWith('/reset-password')
 
   useEffect(() => {
     if (expanded) {
@@ -84,7 +88,7 @@ function AppNavbar() {
     <>
       <style>{`
         :root {
-          --header-height: ${scrolled ? '110px' : '116px'};
+          --header-height: ${isAuthPage ? '0px' : (scrolled ? '110px' : '116px')};
         }
         .page-wrapper {
           padding-top: var(--header-height) !important;
@@ -92,7 +96,7 @@ function AppNavbar() {
         }
         @media (max-width: 991px) {
           :root {
-            --header-height: 68px;
+            --header-height: 68px !important;
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;

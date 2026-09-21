@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
@@ -10,12 +10,34 @@ function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [role, setRole] = useState('')
+  // Derive initial role from URL path
+  const pathRole = location.pathname === '/login/doctor'
+    ? 'doctor'
+    : location.pathname === '/login/hospital'
+      ? 'hospital'
+      : location.pathname === '/login/patient'
+        ? 'patient'
+        : ''
+
+  const [role, setRole] = useState(pathRole)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+
+  // Sync role when URL changes (e.g. back/forward navigation)
+  useEffect(() => {
+    setRole(
+      location.pathname === '/login/doctor'
+        ? 'doctor'
+        : location.pathname === '/login/hospital'
+          ? 'hospital'
+          : location.pathname === '/login/patient'
+            ? 'patient'
+            : ''
+    )
+  }, [location.pathname])
 
   const from = location.state?.from?.pathname || '/'
 
@@ -96,7 +118,43 @@ function LoginPage() {
     setLoading(false)
 
     if (result.success) {
-      navigate(from, { replace: true })
+      const rawRoles = result.user?.roles || result.user?.role || []
+      const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r =>
+        typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
+      )
+      const isStaffUser = roles.includes('admin') ||
+                          roles.includes('super-admin') ||
+                          roles.includes('doctor') ||
+                          roles.includes('manager') ||
+                          roles.includes('hospital') ||
+                          [1, 2, 3].includes(result.user?.role_id)
+
+      // Pending verification check for doctor / hospital
+      if (role === 'doctor' || role === 'hospital') {
+        const approvedRoles = role === 'doctor'
+          ? ['doctor', 'admin', 'super-admin']
+          : ['manager', 'hospital', 'admin', 'super-admin']
+        const isApproved = approvedRoles.some(r => roles.includes(r))
+          || (role === 'doctor' && (result.user?.role_id === 1 || result.user?.role_id === 2))
+          || (role === 'hospital' && (result.user?.role_id === 1 || result.user?.role_id === 3))
+
+        if (!isApproved) {
+          navigate('/pending-verification', {
+            replace: true,
+            state: { type: role, name: result.user?.name || '' }
+          })
+          return
+        }
+      }
+
+      // Smart Role-Based Redirect:
+      if (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register')) {
+        navigate(from, { replace: true })
+      } else if (isStaffUser) {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/', { replace: true })
+      }
     } else {
       const errMsg = result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
       const lower = errMsg.toLowerCase()
@@ -179,8 +237,12 @@ function LoginPage() {
                   id="login-role-select"
                   value={role}
                   onChange={(e) => {
-                    setRole(e.target.value)
+                    const val = e.target.value
+                    setRole(val)
                     setFieldErrors(prev => ({ ...prev, role: '' }))
+                    if (val === 'doctor') navigate('/login/doctor', { replace: true })
+                    else if (val === 'hospital') navigate('/login/hospital', { replace: true })
+                    else if (val === 'patient') navigate('/login/patient', { replace: true })
                   }}
                   className="auth-input-premium"
                   style={{
@@ -373,7 +435,7 @@ function LoginPage() {
             <div style={{ marginTop: 16, textAlign: 'center' }}>
               <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B', margin: 0 }}>
                 অ্যাকাউন্ট নেই?{' '}
-                <Link to="/register" style={{ color: '#0D9488', fontWeight: 700, textDecoration: 'none' }}>
+                <Link to={role ? `/register/${role}` : '/register'} style={{ color: '#0D9488', fontWeight: 700, textDecoration: 'none' }}>
                   এখানে রেজিস্টার করুন
                 </Link>
               </p>

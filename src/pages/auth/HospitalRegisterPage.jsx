@@ -122,11 +122,10 @@ export default function HospitalRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success(
-        result.data?.message || 'নিবন্ধন সফল হয়েছে! অ্যাডমিনের অনুমোদনের পর হসপিটাল প্যানেল সক্রিয় হবে।',
-        { duration: 6000 }
-      )
-      navigate('/', { replace: true })
+      navigate('/pending-verification', {
+        replace: true,
+        state: { type: 'hospital', name: form.hospital_name || form.name }
+      })
     } else {
       if (result.errors) setErrors(result.errors)
       else if (result.message) toast.error(result.message)

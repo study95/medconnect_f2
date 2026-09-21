@@ -126,11 +126,10 @@ export default function DoctorRegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success(
-        result.data?.message || 'নিবন্ধন সফল হয়েছে! অ্যাডমিন কর্তৃক আপনার বিএমডিসি ও প্রোফাইল অনুমোদনের পর ডক্টর প্যানেল সক্রিয় হবে।',
-        { duration: 6000 }
-      )
-      navigate('/', { replace: true })
+      navigate('/pending-verification', {
+        replace: true,
+        state: { type: 'doctor', name: form.name }
+      })
     } else {
       if (result.errors) setErrors(result.errors)
       else if (result.message) toast.error(result.message)

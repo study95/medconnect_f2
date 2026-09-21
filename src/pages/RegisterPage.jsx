@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button, Row, Col } from 'react-bootstrap'
 import {
   Mail, Lock, User, ShieldCheck, Hotel, Phone,
@@ -26,9 +26,19 @@ const HOSPITAL_TYPES = [
 
 const RegisterPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { registerPatient, registerDoctor, registerHospital } = useAuth()
 
-  const [role, setRole] = useState('')
+  // Derive initial role from URL path
+  const pathRole = location.pathname === '/register/doctor'
+    ? 'doctor'
+    : location.pathname === '/register/hospital'
+      ? 'hospital'
+      : location.pathname === '/register/patient'
+        ? 'patient'
+        : ''
+
+  const [role, setRole] = useState(pathRole)
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1) // 1: Mobile OTP, 2: Details Form, 3: Success Screen
   const [showPass, setShowPass] = useState(false)
@@ -41,6 +51,18 @@ const RegisterPage = () => {
       setSpecialties(res.data?.data || res.data || [])
     }).catch(() => {})
   }, [])
+
+  // Sync role when URL changes
+  useEffect(() => {
+    const newRole = location.pathname === '/register/doctor'
+      ? 'doctor'
+      : location.pathname === '/register/hospital'
+        ? 'hospital'
+        : location.pathname === '/register/patient'
+          ? 'patient'
+          : ''
+    if (newRole) setRole(newRole)
+  }, [location.pathname])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -319,6 +341,16 @@ const RegisterPage = () => {
 
     setLoading(false)
     if (result.success) {
+      if (role === 'doctor' || role === 'hospital') {
+        navigate('/pending-verification', {
+          replace: true,
+          state: {
+            type: role,
+            name: role === 'hospital' ? (form.hospital_name || form.name) : form.name
+          }
+        })
+        return
+      }
       setStep(3)
     } else {
       const errMsg = result.message || ''
@@ -414,8 +446,12 @@ const RegisterPage = () => {
                       id="register-role-select"
                       value={role}
                       onChange={(e) => {
-                        setRole(e.target.value)
+                        const val = e.target.value
+                        setRole(val)
                         setFieldErrors(prev => ({ ...prev, role: '' }))
+                        if (val === 'doctor') navigate('/register/doctor', { replace: true })
+                        else if (val === 'hospital') navigate('/register/hospital', { replace: true })
+                        else if (val === 'patient') navigate('/register/patient', { replace: true })
                       }}
                       className="auth-input-premium"
                       style={{
@@ -1017,7 +1053,7 @@ const RegisterPage = () => {
               <div style={{ marginTop: 24, textAlign: 'center' }}>
                 <p style={{ fontSize: 13.5, fontWeight: 500, color: '#64748B', margin: 0 }}>
                   ইতিমধ্যে অ্যাকাউন্ট আছে?{' '}
-                  <Link to="/login" style={{ color: '#0D9488', fontWeight: 700, textDecoration: 'none' }}>
+                  <Link to={role ? `/login/${role}` : '/login'} style={{ color: '#0D9488', fontWeight: 700, textDecoration: 'none' }}>
                     এখানে লগইন করুন
                   </Link>
                 </p>

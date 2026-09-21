@@ -66,15 +66,15 @@ export default function HospitalLoginPage() {
       const isApproved = roles.includes('manager') || roles.includes('hospital') || roles.includes('admin') || roles.includes('super-admin') || result.user?.role_id === 1 || result.user?.role_id === 3
 
       if (!isApproved) {
-        toast('আপনার হসপিটাল অ্যাকাউন্টটি এখনও অ্যাডমিন কর্তৃক অনুমোদিত হয়নি। অ্যাডমিনের অনুমোদনের পর প্যানেলে প্রবেশ করতে পারবেন।', {
-          icon: '⏳',
-          duration: 6000
+        navigate('/pending-verification', {
+          replace: true,
+          state: { type: 'hospital', name: result.user?.name || '' }
         })
-        navigate('/', { replace: true })
         return
       }
 
-      navigate(from, { replace: true })
+      const target = from && from !== '/' && !from.startsWith('/login') ? from : '/admin'
+      navigate(target, { replace: true })
     } else {
       if (result.message && result.message.toLowerCase().includes('not finding')) {
           setStep(1)

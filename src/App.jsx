@@ -49,6 +49,7 @@ const DoctorLoginPage        = lazy(() => import('./pages/auth/DoctorLoginPage')
 const HospitalLoginPage      = lazy(() => import('./pages/auth/HospitalLoginPage'))
 const AdminSecureLoginPage   = lazy(() => import('./pages/auth/AdminSecureLoginPage'))
 const HospitalRegisterPage   = lazy(() => import('./pages/auth/HospitalRegisterPage'))
+const PendingVerificationPage = lazy(() => import('./pages/auth/PendingVerificationPage'))
 
 // Info Pages
 const AboutPage             = lazy(() => import('./pages/info/AboutPage'))
@@ -402,14 +403,14 @@ function App() {
             <Route path="audit-logs" element={<AuditLogPage />} />
           </Route>
 
-          {/* ===== AUTH & TV DISPLAY ROUTES (No navbar/footer) ===== */}
+          {/* ===== TV DISPLAY ROUTES & ADMIN SECURE ACCESS (Completely standalone) ===== */}
           <Route path="/admin-secure-access" element={<AdminSecureLoginPage />} />
           <Route path="/display/:token" element={<PublicDisplayBoardPage />} />
           <Route path="/display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/:token" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
 
-          {/* ===== PUBLIC / PATIENT ROUTES ===== */}
+          {/* ===== PUBLIC / PATIENT / AUTH ROUTES ===== */}
           <Route
             path="*"
             element={
@@ -417,6 +418,26 @@ function App() {
                 <AppNavbar />
                 <WelcomeModal />
                 <Routes>
+                  {/* Auth Routes (Responsive: desktop clean card, mobile top & bottom nav) */}
+                  <Route path="/login"                      element={<LoginPage />} />
+                  <Route path="/login/patient"              element={<LoginPage />} />
+                  <Route path="/login/doctor"               element={<LoginPage />} />
+                  <Route path="/login/hospital"             element={<LoginPage />} />
+                  <Route path="/login/choice"               element={<LoginChoicePage />} />
+
+                  <Route path="/register"                   element={<RegisterPage />} />
+                  <Route path="/register/patient"           element={<RegisterPage />} />
+                  <Route path="/register/doctor"            element={<RegisterPage />} />
+                  <Route path="/register/hospital"          element={<RegisterPage />} />
+                  <Route path="/register/choice"            element={<RegistrationChoicePage />} />
+                  <Route path="/register/doctor/verify"     element={<OtpVerificationPage />} />
+                  <Route path="/register/hospital/verify"   element={<OtpVerificationPage />} />
+                  <Route path="/register/patient/verify"    element={<OtpVerificationPage />} />
+
+                  <Route path="/pending-verification"       element={<PendingVerificationPage />} />
+                  <Route path="/forgot-password"            element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password"             element={<ResetPasswordPage />} />
+
                   <Route path="/"           element={<HomePage />} />
                   <Route path="/doctors"    element={<DoctorsPage />} />
                   <Route path="/doctors/:district/:upazila/:slug" element={<DoctorDetailPage />} />
@@ -433,10 +454,7 @@ function App() {
                   <Route path="/specialties/:slug/:district" element={<SpecialtyDetailPage />} />
                   <Route path="/specialties/:slug" element={<SpecialtyDetailPage />} />
                   <Route path="/search"      element={<SearchPage />} />
-                  <Route path="/login"      element={<LoginPage />} />
-                  <Route path="/register"   element={<RegisterPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password"  element={<ResetPasswordPage />} />
+
                   <Route path="/top-10-doctors" element={<TopDoctorsPage />} />
                   <Route path="/top-10-hospitals" element={<TopHospitalsPage />} />
                   

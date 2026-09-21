@@ -273,40 +273,9 @@ function ProfilePage() {
       if (raw && raw.items) raw = raw.items
 
       const serverList = Array.isArray(raw) ? raw : []
-      
-      let localList = []
-      try {
-        localList = JSON.parse(localStorage.getItem('my_appointments') || '[]')
-      } catch (e) {
-        localList = []
-      }
-
-      const mergedMap = new Map()
-      serverList.forEach((item, idx) => {
-        if (item) {
-          const key = String(item.id || item._id || item.appointment_id || `server_${idx}`)
-          mergedMap.set(key, item)
-        }
-      })
-      localList.forEach((item, idx) => {
-        if (item) {
-          const key = String(item.id || item._id || item.appointment_id || `local_${idx}`)
-          if (!mergedMap.has(key)) {
-            mergedMap.set(key, item)
-          }
-        }
-      })
-
-      const combined = Array.from(mergedMap.values())
-      setAppointments(combined.length > 0 ? combined : serverList)
+      setAppointments(serverList)
     } catch (err) {
-      let localList = []
-      try {
-        localList = JSON.parse(localStorage.getItem('my_appointments') || '[]')
-      } catch (e) {
-        localList = []
-      }
-      setAppointments(localList)
+      setAppointments([])
     } finally {
       setLoadingAppointments(false)
     }
@@ -524,7 +493,7 @@ function ProfilePage() {
                     <IconSparkles size={14} color="#34D399" />
                     <span>{isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার অ্যাকাউন্ট' : (isManager ? 'হাসপাতাল পোর্টাল' : 'রোগী প্রোফাইল'))}</span>
                   </div>
-                  <h1 style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  <h1 style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', fontFamily: "'Hind Siliguri', sans-serif", color: '#FFFFFF' }}>
                     {displayName}
                   </h1>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6, flexWrap: 'wrap', fontSize: 13.5, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
