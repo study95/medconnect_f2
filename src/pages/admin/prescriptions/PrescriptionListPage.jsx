@@ -430,7 +430,7 @@ export default function PrescriptionListPage() {
                                     navigate('/admin/prescriptions/create')
                                   }
                                 } else {
-                                  navigate(`/admin/prescriptions/edit/${p.id}`)
+                                  navigate(`/admin/prescriptions/edit/${p.public_id || p.id}`)
                                 }
                               }}
                               title="Resume writing and complete prescription"
@@ -449,14 +449,14 @@ export default function PrescriptionListPage() {
                           <>
                             <button
                               className="admin-action-btn admin-action-btn-view"
-                              onClick={() => navigate(`/admin/prescriptions/${p.id}`)}
+                              onClick={() => navigate(`/admin/prescriptions/view/${p.public_id || p.id}`)}
                               title="View / Print"
                             >
                               <img src="/icons/view.png" alt="View" />
                             </button>
                             <button
                               className="admin-action-btn admin-action-btn-edit"
-                              onClick={() => navigate(`/admin/prescriptions/edit/${p.id}`)}
+                              onClick={() => navigate(`/admin/prescriptions/edit/${p.public_id || p.id}`)}
                               title="Edit"
                             >
                               <img src="/icons/edit.png" alt="Edit" />

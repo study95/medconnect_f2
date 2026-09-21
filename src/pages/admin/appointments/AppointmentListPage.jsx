@@ -562,7 +562,9 @@ export default function AppointmentListPage() {
                           )}
                           {(isDoctor || isAdmin) && (
                             <Link 
-                              to={appt.prescription_id ? `/admin/prescriptions/view/${appt.prescription_id}` : `/admin/prescriptions/create?appointment_id=${appt.id}`}
+                              to={(appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id)
+                                ? `/admin/prescriptions/view/${appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id}` 
+                                : `/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`}
                               className="admin-btn admin-btn-outline admin-btn-sm"
                               style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
                             >

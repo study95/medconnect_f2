@@ -148,7 +148,7 @@ export default function PrescriptionViewPage() {
             <input type="checkbox" checked={hideAll} onChange={e => setHideAll(e.target.checked)} />
             Hide Header / Footer
           </label>
-          <Link to={`/admin/prescriptions/edit/${id}?return_to=${encodeURIComponent(returnTo)}`} className="admin-btn admin-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Link to={`/admin/prescriptions/edit/${rx?.public_id || rx?.id || id}?return_to=${encodeURIComponent(returnTo)}`} className="admin-btn admin-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             ✏️ Edit
           </Link>
           <button 

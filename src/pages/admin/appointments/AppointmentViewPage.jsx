@@ -218,7 +218,14 @@ export default function AppointmentViewPage() {
           {/* Actions */}
           {(isDoctor || isAdmin) && (
             <button 
-              onClick={() => navigate(appt.prescription_id ? `/admin/prescriptions/view/${appt.prescription_id}` : `/admin/prescriptions/create?appointment_id=${appt.id}`)}
+              onClick={() => {
+                const prescId = appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id
+                if (prescId) {
+                  navigate(`/admin/prescriptions/view/${prescId}`)
+                } else {
+                  navigate(`/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`)
+                }
+              }}
               className="admin-btn admin-btn-primary" 
               style={{ padding: '16px', borderRadius: 16, fontWeight: 800, fontSize: 15, background: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)' }}
             >

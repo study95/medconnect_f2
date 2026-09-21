@@ -1576,7 +1576,7 @@ export default function PrescriptionFormPage() {
 
             if (p.status === 'draft') {
               setIsDraftStatus(true)
-              setActiveDraftId(p.id)
+              setActiveDraftId(p.public_id || p.id)
             }
 
             // Enforce note privacy: only the authoring doctor or admin can see confidential notes
@@ -1720,7 +1720,7 @@ export default function PrescriptionFormPage() {
             const p = a.prescription
             if (p && p.status === 'draft') {
               setIsDraftStatus(true)
-              setActiveDraftId(p.id)
+              setActiveDraftId(p.public_id || p.id)
               setForm(prev => ({
                 ...prev,
                 appointment_id: appointmentId,
@@ -2177,7 +2177,7 @@ export default function PrescriptionFormPage() {
             visited_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
           }
           const res = await createPrescription(createPayload)
-          const newDraftId = res.data?.data?.id || res.data?.id
+          const newDraftId = res.data?.data?.public_id || res.data?.data?.id || res.data?.public_id || res.data?.id
           if (newDraftId) {
             setActiveDraftId(newDraftId)
             setIsDraftStatus(true)
@@ -3292,7 +3292,7 @@ export default function PrescriptionFormPage() {
     try {
       const targetId = activeDraftId || (isEdit && id ? id : null)
       if (targetId) {
-        await updatePrescription(targetId, basePayload)
+        const res = await updatePrescription(targetId, basePayload)
         showSuccess({
           title: 'Prescription Completed',
           message: 'Prescription finalized successfully and moved out of drafts.'
@@ -3301,14 +3301,15 @@ export default function PrescriptionFormPage() {
         try {
           localStorage.removeItem(draftKey)
         } catch (e) {}
-        navigate(`/admin/prescriptions/view/${targetId}`)
+        const finalTargetId = res?.data?.data?.public_id || res?.data?.public_id || res?.data?.data?.id || res?.data?.id || targetId
+        navigate(`/admin/prescriptions/view/${finalTargetId}`)
       } else {
         const rawApptId = appointmentInfo?.public_id || form.appointment_id || appointmentId
         const res = await createPrescription(rawApptId
           ? { ...basePayload, appointment_public_id: rawApptId }
           : basePayload
         )
-        const newId = res.data?.data?.id || res.data?.id
+        const newId = res.data?.data?.public_id || res.data?.data?.id || res.data?.public_id || res.data?.id
         showSuccess({
           title: 'Prescription Completed',
           message: 'Prescription created and finalized successfully.'

@@ -274,14 +274,14 @@ export default function PatientProfilePage() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 10 }}>
-                          <Link to={`/admin/prescriptions/view/${rx.id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ borderRadius: 8 }}>👁️ View</Link>
+                          <Link to={`/admin/prescriptions/view/${rx.public_id || rx.id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ borderRadius: 8 }}>👁️ View</Link>
                           <button
-                            onClick={() => handleDownloadPrescription(rx.id)}
-                            disabled={exportingId === rx.id}
+                            onClick={() => handleDownloadPrescription(rx.public_id || rx.id)}
+                            disabled={exportingId === (rx.public_id || rx.id)}
                             className="admin-btn admin-btn-primary admin-btn-sm"
                             style={{ borderRadius: 8, background: '#6366F1' }}
                           >
-                            {exportingId === rx.id ? '⌛...' : '📥 PDF'}
+                            {exportingId === (rx.public_id || rx.id) ? '⌛...' : '📥 PDF'}
                           </button>
                         </div>
                       </div>
