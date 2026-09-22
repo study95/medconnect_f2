@@ -347,12 +347,13 @@ export default function BookAppointmentPage() {
 
   // Fetch booked slots for selected doctor, date, and chamber
   useEffect(() => {
-    if (!doctorId || !form.appointment_date) {
+    const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
+    if (!activeDoctorId || !form.appointment_date) {
       setBookedSlots([])
       return
     }
     let active = true
-    getBookedSlots(doctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
+    getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
       .then(res => {
         if (active && res.data?.booked_slots) {
           setBookedSlots(res.data.booked_slots)
@@ -362,7 +363,7 @@ export default function BookAppointmentPage() {
         if (active) setBookedSlots([])
       })
     return () => { active = false }
-  }, [doctorId, form.appointment_date, selectedChamberId])
+  }, [doctorId, form.doctor_id, doctor?.public_id, doctor?.id, form.appointment_date, selectedChamberId])
 
   const toMinutes = (timeStr) => {
     if (!timeStr) return -1
@@ -527,7 +528,7 @@ export default function BookAppointmentPage() {
       const newAppt = {
         id: resData.id || Date.now(),
         registration_id: resData.registration_id || resData.registration_no,
-        tracking_id: resData.registration_id ? `#MED-${resData.registration_id}` : undefined,
+        tracking_id: resData.public_id || resData.id || resData.registration_id,
         doctor_id: payload.doctor_id,
         doctor_name: doctor?.name || 'ডাক্তার',
         specialty: doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা',
@@ -2958,7 +2959,7 @@ export default function BookAppointmentPage() {
           color: #94A3B8;
           cursor: not-allowed;
           opacity: 0.65;
-          text-decoration: line-through;
+          text-decoration: none;
           box-shadow: none;
         }
         .time-slot-btn .booked-tag {

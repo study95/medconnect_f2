@@ -40,27 +40,67 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const updateRxDraftCount = useCallback(async () => {
     if (!isDoctor) return
     try {
-      const res = await getPrescriptions({ status: 'draft', per_page: 100 })
-      const dbDrafts = res.data?.data?.data || res.data?.data || res.data || []
-      let count = Array.isArray(dbDrafts) ? dbDrafts.filter(p => p.status === 'draft').length : 0
+      const res = await getPrescriptions({ per_page: 200 })
+      const allPrescriptions = res.data?.data?.data || res.data?.data || res.data || []
+      const dbDrafts = Array.isArray(allPrescriptions) ? allPrescriptions.filter(p => p.status === 'draft') : []
+      let count = dbDrafts.length
 
-      // Also check local browser drafts
+      // Check local browser drafts and clean up stale/finalized drafts
       if (doctorScopeId) {
         try {
           const prefix = `dr_rx_draft_${doctorScopeId}_`
+          const keysToInspect = []
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
             if (key && key.startsWith(prefix)) {
-              const item = JSON.parse(localStorage.getItem(key))
-              if (item?.form) {
-                const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
-                const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
-                const inDb = item.activeDraftId && Array.isArray(dbDrafts) && dbDrafts.some(p => String(p.id) === String(item.activeDraftId))
-                if (hasContent && !inDb) {
-                  count++
-                }
-              }
+              keysToInspect.push(key)
             }
+          }
+
+          for (const key of keysToInspect) {
+            try {
+              const raw = localStorage.getItem(key)
+              if (!raw) continue
+              const item = JSON.parse(raw)
+              if (!item?.form) {
+                localStorage.removeItem(key)
+                continue
+              }
+
+              const activeId = item.activeDraftId
+              const apptId = item.form?.appointment_id || item.appointmentInfo?.id || item.appointmentInfo?.public_id || item.appointment_id
+
+              const keyMatches = (p) => {
+                if (p.public_id && key.toUpperCase().includes(p.public_id.toUpperCase())) return true
+                if (p.id && key.endsWith(`_rx_${p.id}`)) return true
+                if (p.appointment_id && key.endsWith(`_${p.appointment_id}`)) return true
+                if (p.appointment_public_id && key.toUpperCase().includes(p.appointment_public_id.toUpperCase())) return true
+                return false
+              }
+
+              const dbMatch = Array.isArray(allPrescriptions) ? allPrescriptions.find(p =>
+                (activeId && (String(p.id) === String(activeId) || (p.public_id && String(p.public_id).toUpperCase() === String(activeId).toUpperCase()))) ||
+                (apptId && (String(p.appointment_id) === String(apptId) || (p.appointment_public_id && String(p.appointment_public_id).toUpperCase() === String(apptId).toUpperCase()))) ||
+                keyMatches(p)
+              ) : null
+
+              if (dbMatch) {
+                // If the prescription is finalized or locked, purge the stale local draft
+                if (dbMatch.status === 'finalized' || dbMatch.status === 'locked') {
+                  localStorage.removeItem(key)
+                }
+                // If it is in DB as a draft, it is already counted in dbDrafts.length
+                continue
+              }
+
+              const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
+              const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
+              if (hasContent) {
+                count++
+              } else {
+                localStorage.removeItem(key)
+              }
+            } catch (err) {}
           }
         } catch (e) {}
       }
@@ -74,7 +114,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             const key = localStorage.key(i)
             if (key && key.startsWith(prefix)) {
               const item = JSON.parse(localStorage.getItem(key))
-              if (item?.form) {
+              if (item?.form && !item.activeDraftId) {
                 const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
                 const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
                 if (hasContent) localCount++

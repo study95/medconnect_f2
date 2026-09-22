@@ -2,7 +2,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { getMedicines, deleteMedicine, bulkDeleteMedicines } from '../../../api/adminApi'
+import { 
+  getMedicines, 
+  deleteMedicine, 
+  bulkDeleteMedicines,
+  getMedicinesPendingCount,
+  approveMedicine,
+  rejectMedicine
+} from '../../../api/adminApi'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -506,11 +513,151 @@ function MedicineDetailModal({ medicine, onClose, onEdit, canEdit, dosageColors,
   )
 }
 
+function ReviewApproveModal({ medicine, onClose, onSuccess }) {
+  if (!medicine) return null
+
+  const [form, setForm] = useState({
+    medicine_name: medicine.medicine_name || '',
+    generic_name: medicine.generic_name || '',
+    dosage_type: medicine.dosage_type || 'Tablet',
+    strength: medicine.strength || '',
+    company_name: medicine.company_name || ''
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.medicine_name.trim()) {
+      toast.error('Medicine name is required')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await approveMedicine(medicine.id, form)
+      toast.success(`"${form.medicine_name}" approved & added to official medicine database!`)
+      onSuccess()
+      onClose()
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to approve medicine'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="db-dialog-overlay" onClick={onClose} style={{ zIndex: 99999 }}>
+      <div className="db-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--admin-text)' }}>Review & Approve Medicine</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)' }}>
+              Suggested by: <strong>{medicine.suggested_by_doctor?.name || 'Doctor'}</strong> • Prescribed: <strong>{medicine.prescribed_count || 1} time(s)</strong>
+            </p>
+          </div>
+          <button type="button" className="admin-btn-close" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--admin-text)', marginBottom: 4 }}>
+                Medicine Brand Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                className="admin-form-input"
+                value={form.medicine_name}
+                onChange={e => setForm({ ...form, medicine_name: e.target.value })}
+                required
+                style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--admin-text)', marginBottom: 4 }}>
+                Generic / Molecule Name
+              </label>
+              <input
+                type="text"
+                className="admin-form-input"
+                placeholder="e.g. Paracetamol, Esomeprazole"
+                value={form.generic_name}
+                onChange={e => setForm({ ...form, generic_name: e.target.value })}
+                style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--admin-text)', marginBottom: 4 }}>
+                  Dosage Type / Form
+                </label>
+                <select
+                  className="status-select"
+                  value={form.dosage_type}
+                  onChange={e => setForm({ ...form, dosage_type: e.target.value })}
+                  style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+                >
+                  {['Tablet', 'Capsule', 'Syrup', 'Injection', 'Drop', 'Suspension', 'Suppository', 'Ointment', 'Cream', 'Inhaler'].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--admin-text)', marginBottom: 4 }}>
+                  Strength
+                </label>
+                <input
+                  type="text"
+                  className="admin-form-input"
+                  placeholder="e.g. 500mg, 20mg"
+                  value={form.strength}
+                  onChange={e => setForm({ ...form, strength: e.target.value })}
+                  style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--admin-text)', marginBottom: 4 }}>
+                Pharmaceutical Company / Manufacturer
+              </label>
+              <input
+                type="text"
+                className="admin-form-input"
+                placeholder="e.g. Square Pharmaceuticals, Beximco, Incepta"
+                value={form.company_name}
+                onChange={e => setForm({ ...form, company_name: e.target.value })}
+                style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--admin-border)' }}>
+            <button type="button" className="admin-btn admin-btn-outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </button>
+            <button type="submit" className="admin-btn admin-btn-primary" style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }} disabled={submitting}>
+              {submitting ? 'Approving...' : '✓ Approve & Add to Database'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function MedicineListPage() {
   const navigate = useNavigate()
   const { isAdmin, hasPermission } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('active') // 'active' | 'pending'
+  const [pendingCount, setPendingCount] = useState(0)
+  const [reviewTarget, setReviewTarget] = useState(null)
+  const [rejecting, setRejecting] = useState(false)
   const [search, setSearch] = useState('')
   const [dosageFilter, setDosageFilter] = useState('ALL')
   const [companyFilter, setCompanyFilter] = useState('')
@@ -525,10 +672,10 @@ export default function MedicineListPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const searchTimeout = useRef(null)
 
-  const fetchData = async (page = 1, q = search, dosage = dosageFilter, company = companyFilter, limit = perPage) => {
+  const fetchData = async (page = 1, q = search, dosage = dosageFilter, company = companyFilter, limit = perPage, tab = activeTab) => {
     setLoading(true)
     try {
-      const params = { page, per_page: limit }
+      const params = { page, per_page: limit, status: tab }
       if (q) params.search = q
       if (dosage && dosage !== 'ALL') params.dosage_type = dosage
       if (company) params.company = company
@@ -562,9 +709,40 @@ export default function MedicineListPage() {
     }
   }
 
+  const fetchPendingCount = async () => {
+    try {
+      const res = await getMedicinesPendingCount()
+      if (res.data?.count !== undefined) {
+        setPendingCount(res.data.count)
+      }
+    } catch (e) {}
+  }
+
   useEffect(() => {
-    fetchData(1)
+    fetchData(1, search, dosageFilter, companyFilter, perPage, 'active')
+    fetchPendingCount()
   }, [])
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setSelectedIds([])
+    fetchData(1, search, dosageFilter, companyFilter, perPage, tab)
+  }
+
+  const handleReject = async (med) => {
+    if (!window.confirm(`Are you sure you want to reject suggestion "${med.medicine_name}"?`)) return
+    setRejecting(true)
+    try {
+      await rejectMedicine(med.id)
+      toast.success(`"${med.medicine_name}" suggestion rejected.`)
+      fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage, activeTab)
+      fetchPendingCount()
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to reject suggestion'))
+    } finally {
+      setRejecting(false)
+    }
+  }
 
   const handleSearch = (val) => {
     setSearch(val)
@@ -709,8 +887,62 @@ export default function MedicineListPage() {
             padding: '14px 20px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <h3 className="admin-card-title" style={{ margin: 0 }}>Medicine Database</h3>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--admin-bg, #f1f5f9)', borderRadius: 8, padding: 3, border: '1px solid var(--admin-border, #e2e8f0)' }}>
+              <button
+                type="button"
+                onClick={() => handleTabChange('active')}
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: activeTab === 'active' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'active' ? '#1e40af' : '#64748b',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  boxShadow: activeTab === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Verified Medicines
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange('pending')}
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: activeTab === 'pending' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'pending' ? '#b45309' : '#64748b',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: activeTab === 'pending' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>Pending Review</span>
+                {pendingCount > 0 && (
+                  <span style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    lineHeight: '14px'
+                  }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -856,9 +1088,18 @@ export default function MedicineListPage() {
                   <th style={{ width: 60, textAlign: 'center' }}>SL</th>
                   <th>Medicine Name</th>
                   <th>Generic Name</th>
-                  <th>Type</th>
-                  <th>Strength</th>
-                  <th>Company</th>
+                  <th>Type / Strength</th>
+                  {activeTab === 'pending' ? (
+                    <>
+                      <th>Suggested By</th>
+                      <th style={{ textAlign: 'center' }}>Prescribed</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>Strength</th>
+                      <th>Company</th>
+                    </>
+                  )}
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -900,37 +1141,90 @@ export default function MedicineListPage() {
                         }}>
                           {med.dosage_type || '—'}
                         </span>
+                        {med.strength && activeTab === 'pending' && (
+                          <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: 'var(--admin-text)' }}>
+                            {med.strength}
+                          </span>
+                        )}
                       </td>
-                      <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{med.strength || '—'}</td>
-                      <td style={{ color: 'var(--admin-text-muted)' }}>{med.company_name || '—'}</td>
+                      {activeTab === 'pending' ? (
+                        <>
+                          <td style={{ color: 'var(--admin-text)' }}>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>
+                              {med.suggested_by_doctor?.name ? `Dr. ${med.suggested_by_doctor.name}` : 'Doctor'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{
+                              padding: '3px 9px',
+                              borderRadius: 12,
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              fontWeight: 700,
+                              fontSize: 12
+                            }}>
+                              {med.prescribed_count || 1}x
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{med.strength || '—'}</td>
+                          <td style={{ color: 'var(--admin-text-muted)' }}>{med.company_name || '—'}</td>
+                        </>
+                      )}
                       <td>
-                        <div className="admin-actions">
-                          <button
-                            className="admin-action-btn admin-action-btn-view"
-                            title="View Medicine Details"
-                            onClick={() => setViewTarget(med)}
-                          >
-                            <img src="/icons/view.png" alt="View" />
-                          </button>
-                          {(isAdmin || hasPermission('medicine.update')) && (
+                        {activeTab === 'pending' ? (
+                          <div className="admin-actions" style={{ gap: 8 }}>
                             <button
-                              className="admin-action-btn admin-action-btn-edit"
-                              title="Edit Medicine"
-                              onClick={() => navigate(`/admin/medicines/edit/${med.id}`)}
+                              type="button"
+                              className="admin-btn admin-btn-primary"
+                              style={{ height: 30, padding: '0 10px', fontSize: 12, background: '#16a34a', borderColor: '#16a34a', color: '#fff', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              onClick={() => setReviewTarget(med)}
+                              title="Review & Approve"
                             >
-                              <img src="/icons/edit.png" alt="Edit" />
+                              ✓ Approve
                             </button>
-                          )}
-                          {(isAdmin || hasPermission('medicine.delete')) && (
                             <button
-                              className="admin-action-btn admin-action-btn-delete"
-                              title="Delete Medicine"
-                              onClick={() => setDeleteTarget(med)}
+                              type="button"
+                              className="admin-btn admin-btn-outline"
+                              style={{ height: 30, padding: '0 10px', fontSize: 12, color: '#dc2626', borderColor: '#fca5a5', borderRadius: 6 }}
+                              onClick={() => handleReject(med)}
+                              disabled={rejecting}
+                              title="Reject Suggestion"
                             >
-                              <img src="/icons/delete.png" alt="Delete" />
+                              ✕ Reject
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <div className="admin-actions">
+                            <button
+                              className="admin-action-btn admin-action-btn-view"
+                              title="View Medicine Details"
+                              onClick={() => setViewTarget(med)}
+                            >
+                              <img src="/icons/view.png" alt="View" />
+                            </button>
+                            {(isAdmin || hasPermission('medicine.update')) && (
+                              <button
+                                className="admin-action-btn admin-action-btn-edit"
+                                title="Edit Medicine"
+                                onClick={() => navigate(`/admin/medicines/edit/${med.id}`)}
+                              >
+                                <img src="/icons/edit.png" alt="Edit" />
+                              </button>
+                            )}
+                            {(isAdmin || hasPermission('medicine.delete')) && (
+                              <button
+                                className="admin-action-btn admin-action-btn-delete"
+                                title="Delete Medicine"
+                                onClick={() => setDeleteTarget(med)}
+                              >
+                                <img src="/icons/delete.png" alt="Delete" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -976,6 +1270,17 @@ export default function MedicineListPage() {
         onCancel={() => setShowBulkDeleteModal(false)}
         loading={bulkDeleting}
       />
+
+      {reviewTarget && (
+        <ReviewApproveModal
+          medicine={reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          onSuccess={() => {
+            fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage, activeTab)
+            fetchPendingCount()
+          }}
+        />
+      )}
     </div>
   )
 }

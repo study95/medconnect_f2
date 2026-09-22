@@ -117,11 +117,11 @@ export default function AppointmentViewPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Venue / Hospital</label>
-                    <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', margin: '6px 0 2px' }}>{appt.hospital_name || 'General Facility'}</h4>
-                    <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: 0 }}>{appt.chamber_id ? 'Doctor Specialized Chamber' : 'Outpatient Department'}</p>
+                    <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', margin: '6px 0 2px' }}>{appt.chamber?.name || appt.chamber?.chamber_name || appt.chamber_name || appt.hospital?.name || appt.hospital_name || 'General Facility'}</h4>
+                    <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: 0 }}>{appt.chamber?.address || appt.hospital_address || appt.chamber_address || (appt.chamber_id ? 'Doctor Specialized Chamber' : 'Outpatient Department')}</p>
                   </div>
-                  {(appt.hospital_public_id || appt.hospital?.public_id) && (
-                    <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id} />
+                  {(appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id) && (
+                    <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id} />
                   )}
                 </div>
               </div>
@@ -216,22 +216,63 @@ export default function AppointmentViewPage() {
           )}
 
           {/* Actions */}
-          {(isDoctor || isAdmin) && (
-            <button 
-              onClick={() => {
-                const prescId = appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id
-                if (prescId) {
-                  navigate(`/admin/prescriptions/view/${prescId}`)
-                } else {
-                  navigate(`/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`)
-                }
-              }}
-              className="admin-btn admin-btn-primary" 
-              style={{ padding: '16px', borderRadius: 16, fontWeight: 800, fontSize: 15, background: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)' }}
-            >
-              {appt.prescription_id ? '👁️ View Prescription' : '✍️ Write Prescription'}
-            </button>
-          )}
+          {(isDoctor || isAdmin) && (() => {
+            const prescId = appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id
+            const rawDate = appt.appointment_date || appt.date
+            const isFuture = (() => {
+              if (!rawDate) return false
+              const d = new Date(rawDate)
+              if (isNaN(d.getTime())) return false
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              d.setHours(0, 0, 0, 0)
+              return d.getTime() > today.getTime()
+            })()
+
+            if (prescId) {
+              return (
+                <button 
+                  onClick={() => navigate(`/admin/prescriptions/view/${prescId}`)}
+                  className="admin-btn admin-btn-primary" 
+                  style={{ padding: '16px', borderRadius: 16, fontWeight: 800, fontSize: 15, background: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)' }}
+                >
+                  👁️ View Prescription
+                </button>
+              )
+            }
+
+            if (isFuture) {
+              return (
+                <button 
+                  disabled
+                  className="admin-btn" 
+                  style={{ 
+                    padding: '16px', 
+                    borderRadius: 16, 
+                    fontWeight: 700, 
+                    fontSize: 14, 
+                    background: '#f1f5f9', 
+                    color: '#64748b', 
+                    border: '1.5px dashed #cbd5e1', 
+                    cursor: 'not-allowed' 
+                  }}
+                  title="Cannot write prescription before the scheduled appointment date"
+                >
+                  🔒 Prescription Locked (Scheduled for {new Date(rawDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+                </button>
+              )
+            }
+
+            return (
+              <button 
+                onClick={() => navigate(`/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`)}
+                className="admin-btn admin-btn-primary" 
+                style={{ padding: '16px', borderRadius: 16, fontWeight: 800, fontSize: 15, background: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)' }}
+              >
+                ✍️ Write Prescription
+              </button>
+            )
+          })()}
         </div>
       </div>
 

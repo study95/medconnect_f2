@@ -504,10 +504,17 @@ export default function AppointmentListPage() {
                         )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{appt.hospital?.name || appt.hospital_name || '—'}</div>
-                        {(appt.hospital_public_id || appt.hospital?.public_id || appt.hospital?.id) && (
+                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>
+                          {appt.hospital?.name || appt.hospital_name || appt.chamber?.name || appt.chamber?.chamber_name || appt.chamber_name || '—'}
+                        </div>
+                        {(appt.chamber?.address || appt.hospital_address || appt.chamber_address) && (
+                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                            {appt.chamber?.address || appt.hospital_address || appt.chamber_address}
+                          </div>
+                        )}
+                        {(appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id || appt.hospital?.id) && (
                           <div style={{ marginTop: 4 }}>
-                            <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id || appt.hospital?.id} />
+                            <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id || appt.hospital?.id} />
                           </div>
                         )}
                       </td>
@@ -560,17 +567,62 @@ export default function AppointmentListPage() {
                               <img src="/icons/edit.png" alt="Edit" />
                             </Link>
                           )}
-                          {(isDoctor || isAdmin) && (
-                            <Link 
-                              to={(appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id)
-                                ? `/admin/prescriptions/view/${appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id}` 
-                                : `/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`}
-                              className="admin-btn admin-btn-outline admin-btn-sm"
-                              style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
-                            >
-                              Rx
-                            </Link>
-                          )}
+                          {(isDoctor || isAdmin) && (() => {
+                            const prescId = appt.prescription?.public_id || appt.prescription_public_id || appt.prescription_id
+                            const rawDate = appt.appointment_date || appt.date
+                            const isFuture = (() => {
+                              if (!rawDate) return false
+                              const d = new Date(rawDate)
+                              if (isNaN(d.getTime())) return false
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0)
+                              d.setHours(0, 0, 0, 0)
+                              return d.getTime() > today.getTime()
+                            })()
+
+                            if (prescId) {
+                              return (
+                                <Link 
+                                  to={`/admin/prescriptions/view/${prescId}`}
+                                  className="admin-btn admin-btn-outline admin-btn-sm"
+                                  style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
+                                  title="View Prescription"
+                                >
+                                  Rx
+                                </Link>
+                              )
+                            }
+
+                            if (isFuture) {
+                              return (
+                                <span 
+                                  className="admin-btn admin-btn-outline admin-btn-sm"
+                                  style={{ 
+                                    color: '#94a3b8', 
+                                    borderColor: '#e2e8f0', 
+                                    background: '#f8fafc', 
+                                    fontWeight: 800, 
+                                    cursor: 'not-allowed', 
+                                    opacity: 0.6 
+                                  }}
+                                  title="Cannot create prescription before the scheduled appointment date"
+                                >
+                                  Rx 🔒
+                                </span>
+                              )
+                            }
+
+                            return (
+                              <Link 
+                                to={`/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`}
+                                className="admin-btn admin-btn-outline admin-btn-sm"
+                                style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
+                                title="Write Prescription"
+                              >
+                                Rx
+                              </Link>
+                            )
+                          })()}
                           {isAdmin && (
                             <button className="admin-action-btn admin-action-btn-delete" title="Delete" onClick={() => setDeleteTarget(appt)}>
                               <img src="/icons/delete.png" alt="Delete" />

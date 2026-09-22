@@ -60,33 +60,69 @@ export default function PrescriptionListPage() {
       if (doctorScopeId) {
         try {
           const prefix = `dr_rx_draft_${doctorScopeId}_`
+          const keysToInspect = []
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
             if (key && key.startsWith(prefix)) {
-              const item = JSON.parse(localStorage.getItem(key))
-              if (item?.form) {
-                const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
-                const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
-                // Check if already in dbList
-                const inDb = item.activeDraftId && dbList.some(p => String(p.id) === String(item.activeDraftId))
-                if (hasContent && !inDb) {
-                  localDrafts.push({
-                    id: item.activeDraftId || `local_${key}`,
-                    public_id: item.form.patient_public_id || 'LOCAL-DRAFT',
-                    patient_name: item.form.patient_name || item.walkInPatientInfo?.name || 'Walk-in (Local Draft)',
-                    patient_phone: item.form.patient_phone || item.walkInPatientInfo?.phone || '—',
-                    patient_id: item.form.patient_public_id || item.walkInPatientInfo?.patient_id || '',
-                    status: 'draft',
-                    is_local_draft: true,
-                    prescription_date: item.savedAt ? new Date(item.savedAt).toLocaleDateString() : 'Today',
-                    diagnosis: item.form.diagnosis || '',
-                    medicines: item.form.medicines?.filter(m => (m.medicine_name || '').trim()) || [],
-                    appointment_id: item.form.appointment_id || undefined,
-                    local_key: key
-                  })
-                }
-              }
+              keysToInspect.push(key)
             }
+          }
+
+          for (const key of keysToInspect) {
+            try {
+              const raw = localStorage.getItem(key)
+              if (!raw) continue
+              const item = JSON.parse(raw)
+              if (!item?.form) {
+                localStorage.removeItem(key)
+                continue
+              }
+
+              const activeId = item.activeDraftId
+              const apptId = item.form?.appointment_id || item.appointmentInfo?.id || item.appointmentInfo?.public_id || item.appointment_id
+
+              const keyMatches = (p) => {
+                if (p.public_id && key.toUpperCase().includes(p.public_id.toUpperCase())) return true
+                if (p.id && key.endsWith(`_rx_${p.id}`)) return true
+                if (p.appointment_id && key.endsWith(`_${p.appointment_id}`)) return true
+                if (p.appointment_public_id && key.toUpperCase().includes(p.appointment_public_id.toUpperCase())) return true
+                return false
+              }
+
+              const dbMatch = dbList.find(p =>
+                (activeId && (String(p.id) === String(activeId) || (p.public_id && String(p.public_id).toUpperCase() === String(activeId).toUpperCase()))) ||
+                (apptId && (String(p.appointment_id) === String(apptId) || (p.appointment_public_id && String(p.appointment_public_id).toUpperCase() === String(apptId).toUpperCase()))) ||
+                keyMatches(p)
+              )
+
+              if (dbMatch) {
+                if (dbMatch.status === 'finalized' || dbMatch.status === 'locked') {
+                  localStorage.removeItem(key)
+                }
+                continue
+              }
+
+              const hasMeds = Array.isArray(item.form.medicines) && item.form.medicines.some(m => (m.medicine_name || '').trim().length > 0)
+              const hasContent = !!(item.form.diagnosis?.trim() || item.form.advice?.trim() || item.form.patient_name?.trim() || hasMeds)
+              if (hasContent) {
+                localDrafts.push({
+                  id: item.activeDraftId || `local_${key}`,
+                  public_id: item.form.patient_public_id || 'LOCAL-DRAFT',
+                  patient_name: item.form.patient_name || item.walkInPatientInfo?.name || 'Walk-in (Local Draft)',
+                  patient_phone: item.form.patient_phone || item.walkInPatientInfo?.phone || '—',
+                  patient_id: item.form.patient_public_id || item.walkInPatientInfo?.patient_id || '',
+                  status: 'draft',
+                  is_local_draft: true,
+                  prescription_date: item.savedAt ? new Date(item.savedAt).toLocaleDateString() : 'Today',
+                  diagnosis: item.form.diagnosis || '',
+                  medicines: item.form.medicines?.filter(m => (m.medicine_name || '').trim()) || [],
+                  appointment_id: item.form.appointment_id || undefined,
+                  local_key: key
+                })
+              } else {
+                localStorage.removeItem(key)
+              }
+            } catch (err) {}
           }
         } catch (e) {}
       }

@@ -161,7 +161,8 @@ function MyAppointmentsPage() {
       const degree = appt.degree || appt.doctor?.degree || appt.qualifications || 'MBBS'
       const location = appt.hospital_name || appt.hospital?.name || appt.chamber?.hospital?.name || appt.chamber_address || 'হাসপাতাল / চেম্বার'
       const patientName = appt.patient_name || appt.user_name || appt.user?.name || 'রোগী'
-      const apptNumber = appt.tracking_id || `#MED-${String(apptId || 1).padStart(6, '0')}`
+      const rawApptId = appt.public_id || appt.id || appt.tracking_id || apptId
+      const apptNumber = String(rawApptId).replace(/^#?MED-?/i, '') || 'N/A'
 
       if (!rx) {
         rx = {

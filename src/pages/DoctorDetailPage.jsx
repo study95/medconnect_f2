@@ -69,12 +69,16 @@ function DoctorDetailPageContent() {
   // Active tab state: 'about', 'chamber', 'experience', 'reviews'
   const [activeTab, setActiveTab] = useState('about')
 
-  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/doctors/:id), update URL to canonical SEO route
+  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/doctors/:id), or if current district/upazila differs from doctor's canonical location
   useEffect(() => {
-    if (id && doctor?.slug && doctor?.district_slug && doctor?.upazila_slug) {
-      navigate(`/doctors/${doctor.district_slug}/${doctor.upazila_slug}/${doctor.slug}`, { replace: true })
+    if (doctor?.slug) {
+      const canonicalTarget = doctor.canonical_url || `/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug}`
+      const normalizedTarget = canonicalTarget.startsWith('/') ? canonicalTarget : `/${canonicalTarget}`
+      if (window.location.pathname !== normalizedTarget) {
+        navigate(normalizedTarget, { replace: true })
+      }
     }
-  }, [id, doctor?.slug, doctor?.district_slug, doctor?.upazila_slug, navigate])
+  }, [id, doctor?.slug, doctor?.canonical_url, doctor?.district_slug, doctor?.upazila_slug, navigate])
 
   // Review Module Modal States
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
@@ -268,7 +272,7 @@ function DoctorDetailPageContent() {
   const cardBorderColor = '#E5EAF0'
   const isFav = doctor ? isDoctorFavorite(doctor.id) : false
 
-  const canonicalPath = `/doctors/${doctor?.district_slug || district || 'bangladesh'}/${doctor?.upazila_slug || upazila || 'general'}/${doctor?.slug || slug || doctor?.id}`
+  const canonicalPath = doctor?.canonical_url || `/doctors/${doctor?.district_slug || district || 'bangladesh'}/${doctor?.upazila_slug || upazila || 'general'}/${doctor?.slug || slug || doctor?.id}`
   const doctorOgImage = doctor?.photo ? getMediaUrl(doctor.photo) : (doctor?.photo_url ? getMediaUrl(doctor.photo_url) : DEMO_AVATAR)
 
   return (

@@ -131,6 +131,9 @@ export const deleteMedicine = (id) => axiosInstance.delete(`/medicines/${id}`)
 export const bulkDeleteMedicines = (ids) => axiosInstance.post('/medicines/bulk-delete', { ids })
 export const searchMedicines = (params) => axiosInstance.get('/medicines', { params })
 export const getMedicineSuggestions = (params) => axiosInstance.get('/medicines/suggestions', { params })
+export const getMedicinesPendingCount = () => axiosInstance.get('/medicines/pending-count')
+export const approveMedicine = (id, data) => axiosInstance.put(`/medicines/${id}/approve`, data)
+export const rejectMedicine = (id) => axiosInstance.put(`/medicines/${id}/reject`)
 
 // ===== PAYMENTS (filtered appointments view) =====
 export const getPayments = (params) => axiosInstance.get('/appointments', { params: { ...params, per_page: 50 } })

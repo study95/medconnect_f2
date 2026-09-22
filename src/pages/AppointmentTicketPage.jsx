@@ -315,7 +315,8 @@ export default function AppointmentTicketPage() {
 
   const apptDate = apptData.date || apptData.appointment_date
   const apptTime = apptData.time || apptData.appointment_time
-  const apptNumber = apptData.tracking_id || `#MED-${String(apptData.id || 1).padStart(6, '0')}`
+  const rawApptId = apptData.public_id || apptData.id || apptData.tracking_id || (apptData.registration_id ? `${apptData.registration_id}` : '')
+  const apptNumber = String(rawApptId).replace(/^#?MED-?/i, '') || 'N/A'
 
   const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
   const toBnNum = (str) => str !== null && str !== undefined ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
