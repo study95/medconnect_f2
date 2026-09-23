@@ -42,6 +42,7 @@ export default function ForgotPasswordPage() {
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
   const [isNotRegistered, setIsNotRegistered] = useState(false)
   const [timer, setTimer] = useState(0)
+  const [resolvedRole, setResolvedRole] = useState('')
 
   const otpRefs = useRef([])
 
@@ -237,13 +238,16 @@ export default function ForgotPasswordPage() {
       }, { skipGlobalToast: true })
 
       if (res.data?.success) {
+        const destRole = res.data.role || ''
+        const redirectPath = res.data.redirect_url || (destRole ? `/login/${destRole}` : '/login')
+        setResolvedRole(destRole)
         setStep(4)
         setStatusMsg({
           type: 'success',
           text: res.data.message || 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!'
         })
         // Auto redirect after 3.5 seconds
-        setTimeout(() => navigate('/login'), 3500)
+        setTimeout(() => navigate(redirectPath, { state: { identifier: mobile } }), 3500)
       } else {
         setStatusMsg({
           type: 'danger',
@@ -251,9 +255,12 @@ export default function ForgotPasswordPage() {
         })
       }
     } catch (err) {
+      const errData = err.response?.data
       setStatusMsg({
         type: 'danger',
-        text: err.response?.data?.message || 'সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+        text: errData?.message || 'সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+        isSamePassword: errData?.is_same_password,
+        loginRole: errData?.role
       })
     } finally {
       setLoading(false)
@@ -312,89 +319,84 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* ===== RIGHT PANEL — INTERACTIVE MULTI-STEP CARD ===== */}
-        <div className="auth-form-panel" style={{ padding: '36px 34px' }}>
+        <div className="auth-form-panel fp-form-panel">
           <div className="slide-in-right">
 
-            {/* Mobile Header Logo */}
-            <div className="d-lg-none text-center mb-4">
-              <Link to="/" className="text-decoration-none d-inline-block">
-                <img
-                  src="/doctorBookletLogo.png"
-                  alt="Doctor Booklet"
-                  style={{ height: '34px', width: 'auto', objectFit: 'contain' }}
-                />
-              </Link>
-            </div>
-
-            {/* Step Progress Dots */}
+            {/* Step Progress Bar */}
             {step < 4 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="fp-stepper-box">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
+                    className="fp-step-circle"
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       background: step >= 1 ? '#00B875' : '#E2E8F0',
                       color: step >= 1 ? '#FFFFFF' : '#64748B',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: 800,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      flexShrink: 0
                     }}
                   >
                     ১
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: step === 1 ? 700 : 500, color: step === 1 ? '#0F172A' : '#94A3B8' }}>
+                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 1 ? 700 : 500, color: step === 1 ? '#0F172A' : '#64748B' }}>
                     নম্বর
                   </span>
                 </div>
 
                 <div style={{ flex: 1, height: 2, background: step >= 2 ? '#00B875' : '#E2E8F0', margin: '0 8px' }} />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
+                    className="fp-step-circle"
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       background: step >= 2 ? '#00B875' : '#E2E8F0',
                       color: step >= 2 ? '#FFFFFF' : '#64748B',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: 800,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      flexShrink: 0
                     }}
                   >
                     ২
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: step === 2 ? 700 : 500, color: step === 2 ? '#0F172A' : '#94A3B8' }}>
+                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 2 ? 700 : 500, color: step === 2 ? '#0F172A' : '#64748B' }}>
                     ওটিপি
                   </span>
                 </div>
 
                 <div style={{ flex: 1, height: 2, background: step >= 3 ? '#00B875' : '#E2E8F0', margin: '0 8px' }} />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
+                    className="fp-step-circle"
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       background: step >= 3 ? '#00B875' : '#E2E8F0',
                       color: step >= 3 ? '#FFFFFF' : '#64748B',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: 800,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      flexShrink: 0
                     }}
                   >
                     ৩
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: step === 3 ? 700 : 500, color: step === 3 ? '#0F172A' : '#94A3B8' }}>
+                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 3 ? 700 : 500, color: step === 3 ? '#0F172A' : '#64748B' }}>
                     পাসওয়ার্ড
                   </span>
                 </div>
@@ -444,6 +446,31 @@ export default function ForgotPasswordPage() {
                       </Link>
                     </div>
                   )}
+                  {statusMsg.isSamePassword && (
+                    <div style={{ marginTop: 10 }}>
+                      <Link
+                        to={statusMsg.loginRole ? `/login/${statusMsg.loginRole}` : '/login'}
+                        state={{ identifier: mobile }}
+                        className="btn btn-sm"
+                        style={{
+                          background: '#00B875',
+                          color: '#FFFFFF',
+                          borderRadius: 8,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          padding: '6px 14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          textDecoration: 'none',
+                          boxShadow: '0 2px 8px rgba(0, 184, 117, 0.3)'
+                        }}
+                      >
+                        <ArrowRight size={14} />
+                        <span>সরাসরি এই পাসওয়ার্ড দিয়ে লগইন করুন</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -451,27 +478,26 @@ export default function ForgotPasswordPage() {
             {/* ================= STEP 1: ENTER MOBILE ================= */}
             {step === 1 && (
               <div>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#00B875',
-                    marginBottom: 16,
-                    border: '1px solid rgba(0, 184, 117, 0.25)',
-                    boxShadow: '0 4px 12px rgba(0, 184, 117, 0.1)'
-                  }}
-                >
-                  <KeyRound size={24} />
-                </div>
-
                 <div style={{ marginBottom: 20 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 6, letterSpacing: '-0.4px' }}>
-                    পাসওয়ার্ড ভুলে গেছেন?
+                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#00B875',
+                        border: '1px solid rgba(0, 184, 117, 0.25)',
+                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <KeyRound size={20} />
+                    </span>
+                    <span>পাসওয়ার্ড ভুলে গেছেন?</span>
                   </h2>
                   <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
                     আপনার অ্যাকাউন্টে নিবন্ধিত মোবাইল নম্বরটি লিখুন। নম্বরটি যাচাই করে আমরা আপনাকে ৬ সংখ্যার ওটিপি (OTP) পাঠাব।
@@ -500,45 +526,51 @@ export default function ForgotPasswordPage() {
                         }}
                         required
                         className="auth-input-premium"
-                        style={{ paddingLeft: 44, fontSize: 15, letterSpacing: '0.5px' }}
+                        style={{ paddingLeft: 44, paddingRight: 118, fontSize: 15, letterSpacing: '0.5px' }}
                         autoFocus
                       />
+                      <button
+                        type="submit"
+                        disabled={loading || mobile.length < 11}
+                        style={{
+                          position: 'absolute',
+                          right: 5,
+                          top: 5,
+                          bottom: 5,
+                          padding: '0 14px',
+                          background: (mobile.length === 11 && !loading)
+                            ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
+                            : '#E2E8F0',
+                          color: (mobile.length === 11 && !loading) ? '#FFFFFF' : '#94A3B8',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: (loading || mobile.length < 11) ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          zIndex: 5,
+                          transition: 'all 0.2s',
+                          boxShadow: (mobile.length === 11 && !loading) ? '0 2px 8px rgba(0, 184, 117, 0.25)' : 'none'
+                        }}
+                      >
+                        {loading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13 }} role="status" aria-hidden="true" />
+                            <span style={{ fontSize: 11 }}>যাচাই...</span>
+                          </>
+                        ) : (
+                          'OTP পাঠান'
+                        )}
+                      </button>
                     </div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 7, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Sparkles size={12} color="#00B875" />
                       <span>অ্যাকাউন্ট তৈরির সময় ব্যবহৃত ১১ সংখ্যার মোবাইল নম্বরটি লিখুন</span>
                     </div>
                   </Form.Group>
-
-                  <button
-                    type="submit"
-                    disabled={loading || mobile.length < 11}
-                    className="auth-btn-primary"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: 15,
-                      fontWeight: 700,
-                      borderRadius: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      cursor: (loading || mobile.length < 11) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                        <span>নম্বর যাচাই করা হচ্ছে...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>ওটিপি কোড পাঠান</span>
-                        <ArrowRight size={17} />
-                      </>
-                    )}
-                  </button>
                 </Form>
               </div>
             )}
@@ -546,26 +578,26 @@ export default function ForgotPasswordPage() {
             {/* ================= STEP 2: VERIFY OTP ================= */}
             {step === 2 && (
               <div>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#00B875',
-                    marginBottom: 16,
-                    border: '1px solid rgba(0, 184, 117, 0.25)'
-                  }}
-                >
-                  <ShieldCheck size={24} />
-                </div>
-
                 <div style={{ marginBottom: 18 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px' }}>
-                    ওটিপি কোড যাচাই করুন
+                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#00B875',
+                        border: '1px solid rgba(0, 184, 117, 0.25)',
+                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <ShieldCheck size={20} />
+                    </span>
+                    <span>ওটিপি কোড যাচাই করুন</span>
                   </h2>
                   <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
                     আপনার মোবাইল নম্বর <strong style={{ color: '#0F172A' }}>{mobile}</strong>-এ ৬ সংখ্যার কোড পাঠানো হয়েছে।{' '}
@@ -631,9 +663,10 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
                       onPaste={idx === 0 ? handleOtpPaste : undefined}
+                      className="fp-otp-box"
                       style={{
-                        width: 46,
-                        height: 52,
+                        width: 44,
+                        height: 50,
                         textAlign: 'center',
                         fontSize: 22,
                         fontWeight: 800,
@@ -654,18 +687,27 @@ export default function ForgotPasswordPage() {
                   type="button"
                   onClick={handleVerifyOtp}
                   disabled={loading || otp.join('').length !== 6}
-                  className="auth-btn-primary"
+                  className="w-100 auth-btn-premium"
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    height: 48,
                     fontSize: 15,
-                    fontWeight: 700,
-                    borderRadius: 10,
+                    fontWeight: 800,
+                    borderRadius: 12,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
+                    border: 'none',
+                    color: '#FFFFFF',
+                    background: (loading || otp.join('').length !== 6)
+                      ? '#E2E8F0'
+                      : 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)',
+                    boxShadow: (loading || otp.join('').length !== 6)
+                      ? 'none'
+                      : '0 4px 14px rgba(0, 184, 117, 0.32)',
                     cursor: (loading || otp.join('').length !== 6) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.25s ease',
                     marginBottom: 14
                   }}
                 >
@@ -715,26 +757,26 @@ export default function ForgotPasswordPage() {
             {/* ================= STEP 3: SET NEW PASSWORD ================= */}
             {step === 3 && (
               <div>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#00B875',
-                    marginBottom: 16,
-                    border: '1px solid rgba(0, 184, 117, 0.25)'
-                  }}
-                >
-                  <Lock size={24} />
-                </div>
-
                 <div style={{ marginBottom: 18 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px' }}>
-                    নতুন পাসওয়ার্ড দিন
+                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#00B875',
+                        border: '1px solid rgba(0, 184, 117, 0.25)',
+                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Lock size={20} />
+                    </span>
+                    <span>নতুন পাসওয়ার্ড দিন</span>
                   </h2>
                   <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
                     আপনার অ্যাকাউন্টের জন্য একটি নতুন ও শক্তিশালী গোপন পাসওয়ার্ড তৈরি করুন।
@@ -743,12 +785,13 @@ export default function ForgotPasswordPage() {
 
                 <Form onSubmit={handleResetPassword}>
                   {/* New Password */}
+                  {/* New Password */}
                   <Form.Group style={{ marginBottom: 16 }}>
                     <Form.Label className="auth-label-premium" style={{ marginBottom: 6 }}>
                       নতুন পাসওয়ার্ড (New Password)
                     </Form.Label>
                     <div className="input-group-premium" style={{ position: 'relative' }}>
-                      <span className="input-icon-premium" style={{ color: '#00B875' }}>
+                      <span className="input-icon-premium" style={{ color: password.length >= 6 ? '#10B981' : '#00B875' }}>
                         <Lock size={17} />
                       </span>
                       <Form.Control
@@ -758,7 +801,14 @@ export default function ForgotPasswordPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         className="auth-input-premium"
-                        style={{ paddingLeft: 44, paddingRight: 42 }}
+                        style={{
+                          paddingLeft: 44,
+                          paddingRight: 42,
+                          borderColor: password.length > 0
+                            ? (password.length >= 6 ? '#10B981' : '#EF4444')
+                            : undefined,
+                          transition: 'all 0.2s ease'
+                        }}
                         autoFocus
                       />
                       <button
@@ -780,6 +830,18 @@ export default function ForgotPasswordPage() {
                         {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                       </button>
                     </div>
+                    {/* Live Length Feedback */}
+                    {password.length > 0 && (
+                      password.length < 6 ? (
+                        <p style={{ color: '#EF4444', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span>⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে (বর্তমানে {password.length} অক্ষর)</span>
+                        </p>
+                      ) : (
+                        <p style={{ color: '#10B981', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span>✓ পাসওয়ার্ডের দৈর্ঘ্য সঠিক</span>
+                        </p>
+                      )
+                    )}
                   </Form.Group>
 
                   {/* Confirm Password */}
@@ -788,7 +850,7 @@ export default function ForgotPasswordPage() {
                       পাসওয়ার্ড নিশ্চিত করুন (Confirm Password)
                     </Form.Label>
                     <div className="input-group-premium" style={{ position: 'relative' }}>
-                      <span className="input-icon-premium" style={{ color: '#00B875' }}>
+                      <span className="input-icon-premium" style={{ color: passwordConfirmation.length > 0 && password === passwordConfirmation ? '#10B981' : '#00B875' }}>
                         <Lock size={17} />
                       </span>
                       <Form.Control
@@ -798,7 +860,14 @@ export default function ForgotPasswordPage() {
                         onChange={(e) => setPasswordConfirmation(e.target.value)}
                         required
                         className="auth-input-premium"
-                        style={{ paddingLeft: 44, paddingRight: 42 }}
+                        style={{
+                          paddingLeft: 44,
+                          paddingRight: 42,
+                          borderColor: passwordConfirmation.length > 0
+                            ? (password === passwordConfirmation ? '#10B981' : '#EF4444')
+                            : undefined,
+                          transition: 'all 0.2s ease'
+                        }}
                       />
                       <button
                         type="button"
@@ -819,23 +888,45 @@ export default function ForgotPasswordPage() {
                         {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                       </button>
                     </div>
+                    {/* Live Match Feedback */}
+                    {passwordConfirmation.length > 0 && (
+                      password === passwordConfirmation ? (
+                        <p style={{ color: '#10B981', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span>✓ উভয় পাসওয়ার্ড হুবহু মিলেছে</span>
+                        </p>
+                      ) : (
+                        <p style={{ color: '#EF4444', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span>✕ উভয় পাসওয়ার্ড মিলছে না, দয়া করে নিশ্চিত করুন</span>
+                        </p>
+                      )
+                    )}
                   </Form.Group>
 
                   <button
                     type="submit"
                     disabled={loading || password.length < 6 || password !== passwordConfirmation}
-                    className="auth-btn-primary"
+                    className="w-100 auth-btn-premium"
                     style={{
                       width: '100%',
-                      padding: '12px',
+                      height: 48,
                       fontSize: 15,
-                      fontWeight: 700,
-                      borderRadius: 10,
+                      fontWeight: 800,
+                      borderRadius: 12,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 8,
-                      cursor: (loading || password.length < 6 || password !== passwordConfirmation) ? 'not-allowed' : 'pointer'
+                      border: 'none',
+                      color: '#FFFFFF',
+                      background: (loading || password.length < 6 || password !== passwordConfirmation)
+                        ? '#E2E8F0'
+                        : 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)',
+                      boxShadow: (loading || password.length < 6 || password !== passwordConfirmation)
+                        ? 'none'
+                        : '0 4px 14px rgba(0, 184, 117, 0.32)',
+                      cursor: (loading || password.length < 6 || password !== passwordConfirmation) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.25s ease',
+                      marginTop: 8
                     }}
                   >
                     {loading ? (
@@ -880,7 +971,8 @@ export default function ForgotPasswordPage() {
                   আপনার নতুন পাসওয়ার্ড সক্রিয় হয়েছে। এখন আপনি নতুন পাসওয়ার্ড ব্যবহার করে আপনার অ্যাকাউন্টে লগইন করতে পারবেন।
                 </p>
                 <Link
-                  to="/login"
+                  to={resolvedRole ? `/login/${resolvedRole}` : '/login'}
+                  state={{ identifier: mobile }}
                   className="btn btn-mc-primary"
                   style={{
                     borderRadius: 10,
@@ -945,6 +1037,75 @@ export default function ForgotPasswordPage() {
         </div>
 
       </div>
+
+      <style>{`
+        .fp-form-panel {
+          padding: 36px 34px;
+        }
+
+        .fp-stepper-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 22px;
+          background: transparent;
+          border: none;
+          padding: 0 2px;
+        }
+
+        @media (max-width: 991px) {
+          .auth-split-container {
+            border-radius: 18px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07) !important;
+            border: 1px solid #E2E8F0 !important;
+            overflow: hidden !important;
+          }
+
+          .fp-form-panel {
+            padding: 26px 20px !important;
+            border-radius: 18px !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .auth-premium-wrapper {
+            padding: 16px 12px 60px !important;
+          }
+
+          .auth-split-container {
+            border-radius: 16px !important;
+            margin-bottom: 16px;
+          }
+
+          .fp-form-panel {
+            padding: 20px 16px !important;
+            border-radius: 16px !important;
+          }
+
+          .fp-stepper-box {
+            padding: 0 2px;
+            margin-bottom: 18px;
+            background: transparent;
+            border: none;
+          }
+
+          .fp-step-label {
+            font-size: 11px !important;
+          }
+
+          .fp-step-circle {
+            width: 22px !important;
+            height: 22px !important;
+            font-size: 11px !important;
+          }
+
+          .fp-otp-box {
+            width: 38px !important;
+            height: 46px !important;
+            font-size: 18px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

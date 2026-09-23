@@ -1,4 +1,4 @@
-﻿// PendingVerificationPage.jsx
+// PendingVerificationPage.jsx
 // Matches the exact executive light mint theme of LoginPage and RegisterPage
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -26,7 +26,6 @@ export default function PendingVerificationPage() {
     location.pathname.includes('hospital')
 
   const roleLabel = isHospital ? 'হাসপাতাল' : 'ডাক্তার'
-  const roleSubtext = isHospital ? 'চিকিৎসা প্রতিষ্ঠান পার্টনারশিপ' : 'মেডিকেল প্র্যাকটিশনার প্রোফাইল'
 
   // Name resolution
   const displayName = location.state?.name ||
@@ -61,6 +60,33 @@ export default function PendingVerificationPage() {
       setRefreshing(false)
       toast.error('স্ট্যাটাস আপডেট চেক করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
     }
+  }
+
+  // Handle email click gracefully across desktop & mobile
+  const handleEmailClick = (e) => {
+    const email = 'info@doctorbooklet.com.bd'
+
+    // 1. Copy email address to clipboard
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(email).catch(() => {})
+    }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile) {
+      // Mobile browsers natively open Gmail/Mail app via mailto
+      return
+    }
+
+    // 2. On desktop, mailto: silently does nothing if no Windows Mail/Outlook client is configured.
+    // So we open Gmail web compose tab directly and notify user with toast.
+    e.preventDefault()
+    toast.success(`সাপোর্ট ইমেইল (${email}) কপি হয়েছে এবং জিমেইল ওপেন হচ্ছে...`, {
+      icon: '✉️',
+      duration: 4000
+    })
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Doctor Booklet অ্যাকাউন্ট ভেরিফিকেশন সহায়তা')}`
+    window.open(gmailUrl, '_blank')
   }
 
   return (
@@ -115,110 +141,92 @@ export default function PendingVerificationPage() {
         </div>
 
         {/* ===== RIGHT PANEL — CLEAN WHITE INFORMATIVE VERIFICATION STATUS ===== */}
-        <div className="auth-form-panel" style={{ padding: '34px 36px' }}>
+        <div className="auth-form-panel pv-form-panel">
           <div className="slide-in-right">
 
+
             {/* Top Status Badge & Time */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                background: '#FEF3C7', color: '#92400E',
-                padding: '5px 12px', borderRadius: 20,
-                fontSize: 12, fontWeight: 700
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: '#D97706',
-                  animation: 'pvDotPulse 1.5s infinite'
-                }} />
+            <div className="pv-status-bar">
+              <div className="pv-in-review-badge">
+                <span className="pv-dot-indicator" />
                 <span>যাচাইকরণ প্রক্রিয়াধীন (In Review)</span>
               </div>
 
-              <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span className="pv-time-indicator">
                 <Clock size={13} /> ১-৩ কার্যদিবস
               </span>
             </div>
 
             {/* Title & Subtitle */}
-            <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 4, letterSpacing: '-0.4px' }}>
+            <h2 className="pv-title">
               ধন্যবাদ, {displayName}! 🎉
             </h2>
-            <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
+            <p className="pv-subtitle">
               আপনার <strong>{roleLabel}</strong> অ্যাকাউন্ট নিবন্ধন তথ্য সফলভাবে সিস্টেমে জমা হয়েছে।
             </p>
 
             {/* Applicant Summary Card */}
-            <div style={{
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: 12,
-              padding: '12px 16px',
-              marginBottom: 16
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="pv-summary-card">
+              <div className="pv-summary-grid">
                 <div>
-                  <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, display: 'block' }}>অ্যাকাউন্টের ধরন</span>
-                  <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <User size={13} color="#00B875" /> {roleLabel} ({roleSubtext})
+                  <span className="pv-field-label">অ্যাকাউন্টের ধরন</span>
+                  <span className="pv-field-value">
+                    <User size={13} color="#00B875" /> {roleLabel}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, display: 'block' }}>নিবন্ধিত তথ্য</span>
-                  <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 700, display: 'block', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span className="pv-field-label">নিবন্ধিত তথ্য</span>
+                  <span className="pv-field-value pv-contact-value">
                     {mobileOrEmail}
                   </span>
                 </div>
               </div>
-              <div style={{ height: 1, background: '#E2E8F0', margin: '8px 0' }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5 }}>
-                <span style={{ color: '#64748B', fontWeight: 500 }}>বর্তমান অবস্থা:</span>
-                <span style={{ color: '#D97706', fontWeight: 700 }}>অ্যাডমিন অনুমোদনের অপেক্ষমাণ</span>
+              <div className="pv-card-divider" />
+              <div className="pv-status-row">
+                <span className="pv-status-label">বর্তমান অবস্থা:</span>
+                <span className="pv-status-val">অ্যাডমিন অনুমোদনের অপেক্ষমাণ</span>
               </div>
             </div>
 
             {/* 3-Step Visual Progress Stepper */}
-            <div style={{ marginBottom: 18 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <div className="pv-stepper-container">
+              <span className="pv-stepper-title">
                 <FileCheck2 size={15} color="#00B875" />
                 যাচাইকরণ ধাপসমূহ
               </span>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="pv-steps-list">
                 {/* Step 1: Done */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: '#00B875', color: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, marginTop: 1
-                  }}>
-                    <CheckCircle2 size={13} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>১. তথ্য ও ডকুমেন্ট জমা</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '1px 7px', borderRadius: 10 }}>সম্পন্ন</span>
+                <div className="pv-step-item">
+                  <div className="pv-step-indicator-col">
+                    <div className="pv-step-circle pv-circle-done">
+                      <CheckCircle2 size={13} />
                     </div>
-                    <span style={{ fontSize: 11.5, color: '#64748B' }}>আপনার সকল মৌলিক তথ্য সফলভাবে সিস্টেমে সংরক্ষিত হয়েছে।</span>
+                    <div className="pv-timeline-bar pv-bar-done" />
+                  </div>
+                  <div className="pv-step-content">
+                    <div className="pv-step-header">
+                      <span className="pv-step-name">১. তথ্য ও ডকুমেন্ট জমা</span>
+                      <span className="pv-step-tag pv-tag-done">সম্পন্ন</span>
+                    </div>
+                    <span className="pv-step-desc">আপনার সকল মৌলিক তথ্য সফলভাবে সিস্টেমে সংরক্ষিত হয়েছে।</span>
                   </div>
                 </div>
 
                 {/* Step 2: Active */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: '#FEF3C7', color: '#D97706', border: '1.5px solid #F59E0B',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, marginTop: 1
-                  }}>
-                    <Clock size={12} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400E' }}>২. লাইসেন্স ও সনদ পরীক্ষা</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, background: '#FEF3C7', color: '#B45309', padding: '1px 7px', borderRadius: 10 }}>চলমান</span>
+                <div className="pv-step-item">
+                  <div className="pv-step-indicator-col">
+                    <div className="pv-step-circle pv-circle-active">
+                      <Clock size={12} />
                     </div>
-                    <span style={{ fontSize: 11.5, color: '#78350F' }}>
+                    <div className="pv-timeline-bar pv-bar-pending" />
+                  </div>
+                  <div className="pv-step-content">
+                    <div className="pv-step-header">
+                      <span className="pv-step-name pv-active-text">২. লাইসেন্স ও সনদ পরীক্ষা</span>
+                      <span className="pv-step-tag pv-tag-active">চলমান</span>
+                    </div>
+                    <span className="pv-step-desc pv-active-subtext">
                       {isHospital
                         ? 'স্বাস্থ্য অধিদপ্তরের (DGHS) লাইসেন্স ও প্রাতিষ্ঠানিক বিবরণ যাচাই চলছে।'
                         : 'বিএমডিসি (BMDC) রেজিস্ট্রেশন নম্বর ও সনদের সত্যতা পরীক্ষা চলছে।'
@@ -228,77 +236,51 @@ export default function PendingVerificationPage() {
                 </div>
 
                 {/* Step 3: Pending */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: '#F1F5F9', color: '#94A3B8', border: '1px solid #CBD5E1',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, marginTop: 1
-                  }}>
-                    <ShieldCheck size={12} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748B' }}>৩. প্যানেল সক্রিয়করণ ও নোটিফিকেশন</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 600, background: '#F1F5F9', color: '#64748B', padding: '1px 7px', borderRadius: 10 }}>অপেক্ষমাণ</span>
+                <div className="pv-step-item">
+                  <div className="pv-step-indicator-col">
+                    <div className="pv-step-circle pv-circle-pending">
+                      <ShieldCheck size={12} />
                     </div>
-                    <span style={{ fontSize: 11.5, color: '#94A3B8' }}>অনুমোদন শেষে এসএমএস পাবেন এবং সরাসরি প্যানেল সক্রিয় হবে।</span>
+                  </div>
+                  <div className="pv-step-content">
+                    <div className="pv-step-header">
+                      <span className="pv-step-name pv-pending-text">৩. প্যানেল সক্রিয়করণ ও নোটিফিকেশন</span>
+                      <span className="pv-step-tag pv-tag-pending">অপেক্ষমাণ</span>
+                    </div>
+                    <span className="pv-step-desc pv-pending-subtext">অনুমোদন শেষে এসএমএস পাবেন এবং সরাসরি প্যানেল সক্রিয় হবে।</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Quick Helpline Box */}
-            <div style={{
-              background: '#F0FDF4',
-              border: '1px solid #DCFCE7',
-              borderRadius: 10,
-              padding: '10px 14px',
-              marginBottom: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 8
-            }}>
-              <span style={{ fontSize: 11.5, color: '#065F46', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div className="pv-helpline-box">
+              <span className="pv-helpline-label">
                 <PhoneCall size={13} color="#00B875" />
                 জরুরি প্রয়োজনে সহায়তা:
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <a href="tel:09613868438" style={{ color: '#00B875', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+              <div className="pv-helpline-links">
+                <a href="tel:09613868438" className="pv-call-btn">
                   ০৯৬১৩৮৬৮৪৩৮
                 </a>
-                <span style={{ color: '#CBD5E1' }}>|</span>
-                <a href="mailto:info@doctorbooklet.com.bd" style={{ color: '#00B875', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                <span className="pv-helpline-sep">|</span>
+                <a
+                  href="mailto:info@doctorbooklet.com.bd"
+                  onClick={handleEmailClick}
+                  className="pv-email-btn"
+                  title="ক্লিক করে সরাসরি ইমেইল পাঠান অথবা কপি করুন"
+                >
                   ইমেইল সাপোর্ট
                 </a>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div className="pv-action-buttons">
               <button
                 onClick={handleCheckStatus}
                 disabled={refreshing}
-                className="auth-btn-premium"
-                style={{
-                  flex: 1.2,
-                  padding: '11px',
-                  background: '#00B875',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 7,
-                  boxShadow: '0 4px 14px rgba(0, 184, 117, 0.25)',
-                  transition: 'all 0.2s'
-                }}
+                className="pv-btn-refresh"
               >
                 <RefreshCw size={15} className={refreshing ? 'pv-spin' : ''} />
                 <span>{refreshing ? 'চেক হচ্ছে...' : 'স্ট্যাটাস রিফ্রেশ করুন'}</span>
@@ -306,29 +288,14 @@ export default function PendingVerificationPage() {
 
               <button
                 onClick={() => navigate('/')}
-                style={{
-                  flex: 1,
-                  padding: '11px',
-                  background: '#FFFFFF',
-                  color: '#334155',
-                  border: '1.5px solid #E2E8F0',
-                  borderRadius: 10,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 7,
-                  transition: 'all 0.2s'
-                }}
+                className="pv-btn-home"
               >
                 <Home size={15} />
                 <span>ওয়েবসাইটে ফিরুন</span>
               </button>
             </div>
 
-            <p style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', margin: 0 }}>
+            <p className="pv-footer-tip">
               অনুমোদনের পর আপনার বর্তমান লগইন তথ্য দিয়েই প্যানেলে ঢুকতে পারবেন।
             </p>
 
@@ -348,6 +315,438 @@ export default function PendingVerificationPage() {
         @keyframes pvDotPulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.3; transform: scale(0.85); }
+        }
+
+        .pv-form-panel {
+          padding: 34px 36px;
+        }
+
+
+        .pv-status-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .pv-in-review-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: #FEF3C7;
+          color: #92400E;
+          padding: 5px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .pv-dot-indicator {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #D97706;
+          animation: pvDotPulse 1.5s infinite;
+        }
+
+        .pv-time-indicator {
+          font-size: 12px;
+          color: #64748B;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .pv-title {
+          font-weight: 800;
+          color: #0F172A;
+          font-size: 21px;
+          margin-bottom: 4px;
+          letter-spacing: -0.4px;
+          line-height: 1.35;
+        }
+
+        .pv-subtitle {
+          color: #64748B;
+          font-weight: 500;
+          font-size: 13px;
+          margin-bottom: 16px;
+          line-height: 1.5;
+        }
+
+        .pv-summary-card {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          margin-bottom: 16px;
+        }
+
+        .pv-summary-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .pv-field-label {
+          font-size: 11px;
+          color: #64748B;
+          font-weight: 600;
+          display: block;
+        }
+
+        .pv-field-value {
+          font-size: 13px;
+          color: #0F172A;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 2px;
+        }
+
+        .pv-contact-value {
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .pv-card-divider {
+          height: 1px;
+          background: #E2E8F0;
+          margin: 8px 0;
+        }
+
+        .pv-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11.5px;
+        }
+
+        .pv-status-label {
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .pv-status-val {
+          color: #D97706;
+          font-weight: 700;
+        }
+
+        .pv-stepper-container {
+          margin-bottom: 18px;
+        }
+
+        .pv-stepper-title {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #0F172A;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 10px;
+        }
+
+        .pv-steps-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .pv-step-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .pv-step-indicator-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        .pv-step-circle {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 1px;
+        }
+
+        .pv-circle-done {
+          background: #00B875;
+          color: white;
+        }
+
+        .pv-circle-active {
+          background: #FEF3C7;
+          color: #D97706;
+          border: 1.5px solid #F59E0B;
+        }
+
+        .pv-circle-pending {
+          background: #F1F5F9;
+          color: #94A3B8;
+          border: 1px solid #CBD5E1;
+        }
+
+        .pv-timeline-bar {
+          width: 2px;
+          min-height: 20px;
+          margin: 2px 0;
+        }
+
+        .pv-bar-done {
+          background: #00B875;
+        }
+
+        .pv-bar-pending {
+          background: #E2E8F0;
+        }
+
+        .pv-step-content {
+          flex: 1;
+          padding-bottom: 12px;
+        }
+
+        .pv-step-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .pv-step-name {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #0F172A;
+        }
+
+        .pv-active-text {
+          color: #92400E;
+        }
+
+        .pv-pending-text {
+          color: #64748B;
+          font-weight: 600;
+        }
+
+        .pv-step-tag {
+          font-size: 10.5px;
+          font-weight: 700;
+          padding: 1px 7px;
+          border-radius: 10px;
+        }
+
+        .pv-tag-done {
+          background: #DCFCE7;
+          color: #15803D;
+        }
+
+        .pv-tag-active {
+          background: #FEF3C7;
+          color: #B45309;
+        }
+
+        .pv-tag-pending {
+          background: #F1F5F9;
+          color: #64748B;
+        }
+
+        .pv-step-desc {
+          font-size: 11.5px;
+          color: #64748B;
+          display: block;
+          margin-top: 1px;
+          line-height: 1.4;
+        }
+
+        .pv-active-subtext {
+          color: #78350F;
+        }
+
+        .pv-pending-subtext {
+          color: #94A3B8;
+        }
+
+        .pv-helpline-box {
+          background: #F0FDF4;
+          border: 1px solid #DCFCE7;
+          border-radius: 10px;
+          padding: 10px 14px;
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .pv-helpline-label {
+          font-size: 11.5px;
+          color: #065F46;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .pv-helpline-links {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .pv-call-btn, .pv-email-btn {
+          color: #00B875;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: opacity 0.15s;
+        }
+
+        .pv-call-btn:hover, .pv-email-btn:hover {
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+
+        .pv-helpline-sep {
+          color: #CBD5E1;
+        }
+
+        .pv-action-buttons {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+
+        .pv-btn-refresh {
+          flex: 1.2;
+          padding: 11px 16px;
+          background: #00B875;
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          transition: all 0.2s;
+        }
+
+        .pv-btn-refresh:hover:not(:disabled) {
+          background: #059669;
+          transform: translateY(-1px);
+        }
+
+        .pv-btn-home {
+          flex: 1;
+          padding: 11px 16px;
+          background: #FFFFFF;
+          color: #334155;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 10px;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          transition: all 0.2s;
+        }
+
+        .pv-btn-home:hover {
+          background: #F8FAFC;
+          border-color: #CBD5E1;
+        }
+
+        .pv-footer-tip {
+          font-size: 11.5px;
+          color: #94A3B8;
+          text-align: center;
+          margin: 0;
+          line-height: 1.4;
+        }
+
+        /* Responsive Breakpoints for Mobile View */
+        @media (max-width: 991px) {
+          .auth-split-container {
+            border-radius: 18px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid #E2E8F0 !important;
+            overflow: hidden !important;
+          }
+
+
+          .pv-form-panel {
+            padding: 24px 20px !important;
+            border-radius: 18px !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .auth-premium-wrapper {
+            padding: 16px 12px 60px !important;
+          }
+
+          .auth-split-container {
+            border-radius: 16px !important;
+            margin-bottom: 16px;
+          }
+
+          .pv-form-panel {
+            padding: 20px 16px !important;
+            border-radius: 16px !important;
+          }
+
+          .pv-title {
+            font-size: 18px;
+          }
+
+          .pv-summary-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+
+          .pv-summary-grid > div:first-child {
+            border-bottom: 1px dashed #E2E8F0;
+            padding-bottom: 6px;
+          }
+
+          .pv-action-buttons {
+            flex-direction: column;
+            gap: 9px;
+          }
+
+          .pv-btn-refresh, .pv-btn-home {
+            width: 100%;
+            padding: 12px;
+            font-size: 13.5px;
+            min-height: 44px;
+          }
+
+          .pv-helpline-box {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+          }
+
+          .pv-helpline-links {
+            width: 100%;
+            justify-content: space-between;
+          }
         }
       `}</style>
     </div>

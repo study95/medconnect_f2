@@ -20,11 +20,17 @@ function LoginPage() {
         : ''
 
   const [role, setRole] = useState(pathRole)
-  const [identifier, setIdentifier] = useState('')
+  const [identifier, setIdentifier] = useState(location.state?.identifier || '')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+
+  useEffect(() => {
+    if (location.state?.identifier) {
+      setIdentifier(location.state.identifier)
+    }
+  }, [location.state])
 
   // Sync role when URL changes (e.g. back/forward navigation)
   useEffect(() => {
@@ -159,12 +165,12 @@ function LoginPage() {
       const errMsg = result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
       const lower = errMsg.toLowerCase()
 
-      if (lower.includes('নিবন্ধিত নয়') || lower.includes('নিবন্ধন করুন') || lower.includes('পাওয়া যায়নি') || lower.includes('not find') || lower.includes('found') || lower.includes('email') || lower.includes('phone') || lower.includes('mobile')) {
-        setFieldErrors({ password: errMsg })
+      if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
+        setFieldErrors({ role: errMsg })
+      } else if (lower.includes('নিবন্ধিত নয়') || lower.includes('নিবন্ধন করুন') || lower.includes('পাওয়া যায়নি') || lower.includes('not find') || lower.includes('found') || lower.includes('email') || lower.includes('phone') || lower.includes('mobile')) {
+        setFieldErrors({ identifier: errMsg })
       } else if (lower.includes('পাসওয়ার্ড') || lower.includes('password') || lower.includes('credential') || lower.includes('invalid')) {
         setFieldErrors({ password: errMsg })
-      } else if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
-        setFieldErrors({ role: errMsg })
       } else {
         setFieldErrors({ password: errMsg })
       }

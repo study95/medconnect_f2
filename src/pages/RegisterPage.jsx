@@ -536,7 +536,7 @@ const RegisterPage = () => {
                     {!role && (
                       <div style={{
                         position: 'absolute', inset: 0, zIndex: 10,
-                        borderRadius: 0, cursor: 'not-allowed',
+                        borderRadius: 10, cursor: 'not-allowed',
                         background: 'rgba(248,250,252,0.6)',
                       }} />
                     )}
@@ -545,29 +545,76 @@ const RegisterPage = () => {
                       name="mobile" type="tel" placeholder="01XXXXXXXXX"
                       value={form.mobile} onChange={handleChange} required
                       className="auth-input-premium" disabled={otpSent || !role}
-                      style={{ paddingRight: 110, cursor: (!otpSent && !role) ? 'not-allowed' : undefined }}
+                      style={{ paddingRight: 118, cursor: (!otpSent && !role) ? 'not-allowed' : undefined }}
                       maxLength={11}
                     />
                     {!otpSent ? (
-                      <Button
-                        onClick={() => role ? handleSendOTP() : handleLockedFieldClick()} disabled={loading || !role}
+                      <button
+                        type="button"
+                        onClick={() => role ? handleSendOTP() : handleLockedFieldClick()}
+                        disabled={loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11}
                         style={{
-                          position: 'absolute', right: 5, top: 5, bottom: 5,
-                          background: !role ? '#CBD5E1' : '#0D9488', border: 'none', borderRadius: 0,
-                          fontSize: 12.5, fontWeight: 700, padding: '0 14px', color: 'white', zIndex: 11,
-                          cursor: !role ? 'not-allowed' : 'pointer',
-                          transition: 'background 0.3s',
+                          position: 'absolute',
+                          right: 5,
+                          top: 5,
+                          bottom: 5,
+                          padding: '0 14px',
+                          background: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                            ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
+                            : '#E2E8F0',
+                          color: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                            ? '#FFFFFF'
+                            : '#94A3B8',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          zIndex: 11,
+                          cursor: (loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11) ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          transition: 'all 0.2s',
+                          boxShadow: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                            ? '0 2px 8px rgba(0, 184, 117, 0.25)'
+                            : 'none'
                         }}
                       >
-                        {loading ? 'যাচাই...' : 'OTP পাঠান'}
-                      </Button>
+                        {loading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13 }} role="status" aria-hidden="true" />
+                            <span style={{ fontSize: 11 }}>যাচাই...</span>
+                          </>
+                        ) : (
+                          'OTP পাঠান'
+                        )}
+                      </button>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => { setOtpSent(false); setOtpDigits(['','','','','','']); setOtp(''); setFieldErrors({}) }}
-                        className="input-link-premium"
-                        style={{ color: '#0D9488', fontSize: 12, fontWeight: 700, border: 'none', background: 'none' }}
+                        style={{
+                          position: 'absolute',
+                          right: 6,
+                          top: 6,
+                          bottom: 6,
+                          padding: '0 12px',
+                          background: '#ECFDF5',
+                          border: '1px solid #A7F3D0',
+                          borderRadius: 8,
+                          color: '#059669',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          zIndex: 11,
+                          transition: 'all 0.2s'
+                        }}
                       >
-                        পরিবর্তন
+                        <span>পরিবর্তন</span>
                       </button>
                     )}
                   </div>
@@ -587,7 +634,7 @@ const RegisterPage = () => {
                     padding: '14px 16px',
                     background: '#FEF2F2',
                     border: '1px solid #FCA5A5',
-                    borderRadius: 0,
+                    borderRadius: 12,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -604,7 +651,7 @@ const RegisterPage = () => {
                       style={{
                         background: '#DC2626',
                         border: 'none',
-                        borderRadius: 0,
+                        borderRadius: 8,
                         fontSize: 12.5,
                         fontWeight: 700,
                         padding: '6px 14px',
@@ -635,14 +682,15 @@ const RegisterPage = () => {
                             onKeyDown={e => handleOtpKeyDown(i, e)}
                             style={{
                               width: 44, height: 50, textAlign: 'center',
-                              fontSize: 20, fontWeight: 800, borderRadius: 0,
-                              border: digit ? '1.5px solid #0D9488' : '1px solid #E2E8F0',
-                              background: digit ? '#F0FDF4' : '#F8FAFC',
+                              fontSize: 20, fontWeight: 800, borderRadius: 10,
+                              border: digit ? '2px solid #00B875' : '1.5px solid #CBD5E1',
+                              background: digit ? '#F0FDF4' : '#FFFFFF',
                               outline: 'none', transition: 'all 0.2s',
-                              color: '#0F172A', fontFamily: "'Inter', monospace"
+                              color: '#0F172A', fontFamily: "'Inter', monospace",
+                              boxShadow: digit ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none'
                             }}
-                            onFocus={e => { e.target.style.borderColor = '#0D9488'; e.target.style.boxShadow = '0 0 0 3px rgba(13, 148, 136, 0.12)' }}
-                            onBlur={e => { e.target.style.borderColor = digit ? '#0D9488' : '#E2E8F0'; e.target.style.boxShadow = 'none' }}
+                            onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.boxShadow = '0 0 0 3px rgba(0, 184, 117, 0.15)' }}
+                            onBlur={e => { e.target.style.borderColor = digit ? '#00B875' : '#CBD5E1'; e.target.style.boxShadow = digit ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none' }}
                           />
                         ))}
                       </div>
@@ -655,7 +703,7 @@ const RegisterPage = () => {
                       )}
 
                       <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 10, fontWeight: 500 }}>
-                        কোড পাননি? <button onClick={handleSendOTP} style={{ background: 'none', border: 'none', color: '#0D9488', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>পুনরায় পাঠান</button>
+                        কোড পাননি? <button onClick={handleSendOTP} style={{ background: 'none', border: 'none', color: '#00B875', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>পুনরায় পাঠান</button>
                       </p>
                     </Form.Group>
 
