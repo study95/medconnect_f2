@@ -57,7 +57,11 @@ export default function AppointmentViewPage() {
                 <div style={{ marginTop: 8 }}><StatusBadge status={appt.status} /></div>
               </div>
               
-              {(isAdmin || isDoctor || isManager) && (
+              {appt.is_payment_locked ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 8, color: '#059669', fontSize: 12, fontWeight: 700 }}>
+                  🔒 Prescription Finalized & Payment Paid
+                </div>
+              ) : (isAdmin || isDoctor || isManager) && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button 
                     disabled={updating || appt.status === 'confirmed'} 

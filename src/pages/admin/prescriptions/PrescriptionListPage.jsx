@@ -442,44 +442,56 @@ export default function PrescriptionListPage() {
                       <div className="admin-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                         {p.status === 'draft' ? (
                           <>
-                            <button
-                              className="admin-btn admin-btn-sm"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '5px 12px',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                borderRadius: 6,
-                                background: '#00A88C',
-                                color: '#fff',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 4px rgba(0,168,140,0.2)'
-                              }}
-                              onClick={() => {
-                                if (p.is_local_draft) {
-                                  if (p.appointment_id) {
-                                    navigate(`/admin/prescriptions/create?appointment_id=${p.appointment_id}`)
-                                  } else {
-                                    navigate('/admin/prescriptions/create')
-                                  }
-                                } else {
-                                  navigate(`/admin/prescriptions/edit/${p.public_id || p.id}`)
-                                }
-                              }}
-                              title="Resume writing and complete prescription"
-                            >
-                              <PenLine size={13} /> Complete
-                            </button>
-                            <button
-                              className="admin-action-btn admin-action-btn-delete"
-                              onClick={() => setDeleteTarget(p)}
-                              title="Discard Draft"
-                            >
-                              <img src="/icons/delete.png" alt="Delete" />
-                            </button>
+                            {isDoctor ? (
+                              <>
+                                <button
+                                  className="admin-btn admin-btn-sm"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    padding: '5px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    borderRadius: 6,
+                                    background: '#00A88C',
+                                    color: '#fff',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 4px rgba(0,168,140,0.2)'
+                                  }}
+                                  onClick={() => {
+                                    if (p.is_local_draft) {
+                                      if (p.appointment_id) {
+                                        navigate(`/admin/prescriptions/create?appointment_id=${p.appointment_id}`)
+                                      } else {
+                                        navigate('/admin/prescriptions/create')
+                                      }
+                                    } else {
+                                      navigate(`/admin/prescriptions/edit/${p.public_id || p.id}`)
+                                    }
+                                  }}
+                                  title="Resume writing and complete prescription"
+                                >
+                                  <PenLine size={13} /> Complete
+                                </button>
+                                <button
+                                  className="admin-action-btn admin-action-btn-delete"
+                                  onClick={() => setDeleteTarget(p)}
+                                  title="Discard Draft"
+                                >
+                                  <img src="/icons/delete.png" alt="Delete" />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                className="admin-action-btn admin-action-btn-view"
+                                onClick={() => navigate(`/admin/prescriptions/view/${p.public_id || p.id}`)}
+                                title="View Draft Preview"
+                              >
+                                <img src="/icons/view.png" alt="View" />
+                              </button>
+                            )}
                           </>
                         ) : (
                           <>
@@ -489,20 +501,6 @@ export default function PrescriptionListPage() {
                               title="View / Print"
                             >
                               <img src="/icons/view.png" alt="View" />
-                            </button>
-                            <button
-                              className="admin-action-btn admin-action-btn-edit"
-                              onClick={() => navigate(`/admin/prescriptions/edit/${p.public_id || p.id}`)}
-                              title="Edit"
-                            >
-                              <img src="/icons/edit.png" alt="Edit" />
-                            </button>
-                            <button
-                              className="admin-action-btn admin-action-btn-delete"
-                              onClick={() => setDeleteTarget(p)}
-                              title="Delete"
-                            >
-                              <img src="/icons/delete.png" alt="Delete" />
                             </button>
                           </>
                         )}

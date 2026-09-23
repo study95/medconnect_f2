@@ -772,10 +772,73 @@
   .rx-pad-footer-spacer span {
     display: none !important;
   }
+
+  /* Strict print color fidelity and row structure */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rx-header,
+  .rx-header-classic-bilingual {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .rx-header-left {
+    flex: 1.2 !important;
+    text-align: left !important;
+    min-width: 0 !important;
+  }
+
+  .rx-header-right {
+    flex: 1.2 !important;
+    text-align: right !important;
+    min-width: 0 !important;
+  }
+
+  .rx-header-right .rx-degrees {
+    align-items: flex-end !important;
+  }
+
+  .rx-body {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+  }
+
+  .rx-body-left {
+    width: 32% !important;
+    min-width: 65mm !important;
+    max-width: 65mm !important;
+    flex-shrink: 0 !important;
+    border-right: 1.5px solid var(--rx-border) !important;
+    border-bottom: none !important;
+  }
+
+  .rx-body-right {
+    width: 68% !important;
+    flex: 1 !important;
+  }
+
+  .rx-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .rx-footer-right {
+    text-align: right !important;
+  }
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
+/* ===== RESPONSIVE (SCREEN ONLY - PREVENTS PRINT IFRAME COLLAPSE) ===== */
+@media screen and (max-width: 768px) {
   .rx-paper {
     margin: 0 8px;
     min-height: auto;
@@ -840,7 +903,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media screen and (max-width: 480px) {
 
   .rx-header-left .rx-doctor-name,
   .rx-header-right .rx-doctor-name {

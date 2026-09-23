@@ -544,17 +544,38 @@ export default function AppointmentListPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <select
-                            className={`status-select-minimal status-${appt.status}`}
-                            value={appt.status}
-                            disabled={changingStatus === appt.id}
-                            onChange={(e) => handleStatusChange(appt.id, e.target.value)}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                          {appt.is_payment_locked ? (
+                            <span 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: 4, 
+                                fontSize: 11, 
+                                fontWeight: 800, 
+                                padding: '4px 8px', 
+                                borderRadius: 6, 
+                                background: 'rgba(16,185,129,0.12)', 
+                                color: '#059669', 
+                                border: '1px solid rgba(16,185,129,0.3)',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="প্রেসক্রিপশন সম্পন্ন ও পেমেন্ট লক করা হয়েছে"
+                            >
+                              🔒 Completed
+                            </span>
+                          ) : (
+                            <select
+                              className={`status-select-minimal status-${appt.status}`}
+                              value={appt.status}
+                              disabled={changingStatus === appt.id}
+                              onChange={(e) => handleStatusChange(appt.id, e.target.value)}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="confirmed">Confirmed</option>
+                              <option value="completed">Completed</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          )}
                         </div>
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>

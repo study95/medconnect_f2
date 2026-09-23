@@ -1,9 +1,10 @@
-// ChamberFormPage.jsx — Modern & Premium Chamber Create/Edit Form
+// ChamberFormPage.jsx — Modern & Premium Healthcare Chamber Create/Edit Form
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { 
   Calendar, Clock, Building2, User, DollarSign, Check, 
-  ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Info, X
+  ArrowLeft, Sparkles, AlertCircle, CheckCircle2, X,
+  Stethoscope, MapPin, Layers, ShieldCheck, ChevronDown
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { toast } from 'react-hot-toast'
@@ -15,13 +16,13 @@ import { getErrorMessage } from '../../../utils/errorHelper'
 import CompactUlid from '../../../components/common/CompactUlid'
 
 const DAYS = [
-  { id: 'Saturday', label: 'Sat', full: 'Saturday', weekend: true },
-  { id: 'Sunday', label: 'Sun', full: 'Sunday' },
-  { id: 'Monday', label: 'Mon', full: 'Monday' },
-  { id: 'Tuesday', label: 'Tue', full: 'Tuesday' },
-  { id: 'Wednesday', label: 'Wed', full: 'Wednesday' },
-  { id: 'Thursday', label: 'Thu', full: 'Thursday' },
-  { id: 'Friday', label: 'Fri', full: 'Friday', weekend: true },
+  { id: 'Saturday', label: 'Sat', full: 'Saturday', bn: 'শনি', weekend: true },
+  { id: 'Sunday', label: 'Sun', full: 'Sunday', bn: 'রবি' },
+  { id: 'Monday', label: 'Mon', full: 'Monday', bn: 'সোম' },
+  { id: 'Tuesday', label: 'Tue', full: 'Tuesday', bn: 'মঙ্গল' },
+  { id: 'Wednesday', label: 'Wed', full: 'Wednesday', bn: 'বুধ' },
+  { id: 'Thursday', label: 'Thu', full: 'Thursday', bn: 'বৃহস্পতি' },
+  { id: 'Friday', label: 'Fri', full: 'Friday', bn: 'শুক্র', weekend: true },
 ]
 
 // Helper to format 24h time to 12h AM/PM
@@ -49,7 +50,7 @@ function calculateDuration(start, end) {
   return `${hours > 0 ? `${hours} hr${hours > 1 ? 's ' : ' '}` : ''}${mins} min`
 }
 
-// Premium Searchable Dropdown with Rich Preview
+// Premium Searchable Dropdown with Healthcare Styling
 function SearchableSelect({ label, icon, options, value, onChange, placeholder, disabled = false, error = '', helperText = '' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -79,6 +80,7 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
       (optHospitalIdStr && optHospitalIdStr === valStr)
     )
   })
+
   const filteredOptions = options
     .filter(opt => 
       opt.name?.toLowerCase().includes(search.toLowerCase()) || 
@@ -91,8 +93,8 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
     <div ref={dropdownRef} style={{ position: 'relative', width: '100%', opacity: disabled ? 0.7 : 1 }}>
       <label style={{ 
         display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-        marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+        fontSize: 12.5, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
+        marginBottom: 8, letterSpacing: '0.02em' 
       }}>
         {icon}
         {label}
@@ -103,34 +105,42 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
         style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           cursor: disabled ? 'not-allowed' : 'pointer', 
-          background: disabled ? 'var(--admin-bg, #f8fafc)' : 'var(--admin-card-bg, #ffffff)', 
-          minHeight: 50, padding: '10px 16px', borderRadius: 12, 
-          border: error ? '1.5px solid #ef4444' : isOpen ? '1.5px solid #6366f1' : '1.5px solid var(--admin-border, #e2e8f0)',
-          boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.12)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+          background: disabled ? 'var(--admin-bg, #f8fafc)' : '#ffffff', 
+          minHeight: 48, padding: '10px 14px', borderRadius: 12, 
+          border: error 
+            ? '1.5px solid #ef4444' 
+            : isOpen 
+              ? '1.5px solid #00A88C' 
+              : '1.5px solid var(--admin-border, #e2e8f0)',
+          boxShadow: isOpen ? '0 0 0 3px rgba(0, 168, 140, 0.12)' : '0 1px 2px rgba(0, 0, 0, 0.03)',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
           {selectedOption ? (
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--admin-text, #0f172a)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>
                 {selectedOption.name}
               </div>
               {selectedOption.subtext && (
-                <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
                   {selectedOption.subtext}
                 </div>
               )}
             </div>
           ) : (
-            <span style={{ color: 'var(--admin-text-muted, #94a3b8)', fontSize: 14 }}>{placeholder}</span>
+            <span style={{ color: '#94a3b8', fontSize: 13.5 }}>{placeholder}</span>
           )}
         </div>
-        <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>▼</span>
+        <ChevronDown 
+          size={16} 
+          color="#64748b" 
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }} 
+        />
       </div>
 
       {helperText && !error && (
-        <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>{helperText}</div>
+        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{helperText}</div>
       )}
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
@@ -141,12 +151,12 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
       {isOpen && (
         <div style={{ 
           position: 'absolute', top: '100%', left: 0, right: 0,
-          background: 'var(--admin-card-bg, #ffffff)', border: '1.5px solid var(--admin-border, #e2e8f0)', 
-          borderRadius: 14, marginTop: 8,
-          boxShadow: '0 12px 30px -4px rgba(0, 0, 0, 0.15)', overflow: 'hidden', zIndex: 1000,
+          background: '#ffffff', border: '1.5px solid #00A88C', 
+          borderRadius: 14, marginTop: 6,
+          boxShadow: '0 12px 30px -4px rgba(0, 0, 0, 0.12)', overflow: 'hidden', zIndex: 1000,
           animation: 'fadeInSlide 0.15s ease-out'
         }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--admin-border, #f1f5f9)', background: 'var(--admin-bg, #f8fafc)' }}>
+          <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
             <input 
               ref={inputRef}
               type="text" 
@@ -154,9 +164,9 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
               placeholder="Type to search..." 
               style={{ 
                 width: '100%', padding: '8px 12px', borderRadius: 8, 
-                border: '1px solid var(--admin-border, #e2e8f0)', outline: 'none', 
-                fontSize: 13, background: 'var(--admin-card-bg, #ffffff)',
-                color: 'var(--admin-text, #0f172a)'
+                border: '1px solid #e2e8f0', outline: 'none', 
+                fontSize: 13, background: '#ffffff',
+                color: '#0f172a'
               }}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -165,7 +175,7 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
           </div>
           <div style={{ maxHeight: 240, overflowY: 'auto' }}>
             {filteredOptions.length === 0 ? (
-              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--admin-text-muted, #94a3b8)', fontSize: 13 }}>
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
                 No matching results found
               </div>
             ) : (
@@ -175,13 +185,13 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
                   <div 
                     key={opt.id} 
                     style={{ 
-                      padding: '10px 16px', cursor: 'pointer', 
-                      background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                      borderBottom: '1px solid var(--admin-border, #f8fafc)',
+                      padding: '10px 14px', cursor: 'pointer', 
+                      background: isSelected ? '#E6F7F4' : 'transparent',
+                      borderBottom: '1px solid #f8fafc',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       transition: 'background 0.15s'
                     }}
-                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(99, 102, 241, 0.04)' }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#f8fafc' }}
                     onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                     onClick={() => {
                       onChange(opt.id.toString())
@@ -190,16 +200,16 @@ function SearchableSelect({ label, icon, options, value, onChange, placeholder, 
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: isSelected ? 700 : 600, color: isSelected ? '#6366f1' : 'var(--admin-text, #334155)', fontSize: 13.5 }}>
+                      <div style={{ fontWeight: isSelected ? 700 : 600, color: isSelected ? '#008f77' : '#334155', fontSize: 13.5 }}>
                         {opt.name}
                       </div>
                       {opt.subtext && (
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
                           {opt.subtext}
                         </div>
                       )}
                     </div>
-                    {isSelected && <Check size={16} color="#6366f1" />}
+                    {isSelected && <Check size={16} color="#00A88C" />}
                   </div>
                 )
               })
@@ -221,6 +231,8 @@ export default function ChamberFormPage() {
 
   // Multi-day selection in Create mode, single day in Edit mode
   const [selectedDays, setSelectedDays] = useState(['Monday'])
+  const [venueType, setVenueType] = useState('hospital') // 'hospital' | 'private'
+  
   const [form, setForm] = useState({ 
     doctor_id: '', 
     hospital_id: '', 
@@ -357,6 +369,9 @@ export default function ChamberFormPage() {
           name: d.hospital.name,
           subtext: [d.hospital.district?.name, d.hospital.upazila?.name, d.hospital.address].filter(Boolean).join(', ')
         })
+        setVenueType('hospital')
+      } else {
+        setVenueType('private')
       }
 
       setForm({
@@ -398,7 +413,6 @@ export default function ChamberFormPage() {
 
     if (selectedDays.includes(dayId)) {
       if (selectedDays.length === 1) {
-        // Keep at least one or allow unselect
         setSelectedDays([])
       } else {
         setSelectedDays(selectedDays.filter(d => d !== dayId))
@@ -428,8 +442,8 @@ export default function ChamberFormPage() {
     const errs = {}
     if (!form.doctor_id) errs.doctor_id = 'Please select a practitioner/doctor'
     
-    // If not affiliated with hospital, personal chamber name, district, and address are required
-    if (!form.hospital_id) {
+    // If private venue selected, validate chamber details
+    if (venueType === 'private' || !form.hospital_id) {
       if (!form.chamber_name || !form.chamber_name.trim()) errs.chamber_name = 'Please provide a chamber or clinic name'
       if (!form.district_id) errs.district_id = 'Please select a district'
       if (!form.address || !form.address.trim()) errs.address = 'Please provide chamber address'
@@ -461,6 +475,7 @@ export default function ChamberFormPage() {
     if (!validate()) return
     setSaving(true)
 
+    const isHospitalMode = venueType === 'hospital' && Boolean(form.hospital_id)
     const selectedDist = districtsList.find(d => String(d.id) === String(form.district_id))
     const resolvedDivisionId = form.division_id 
       ? Number(form.division_id) 
@@ -468,15 +483,15 @@ export default function ChamberFormPage() {
 
     const payloadBase = {
       doctor_id: form.doctor_id,
-      hospital_id: form.hospital_id || null,
-      chamber_name: form.chamber_name ? form.chamber_name.trim() : null,
-      division_id: resolvedDivisionId,
-      district_id: form.district_id ? Number(form.district_id) : null,
-      upazila_id: form.upazila_id ? Number(form.upazila_id) : null,
-      address: form.address ? form.address.trim() : null,
+      hospital_id: isHospitalMode ? form.hospital_id : null,
+      chamber_name: isHospitalMode ? null : (form.chamber_name ? form.chamber_name.trim() : null),
+      division_id: isHospitalMode ? null : resolvedDivisionId,
+      district_id: isHospitalMode ? null : (form.district_id ? Number(form.district_id) : null),
+      upazila_id: isHospitalMode ? null : (form.upazila_id ? Number(form.upazila_id) : null),
+      address: isHospitalMode ? null : (form.address ? form.address.trim() : null),
       is_primary: Boolean(form.is_primary),
       display_order: Number(form.display_order) || 0,
-      consultation_type: form.consultation_type || (form.hospital_id ? 'hospital' : 'physical'),
+      consultation_type: isHospitalMode ? 'hospital' : 'physical',
       room_number: form.room_number ? form.room_number.trim() : null,
       start_time: form.start_time,
       end_time: form.end_time,
@@ -486,7 +501,6 @@ export default function ChamberFormPage() {
 
     try {
       if (isEdit) {
-        // Single update using public_id
         await saveUpdatedChamber({
           id: chamberData?.public_id || id,
           data: {
@@ -500,7 +514,6 @@ export default function ChamberFormPage() {
         })
         setTimeout(() => navigate('/admin/chambers'), 700)
       } else {
-        // Multi-day atomic batch create: Send days array in a single atomic transaction
         await saveNewChamber({
           ...payloadBase,
           days: selectedDays
@@ -536,12 +549,12 @@ export default function ChamberFormPage() {
   const estimatedCapacity = useMemo(() => {
     if (!form.start_time || !form.end_time) return 0
     const [h1, m1] = form.start_time.split(':').map(Number)
-    const [h2, m2] = form.end_time.split(':').map(Number)
-    if (isNaN(h1) || isNaN(h2)) return 0
-    let totalMin = (h2 * 60 + m2) - (h1 * 60 + m1)
+    const [hEnd, mEnd] = form.end_time.split(':').map(Number)
+    if (isNaN(h1) || isNaN(hEnd)) return 0
+    let totalMin = (hEnd * 60 + mEnd) - (h1 * 60 + m1)
     if (totalMin <= 0) totalMin += 24 * 60
     const slot = Number(form.slot_duration_minutes) || 15
-    return Math.floor(totalMin / Math.max(1, slot)) + 1
+    return Math.floor(totalMin / Math.max(1, slot))
   }, [form.start_time, form.end_time, form.slot_duration_minutes])
 
   if (isManager && !isAdmin) {
@@ -550,15 +563,15 @@ export default function ChamberFormPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--admin-text-muted, #64748b)' }}>
-        <div className="admin-spinner" style={{ margin: '0 auto 16px' }} />
-        <h4 style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>Loading Chamber Schedule...</h4>
+      <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
+        <div className="admin-spinner" style={{ margin: '0 auto 16px', borderColor: '#00A88C transparent #00A88C transparent' }} />
+        <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Loading Chamber Schedule...</h4>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', paddingBottom: 60 }}>
+    <div style={{ maxWidth: 940, margin: '0 auto', paddingBottom: 60 }}>
       {/* ── Page Header ── */}
       <div style={{ 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
@@ -567,41 +580,41 @@ export default function ChamberFormPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ 
             width: 48, height: 48, borderRadius: 16, 
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            background: 'linear-gradient(135deg, #00A88C, #00B875)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#ffffff', boxShadow: '0 8px 16px rgba(99, 102, 241, 0.25)'
+            color: '#ffffff', boxShadow: '0 8px 20px rgba(0, 168, 140, 0.25)'
           }}>
             <Calendar size={24} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h1 style={{ 
-                fontSize: 22, fontWeight: 800, color: 'var(--admin-text, #0f172a)', 
-                letterSpacing: '-0.5px', margin: 0 
+                fontSize: 21, fontWeight: 800, color: '#0f172a', 
+                letterSpacing: '-0.4px', margin: 0 
               }}>
-                {isEdit ? 'Edit Chamber Schedule' : 'Add Clinical Chamber'}
+                {isEdit ? 'Edit Chamber Schedule' : 'Create Clinical Chamber'}
               </h1>
               {isEdit && (chamberData?.public_id || id) && (
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 5,
                   padding: '3px 10px',
                   borderRadius: 8,
-                  background: 'rgba(0, 168, 140, 0.08)',
-                  border: '1px solid rgba(0, 168, 140, 0.25)',
+                  background: '#E6F7F4',
+                  border: '1px solid #B2E5DC',
                   fontSize: 12,
                   fontWeight: 700,
                   color: '#008f77'
                 }}>
-                  Public ID: <CompactUlid value={chamberData?.public_id || id} />
+                  ID: <CompactUlid value={chamberData?.public_id || id} />
                 </span>
               )}
             </div>
-            <p style={{ fontSize: 13, color: 'var(--admin-text-muted, #64748b)', margin: '4px 0 0' }}>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
               {isEdit 
-                ? 'Update doctor visiting hours and consultation fee'
-                : 'Select one or multiple days to schedule doctor availability at a hospital'}
+                ? 'Update doctor visiting hours, practice venue and consultation fee'
+                : 'Configure doctor practice venue, multi-day availability slots and consultation fee'}
             </p>
           </div>
         </div>
@@ -612,10 +625,10 @@ export default function ChamberFormPage() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 10,
             border: '1.5px solid var(--admin-border, #e2e8f0)',
-            background: 'var(--admin-card-bg, #ffffff)',
-            color: 'var(--admin-text, #334155)',
+            background: '#ffffff',
+            color: '#334155',
             fontSize: 13, fontWeight: 700, textDecoration: 'none',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
             transition: 'all 0.15s'
           }}
         >
@@ -626,7 +639,7 @@ export default function ChamberFormPage() {
       {/* ── Server Alert / Feedback ── */}
       {serverFeedback && (
         <div style={{ 
-          padding: '14px 18px', borderRadius: 12, marginBottom: 20,
+          padding: '14px 18px', borderRadius: 14, marginBottom: 20,
           background: serverFeedback.type === 'error' ? '#fef2f2' : '#fffbeb',
           border: `1.5px solid ${serverFeedback.type === 'error' ? '#fecaca' : '#fde68a'}`,
           color: serverFeedback.type === 'error' ? '#991b1b' : '#92400e',
@@ -648,113 +661,197 @@ export default function ChamberFormPage() {
         </div>
       )}
 
-      {/* ── Main Form Card ── */}
-      <form onSubmit={handleSubmit}>
+      {/* ── Main Form ── */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ════ CARD 1: Practitioner & Venue Setup ════ */}
         <div style={{ 
-          background: 'var(--admin-card-bg, #ffffff)', 
-          border: '1.5px solid var(--admin-border, #e2e8f0)',
+          background: '#ffffff', 
+          border: '1.5px solid #e2e8f0',
           borderRadius: 20, 
-          boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.05)',
-          overflow: 'hidden'
+          boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
+          position: 'relative',
+          zIndex: 30
         }}>
-
-          {/* Section 1: Doctor & Hospital Assignment */}
-          <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--admin-border, #f1f5f9)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-              <div style={{ 
-                width: 28, height: 28, borderRadius: 8, 
-                background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
-              }}>
-                1
-              </div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
-                Practitioner & Location Details
-              </h3>
+          {/* Section Header */}
+          <div style={{ 
+            padding: '18px 24px', 
+            background: 'linear-gradient(to right, #f8fafc, #ffffff)',
+            borderBottom: '1px solid #f1f5f9',
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <div style={{ 
+              width: 30, height: 30, borderRadius: 10, 
+              background: '#E6F7F4', color: '#00A88C',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
+            }}>
+              1
             </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
+                Practitioner & Practice Venue
+              </h3>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                Assign the doctor and configure either a hospital facility or private practice
+              </p>
+            </div>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-              {/* Doctor Selection */}
-              <div>
-                {isDoctorOnly ? (
-                  <div>
-                    <label style={{ 
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                      marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
-                    }}>
-                      <User size={14} color="#6366f1" /> Assigned Doctor
-                    </label>
+          <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Doctor Selection */}
+            <div style={{ position: 'relative', zIndex: 25 }}>
+              {isDoctorOnly ? (
+                <div>
+                  <label style={{ 
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                    marginBottom: 8, letterSpacing: '0.02em' 
+                  }}>
+                    <User size={14} color="#00A88C" /> Assigned Doctor
+                  </label>
+                  <div style={{ 
+                    padding: '12px 16px', background: '#F0FDF4', borderRadius: 12, 
+                    border: '1.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 
+                  }}>
                     <div style={{ 
-                      padding: '12px 16px', background: '#f5f3ff', borderRadius: 12, 
-                      border: '1.5px solid #ddd6fe', display: 'flex', alignItems: 'center', gap: 12 
+                      width: 40, height: 40, borderRadius: 10, background: '#00A88C', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 
                     }}>
-                      <div style={{ 
-                        width: 38, height: 38, borderRadius: 10, background: '#6366f1', color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 
-                      }}>
-                        👨‍⚕️
+                      👨‍⚕️
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>
+                        {myDoctorProfile?.name || user?.name}
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#4338ca', fontSize: 14 }}>
-                          {myDoctorProfile?.name || user?.name}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#6366f1', marginTop: 2 }}>
-                          {myDoctorProfile?.specialty?.name || 'Your Doctor Profile'}
-                        </div>
+                      <div style={{ fontSize: 12, color: '#008f77', marginTop: 1, fontWeight: 600 }}>
+                        {myDoctorProfile?.specialty?.name || 'Your Doctor Profile'}
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <SearchableSelect 
-                    label="Assign Doctor *" 
-                    icon={<User size={14} color="#6366f1" />}
-                    placeholder="Search doctor by name, specialty, BMDC..." 
-                    options={doctors} 
-                    value={form.doctor_id} 
-                    onChange={val => { setForm({ ...form, doctor_id: val }); setErrors({ ...errors, doctor_id: '' }) }} 
-                    error={errors.doctor_id}
-                  />
-                )}
-              </div>
-
-              {/* Hospital or Personal Chamber Mode */}
-              <div>
+                </div>
+              ) : (
                 <SearchableSelect 
-                  label="Hospital / Clinic Facility (Leave empty if Private Chamber)" 
-                  icon={<Building2 size={14} color="#6366f1" />}
-                  placeholder="Search hospital (or leave blank for Private Chamber)..." 
-                  options={[{ id: '', name: '— Private Practice / Personal Chamber (No Hospital) —' }, ...hospitals]} 
-                  value={form.hospital_id} 
-                  onChange={val => { setForm({ ...form, hospital_id: val }); setErrors({ ...errors, hospital_id: '' }) }} 
-                  error={errors.hospital_id}
+                  label="Assign Doctor / Practitioner *" 
+                  icon={<User size={14} color="#00A88C" />}
+                  placeholder="Search doctor by name, specialty, BMDC..." 
+                  options={doctors} 
+                  value={form.doctor_id} 
+                  onChange={val => { setForm({ ...form, doctor_id: val }); setErrors({ ...errors, doctor_id: '' }) }} 
+                  error={errors.doctor_id}
                 />
+              )}
+            </div>
+
+            {/* Practice Type Toggle: Hospital vs Private Chamber */}
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <label style={{ 
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                marginBottom: 8, letterSpacing: '0.02em' 
+              }}>
+                <Stethoscope size={14} color="#00A88C" /> Practice Venue Type *
+              </label>
+
+              <div style={{ 
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+                background: '#f8fafc', padding: 4, borderRadius: 14, border: '1px solid #e2e8f0'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVenueType('hospital')
+                    setErrors(prev => ({ ...prev, chamber_name: '', district_id: '', address: '' }))
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '11px 16px', borderRadius: 10, border: 'none',
+                    background: venueType === 'hospital' ? '#ffffff' : 'transparent',
+                    color: venueType === 'hospital' ? '#008f77' : '#64748b',
+                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
+                    boxShadow: venueType === 'hospital' ? '0 2px 8px rgba(0, 0, 0, 0.06)' : 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <Building2 size={16} />
+                  <span>Hospital / Medical Center</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVenueType('private')
+                    setForm(prev => ({ ...prev, hospital_id: '' }))
+                    setErrors(prev => ({ ...prev, hospital_id: '' }))
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '11px 16px', borderRadius: 10, border: 'none',
+                    background: venueType === 'private' ? '#ffffff' : 'transparent',
+                    color: venueType === 'private' ? '#008f77' : '#64748b',
+                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
+                    boxShadow: venueType === 'private' ? '0 2px 8px rgba(0, 0, 0, 0.06)' : 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <Stethoscope size={16} />
+                  <span>Private Chamber (ব্যক্তিগত চেম্বার)</span>
+                </button>
               </div>
             </div>
 
-            {/* Custom Location Inputs for Personal Practice */}
-            {!form.hospital_id && (
-              <div style={{ marginTop: 20, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #cbd5e1' }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#334155', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  🏥 Private Chamber Location & Details
+            {/* Venue Specific Inputs */}
+            {venueType === 'hospital' ? (
+              <div style={{ animation: 'fadeInSlide 0.2s ease-out', position: 'relative', zIndex: 20 }}>
+                <SearchableSelect 
+                  label="Select Hospital / Clinic Facility *" 
+                  icon={<Building2 size={14} color="#00A88C" />}
+                  placeholder="Search hospital by name or location..." 
+                  options={hospitals} 
+                  value={form.hospital_id} 
+                  onChange={val => { setForm({ ...form, hospital_id: val }); setErrors({ ...errors, hospital_id: '' }) }} 
+                  error={errors.hospital_id}
+                  helperText="Select the hospital or clinic where the doctor conducts this chamber"
+                />
+              </div>
+            ) : (
+              <div style={{ 
+                animation: 'fadeInSlide 0.2s ease-out',
+                background: '#F8FAFC',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 16,
+                padding: '18px 20px',
+                display: 'flex', flexDirection: 'column', gap: 16
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00A88C' }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Private Practice Location Details
+                  </span>
                 </div>
+
                 {/* Chamber Name */}
-                <div style={{ marginBottom: 16 }}>
+                <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
-                    Chamber / Clinic Name *
+                    Chamber / Practice Name *
                   </label>
                   <input 
                     type="text" 
-                    placeholder="e.g. Dr. Rahman's Private Care" 
+                    placeholder="e.g. Dr. Rahman's Specialized Clinic" 
                     value={form.chamber_name}
                     onChange={e => { setForm({ ...form, chamber_name: e.target.value }); setErrors({ ...errors, chamber_name: '' }) }}
-                    style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.chamber_name ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none' }}
+                    style={{ 
+                      width: '100%', height: 46, padding: '0 14px', borderRadius: 10, 
+                      border: errors.chamber_name ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1', 
+                      outline: 'none', background: '#ffffff', fontSize: 13.5, color: '#0f172a'
+                    }}
                   />
-                  {errors.chamber_name && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.chamber_name}</div>}
+                  {errors.chamber_name && <div style={{ fontSize: 11.5, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>{errors.chamber_name}</div>}
                 </div>
 
-                {/* Cascading Location Hierarchy: Division -> District -> Upazila */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
+                {/* Cascading Location Hierarchy */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                   {/* Division */}
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
@@ -764,15 +861,14 @@ export default function ChamberFormPage() {
                       value={form.division_id}
                       onChange={e => {
                         const newDiv = e.target.value
-                        setForm(prev => ({
-                          ...prev,
-                          division_id: newDiv,
-                          district_id: '',
-                          upazila_id: ''
-                        }))
+                        setForm(prev => ({ ...prev, division_id: newDiv, district_id: '', upazila_id: '' }))
                         setErrors(prev => ({ ...prev, district_id: '' }))
                       }}
-                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
+                      style={{ 
+                        width: '100%', height: 46, padding: '0 12px', borderRadius: 10, 
+                        border: '1.5px solid #cbd5e1', outline: 'none', background: '#ffffff',
+                        fontSize: 13, color: '#0f172a'
+                      }}
                     >
                       <option value="">-- All Divisions (সব বিভাগ) --</option>
                       {divisionsList.map(div => (
@@ -783,7 +879,7 @@ export default function ChamberFormPage() {
                     </select>
                   </div>
 
-                  {/* District (Filtered by Division) */}
+                  {/* District */}
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
                       District (জেলা) *
@@ -801,7 +897,11 @@ export default function ChamberFormPage() {
                         }))
                         setErrors(prev => ({ ...prev, district_id: '' }))
                       }}
-                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.district_id ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
+                      style={{ 
+                        width: '100%', height: 46, padding: '0 12px', borderRadius: 10, 
+                        border: errors.district_id ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1', 
+                        outline: 'none', background: '#ffffff', fontSize: 13, color: '#0f172a'
+                      }}
                     >
                       <option value="">
                         {form.division_id 
@@ -813,7 +913,7 @@ export default function ChamberFormPage() {
                         <option key={d.id} value={d.id}>{d.name} {d.bangla_name ? `(${d.bangla_name})` : ''}</option>
                       ))}
                     </select>
-                    {errors.district_id && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.district_id}</div>}
+                    {errors.district_id && <div style={{ fontSize: 11.5, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>{errors.district_id}</div>}
                   </div>
 
                   {/* Upazila */}
@@ -824,8 +924,13 @@ export default function ChamberFormPage() {
                     <select
                       value={form.upazila_id}
                       onChange={e => setForm(prev => ({ ...prev, upazila_id: e.target.value }))}
-                      style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
                       disabled={!form.district_id}
+                      style={{ 
+                        width: '100%', height: 46, padding: '0 12px', borderRadius: 10, 
+                        border: '1.5px solid #cbd5e1', outline: 'none', 
+                        background: form.district_id ? '#ffffff' : '#f1f5f9',
+                        fontSize: 13, color: '#0f172a'
+                      }}
                     >
                       <option value="">-- Select Upazila --</option>
                       {upazilasList.map(u => (
@@ -835,186 +940,197 @@ export default function ChamberFormPage() {
                   </div>
                 </div>
 
+                {/* Full Address */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
-                    Full Address *
+                    Full Physical Address *
                   </label>
                   <input 
                     type="text" 
                     placeholder="e.g. House 14, Road 5, Block B, Mirpur 12" 
                     value={form.address}
                     onChange={e => { setForm({ ...form, address: e.target.value }); setErrors({ ...errors, address: '' }) }}
-                    style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: errors.address ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none' }}
+                    style={{ 
+                      width: '100%', height: 46, padding: '0 14px', borderRadius: 10, 
+                      border: errors.address ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1', 
+                      outline: 'none', background: '#ffffff', fontSize: 13.5, color: '#0f172a'
+                    }}
                   />
-                  {errors.address && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.address}</div>}
+                  {errors.address && <div style={{ fontSize: 11.5, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>{errors.address}</div>}
                 </div>
               </div>
             )}
 
-            {/* Primary Chamber & Display Order Strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginTop: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+            {/* Room Number & Primary Chamber Flags */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              {/* Room Number */}
+              <div>
+                <label style={{ 
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                  marginBottom: 8, letterSpacing: '0.02em' 
+                }}>
+                  <Building2 size={14} color="#00A88C" /> Room / Counter / Cabin (Optional)
+                </label>
+                <input 
+                  type="text" 
+                  maxLength={50}
+                  placeholder="e.g. Room 302, Cabin-4, Counter 1" 
+                  value={form.room_number || ''} 
+                  onChange={e => { 
+                    const val = e.target.value;
+                    setForm({ ...form, room_number: val });
+                    if (val.length > 50) {
+                      setErrors({ ...errors, room_number: 'Room number must not exceed 50 characters.' });
+                    } else {
+                      setErrors({ ...errors, room_number: '' });
+                    }
+                  }}
+                  style={{ 
+                    width: '100%', height: 46, padding: '0 14px', borderRadius: 10, 
+                    border: errors.room_number ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
+                    background: '#ffffff', color: '#0f172a',
+                    fontSize: 13.5, fontWeight: 500, outline: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Primary Chamber Switch Card */}
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', 
+                background: form.is_primary ? '#E6F7F4' : '#f8fafc', 
+                borderRadius: 12, border: form.is_primary ? '1.5px solid #00A88C' : '1.5px solid #e2e8f0',
+                cursor: 'pointer', transition: 'all 0.15s ease'
+              }}
+              onClick={() => setForm({ ...form, is_primary: !form.is_primary })}
+              >
                 <input 
                   type="checkbox" 
                   id="is_primary"
                   checked={form.is_primary}
                   onChange={e => setForm({ ...form, is_primary: e.target.checked })}
-                  style={{ width: 18, height: 18, accentColor: '#00B875', cursor: 'pointer' }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ width: 18, height: 18, accentColor: '#00A88C', cursor: 'pointer' }}
                 />
-                <label htmlFor="is_primary" style={{ cursor: 'pointer', margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
-                  Set as Primary Chamber ⭐
-                  <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#64748b' }}>
-                    Used for doctor canonical URL and search cards
-                  </span>
+                <label htmlFor="is_primary" style={{ cursor: 'pointer', margin: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: form.is_primary ? '#008f77' : '#1e293b' }}>
+                    Primary Chamber ⭐
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                    Default location displayed on doctor profile & search
+                  </div>
                 </label>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
-                  Display Order
-                </label>
-                <input 
-                  type="number" 
-                  min="0"
-                  placeholder="0" 
-                  value={form.display_order}
-                  onChange={e => setForm({ ...form, display_order: e.target.value })}
-                  style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none' }}
-                />
               </div>
             </div>
 
-            {/* Room Number (Optional) */}
-            <div style={{ marginTop: 20 }}>
-              <label style={{ 
-                display: 'flex', alignItems: 'center', gap: 6,
-                fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+          </div>
+        </div>
+
+        {/* ════ CARD 2: Visiting Days Schedule ════ */}
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1.5px solid #e2e8f0',
+          borderRadius: 20, 
+          boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
+          position: 'relative',
+          zIndex: 20
+        }}>
+          {/* Section Header */}
+          <div style={{ 
+            padding: '18px 24px', 
+            background: 'linear-gradient(to right, #f8fafc, #ffffff)',
+            borderBottom: '1px solid #f1f5f9',
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ 
+                width: 30, height: 30, borderRadius: 10, 
+                background: '#E6F7F4', color: '#00A88C',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
               }}>
-                <Building2 size={14} color="#6366f1" /> Room Number (Optional)
-              </label>
-              <input 
-                type="text" 
-                maxLength={50}
-                placeholder="e.g. 301, Cabin-5, OPD-2" 
-                value={form.room_number || ''} 
-                onChange={e => { 
-                  const val = e.target.value;
-                  setForm({ ...form, room_number: val });
-                  if (val.length > 50) {
-                    setErrors({ ...errors, room_number: 'Room number must not exceed 50 characters.' });
-                  } else {
-                    setErrors({ ...errors, room_number: '' });
-                  }
-                }}
-                style={{ 
-                  width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
-                  border: errors.room_number ? '1.5px solid #ef4444' : '1.5px solid var(--admin-border, #e2e8f0)',
-                  background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
-                  fontSize: 14, fontWeight: 500, outline: 'none', boxSizing: 'border-box',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-              />
-              <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
-                Specific room number, cabin, ward, or OPD counter within the facility (max 50 characters)
+                2
               </div>
-              {errors.room_number && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
-                  <AlertCircle size={13} /> {errors.room_number}
-                </div>
-              )}
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
+                  {isEdit ? 'Active Visiting Day' : 'Select Visiting Days'}
+                </h3>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                  {isEdit ? 'Select the active schedule day' : 'Choose one or multiple days to batch-create schedules'}
+                </p>
+              </div>
             </div>
+
+            {/* Presets (Create Mode) */}
+            {!isEdit && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
+                  Presets:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => selectPreset('all')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+                    border: '1px solid #B2E5DC', background: '#E6F7F4', color: '#008f77', cursor: 'pointer'
+                  }}
+                >
+                  All 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPreset('bd_weekdays')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+                    border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#166534', cursor: 'pointer'
+                  }}
+                >
+                  Sat – Thu (BD)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPreset('weekdays')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+                    border: '1px solid #e2e8f0', background: '#ffffff', color: '#475569', cursor: 'pointer'
+                  }}
+                >
+                  Mon – Fri
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPreset('weekend')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+                    border: '1px solid #fed7aa', background: '#fff7ed', color: '#c2410c', cursor: 'pointer'
+                  }}
+                >
+                  Fri & Sat
+                </button>
+                {selectedDays.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => selectPreset('clear')}
+                    style={{
+                      padding: '5px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+                      border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer'
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Section 2: Visiting Days Selection */}
-          <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--admin-border, #f1f5f9)', background: 'rgba(248, 250, 252, 0.6)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ 
-                  width: 28, height: 28, borderRadius: 8, 
-                  background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
-                }}>
-                  2
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
-                    {isEdit ? 'Visiting Day' : 'Select Visiting Days'}
-                  </h3>
-                  <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
-                    {isEdit ? 'Select the active schedule day' : 'Choose one or multiple days to create schedule slots'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Preset Buttons (Create mode only) */}
-              {!isEdit && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', marginRight: 4 }}>
-                    Presets:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => selectPreset('all')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                      border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4338ca', cursor: 'pointer'
-                    }}
-                  >
-                    All 7 Days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectPreset('bd_weekdays')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                      border: '1px solid #d1fae5', background: '#ecfdf5', color: '#065f46', cursor: 'pointer'
-                    }}
-                  >
-                    Sat – Thu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectPreset('weekdays')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                      border: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-card-bg, #fff)', color: 'var(--admin-text, #334155)', cursor: 'pointer'
-                    }}
-                  >
-                    Mon – Fri
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectPreset('weekend')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                      border: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-card-bg, #fff)', color: 'var(--admin-text, #334155)', cursor: 'pointer'
-                    }}
-                  >
-                    Fri & Sat
-                  </button>
-                  {selectedDays.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => selectPreset('clear')}
-                      style={{
-                        padding: '4px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                        border: '1px solid #fee2e2', background: '#fef2f2', color: '#dc2626', cursor: 'pointer'
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
+          <div style={{ padding: '22px 24px' }}>
             {/* Interactive Day Pills */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))', 
-              gap: 10, marginTop: 12 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', 
+              gap: 12 
             }}>
               {DAYS.map(d => {
                 const isSelected = isEdit ? form.day === d.id : selectedDays.includes(d.id)
@@ -1024,15 +1140,13 @@ export default function ChamberFormPage() {
                     type="button"
                     onClick={() => toggleDay(d.id)}
                     style={{
-                      padding: '12px 10px', borderRadius: 14,
-                      border: isSelected ? '2px solid #6366f1' : '1.5px solid var(--admin-border, #e2e8f0)',
-                      background: isSelected 
-                        ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08))' 
-                        : 'var(--admin-card-bg, #ffffff)',
-                      color: isSelected ? '#4338ca' : 'var(--admin-text, #334155)',
+                      padding: '14px 10px', borderRadius: 14,
+                      border: isSelected ? '2px solid #00A88C' : '1.5px solid #e2e8f0',
+                      background: isSelected ? '#E6F7F4' : '#ffffff',
+                      color: isSelected ? '#008f77' : '#334155',
                       cursor: 'pointer',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                      boxShadow: isSelected ? '0 4px 12px rgba(99, 102, 241, 0.15)' : '0 1px 2px rgba(0,0,0,0.03)',
+                      boxShadow: isSelected ? '0 4px 14px rgba(0, 168, 140, 0.15)' : '0 1px 2px rgba(0,0,0,0.02)',
                       transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
                       position: 'relative'
                     }}
@@ -1040,21 +1154,24 @@ export default function ChamberFormPage() {
                     {isSelected && (
                       <div style={{ 
                         position: 'absolute', top: 6, right: 6, 
-                        width: 16, height: 16, borderRadius: '50%', background: '#6366f1',
+                        width: 16, height: 16, borderRadius: '50%', background: '#00A88C',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' 
                       }}>
-                        <Check size={10} strokeWidth={3} />
+                        <Check size={11} strokeWidth={3} />
                       </div>
                     )}
                     <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.3px' }}>
                       {d.label}
                     </span>
                     <span style={{ 
-                      fontSize: 10, fontWeight: 700, 
-                      color: isSelected ? '#6366f1' : d.weekend ? '#f59e0b' : 'var(--admin-text-muted, #94a3b8)',
+                      fontSize: 10.5, fontWeight: 700, 
+                      color: isSelected ? '#008f77' : d.weekend ? '#f59e0b' : '#94a3b8',
                       textTransform: 'uppercase'
                     }}>
                       {d.full}
+                    </span>
+                    <span style={{ fontSize: 11, color: isSelected ? '#00A88C' : '#94a3b8' }}>
+                      ({d.bn})
                     </span>
                   </button>
                 )
@@ -1064,67 +1181,87 @@ export default function ChamberFormPage() {
             {/* Selected Days Summary Badge */}
             {!isEdit && selectedDays.length > 0 && (
               <div style={{ 
-                marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, 
-                padding: '6px 14px', borderRadius: 20, background: '#f5f3ff', border: '1px solid #ddd6fe' 
+                marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 8, 
+                padding: '7px 16px', borderRadius: 20, background: '#F0FDF4', border: '1px solid #BBF7D0' 
               }}>
-                <Sparkles size={14} color="#6366f1" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#4338ca' }}>
+                <Sparkles size={14} color="#00A88C" />
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534' }}>
                   {selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} selected:
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#6366f1' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#008f77' }}>
                   {selectedDays.join(', ')}
                 </span>
               </div>
             )}
 
             {(errors.days || errors.day) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 12 }}>
                 <AlertCircle size={13} /> {errors.days || errors.day}
               </div>
             )}
           </div>
+        </div>
 
-          {/* Section 3: Time Slot & Consultation Fee */}
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-              <div style={{ 
-                width: 28, height: 28, borderRadius: 8, 
-                background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
-              }}>
-                3
-              </div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
-                Timing & Financial Configuration
-              </h3>
+        {/* ════ CARD 3: Shift Timing & Financial Configuration ════ */}
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1.5px solid #e2e8f0',
+          borderRadius: 20, 
+          boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
+          position: 'relative',
+          zIndex: 10
+        }}>
+          {/* Section Header */}
+          <div style={{ 
+            padding: '18px 24px', 
+            background: 'linear-gradient(to right, #f8fafc, #ffffff)',
+            borderBottom: '1px solid #f1f5f9',
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <div style={{ 
+              width: 30, height: 30, borderRadius: 10, 
+              background: '#E6F7F4', color: '#00A88C',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 
+            }}>
+              3
             </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
+                Shift Timing, Duration & Consultation Fee
+              </h3>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                Specify shift hours, appointment interval and consultation charges
+              </p>
+            </div>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+          <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
               
               {/* Start Time */}
               <div>
                 <label style={{ 
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+                  fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                  marginBottom: 8, letterSpacing: '0.02em' 
                 }}>
-                  <Clock size={14} color="#6366f1" /> Starting Time *
+                  <Clock size={14} color="#00A88C" /> Starting Time *
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="time" 
-                    value={form.start_time} 
-                    onChange={e => { setForm({ ...form, start_time: e.target.value }); setErrors({ ...errors, start_time: '' }) }}
-                    style={{ 
-                      width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
-                      border: errors.start_time ? '1.5px solid #ef4444' : '1.5px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
-                      fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
-                  Formatted: <strong>{format12Hour(form.start_time) || '—'}</strong>
+                <input 
+                  type="time" 
+                  value={form.start_time} 
+                  onChange={e => { setForm({ ...form, start_time: e.target.value }); setErrors({ ...errors, start_time: '' }) }}
+                  style={{ 
+                    width: '100%', height: 46, padding: '0 14px', borderRadius: 10, 
+                    border: errors.start_time ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
+                    background: '#ffffff', color: '#0f172a',
+                    fontSize: 14, fontWeight: 700, outline: 'none'
+                  }}
+                />
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  Time: <strong style={{ color: '#008f77' }}>{format12Hour(form.start_time) || '—'}</strong>
                 </div>
                 {errors.start_time && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
@@ -1137,27 +1274,25 @@ export default function ChamberFormPage() {
               <div>
                 <label style={{ 
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+                  fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                  marginBottom: 8, letterSpacing: '0.02em' 
                 }}>
-                  <Clock size={14} color="#6366f1" /> Ending Time *
+                  <Clock size={14} color="#00A88C" /> Ending Time *
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="time" 
-                    value={form.end_time} 
-                    onChange={e => { setForm({ ...form, end_time: e.target.value }); setErrors({ ...errors, end_time: '' }) }}
-                    style={{ 
-                      width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
-                      border: errors.end_time ? '1.5px solid #ef4444' : '1.5px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
-                      fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
-                  Formatted: <strong>{format12Hour(form.end_time) || '—'}</strong>
-                  {durationText && <span style={{ color: '#6366f1', marginLeft: 6 }}>({durationText})</span>}
+                <input 
+                  type="time" 
+                  value={form.end_time} 
+                  onChange={e => { setForm({ ...form, end_time: e.target.value }); setErrors({ ...errors, end_time: '' }) }}
+                  style={{ 
+                    width: '100%', height: 46, padding: '0 14px', borderRadius: 10, 
+                    border: errors.end_time ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
+                    background: '#ffffff', color: '#0f172a',
+                    fontSize: 14, fontWeight: 700, outline: 'none'
+                  }}
+                />
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  Time: <strong style={{ color: '#008f77' }}>{format12Hour(form.end_time) || '—'}</strong>
+                  {durationText && <span style={{ color: '#00A88C', marginLeft: 6, fontWeight: 600 }}>({durationText})</span>}
                 </div>
                 {errors.end_time && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
@@ -1170,15 +1305,15 @@ export default function ChamberFormPage() {
               <div>
                 <label style={{ 
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+                  fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                  marginBottom: 8, letterSpacing: '0.02em' 
                 }}>
-                  <DollarSign size={14} color="#10b981" /> Consultation Fee (৳) *
+                  <DollarSign size={14} color="#00A88C" /> Consultation Fee (৳) *
                 </label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ 
-                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', 
-                    fontSize: 16, fontWeight: 800, color: '#10b981' 
+                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', 
+                    fontSize: 16, fontWeight: 800, color: '#00A88C' 
                   }}>
                     ৳
                   </span>
@@ -1190,15 +1325,15 @@ export default function ChamberFormPage() {
                     value={form.fee} 
                     onChange={e => { setForm({ ...form, fee: e.target.value }); setErrors({ ...errors, fee: '' }) }}
                     style={{ 
-                      width: '100%', height: 48, paddingLeft: 36, paddingRight: 16, borderRadius: 12, 
-                      border: errors.fee ? '1.5px solid #ef4444' : '1.5px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)', color: '#0f172a',
-                      fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
+                      width: '100%', height: 46, paddingLeft: 34, paddingRight: 14, borderRadius: 10, 
+                      border: errors.fee ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
+                      background: '#ffffff', color: '#0f172a',
+                      fontSize: 14.5, fontWeight: 700, outline: 'none'
                     }}
                   />
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
-                  Standard patient appointment fee
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  Appointment charge per patient
                 </div>
                 {errors.fee && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>
@@ -1211,133 +1346,173 @@ export default function ChamberFormPage() {
               <div>
                 <label style={{ 
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #1e293b)', 
-                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' 
+                  fontSize: 12.5, fontWeight: 700, color: '#1e293b', 
+                  marginBottom: 8, letterSpacing: '0.02em' 
                 }}>
-                  <Clock size={14} color="#6366f1" /> Slot Duration (Min) *
+                  <Layers size={14} color="#00A88C" /> Slot Duration (Min) *
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <select 
-                    value={form.slot_duration_minutes || '15'} 
-                    onChange={e => setForm({ ...form, slot_duration_minutes: e.target.value })}
-                    style={{ 
-                      width: '100%', height: 48, padding: '0 16px', borderRadius: 12, 
-                      border: '1.5px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #0f172a)',
-                      fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="10">10 mins (Quick)</option>
-                    <option value="15">15 mins (Standard)</option>
-                    <option value="20">20 mins (Detailed)</option>
-                    <option value="30">30 mins (Extended)</option>
-                    <option value="45">45 mins (Specialist)</option>
-                    <option value="60">60 mins (Comprehensive)</option>
-                  </select>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 4 }}>
-                  Consultation interval per patient (Est. ~{estimatedCapacity} capacity)
+                <select 
+                  value={form.slot_duration_minutes || '15'} 
+                  onChange={e => setForm({ ...form, slot_duration_minutes: e.target.value })}
+                  style={{ 
+                    width: '100%', height: 46, padding: '0 12px', borderRadius: 10, 
+                    border: '1.5px solid #cbd5e1',
+                    background: '#ffffff', color: '#0f172a',
+                    fontSize: 13.5, fontWeight: 600, outline: 'none'
+                  }}
+                >
+                  <option value="10">10 mins (Quick Consultation)</option>
+                  <option value="15">15 mins (Standard)</option>
+                  <option value="20">20 mins (Detailed)</option>
+                  <option value="30">30 mins (Extended)</option>
+                  <option value="45">45 mins (Specialist Procedure)</option>
+                  <option value="60">60 mins (Comprehensive)</option>
+                </select>
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  Est. capacity: <strong style={{ color: '#008f77' }}>~{estimatedCapacity} patients/day</strong>
                 </div>
               </div>
 
             </div>
 
-            {/* Live Schedule Preview Card */}
-            {(selectedDoctorObj || selectedHospitalObj) && (
-              <div style={{ 
-                marginTop: 24, padding: '16px 20px', borderRadius: 14, 
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(16, 185, 129, 0.05))',
-                border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                flexWrap: 'wrap', gap: 12
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* ── Real-Time Clinical Chamber Preview Card ── */}
+            <div style={{ 
+              marginTop: 10, 
+              background: 'linear-gradient(135deg, #F8FAFC 0%, #F0FDF4 100%)', 
+              border: '1.5px solid #B2E5DC', 
+              borderRadius: 16, 
+              padding: '18px 20px',
+              display: 'flex', flexDirection: 'column', gap: 14
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ 
-                    width: 36, height: 36, borderRadius: 10, background: '#6366f1', color: '#fff',
+                    width: 38, height: 38, borderRadius: 10, 
+                    background: '#00A88C', color: '#ffffff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' 
                   }}>
-                    <CheckCircle2 size={20} />
+                    <Stethoscope size={20} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                      {selectedDoctorObj?.name || 'Doctor'} @ {selectedHospitalObj?.name || 'Hospital'}
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
+                      {selectedDoctorObj?.name || 'Selected Doctor'}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
-                      {form.room_number?.trim() ? `🚪 Room: ${form.room_number.trim()} • ` : ''}
-                      🗓️ {isEdit ? form.day : (selectedDays.join(', ') || 'No days selected')} • 
-                      ⏰ {format12Hour(form.start_time)} – {format12Hour(form.end_time)} • 
-                      ⏱️ {form.slot_duration_minutes || 15}m slots (~{estimatedCapacity} patients) • 
-                      💰 ৳{form.fee || 0}
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>
+                      {venueType === 'hospital' 
+                        ? (selectedHospitalObj?.name || 'Hospital Not Selected Yet') 
+                        : (form.chamber_name || 'Private Practice Chamber')}
+                      {form.room_number?.trim() ? ` • Room: ${form.room_number.trim()}` : ''}
                     </div>
                   </div>
                 </div>
 
                 {!isEdit && selectedDays.length > 1 && (
-                  <div style={{ 
-                    fontSize: 12, fontWeight: 700, color: '#6366f1', 
-                    padding: '4px 10px', borderRadius: 20, background: '#ffffff',
-                    border: '1px solid #c7d2fe'
+                  <span style={{ 
+                    fontSize: 12, fontWeight: 700, color: '#008f77', 
+                    padding: '4px 12px', borderRadius: 20, background: '#E6F7F4',
+                    border: '1px solid #B2E5DC'
                   }}>
-                    Will create {selectedDays.length} schedule entries
-                  </div>
+                    Batch: {selectedDays.length} schedules will be generated
+                  </span>
                 )}
               </div>
-            )}
+
+              {/* Preview Details Strip */}
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                paddingTop: 10, borderTop: '1px solid rgba(0, 168, 140, 0.15)'
+              }}>
+                <span style={{ 
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 8, background: '#ffffff', border: '1px solid #e2e8f0',
+                  fontSize: 12, fontWeight: 700, color: '#334155' 
+                }}>
+                  🗓️ {isEdit ? form.day : (selectedDays.join(', ') || 'No days selected')}
+                </span>
+
+                <span style={{ 
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 8, background: '#ffffff', border: '1px solid #e2e8f0',
+                  fontSize: 12, fontWeight: 700, color: '#334155' 
+                }}>
+                  ⏰ {format12Hour(form.start_time)} – {format12Hour(form.end_time)} {durationText ? `(${durationText})` : ''}
+                </span>
+
+                <span style={{ 
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 8, background: '#E6F7F4', border: '1px solid #B2E5DC',
+                  fontSize: 12, fontWeight: 800, color: '#008f77' 
+                }}>
+                  💰 ৳{form.fee || 0}
+                </span>
+
+                <span style={{ 
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 8, background: '#ffffff', border: '1px solid #e2e8f0',
+                  fontSize: 12, fontWeight: 600, color: '#64748b' 
+                }}>
+                  👥 ~{estimatedCapacity} capacity ({form.slot_duration_minutes || 15}m slots)
+                </span>
+              </div>
+            </div>
+
           </div>
-
-          {/* Form Actions Footer */}
-          <div style={{ 
-            padding: '20px 28px', background: 'var(--admin-bg, #f8fafc)', 
-            borderTop: '1.5px solid var(--admin-border, #e2e8f0)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            flexWrap: 'wrap', gap: 12
-          }}>
-            <Link 
-              to="/admin/chambers"
-              style={{ 
-                padding: '12px 24px', borderRadius: 12,
-                border: '1.5px solid var(--admin-border, #cbd5e1)',
-                background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #475569)',
-                fontWeight: 700, fontSize: 14, textDecoration: 'none',
-                transition: 'all 0.15s'
-              }}
-            >
-              Cancel
-            </Link>
-
-            <button 
-              type="submit" 
-              disabled={saving}
-              style={{ 
-                padding: '13px 36px', borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: '#ffffff', fontWeight: 800, fontSize: 14,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.7 : 1,
-                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              {saving ? (
-                <>
-                  <div className="admin-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                  Saving Schedules...
-                </>
-              ) : isEdit ? (
-                '💾 Update Schedule'
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  {selectedDays.length > 1 
-                    ? `Publish ${selectedDays.length} Chamber Schedules`
-                    : 'Publish Chamber Schedule'}
-                </>
-              )}
-            </button>
-          </div>
-
         </div>
+
+        {/* ── Form Actions Footer ── */}
+        <div style={{ 
+          padding: '16px 24px', background: '#ffffff', 
+          border: '1.5px solid #e2e8f0', borderRadius: 16,
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 12
+        }}>
+          <Link 
+            to="/admin/chambers"
+            style={{ 
+              padding: '11px 22px', borderRadius: 10,
+              border: '1.5px solid #cbd5e1',
+              background: '#ffffff', color: '#475569',
+              fontWeight: 700, fontSize: 13.5, textDecoration: 'none',
+              transition: 'all 0.15s'
+            }}
+          >
+            Cancel
+          </Link>
+
+          <button 
+            type="submit" 
+            disabled={saving}
+            style={{ 
+              padding: '12px 32px', borderRadius: 10,
+              border: 'none',
+              background: 'linear-gradient(135deg, #00A88C 0%, #00B875 100%)',
+              color: '#ffffff', fontWeight: 800, fontSize: 14,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.7 : 1,
+              boxShadow: '0 4px 14px rgba(0, 168, 140, 0.35)',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            {saving ? (
+              <>
+                <div className="admin-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                Saving Schedules...
+              </>
+            ) : isEdit ? (
+              '💾 Update Schedule'
+            ) : (
+              <>
+                <Sparkles size={16} />
+                {selectedDays.length > 1 
+                  ? `Publish ${selectedDays.length} Chamber Schedules`
+                  : 'Publish Chamber Schedule'}
+              </>
+            )}
+          </button>
+        </div>
+
       </form>
 
       <style dangerouslySetInnerHTML={{ __html: `

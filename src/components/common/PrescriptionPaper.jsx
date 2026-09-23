@@ -11,10 +11,11 @@ import PrescriptionBarcode from './PrescriptionBarcode';
  * - 'classic-pad': Traditional Bangladeshi hardcopy layout with QR
  * - 'minimal-digital': Minimalist clean layout with e-verification
  */
-const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 'digital-qr-barcode' }, ref) => {
+const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template }, ref) => {
   if (!prescription) return null;
   const rx = prescription;
-  const activeTemplate = rx.template || template || 'digital-qr-barcode';
+  const storedTemplate = typeof window !== 'undefined' ? localStorage.getItem('dr_rx_template') : null;
+  const activeTemplate = template || rx.template || storedTemplate || 'classic-pad';
   const isPadPrint = activeTemplate === 'pad-print-only-data' || hideAll;
 
   // Clean patient values
@@ -607,18 +608,22 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 
                         )}
                         {med.duration && <span className="rx-duration">{med.duration}</span>}
                       </div>
-                      {(med.instructions || med.meal) && (
-                        <div className="rx-instructions" style={{ 
-                          fontSize: 12, 
-                          color: isPadPrint ? '#334155' : '#2563eb', 
-                          background: isPadPrint ? 'transparent' : '#eff6ff', 
-                          padding: isPadPrint ? '0' : '2px 10px', 
-                          borderRadius: 4, 
-                          marginLeft: 10 
-                        }}>
-                          ( {med.meal ? `${med.meal}` : ''}{med.instructions ? ` - ${med.instructions}` : ''} )
-                        </div>
-                      )}
+                      {(med.instructions || med.meal) && (() => {
+                        const cleanInstructions = med.instructions ? med.instructions.trim().replace(/^[-–—]\s*/, '') : ''
+                        return (
+                          <div className="rx-instructions" style={{ 
+                            fontSize: 12, 
+                            color: isPadPrint ? '#334155' : '#2563eb', 
+                            background: 'transparent', 
+                            padding: 0, 
+                            marginLeft: 10 
+                          }}>
+                            {med.meal && `(${med.meal.trim()})`}
+                            {med.meal && cleanInstructions ? '  -' : ''}
+                            {cleanInstructions}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -630,11 +635,10 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template = 
           {rx.advice && (
             <div className="rx-advice-section" style={{ 
               marginTop: 'auto', 
-              padding: isPadPrint ? '8px 0' : '8px 12px', 
-              background: isPadPrint ? 'transparent' : '#f8fafc', 
-              borderRadius: isPadPrint ? 0 : 6, 
+              padding: '8px 0', 
+              background: 'transparent', 
               border: 'none',
-              borderTop: isPadPrint ? 'none' : '1px solid #e2e8f0'
+              borderTop: isPadPrint ? 'none' : '1px dashed #e2e8f0'
             }}>
               <div className="rx-advice-title" style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
                 💡 Advice / পরামর্শ:

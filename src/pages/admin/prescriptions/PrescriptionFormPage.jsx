@@ -686,11 +686,14 @@ export default function PrescriptionFormPage() {
       const printIframe = document.createElement('iframe')
       printIframe.id = 'dr-print-frame'
       printIframe.style.position = 'fixed'
-      printIframe.style.right = '0'
-      printIframe.style.bottom = '0'
-      printIframe.style.width = '0px'
-      printIframe.style.height = '0px'
+      printIframe.style.top = '-9999px'
+      printIframe.style.left = '-9999px'
+      printIframe.style.width = '1024px'
+      printIframe.style.height = '1448px'
       printIframe.style.border = '0px'
+      printIframe.style.opacity = '0'
+      printIframe.style.pointerEvents = 'none'
+      printIframe.style.zIndex = '-9999'
       document.body.appendChild(printIframe)
 
       const doc = printIframe.contentWindow.document
@@ -710,6 +713,7 @@ export default function PrescriptionFormPage() {
                 box-sizing: border-box !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                color-adjust: exact !important;
               }
               @page {
                 size: A4 portrait;
@@ -724,6 +728,8 @@ export default function PrescriptionFormPage() {
                 background: #ffffff !important;
                 font-family: 'Inter', 'Segoe UI', sans-serif;
                 overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               .rx-font-bn {
                 font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif !important;
@@ -746,14 +752,30 @@ export default function PrescriptionFormPage() {
                 break-inside: avoid !important;
                 overflow: hidden !important;
               }
-              .rx-header {
+              .rx-header,
+              .rx-header-classic-bilingual {
                 min-height: 55mm !important;
                 padding: 6mm 12mm 4mm 18mm !important;
                 box-sizing: border-box !important;
                 border-bottom: 3px solid #00A88C !important;
                 display: flex !important;
+                flex-direction: row !important;
                 justify-content: space-between !important;
                 align-items: flex-start !important;
+                width: 100% !important;
+              }
+              .rx-header-left {
+                flex: 1.2 !important;
+                text-align: left !important;
+                min-width: 0 !important;
+              }
+              .rx-header-right {
+                flex: 1.2 !important;
+                text-align: right !important;
+                min-width: 0 !important;
+              }
+              .rx-header-right .rx-degrees {
+                align-items: flex-end !important;
               }
               .rx-patient-bar {
                 padding: 3mm 12mm 3mm 18mm !important;
@@ -826,15 +848,30 @@ export default function PrescriptionFormPage() {
       `)
       doc.close()
 
-      printIframe.contentWindow.focus()
-      setTimeout(() => {
-        printIframe.contentWindow.print()
-        setTimeout(() => {
-          try {
-            document.body.removeChild(printIframe)
-          } catch (e) {}
-        }, 1200)
-      }, 350)
+      const runPrint = () => {
+        try {
+          printIframe.contentWindow.focus()
+          printIframe.contentWindow.print()
+          setTimeout(() => {
+            try {
+              document.body.removeChild(printIframe)
+            } catch (e) {}
+          }, 1500)
+        } catch (e) {
+          window.print()
+        }
+      }
+
+      // Ensure web fonts are completely loaded before printing
+      if (doc.fonts && doc.fonts.ready) {
+        doc.fonts.ready.then(() => {
+          setTimeout(runPrint, 250)
+        }).catch(() => {
+          setTimeout(runPrint, 400)
+        })
+      } else {
+        setTimeout(runPrint, 500)
+      }
     } catch (err) {
       console.error('Isolated print error, falling back to window.print():', err)
       window.print()
@@ -1749,16 +1786,12 @@ export default function PrescriptionFormPage() {
               setActiveDraftId(p.public_id || p.id)
             } else {
               setIsDraftStatus(false)
-              try {
-                localStorage.removeItem(draftKey)
-                if (doctorScopeId) {
-                  if (p.public_id) localStorage.removeItem(`dr_rx_draft_${doctorScopeId}_rx_${p.public_id}`)
-                  if (p.id) localStorage.removeItem(`dr_rx_draft_${doctorScopeId}_rx_${p.id}`)
-                  if (p.appointment_id) localStorage.removeItem(`dr_rx_draft_${doctorScopeId}_${p.appointment_id}`)
-                  if (p.appointment?.public_id) localStorage.removeItem(`dr_rx_draft_${doctorScopeId}_${p.appointment.public_id}`)
-                }
-              } catch (e) {}
-              window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
+              showError({
+                title: 'Prescription Finalized (লক করা প্রেসক্রিপশন)',
+                message: 'এই প্রেসক্রিপশনটি ইতোমধ্যে ফাইনাল ও প্রিন্ট করা হয়েছে, তাই এটি আর এডিট বা পরিবর্তন করা যাবে না।'
+              })
+              navigate(`/admin/prescriptions/view/${p.public_id || p.id}`, { replace: true })
+              return
             }
 
             // Enforce note privacy: only the authoring doctor or admin can see confidential notes
@@ -2315,8 +2348,10 @@ export default function PrescriptionFormPage() {
         if (isFutureAppointment) {
           return
         }
-        const resolvedVisitedAt = appointmentInfo?.appointment_date
-          ? `${appointmentInfo.appointment_date} ${appointmentInfo.appointment_time ? (appointmentInfo.appointment_time.length === 5 ? appointmentInfo.appointment_time + ':00' : appointmentInfo.appointment_time) : '10:00:00'}`
+        const cleanApptDate = appointmentInfo?.appointment_date ? String(appointmentInfo.appointment_date).split('T')[0].split(' ')[0] : ''
+        const cleanApptTime = appointmentInfo?.appointment_time ? (appointmentInfo.appointment_time.length === 5 ? appointmentInfo.appointment_time + ':00' : appointmentInfo.appointment_time) : '10:00:00'
+        const resolvedVisitedAt = cleanApptDate
+          ? `${cleanApptDate} ${cleanApptTime}`
           : new Date().toISOString().slice(0, 19).replace('T', ' ')
 
         const cleanMeds = (activeForm.medicines || [])
@@ -3719,9 +3754,20 @@ export default function PrescriptionFormPage() {
       return
     }
 
-    const resolvedVisitedAt = appointmentInfo?.appointment_date
-      ? `${appointmentInfo.appointment_date} ${appointmentInfo.appointment_time ? (appointmentInfo.appointment_time.length === 5 ? appointmentInfo.appointment_time + ':00' : appointmentInfo.appointment_time) : '10:00:00'}`
+    const cleanApptDate = appointmentInfo?.appointment_date ? String(appointmentInfo.appointment_date).split('T')[0].split(' ')[0] : ''
+    const cleanApptTime = appointmentInfo?.appointment_time ? (appointmentInfo.appointment_time.length === 5 ? appointmentInfo.appointment_time + ':00' : appointmentInfo.appointment_time) : '10:00:00'
+    const resolvedVisitedAt = cleanApptDate
+      ? `${cleanApptDate} ${cleanApptTime}`
       : new Date().toISOString().slice(0, 19).replace('T', ' ')
+
+    const confirmed = await confirm({
+      title: 'প্রেসক্রিপশন ফাইনাল ও প্রিন্ট নিশ্চিতকরণ',
+      message: 'একবার সেভ এবং প্রিন্ট সম্পন্ন হলে এই প্রেসক্রিপশনটি ফাইনাল হিসেবে সিস্টেমে লক হয়ে যাবে। এরপর এই প্রেসক্রিপশনে আর কোনো প্রকার পরিবর্তন বা এডিট করা সম্ভব হবে না। আপনি কি নিশ্চিত?',
+      confirmText: 'হ্যাঁ, ফাইনাল সেভ ও প্রিন্ট করুন',
+      cancelText: 'বাতিল / আরেকবার চেক করুন',
+      variant: 'warning'
+    })
+    if (!confirmed) return
 
     setSaving(true)
     // Base payload — no appointment_id (backend doesn't need it for updates; for creates we use appointment_public_id)
@@ -3767,7 +3813,7 @@ export default function PrescriptionFormPage() {
           }
         } catch (e) {}
         window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
-        navigate(`/admin/prescriptions/view/${finalTargetId}`)
+        navigate(`/admin/prescriptions/view/${finalTargetId}?return_to=${encodeURIComponent(returnTo)}&template=${selectedTemplate}`)
       } else {
         const rawApptId = appointmentInfo?.public_id || form.appointment_id || appointmentId
         const res = await createPrescription(rawApptId
@@ -3790,15 +3836,17 @@ export default function PrescriptionFormPage() {
         } catch (e) {}
         window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
         if (newId) {
-          navigate(`/admin/prescriptions/view/${newId}`)
+          navigate(`/admin/prescriptions/view/${newId}?return_to=${encodeURIComponent(returnTo)}&template=${selectedTemplate}`)
         } else {
           navigate(returnTo)
         }
       }
     } catch (err) {
+      console.error('Prescription save error:', err, err?.response?.data)
+      const serverMsg = err?.response?.data?.message || (err?.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : null)
       showError({
-        title: 'Save Failed',
-        message: getErrorMessage(err, 'Failed to save prescription.')
+        title: 'প্রেসক্রিপশন সেভ করা যায়নি',
+        message: getErrorMessage(err, serverMsg || 'প্রেসক্রিপশনটি সিস্টেমে সেভ করা সম্ভব হয়নি। অনুগ্রহ করে তথ্য পরীক্ষা করে আবার চেষ্টা করুন।')
       })
     } finally {
       setSaving(false)

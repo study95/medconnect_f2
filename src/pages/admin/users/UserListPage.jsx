@@ -140,6 +140,7 @@ export default function UserListPage() {
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [changingRole, setChangingRole] = useState(null)
+  const [roleChangeTarget, setRoleChangeTarget] = useState(null)
   
   // Permissions State
   const [selectedUserForPerms, setSelectedUserForPerms] = useState(null)
@@ -191,15 +192,34 @@ export default function UserListPage() {
     return 'user'
   }
 
-  const handleRoleChange = async (userId, newRole) => {
-    setChangingRole(userId)
+  const initiateRoleChange = (targetUser, newRole) => {
+    const currentRole = getUserRole(targetUser)
+    if (currentRole === newRole) return
+    setRoleChangeTarget({
+      user: targetUser,
+      oldRole: currentRole,
+      newRole,
+    })
+  }
+
+  const confirmRoleChange = async () => {
+    if (!roleChangeTarget) return
+    const { user: targetUser, newRole } = roleChangeTarget
+    setChangingRole(targetUser.id)
     try {
-      await saveUserRole({ userId, role: newRole })
+      await saveUserRole({ userId: targetUser.id, role: newRole })
+      toast.success(`${targetUser.name}-এর রোল সফলভাবে ${ROLE_LABELS[newRole] || newRole.toUpperCase()}-এ পরিবর্তন করা হয়েছে।`)
     } catch (err) {
       console.error('Failed to update role:', err)
+      toast.error(getErrorMessage(err, 'রোল পরিবর্তন করতে ব্যর্থ হয়েছে।'))
     } finally {
       setChangingRole(null)
+      setRoleChangeTarget(null)
     }
+  }
+
+  const cancelRoleChange = () => {
+    setRoleChangeTarget(null)
   }
 
   const handleDelete = async () => {
@@ -662,11 +682,12 @@ export default function UserListPage() {
                             style={{ 
                               width: 'auto', minWidth: 100, height: 32, padding: '0 8px', 
                               fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                              background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)'
+                              background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)',
+                              cursor: changingRole === u.id ? 'wait' : 'pointer'
                             }}
-                            value={getUserRole(u)}
+                            value={roleChangeTarget?.user?.id === u.id ? roleChangeTarget.newRole : getUserRole(u)}
                             disabled={changingRole === u.id}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            onChange={(e) => initiateRoleChange(u, e.target.value)}
                           >
                             {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
                           </select>
@@ -776,6 +797,271 @@ export default function UserListPage() {
               <button className="admin-btn admin-btn-outline" onClick={() => setSelectedUserForPerms(null)} disabled={savingPerms}>Cancel</button>
               <button className="admin-btn admin-btn-primary" onClick={savePermissions} disabled={savingPerms}>
                 {savingPerms ? 'Saving Changes...' : 'Save Permissions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Confirmation Modal */}
+      {roleChangeTarget && (
+        <div className="modal-overlay" onClick={cancelRoleChange}>
+          <div 
+            className="admin-card" 
+            style={{ 
+              maxWidth: 520, 
+              width: '100%', 
+              margin: '0 16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div 
+              style={{ 
+                padding: '20px 24px 16px', 
+                borderBottom: '1px solid var(--admin-border)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                background: 'var(--admin-bg)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div 
+                  style={{ 
+                    width: 40, 
+                    height: 40, 
+                    borderRadius: 10, 
+                    background: roleChangeTarget.newRole === 'admin' 
+                      ? 'rgba(239, 68, 68, 0.12)' 
+                      : (roleChangeTarget.newRole === 'user' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)'),
+                    color: roleChangeTarget.newRole === 'admin' 
+                      ? '#EF4444' 
+                      : (roleChangeTarget.newRole === 'user' ? '#F59E0B' : '#10B981'),
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontSize: 20
+                  }}
+                >
+                  {roleChangeTarget.newRole === 'admin' ? '🛡️' : (roleChangeTarget.newRole === 'user' ? '⚠️' : '✨')}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--admin-text)' }}>
+                    Confirm Access Role Change
+                  </h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--admin-text-muted)' }}>
+                    Please verify this administrative privilege modification
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={cancelRoleChange}
+                disabled={Boolean(changingRole)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: 'var(--admin-text-muted)', 
+                  padding: 4, 
+                  fontSize: 16,
+                  borderRadius: 6
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px' }}>
+              {/* User preview card */}
+              <div 
+                style={{ 
+                  background: 'var(--admin-bg)', 
+                  border: '1px solid var(--admin-border)', 
+                  borderRadius: 12, 
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 16
+                }}
+              >
+                <div 
+                  style={{ 
+                    width: 38, 
+                    height: 38, 
+                    borderRadius: 10, 
+                    background: 'var(--admin-card-bg)', 
+                    border: '1px solid var(--admin-border)',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    color: 'var(--admin-primary)',
+                    flexShrink: 0
+                  }}
+                >
+                  {getInitials(roleChangeTarget.user.name)}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--admin-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {roleChangeTarget.user.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {roleChangeTarget.user.email || roleChangeTarget.user.phone}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role Transition Comparison */}
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: 14, 
+                  padding: '14px', 
+                  borderRadius: 12, 
+                  background: 'var(--admin-card-bg)',
+                  border: '1px dashed var(--admin-border)',
+                  marginBottom: 16
+                }}
+              >
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Current Role
+                  </div>
+                  <span 
+                    style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: 8, 
+                      fontSize: 12, 
+                      fontWeight: 800,
+                      background: 'rgba(100, 116, 139, 0.1)',
+                      color: 'var(--admin-text-muted)',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    {ROLE_LABELS[roleChangeTarget.oldRole] || roleChangeTarget.oldRole.toUpperCase()}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: 18, color: 'var(--admin-text-muted)', fontWeight: 700 }}>
+                  ➔
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--admin-primary)', textTransform: 'uppercase', marginBottom: 4 }}>
+                    New Role
+                  </div>
+                  <span 
+                    style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: 8, 
+                      fontSize: 12, 
+                      fontWeight: 800,
+                      background: roleChangeTarget.newRole === 'admin' 
+                        ? 'rgba(239, 68, 68, 0.12)' 
+                        : (roleChangeTarget.newRole === 'manager' || roleChangeTarget.newRole === 'hospital' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)'),
+                      color: roleChangeTarget.newRole === 'admin' 
+                        ? '#DC2626' 
+                        : (roleChangeTarget.newRole === 'manager' || roleChangeTarget.newRole === 'hospital' ? '#0284C7' : '#059669'),
+                      textTransform: 'uppercase',
+                      border: '1px solid currentColor'
+                    }}
+                  >
+                    {ROLE_LABELS[roleChangeTarget.newRole] || roleChangeTarget.newRole.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Consequence Note */}
+              <div 
+                style={{ 
+                  borderRadius: 10, 
+                  padding: '12px 14px', 
+                  fontSize: 12.5, 
+                  lineHeight: 1.5,
+                  display: 'flex', 
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  background: roleChangeTarget.newRole === 'admin' 
+                    ? 'rgba(239, 68, 68, 0.08)' 
+                    : (roleChangeTarget.newRole === 'user' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)'),
+                  color: roleChangeTarget.newRole === 'admin' 
+                    ? '#991B1B' 
+                    : (roleChangeTarget.newRole === 'user' ? '#92400E' : '#065F46'),
+                  border: `1px solid ${
+                    roleChangeTarget.newRole === 'admin' 
+                      ? 'rgba(239, 68, 68, 0.25)' 
+                      : (roleChangeTarget.newRole === 'user' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)')
+                  }`
+                }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>
+                  {roleChangeTarget.newRole === 'admin' ? '⚠️' : (roleChangeTarget.newRole === 'user' ? 'ℹ️' : '💡')}
+                </span>
+                <div>
+                  {roleChangeTarget.newRole === 'admin' && (
+                    <span><strong>Full Admin Privileges:</strong> This user will have unrestricted administrative access to manage all system settings, finances, doctors, hospitals, and users.</span>
+                  )}
+                  {(roleChangeTarget.newRole === 'manager' || roleChangeTarget.newRole === 'hospital') && (
+                    <span><strong>Hospital Portal Access:</strong> This user will be granted full hospital management access and their linked hospital facility profile will be activated.</span>
+                  )}
+                  {roleChangeTarget.newRole === 'doctor' && (
+                    <span><strong>Doctor Portal Access:</strong> This user will be granted doctor prescription and chamber access and their linked doctor profile will be activated.</span>
+                  )}
+                  {roleChangeTarget.newRole === 'user' && (
+                    <span><strong>Revoke Privileges:</strong> Reverting to regular user will remove portal/dashboard management access and automatically deactivate any linked doctor/hospital profile.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div 
+              style={{ 
+                padding: '14px 24px', 
+                borderTop: '1px solid var(--admin-border)', 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 10,
+                background: 'var(--admin-bg)'
+              }}
+            >
+              <button 
+                type="button"
+                className="admin-btn admin-btn-outline" 
+                onClick={cancelRoleChange}
+                disabled={Boolean(changingRole)}
+                style={{ padding: '8px 16px', fontSize: 13, borderRadius: 8 }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                className="admin-btn"
+                onClick={confirmRoleChange}
+                disabled={Boolean(changingRole)}
+                style={{ 
+                  padding: '8px 20px', 
+                  fontSize: 13, 
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  background: roleChangeTarget.newRole === 'admin' ? '#DC2626' : 'var(--admin-primary)',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: Boolean(changingRole) ? 'wait' : 'pointer'
+                }}
+              >
+                {Boolean(changingRole) ? 'Updating Role...' : 'Confirm Change'}
               </button>
             </div>
           </div>

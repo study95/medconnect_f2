@@ -167,7 +167,9 @@ export default function PaymentListPage() {
     try {
       await updatePayment(id, { payment_status: newStatus })
       setPayments(payments.map(p => p.id === id ? { ...p, payment_status: newStatus } : p))
+      toast.success('পেমেন্ট স্ট্যাটাস আপডেট হয়েছে')
     } catch (err) {
+      toast.error(err.response?.data?.message || 'পেমেন্ট স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।')
     }
   }
 
@@ -485,32 +487,55 @@ export default function PaymentListPage() {
                       </span>
                     </td>
                     <td>
-                      <select
-                        value={pay.payment_status || 'unpaid'}
-                        onChange={(e) => handleStatusUpdate(pay.id, e.target.value)}
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          border: '1px solid var(--admin-border)',
-                          background: pay.payment_status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                          color: pay.payment_status === 'paid' ? '#10B981' : '#F59E0B',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="paid">PAID</option>
-                        <option value="unpaid">UNPAID</option>
-                        <option value="refunded">REFUNDED</option>
-                        <option value="partial">PARTIAL</option>
-                      </select>
+                      {pay.is_payment_locked ? (
+                        <span 
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            background: 'rgba(16,185,129,0.15)',
+                            color: '#059669',
+                            border: '1px solid rgba(16,185,129,0.3)',
+                            userSelect: 'none'
+                          }} 
+                          title="প্রেসক্রিপশন সম্পন্ন হওয়ায় এই পেমেন্টটি লক করা হয়েছে"
+                        >
+                          🔒 PAID
+                        </span>
+                      ) : (
+                        <select
+                          value={pay.payment_status?.toLowerCase() || 'unpaid'}
+                          onChange={(e) => handleStatusUpdate(pay.id, e.target.value)}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            border: '1px solid var(--admin-border)',
+                            background: pay.payment_status?.toLowerCase() === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                            color: pay.payment_status?.toLowerCase() === 'paid' ? '#10B981' : '#F59E0B',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="paid">PAID</option>
+                          <option value="unpaid">UNPAID</option>
+                          <option value="refunded">REFUNDED</option>
+                          <option value="partial">PARTIAL</option>
+                        </select>
+                      )}
                     </td>
                     <td>
                       <div className="admin-actions">
                         <button
                           className="admin-btn admin-btn-danger admin-btn-sm"
                           onClick={() => setDeleteTarget(pay)}
-                          title="Delete"
+                          disabled={pay.is_payment_locked}
+                          style={pay.is_payment_locked ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
+                          title={pay.is_payment_locked ? "প্রেসক্রিপশন সম্পন্ন হওয়ায় পেমেন্ট মুছে ফেলা সম্ভব নয়" : "Delete"}
                         >🗑️</button>
                       </div>
                     </td>

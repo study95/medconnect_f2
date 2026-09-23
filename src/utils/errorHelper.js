@@ -103,9 +103,42 @@ export const translateToBangla = (msg, fallback = 'তথ্য প্রক্�
     return 'এই তথ্যটি (মোবাইল বা ইমেইল) ইতিমধ্যে সিস্টেমে বিদ্যমান।';
   }
 
+  // Clinical / Prescription / Appointment Errors
+  if (lower.includes('before the scheduled appointment date') || lower.includes('prior to appointment date')) {
+    return 'অ্যাপয়েন্টমেন্টের নির্ধারিত তারিখের পূর্বে প্রেসক্রিপশন তৈরি বা ফাইনাল করা যাবে না।';
+  }
+  if (lower.includes('consultation window') && lower.includes('expired')) {
+    return 'এই অ্যাপয়েন্টমেন্টের প্রেসক্রিপশন সম্পন্ন করার নির্ধারিত সময়সীমা অতিক্রান্ত হয়েছে।';
+  }
+  if (lower.includes('cancelled') || lower.includes('no-show') || lower.includes('no_show')) {
+    return 'বাতিলকৃত বা অনুপস্থিত অ্যাপয়েন্টমেন্টের জন্য প্রেসক্রিপশন তৈরি করা যাবে না।';
+  }
+  if (lower.includes('does not belong to you')) {
+    return 'এই অ্যাপয়েন্টমেন্টটি আপনার তালিকায় নেই বা অন্য ডাক্তারের জন্য নির্ধারিত।';
+  }
+  if (lower.includes('valid appointment identifier') || lower.includes('appointment not found')) {
+    return 'অ্যাপয়েন্টমেন্টের সঠিক তথ্য পাওয়া যায়নি।';
+  }
+  if (lower.includes('finalized') && (lower.includes('immutable') || lower.includes('cannot be edited') || lower.includes('lock'))) {
+    return 'এই প্রেসক্রিপশনটি ইতোমধ্যে ফাইনাল ও লক করা হয়েছে, পুনরায় পরিবর্তন করা যাবে না।';
+  }
+  if (lower.includes('diagnosis') && lower.includes('required')) {
+    return 'প্রেসক্রিপশন সম্পন্ন করতে ডায়াগনোসিস (Diagnosis) প্রদান করা আবশ্যক।';
+  }
+  if (lower.includes('medicines') && (lower.includes('required') || lower.includes('least one') || lower.includes('prescribe'))) {
+    return 'প্রেসক্রিপশনে অন্তত একটি ওষুধ যোগ করতে হবে।';
+  }
+
   // General registration error
   if (lower.includes('registration failed') || lower.includes('register')) {
     return 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।';
+  }
+
+  // If unhandled but it's a specific, human-readable backend message, prefer returning the message over generic fallback
+  if (msg && typeof msg === 'string' && msg.length > 3 && !msg.includes('SQLSTATE') && !msg.includes('Stack trace') && !msg.includes('Error:')) {
+    if (fallback.includes('তথ্য প্রক্রিয়াকরণে সমস্যা') || fallback.includes('Failed to') || fallback.includes('failed to')) {
+      return msg;
+    }
   }
 
   // Default fallback in Bangla if unhandled English string
