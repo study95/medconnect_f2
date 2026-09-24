@@ -96,7 +96,7 @@ export default function AdminBillingSettingsPage() {
         support_contact: d.support_contact || '',
       })
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load billing settings. Please retry.')
+      setError(err?.response?.data?.message || 'বিলিং কনফিগারেশন লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -117,7 +117,7 @@ export default function AdminBillingSettingsPage() {
       setTimeout(() => setSavedSuccess(false), 4000)
 
     } catch (err) {
-      setError(err?.response?.data?.message || 'Error updating billing settings. Please try again.')
+      setError(err?.response?.data?.message || 'বিলিং কনফিগারেশন সংরক্ষণে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
     } finally {
       setSaving(false)
     }
@@ -129,11 +129,11 @@ export default function AdminBillingSettingsPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Billing Engine Configuration
-            <span className="ab-title-badge">Global Policies</span>
+            বিলিং ইঞ্জিন কনফিগারেশন
+            <span className="ab-title-badge">সার্বজনীন নীতিমালা</span>
           </h1>
           <p className="ab-subtitle">
-            Configure system currency, tax rates, trial &amp; grace periods, manual offline payment gateways, and legal invoice headers.
+            সিস্টেমের মুদ্রা, ভ্যাট/ট্যাক্স হার, ট্রায়াল ও গ্রেস পিরিয়ড, অফলাইন পেমেন্ট গেটওয়ে এবং লিগ্যাল ইনভয়েসের তথ্য কনফিগার করুন।
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export default function AdminBillingSettingsPage() {
             type="button"
             onClick={loadSettings}
             className="ab-btn-refresh"
-            title="Reload Config"
+            title="কনফিগ রিলোড করুন"
             aria-label="Reload billing configuration"
             disabled={loading || saving}
           >
@@ -152,11 +152,11 @@ export default function AdminBillingSettingsPage() {
             type="button"
             onClick={handleSubmit}
             disabled={saving || loading || !hasPermission('billing.plans.manage')}
-            title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : undefined}
+            title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
             className="ab-btn-primary"
             aria-label="Save billing configuration"
           >
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Configuration'}
+            <Save size={16} /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'কনফিগারেশন সংরক্ষণ করুন'}
           </button>
         </div>
       </div>
@@ -164,28 +164,28 @@ export default function AdminBillingSettingsPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav" aria-label="Billing navigation">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans &amp; Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill active" aria-current="page">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং কনফিগারেশন
         </Link>
       </nav>
 
@@ -210,7 +210,7 @@ export default function AdminBillingSettingsPage() {
           }}
         >
           <CheckCircle2 size={18} />
-          <span>Billing parameters and gateway credentials successfully saved and applied system-wide!</span>
+          <span>বিলিং প্যারামিটার ও পেমেন্ট গেটওয়ের তথ্য সফলভাবে সংরক্ষিত হয়েছে এবং সমগ্র সিস্টেমে কার্যকর করা হয়েছে!</span>
         </div>
       )}
 
@@ -219,7 +219,7 @@ export default function AdminBillingSettingsPage() {
         <div className="ab-error-state" role="alert">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadSettings} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadSettings} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 
@@ -231,28 +231,28 @@ export default function AdminBillingSettingsPage() {
             onClick={() => setActiveTab('financial')}
             className={`ab-segmented-btn ${activeTab === 'financial' ? 'active' : ''}`}
           >
-            <DollarSign size={14} /> Financial Rules
+            <DollarSign size={14} /> আর্থিক নীতিমালা
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('lifecycle')}
             className={`ab-segmented-btn ${activeTab === 'lifecycle' ? 'active' : ''}`}
           >
-            <Clock size={14} /> Subscription Policies
+            <Clock size={14} /> সাবস্ক্রিপশন নীতি
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('manual')}
             className={`ab-segmented-btn ${activeTab === 'manual' ? 'active' : ''}`}
           >
-            <Smartphone size={14} /> Offline Payment Gateways
+            <Smartphone size={14} /> অফলাইন পেমেন্ট গেটওয়ে
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('invoice')}
             className={`ab-segmented-btn ${activeTab === 'invoice' ? 'active' : ''}`}
           >
-            <FileText size={14} /> Invoice Legal Branding
+            <FileText size={14} /> ইনভয়েস লিগ্যাল ব্র্যান্ডিং
           </button>
         </div>
       </div>
@@ -279,15 +279,15 @@ export default function AdminBillingSettingsPage() {
           {activeTab === 'financial' && (
             <div style={{ background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ab-text)' }}>
-                Currency & Taxation Parameters
+                মুদ্রা ও কর সংক্রান্ত প্যারামিটার
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--ab-text-muted)', margin: '0 0 20px 0' }}>
-                Define platform currency symbols, standard VAT rates, and invoice numbering sequence format.
+                প্ল্যাটফর্মের মুদ্রা প্রতীক, স্ট্যান্ডার্ড ভ্যাট হার এবং ইনভয়েস ক্রমিক নম্বরের প্রিফিক্স নির্ধারণ করুন।
               </p>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Base Operating Currency *</label>
+                  <label className="ab-form-label">মূল অপারেটিং মুদ্রা (Currency) *</label>
                   <input
                     type="text"
                     required
@@ -295,11 +295,11 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, default_currency: e.target.value.toUpperCase() })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Default: BDT (Bangladeshi Taka)</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>ডিফল্ট: BDT (বাংলাদেশী টাকা)</span>
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Standard VAT / Tax Rate (%)</label>
+                  <label className="ab-form-label">স্ট্যান্ডার্ড ভ্যাট / ট্যাক্স হার (%)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -309,21 +309,21 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, tax_rate_percent: parseFloat(e.target.value) || 0 })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Applied automatically during invoice calculation</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>ইনভয়েস গণনার সময় স্বয়ংক্রিয়ভাবে যুক্ত হবে</span>
                 </div>
               </div>
 
               <div className="ab-form-group">
-                <label className="ab-form-label">Invoice Number Prefix</label>
+                <label className="ab-form-label">ইনভয়েস নম্বরের প্রিফিক্স</label>
                 <input
                   type="text"
                   value={form.invoice_prefix}
                   onChange={(e) => setForm({ ...form, invoice_prefix: e.target.value })}
-                  placeholder="e.g. INV-"
+                  placeholder="যেমন: INV-"
                   className="ab-form-input"
                   style={{ fontFamily: 'monospace' }}
                 />
-                <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Generates numbers such as INV-2026-0001</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>যেমন: INV-2026-0001 আকারে ইনভয়েস নম্বর তৈরি হবে</span>
               </div>
             </div>
           )}
@@ -332,15 +332,15 @@ export default function AdminBillingSettingsPage() {
           {activeTab === 'lifecycle' && (
             <div style={{ background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ab-text)' }}>
-                Subscription Lifecycle & Grace Periods
+                সাবস্ক্রিপশন মেয়াদকাল ও গ্রেস পিরিয়ড
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--ab-text-muted)', margin: '0 0 20px 0' }}>
-                Determine evaluation durations, grace period tolerances, and automated renewal retry schedules.
+                মূল্যায়ন ট্রায়াল সময়সীমা, গ্রেস পিরিয়ড সহনশীলতা এবং স্বয়ংক্রিয় নবায়ন রুটিন নির্ধারণ করুন।
               </p>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Default Free Trial Duration (Days)</label>
+                  <label className="ab-form-label">ডিফল্ট ফ্রি ট্রায়াল সময়সীমা (দিন)</label>
                   <input
                     type="number"
                     min="0"
@@ -348,11 +348,11 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, trial_period_days: parseInt(e.target.value) || 0 })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Standard trial days granted to new registrations</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>নতুন রেজিস্ট্রেশনে প্রদত্ত ফ্রি ট্রায়াল দিন সংখ্যা</span>
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Grace Period Threshold (Days)</label>
+                  <label className="ab-form-label">গ্রেস পিরিয়ডের সীমা (দিন)</label>
                   <input
                     type="number"
                     min="0"
@@ -360,7 +360,7 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, grace_period_days: parseInt(e.target.value) || 0 })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Days after expiry before services are suspended</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>মেয়াদোত্তীর্ণ হওয়ার পর সেবা স্থগিত করার পূর্ববর্তী অতিরিক্ত দিন সংখ্যা</span>
                 </div>
               </div>
 
@@ -373,7 +373,7 @@ export default function AdminBillingSettingsPage() {
                   style={{ width: '16px', height: '16px', accentColor: '#00b875' }}
                 />
                 <label htmlFor="auto_retry_past_due" style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--ab-text)', cursor: 'pointer' }}>
-                  Automatically retry past due subscriptions on queue schedule
+                  বকেয়া সাবস্ক্রিপশনসমূহ কিউ শিডিউলে স্বয়ংক্রিয়ভাবে পুনঃচেষ্টা করুন
                 </label>
               </div>
             </div>
@@ -383,10 +383,10 @@ export default function AdminBillingSettingsPage() {
           {activeTab === 'manual' && (
             <div style={{ background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ab-text)' }}>
-                Offline Payment Channels & Merchant Credentials
+                অফলাইন পেমেন্ট চ্যানেল ও মার্চেন্ট অ্যাকাউন্ট
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--ab-text-muted)', margin: '0 0 20px 0' }}>
-                Configure mobile financial services numbers (bKash, Nagad, Rocket) and corporate bank accounts for manual slip deposits.
+                ম্যানুয়াল স্লিপ জমার জন্য মোবাইল ফিন্যান্সিয়াল সার্ভিস (বিকাশ, নগদ, রকেট) এবং কর্পোরেট ব্যাংক অ্যাকাউন্টের বিবরণ কনফিগার করুন।
               </p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', padding: '12px', background: 'var(--ab-card-header)', borderRadius: '10px', border: '1px solid var(--ab-border)' }}>
@@ -398,13 +398,13 @@ export default function AdminBillingSettingsPage() {
                   style={{ width: '16px', height: '16px', accentColor: '#00b875' }}
                 />
                 <label htmlFor="manual_payment_enabled" style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ab-text)', cursor: 'pointer' }}>
-                  Enable Offline Manual Payments in Checkout & Subscription Portal
+                  চেকআউট ও সাবস্ক্রিপশন পোর্টালে অফলাইন ম্যানুয়াল পেমেন্ট চালু রাখুন
                 </label>
               </div>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Payment Amount Tolerance (BDT)</label>
+                  <label className="ab-form-label">পেমেন্ট টাকার সহনশীলতা মার্জিন (টাকা)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -413,11 +413,11 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, manual_payment_amount_tolerance: parseFloat(e.target.value) || 0 })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Allow minor variance between calculated & submitted amounts</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>হিসাবকৃত ও জমাকৃত টাকার সামান্য পার্থক্যের অনুমোদন (যদি প্রযোজ্য হয়)</span>
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Slip Expiration Window (Days)</label>
+                  <label className="ab-form-label">স্লিপ যাচাইয়ের মেয়াদকাল (দিন)</label>
                   <input
                     type="number"
                     min="1"
@@ -425,17 +425,17 @@ export default function AdminBillingSettingsPage() {
                     onChange={(e) => setForm({ ...form, manual_payment_expiration_days: parseInt(e.target.value) || 7 })}
                     className="ab-form-input"
                   />
-                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>Days before pending verification requests auto-expire</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>কতদিন পর পেন্ডিং ভেরিফিকেশন রিকোয়েস্ট মেয়াদোত্তীর্ণ হবে</span>
                 </div>
               </div>
 
               <h3 style={{ fontSize: '13.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ab-text-muted)', margin: '20px 0 12px 0' }}>
-                Mobile Financial Services (MFS)
+                মোবাইল ফিন্যান্সিয়াল সার্ভিসেস (MFS)
               </h3>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">bKash Merchant / Personal Number</label>
+                  <label className="ab-form-label">বিকাশ মার্চেন্ট / পার্সোনাল নম্বর (bKash)</label>
                   <input
                     type="text"
                     value={form.bkash_number}
@@ -446,7 +446,7 @@ export default function AdminBillingSettingsPage() {
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Nagad Merchant Number</label>
+                  <label className="ab-form-label">নগদ মার্চেন্ট নম্বর (Nagad)</label>
                   <input
                     type="text"
                     value={form.nagad_number}
@@ -458,7 +458,7 @@ export default function AdminBillingSettingsPage() {
               </div>
 
               <div className="ab-form-group">
-                <label className="ab-form-label">Rocket Account Number</label>
+                <label className="ab-form-label">রকেট অ্যাকাউন্ট নম্বর (Rocket)</label>
                 <input
                   type="text"
                   value={form.rocket_number}
@@ -469,23 +469,23 @@ export default function AdminBillingSettingsPage() {
               </div>
 
               <h3 style={{ fontSize: '13.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ab-text-muted)', margin: '20px 0 12px 0' }}>
-                Corporate Bank Transfer Details
+                কর্পোরেট ব্যাংক ট্রান্সফার বিবরণ
               </h3>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Bank Name</label>
+                  <label className="ab-form-label">ব্যাংকের নাম</label>
                   <input
                     type="text"
                     value={form.bank_name}
                     onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
-                    placeholder="e.g. City Bank / Brac Bank"
+                    placeholder="যেমন: City Bank / BRAC Bank / Dutch-Bangla Bank"
                     className="ab-form-input"
                   />
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Account Holder Name</label>
+                  <label className="ab-form-label">অ্যাকাউন্ট হোল্ডারের নাম</label>
                   <input
                     type="text"
                     value={form.bank_account_name}
@@ -498,7 +498,7 @@ export default function AdminBillingSettingsPage() {
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Account Number</label>
+                  <label className="ab-form-label">অ্যাকাউন্ট নম্বর</label>
                   <input
                     type="text"
                     value={form.bank_account_number}
@@ -510,24 +510,24 @@ export default function AdminBillingSettingsPage() {
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Branch & Routing Code</label>
+                  <label className="ab-form-label">শাখা ও রাউটিং কোড</label>
                   <input
                     type="text"
                     value={form.bank_branch}
                     onChange={(e) => setForm({ ...form, bank_branch: e.target.value })}
-                    placeholder="Gulshan Branch (Routing: 2252...)"
+                    placeholder="গুলশান শাখা (রাউটিং: ২২৫২...)"
                     className="ab-form-input"
                   />
                 </div>
               </div>
 
               <div className="ab-form-group">
-                <label className="ab-form-label">Customer Checkout Instructions</label>
+                <label className="ab-form-label">গ্রাহকদের জন্য চেকআউট নির্দেশনা</label>
                 <textarea
                   rows={3}
                   value={form.manual_payment_instructions}
                   onChange={(e) => setForm({ ...form, manual_payment_instructions: e.target.value })}
-                  placeholder="Instructions displayed to doctors and hospitals when choosing offline manual transfer..."
+                  placeholder="অফলাইন ম্যানুয়াল ট্রান্সফার নির্বাচন করলে ডাক্তার ও হাসপাতালদের প্রদর্শিত নির্দেশনা..."
                   className="ab-form-textarea"
                 />
               </div>
@@ -538,14 +538,14 @@ export default function AdminBillingSettingsPage() {
           {activeTab === 'invoice' && (
             <div style={{ background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ab-text)' }}>
-                Legal Invoice Entity Details
+                ইনভয়েসের লিগ্যাল প্রতিষ্ঠানের বিবরণ
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--ab-text-muted)', margin: '0 0 20px 0' }}>
-                Information printed on customer tax invoices, receipts, and PDF exports.
+                গ্রাহকের ট্যাক্স ইনভয়েস, রসিদ এবং পিডিএফ কপিতে মুদ্রিত প্রয়োজনীয় তথ্য।
               </p>
 
               <div className="ab-form-group">
-                <label className="ab-form-label">Company Legal Name</label>
+                <label className="ab-form-label">কোম্পানির নিবন্ধিত নাম</label>
                 <input
                   type="text"
                   value={form.invoice_company_name}
@@ -556,19 +556,19 @@ export default function AdminBillingSettingsPage() {
               </div>
 
               <div className="ab-form-group">
-                <label className="ab-form-label">Registered Headquarters Address</label>
+                <label className="ab-form-label">প্রধান কার্যালয়ের নিবন্ধিত ঠিকানা</label>
                 <textarea
                   rows={2}
                   value={form.invoice_company_address}
                   onChange={(e) => setForm({ ...form, invoice_company_address: e.target.value })}
-                  placeholder="Plot #12, Road #4, Banani, Dhaka-1213, Bangladesh"
+                  placeholder="প্লট #১২, রোড #৪, বনানী, ঢাকা-১২১৩, বাংলাদেশ"
                   className="ab-form-textarea"
                 />
               </div>
 
               <div className="ab-form-row">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Tax / BIN / TIN Identification Number</label>
+                  <label className="ab-form-label">ট্যাক্স / বিন / টিন (BIN / TIN) নম্বর</label>
                   <input
                     type="text"
                     value={form.invoice_company_tax_id}
@@ -579,7 +579,7 @@ export default function AdminBillingSettingsPage() {
                 </div>
 
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Billing Support Email / Hotline</label>
+                  <label className="ab-form-label">বিলিং সহায়তা ইমেইল / হটলাইন</label>
                   <input
                     type="text"
                     value={form.support_contact}
@@ -596,18 +596,18 @@ export default function AdminBillingSettingsPage() {
             <button
               type="submit"
               disabled={saving || !hasPermission('billing.plans.manage')}
-              title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : undefined}
+              title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
               className="ab-btn-primary"
               style={{ padding: '10px 24px', fontSize: '14px' }}
               aria-label="Save billing configuration"
             >
               {saving ? (
                 <>
-                  <RefreshCw size={15} className="animate-spin" /> Saving Changes...
+                  <RefreshCw size={15} className="animate-spin" /> পরিবর্তনসমূহ সংরক্ষণ হচ্ছে...
                 </>
               ) : (
                 <>
-                  <Save size={16} /> Save Configuration
+                  <Save size={16} /> কনফিগারেশন সংরক্ষণ করুন
                 </>
               )}
             </button>

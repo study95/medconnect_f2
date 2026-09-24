@@ -17,47 +17,47 @@ import { useAuth } from '../../../context/AuthContext'
 const ENTERPRISE_PAYMENT_METHODS = [
   {
     key: 'bkash',
-    label: 'bKash (Send Money / Merchant)',
+    label: 'bKash (সেন্ড মানি / মার্চেন্ট)',
     icon: '📱',
-    badge: 'Manual Verification',
+    badge: 'ম্যানুয়াল ভেরিফিকেশন',
     color: '#E2136E',
-    description: 'Send payment to our official bKash account and upload TrxID & slip screenshot.',
+    description: 'আমাদের অফিশিয়াল বিকাশ নম্বরে পেমেন্ট পাঠান এবং TrxID ও স্লিপের স্ক্রিনশট আপলোড করুন।',
     isManual: true,
   },
   {
     key: 'nagad',
-    label: 'Nagad (Send Money / Merchant)',
+    label: 'Nagad (সেন্ড মানি / মার্চেন্ট)',
     icon: '📲',
-    badge: 'Manual Verification',
+    badge: 'ম্যানুয়াল ভেরিফিকেশন',
     color: '#F6921E',
-    description: 'Send payment to our official Nagad account and upload TrxID & receipt screenshot.',
+    description: 'আমাদের অফিশিয়াল নগদ নম্বরে পেমেন্ট পাঠান এবং TrxID ও রসিদের স্ক্রিনশট আপলোড করুন।',
     isManual: true,
   },
   {
     key: 'offline',
-    label: 'Bank Transfer / Deposit Slip',
+    label: 'ব্যাংক ট্রান্সফার / ডিপোজিট স্লিপ',
     icon: '🏦',
-    badge: 'Manual Verification',
+    badge: 'ম্যানুয়াল ভেরিফিকেশন',
     color: '#10B981',
-    description: 'Direct Eastern Bank PLC account wire transfer or cash branch deposit slip.',
+    description: 'ইস্টার্ন ব্যাংক পিএলসি অ্যাকাউন্টে সরাসরি ট্রান্সফার বা ব্রাঞ্চে জমা দিয়ে রসিদ আপলোড করুন।',
     isManual: true,
   },
   {
     key: 'sslcommerz',
-    label: 'SSLCommerz (Cards & NetBanking)',
+    label: 'SSLCommerz (কার্ড ও নেট ব্যাংকিং)',
     icon: '💳',
-    badge: 'Online Gateway',
+    badge: 'অনলাইন গেটওয়ে',
     color: '#0052CC',
-    description: 'Visa, MasterCard, Amex, UnionPay, and Bangladeshi Internet Banking.',
+    description: 'ভিসা, মাস্টারকার্ড, অ্যামেক্স, ইউনিয়নপে এবং বাংলাদেশের শীর্ষ ইন্টারনেট ব্যাংকিং।',
     isManual: false,
   },
   {
     key: 'stripe',
-    label: 'Stripe (International Cards)',
+    label: 'Stripe (আন্তর্জাতিক কার্ড)',
     icon: '🌐',
-    badge: 'Online Gateway',
+    badge: 'অনলাইন গেটওয়ে',
     color: '#635BFF',
-    description: 'Global credit and debit cards processed with international standards.',
+    description: 'আন্তর্জাতিক ক্রেডিট ও ডেবিট কার্ডের মাধ্যমে দ্রুত ও নিরাপদ পেমেন্ট।',
     isManual: false,
   },
 ]
@@ -430,8 +430,8 @@ export default function CheckoutPage() {
     return (
       <div className="admin-loading" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div className="admin-spinner" style={{ width: 44, height: 44, marginBottom: 16 }} />
-        <h3 style={{ color: 'var(--admin-text)', fontWeight: 700 }}>Preparing Secure Checkout...</h3>
-        <p style={{ color: 'var(--admin-text-muted)', fontSize: 14 }}>Calculating proration, discounts, and order items.</p>
+        <h3 style={{ color: 'var(--admin-text)', fontWeight: 700 }}>নিরাপদ চেকআউট প্রস্তুত করা হচ্ছে...</h3>
+        <p style={{ color: 'var(--admin-text-muted)', fontSize: 14 }}>প্রোরেশন, ছাড় এবং অর্ডারের বিস্তারিত হিসাব করা হচ্ছে...</p>
       </div>
     )
   }
@@ -441,9 +441,9 @@ export default function CheckoutPage() {
     return (
       <div className="admin-card" style={{ maxWidth: 600, margin: '40px auto', padding: 32, textAlign: 'center' }}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>⚠️</div>
-        <h2 style={{ color: 'var(--admin-text)', fontWeight: 800, marginBottom: 12 }}>Unable to Load Checkout</h2>
+        <h2 style={{ color: 'var(--admin-text)', fontWeight: 800, marginBottom: 12 }}>চেকআউট লোড করা সম্ভব হয়নি</h2>
         <p style={{ color: 'var(--admin-text-muted)', lineHeight: 1.6, marginBottom: 24 }}>{errorMsg}</p>
-        <Link to="/admin/subscription" className="admin-btn admin-btn-primary">← Return to Subscription Plans</Link>
+        <Link to="/admin/subscription" className="admin-btn admin-btn-primary">← সাবস্ক্রিপশন প্ল্যানে ফিরে যান</Link>
       </div>
     )
   }
@@ -460,16 +460,16 @@ export default function CheckoutPage() {
         <div className="admin-page-header" style={{ marginBottom: 28 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h2 className="admin-page-title" style={{ margin: 0 }}>🛡️ Enterprise Checkout</h2>
+              <h2 className="admin-page-title" style={{ margin: 0 }}>🛡️ এন্টারপ্রাইজ চেকআউট</h2>
               <span style={{
                 fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
                 padding: '4px 10px', borderRadius: 20, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE'
               }}>
-                Secure SSL 256-Bit
+                নিরাপদ SSL ২৫৬-বিট
               </span>
             </div>
             <p className="admin-page-subtitle" style={{ margin: 0 }}>
-              Review order items, calculate proration & discounts, and initiate pending payment.
+              অর্ডারের বিবরণ পর্যালোচনা করুন, প্রোরেশন ও ছাড় হিসাব করুন এবং পেমেন্ট সম্পন্ন করুন।
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -479,10 +479,10 @@ export default function CheckoutPage() {
               onClick={handleOpenInvoicePreview}
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
             >
-              📄 Preview Invoice
+              📄 ইনভয়েস প্রিভিউ
             </button>
             <Link to="/admin/subscription" className="admin-btn admin-btn-outline">
-              ← Change Plan
+              ← প্ল্যান পরিবর্তন করুন
             </Link>
           </div>
         </div>
@@ -496,8 +496,8 @@ export default function CheckoutPage() {
           }}>
             <span style={{ fontSize: 24 }}>⏳</span>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 15 }}>Payment Verification in Progress</div>
-              <div>{summaryData.lock_reason || 'Your payment is currently under verification. Please wait for administrator approval.'}</div>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>পেমেন্ট ভেরিফিকেশন চলমান রয়েছে</div>
+              <div>{summaryData.lock_reason || 'আপনার পেমেন্ট বর্তমানে যাচাইয়ের অপেক্ষায় রয়েছে। অনুগ্রহ করে অ্যাডমিন অনুমোদনের অপেক্ষা করুন।'}</div>
             </div>
           </div>
         )}
@@ -514,14 +514,14 @@ export default function CheckoutPage() {
                 <span style={{ fontSize: 32 }}>🎉</span>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 17, color: '#065F46' }}>
-                    14-Day Free Trial Activated Successfully!
+                    ১৪ দিনের ফ্রি ট্রায়াল সফলভাবে চালু হয়েছে!
                   </div>
                   <p style={{ margin: '6px 0 10px', fontSize: 13, color: '#047857', maxWidth: 650, lineHeight: 1.5 }}>
-                    Your facility trial is now active with 2 doctor seats, 1 waiting lounge display, and basic analytics. No payment required.
+                    আপনার ট্রায়াল প্ল্যানটি এখন সক্রিয়। কোনো পেমেন্টের প্রয়োজন নেই।
                   </p>
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, background: '#D1FAE5', padding: '8px 14px', borderRadius: 8 }}>
-                    <span>Plan: <strong>{target_plan.name}</strong></span>
-                    <span>Status: <strong style={{ color: '#059669' }}>ACTIVE TRIAL (14 DAYS)</strong></span>
+                    <span>প্ল্যান: <strong>{target_plan.name_bn || target_plan.name}</strong></span>
+                    <span>অবস্থা: <strong style={{ color: '#059669' }}>সক্রিয় ট্রায়াল (১৪ দিন)</strong></span>
                   </div>
                 </div>
               </div>
@@ -531,14 +531,14 @@ export default function CheckoutPage() {
                   className="admin-btn admin-btn-primary"
                   style={{ background: '#10B981', borderColor: '#10B981', padding: '10px 18px', fontWeight: 700 }}
                 >
-                  🚀 Go to {isManager ? "Hospital" : "Doctor"} Portal
+                  🚀 {isManager ? "হাসপাতাল" : "ডাক্তার"} পোর্টালে যান
                 </Link>
                 <Link
                   to="/admin/subscription/history"
                   className="admin-btn admin-btn-outline"
                   style={{ background: '#fff', padding: '10px 18px', fontWeight: 700 }}
                 >
-                  📋 Subscription History
+                  📋 সাবস্ক্রিপশন হিস্ট্রি
                 </Link>
               </div>
             </div>
@@ -557,16 +557,16 @@ export default function CheckoutPage() {
                 <span style={{ fontSize: 32 }}>✅</span>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 17, color: '#065F46' }}>
-                    Manual Payment Submitted Successfully!
+                    ম্যানুয়াল পেমেন্ট সফলভাবে জমা হয়েছে!
                   </div>
                   <p style={{ margin: '6px 0 10px', fontSize: 13, color: '#047857', maxWidth: 650, lineHeight: 1.5 }}>
-                    Your payment details and slip screenshot have been submitted and are currently <strong>Under Admin Review</strong>.
-                    Your plan features will remain locked and will activate automatically once verified by our billing administration.
+                    আপনার পেমেন্টের বিবরণ এবং স্লিপের স্ক্রিনশট জমা হয়েছে এবং বর্তমানে <strong>অ্যাডমিন পর্যালোচনায়</strong> রয়েছে।
+                    আমাদের বিলিং অ্যাডমিন যাচাই করার সাথে সাথেই প্ল্যানটি স্বয়ংক্রিয়ভাবে সক্রিয় হয়ে যাবে।
                   </p>
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, background: '#D1FAE5', padding: '8px 14px', borderRadius: 8 }}>
-                    <span>Transaction Ref: <strong>{manualSuccessData.transaction_reference}</strong></span>
-                    <span>Amount: <strong>৳{Number(manualSuccessData.submitted_amount || 0).toLocaleString()}</strong></span>
-                    <span>Status: <strong style={{ textTransform: 'uppercase', color: '#D97706' }}>Pending Admin Approval</strong></span>
+                    <span>ট্রানজ্যাকশন আইডি: <strong>{manualSuccessData.transaction_reference}</strong></span>
+                    <span>পরিমাণ: <strong>৳{Number(manualSuccessData.submitted_amount || 0).toLocaleString()}</strong></span>
+                    <span>অবস্থা: <strong style={{ textTransform: 'uppercase', color: '#D97706' }}>অ্যাডমিন অনুমোদনের অপেক্ষায়</strong></span>
                   </div>
                 </div>
               </div>
@@ -576,14 +576,14 @@ export default function CheckoutPage() {
                   className="admin-btn admin-btn-primary"
                   style={{ background: '#10B981', borderColor: '#10B981', padding: '10px 18px', fontWeight: 700 }}
                 >
-                  📋 Track in Subscription History
+                  📋 সাবস্ক্রিপশন হিস্ট্রিতে দেখুন
                 </Link>
                 <Link
                   to={isManager ? "/admin/hospital-subscription" : "/admin/subscription"}
                   className="admin-btn admin-btn-outline"
                   style={{ background: '#fff', padding: '10px 18px', fontWeight: 700 }}
                 >
-                  ← Return to Portal
+                  ← পোর্টালে ফিরে যান
                 </Link>
               </div>
             </div>
@@ -610,13 +610,13 @@ export default function CheckoutPage() {
               <div className="admin-card" style={{ padding: 24, marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>
-                    📦 Selected Subscription
+                    📦 নির্বাচিত সাবস্ক্রিপশন
                   </h3>
                   <span style={{
                     fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 8,
                     background: '#F1F5F9', color: '#334155', textTransform: 'uppercase'
                   }}>
-                    Tier: {target_plan.tier}
+                    প্ল্যান টায়ার: {target_plan.tier_bn || target_plan.tier}
                   </span>
                 </div>
 
@@ -628,10 +628,10 @@ export default function CheckoutPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <div>
                       <h4 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: 'var(--admin-text)' }}>
-                        {target_plan.name}
+                        {target_plan.name_bn || target_plan.name}
                       </h4>
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-text-muted)' }}>
-                        Entity designation: <strong style={{ textTransform: 'capitalize' }}>{target_plan.target_entity}</strong>
+                        অ্যাকাউন্টের ধরন: <strong>{target_plan.target_entity === 'hospital' ? 'হাসপাতাল / ক্লিনিক' : 'ডাক্তার'}</strong>
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -639,7 +639,7 @@ export default function CheckoutPage() {
                         {currency_symbol}{billingCycle === 'annual' ? target_plan.price_annual.toLocaleString() : target_plan.price_monthly.toLocaleString()}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>
-                        per {billingCycle === 'annual' ? 'year' : 'month'}
+                        প্রতি {billingCycle === 'annual' ? 'বছর' : 'মাস'}
                       </div>
                     </div>
                   </div>
@@ -650,9 +650,9 @@ export default function CheckoutPage() {
                       marginTop: 14, paddingTop: 12, borderTop: '1px dashed var(--admin-border, #CBD5E1)',
                       fontSize: 12, color: 'var(--admin-text-muted)', display: 'flex', justifyContent: 'space-between'
                     }}>
-                      <span>Current Active Plan: <strong>{current_plan.name}</strong></span>
+                      <span>বর্তমান সক্রিয় প্ল্যান: <strong>{current_plan.name_bn || current_plan.name}</strong></span>
                       <span style={{ color: '#059669', fontWeight: 700 }}>
-                        {pricing.proration_credit > 0 ? `Unused credit: ${currency_symbol}${pricing.proration_credit}` : 'Direct switch'}
+                        {pricing.proration_credit > 0 ? `অব্যবহৃত ক্রেডিট: ${currency_symbol}${pricing.proration_credit}` : 'সরাসরি পরিবর্তন'}
                       </span>
                     </div>
                   )}
@@ -661,7 +661,7 @@ export default function CheckoutPage() {
                 {/* Billing Cycle Switcher */}
                 <div>
                   <label className="admin-form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>
-                    Billing Cycle
+                    বিলিং সাইকেল
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <button
@@ -676,8 +676,8 @@ export default function CheckoutPage() {
                         opacity: summaryData?.is_checkout_locked ? 0.6 : 1,
                       }}
                     >
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>Monthly Billing</div>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>Pay month-to-month</div>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>মাসিক বিলিং</div>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>প্রতি মাসে নিয়মিত পরিশোধ</div>
                     </button>
 
                     <button
@@ -698,10 +698,10 @@ export default function CheckoutPage() {
                         background: '#10B981', color: 'white', fontSize: 10, fontWeight: 800,
                         padding: '2px 8px', borderRadius: 12
                       }}>
-                        Save up to 20%
+                        ২০% পর্যন্ত সাশ্রয়
                       </span>
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>Annual Billing</div>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>Billed annually upfront</div>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>বাৎসরিক বিলিং</div>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>এককালীন বাৎসরিক পরিশোধ</div>
                     </button>
                   </div>
                 </div>
@@ -710,30 +710,30 @@ export default function CheckoutPage() {
               {/* 2. Billing Contact & Address Form */}
               <div className="admin-card" style={{ padding: 24, marginBottom: 24 }}>
                 <h3 style={{ margin: '0 0 16px', fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>
-                  🏢 Billing Information
+                  🏢 বিলিং তথ্য
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
-                    <label className="admin-form-label">Contact Person / Doctor Name</label>
+                    <label className="admin-form-label">যোগাযোগকারী ব্যক্তি / ডাক্তারের নাম</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.name}
                       onChange={e => setBillingAddress({ ...billingAddress, name: e.target.value })}
-                      placeholder="e.g. Dr. Arman Hossain"
+                      placeholder="যেমন: ডা. আরমান হোসেন"
                       required
                     />
                   </div>
                   <div>
-                    <label className="admin-form-label">Organization / Hospital (Optional)</label>
+                    <label className="admin-form-label">প্রতিষ্ঠান / হাসপাতাল (ঐচ্ছিক)</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.company}
                       onChange={e => setBillingAddress({ ...billingAddress, company: e.target.value })}
-                      placeholder="e.g. City General Care Hospital"
+                      placeholder="যেমন: সিটি জেনারেল হাসপাতাল"
                     />
                   </div>
                   <div>
-                    <label className="admin-form-label">Billing Email</label>
+                    <label className="admin-form-label">বিলিং ইমেইল</label>
                     <input
                       type="email"
                       className="admin-form-input"
@@ -744,7 +744,7 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div>
-                    <label className="admin-form-label">Billing Phone / Hotline</label>
+                    <label className="admin-form-label">বিলিং ফোন / হটলাইন</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.phone}
@@ -754,31 +754,31 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
-                    <label className="admin-form-label">Street Address</label>
+                    <label className="admin-form-label">ঠিকানা</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.address}
                       onChange={e => setBillingAddress({ ...billingAddress, address: e.target.value })}
-                      placeholder="e.g. Suite 4B, Road 11, Dhanmondi"
+                      placeholder="যেমন: স্যুইট ৪বি, রোড ১১, ধানমন্ডি"
                       required
                     />
                   </div>
                   <div>
-                    <label className="admin-form-label">City</label>
+                    <label className="admin-form-label">শহর</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.city}
                       onChange={e => setBillingAddress({ ...billingAddress, city: e.target.value })}
-                      placeholder="Dhaka"
+                      placeholder="ঢাকা"
                     />
                   </div>
                   <div>
-                    <label className="admin-form-label">Country</label>
+                    <label className="admin-form-label">দেশ</label>
                     <input
                       className="admin-form-input"
                       value={billingAddress.country}
                       onChange={e => setBillingAddress({ ...billingAddress, country: e.target.value })}
-                      placeholder="Bangladesh"
+                      placeholder="বাংলাদেশ"
                     />
                   </div>
                 </div>
@@ -791,10 +791,10 @@ export default function CheckoutPage() {
                     <span style={{ fontSize: 32 }}>🎁</span>
                     <div>
                       <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#065F46' }}>
-                        14-Day Free Trial Entitlement
+                        ১৪ দিনের ফ্রি ট্রায়াল সুবিধা
                       </h3>
                       <p style={{ margin: '4px 0 0', fontSize: 13, color: '#047857' }}>
-                        <strong>৳0 / No Payment Required.</strong> Your 14-day trial activates immediately upon confirmation with full features.
+                        <strong>৳০ / কোনো পেমেন্টের প্রয়োজন নেই।</strong> নিশ্চিত করলেই সব সুবিধাসহ আপনার ১৪ দিনের ট্রায়াল চালু হয়ে যাবে।
                       </p>
                     </div>
                   </div>
@@ -803,10 +803,10 @@ export default function CheckoutPage() {
                 <div className="admin-card" style={{ padding: 24, marginBottom: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                     <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>
-                      💳 Select Payment Gateway / Method
+                      💳 পেমেন্ট মাধ্যম / গেটওয়ে নির্বাচন করুন
                     </h3>
                     <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                      No charges processed during checkout
+                      চেকআউটের সময় কোনো অতিরিক্ত চার্জ প্রযোজ্য নয়
                     </span>
                   </div>
 
@@ -862,17 +862,17 @@ export default function CheckoutPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
                       <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#065F46' }}>
-                        🏦 Manual Mobile &amp; Bank Payment Verification
+                        🏦 ম্যানুয়াল মোবাইল ব্যাংকিং ও ব্যাংক পেমেন্ট
                       </h3>
                       <p style={{ margin: '4px 0 0', fontSize: 13, color: '#047857' }}>
-                        Transfer or deposit the payable amount and upload the transaction receipt/screenshot for admin verification.
+                        প্রদেয় টাকা ট্রান্সফার বা জমা দিয়ে অ্যাডমিন যাচাইয়ের জন্য ট্রানজ্যাকশন স্লিপ/স্ক্রিনশট আপলোড করুন।
                       </p>
                     </div>
                     <span style={{
                       fontSize: 11, fontWeight: 800, background: '#10B981', color: '#fff',
                       padding: '4px 10px', borderRadius: 20
                     }}>
-                      Proof Required
+                      রসিদ আবশ্যক
                     </span>
                   </div>
 
@@ -882,7 +882,7 @@ export default function CheckoutPage() {
                     padding: 16, marginBottom: 20, fontSize: 13, color: '#1F2937'
                   }}>
                     <div style={{ fontWeight: 700, marginBottom: 8, color: '#065F46' }}>
-                      📋 Official Receiving Accounts:
+                      📋 আমাদের অফিশিয়াল পেমেন্ট অ্যাকাউন্ট:
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                       <div style={{
@@ -890,44 +890,44 @@ export default function CheckoutPage() {
                         padding: 12, borderRadius: 10,
                         border: paymentMethod === 'bkash' ? '2px solid #E2136E' : '1px solid #E5E7EB'
                       }}>
-                        <div style={{ fontWeight: 800, color: '#E2136E', fontSize: 12 }}>bKash Personal / Merchant</div>
+                        <div style={{ fontWeight: 800, color: '#E2136E', fontSize: 12 }}>bKash পার্সোনাল / মার্চেন্ট</div>
                         <div style={{ fontSize: 14, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>
                           {summaryData?.manual_payment_settings?.accounts?.bkash_number || summaryData?.manual_payment_settings?.accounts?.bkash_personal || '+880 1700-000000'}
                         </div>
-                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Send Money / Merchant Payment</div>
+                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>সেন্ড মানি / মার্চেন্ট পেমেন্ট</div>
                       </div>
                       <div style={{
                         background: paymentMethod === 'nagad' ? '#FFFBEB' : '#F9FAFB',
                         padding: 12, borderRadius: 10,
                         border: paymentMethod === 'nagad' ? '2px solid #F6921E' : '1px solid #E5E7EB'
                       }}>
-                        <div style={{ fontWeight: 800, color: '#F6921E', fontSize: 12 }}>Nagad Personal / Merchant</div>
+                        <div style={{ fontWeight: 800, color: '#F6921E', fontSize: 12 }}>Nagad পার্সোনাল / মার্চেন্ট</div>
                         <div style={{ fontSize: 14, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>
                           {summaryData?.manual_payment_settings?.accounts?.nagad_number || summaryData?.manual_payment_settings?.accounts?.nagad_personal || '+880 1800-000000'}
                         </div>
-                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Send Money / Payment</div>
+                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>সেন্ড মানি / পেমেন্ট</div>
                       </div>
                       <div style={{
                         background: paymentMethod === 'offline' ? '#EFF6FF' : '#F9FAFB',
                         padding: 12, borderRadius: 10,
                         border: paymentMethod === 'offline' ? '2px solid #0052CC' : '1px solid #E5E7EB'
                       }}>
-                        <div style={{ fontWeight: 800, color: '#0052CC', fontSize: 12 }}>Bank Wire (EBL PLC)</div>
+                        <div style={{ fontWeight: 800, color: '#0052CC', fontSize: 12 }}>ব্যাংক ট্রান্সফার (EBL PLC)</div>
                         <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginTop: 2 }}>
                           {summaryData?.manual_payment_settings?.accounts?.bank_name || 'Eastern Bank PLC'}
                         </div>
                         <div style={{ fontSize: 12, color: '#374151' }}>
-                          A/C: {summaryData?.manual_payment_settings?.accounts?.bank_account_number || summaryData?.manual_payment_settings?.accounts?.bank_account_no || '1041060000000'}
+                          অ্যাকাউন্ট: {summaryData?.manual_payment_settings?.accounts?.bank_account_number || summaryData?.manual_payment_settings?.accounts?.bank_account_no || '1041060000000'}
                         </div>
                         <div style={{ fontSize: 11, color: '#6B7280' }}>
-                          Branch: {summaryData?.manual_payment_settings?.accounts?.bank_branch || 'Principal Branch'}
+                          শাখা: {summaryData?.manual_payment_settings?.accounts?.bank_branch || 'Principal Branch'}
                         </div>
                       </div>
                     </div>
 
                     {summaryData?.manual_payment_settings?.instructions && (
                       <div style={{ marginTop: 10, fontSize: 12, color: '#047857', fontStyle: 'italic' }}>
-                        📌 Note: {summaryData.manual_payment_settings.instructions}
+                        📌 বিশেষ দ্রষ্টব্য: {summaryData.manual_payment_settings.instructions}
                       </div>
                     )}
                   </div>
@@ -945,7 +945,7 @@ export default function CheckoutPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                        Channel / Method <span style={{ color: '#DC2626' }}>*</span>
+                        পেমেন্ট চ্যানেল / মাধ্যম <span style={{ color: '#DC2626' }}>*</span>
                       </label>
                       <select
                         className="admin-form-input"
@@ -954,24 +954,24 @@ export default function CheckoutPage() {
                         style={{ background: '#fff' }}
                         required
                       >
-                        <option value="bkash_personal">bKash (Personal Send Money)</option>
-                        <option value="bkash_merchant">bKash (Merchant Payment)</option>
-                        <option value="nagad_personal">Nagad (Personal Send Money)</option>
-                        <option value="nagad_merchant">Nagad (Merchant Payment)</option>
-                        <option value="rocket">Rocket (DBBL)</option>
-                        <option value="bank_transfer">Direct Bank Transfer (EBL / BEFTN / NPSB)</option>
-                        <option value="manual_offline">Cash / Cheque / Other Offline</option>
+                        <option value="bkash_personal">বিকাশ (পার্সোনাল সেন্ড মানি)</option>
+                        <option value="bkash_merchant">বিকাশ (মার্চেন্ট পেমেন্ট)</option>
+                        <option value="nagad_personal">নগদ (পার্সোনাল সেন্ড মানি)</option>
+                        <option value="nagad_merchant">নগদ (মার্চেন্ট পেমেন্ট)</option>
+                        <option value="rocket">রকেট (ডিবিবিএল)</option>
+                        <option value="bank_transfer">সরাসরি ব্যাংক ট্রান্সফার (EBL / BEFTN / NPSB)</option>
+                        <option value="manual_offline">নগদ ক্যাশ / চেক / অন্যান্য অফলাইন</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                        Sender Identifier (Mobile / Account)
+                        প্রেরক নম্বর / অ্যাকাউন্ট (মোবাইল বা ব্যাংক হিসাব)
                       </label>
                       <input
                         type="text"
                         className="admin-form-input"
-                        placeholder="e.g. 01711XXXXXX"
+                        placeholder="যেমন: 01711XXXXXX"
                         value={senderNumber}
                         onChange={e => setSenderNumber(e.target.value)}
                         style={{ background: '#fff' }}
@@ -980,23 +980,23 @@ export default function CheckoutPage() {
 
                     <div>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                        Transaction Reference / TrxID <span style={{ color: '#DC2626' }}>*</span>
+                        ট্রানজ্যাকশন আইডি / TrxID <span style={{ color: '#DC2626' }}>*</span>
                       </label>
                       <input
                         type="text"
                         className="admin-form-input"
-                        placeholder="e.g. 9J87K6L5M4 or Slip Ref"
+                        placeholder="যেমন: 9J87K6L5M4 বা স্লিপ রেফারেন্স"
                         value={transactionRef}
                         onChange={e => setTransactionRef(e.target.value.toUpperCase())}
                         style={{ background: '#fff', fontWeight: 700 }}
                         required
                       />
-                      <span style={{ fontSize: 11, color: '#6B7280' }}>Unique transaction reference or deposit slip ID</span>
+                      <span style={{ fontSize: 11, color: '#6B7280' }}>অনন্য ট্রানজ্যাকশন আইডি বা ব্যাংক স্লিপ রেফারেন্স নম্বর</span>
                     </div>
 
                     <div>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                        Payment Date <span style={{ color: '#DC2626' }}>*</span>
+                        পেমেন্টের তারিখ <span style={{ color: '#DC2626' }}>*</span>
                       </label>
                       <input
                         type="date"
@@ -1011,12 +1011,12 @@ export default function CheckoutPage() {
 
                     <div style={{ gridColumn: 'span 2' }}>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                        Payment Notes / Branch Name (Optional)
+                        পেমেন্ট সংক্রান্ত নোট / ব্যাংক শাখা (ঐচ্ছিক)
                       </label>
                       <input
                         type="text"
                         className="admin-form-input"
-                        placeholder="e.g. Deposited at Dhanmondi Branch by Dr. Arman"
+                        placeholder="যেমন: ধানমন্ডি শাখা থেকে ডা. আরমান কর্তৃক জমাকৃত"
                         value={manualNotes}
                         onChange={e => setManualNotes(e.target.value)}
                         style={{ background: '#fff' }}
@@ -1027,9 +1027,9 @@ export default function CheckoutPage() {
                     <div style={{ gridColumn: 'span 2' }}>
                       <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
                         <span>
-                          Proof of Payment Screenshot / Slip <span style={{ color: '#DC2626' }}>*</span>
+                          পেমেন্টের প্রমাণ / রসিদের স্ক্রিনশট বা স্লিপ <span style={{ color: '#DC2626' }}>*</span>
                         </span>
-                        <span style={{ fontSize: 11, color: '#6B7280' }}>JPG, PNG, WEBP (Max: 5MB)</span>
+                        <span style={{ fontSize: 11, color: '#6B7280' }}>JPG, PNG, WEBP (সর্বোচ্চ ৫ মেগাবাইট)</span>
                       </label>
 
                       <div style={{
@@ -1061,7 +1061,7 @@ export default function CheckoutPage() {
                                   fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px', cursor: 'pointer'
                                 }}
                               >
-                                ✕ Remove & Change
+                                ✕ মুছে পরিবর্তন করুন
                               </button>
                             </div>
                           </div>
@@ -1069,10 +1069,10 @@ export default function CheckoutPage() {
                           <label htmlFor="slip-file-input" style={{ cursor: 'pointer', display: 'block' }}>
                             <div style={{ fontSize: 32, marginBottom: 4 }}>📷</div>
                             <div style={{ fontWeight: 700, color: '#065F46', fontSize: 14 }}>
-                              Click to upload deposit slip or mobile transaction screenshot
+                              ডিপোজিট স্লিপ বা মোবাইল লেনদেনের স্ক্রিনশট আপলোড করতে ক্লিক করুন
                             </div>
                             <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                              Stored in protected internal storage. Accessible only by authorized administrators.
+                              সুরক্ষিত স্টোরেজে সংরক্ষিত থাকে। কেবল অনুমোদিত অ্যাডমিনরাই এটি দেখতে পারেন।
                             </div>
                           </label>
                         )}
@@ -1093,8 +1093,8 @@ export default function CheckoutPage() {
                     required
                   />
                   <span style={{ fontSize: 13, color: 'var(--admin-text)', lineHeight: 1.5 }}>
-                    I agree to the <strong>Subscription Agreement</strong>, <strong>Billing Terms</strong>, and <strong>Cancellation Policy</strong>.
-                    I acknowledge that clicking {isManualMethod ? 'Submit Payment Proof' : 'Place Order'} initiates a pending session awaiting manual or gateway payment clearance.
+                    আমি <strong>সাবস্ক্রিপশন চুক্তি</strong>, <strong>বিলিং নীতিমালা</strong> এবং <strong>বাতিলকরণ শর্তাবলী</strong>-তে সম্মতি জানাচ্ছি।
+                    আমি অবগত যে {isManualMethod ? 'পেমেন্ট রসিদ জমা দেওয়ার পর' : 'অর্ডার নিশ্চিত করার পর'} যাচাই সাপেক্ষে প্ল্যানটি কার্যকর হবে।
                   </span>
                 </label>
               </div>
@@ -1113,12 +1113,12 @@ export default function CheckoutPage() {
                 }}
               >
                 {summaryData?.is_checkout_locked
-                  ? '🔒 Locked (Payment Under Verification)'
+                  ? '🔒 লক করা (পেমেন্ট ভেরিফিকেশন চলছে)'
                   : isFreePlan
-                  ? (submitting ? 'Activating Free Trial...' : '🚀 Activate 14-Day Free Trial (৳0)')
+                  ? (submitting ? 'ফ্রি ট্রায়াল সক্রিয় করা হচ্ছে...' : '🚀 ১৪ দিনের ফ্রি ট্রায়াল শুরু করুন (৳০)')
                   : isManualMethod
-                  ? (manualSubmitting ? 'Submitting Payment Proof...' : `Submit Payment Proof (${currency_symbol}${pricing.total_amount.toLocaleString()})`)
-                  : (submitting ? 'Generating Checkout Session...' : `Confirm & Place Order (${currency_symbol}${pricing.total_amount.toLocaleString()})`)
+                  ? (manualSubmitting ? 'পেমেন্ট রসিদ জমা দেওয়া হচ্ছে...' : `পেমেন্ট রসিদ জমা দিন (${currency_symbol}${pricing.total_amount.toLocaleString()})`)
+                  : (submitting ? 'চেকআউট সেশন তৈরি করা হচ্ছে...' : `অর্ডার নিশ্চিত করুন (${currency_symbol}${pricing.total_amount.toLocaleString()})`)
                 }
               </button>
             </form>
@@ -1128,7 +1128,7 @@ export default function CheckoutPage() {
           <div style={{ position: 'sticky', top: 24 }}>
             <div className="admin-card" style={{ padding: 26, border: '1px solid var(--admin-border)' }}>
               <h3 style={{ margin: '0 0 18px', fontWeight: 900, fontSize: 17, color: 'var(--admin-text)' }}>
-                🧾 Order Summary
+                🧾 অর্ডারের বিবরণ
               </h3>
 
               {/* Target Plan Header */}
@@ -1137,17 +1137,17 @@ export default function CheckoutPage() {
                 borderRadius: 12, padding: 16, marginBottom: 20
               }}>
                 <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--admin-text)' }}>
-                  {target_plan.name}
+                  {target_plan.name_bn || target_plan.name}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 2 }}>
-                  Cycle: <strong style={{ textTransform: 'capitalize' }}>{billingCycle}</strong>
+                  বিলিং সাইকেল: <strong>{billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}</strong>
                 </div>
               </div>
 
               {/* Coupon Box */}
               <div style={{ marginBottom: 20 }}>
                 <label className="admin-form-label" style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-                  🎟️ Have a Coupon?
+                  🎟️ কুপন কোড আছে?
                 </label>
                 {appliedCoupon ? (
                   <div style={{
@@ -1159,7 +1159,7 @@ export default function CheckoutPage() {
                         ✅ {appliedCoupon}
                       </div>
                       <div style={{ color: '#15803D', fontSize: 11 }}>
-                        Coupon applied to this order
+                        কুপন সফলভাবে যুক্ত হয়েছে
                       </div>
                     </div>
                     <button
@@ -1171,7 +1171,7 @@ export default function CheckoutPage() {
                         fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 8px'
                       }}
                     >
-                      Remove
+                      মুছে ফেলুন
                     </button>
                   </div>
                 ) : (
@@ -1179,7 +1179,7 @@ export default function CheckoutPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         className="admin-form-input"
-                        placeholder="e.g. SAVE20"
+                        placeholder="যেমন: SAVE20"
                         value={couponInput}
                         onChange={e => {
                           setCouponInput(e.target.value.toUpperCase())
@@ -1194,7 +1194,7 @@ export default function CheckoutPage() {
                         disabled={couponLoading || !couponInput.trim()}
                         style={{ padding: '0 16px', fontWeight: 700 }}
                       >
-                        {couponLoading ? '...' : 'Apply'}
+                        {couponLoading ? '...' : 'প্রয়োগ করুন'}
                       </button>
                     </div>
                     {couponError && (
@@ -1209,7 +1209,7 @@ export default function CheckoutPage() {
               {/* Pricing Breakdown */}
               <div style={{ fontSize: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, color: 'var(--admin-text-muted)' }}>
-                  <span>Plan Subtotal</span>
+                  <span>প্ল্যানের মূল্য (সাবটোটাল)</span>
                   <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
                     {currency_symbol}{pricing.subtotal.toLocaleString()}
                   </span>
@@ -1217,7 +1217,7 @@ export default function CheckoutPage() {
 
                 {pricing.proration_credit > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, color: '#059669' }}>
-                    <span>Proration Credit</span>
+                    <span>প্রোরেশন ক্রেডিট / ছাড়</span>
                     <span style={{ fontWeight: 800 }}>
                       -{currency_symbol}{pricing.proration_credit.toLocaleString()}
                     </span>
@@ -1226,7 +1226,7 @@ export default function CheckoutPage() {
 
                 {pricing.discount_amount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, color: '#D97706' }}>
-                    <span>Coupon Discount ({appliedCoupon})</span>
+                    <span>কুপন ছাড় ({appliedCoupon})</span>
                     <span style={{ fontWeight: 800 }}>
                       -{currency_symbol}{pricing.discount_amount.toLocaleString()}
                     </span>
@@ -1234,7 +1234,7 @@ export default function CheckoutPage() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, color: 'var(--admin-text-muted)' }}>
-                  <span>Estimated Tax ({pricing.tax_rate_percentage}%)</span>
+                  <span>ভ্যাট / ট্যাক্স ({pricing.tax_rate_percentage}%)</span>
                   <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
                     {currency_symbol}{pricing.tax_amount.toLocaleString()}
                   </span>
@@ -1246,7 +1246,7 @@ export default function CheckoutPage() {
                   borderTop: '2px solid var(--admin-border)', paddingTop: 14, marginTop: 14,
                   color: 'var(--admin-text)',
                 }}>
-                  <span style={{ fontWeight: 900, fontSize: 17 }}>Total Due</span>
+                  <span style={{ fontWeight: 900, fontSize: 17 }}>সর্বমোট প্রদেয় পরিমাণ</span>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 900, fontSize: 24, color: '#00A88C' }}>
                       {currency_symbol}{pricing.total_amount.toLocaleString()}
@@ -1264,7 +1264,7 @@ export default function CheckoutPage() {
                 fontSize: 11, color: '#94A3B8', lineHeight: 1.5, display: 'flex', gap: 8
               }}>
                 <span>🔒</span>
-                <span>All transactions are encrypted and audited. Subscriptions remain pending until confirmed.</span>
+                <span>সকল লেনদেন এনক্রিপ্ট করা ও সুরক্ষিত। যাচাই সম্পন্ন না হওয়া পর্যন্ত সাবস্ক্রিপশন অপেক্ষমাণ থাকবে।</span>
               </div>
             </div>
           </div>
@@ -1278,13 +1278,13 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <div>
                   <h3 style={{ margin: 0, fontWeight: 900, fontSize: 20, color: 'var(--admin-text)' }}>
-                    📄 Invoice Preview
+                    📄 ইনভয়েস প্রিভিউ
                   </h3>
                   <span style={{
                     fontSize: 11, fontWeight: 800, background: '#FEF3C7', color: '#92400E',
                     padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase'
                   }}>
-                    Draft Simulation
+                    খসড়া সিমুলেশন
                   </span>
                 </div>
                 <button
@@ -1292,14 +1292,14 @@ export default function CheckoutPage() {
                   className="admin-btn admin-btn-outline"
                   onClick={() => setInvoicePreviewModal(false)}
                 >
-                  ✕ Close
+                  ✕ বন্ধ করুন
                 </button>
               </div>
 
               {invoiceLoading ? (
                 <div style={{ padding: '40px 0', textAlign: 'center' }}>
                   <div className="admin-spinner" style={{ margin: '0 auto 12px' }} />
-                  <p style={{ color: 'var(--admin-text-muted)' }}>Rendering invoice preview...</p>
+                  <p style={{ color: 'var(--admin-text-muted)' }}>ইনভয়েস প্রিভিউ প্রস্তুত করা হচ্ছে...</p>
                 </div>
               ) : invoicePreviewData ? (
                 <div style={{ fontSize: 13, color: 'var(--admin-text)' }}>
@@ -1311,14 +1311,14 @@ export default function CheckoutPage() {
                       </h4>
                       <div style={{ color: 'var(--admin-text-muted)', fontSize: 12 }}>
                         {invoicePreviewData.company?.address}<br />
-                        VAT / BIN: {invoicePreviewData.company?.vat_number}
+                        ভ্যাট / বিআইএন (BIN): {invoicePreviewData.company?.vat_number}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 800, fontSize: 14 }}>{invoicePreviewData.invoice_number}</div>
                       <div style={{ color: 'var(--admin-text-muted)', fontSize: 12 }}>
-                        Issue Date: {invoicePreviewData.issue_date}<br />
-                        Due Date: {invoicePreviewData.due_date}
+                        ইস্যুর তারিখ: {invoicePreviewData.issue_date}<br />
+                        পরিশোধের শেষ তারিখ: {invoicePreviewData.due_date}
                       </div>
                     </div>
                   </div>
@@ -1326,13 +1326,13 @@ export default function CheckoutPage() {
                   {/* Billed To */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontWeight: 800, fontSize: 12, textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 4 }}>
-                      Billed To
+                      বিল প্রাপক
                     </div>
                     <div style={{ fontWeight: 700 }}>{invoicePreviewData.billed_to?.name}</div>
                     {invoicePreviewData.billed_to?.company && <div>{invoicePreviewData.billed_to?.company}</div>}
                     <div style={{ color: 'var(--admin-text-muted)' }}>
                       {invoicePreviewData.billed_to?.address}, {invoicePreviewData.billed_to?.city}, {invoicePreviewData.billed_to?.country}<br />
-                      Email: {invoicePreviewData.billed_to?.email} | Phone: {invoicePreviewData.billed_to?.phone}
+                      ইমেইল: {invoicePreviewData.billed_to?.email} | ফোন: {invoicePreviewData.billed_to?.phone}
                     </div>
                   </div>
 
@@ -1340,9 +1340,9 @@ export default function CheckoutPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
                     <thead>
                       <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #CBD5E1', textAlign: 'left' }}>
-                        <th style={{ padding: '8px 10px', fontWeight: 800 }}>Description</th>
-                        <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'center' }}>Qty</th>
-                        <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'right' }}>Amount</th>
+                        <th style={{ padding: '8px 10px', fontWeight: 800 }}>বিবরণ</th>
+                        <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'center' }}>পরিমাণ</th>
+                        <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'right' }}>মোট টাকা</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1362,21 +1362,21 @@ export default function CheckoutPage() {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
                     <div style={{ width: 260 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span>Subtotal</span>
+                        <span>সাবটোটাল</span>
                         <span>{invoicePreviewData.currency_symbol}{invoicePreviewData.summary?.subtotal}</span>
                       </div>
                       {invoicePreviewData.summary?.discount_amount > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#D97706' }}>
-                          <span>Discount</span>
+                          <span>ছাড়</span>
                           <span>-{invoicePreviewData.currency_symbol}{invoicePreviewData.summary?.discount_amount}</span>
                         </div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span>Tax</span>
+                        <span>ট্যাক্স / ভ্যাট</span>
                         <span>{invoicePreviewData.currency_symbol}{invoicePreviewData.summary?.tax_amount}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, borderTop: '2px solid #CBD5E1', paddingTop: 8 }}>
-                        <span>Total Due</span>
+                        <span>সর্বমোট প্রদেয়</span>
                         <span style={{ color: '#00A88C' }}>
                           {invoicePreviewData.currency_symbol}{invoicePreviewData.summary?.total_amount} {invoicePreviewData.currency}
                         </span>
@@ -1390,14 +1390,14 @@ export default function CheckoutPage() {
                       className="admin-btn admin-btn-outline"
                       onClick={() => window.print()}
                     >
-                      🖨️ Print Preview
+                      🖨️ প্রিন্ট প্রিভিউ
                     </button>
                     <button
                       type="button"
                       className="admin-btn admin-btn-primary"
                       onClick={() => setInvoicePreviewModal(false)}
                     >
-                      Done
+                      সম্পন্ন
                     </button>
                   </div>
                 </div>
@@ -1415,9 +1415,9 @@ export default function CheckoutPage() {
                 padding: '40px 28px', textAlign: 'center', color: 'white'
               }}>
                 <div style={{ fontSize: 56, marginBottom: 12 }}>📋</div>
-                <h2 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 6px' }}>Checkout Session Created</h2>
+                <h2 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 6px' }}>চেকআউট সেশন তৈরি হয়েছে</h2>
                 <p style={{ fontSize: 14, opacity: 0.95, margin: 0 }}>
-                  Reference: <strong>{sessionSuccessData.public_id}</strong>
+                  রেফারেন্স: <strong>{sessionSuccessData.public_id}</strong>
                 </p>
               </div>
 
@@ -1427,27 +1427,27 @@ export default function CheckoutPage() {
                   borderRadius: 12, padding: '12px 16px', marginBottom: 20, textAlign: 'center'
                 }}>
                   <span style={{ color: '#92400E', fontWeight: 800, fontSize: 13 }}>
-                    ⏳ Status: PENDING PAYMENT
+                    ⏳ অবস্থা: পেমেন্টের জন্য অপেক্ষমাণ
                   </span>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: '#78350F' }}>
-                    Your subscription will activate automatically upon payment verification.
+                    পেমেন্ট যাচাইয়ের পর আপনার সাবস্ক্রিপশন স্বয়ংক্রিয়ভাবে সক্রিয় হবে।
                   </p>
                 </div>
 
                 <div style={{ fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>Amount Due:</span>
+                    <span style={{ color: 'var(--admin-text-muted)' }}>প্রদেয় পরিমাণ:</span>
                     <strong style={{ fontSize: 16, color: '#00A88C' }}>
                       {currency_symbol}{sessionSuccessData.total_amount?.toLocaleString()} {sessionSuccessData.currency}
                     </strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>Selected Method:</span>
+                    <span style={{ color: 'var(--admin-text-muted)' }}>নির্বাচিত মাধ্যম:</span>
                     <strong style={{ textTransform: 'capitalize' }}>{sessionSuccessData.payment_method}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>Session Expiry:</span>
-                    <span>2 Hours ({new Date(sessionSuccessData.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
+                    <span style={{ color: 'var(--admin-text-muted)' }}>সেশনের মেয়াদ:</span>
+                    <span>২ ঘণ্টা ({new Date(sessionSuccessData.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
                   </div>
                 </div>
 
@@ -1458,7 +1458,7 @@ export default function CheckoutPage() {
                     onClick={() => navigate('/admin/subscription')}
                     style={{ fontWeight: 700 }}
                   >
-                    View Billing Plans
+                    বিলিং প্ল্যানসমূহ দেখুন
                   </button>
                   <button
                     type="button"
@@ -1466,7 +1466,7 @@ export default function CheckoutPage() {
                     onClick={() => navigate('/admin')}
                     style={{ fontWeight: 700 }}
                   >
-                    Go to Dashboard
+                    ড্যাশবোর্ডে যান
                   </button>
                 </div>
 
@@ -1480,7 +1480,7 @@ export default function CheckoutPage() {
                       fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline'
                     }}
                   >
-                    {cancellingSession ? 'Cancelling...' : 'Cancel Checkout Session'}
+                    {cancellingSession ? 'বাতিল করা হচ্ছে...' : 'চেকআউট সেশন বাতিল করুন'}
                   </button>
                 </div>
               </div>
@@ -1499,10 +1499,10 @@ export default function CheckoutPage() {
     <div>
       <div className="admin-page-header">
         <div>
-          <h2 className="admin-page-title">🛒 Checkout</h2>
-          <p className="admin-page-subtitle">Complete your subscription package purchase</p>
+          <h2 className="admin-page-title">🛒 চেকআউট</h2>
+          <p className="admin-page-subtitle">সাবস্ক্রিপশন প্যাকেজ ক্রয় সম্পন্ন করুন</p>
         </div>
-        <Link to="/admin/subscription" className="admin-btn admin-btn-outline">← Back to Plans</Link>
+        <Link to="/admin/subscription" className="admin-btn admin-btn-outline">← প্ল্যানসমূহে ফিরে যান</Link>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 32, alignItems: 'flex-start' }}>
@@ -1510,7 +1510,7 @@ export default function CheckoutPage() {
           <form onSubmit={handleLegacySubmit}>
             {/* Payment Method */}
             <div className="admin-card" style={{ marginBottom: 24, padding: 24 }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>💳 Payment Method</h3>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>💳 পেমেন্ট মাধ্যম</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                 {ENTERPRISE_PAYMENT_METHODS.slice(0, 4).map(method => (
                   <label
@@ -1536,10 +1536,10 @@ export default function CheckoutPage() {
 
               {paymentMethod && (
                 <div style={{ marginTop: 20 }}>
-                  <label className="admin-form-label">Transaction ID / Reference</label>
+                  <label className="admin-form-label">ট্রানজ্যাকশন আইডি / রেফারেন্স</label>
                   <input
                     className="admin-form-input"
-                    placeholder="e.g. TXN123456789"
+                    placeholder="যেমন: TXN123456789"
                     value={legacyPaymentRef}
                     onChange={e => setLegacyPaymentRef(e.target.value)}
                     required
@@ -1554,24 +1554,24 @@ export default function CheckoutPage() {
               disabled={submitting}
               style={{ width: '100%', padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 800 }}
             >
-              {submitting ? 'Processing...' : `Confirm & Pay ৳${legacyPrice}`}
+              {submitting ? 'প্রসেসিং হচ্ছে...' : `নিশ্চিত করুন ও পরিশোধ করুন ৳${legacyPrice}`}
             </button>
           </form>
         </div>
 
         {/* Right Summary */}
         <div className="admin-card" style={{ padding: 28 }}>
-          <h3 style={{ margin: '0 0 20px', fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>📦 Order Summary</h3>
+          <h3 style={{ margin: '0 0 20px', fontWeight: 800, fontSize: 16, color: 'var(--admin-text)' }}>📦 অর্ডারের বিবরণ</h3>
           <div style={{ background: 'var(--admin-sidebar-user-bg)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
             <h4 style={{ margin: '0 0 4px', fontWeight: 800, color: 'var(--admin-text)', fontSize: 18 }}>
               {legacyPkg?.name}
             </h4>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-text-muted)' }}>
-              {legacyPkg?.duration_months} month subscription
+              {legacyPkg?.duration_months} মাসের সাবস্ক্রিপশন
             </p>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 20 }}>
-            <span>Total</span>
+            <span>সর্বমোট</span>
             <span style={{ color: '#00A88C' }}>৳{legacyPrice}</span>
           </div>
         </div>
@@ -1581,16 +1581,16 @@ export default function CheckoutPage() {
         <div className="admin-modal-overlay" style={{ zIndex: 9999 }}>
           <div className="admin-modal" style={{ maxWidth: 440, padding: 32, textAlign: 'center', borderRadius: 24 }}>
             <div style={{ fontSize: 52, marginBottom: 12 }}>🎉</div>
-            <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 8px' }}>Purchase Received</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 8px' }}>অর্ডার গৃহীত হয়েছে</h2>
             <p style={{ color: 'var(--admin-text-muted)', marginBottom: 24 }}>
-              Your order has been placed for {legacyPkg?.name}.
+              {legacyPkg?.name}-এর জন্য আপনার অর্ডার সফলভাবে গ্রহণ করা হয়েছে।
             </p>
             <button
               className="admin-btn admin-btn-primary"
               onClick={() => navigate('/admin/subscription')}
               style={{ width: '100%', padding: '12px', fontWeight: 700 }}
             >
-              View Subscriptions
+              সাবস্ক্রিপশন দেখুন
             </button>
           </div>
         </div>

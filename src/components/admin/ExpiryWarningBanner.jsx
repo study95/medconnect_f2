@@ -52,12 +52,12 @@ export default function ExpiryWarningBanner() {
         <div>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: textColor }}>
             {isLastDay
-              ? 'Your subscription expires TODAY!'
-              : `Your ${isTrial ? 'trial' : 'subscription'} expires in ${daysRemaining} day(s)`
+              ? 'আপনার সাবস্ক্রিপশনের মেয়াদ আজই শেষ হচ্ছে!'
+              : `আপনার ${isTrial ? 'ফ্রি ট্রায়ালের' : 'সাবস্ক্রিপশনের'} মেয়াদ আর মাত্র ${daysRemaining} দিন বাকি!`
             }
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-            Valid until: <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{expiryDate}</span> · Renew now to maintain clinical access.
+            মেয়াদ শেষ: <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{expiryDate}</span> · নিরবচ্ছিন্ন সেবার জন্য এখনই রিনিউ করুন।
           </p>
         </div>
       </div>
@@ -71,7 +71,7 @@ export default function ExpiryWarningBanner() {
             boxShadow: `0 4px 12px ${textColor}30`
           }}
         >
-          Renew Subscription
+          রিনিউ করুন
         </Link>
         <button
           onClick={() => setDismissed(true)}
@@ -81,7 +81,7 @@ export default function ExpiryWarningBanner() {
             color: 'var(--admin-text-muted)', fontSize: 13, fontWeight: 700
           }}
         >
-          Dismiss
+          লুকান
         </button>
       </div>
     </div>

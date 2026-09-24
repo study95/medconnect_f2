@@ -794,7 +794,7 @@
   background: var(--abp-card-bg);
   border: 1px solid var(--abp-border);
   border-radius: 20px;
-  max-width: 680px;
+  max-width: 800px;
   width: 100%;
   max-height: 90vh;
   display: flex;
@@ -928,3 +928,108 @@
   background: var(--abp-pill-bg);
   color: var(--abp-text);
 }
+
+/* ─── FEATURE CONFIGURATION CARDS (TAB 3) ─── */
+.abp-feature-guide-box {
+  background: linear-gradient(135deg, rgba(0, 184, 117, 0.08) 0%, rgba(99, 102, 241, 0.06) 100%);
+  border: 1px solid rgba(0, 184, 117, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.abp-feature-card {
+  background: var(--abp-card-header);
+  border: 1px solid var(--abp-border);
+  border-radius: 14px;
+  padding: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.abp-feature-card:hover {
+  border-color: var(--abp-border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.abp-feature-card.is-disabled {
+  background: rgba(148, 163, 184, 0.06);
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+.abp-feature-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--abp-border);
+  margin-bottom: 14px;
+}
+
+.abp-feature-card.is-disabled .abp-feature-card-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.abp-feature-badge-key {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--abp-pill-bg);
+  border: 1px solid var(--abp-border);
+  color: var(--abp-text-muted);
+}
+
+.abp-feature-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.abp-feature-toggle-btn.active {
+  background: rgba(0, 184, 117, 0.12);
+  color: #00b875;
+  border-color: rgba(0, 184, 117, 0.3);
+}
+
+.abp-feature-toggle-btn.inactive {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.abp-feature-toggle-btn:hover {
+  transform: translateY(-1px);
+}
+
+.abp-quota-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.abp-unlimited-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(0, 184, 117, 0.12);
+  color: #009e63;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(0, 184, 117, 0.25);
+}
+

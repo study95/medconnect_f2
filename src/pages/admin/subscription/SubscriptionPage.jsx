@@ -1,4 +1,4 @@
-﻿// SubscriptionPage.jsx — Marketing page with package selection
+// SubscriptionPage.jsx — Marketing page with package selection
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSubscriptionPackages } from '../../../api/subscriptionApi'
@@ -32,18 +32,18 @@ export default function SubscriptionPage() {
   }
 
   const getSavings = (pkg) => {
-    if (pkg.discount_percent > 0) return `Save ${pkg.discount_percent}%`
-    if (pkg.discount_amount > 0) return `Save ৳${pkg.discount_amount}`
+    if (pkg.discount_percent > 0) return `${pkg.discount_percent}% ছাড়`
+    if (pkg.discount_amount > 0) return `৳${pkg.discount_amount} ছাড়`
     return null
   }
 
   const features = [
-    { icon: '📅', title: 'Appointment Management', desc: 'Track and manage all patient appointments' },
-    { icon: '📝', title: 'Digital Prescriptions', desc: 'Write and print professional prescriptions' },
-    { icon: '💊', title: 'Medicine Database', desc: 'Smart medicine autocomplete with full database' },
-    { icon: '📋', title: 'Clinical Notes', desc: 'Save reusable advice templates for prescriptions' },
-    { icon: '💳', title: 'Payment Tracking', desc: 'Monitor all payment records and transactions' },
-    { icon: '📊', title: 'Analytics Dashboard', desc: 'Insights into your practice performance' },
+    { icon: '📅', title: 'অ্যাপয়েন্টমেন্ট ব্যবস্থাপনা', desc: 'রোগীদের সকল অ্যাপয়েন্টমেন্ট সহজে ট্র্যাক ও নিয়ন্ত্রণ করুন' },
+    { icon: '📝', title: 'ডিজিটাল প্রেসক্রিপশন', desc: 'পেশাদার ডিজিটাল প্রেসক্রিপশন তৈরি ও প্রিন্ট করুন' },
+    { icon: '💊', title: 'ঔষধের ডেটাবেজ', desc: 'স্মার্ট ঔষধ অটো-সাজেশন ও সমৃদ্ধ ডেটাবেজ' },
+    { icon: '📋', title: 'ক্লিনিক্যাল নোট ও টেমপ্লেট', desc: 'প্রেসক্রিপশনের জন্য পুনঃব্যবহারযোগ্য পরামর্শ ও নোট সংরক্ষণ' },
+    { icon: '💳', title: 'পেমেন্ট ট্র্যাকিং', desc: 'সকল লেনদেন ও পেমেন্ট হিস্ট্রি সহজে পর্যবেক্ষণ করুন' },
+    { icon: '📊', title: 'অ্যানালিটিক্স ড্যাশবোর্ড', desc: 'আপনার চিকিৎসা কার্যক্রম ও রোগীর পরিসংখ্যান বিশ্লেষণ' },
   ]
 
   return (
@@ -58,11 +58,11 @@ export default function SubscriptionPage() {
         }}>
           <div>
             <h3 style={{ margin: 0, color: 'var(--admin-sidebar-accent)', fontSize: 16, fontWeight: 800 }}>
-              ✅ Your subscription is active
+              ✅ আপনার সাবস্ক্রিপশন সক্রিয় রয়েছে
             </h3>
             <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--admin-text-muted)' }}>
-              {isTrial ? `Free trial · ` : subscription ? `${subscription.package_name} · ` : ''}
-              {daysRemaining !== null ? `${daysRemaining} days remaining · Expires ${expiryDate}` : 'Active'}
+              {isTrial ? `ফ্রি ট্রায়াল · ` : subscription ? `${subscription.package_name} · ` : ''}
+              {daysRemaining !== null ? `${daysRemaining} দিন বাকি · মেয়াদ উত্তীর্ণ: ${expiryDate}` : 'সক্রিয়'}
             </p>
           </div>
         </div>
@@ -75,15 +75,15 @@ export default function SubscriptionPage() {
           background: '#EEF2FF', color: '#4F46E5', fontWeight: 700, fontSize: 12,
           marginBottom: 16, letterSpacing: '0.5px'
         }}>
-          ⚡ UNLOCK YOUR FULL POTENTIAL
+          ⚡ আপনার প্র্যাকটিসকে আরও গতিশীল করুন
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--admin-text)', margin: '0 0 12px', lineHeight: 1.3 }}>
-          Upgrade Your Practice with<br />
-          <span style={{ color: '#00A88C' }}>Doctor Booklet Pro</span>
+          আপনার প্র্যাকটিস আধুনিকায়ন করুন<br />
+          <span style={{ color: '#00A88C' }}>ডক্টর বুকলেট প্রো</span>-এর সাথে
         </h1>
         <p style={{ fontSize: 15, color: 'var(--admin-text-muted)', maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>
-          Get access to appointment management, digital prescriptions, medicine database,
-          clinical notes, and payment tracking — all in one platform.
+          অ্যাপয়েন্টমেন্ট ব্যবস্থাপনা, ডিজিটাল প্রেসক্রিপশন, মেডিসিন ডেটাবেজ,
+          ক্লিনিক্যাল নোট ও পেমেন্ট ট্র্যাকিং — সব একই প্ল্যাটফর্মে।
         </p>
       </div>
 
@@ -108,14 +108,14 @@ export default function SubscriptionPage() {
 
       {/* Pricing Cards */}
       <h2 style={{ textAlign: 'center', fontSize: 22, fontWeight: 800, color: 'var(--admin-text)', marginBottom: 8 }}>
-        Choose Your Plan
+        আপনার সুবিধাজনক প্ল্যান বেছে নিন
       </h2>
       <p style={{ textAlign: 'center', color: 'var(--admin-text-muted)', marginBottom: 32, fontSize: 14 }}>
-        Select the plan that fits your practice. All plans include full access to every feature.
+        আপনার প্র্যাকটিসের জন্য উপযুক্ত প্ল্যান নির্বাচন করুন। প্রতিটি প্ল্যানে সকল ফিচারের পূর্ণ অ্যাক্সেস অন্তর্ভুক্ত।
       </p>
 
       {loading ? (
-        <div className="admin-loading"><div className="admin-spinner" /> Loading packages...</div>
+        <div className="admin-loading"><div className="admin-spinner" /> প্যাকেজ লোড হচ্ছে...</div>
       ) : (
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -140,7 +140,7 @@ export default function SubscriptionPage() {
                   background: '#3B82F6', color: 'white', padding: '6px 20px', borderRadius: 20,
                   fontSize: 12, fontWeight: 900, letterSpacing: '0.5px', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)'
                 }}>
-                  ✅ CURRENTLY ACTIVE
+                  ✅ বর্তমানে সক্রিয়
                 </div>
               ) : pkg.is_popular && (
                 <div style={{
@@ -149,7 +149,7 @@ export default function SubscriptionPage() {
                   color: 'white', padding: '4px 16px', borderRadius: 20,
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.5px'
                 }}>
-                  ⭐ MOST POPULAR
+                  ⭐ সর্বাধিক জনপ্রিয়
                 </div>
               )}
 
@@ -166,7 +166,7 @@ export default function SubscriptionPage() {
                     ৳{Math.round(pkg.effective_price || pkg.price)}
                   </span>
                   <span style={{ fontSize: 14, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-                    / {pkg.duration_months} {pkg.duration_months === 1 ? 'month' : 'months'}
+                    / {pkg.duration_months} মাস
                   </span>
                 </div>
 
@@ -185,7 +185,7 @@ export default function SubscriptionPage() {
                 )}
 
                 <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748B' }}>
-                  ≈ ৳{getMonthlyPrice(pkg)}/month
+                  ≈ ৳{getMonthlyPrice(pkg)} / মাস
                 </p>
               </div>
 
@@ -217,7 +217,7 @@ export default function SubscriptionPage() {
                   }
                 }}
               >
-                {isActivePkg ? 'See Plan Details' : 'Select Plan'}
+                {isActivePkg ? 'প্ল্যানের বিবরণ দেখুন' : 'প্ল্যান বেছে নিন'}
               </button>
             </div>
           )})}
@@ -230,22 +230,22 @@ export default function SubscriptionPage() {
           <div className="admin-modal" style={{ maxWidth: 450, padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
             <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 12px', color: 'var(--admin-text)' }}>
-              Already Active Package!
+              ইতিমধ্যে একটি প্যাকেজ সক্রিয় আছে!
             </h3>
             <div style={{ background: 'var(--admin-sidebar-user-bg)', borderRadius: 12, padding: 16, marginBottom: 24, border: '1px solid var(--admin-border)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--admin-text-muted)' }}>
-                You already have an active subscription:
+                আপনার ইতিমধ্যে একটি সক্রিয় সাবস্ক্রিপশন রয়েছে:
               </p>
               <h4 style={{ margin: 0, fontSize: 18, color: '#00A88C', fontWeight: 800 }}>
-                {subscription?.package_name || 'Premium Plan'}
+                {subscription?.package_name || 'প্রিমিয়াম প্ল্যান'}
               </h4>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--admin-text-muted)' }}>
-                Valid until: <strong>{expiryDate}</strong> ({daysRemaining} days left)
+                মেয়াদ উত্তীর্ণ: <strong>{expiryDate}</strong> ({daysRemaining} দিন বাকি)
               </p>
             </div>
             
             <p style={{ fontSize: 14, color: 'var(--admin-text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
-              Are you sure you want to purchase the <strong>{activeWarningModal.name}</strong> plan right now? This will create an additional/overlapping package.
+              আপনি কি নিশ্চিত যে আপনি এখনই <strong>{activeWarningModal.name}</strong> প্ল্যানটি কিনতে চান? এতে অতিরিক্ত একটি প্যাকেজ যুক্ত হবে।
             </p>
 
             <div style={{ display: 'flex', gap: 12 }}>
@@ -254,14 +254,14 @@ export default function SubscriptionPage() {
                 style={{ flex: 1 }}
                 onClick={() => setActiveWarningModal(null)}
               >
-                Cancel
+                বাতিল
               </button>
               <button
                 className="admin-btn admin-btn-primary"
                 style={{ flex: 1 }}
                 onClick={() => navigate(`/admin/subscription/checkout/${activeWarningModal.id}`)}
               >
-                Yes, Purchase
+                হ্যাঁ, কিনতে চাই
               </button>
             </div>
           </div>

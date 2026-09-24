@@ -77,7 +77,7 @@ export default function AdminCouponsPage() {
       setCoupons(Array.isArray(list) ? list : [])
     } catch (err) {
       console.error('Failed to load coupons', err)
-      setError(err?.response?.data?.message || 'Failed to load coupons. Please retry.')
+      setError(err?.response?.data?.message || 'কুপন তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -142,19 +142,19 @@ export default function AdminCouponsPage() {
       setShowModal(false)
       loadCoupons()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving promotional coupon.')
+      alert(err.response?.data?.message || 'প্রমোশনাল কুপন সংরক্ষণে সমস্যা হয়েছে।')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (coupon) => {
-    if (!window.confirm(`Deactivate / Remove coupon "${coupon.code}"?`)) return
+    if (!window.confirm(`কুপন "${coupon.code}" নিষ্ক্রিয় বা মুছে ফেলতে চান?`)) return
     try {
       await deleteAdminCoupon(coupon.id)
       loadCoupons()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error deleting coupon.')
+      alert(err.response?.data?.message || 'কুপন মুছতে সমস্যা হয়েছে।')
     }
   }
 
@@ -183,11 +183,11 @@ export default function AdminCouponsPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Promotional Coupons &amp; Campaigns
-            <span className="ab-title-badge">Discounts Engine</span>
+            প্রমোশনাল কুপন ও ক্যাম্পেইন
+            <span className="ab-title-badge">ডিসকাউন্ট ইঞ্জিন</span>
           </h1>
           <p className="ab-subtitle">
-            Create and track promotional vouchers, redemption capacities, campaign attribution, and net revenue.
+            প্রমোশনাল ভাউচার তৈরি করুন, ব্যবহারের সীমা ও ক্যাম্পেইনের মাধ্যমে অর্জিত রাজস্ব ট্র্যাক করুন।
           </p>
         </div>
 
@@ -195,7 +195,7 @@ export default function AdminCouponsPage() {
           <button
             onClick={loadCoupons}
             className="ab-btn-refresh"
-            title="Refresh Coupons"
+            title="কুপন রিফ্রেশ করুন"
             disabled={loading}
             aria-label="Refresh coupons list"
           >
@@ -205,9 +205,9 @@ export default function AdminCouponsPage() {
             onClick={openCreate}
             className="ab-btn-primary"
             disabled={!hasPermission('billing.plans.manage')}
-            title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : undefined}
+            title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
           >
-            <Plus size={16} /> Create Coupon
+            <Plus size={16} /> নতুন কুপন তৈরি
           </button>
         </div>
       </div>
@@ -215,28 +215,28 @@ export default function AdminCouponsPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans &amp; Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill active">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং কনফিগারেশন
         </Link>
       </nav>
 
@@ -244,44 +244,44 @@ export default function AdminCouponsPage() {
       <div className="ab-kpi-deck">
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Configured Vouchers</span>
+            <span>কনফিগারকৃত ভাউচার</span>
             <Tag size={15} color="#8b5cf6" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.total}</div>
           <div className="ab-kpi-footnote">
-            <span style={{ color: '#00b875', fontWeight: 700 }}>{summaryMetrics.active} Active</span> • {summaryMetrics.total - summaryMetrics.active} Inactive
+            <span style={{ color: '#00b875', fontWeight: 700 }}>{summaryMetrics.active}টি সক্রিয়</span> • {summaryMetrics.total - summaryMetrics.active}টি নিষ্ক্রিয়
           </div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Total Redemptions</span>
+            <span>সর্বমোট রিডিম / ব্যবহার</span>
             <Users size={15} color="#3b82f6" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalRedeemed}</div>
-          <div className="ab-kpi-footnote">Checkout applications by practices</div>
+          <div className="ab-kpi-footnote">চেকআউটে গ্রাহকদের দ্বারা ব্যবহারের সংখ্যা</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Attributed Revenue</span>
+            <span>কুপন সংশ্লিষ্ট রাজস্ব</span>
             <DollarSign size={15} color="#00b875" />
           </div>
           <div className="ab-kpi-value" style={{ color: '#00b875' }}>
             ৳{summaryMetrics.totalRevenue.toLocaleString()}
           </div>
-          <div className="ab-kpi-footnote">Net turnover generated by coupons</div>
+          <div className="ab-kpi-footnote">কুপন ব্যবহারে সফলভাবে সংগৃহীত মোট লেনদেন</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Campaign Success Rate</span>
+            <span>সক্রিয় ক্যাম্পেইনের হার</span>
             <CheckCircle2 size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value">
             {summaryMetrics.total > 0 ? Math.round((summaryMetrics.active / summaryMetrics.total) * 100) : 0}%
           </div>
-          <div className="ab-kpi-footnote">Active campaigns ratio</div>
+          <div className="ab-kpi-footnote">মোট কুপনের মধ্যে সক্রিয় অনুপাত</div>
         </div>
       </div>
 
@@ -293,19 +293,19 @@ export default function AdminCouponsPage() {
               onClick={() => setEntityFilter('all')}
               className={`ab-segmented-btn ${entityFilter === 'all' ? 'active' : ''}`}
             >
-              All Audiences
+              সকল গ্রাহক
             </button>
             <button
               onClick={() => setEntityFilter('doctor')}
               className={`ab-segmented-btn ${entityFilter === 'doctor' ? 'active' : ''}`}
             >
-              <Stethoscope size={13} /> Doctor Practices
+              <Stethoscope size={13} /> ডাক্তারদের জন্য
             </button>
             <button
               onClick={() => setEntityFilter('hospital')}
               className={`ab-segmented-btn ${entityFilter === 'hospital' ? 'active' : ''}`}
             >
-              <Building2 size={13} /> Hospitals
+              <Building2 size={13} /> হাসপাতালের জন্য
             </button>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function AdminCouponsPage() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Search coupon code..."
+              placeholder="কুপন কোড দিয়ে খুঁজুন..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ab-search-input"
@@ -330,7 +330,7 @@ export default function AdminCouponsPage() {
         <div className="ab-error-state" role="status" aria-live="polite">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadCoupons} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadCoupons} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 
@@ -340,14 +340,14 @@ export default function AdminCouponsPage() {
           <table className="ab-table" aria-busy={loading}>
             <thead>
               <tr>
-                <th>Voucher Code</th>
-                <th>Discount Value</th>
-                <th>Target Entity</th>
-                <th>Usage &amp; Capacity</th>
-                <th>Generated Revenue</th>
-                <th>Validity Range</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>ভাউচার কোড</th>
+                <th>ডিসকাউন্টের পরিমাণ</th>
+                <th>উদ্দিষ্ট গ্রাহক</th>
+                <th>ব্যবহার ও সর্বোচ্চ সীমা</th>
+                <th>অর্জিত রাজস্ব</th>
+                <th>মেয়াদকাল</th>
+                <th>স্ট্যাটাস</th>
+                <th style={{ textAlign: 'right' }}>পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody>
@@ -364,8 +364,8 @@ export default function AdminCouponsPage() {
                   <td colSpan={8}>
                     <div className="ab-empty-state">
                       <Tag size={36} className="ab-empty-icon" />
-                      <div className="ab-empty-title">No coupons found</div>
-                      <div className="ab-empty-sub">Create your first coupon campaign to offer discounts</div>
+                      <div className="ab-empty-title">কোনো কুপন পাওয়া যায়নি</div>
+                      <div className="ab-empty-sub">ডিসকাউন্ট সুবিধা দিতে আপনার প্রথম কুপন ক্যাম্পেইন তৈরি করুন</div>
                     </div>
                   </td>
                 </tr>
@@ -384,12 +384,12 @@ export default function AdminCouponsPage() {
                       </td>
                       <td>
                         <span className="ab-badge ab-badge-purple" style={{ fontSize: '12px' }}>
-                          {isPercent ? `${cpn.discount_value}% OFF` : `৳${cpn.discount_value} FLAT`}
+                          {isPercent ? `${cpn.discount_value}% ছাড়` : `৳${cpn.discount_value} ফিক্সড`}
                         </span>
                       </td>
                       <td>
                         <span className="ab-badge ab-badge-blue">
-                          {cpn.applies_to_entity || 'All Audiences'}
+                          {cpn.applies_to_entity === 'Doctor' ? 'ডাক্তার' : cpn.applies_to_entity === 'Hospital' ? 'হাসপাতাল' : 'সকল গ্রাহক'}
                         </span>
                       </td>
                       <td>
@@ -407,14 +407,14 @@ export default function AdminCouponsPage() {
                       </td>
                       <td>
                         <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>
-                          {cpn.valid_until ? `Until ${new Date(cpn.valid_until).toLocaleDateString()}` : 'No Expiry'}
+                          {cpn.valid_until ? `মেয়াদ: ${new Date(cpn.valid_until).toLocaleDateString('bn-BD')} পর্যন্ত` : 'মেয়াদহীন'}
                         </div>
                       </td>
                       <td>
                         {cpn.is_active ? (
-                          <span className="ab-badge ab-badge-emerald">Active</span>
+                          <span className="ab-badge ab-badge-emerald">সক্রিয়</span>
                         ) : (
-                          <span className="ab-badge ab-badge-slate">Inactive</span>
+                          <span className="ab-badge ab-badge-slate">নিষ্ক্রিয়</span>
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
@@ -424,17 +424,17 @@ export default function AdminCouponsPage() {
                             className="ab-btn-secondary"
                             style={{ padding: '6px 10px', fontSize: '12px' }}
                             disabled={!hasPermission('billing.plans.manage')}
-                            title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : 'Edit coupon'}
+                            title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : 'কুপন সম্পাদনা করুন'}
                             aria-label={`Edit coupon ${cpn.code}`}
                           >
-                            <Edit2 size={13} /> Edit
+                            <Edit2 size={13} /> সম্পাদনা
                           </button>
                           <button
                             onClick={() => handleDelete(cpn)}
                             className="ab-btn-secondary"
                             style={{ padding: '6px 8px', fontSize: '12px', color: '#ef4444' }}
                             disabled={!hasPermission('billing.plans.manage')}
-                            title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : 'Remove coupon'}
+                            title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : 'কুপন মুছুন'}
                             aria-label={`Delete coupon ${cpn.code}`}
                           >
                             <Trash2 size={13} />
@@ -459,10 +459,10 @@ export default function AdminCouponsPage() {
             disabled={page <= 1}
             aria-label="Previous page"
           >
-            ← Previous
+            ← পূর্ববর্তী
           </button>
           <span className="ab-pagination-info">
-            Page {meta.current_page || page} of {meta.last_page} &bull; {meta.total} total
+            পৃষ্ঠা {meta.current_page || page} / {meta.last_page} &bull; মোট {meta.total}টি
           </span>
           <button
             className="ab-btn-secondary"
@@ -470,7 +470,7 @@ export default function AdminCouponsPage() {
             disabled={page >= meta.last_page}
             aria-label="Next page"
           >
-            Next →
+            পরবর্তী →
           </button>
         </div>
       )}
@@ -481,7 +481,7 @@ export default function AdminCouponsPage() {
           <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ab-modal-header">
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ab-text)' }}>
-                {editingCoupon ? `Edit Coupon: ${editingCoupon.code}` : 'Create New Promotional Campaign'}
+                {editingCoupon ? `কুপন সম্পাদনা: ${editingCoupon.code}` : 'নতুন প্রমোশনাল ক্যাম্পেইন তৈরি'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -495,13 +495,13 @@ export default function AdminCouponsPage() {
             <form onSubmit={handleSubmit}>
               <div className="ab-modal-body">
                 <div className="ab-form-group">
-                  <label className="ab-form-label">Promotional Voucher Code *</label>
+                  <label className="ab-form-label">প্রমোশনাল ভাউচার কোড *</label>
                   <input
                     type="text"
                     required
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. SUMMER2026 or DOCTORPROMO"
+                    placeholder="যেমন: SUMMER2026 বা DOCTORPROMO"
                     className="ab-form-input"
                     style={{ fontFamily: 'monospace', fontWeight: 700 }}
                   />
@@ -509,19 +509,19 @@ export default function AdminCouponsPage() {
 
                 <div className="ab-form-row">
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Discount Type *</label>
+                    <label className="ab-form-label">ডিসকাউন্টের ধরন *</label>
                     <select
                       value={form.discount_type}
                       onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
                       className="ab-form-select"
                     >
-                      <option value="percentage">Percentage Discount (%)</option>
-                      <option value="fixed">Fixed Deduction (৳ BDT)</option>
+                      <option value="percentage">শতকরা ছাড় (%)</option>
+                      <option value="fixed">নির্দিষ্ট অংকের ছাড় (৳ BDT)</option>
                     </select>
                   </div>
 
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Discount Magnitude *</label>
+                    <label className="ab-form-label">ছাড়ের পরিমাণ *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -535,20 +535,20 @@ export default function AdminCouponsPage() {
 
                 <div className="ab-form-row">
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Target Entity</label>
+                    <label className="ab-form-label">উদ্দিষ্ট গ্রাহক প্রতিষ্ঠান</label>
                     <select
                       value={form.applies_to_entity}
                       onChange={(e) => setForm({ ...form, applies_to_entity: e.target.value })}
                       className="ab-form-select"
                     >
-                      <option value="Doctor">Doctor Practices Only</option>
-                      <option value="Hospital">Hospitals Only</option>
-                      <option value="all">All Customer Entities</option>
+                      <option value="Doctor">শুধুমাত্র ডাক্তারদের জন্য</option>
+                      <option value="Hospital">শুধুমাত্র হাসপাতালের জন্য</option>
+                      <option value="all">সকল গ্রাহক (ডাক্তার ও হাসপাতাল)</option>
                     </select>
                   </div>
 
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Capacity (Max Redemptions)</label>
+                    <label className="ab-form-label">সর্বোচ্চ ব্যবহার সীমা (Max Redemptions)</label>
                     <input
                       type="number"
                       value={form.max_redemptions}
@@ -560,7 +560,7 @@ export default function AdminCouponsPage() {
 
                 <div className="ab-form-row">
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Valid From</label>
+                    <label className="ab-form-label">শুরুর তারিখ (Valid From)</label>
                     <input
                       type="date"
                       value={form.valid_from}
@@ -570,7 +570,7 @@ export default function AdminCouponsPage() {
                   </div>
 
                   <div className="ab-form-group">
-                    <label className="ab-form-label">Valid Until (Expiry Date)</label>
+                    <label className="ab-form-label">মেয়াদ শেষের তারিখ (Valid Until)</label>
                     <input
                       type="date"
                       value={form.valid_until}
@@ -589,7 +589,7 @@ export default function AdminCouponsPage() {
                     style={{ width: '16px', height: '16px', accentColor: '#00b875' }}
                   />
                   <label htmlFor="coupon_is_active" style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--ab-text)', cursor: 'pointer' }}>
-                    Active Campaign (available for customer redemption)
+                    সক্রিয় ক্যাম্পেইন (গ্রাহকরা চেকআউটে ব্যবহার করতে পারবেন)
                   </label>
                 </div>
               </div>
@@ -600,21 +600,21 @@ export default function AdminCouponsPage() {
                   onClick={() => setShowModal(false)}
                   className="ab-btn-secondary"
                 >
-                  Cancel
+                  বাতিল
                 </button>
                 <button
                   type="submit"
                   disabled={saving || !hasPermission('billing.plans.manage')}
-                  title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : undefined}
+                  title={!hasPermission('billing.plans.manage') ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
                   className="ab-btn-primary"
                 >
                   {saving ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" /> Saving...
+                      <RefreshCw size={14} className="animate-spin" /> সংরক্ষণ হচ্ছে...
                     </>
                   ) : (
                     <>
-                      <Check size={15} /> Save Campaign
+                      <Check size={15} /> ক্যাম্পেইন সংরক্ষণ করুন
                     </>
                   )}
                 </button>

@@ -67,7 +67,7 @@ export default function AdminInvoicesPage() {
       setInvoices(Array.isArray(list) ? list : [])
     } catch (err) {
       console.error('Failed to load invoices', err)
-      setError(err?.response?.data?.message || 'Failed to load invoices. Please retry.')
+      setError(err?.response?.data?.message || 'ইনভয়েস তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -84,15 +84,15 @@ export default function AdminInvoicesPage() {
   }, [statusFilter, debouncedSearch])
 
   const handleMarkPaid = async (inv) => {
-    if (!window.confirm(`Mark Invoice ${inv.invoice_number} as PAID?`)) return
+    if (!window.confirm(`ইনভয়েস #${inv.invoice_number} কে 'পরিশোধিত' (PAID) হিসেবে চিহ্নিত করতে চান?`)) return
     try {
       setActionProcessing(true)
       await markInvoicePaid(inv.id)
-      setActionMessage({ type: 'success', text: `Invoice ${inv.invoice_number} marked as PAID.` })
+      setActionMessage({ type: 'success', text: `ইনভয়েস #${inv.invoice_number} সফলভাবে পরিশোধিত হিসেবে চিহ্নিত হয়েছে।` })
       loadInvoices()
       if (selectedInvoice?.id === inv.id) setSelectedInvoice(null)
     } catch (err) {
-      setActionMessage({ type: 'error', text: err.response?.data?.message || 'Error marking invoice paid.' })
+      setActionMessage({ type: 'error', text: err.response?.data?.message || 'ইনভয়েস পরিশোধিত হিসেবে চিহ্নিত করতে সমস্যা হয়েছে।' })
     } finally {
       setActionProcessing(false)
       setTimeout(() => setActionMessage(null), 4000)
@@ -103,10 +103,10 @@ export default function AdminInvoicesPage() {
     try {
       setActionProcessing(true)
       await regenerateInvoice(inv.id)
-      setActionMessage({ type: 'success', text: `Invoice ${inv.invoice_number} recalculated & regenerated.` })
+      setActionMessage({ type: 'success', text: `ইনভয়েস #${inv.invoice_number} পুনরায় হিসাব ও প্রস্তুত করা হয়েছে।` })
       loadInvoices()
     } catch (err) {
-      setActionMessage({ type: 'error', text: 'Error regenerating invoice.' })
+      setActionMessage({ type: 'error', text: 'ইনভয়েস পুনর্গণনায় সমস্যা হয়েছে।' })
     } finally {
       setActionProcessing(false)
       setTimeout(() => setActionMessage(null), 4000)
@@ -117,9 +117,9 @@ export default function AdminInvoicesPage() {
     try {
       setActionProcessing(true)
       await sendInvoiceEmail(inv.id)
-      setActionMessage({ type: 'success', text: `Invoice ${inv.invoice_number} successfully dispatched to customer email!` })
+      setActionMessage({ type: 'success', text: `ইনভয়েস #${inv.invoice_number} সফলভাবে গ্রাহকের ইমেইলে প্রেরণ করা হয়েছে!` })
     } catch (err) {
-      setActionMessage({ type: 'error', text: 'Error emailing invoice.' })
+      setActionMessage({ type: 'error', text: 'ইনভয়েস ইমেইল প্রেরণে সমস্যা হয়েছে।' })
     } finally {
       setActionProcessing(false)
       setTimeout(() => setActionMessage(null), 4000)
@@ -151,13 +151,15 @@ export default function AdminInvoicesPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'paid':
-        return <span className="ab-badge ab-badge-emerald"><span className="ab-dot" style={{ background: '#10b981' }} /> Paid</span>
+        return <span className="ab-badge ab-badge-emerald"><span className="ab-dot" style={{ background: '#10b981' }} /> পরিশোধিত</span>
       case 'issued':
-        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> Issued / Due</span>
+        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> বকেয়া / জমাকৃত</span>
       case 'draft':
-        return <span className="ab-badge ab-badge-blue">Draft</span>
+        return <span className="ab-badge ab-badge-blue">খসড়া</span>
       case 'void':
-        return <span className="ab-badge ab-badge-slate">Void</span>
+        return <span className="ab-badge ab-badge-slate">বাতিল</span>
+      case 'uncollectible':
+        return <span className="ab-badge ab-badge-rose">অনাদায়ী</span>
       default:
         return <span className="ab-badge ab-badge-slate">{status}</span>
     }
@@ -169,11 +171,11 @@ export default function AdminInvoicesPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Invoices & Billing Ledger
-            <span className="ab-title-badge">Receivables</span>
+            ইনভয়েস ও বিলিং লেজার
+            <span className="ab-title-badge">আদায়যোগ্য পাওনা</span>
           </h1>
           <p className="ab-subtitle">
-            Generate, audit, email, and reconcile customer billing invoices across all subscribed practices.
+            সকল গ্রাহক ও প্রতিষ্ঠানের বিলিং ইনভয়েস তৈরি, নিরীক্ষা, ইমেইল প্রেরণ ও সমন্বয় করুন।
           </p>
         </div>
 
@@ -181,7 +183,7 @@ export default function AdminInvoicesPage() {
           <button
             onClick={loadInvoices}
             className="ab-btn-refresh"
-            title="Refresh Invoices"
+            title="ইনভয়েস রিফ্রেশ করুন"
             disabled={loading}
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -192,28 +194,28 @@ export default function AdminInvoicesPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans & Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill active">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং কনফিগারেশন
         </Link>
       </nav>
 
@@ -221,38 +223,38 @@ export default function AdminInvoicesPage() {
       <div className="ab-kpi-deck">
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Gross Invoiced</span>
+            <span>মোট ইনভয়েসকৃত অর্থ</span>
             <Receipt size={15} color="#64748b" />
           </div>
           <div className="ab-kpi-value">৳{summaryMetrics.totalGross.toLocaleString()}</div>
-          <div className="ab-kpi-footnote">Total volume billed across accounts</div>
+          <div className="ab-kpi-footnote">সকল অ্যাকাউন্টে মোট বিলিং ভলিউম</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Collected Cash Inflow</span>
+            <span>আদায়কৃত নগদ রাজস্ব</span>
             <CheckCircle2 size={15} color="#00b875" />
           </div>
           <div className="ab-kpi-value" style={{ color: '#00b875' }}>৳{summaryMetrics.totalCollected.toLocaleString()}</div>
-          <div className="ab-kpi-footnote">Successfully settled transactions</div>
+          <div className="ab-kpi-footnote">সফলভাবে নিষ্পত্তিকৃত লেনদেন</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Outstanding Receivables</span>
+            <span>বকেয়া পাওনা</span>
             <AlertCircle size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value" style={{ color: '#f59e0b' }}>৳{summaryMetrics.totalDue.toLocaleString()}</div>
-          <div className="ab-kpi-footnote">Balance due on issued invoices</div>
+          <div className="ab-kpi-footnote">ইস্যুকৃত ইনভয়েসে বকেয়া ব্যালেন্স</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Voided / Written Off</span>
+            <span>বাতিলকৃত ইনভয়েস</span>
             <Ban size={15} color="#94a3b8" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.voidCount}</div>
-          <div className="ab-kpi-footnote">Canceled or invalid invoices</div>
+          <div className="ab-kpi-footnote">বাতিল বা অকার্যকর ইনভয়েস সংখ্যা</div>
         </div>
       </div>
 
@@ -289,12 +291,12 @@ export default function AdminInvoicesPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="ab-select"
           >
-            <option value="">All Invoice Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="issued">Issued / Due</option>
-            <option value="draft">Draft</option>
-            <option value="void">Void</option>
-            <option value="uncollectible">Uncollectible</option>
+            <option value="">সকল ইনভয়েস স্ট্যাটাস</option>
+            <option value="paid">পরিশোধিত</option>
+            <option value="issued">বকেয়া / জমাকৃত</option>
+            <option value="draft">খসড়া</option>
+            <option value="void">বাতিল</option>
+            <option value="uncollectible">অনাদায়ী</option>
           </select>
         </div>
 
@@ -303,7 +305,7 @@ export default function AdminInvoicesPage() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Search invoice number, client..."
+              placeholder="ইনভয়েস নম্বর, গ্রাহকের নাম দিয়ে খুঁজুন..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ab-search-input"
@@ -318,7 +320,7 @@ export default function AdminInvoicesPage() {
         <div className="ab-error-state" role="alert">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadInvoices} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadInvoices} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 
@@ -328,12 +330,12 @@ export default function AdminInvoicesPage() {
           <table className="ab-table" aria-busy={loading}>
             <thead>
               <tr>
-                <th>Invoice Identifier</th>
-                <th>Billed Customer</th>
-                <th>Invoiced Amount</th>
-                <th>Payment Status</th>
-                <th>Issue Date / Due Date</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>ইনভয়েস নম্বর ও আইডি</th>
+                <th>বিলিং গ্রাহক</th>
+                <th>ইনভয়েসকৃত পরিমাণ</th>
+                <th>পরিশোধের স্ট্যাটাস</th>
+                <th>ইস্যু ও পরিশোধের শেষ তারিখ</th>
+                <th style={{ textAlign: 'right' }}>পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody>
@@ -350,8 +352,8 @@ export default function AdminInvoicesPage() {
                   <td colSpan={6}>
                     <div className="ab-empty-state">
                       <Receipt size={36} className="ab-empty-icon" />
-                      <div className="ab-empty-title">No invoices found</div>
-                      <div className="ab-empty-sub">Try a different status filter or search</div>
+                      <div className="ab-empty-title">কোনো ইনভয়েস পাওয়া যায়নি</div>
+                      <div className="ab-empty-sub">অন্য কোনো স্ট্যাটাস ফিল্টার বা সার্চ কিওয়ার্ড ব্যবহার করে চেষ্টা করুন</div>
                     </div>
                   </td>
                 </tr>
@@ -362,11 +364,11 @@ export default function AdminInvoicesPage() {
                       <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--ab-text)', fontSize: '13.5px' }}>
                         {inv.invoice_number}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>ID #{inv.id}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>আইডি #{inv.id}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: 'var(--ab-text)' }}>{inv.subscriber_name || 'Client Account'}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>{inv.entity_type} Account</div>
+                      <div style={{ fontWeight: 700, color: 'var(--ab-text)' }}>{inv.subscriber_name || 'গ্রাহক অ্যাকাউন্ট'}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>{inv.entity_type === 'hospital' ? 'হাসপাতাল' : 'ডাক্তার'} অ্যাকাউন্ট</div>
                     </td>
                     <td>
                       <div style={{ fontWeight: 800, color: 'var(--ab-text)', fontSize: '14px' }}>
@@ -374,17 +376,17 @@ export default function AdminInvoicesPage() {
                       </div>
                       {Number(inv.balance_due || 0) > 0 && (
                         <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
-                          Due: ৳{Number(inv.balance_due).toLocaleString()}
+                          বকেয়া: ৳{Number(inv.balance_due).toLocaleString()}
                         </div>
                       )}
                     </td>
                     <td>{getStatusBadge(inv.status)}</td>
                     <td>
                       <div style={{ fontSize: '12px', color: 'var(--ab-text)' }}>
-                        {inv.issue_date ? new Date(inv.issue_date).toLocaleDateString() : '—'}
+                        {inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('bn-BD') : '—'}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>
-                        Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'Immediate'}
+                        মেয়াদ: {inv.due_date ? new Date(inv.due_date).toLocaleDateString('bn-BD') : 'অবিলম্বে'}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -393,28 +395,28 @@ export default function AdminInvoicesPage() {
                           onClick={() => setSelectedInvoice(inv)}
                           className="ab-btn-secondary"
                           style={{ padding: '6px 10px', fontSize: '12px' }}
-                          title="View &amp; Print Document"
+                          title="ইনভয়েস দেখুন ও প্রিন্ট করুন"
                           aria-label={`View invoice ${inv.invoice_number}`}
                         >
-                          <Eye size={13} /> View
+                          <Eye size={13} /> দেখুন
                         </button>
                         {inv.status !== 'paid' && (
                           <button
                             onClick={() => handleMarkPaid(inv)}
                             className="ab-btn-secondary"
                             style={{ padding: '6px 10px', fontSize: '12px', color: '#00b875' }}
-                            title={!hasPermission('billing.invoices.view') ? 'Insufficient permissions' : 'Mark as Paid'}
+                            title={!hasPermission('billing.invoices.view') ? 'পর্যাপ্ত অনুমতি নেই' : 'পরিশোধিত হিসেবে চিহ্নিত করুন'}
                             disabled={actionProcessing || !hasPermission('billing.invoices.view')}
                             aria-label={`Mark invoice ${inv.invoice_number} as paid`}
                           >
-                            <CheckCircle2 size={13} /> Settle
+                            <CheckCircle2 size={13} /> নিষ্পত্তি
                           </button>
                         )}
                         <button
                           onClick={() => handleSendEmail(inv)}
                           className="ab-btn-secondary"
                           style={{ padding: '6px 8px', fontSize: '12px' }}
-                          title={!hasPermission('billing.invoices.view') ? 'Insufficient permissions' : 'Dispatch Email Receipt'}
+                          title={!hasPermission('billing.invoices.view') ? 'পর্যাপ্ত অনুমতি নেই' : 'ইমেইল কপি প্রেরণ করুন'}
                           disabled={actionProcessing || !hasPermission('billing.invoices.view')}
                           aria-label={`Send email for invoice ${inv.invoice_number}`}
                         >
@@ -439,10 +441,10 @@ export default function AdminInvoicesPage() {
             disabled={page <= 1}
             aria-label="Previous page"
           >
-            ← Previous
+            ← পূর্ববর্তী
           </button>
           <span className="ab-pagination-info">
-            Page {meta.current_page || page} of {meta.last_page} &bull; {meta.total} total
+            পৃষ্ঠা {meta.current_page || page} / {meta.last_page} &bull; মোট {meta.total}টি
           </span>
           <button
             className="ab-btn-secondary"
@@ -450,7 +452,7 @@ export default function AdminInvoicesPage() {
             disabled={page >= meta.last_page}
             aria-label="Next page"
           >
-            Next →
+            পরবর্তী →
           </button>
         </div>
       )}
@@ -461,7 +463,7 @@ export default function AdminInvoicesPage() {
             <div className="ab-modal-header">
               <div>
                 <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ab-text)' }}>
-                  Tax Invoice {selectedInvoice.invoice_number}
+                  ট্যাক্স ইনভয়েস #{selectedInvoice.invoice_number}
                 </h2>
                 <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedInvoice.status)}</div>
               </div>
@@ -471,7 +473,7 @@ export default function AdminInvoicesPage() {
                   className="ab-btn-secondary"
                   style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
-                  <Printer size={13} /> Print
+                  <Printer size={13} /> প্রিন্ট
                 </button>
                 <button
                   onClick={() => setSelectedInvoice(null)}
@@ -487,46 +489,46 @@ export default function AdminInvoicesPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', fontSize: '12.5px' }}>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--ab-text-dim)', marginBottom: '4px' }}>
-                    Billed Customer
+                    বিলিং গ্রাহক
                   </div>
                   <div style={{ fontWeight: 800, color: 'var(--ab-text)', fontSize: '14px' }}>
                     {selectedInvoice.subscriber_name}
                   </div>
-                  <div style={{ color: 'var(--ab-text-muted)' }}>{selectedInvoice.entity_type} Client Account</div>
+                  <div style={{ color: 'var(--ab-text-muted)' }}>{selectedInvoice.entity_type === 'hospital' ? 'হাসপাতাল' : 'ডাক্তার'} ক্লায়েন্ট অ্যাকাউন্ট</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--ab-text-dim)', marginBottom: '4px' }}>
-                    Invoice Timeline
+                    ইনভয়েস সময়রেখা
                   </div>
-                  <div style={{ color: 'var(--ab-text)' }}>Issue: {new Date(selectedInvoice.issue_date).toLocaleDateString()}</div>
-                  <div style={{ color: 'var(--ab-text)' }}>Due: {new Date(selectedInvoice.due_date).toLocaleDateString()}</div>
+                  <div style={{ color: 'var(--ab-text)' }}>ইস্যু: {new Date(selectedInvoice.issue_date).toLocaleDateString('bn-BD')}</div>
+                  <div style={{ color: 'var(--ab-text)' }}>পরিশোধের শেষ সময়: {new Date(selectedInvoice.due_date).toLocaleDateString('bn-BD')}</div>
                 </div>
               </div>
 
               {/* Line Items Table */}
               <div style={{ border: '1px solid var(--ab-border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
                 <div style={{ background: 'var(--ab-card-header)', padding: '10px 14px', fontWeight: 700, fontSize: '12px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--ab-border)' }}>
-                  <span>Item Description</span>
-                  <span>Amount</span>
+                  <span>আইটেমের বিবরণ</span>
+                  <span>পরিমাণ</span>
                 </div>
                 <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span>Subscription Plan Entitlements & Services</span>
+                  <span>সাবস্ক্রিপশন প্ল্যানের সুবিধা ও সেবাসমূহ</span>
                   <span style={{ fontWeight: 700 }}>৳{Number(selectedInvoice.subtotal_amount || selectedInvoice.total_amount).toLocaleString()}</span>
                 </div>
                 {Number(selectedInvoice.discount_amount || 0) > 0 && (
                   <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#00b875', borderTop: '1px solid var(--ab-border)' }}>
-                    <span>Coupon / Promotional Discount</span>
+                    <span>কুপন / প্রমোশনাল বিশেষ ডিসকাউন্ট</span>
                     <span>-৳{Number(selectedInvoice.discount_amount).toLocaleString()}</span>
                   </div>
                 )}
                 {Number(selectedInvoice.tax_amount || 0) > 0 && (
                   <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--ab-text-muted)', borderTop: '1px solid var(--ab-border)' }}>
-                    <span>Tax & VAT</span>
+                    <span>ট্যাক্স ও ভ্যাট</span>
                     <span>+৳{Number(selectedInvoice.tax_amount).toLocaleString()}</span>
                   </div>
                 )}
                 <div style={{ background: 'var(--ab-card-header)', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '15px', borderTop: '1px solid var(--ab-border)', color: 'var(--ab-text)' }}>
-                  <span>Total Amount Due</span>
+                  <span>সর্বমোট প্রদেয় অর্থ</span>
                   <span>৳{Number(selectedInvoice.total_amount).toLocaleString()}</span>
                 </div>
               </div>
@@ -535,17 +537,17 @@ export default function AdminInvoicesPage() {
               {selectedInvoice.transactions && selectedInvoice.transactions.length > 0 && (
                 <div style={{ border: '1px solid var(--ab-border)', borderRadius: '12px', padding: '14px', background: 'var(--ab-card-header)', marginBottom: '20px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ab-text-dim)', marginBottom: '8px' }}>
-                    Linked Payment Transaction Evidence
+                    সংযুক্ত পেমেন্ট লেনদেনের প্রমাণ
                   </div>
                   {selectedInvoice.transactions.map((tx) => (
                     <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                      <div><span style={{ color: 'var(--ab-text-muted)' }}>Channel:</span> <strong>{tx.gateway}</strong></div>
-                      <div><span style={{ color: 'var(--ab-text-muted)' }}>Txn Ref:</span> <strong style={{ fontFamily: 'monospace' }}>{tx.gateway_transaction_reference || 'N/A'}</strong></div>
-                      <div><span style={{ color: 'var(--ab-text-muted)' }}>Sender:</span> <strong>{tx.sender_identifier || 'N/A'}</strong></div>
-                      <div><span style={{ color: 'var(--ab-text-muted)' }}>State:</span> <strong style={{ textTransform: 'uppercase', color: tx.status === 'verified' ? '#059669' : '#d97706' }}>{tx.status}</strong></div>
+                      <div><span style={{ color: 'var(--ab-text-muted)' }}>পেমেন্ট মাধ্যম:</span> <strong>{tx.gateway}</strong></div>
+                      <div><span style={{ color: 'var(--ab-text-muted)' }}>লেনদেন আইডি:</span> <strong style={{ fontFamily: 'monospace' }}>{tx.gateway_transaction_reference || 'N/A'}</strong></div>
+                      <div><span style={{ color: 'var(--ab-text-muted)' }}>প্রেরক নম্বর:</span> <strong>{tx.sender_identifier || 'N/A'}</strong></div>
+                      <div><span style={{ color: 'var(--ab-text-muted)' }}>স্ট্যাটাস:</span> <strong style={{ textTransform: 'uppercase', color: tx.status === 'verified' ? '#059669' : '#d97706' }}>{tx.status === 'verified' ? 'যাচাইকৃত' : tx.status === 'pending' ? 'অপেক্ষমান' : tx.status}</strong></div>
                       {tx.verified_by_name && (
                         <div style={{ gridColumn: 'span 2' }}>
-                          <span style={{ color: 'var(--ab-text-muted)' }}>Verified by:</span> <strong>{tx.verified_by_name}</strong> {tx.verified_at ? `on ${new Date(tx.verified_at).toLocaleString()}` : ''}
+                          <span style={{ color: 'var(--ab-text-muted)' }}>যাচাই করেছেন:</span> <strong>{tx.verified_by_name}</strong> {tx.verified_at ? `(${new Date(tx.verified_at).toLocaleString('bn-BD')})` : ''}
                         </div>
                       )}
                     </div>
@@ -561,7 +563,7 @@ export default function AdminInvoicesPage() {
                   style={{ fontSize: '12px' }}
                   disabled={actionProcessing}
                 >
-                  Recalculate & Regenerate
+                  পুনরায় হিসাব ও তৈরি করুন
                 </button>
                 <button
                   type="button"
@@ -570,7 +572,7 @@ export default function AdminInvoicesPage() {
                   style={{ fontSize: '12px', padding: '8px 14px' }}
                   disabled={actionProcessing}
                 >
-                  <Mail size={13} /> Send Email Copy
+                  <Mail size={13} /> ইমেইল কপি পাঠান
                 </button>
               </div>
             </div>

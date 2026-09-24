@@ -36,6 +36,148 @@ import {
 } from 'lucide-react'
 import '../../../styles/admin-billing-plans.css'
 
+// ─── STANDARD SYSTEM FEATURES CATALOG ───
+export const STANDARD_FEATURES = {
+  doctor: [
+    {
+      key: 'eprescription',
+      nameBn: 'ডিজিটাল প্রেসক্রিপশন তৈরি',
+      nameEn: 'Digital Prescriptions',
+      unit: 'টি প্রেসক্রিপশন / মাস',
+      defaultReset: 'monthly',
+      desc: 'প্রতি মাসে ডাক্তার সর্বোচ্চ কতগুলো ডিজিটাল প্রেসক্রিপশন তৈরি করতে পারবেন',
+      defaultLimit: 200,
+    },
+    {
+      key: 'max_chambers',
+      nameBn: 'চেম্বার সংখ্যা (ক্যাপাসিটি)',
+      nameEn: 'Practice Chambers',
+      unit: 'টি চেম্বার',
+      defaultReset: 'never',
+      desc: 'ডাক্তারের প্রোফাইলে সর্বোচ্চ কতটি প্র্যাকটিস চেম্বার বা লোকেশন যুক্ত করা যাবে',
+      defaultLimit: 2,
+    },
+    {
+      key: 'live_queue',
+      nameBn: 'দৈনিক অ্যাপয়েন্টমেন্ট ও লাইভ কিউ',
+      nameEn: 'Live Calling Queue',
+      unit: 'রোগী / দিন',
+      defaultReset: 'never',
+      desc: 'চেম্বারের লাইভ সিরিয়াল কলিং, টিভি ডিসপ্লে ও অ্যাপয়েন্টমেন্ট শিডিউলিং',
+      defaultLimit: -1,
+    },
+    {
+      key: 'telemedicine',
+      nameBn: 'টেলিমেডিসিন ভিডিও কনসালটেশন',
+      nameEn: 'Telemedicine Consultations',
+      unit: 'সেশন / মাস',
+      defaultReset: 'monthly',
+      desc: 'অনলাইন ভিডিও কনসালটেশনের মাধ্যমে রোগী দেখার মাসিক কোটা',
+      defaultLimit: 50,
+    },
+    {
+      key: 'sms_reminders',
+      nameBn: 'রোগীদের এসএমএস নোটিফিকেশন',
+      nameEn: 'Patient SMS Reminders',
+      unit: 'টি এসএমএস / মাস',
+      defaultReset: 'monthly',
+      desc: 'সিরিয়াল বুকিং ও রিমাইন্ডারের স্বয়ংক্রিয় এসএমএস নোটিফিকেশন কোটা',
+      defaultLimit: 150,
+    },
+    {
+      key: 'advanced_analytics',
+      nameBn: 'উন্নত অ্যানালিটিক্স ও আয়ের রিপোর্ট',
+      nameEn: 'Analytics & Financial Reports',
+      unit: '',
+      defaultReset: 'never',
+      desc: 'প্রেসক্রিপশন প্রবণতা, রোগী সংখ্যা ও প্র্যাকটিস আয়ের গ্রাফ ও রিপোর্ট',
+      defaultLimit: -1,
+    },
+    {
+      key: 'priority_support',
+      nameBn: 'ডেডিকেটেড প্রায়োরিটি কাস্টমার সাপোর্ট',
+      nameEn: 'Dedicated Priority Support',
+      unit: '',
+      defaultReset: 'never',
+      desc: 'সরাসরি হেল্পলাইন ও সার্বক্ষণিক প্রায়োরিটি কাস্টমার কেয়ার সহায়তা',
+      defaultLimit: -1,
+    },
+  ],
+  hospital: [
+    {
+      key: 'doctor_seats',
+      nameBn: 'অধিভুক্ত ডাক্তার সংখ্যা (ডাক্তার সিট)',
+      nameEn: 'Affiliated Doctor Seats',
+      unit: 'জন ডাক্তার',
+      defaultReset: 'never',
+      desc: 'হাসপাতালে সর্বোচ্চ কতজন রেজিস্টার্ড ডাক্তার সংযুক্ত থাকতে পারবেন',
+      defaultLimit: 10,
+    },
+    {
+      key: 'max_chambers',
+      nameBn: 'ওপিডি চেম্বার / কনসাল্টেশন রুম',
+      nameEn: 'OPD Chambers',
+      unit: 'টি চেম্বার',
+      defaultReset: 'never',
+      desc: 'হাসপাতালের আউটডোরে মোট কতটি চেম্বার বা ওপিডি রুম সক্রিয় থাকবে',
+      defaultLimit: 10,
+    },
+    {
+      key: 'live_queue_tv',
+      nameBn: 'ওয়েটিং লাউঞ্জ টিভি ডিসপ্লে স্ক্রিন',
+      nameEn: 'Waiting Lounge TV Displays',
+      unit: 'টি স্ক্রিন',
+      defaultReset: 'never',
+      desc: 'হাসপাতালের ওয়েটিং লাউঞ্জের বড় পর্দায় ডিজিটাল টোকেন ও সিরিয়াল প্রদর্শন',
+      defaultLimit: 2,
+    },
+    {
+      key: 'hospital_analytics',
+      nameBn: 'হসপিটাল অ্যাডভান্সড অ্যানালিটিক্স',
+      nameEn: 'Hospital Analytics',
+      unit: '',
+      defaultReset: 'never',
+      desc: 'হাসপাতালের সামগ্রিক রোগী ফুটফল ও টিকিট রেভিনিউ রিপোর্ট',
+      defaultLimit: -1,
+    },
+    {
+      key: 'custom_branding',
+      nameBn: 'কাস্টম ব্র্যান্ডিং ও ব্যানার',
+      nameEn: 'Custom Hospital Branding',
+      unit: '',
+      defaultReset: 'never',
+      desc: 'প্রেসক্রিপশন ও অ্যাপয়েন্টমেন্ট স্লিপে নিজস্ব হাসপাতালের লোগো ও ব্র্যান্ডিং',
+      defaultLimit: -1,
+    },
+    {
+      key: 'priority_support',
+      nameBn: 'ডেডিকেটেড অ্যাকাউন্ট ম্যানেজার',
+      nameEn: 'Dedicated Priority Support',
+      unit: '',
+      defaultReset: 'never',
+      desc: 'ডেডিকেটেড কি-অ্যাকাউন্ট ম্যানেজার ও ২৪/৭ কারিগরি সহায়তা',
+      defaultLimit: -1,
+    },
+  ],
+}
+
+export const getFeatureMeta = (entity, key) => {
+  const list = STANDARD_FEATURES[entity] || STANDARD_FEATURES.doctor
+  const aliases = {
+    prescriptions_limit: 'eprescription',
+    prescriptions: 'eprescription',
+    chambers_limit: 'max_chambers',
+    chambers: 'max_chambers',
+    telemedicine_enabled: 'telemedicine',
+    telemedicine_calls: 'telemedicine',
+    patient_sms: 'sms_reminders',
+    sms_notifications: 'sms_reminders',
+    analytics: 'advanced_analytics',
+  }
+  const resolvedKey = aliases[key] || key
+  return list.find(s => s.key === resolvedKey || s.key === key)
+}
+
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -85,7 +227,7 @@ export default function AdminPlansPage() {
       const plansList = res.data?.data || res.data || []
       setPlans(Array.isArray(plansList) ? plansList : [])
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load subscription plans')
+      setError(err.response?.data?.message || err.message || 'সাবস্ক্রিপশন প্ল্যানসমূহ লোড করা সম্ভব হয়নি')
     } finally {
       setLoading(false)
     }
@@ -151,10 +293,12 @@ export default function AdminPlansPage() {
   const openCreate = () => {
     setEditingPlan(null)
     setModalTab('basics')
+    const entity = entityFilter === 'hospital' ? 'hospital' : 'doctor'
+    const standardList = STANDARD_FEATURES[entity] || STANDARD_FEATURES.doctor
     setForm({
       name: '',
       slug: '',
-      target_entity: entityFilter === 'hospital' ? 'hospital' : 'doctor',
+      target_entity: entity,
       tier: 'starter',
       price_monthly: 1000,
       price_annual: 9600,
@@ -165,11 +309,13 @@ export default function AdminPlansPage() {
       is_active: true,
       sort_order: (plans.length + 1) * 10,
       description: '',
-      features: [
-        { feature_key: 'prescriptions_limit', feature_name: 'Monthly Prescriptions', is_enabled: true, quota_limit: 500, reset_period: 'monthly' },
-        { feature_key: 'chambers_limit', feature_name: 'Practice Chambers', is_enabled: true, quota_limit: 3, reset_period: 'never' },
-        { feature_key: 'telemedicine_enabled', feature_name: 'Telemedicine Video Calls', is_enabled: true, quota_limit: -1, reset_period: 'monthly' },
-      ],
+      features: standardList.map(sf => ({
+        feature_key: sf.key,
+        feature_name: sf.nameEn,
+        is_enabled: sf.defaultLimit !== 0,
+        quota_limit: sf.defaultLimit,
+        reset_period: sf.defaultReset,
+      })),
     })
     setShowModal(true)
   }
@@ -197,13 +343,19 @@ export default function AdminPlansPage() {
       is_active: Boolean(plan.is_active),
       sort_order: Number(plan.sort_order ?? 0),
       description: plan.description || '',
-      features: Array.isArray(plan.features) ? plan.features.map(f => ({
-        feature_key: f.feature_key,
-        feature_name: f.feature_name || f.feature_key,
-        is_enabled: Boolean(f.is_enabled),
-        quota_limit: Number(f.quota_limit ?? -1),
-        reset_period: f.reset_period || 'monthly',
-      })) : [],
+      features: Array.isArray(plan.features) ? plan.features.map(f => {
+        const isUnlimited = Boolean(f.is_unlimited) || f.quota_limit === -1 || f.quota_limit === '-1'
+        const limitNum = Number(f.quota_limit ?? -1)
+        // If quota is 0, in business terms it is not enabled in this tier
+        const isEnabled = Boolean(f.is_enabled) && (isUnlimited || limitNum > 0)
+        return {
+          feature_key: f.feature_key,
+          feature_name: f.feature_name || f.feature_key,
+          is_enabled: isEnabled,
+          quota_limit: limitNum,
+          reset_period: f.reset_period || 'monthly',
+        }
+      }) : [],
     })
     setShowModal(true)
   }
@@ -227,14 +379,96 @@ export default function AdminPlansPage() {
       features: [
         ...prev.features,
         {
-          feature_key: `feature_${prev.features.length + 1}`,
-          feature_name: 'New Entitlement',
+          feature_key: `custom_feature_${prev.features.length + 1}`,
+          feature_name: 'নতুন কাস্টম সুবিধা',
           is_enabled: true,
           quota_limit: -1,
           reset_period: 'monthly',
         },
       ],
     }))
+  }
+
+  // Add Standard Feature
+  const addStandardFeature = (key) => {
+    const entity = (form.target_entity || 'doctor').toLowerCase()
+    const list = STANDARD_FEATURES[entity] || STANDARD_FEATURES.doctor
+    const standard = list.find(s => s.key === key)
+    if (!standard) return
+
+    const existingIndex = form.features.findIndex(f => f.feature_key === standard.key)
+    if (existingIndex !== -1) {
+      updateFeatureRow(existingIndex, 'is_enabled', true)
+      return
+    }
+
+    setForm(prev => ({
+      ...prev,
+      features: [
+        ...prev.features,
+        {
+          feature_key: standard.key,
+          feature_name: standard.nameEn,
+          is_enabled: true,
+          quota_limit: standard.defaultLimit,
+          reset_period: standard.defaultReset,
+        },
+      ],
+    }))
+  }
+
+  // Add All Standard Features
+  const addAllStandardFeatures = () => {
+    const entity = (form.target_entity || 'doctor').toLowerCase()
+    const list = STANDARD_FEATURES[entity] || STANDARD_FEATURES.doctor
+    setForm(prev => {
+      const existingKeys = prev.features.map(f => f.feature_key)
+      const missing = list.filter(s => !existingKeys.includes(s.key))
+      const newFeatures = missing.map(s => ({
+        feature_key: s.key,
+        feature_name: s.nameEn,
+        is_enabled: s.defaultLimit !== 0,
+        quota_limit: s.defaultLimit,
+        reset_period: s.defaultReset,
+      }))
+      return {
+        ...prev,
+        features: [...prev.features, ...newFeatures],
+      }
+    })
+  }
+
+  // Toggle Feature Unlimited
+  const handleToggleUnlimited = (idx, checked) => {
+    const entity = (form.target_entity || 'doctor').toLowerCase()
+    const feat = form.features[idx]
+    const meta = getFeatureMeta(entity, feat.feature_key)
+    if (checked) {
+      updateFeatureRow(idx, 'quota_limit', -1)
+    } else {
+      const defaultVal = meta?.defaultLimit > 0 ? meta.defaultLimit : 100
+      updateFeatureRow(idx, 'quota_limit', defaultVal)
+    }
+  }
+
+  // Toggle Feature Enabled/Disabled
+  const handleToggleEnabled = (idx) => {
+    const entity = (form.target_entity || 'doctor').toLowerCase()
+    const feat = form.features[idx]
+    const meta = getFeatureMeta(entity, feat.feature_key)
+    const newEnabled = !feat.is_enabled
+    setForm(prev => {
+      const updated = [...prev.features]
+      if (newEnabled) {
+        const quota = (feat.quota_limit === 0 || feat.quota_limit === '0')
+          ? (meta?.defaultLimit && meta.defaultLimit !== 0 ? meta.defaultLimit : -1)
+          : feat.quota_limit
+        updated[idx] = { ...updated[idx], is_enabled: true, quota_limit: quota }
+      } else {
+        updated[idx] = { ...updated[idx], is_enabled: false }
+      }
+      return { ...prev, features: updated }
+    })
   }
 
   // Remove Feature Row
@@ -273,13 +507,18 @@ export default function AdminPlansPage() {
         is_active: Boolean(form.is_active),
         sort_order: parseInt(form.sort_order) || 0,
         description: form.description ? form.description.trim() : '',
-        features: form.features.map(f => ({
-          feature_key: f.feature_key.trim(),
-          feature_name: f.feature_name.trim(),
-          is_enabled: Boolean(f.is_enabled),
-          quota_limit: parseInt(f.quota_limit),
-          reset_period: f.reset_period || 'monthly',
-        })),
+        features: form.features.map(f => {
+          const isEnabled = Boolean(f.is_enabled)
+          const isUnlimited = f.quota_limit === -1 || f.quota_limit === '-1'
+          const quota = isEnabled ? (isUnlimited ? -1 : (parseInt(f.quota_limit) || 0)) : 0
+          return {
+            feature_key: f.feature_key.trim(),
+            feature_name: f.feature_name.trim(),
+            is_enabled: isEnabled,
+            quota_limit: quota,
+            reset_period: f.reset_period || 'monthly',
+          }
+        }),
       }
 
       if (editingPlan) {
@@ -292,7 +531,7 @@ export default function AdminPlansPage() {
       loadPlans()
       if (viewMode === 'matrix') loadMatrix()
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Error saving plan')
+      alert(err.response?.data?.message || err.message || 'প্ল্যান সংরক্ষণে সমস্যা হয়েছে')
     } finally {
       setSaving(false)
     }
@@ -306,13 +545,13 @@ export default function AdminPlansPage() {
       })
       loadPlans()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error toggling plan status')
+      alert(err.response?.data?.message || 'প্ল্যানের স্ট্যাটাস পরিবর্তনে সমস্যা হয়েছে')
     }
   }
 
   // Delete Plan
   const handleDelete = async (plan) => {
-    if (!window.confirm(`Are you sure you want to delete the plan "${plan.name}"?\n\nPlans with active subscribers cannot be deleted and should be deactivated instead.`)) {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে "${plan.name}" প্ল্যানটি মুছে ফেলতে চান?\n\nসক্রিয় গ্রাহক থাকা প্ল্যান মুছে ফেলা যায় না, প্রয়োজনে নিষ্ক্রিয় করতে পারেন।`)) {
       return
     }
     try {
@@ -320,7 +559,7 @@ export default function AdminPlansPage() {
       loadPlans()
       if (viewMode === 'matrix') loadMatrix()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error deleting plan')
+      alert(err.response?.data?.message || 'প্ল্যান মুছে ফেলতে সমস্যা হয়েছে')
     }
   }
 
@@ -330,11 +569,11 @@ export default function AdminPlansPage() {
       <div className="abp-header">
         <div>
           <h1 className="abp-title">
-            Subscription Plans & Tiers
-            <span className="abp-title-badge">Pricing Engine</span>
+            সাবস্ক্রিপশন প্ল্যান ও টিয়ার
+            <span className="abp-title-badge">প্রাইসিং ইঞ্জিন</span>
           </h1>
           <p className="abp-subtitle">
-            Configure Doctor practice and Hospital enterprise subscription tiers, billing cycles, quotas, and feature entitlements.
+            ডাক্তার প্র্যাকটিস ও হাসপাতাল সাবস্ক্রিপশন টিয়ার, বিলিং সাইকেল, কোটা এবং ফিচারসমূহ কনফিগার করুন।
           </p>
         </div>
 
@@ -342,7 +581,7 @@ export default function AdminPlansPage() {
           <button
             onClick={() => { loadPlans(); if (viewMode === 'matrix') loadMatrix(); }}
             className="abp-btn-refresh"
-            title="Refresh Catalog"
+            title="রিফ্রেশ করুন"
             disabled={loading}
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -351,7 +590,7 @@ export default function AdminPlansPage() {
             onClick={openCreate}
             className="abp-btn-primary"
           >
-            <Plus size={16} /> Create Plan
+            <Plus size={16} /> নতুন প্ল্যান তৈরি করুন
           </button>
         </div>
       </div>
@@ -359,25 +598,25 @@ export default function AdminPlansPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="abp-quick-nav">
         <Link to="/admin/billing/dashboard" className="abp-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="abp-nav-pill active">
-          <Layers size={14} /> Plans & Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/subscribers" className="abp-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="abp-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="abp-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="abp-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="abp-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং সেটিংস
         </Link>
       </nav>
 
@@ -385,46 +624,46 @@ export default function AdminPlansPage() {
       <div className="abp-kpi-deck">
         <div className="abp-kpi-card">
           <div className="abp-kpi-label">
-            <span>Total Catalog Plans</span>
+            <span>মোট ক্যাটালগ প্ল্যান</span>
             <Layers size={15} color="#64748b" />
           </div>
           <div className="abp-kpi-value">{summaryMetrics.total}</div>
           <div className="abp-kpi-footnote">
-            <span style={{ color: '#00b875', fontWeight: 700 }}>{summaryMetrics.active} Active</span>
-            <span>• {summaryMetrics.total - summaryMetrics.active} Inactive</span>
+            <span style={{ color: '#00b875', fontWeight: 700 }}>{summaryMetrics.active}টি সক্রিয়</span>
+            <span>• {summaryMetrics.total - summaryMetrics.active}টি নিষ্ক্রিয়</span>
           </div>
         </div>
 
         <div className="abp-kpi-card">
           <div className="abp-kpi-label">
-            <span>Doctor Practice Tiers</span>
+            <span>ডাক্তার প্র্যাকটিস টিয়ার</span>
             <Stethoscope size={15} color="#3b82f6" />
           </div>
           <div className="abp-kpi-value">{summaryMetrics.doctorPlans}</div>
           <div className="abp-kpi-footnote">
-            Individual & group medical practice plans
+            স্বতন্ত্র ও গ্রুপ মেডিকেল প্র্যাকটিস প্ল্যান
           </div>
         </div>
 
         <div className="abp-kpi-card">
           <div className="abp-kpi-label">
-            <span>Hospital Enterprise Tiers</span>
+            <span>হাসপাতাল প্রাতিষ্ঠানিক টিয়ার</span>
             <Building2 size={15} color="#8b5cf6" />
           </div>
           <div className="abp-kpi-value">{summaryMetrics.hospitalPlans}</div>
           <div className="abp-kpi-footnote">
-            Institutional hospital & clinic subscriptions
+            প্রাতিষ্ঠানিক হাসপাতাল ও ক্লিনিক সাবস্ক্রিপশন
           </div>
         </div>
 
         <div className="abp-kpi-card">
           <div className="abp-kpi-label">
-            <span>Total Active Subscribers</span>
+            <span>মোট সক্রিয় গ্রাহক</span>
             <Users size={15} color="#00b875" />
           </div>
           <div className="abp-kpi-value">{summaryMetrics.totalSubscribers}</div>
           <div className="abp-kpi-footnote">
-            Enrolled practices across all active tiers
+            সকল সক্রিয় টিয়ারে নিবন্ধিত প্র্যাকটিস
           </div>
         </div>
       </div>
@@ -438,7 +677,7 @@ export default function AdminPlansPage() {
               onClick={() => setEntityFilter('all')}
               className={`abp-segmented-btn ${entityFilter === 'all' ? 'active' : ''}`}
             >
-              All Entities
+              সকল ধরন
               <span className="abp-counter-chip">{summaryMetrics.total}</span>
             </button>
             <button
@@ -446,7 +685,7 @@ export default function AdminPlansPage() {
               className={`abp-segmented-btn ${entityFilter === 'doctor' ? 'active' : ''}`}
             >
               <Stethoscope size={13} />
-              Doctor Practices
+              ডাক্তার প্র্যাকটিস
               <span className="abp-counter-chip">{summaryMetrics.doctorPlans}</span>
             </button>
             <button
@@ -454,7 +693,7 @@ export default function AdminPlansPage() {
               className={`abp-segmented-btn ${entityFilter === 'hospital' ? 'active' : ''}`}
             >
               <Building2 size={13} />
-              Hospital Enterprises
+              হাসপাতাল প্রতিষ্ঠান
               <span className="abp-counter-chip">{summaryMetrics.hospitalPlans}</span>
             </button>
           </div>
@@ -465,9 +704,9 @@ export default function AdminPlansPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="abp-select-filter"
           >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
+            <option value="all">সকল অবস্থা</option>
+            <option value="active">শুধু সক্রিয়</option>
+            <option value="inactive">শুধু নিষ্ক্রিয়</option>
           </select>
         </div>
 
@@ -477,7 +716,7 @@ export default function AdminPlansPage() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Search plans, slugs..."
+              placeholder="প্ল্যানের নাম বা স্লাগ খুঁজুন..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="abp-search-input"
@@ -489,16 +728,16 @@ export default function AdminPlansPage() {
             <button
               onClick={() => setViewMode('catalog')}
               className={`abp-segmented-btn ${viewMode === 'catalog' ? 'active' : ''}`}
-              title="Catalog Cards View"
+              title="ক্যাটালগ কার্ড ভিউ"
             >
-              <Grid size={14} /> Catalog
+              <Grid size={14} /> ক্যাটালগ
             </button>
             <button
               onClick={() => setViewMode('matrix')}
               className={`abp-segmented-btn ${viewMode === 'matrix' ? 'active' : ''}`}
-              title="Feature Entitlements Matrix"
+              title="ফিচার ম্যাট্রিক্স ভিউ"
             >
-              <TableIcon size={14} /> Feature Matrix
+              <TableIcon size={14} /> ফিচার ম্যাট্রিক্স
             </button>
           </div>
         </div>
@@ -514,10 +753,10 @@ export default function AdminPlansPage() {
       ) : error ? (
         <div style={{ padding: '32px', textAlign: 'center', background: 'var(--abp-card-bg)', borderRadius: '16px', border: '1px solid #ef4444' }}>
           <AlertCircle size={36} color="#ef4444" style={{ margin: '0 auto 12px auto' }} />
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 700 }}>Failed to Load Plans</h3>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 700 }}>প্ল্যান লোড করা ব্যর্থ হয়েছে</h3>
           <p style={{ color: 'var(--abp-text-muted)', fontSize: '13px', margin: '0 0 16px 0' }}>{error}</p>
           <button onClick={loadPlans} className="abp-btn-primary" style={{ margin: '0 auto' }}>
-            <RefreshCw size={14} /> Retry Loading
+            <RefreshCw size={14} /> পুনরায় চেষ্টা করুন
           </button>
         </div>
       ) : viewMode === 'catalog' ? (
@@ -525,12 +764,12 @@ export default function AdminPlansPage() {
         filteredPlans.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--abp-card-bg)', borderRadius: '16px', border: '1px solid var(--abp-border)' }}>
             <Shield size={44} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700 }}>No Subscription Plans Found</h3>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700 }}>কোনো সাবস্ক্রিপশন প্ল্যান পাওয়া যায়নি</h3>
             <p style={{ color: 'var(--abp-text-muted)', fontSize: '13.5px', maxWidth: '400px', margin: '0 auto 18px auto' }}>
-              No plans matched your active filter or search query. Create a new plan or adjust your filters.
+              আপনার ফিল্টার বা সার্চ অনুসন্ধানের সাথে কোনো প্ল্যান মেলেনি। নতুন প্ল্যান তৈরি করুন অথবা ফিল্টার পরিবর্তন করুন।
             </p>
             <button onClick={openCreate} className="abp-btn-primary" style={{ margin: '0 auto' }}>
-              <Plus size={15} /> Create Plan
+              <Plus size={15} /> নতুন প্ল্যান তৈরি করুন
             </button>
           </div>
         ) : (
@@ -552,15 +791,15 @@ export default function AdminPlansPage() {
                     <div className="abp-card-meta">
                       <span className={`abp-entity-pill ${isDoctor ? 'abp-entity-doctor' : 'abp-entity-hospital'}`}>
                         {isDoctor ? <Stethoscope size={12} /> : <Building2 size={12} />}
-                        {isDoctor ? 'Doctor Practice' : 'Hospital'} • {plan.tier}
+                        {isDoctor ? 'ডাক্তার প্র্যাকটিস' : 'হাসপাতাল'} • {plan.tier}
                       </span>
                       <button
                         onClick={() => handleToggleStatus(plan)}
                         className={`abp-status-pill ${plan.is_active ? 'abp-status-active' : 'abp-status-inactive'}`}
                         style={{ cursor: 'pointer', border: 'none' }}
-                        title="Click to toggle status"
+                        title="স্ট্যাটাস পরিবর্তন করতে ক্লিক করুন"
                       >
-                        {plan.is_active ? 'Active' : 'Inactive'}
+                        {plan.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                       </button>
                     </div>
 
@@ -572,7 +811,7 @@ export default function AdminPlansPage() {
 
                     {/* Description */}
                     <p className="abp-card-desc">
-                      {plan.description || 'Enterprise healthcare tier equipped with automated practice workflow tools and real-time patient care modules.'}
+                      {plan.description || 'স্মার্ট স্বাস্থ্যসেবা ও অটোমেটেড ক্লিনিক্যাল প্র্যাকটিস ম্যানেজমেন্টের জন্য প্রস্তুত এন্টারপ্রাইজ টিয়ার।'}
                     </p>
 
                     {/* Pricing Box */}
@@ -580,19 +819,19 @@ export default function AdminPlansPage() {
                       <div className="abp-price-row">
                         <div>
                           <span className="abp-price-main">৳{monthly.toLocaleString()}</span>
-                          <span className="abp-price-cycle">/ month</span>
+                          <span className="abp-price-cycle">/ মাস</span>
                         </div>
                         {plan.trial_period_days > 0 && (
                           <span className="abp-discount-tag" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb' }}>
-                            {plan.trial_period_days}d Free Trial
+                            {plan.trial_period_days} দিন ফ্রি ট্রায়াল
                           </span>
                         )}
                       </div>
 
                       <div className="abp-price-annual-row">
-                        <span>Annual Billing: <strong>৳{annual.toLocaleString()}/yr</strong></span>
+                        <span>বাৎসরিক বিলিং: <strong>৳{annual.toLocaleString()} / বছর</strong></span>
                         {discount > 0 && (
-                          <span className="abp-discount-tag">Save {discount}%</span>
+                          <span className="abp-discount-tag">{discount}% ছাড়</span>
                         )}
                       </div>
                     </div>
@@ -601,24 +840,24 @@ export default function AdminPlansPage() {
                     <div className="abp-plan-metrics">
                       <div className="abp-plan-metric-pill">
                         <strong>{plan.subscriptions_count ?? 0}</strong>
-                        Subscribers
+                        গ্রাহক
                       </div>
                       <div className="abp-plan-metric-pill">
                         <strong>{plan.features_count ?? features.length}</strong>
-                        Entitlements
+                        ফিচার
                       </div>
                     </div>
 
                     {/* Features Preview List */}
                     <div className="abp-features-header">
-                      <span>Feature Entitlements</span>
-                      <span>Quota</span>
+                      <span>ফিচার সুবিধা</span>
+                      <span>কোটা</span>
                     </div>
 
                     <ul className="abp-features-list">
                       {features.length === 0 ? (
                         <li className="abp-feature-item" style={{ color: 'var(--abp-text-dim)', fontStyle: 'italic' }}>
-                          Standard platform access
+                          সাধারণ প্ল্যাটফর্ম অ্যাক্সেস
                         </li>
                       ) : (
                         features.slice(0, 4).map((feat, idx) => (
@@ -628,14 +867,14 @@ export default function AdminPlansPage() {
                               {feat.feature_name || feat.feature_key}
                             </span>
                             <span className="abp-feature-quota">
-                              {feat.quota_limit === -1 ? 'Unlimited' : feat.quota_limit}
+                              {feat.quota_limit === -1 ? 'আনলিমিটেড' : feat.quota_limit}
                             </span>
                           </li>
                         ))
                       )}
                       {features.length > 4 && (
                         <li className="abp-feature-item" style={{ color: 'var(--abp-text-dim)', fontSize: '11px', paddingTop: '2px' }}>
-                          + {features.length - 4} more entitlements...
+                          + আরও {features.length - 4}টি ফিচার...
                         </li>
                       )}
                     </ul>
@@ -647,12 +886,12 @@ export default function AdminPlansPage() {
                       onClick={() => openEdit(plan)}
                       className="abp-btn-edit"
                     >
-                      <Edit2 size={13} /> Edit Tier
+                      <Edit2 size={13} /> টিয়ার সম্পাদনা
                     </button>
                     <button
                       onClick={() => handleDelete(plan)}
                       className="abp-btn-delete"
-                      title="Delete Plan"
+                      title="প্ল্যান মুছুন"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -667,15 +906,15 @@ export default function AdminPlansPage() {
         <div className="abp-matrix-card abp-fade-in">
           <div className="abp-matrix-header">
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>Feature Entitlements Comparison Matrix</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>ফিচার সুবিধা তুলনা ম্যাট্রিক্স</h3>
               <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: 'var(--abp-text-muted)' }}>
-                Compare and verify feature limits, quotas, and enablement flags across all configured subscription plans.
+                সকল কনফিগার করা সাবস্ক্রিপশন প্ল্যানের ফিচার সীমা, কোটা ও কার্যকারিতা তুলনা করুন।
               </p>
             </div>
             <button
               onClick={loadMatrix}
               className="abp-btn-refresh"
-              title="Refresh Matrix"
+              title="ম্যাট্রিক্স রিফ্রেশ করুন"
               disabled={matrixLoading}
             >
               <RefreshCw size={14} className={matrixLoading ? 'animate-spin' : ''} />
@@ -685,22 +924,22 @@ export default function AdminPlansPage() {
           <div className="abp-table-responsive">
             {matrixLoading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--abp-text-muted)' }}>
-                Loading entitlements matrix...
+                ফিচার ম্যাট্রিক্স লোড হচ্ছে...
               </div>
             ) : !matrixData || !matrixData.matrix || matrixData.matrix.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--abp-text-muted)' }}>
-                No feature matrix data found. Configure features within plans to generate matrix.
+                কোনো ফিচার ম্যাট্রিক্স ডেটা পাওয়া যায়নি।
               </div>
             ) : (
               <table className="abp-matrix-table">
                 <thead>
                   <tr>
-                    <th className="abp-matrix-feature-col">Feature Entitlement</th>
+                    <th className="abp-matrix-feature-col">ফিচার সুবিধা</th>
                     {matrixData.plans.map(p => (
                       <th key={p.id} style={{ textAlign: 'center' }}>
                         <div>{p.name}</div>
                         <div style={{ fontSize: '10px', textTransform: 'none', color: 'var(--abp-text-dim)', fontWeight: 500 }}>
-                          ৳{Number(p.price).toLocaleString()} • {p.target_entity}
+                          ৳{Number(p.price).toLocaleString()} • {p.target_entity === 'doctor' ? 'ডাক্তার' : 'হাসপাতাল'}
                         </div>
                       </th>
                     ))}
@@ -719,7 +958,7 @@ export default function AdminPlansPage() {
                           return (
                             <td key={p.id} style={{ textAlign: 'center' }}>
                               <span className="abp-quota-badge abp-quota-disabled">
-                                <X size={12} /> Excluded
+                                <X size={12} /> অন্তর্ভুক্ত নয়
                               </span>
                             </td>
                           )
@@ -728,7 +967,7 @@ export default function AdminPlansPage() {
                           return (
                             <td key={p.id} style={{ textAlign: 'center' }}>
                               <span className="abp-quota-badge abp-quota-unlimited">
-                                <Check size={12} /> Unlimited
+                                <Check size={12} /> আনলিমিটেড
                               </span>
                             </td>
                           )
@@ -736,7 +975,7 @@ export default function AdminPlansPage() {
                         return (
                           <td key={p.id} style={{ textAlign: 'center' }}>
                             <span className="abp-quota-badge abp-quota-numeric">
-                              {val.quota_limit} / {val.reset_period || 'mo'}
+                              {val.quota_limit} / {val.reset_period || 'মাস'}
                             </span>
                           </td>
                         )
@@ -757,7 +996,7 @@ export default function AdminPlansPage() {
             {/* Modal Header */}
             <div className="abp-modal-header">
               <h2 className="abp-modal-title">
-                {editingPlan ? `Edit Tier: ${editingPlan.name}` : 'Configure New Subscription Plan'}
+                {editingPlan ? `টিয়ার সম্পাদনা: ${editingPlan.name}` : 'নতুন সাবস্ক্রিপশন প্ল্যান কনফিগার করুন'}
               </h2>
               <button
                 type="button"
@@ -775,21 +1014,21 @@ export default function AdminPlansPage() {
                 onClick={() => setModalTab('basics')}
                 className={`abp-modal-tab ${modalTab === 'basics' ? 'active' : ''}`}
               >
-                1. Plan Information
+                ১. প্ল্যান তথ্য
               </button>
               <button
                 type="button"
                 onClick={() => setModalTab('pricing')}
                 className={`abp-modal-tab ${modalTab === 'pricing' ? 'active' : ''}`}
               >
-                2. Pricing & Terms
+                ২. মূল্য ও শর্তাবলী
               </button>
               <button
                 type="button"
                 onClick={() => setModalTab('features')}
                 className={`abp-modal-tab ${modalTab === 'features' ? 'active' : ''}`}
               >
-                3. Feature Entitlements ({form.features.length})
+                ৩. ফিচার সুবিধা ({form.features.length})
               </button>
             </div>
 
@@ -800,59 +1039,59 @@ export default function AdminPlansPage() {
                 {modalTab === 'basics' && (
                   <div className="abp-fade-in">
                     <div className="abp-form-group">
-                      <label className="abp-form-label">Plan Display Name *</label>
+                      <label className="abp-form-label">প্ল্যানের নাম *</label>
                       <input
                         type="text"
                         required
                         value={form.name}
                         onChange={e => setForm({ ...form, name: e.target.value })}
-                        placeholder="e.g. Professional Practice Suite"
+                        placeholder="যেমন: প্রফেশনাল প্র্যাকটিস স্যুট"
                         className="abp-form-input"
                       />
                     </div>
 
                     <div className="abp-form-row">
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Target Audience / Entity *</label>
+                        <label className="abp-form-label">ব্যবহারকারী / প্রতিষ্ঠান ধরন *</label>
                         <select
                           value={form.target_entity}
                           onChange={e => setForm({ ...form, target_entity: e.target.value })}
                           className="abp-form-select"
                         >
-                          <option value="doctor">Doctor Practice</option>
-                          <option value="hospital">Hospital Enterprise</option>
+                          <option value="doctor">ডাক্তার প্র্যাকটিস</option>
+                          <option value="hospital">হাসপাতাল প্রতিষ্ঠান</option>
                         </select>
                       </div>
 
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Pricing Tier Level *</label>
+                        <label className="abp-form-label">টিয়ার লেভেল *</label>
                         <select
                           value={form.tier}
                           onChange={e => setForm({ ...form, tier: e.target.value })}
                           className="abp-form-select"
                         >
-                          <option value="free">Free Tier</option>
-                          <option value="starter">Starter</option>
-                          <option value="professional">Professional</option>
-                          <option value="enterprise">Enterprise</option>
+                          <option value="free">ফ্রি টিয়ার</option>
+                          <option value="starter">স্টার্টার</option>
+                          <option value="professional">প্রফেশনাল</option>
+                          <option value="enterprise">এন্টারপ্রাইজ</option>
                         </select>
                       </div>
                     </div>
 
                     <div className="abp-form-row">
                       <div className="abp-form-group">
-                        <label className="abp-form-label">URL Slug (System Identifier)</label>
+                        <label className="abp-form-label">ইউআরএল স্লাগ (সিস্টেম কোড)</label>
                         <input
                           type="text"
                           value={form.slug}
                           onChange={e => setForm({ ...form, slug: e.target.value })}
-                          placeholder="leave empty to auto-generate"
+                          placeholder="স্বয়ংক্রিয় তৈরির জন্য খালি রাখুন"
                           className="abp-form-input"
                         />
                       </div>
 
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Sort Order (Display Priority)</label>
+                        <label className="abp-form-label">ক্রম (প্রদর্শন অগ্রাধিকার)</label>
                         <input
                           type="number"
                           value={form.sort_order}
@@ -863,12 +1102,12 @@ export default function AdminPlansPage() {
                     </div>
 
                     <div className="abp-form-group">
-                      <label className="abp-form-label">Public Description</label>
+                      <label className="abp-form-label">সার্বজনীন বিবরণ</label>
                       <textarea
                         rows={3}
                         value={form.description}
                         onChange={e => setForm({ ...form, description: e.target.value })}
-                        placeholder="Brief marketing or feature summary visible on the checkout & pricing matrix..."
+                        placeholder="চেকআউট ও প্রাইসিং টেবিলে প্রদর্শনের জন্য সংক্ষিপ্ত বিবরণ..."
                         className="abp-form-textarea"
                       />
                     </div>
@@ -882,7 +1121,7 @@ export default function AdminPlansPage() {
                         style={{ width: '16px', height: '16px', accentColor: '#00b875' }}
                       />
                       <label htmlFor="plan_is_active" style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--abp-text)', cursor: 'pointer' }}>
-                        Active Plan (publicly available for subscription & upgrades)
+                        সক্রিয় প্ল্যান (সাবস্ক্রিপশন ও আপগ্রেডের জন্য উন্মুক্ত)
                       </label>
                     </div>
                   </div>
@@ -893,7 +1132,7 @@ export default function AdminPlansPage() {
                   <div className="abp-fade-in">
                     <div className="abp-form-row">
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Monthly Price (BDT) *</label>
+                        <label className="abp-form-label">মাসিক মূল্য (টাকা) *</label>
                         <input
                           type="number"
                           step="0.01"
@@ -905,7 +1144,7 @@ export default function AdminPlansPage() {
                       </div>
 
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Annual Discount (%)</label>
+                        <label className="abp-form-label">বাৎসরিক ছাড় (%)</label>
                         <input
                           type="number"
                           step="1"
@@ -927,7 +1166,7 @@ export default function AdminPlansPage() {
                     </div>
 
                     <div className="abp-form-group">
-                      <label className="abp-form-label">Annual Price (BDT)</label>
+                      <label className="abp-form-label">বাৎসরিক মূল্য (টাকা)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -936,25 +1175,25 @@ export default function AdminPlansPage() {
                         className="abp-form-input"
                       />
                       <div style={{ fontSize: '11.5px', color: 'var(--abp-text-dim)', marginTop: '4px' }}>
-                        Calculated automatically based on discount, or enter a custom annual price.
+                        ছাড়ের ভিত্তিতে স্বয়ংক্রিয়ভাবে গণনা করা হয়, বা নিজের মতো বাৎসরিক মূল্য লিখুন।
                       </div>
                     </div>
 
                     <div className="abp-form-row">
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Free Trial Period (Days)</label>
+                        <label className="abp-form-label">ফ্রি ট্রায়াল মেয়াদ (দিন)</label>
                         <input
                           type="number"
                           min="0"
                           value={form.trial_period_days}
                           onChange={e => setForm({ ...form, trial_period_days: parseInt(e.target.value) || 0 })}
-                          placeholder="0 for immediate billing"
+                          placeholder="সরাসরি বিলিংয়ের জন্য ০ লিখুন"
                           className="abp-form-input"
                         />
                       </div>
 
                       <div className="abp-form-group">
-                        <label className="abp-form-label">Grace Period (Days)</label>
+                        <label className="abp-form-label">গ্রেস পিরিয়ড (দিন)</label>
                         <input
                           type="number"
                           min="0"
@@ -970,101 +1209,274 @@ export default function AdminPlansPage() {
                 {/* TAB 3: FEATURES & ENTITLEMENTS */}
                 {modalTab === 'features' && (
                   <div className="abp-fade-in">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--abp-text-muted)' }}>
-                        Configure feature keys, labels, and quota thresholds for this tier. Use <strong>-1</strong> for unlimited.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={addFeatureRow}
-                        className="abp-btn-edit"
-                        style={{ flex: 'none', padding: '5px 12px', fontSize: '12px' }}
-                      >
-                        <Plus size={13} /> Add Entitlement
-                      </button>
+                    {/* Guidance Banner */}
+                    <div className="abp-feature-guide-box">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <Sparkles size={18} color="#00b875" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div style={{ fontSize: '12.5px', color: 'var(--abp-text)', lineHeight: 1.5 }}>
+                          <strong>সহজ নির্দেশিকা:</strong> এই টিয়ারের গ্রাহক (ডাক্তার বা হাসপাতাল) যেসব সুবিধা পাবেন তা নিচে নির্ধারণ করুন।
+                          সীমাহীন ব্যবহারের জন্য <strong>"সীমাহীন (আনলিমিটেড)"</strong> বক্সে টিক দিন।
+                          কোনো সুবিধা এই নির্দিষ্ট টিয়ারে বন্ধ রাখতে ডানপাশের সুইচে <strong>"নিষ্ক্রিয়"</strong> করে দিন।
+                        </div>
+                      </div>
                     </div>
 
+                    {/* Action Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--abp-text)' }}>
+                          অন্তর্ভুক্ত ফিচারের তালিকা ({form.features.length})
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Dropdown to add a standard feature */}
+                        <select
+                          onChange={e => {
+                            if (e.target.value === '__custom__') {
+                              addFeatureRow()
+                            } else if (e.target.value) {
+                              addStandardFeature(e.target.value)
+                            }
+                            e.target.value = ''
+                          }}
+                          defaultValue=""
+                          className="abp-form-select"
+                          style={{ fontSize: '12px', padding: '5px 10px', height: '32px', width: 'auto' }}
+                        >
+                          <option value="" disabled>+ ফিচার যোগ করুন...</option>
+                          {(STANDARD_FEATURES[(form.target_entity || 'doctor').toLowerCase()] || STANDARD_FEATURES.doctor).map(sf => (
+                            <option key={sf.key} value={sf.key}>
+                              {sf.nameBn}
+                            </option>
+                          ))}
+                          <option value="__custom__">➕ কাস্টম নতুন ফিচার...</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={addAllStandardFeatures}
+                          className="abp-btn-edit"
+                          style={{ fontSize: '12px', padding: '5px 12px', height: '32px', whiteSpace: 'nowrap' }}
+                          title="এই প্ল্যাটফর্মের সকল প্রস্তাবিত ফিচার যুক্ত করুন"
+                        >
+                          <Layers size={13} /> সকল ফিচার লোড করুন
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Feature Cards List */}
                     {form.features.length === 0 ? (
-                      <div style={{ padding: '24px', textAlign: 'center', background: 'var(--abp-card-header)', borderRadius: '10px', border: '1px dashed var(--abp-border)' }}>
-                        <Sparkles size={24} color="#94a3b8" style={{ margin: '0 auto 8px auto' }} />
-                        <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--abp-text-muted)' }}>
-                          No specific feature entitlements defined yet.
+                      <div style={{ padding: '30px', textAlign: 'center', background: 'var(--abp-card-header)', borderRadius: '14px', border: '1px dashed var(--abp-border)' }}>
+                        <Sparkles size={28} color="#94a3b8" style={{ margin: '0 auto 10px auto' }} />
+                        <h5 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700 }}>এখনও কোনো ফিচার যুক্ত করা হয়নি</h5>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--abp-text-muted)' }}>
+                          নিচের বাটনে ক্লিক করে স্বয়ংক্রিয়ভাবে প্ল্যাটফর্মের সকল প্রস্তাবিত ফিচার যুক্ত করে নিতে পারেন।
                         </p>
-                        <button type="button" onClick={addFeatureRow} className="abp-btn-edit" style={{ margin: '0 auto', display: 'inline-flex' }}>
-                          <Plus size={13} /> Add First Feature
+                        <button
+                          type="button"
+                          onClick={addAllStandardFeatures}
+                          className="abp-btn-primary"
+                          style={{ margin: '0 auto', fontSize: '13px', padding: '8px 18px' }}
+                        >
+                          <Sparkles size={14} /> সকল প্রস্তাবিত ফিচার যোগ করুন
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {form.features.map((feat, idx) => (
-                          <div
-                            key={idx}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '1.4fr 1.4fr 0.8fr 1fr auto',
-                              gap: '8px',
-                              alignItems: 'center',
-                              background: 'var(--abp-card-header)',
-                              padding: '10px 12px',
-                              borderRadius: '10px',
-                              border: '1px solid var(--abp-border)',
-                            }}
-                          >
-                            <div>
-                              <input
-                                type="text"
-                                placeholder="Feature Key (e.g. max_chambers)"
-                                value={feat.feature_key}
-                                onChange={e => updateFeatureRow(idx, 'feature_key', e.target.value)}
-                                className="abp-form-input"
-                                style={{ fontSize: '12px', padding: '6px 8px' }}
-                              />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {form.features.map((feat, idx) => {
+                          const entity = (form.target_entity || 'doctor').toLowerCase()
+                          const meta = getFeatureMeta(entity, feat.feature_key)
+                          const isUnlimited = feat.quota_limit === -1 || feat.quota_limit === '-1'
+                          const isEnabled = Boolean(feat.is_enabled)
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`abp-feature-card ${!isEnabled ? 'is-disabled' : ''}`}
+                            >
+                              {/* Header */}
+                              <div className="abp-feature-card-header">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '8px',
+                                      background: isEnabled ? 'rgba(0, 184, 117, 0.12)' : 'rgba(148, 163, 184, 0.15)',
+                                      color: isEnabled ? '#00b875' : '#94a3b8',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {meta?.key === 'eprescription' && <FileText size={16} />}
+                                    {meta?.key === 'max_chambers' && <Building2 size={16} />}
+                                    {meta?.key === 'live_queue' && <Users size={16} />}
+                                    {meta?.key === 'telemedicine' && <Stethoscope size={16} />}
+                                    {meta?.key === 'sms_reminders' && <CreditCard size={16} />}
+                                    {meta?.key === 'advanced_analytics' && <Layers size={16} />}
+                                    {meta?.key === 'priority_support' && <Shield size={16} />}
+                                    {(!meta || !['eprescription', 'max_chambers', 'live_queue', 'telemedicine', 'sms_reminders', 'advanced_analytics', 'priority_support'].includes(meta?.key)) && <Sparkles size={16} />}
+                                  </div>
+
+                                  <div>
+                                    {!meta ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                          <input
+                                            type="text"
+                                            value={feat.feature_name}
+                                            onChange={e => updateFeatureRow(idx, 'feature_name', e.target.value)}
+                                            placeholder="কাস্টম ফিচারের নাম (যেমন: ফ্রি ডোমেইন বা ট্রেনিং)"
+                                            className="abp-form-input"
+                                            style={{ fontSize: '13px', padding: '4px 8px', fontWeight: 700, width: '260px' }}
+                                          />
+                                          <input
+                                            type="text"
+                                            value={feat.feature_key}
+                                            onChange={e => updateFeatureRow(idx, 'feature_key', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                                            placeholder="কোড কী (যেমন: custom_domain)"
+                                            className="abp-form-input abp-feature-badge-key"
+                                            style={{ fontSize: '11px', padding: '4px 8px', width: '130px' }}
+                                          />
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--abp-text-dim)' }}>
+                                          অতিরিক্ত বা স্পেশাল মার্কেটিং সুবিধার নাম এখানে লিখুন।
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                          <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--abp-text)' }}>
+                                            {meta.nameBn}
+                                          </span>
+                                          <span className="abp-feature-badge-key">
+                                            {feat.feature_key}
+                                          </span>
+                                        </div>
+                                        {meta.desc && (
+                                          <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: 'var(--abp-text-muted)' }}>
+                                            {meta.desc}
+                                          </p>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Right controls: Enable Switch & Delete */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleEnabled(idx)}
+                                    className={`abp-feature-toggle-btn ${isEnabled ? 'active' : 'inactive'}`}
+                                  >
+                                    {isEnabled ? (
+                                      <>
+                                        <Check size={13} />
+                                        <span>অন্তর্ভুক্ত (সক্রিয়)</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X size={13} />
+                                        <span>বাদ দেওয়া হয়েছে (নিষ্ক্রিয়)</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFeatureRow(idx)}
+                                    className="abp-btn-delete"
+                                    style={{ padding: '6px' }}
+                                    title="এই ফিচারটি তালিকা থেকে মুছে ফেলুন"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Body: Configuration when enabled */}
+                              {isEnabled ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px', alignItems: 'flex-start', marginTop: '12px' }}>
+                                  {/* Quota Setting */}
+                                  <div>
+                                    <label className="abp-form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span>ব্যবহারের কোটা সীমা</span>
+                                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontWeight: 600, color: '#00b875', fontSize: '12px' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isUnlimited}
+                                          onChange={e => handleToggleUnlimited(idx, e.target.checked)}
+                                          style={{ accentColor: '#00b875', width: '14px', height: '14px' }}
+                                        />
+                                        <span>সীমাহীন (আনলিমিটেড)</span>
+                                      </label>
+                                    </label>
+
+                                    {isUnlimited ? (
+                                      <div className="abp-unlimited-pill" style={{ width: '100%', justifyContent: 'center' }}>
+                                        <Sparkles size={14} />
+                                        <span>∞ আনলিমিটেড ব্যবহার (কোনো সীমা নেই)</span>
+                                      </div>
+                                    ) : (
+                                      <div style={{ position: 'relative' }}>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={feat.quota_limit > 0 ? feat.quota_limit : ''}
+                                          onChange={e => updateFeatureRow(idx, 'quota_limit', Math.max(1, parseInt(e.target.value) || 0))}
+                                          placeholder="কোটা সংখ্যা লিখুন (যেমন: ১০০)"
+                                          className="abp-form-input"
+                                          style={{ paddingRight: meta?.unit ? '120px' : '12px', fontWeight: 700 }}
+                                        />
+                                        {meta?.unit && (
+                                          <span
+                                            style={{
+                                              position: 'absolute',
+                                              right: '10px',
+                                              top: '50%',
+                                              transform: 'translateY(-50%)',
+                                              fontSize: '11.5px',
+                                              fontWeight: 600,
+                                              color: 'var(--abp-text-muted)',
+                                              pointerEvents: 'none',
+                                            }}
+                                          >
+                                            {meta.unit}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Reset Period */}
+                                  <div>
+                                    <label className="abp-form-label">নবায়ন চক্র (রিসেট পিরিয়ড)</label>
+                                    <select
+                                      value={feat.reset_period || 'monthly'}
+                                      onChange={e => updateFeatureRow(idx, 'reset_period', e.target.value)}
+                                      className="abp-form-select"
+                                      style={{ fontSize: '12.5px' }}
+                                    >
+                                      <option value="monthly">প্রতি মাসে নবায়ন (মাসিক কোটা)</option>
+                                      <option value="never">স্থায়ী / ফিক্সড সীমা (যেমন: চেম্বার)</option>
+                                      <option value="daily">প্রতিদিন নবায়ন (দৈনিক কোটা)</option>
+                                      <option value="yearly">প্রতি বছর নবায়ন (বার্ষিক কোটা)</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '8px' }}>
+                                  <AlertCircle size={14} />
+                                  <span>এই টিয়ারে এই সুবিধাটি বন্ধ থাকবে (ডাক্তার বা হাসপাতালের জন্য লক থাকবে)।</span>
+                                </div>
+                              )}
                             </div>
-                            <div>
-                              <input
-                                type="text"
-                                placeholder="Display Name"
-                                value={feat.feature_name}
-                                onChange={e => updateFeatureRow(idx, 'feature_name', e.target.value)}
-                                className="abp-form-input"
-                                style={{ fontSize: '12px', padding: '6px 8px' }}
-                              />
-                            </div>
-                            <div>
-                              <input
-                                type="number"
-                                placeholder="Quota (-1 = unl)"
-                                value={feat.quota_limit}
-                                onChange={e => updateFeatureRow(idx, 'quota_limit', parseInt(e.target.value) || 0)}
-                                className="abp-form-input"
-                                style={{ fontSize: '12px', padding: '6px 8px' }}
-                              />
-                            </div>
-                            <div>
-                              <select
-                                value={feat.reset_period}
-                                onChange={e => updateFeatureRow(idx, 'reset_period', e.target.value)}
-                                className="abp-form-select"
-                                style={{ fontSize: '12px', padding: '6px 8px' }}
-                              >
-                                <option value="never">Never</option>
-                                <option value="daily">Daily</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="yearly">Yearly</option>
-                              </select>
-                            </div>
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => removeFeatureRow(idx)}
-                                className="abp-btn-delete"
-                                style={{ padding: '6px' }}
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -1078,7 +1490,7 @@ export default function AdminPlansPage() {
                   onClick={() => setShowModal(false)}
                   className="abp-btn-cancel"
                 >
-                  Cancel
+                  বাতিল
                 </button>
                 <button
                   type="submit"
@@ -1087,11 +1499,11 @@ export default function AdminPlansPage() {
                 >
                   {saving ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" /> Saving...
+                      <RefreshCw size={14} className="animate-spin" /> সংরক্ষণ হচ্ছে...
                     </>
                   ) : (
                     <>
-                      <Check size={15} /> Save Plan Configuration
+                      <Check size={15} /> প্ল্যান কনফিগারেশন সংরক্ষণ করুন
                     </>
                   )}
                 </button>

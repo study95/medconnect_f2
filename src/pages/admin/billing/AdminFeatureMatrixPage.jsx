@@ -49,7 +49,7 @@ export default function AdminFeatureMatrixPage() {
       setPlans(res.data?.plans || [])
       setMatrix(res.data?.matrix || [])
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load feature matrix. Please retry.')
+      setError(err?.response?.data?.message || 'ফিচার ম্যাট্রিক্স লোড করা সম্ভব হয়নি। পুনরায় চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -118,9 +118,9 @@ export default function AdminFeatureMatrixPage() {
       })
 
       await updateFeatureMatrix(payload)
-      setFeedback({ type: 'success', text: 'Feature entitlements matrix saved and synchronized across all active subscription plans!' })
+      setFeedback({ type: 'success', text: 'সকল সক্রিয় প্ল্যানে ফিচার সুবিধা ও কোটা সফলভাবে সংরক্ষিত ও সিঙ্ক করা হয়েছে!' })
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.message || 'Error saving feature matrix.' })
+      setFeedback({ type: 'error', text: err.response?.data?.message || 'ফিচার ম্যাট্রিক্স সংরক্ষণে সমস্যা হয়েছে।' })
     } finally {
       setSaving(false)
     }
@@ -167,11 +167,11 @@ export default function AdminFeatureMatrixPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Plan Feature Entitlements Matrix
-            <span className="ab-title-badge">Access Control</span>
+            প্ল্যান ফিচার সুবিধা ম্যাট্রিক্স
+            <span className="ab-title-badge">অ্যাক্সেস কন্ট্রোল</span>
           </h1>
           <p className="ab-subtitle">
-            Configure, compare, and bulk-sync feature permissions, usage allowances, and quotas across all tier plans.
+            সকল টিয়ারের প্ল্যানে ফিচারের অনুমতি, ব্যবহার সীমা এবং কোটা কনফিগার ও সিঙ্ক করুন।
           </p>
         </div>
 
@@ -179,7 +179,7 @@ export default function AdminFeatureMatrixPage() {
           <button
             onClick={loadData}
             className="ab-btn-refresh"
-            title="Refresh Matrix"
+            title="ম্যাট্রিক্স রিফ্রেশ করুন"
             aria-label="Refresh feature matrix"
             disabled={loading || saving}
           >
@@ -188,11 +188,11 @@ export default function AdminFeatureMatrixPage() {
           <button
             onClick={handleSave}
             disabled={saving || loading || !hasPermission('billing.plans.manage')}
-            title={!hasPermission('billing.plans.manage') ? 'Insufficient permissions' : undefined}
+            title={!hasPermission('billing.plans.manage') ? 'অনুমতি নেই' : undefined}
             className="ab-btn-primary"
             aria-label="Save matrix changes"
           >
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Matrix Changes'}
+            <Save size={16} /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'ম্যাট্রিক্স পরিবর্তন সংরক্ষণ করুন'}
           </button>
         </div>
       </div>
@@ -200,67 +200,67 @@ export default function AdminFeatureMatrixPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans & Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill active">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং সেটিংস
         </Link>
       </nav>
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">
         <div className="ab-kpi-card">
-          <div className="ab-kpi-label">
-            <span>Configured Entitlements</span>
+          <div className="abp-kpi-label">
+            <span>মোট নির্ধারিত সুবিধা</span>
             <Sparkles size={15} color="#8b5cf6" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalFeatures}</div>
-          <div className="ab-kpi-footnote">Distinct platform modules & permissions</div>
+          <div className="ab-kpi-footnote">প্ল্যাটফর্ম মডিউল ও পারমিশন</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Managed Subscription Tiers</span>
+            <span>পরিচালিত সাবস্ক্রিপশন টিয়ার</span>
             <Layers size={15} color="#3b82f6" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalPlans}</div>
-          <div className="ab-kpi-footnote">Across Doctor and Hospital entities</div>
+          <div className="ab-kpi-footnote">ডাক্তার ও হাসপাতাল উভয় ক্যাটাগরিতে</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Unlimited Assignments</span>
+            <span>আনলিমিটেড সুবিধা</span>
             <CheckCircle2 size={15} color="#00b875" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalUnlimited}</div>
-          <div className="ab-kpi-footnote">Uncapped quotas (-1 parameter)</div>
+          <div className="ab-kpi-footnote">সীমাহীন কোটা বরাদ্দ (-১ প্যারামিটার)</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Capped Quota Limits</span>
+            <span>নির্দিষ্ট কোটা সীমা</span>
             <Info size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalCapped}</div>
-          <div className="ab-kpi-footnote">Monthly/daily quantitative thresholds</div>
+          <div className="ab-kpi-footnote">মাসিক/দৈনিক নির্ধারিত সংখ্যাগত সীমা</div>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ export default function AdminFeatureMatrixPage() {
         <div className="ab-error-state" role="alert">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadData} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadData} className="ab-btn-secondary">পুনরায় চেষ্টা</button>
         </div>
       )}
 
@@ -308,7 +308,7 @@ export default function AdminFeatureMatrixPage() {
               className={`ab-segmented-btn ${entityFilter === 'all' ? 'active' : ''}`}
               aria-pressed={entityFilter === 'all'}
             >
-              All Plans
+              সকল প্ল্যান
               <span style={{ fontSize: '11px', fontWeight: 700, background: 'var(--ab-pill-bg)', borderRadius: '99px', padding: '1px 7px', marginLeft: '4px' }}>
                 {plans.length}
               </span>
@@ -319,7 +319,7 @@ export default function AdminFeatureMatrixPage() {
               aria-pressed={entityFilter === 'doctor'}
             >
               <Stethoscope size={13} />
-              Doctor Plans
+              ডাক্তার প্ল্যান
             </button>
             <button
               onClick={() => setEntityFilter('hospital')}
@@ -327,7 +327,7 @@ export default function AdminFeatureMatrixPage() {
               aria-pressed={entityFilter === 'hospital'}
             >
               <Building2 size={13} />
-              Hospital Plans
+              হাসপাতাল প্ল্যান
             </button>
           </div>
         </div>
@@ -337,7 +337,7 @@ export default function AdminFeatureMatrixPage() {
             <Search size={14} aria-hidden="true" />
             <input
               type="search"
-              placeholder="Search feature name or key..."
+              placeholder="ফিচারের নাম বা কোড খুঁজুন..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="ab-search-input"
@@ -356,9 +356,9 @@ export default function AdminFeatureMatrixPage() {
       ) : matrix.length === 0 ? (
         <div className="ab-card-table" style={{ padding: '60px 20px', textAlign: 'center' }}>
           <Sparkles size={40} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700 }}>No Feature Entitlements Found</h3>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700 }}>কোনো ফিচার সুবিধা পাওয়া যায়নি</h3>
           <p style={{ color: 'var(--ab-text-muted)', fontSize: '13px' }}>
-            Feature matrix is populated automatically when feature limits are assigned to subscription plans.
+            সাবস্ক্রিপশন প্ল্যানে ফিচার সীমা যুক্ত করা হলে স্বয়ংক্রিয়ভাবে ম্যাট্রিক্সে প্রদর্শিত হবে।
           </p>
         </div>
       ) : (
@@ -368,7 +368,7 @@ export default function AdminFeatureMatrixPage() {
               <thead>
                 <tr>
                   <th style={{ minWidth: '260px', position: 'sticky', left: 0, zIndex: 2, background: 'var(--ab-table-head)' }}>
-                    Feature & Permission
+                    ফিচার ও পারমিশন
                   </th>
                   {filteredPlans.map(plan => {
                     const isDoctor = (plan.target_entity || '').toLowerCase() === 'doctor'

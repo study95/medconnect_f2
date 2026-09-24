@@ -14,12 +14,20 @@ export default function SubscriptionGate({ children, moduleName }) {
   // Non-doctors pass through
   if (!isDoctor) return children
 
+  const moduleTranslations = {
+    'Prescriptions': 'ডিজিটাল প্রেসক্রিপশন',
+    'Medicines': 'ওষুধ তালিকা ও ব্যবস্থাপনা',
+    'My Notes': 'ক্লিনিক্যাল নোটস',
+    'Payments': 'পেমেন্ট ও হিসাব'
+  }
+  const bnModule = moduleName ? (moduleTranslations[moduleName] || moduleName) : 'এই'
+
   // Still loading
   if (!loaded) {
     return (
       <div className="admin-loading">
         <div className="admin-spinner" />
-        Checking subscription...
+        সাবস্ক্রিপশন যাচাই করা হচ্ছে...
       </div>
     )
   }
@@ -40,21 +48,17 @@ export default function SubscriptionGate({ children, moduleName }) {
       }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
         <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 900, color: '#92400E' }}>
-          Subscription Required
+          সাবস্ক্রিপশন প্রয়োজন
         </h2>
         <p style={{ margin: '0 0 24px', fontSize: 14, color: '#A16207', lineHeight: 1.6 }}>
-          {moduleName
-            ? `Access to ${moduleName} requires an active subscription.`
-            : 'This feature requires an active subscription.'
-          }
-          {' '}Upgrade your plan to continue using all premium features.
+          {bnModule} ফিচারটি ব্যবহার করতে একটি সক্রিয় সাবস্ক্রিপশন প্রয়োজন। সব প্রিমিয়াম সুবিধা উপভোগ করতে আপনার প্ল্যান সাবস্ক্রাইব অথবা রিনিউ করুন।
         </p>
         <button
           className="admin-btn admin-btn-primary"
           style={{ padding: '14px 32px', borderRadius: 12, fontWeight: 800, fontSize: 15 }}
           onClick={() => navigate('/admin/subscription')}
         >
-          ⚡ View Plans & Subscribe
+          ⚡ প্ল্যান দেখুন ও সাবস্ক্রাইব করুন
         </button>
       </div>
     </div>

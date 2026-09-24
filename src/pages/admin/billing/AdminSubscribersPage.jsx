@@ -85,7 +85,7 @@ export default function AdminSubscribersPage() {
       const list = res.data?.data || []
       setSubscribers(Array.isArray(list) ? list : [])
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load subscribers. Please try again.')
+      setError(err?.response?.data?.message || 'গ্রাহক তালিকা লোড করা সম্ভব হয়নি। আবার চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -147,7 +147,7 @@ export default function AdminSubscribersPage() {
         fetchSlipBlob(fullSub.payment_evidence.transaction_id)
       }
     } catch (err) {
-      alert('Failed to load subscription timeline')
+      alert('সাবস্ক্রিপশন টাইমলাইন লোড করা সম্ভব হয়নি')
     } finally {
       setDrawerLoading(false)
     }
@@ -156,12 +156,12 @@ export default function AdminSubscribersPage() {
   const handleApprovalAction = async (action) => {
     const txId = selectedSub?.payment_evidence?.transaction_id
     if (!txId) {
-      setApprovalError('No manual payment transaction found for this subscription.')
+      setApprovalError('এই সাবস্ক্রিপশনের জন্য কোনো ম্যানুয়াল পেমেন্ট লেনদেন পাওয়া যায়নি।')
       return
     }
 
     if (!approvalNote.trim()) {
-      setApprovalError(`Please provide a mandatory audit note before ${action === 'approve' ? 'approving' : 'rejecting'} this payment.`)
+      setApprovalError(`পেমেন্ট ${action === 'approve' ? 'অনুমোদন' : 'প্রত্যাখ্যান'} করার পূর্বে অডিট নোট দেওয়া বাধ্যতামূলক।`)
       return
     }
 
@@ -172,10 +172,10 @@ export default function AdminSubscribersPage() {
 
       if (action === 'approve') {
         await approveAdminManualPayment(txId, approvalNote.trim())
-        setApprovalSuccess('Manual payment approved successfully! Subscription activated.')
+        setApprovalSuccess('ম্যানুয়াল পেমেন্ট সফলভাবে অনুমোদিত হয়েছে! সাবস্ক্রিপশন সক্রিয় করা হলো।')
       } else {
         await rejectAdminManualPayment(txId, approvalNote.trim())
-        setApprovalSuccess('Manual payment rejected and invoice marked as void.')
+        setApprovalSuccess('ম্যানুয়াল পেমেন্ট প্রত্যাখ্যাত হয়েছে এবং ইনভয়েস বাতিল করা হলো।')
       }
 
       setTimeout(async () => {
@@ -187,10 +187,10 @@ export default function AdminSubscribersPage() {
       }, 1200)
     } catch (err) {
       if (err.response?.status === 409) {
-        setApprovalError('Conflict (409): This transaction has already been processed.')
+        setApprovalError('কনফ্লিক্ট (৪০৯): এই লেনদেনটি ইতিমধ্যে প্রক্রিয়া করা হয়েছে।')
       } else {
         const errorData = err.response?.data
-        let errMsg = errorData?.message || `Failed to ${action} payment.`
+        let errMsg = errorData?.message || `পেমেন্ট সম্পন্ন করতে সমস্যা হয়েছে।`
         if (errorData?.errors && typeof errorData.errors === 'object') {
           const firstKey = Object.keys(errorData.errors)[0]
           const firstErr = errorData.errors[firstKey]
@@ -209,8 +209,8 @@ export default function AdminSubscribersPage() {
 
   const handleCancelSub = async (immediately = false) => {
     const msg = immediately
-      ? 'Are you sure you want to cancel this subscription IMMEDIATELY? Access will be terminated right now.'
-      : 'Are you sure you want to cancel this subscription at the end of the current billing cycle?'
+      ? 'আপনি কি নিশ্চিত যে এই সাবস্ক্রিপশনটি অবিলম্বে বাতিল করতে চান? তাৎক্ষণিকভাবে অ্যাক্সেস বন্ধ হয়ে যাবে।'
+      : 'আপনি কি নিশ্চিত যে বর্তমান বিলিং সাইকেল শেষে এই সাবস্ক্রিপশনটি বাতিল করতে চান?'
     if (!window.confirm(msg)) return
 
     try {
@@ -235,27 +235,27 @@ export default function AdminSubscribersPage() {
 
   const getStatusBadge = (status, sub = null) => {
     if (sub?.payment_evidence?.status === 'pending') {
-      return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> Pending Review</span>
+      return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> পর্যালোচনাধীন</span>
     }
     switch (status) {
       case 'active':
-        return <span className="ab-badge ab-badge-emerald"><span className="ab-dot ab-dot-pulse" style={{ background: '#10b981' }} /> Active</span>
+        return <span className="ab-badge ab-badge-emerald"><span className="ab-dot ab-dot-pulse" style={{ background: '#10b981' }} /> সক্রিয়</span>
       case 'trialing':
-        return <span className="ab-badge ab-badge-blue"><span className="ab-dot" style={{ background: '#3b82f6' }} /> Trialing</span>
+        return <span className="ab-badge ab-badge-blue"><span className="ab-dot" style={{ background: '#3b82f6' }} /> ট্রায়ালে</span>
       case 'under_review':
       case 'pending':
-        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> Pending Review</span>
+        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> পর্যালোচনাধীন</span>
       case 'past_due':
-        return <span className="ab-badge ab-badge-amber"><span className="ab-dot" style={{ background: '#f59e0b' }} /> Past Due</span>
+        return <span className="ab-badge ab-badge-amber"><span className="ab-dot" style={{ background: '#f59e0b' }} /> বকেয়া</span>
       case 'grace_period':
-        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> Grace Period</span>
+        return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> গ্রেস পিরিয়ড</span>
       case 'canceled':
-        return <span className="ab-badge ab-badge-rose">Canceled</span>
+        return <span className="ab-badge ab-badge-rose">বাতিলকৃত</span>
       case 'rejected':
       case 'failed':
-        return <span className="ab-badge ab-badge-rose">Rejected</span>
+        return <span className="ab-badge ab-badge-rose">প্রত্যাখ্যাত</span>
       case 'expired':
-        return <span className="ab-badge ab-badge-slate">Expired</span>
+        return <span className="ab-badge ab-badge-slate">মেয়াদোত্তীর্ণ</span>
       default:
         return <span className="ab-badge ab-badge-slate">{status}</span>
     }
@@ -267,11 +267,11 @@ export default function AdminSubscribersPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Subscribers & Client Roster
-            <span className="ab-title-badge">Lifecycle Manager</span>
+            গ্রাহক ও সাবস্ক্রাইবার তালিকা
+            <span className="ab-title-badge">লাইফসাইকেল ম্যানেজার</span>
           </h1>
           <p className="ab-subtitle">
-            Manage active doctor and hospital client subscriptions, inspect usage quotas, and audit lifecycle event timelines.
+            ডাক্তার ও হাসপাতালের সক্রিয় সাবস্ক্রিপশন ব্যবস্থাপনা, কোটা পর্যবেক্ষণ এবং লাইফসাইকেল টাইমলাইন অডিট করুন।
           </p>
         </div>
 
@@ -279,7 +279,7 @@ export default function AdminSubscribersPage() {
           <button
             onClick={loadSubscribers}
             className="ab-btn-refresh"
-            title="Refresh Roster"
+            title="তালিকা রিফ্রেশ করুন"
             disabled={loading}
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -290,28 +290,28 @@ export default function AdminSubscribersPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans & Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill active">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং সেটিংস
         </Link>
       </nav>
 
@@ -319,47 +319,47 @@ export default function AdminSubscribersPage() {
       <div className="ab-kpi-deck">
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Total Enrolled Practices</span>
+            <span>মোট নিবন্ধিত প্র্যাকটিস</span>
             <Users size={15} color="#64748b" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.total}</div>
-          <div className="ab-kpi-footnote">Across all configured tiers</div>
+          <div className="ab-kpi-footnote">সকল কনফিগার করা টিয়ার জুড়ে</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Active Paid Subscriptions</span>
+            <span>সক্রিয় পেইড সাবস্ক্রিপশন</span>
             <CheckCircle2 size={15} color="#00b875" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.active}</div>
-          <div className="ab-kpi-footnote">Generating monthly recurring revenue</div>
+          <div className="ab-kpi-footnote">মাসিক পুনরাবৃত্ত রাজস্ব তৈরি করছে</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Trialing & Evaluation</span>
+            <span>ট্রায়াল ও পর্যবেক্ষণ</span>
             <Clock size={15} color="#3b82f6" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.trialing}</div>
-          <div className="ab-kpi-footnote">Active trial days remaining</div>
+          <div className="ab-kpi-footnote">সক্রিয় ট্রায়ালের দিন বাকি</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Pending Review</span>
+            <span>পর্যালোচনাধীন</span>
             <Clock size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.pendingReview}</div>
-          <div className="ab-kpi-footnote">Awaiting manual payment approval</div>
+          <div className="ab-kpi-footnote">ম্যানুয়াল পেমেন্ট অনুমোদনের অপেক্ষায়</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Past Due / Grace Period</span>
+            <span>বকেয়া / গ্রেস পিরিয়ড</span>
             <AlertTriangle size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.pastDue}</div>
-          <div className="ab-kpi-footnote">Pending renewal settlement</div>
+          <div className="ab-kpi-footnote">নবায়ন পরিশোধের অপেক্ষায়</div>
         </div>
       </div>
 
@@ -372,19 +372,19 @@ export default function AdminSubscribersPage() {
               onClick={() => setEntityFilter('all')}
               className={`ab-segmented-btn ${entityFilter === 'all' ? 'active' : ''}`}
             >
-              All Entities
+              সকল ধরন
             </button>
             <button
               onClick={() => setEntityFilter('doctor')}
               className={`ab-segmented-btn ${entityFilter === 'doctor' ? 'active' : ''}`}
             >
-              <Stethoscope size={13} /> Doctor Practices
+              <Stethoscope size={13} /> ডাক্তার প্র্যাকটিস
             </button>
             <button
               onClick={() => setEntityFilter('hospital')}
               className={`ab-segmented-btn ${entityFilter === 'hospital' ? 'active' : ''}`}
             >
-              <Building2 size={13} /> Hospitals
+              <Building2 size={13} /> হাসপাতাল
             </button>
           </div>
 
@@ -394,14 +394,14 @@ export default function AdminSubscribersPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="ab-select"
           >
-            <option value="">All Statuses</option>
-            <option value="pending_review">Pending Review Only</option>
-            <option value="active">Active Only</option>
-            <option value="trialing">Trialing Only</option>
-            <option value="past_due">Past Due Only</option>
-            <option value="grace_period">Grace Period Only</option>
-            <option value="canceled">Canceled Only</option>
-            <option value="expired">Expired Only</option>
+            <option value="">সকল অবস্থা</option>
+            <option value="pending_review">শুধু পর্যালোচনাধীন</option>
+            <option value="active">শুধু সক্রিয়</option>
+            <option value="trialing">শুধু ট্রায়াল</option>
+            <option value="past_due">শুধু বকেয়া</option>
+            <option value="grace_period">শুধু গ্রেস পিরিয়ড</option>
+            <option value="canceled">শুধু বাতিলকৃত</option>
+            <option value="expired">শুধু মেয়াদোত্তীর্ণ</option>
           </select>
         </div>
 
@@ -410,7 +410,7 @@ export default function AdminSubscribersPage() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Search subscriber name, email, phone..."
+              placeholder="গ্রাহকের নাম, ইমেইল, ফোন খুঁজুন..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ab-search-input"
@@ -424,7 +424,7 @@ export default function AdminSubscribersPage() {
         <div className="ab-error-state" role="alert" aria-live="polite">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadSubscribers} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadSubscribers} className="ab-btn-secondary">পুনরায় চেষ্টা</button>
         </div>
       )}
 
@@ -434,12 +434,12 @@ export default function AdminSubscribersPage() {
           <table className="ab-table" aria-busy={loading}>
             <thead>
               <tr>
-                <th>Subscriber / Client</th>
-                <th>Entity Type</th>
-                <th>Enrolled Tier</th>
-                <th>Status</th>
-                <th>Current Period End</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>গ্রাহক / ক্লায়েন্ট</th>
+                <th>প্রতিষ্ঠানের ধরন</th>
+                <th>নিবন্ধিত টিয়ার</th>
+                <th>অবস্থা</th>
+                <th>বিলিং মেয়াদের শেষ</th>
+                <th style={{ textAlign: 'right' }}>পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody>
@@ -456,8 +456,8 @@ export default function AdminSubscribersPage() {
                   <td colSpan={6}>
                     <div className="ab-empty-state">
                       <Users size={36} className="ab-empty-icon" />
-                      <div className="ab-empty-title">No subscribers found</div>
-                      <div className="ab-empty-sub">Try adjusting your filters or search query</div>
+                      <div className="ab-empty-title">কোনো গ্রাহক পাওয়া যায়নি</div>
+                      <div className="ab-empty-sub">ফিল্টার বা সার্চ অনুসন্ধান পরিবর্তন করে চেষ্টা করুন</div>
                     </div>
                   </td>
                 </tr>
@@ -486,21 +486,21 @@ export default function AdminSubscribersPage() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--ab-text)', fontSize: '13.5px' }}>
-                              {sub.subscriber_name || 'Unnamed Account'}
+                              {sub.subscriber_name || 'নামবিহীন অ্যাকাউন্ট'}
                             </div>
                             <div style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>
-                              {sub.subscriber_email || sub.subscriber_phone || `ID #${sub.id}`}
+                              {sub.subscriber_email || sub.subscriber_phone || `আইডি #${sub.id}`}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td>
                         <span className={`ab-badge ${isDoctor ? 'ab-badge-blue' : 'ab-badge-purple'}`}>
-                          {sub.entity_type}
+                          {isDoctor ? 'ডাক্তার' : 'হাসপাতাল'}
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: 'var(--ab-text)' }}>{sub.plan?.name || 'Default Tier'}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--ab-text)' }}>{sub.plan?.name || 'ডিফল্ট টিয়ার'}</div>
                         <div style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>
                           ৳{Number(sub.plan?.price || 0).toLocaleString()} • {sub.plan?.tier || 'starter'}
                         </div>
@@ -509,7 +509,7 @@ export default function AdminSubscribersPage() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--ab-text-muted)' }}>
                           <Calendar size={13} color="var(--ab-text-dim)" />
-                          {sub.ends_at ? new Date(sub.ends_at).toLocaleDateString() : 'Continuous'}
+                          {sub.ends_at ? new Date(sub.ends_at).toLocaleDateString('bn-BD') : 'চলমান'}
                         </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
@@ -519,7 +519,7 @@ export default function AdminSubscribersPage() {
                           style={{ padding: '6px 12px', fontSize: '12px' }}
                           aria-label="Open subscriber timeline"
                         >
-                          <Eye size={13} /> Timeline
+                          <Eye size={13} /> টাইমলাইন
                         </button>
                       </td>
                     </tr>
@@ -540,10 +540,10 @@ export default function AdminSubscribersPage() {
             disabled={page <= 1}
             aria-label="Previous page"
           >
-            ← Previous
+            ← পূর্ববর্তী
           </button>
           <span className="ab-pagination-info">
-            Page {meta.current_page || page} of {meta.last_page} &bull; {meta.total} total
+            পৃষ্ঠা {meta.current_page || page} / {meta.last_page} &bull; মোট {meta.total}টি
           </span>
           <button
             className="ab-btn-secondary"
@@ -551,7 +551,7 @@ export default function AdminSubscribersPage() {
             disabled={page >= meta.last_page}
             aria-label="Next page"
           >
-            Next →
+            পরবর্তী →
           </button>
         </div>
       )}
@@ -566,7 +566,7 @@ export default function AdminSubscribersPage() {
                   {selectedSub.subscriber_name}
                 </h2>
                 <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)', marginTop: '2px' }}>
-                  {selectedSub.entity_type} Client • Subscription #{selectedSub.id}
+                  {selectedSub.entity_type === 'Doctor' ? 'ডাক্তার' : 'হাসপাতাল'} ক্লায়েন্ট • সাবস্ক্রিপশন #{selectedSub.id}
                 </div>
               </div>
               <button
@@ -617,23 +617,23 @@ export default function AdminSubscribersPage() {
               {/* Account Quick Card */}
               <div style={{ background: 'var(--ab-card-header)', border: '1px solid var(--ab-border)', borderRadius: '12px', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>Subscribed Tier</span>
+                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>নিবন্ধিত প্ল্যান</span>
                   <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ab-text)' }}>{selectedSub.plan?.name}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>Status State</span>
+                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>বর্তমান অবস্থা</span>
                   <div>{getStatusBadge(selectedSub.status, selectedSub)}</div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>Cycle Price</span>
+                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>সাইকেল ফি</span>
                   <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ab-text)' }}>
-                    ৳{Number(selectedSub.plan?.price || 0).toLocaleString()} / {selectedSub.billing_cycle || 'month'}
+                    ৳{Number(selectedSub.plan?.price || 0).toLocaleString()} / {selectedSub.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>Billing Period End</span>
+                  <span style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>বিলিং মেয়াদ শেষ</span>
                   <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ab-text)' }}>
-                    {selectedSub.ends_at ? new Date(selectedSub.ends_at).toLocaleString() : 'Open / Continuous'}
+                    {selectedSub.ends_at ? new Date(selectedSub.ends_at).toLocaleString('bn-BD') : 'চলমান'}
                   </span>
                 </div>
               </div>
@@ -642,7 +642,7 @@ export default function AdminSubscribersPage() {
               {selectedSub.payment_evidence && (
                 <div style={{ background: 'var(--ab-card-header)', border: '1px solid var(--ab-border)', borderRadius: '12px', padding: '16px' }}>
                   <h3 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ab-text-muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FileText size={13} /> Payment Evidence
+                    <FileText size={13} /> পেমেন্ট প্রমাণপত্র
                     <span style={{
                       marginLeft: 'auto',
                       padding: '2px 8px',
@@ -655,20 +655,21 @@ export default function AdminSubscribersPage() {
                       color: selectedSub.payment_evidence.status === 'verified' ? '#059669' :
                              selectedSub.payment_evidence.status === 'failed' ? '#dc2626' : '#d97706',
                     }}>
-                      {selectedSub.payment_evidence.status?.replace('_', ' ')?.toUpperCase()}
+                      {selectedSub.payment_evidence.status === 'verified' ? 'অনুমোদিত' :
+                       selectedSub.payment_evidence.status === 'failed' ? 'ব্যর্থ' : 'পর্যালোচনাধীন'}
                     </span>
                   </h3>
 
                   {[
-                    ['Gateway', selectedSub.payment_evidence.gateway?.replace('_', ' ')?.toUpperCase()],
-                    ['Transaction Ref', selectedSub.payment_evidence.transaction_reference],
-                    ['Amount', selectedSub.payment_evidence.amount ? `৳${Number(selectedSub.payment_evidence.amount).toLocaleString()} ${selectedSub.payment_evidence.currency || 'BDT'}` : '—'],
-                    ['Sender Number', selectedSub.payment_evidence.sender_number || '—'],
-                    ['Receiver Number', selectedSub.payment_evidence.receiver_number || '—'],
-                    ['Submitted At', selectedSub.payment_evidence.submitted_at ? new Date(selectedSub.payment_evidence.submitted_at).toLocaleString() : '—'],
-                    ['Verified At', selectedSub.payment_evidence.verified_at ? new Date(selectedSub.payment_evidence.verified_at).toLocaleString() : 'Pending Review'],
-                    ['Approver', selectedSub.payment_evidence.approver || '—'],
-                    ['Audit Note', selectedSub.payment_evidence.audit_note || '—'],
+                    ['পেমেন্ট গেটওয়ে', selectedSub.payment_evidence.gateway?.replace('_', ' ')?.toUpperCase()],
+                    ['লেনদেন রেফারেন্স', selectedSub.payment_evidence.transaction_reference],
+                    ['পরিমাণ', selectedSub.payment_evidence.amount ? `৳${Number(selectedSub.payment_evidence.amount).toLocaleString()}` : '—'],
+                    ['প্রেরক নম্বর', selectedSub.payment_evidence.sender_number || '—'],
+                    ['প্রাপক নম্বর', selectedSub.payment_evidence.receiver_number || '—'],
+                    ['জমা দেওয়ার সময়', selectedSub.payment_evidence.submitted_at ? new Date(selectedSub.payment_evidence.submitted_at).toLocaleString('bn-BD') : '—'],
+                    ['যাচাইয়ের সময়', selectedSub.payment_evidence.verified_at ? new Date(selectedSub.payment_evidence.verified_at).toLocaleString('bn-BD') : 'পর্যালোচনার অপেক্ষায়'],
+                    ['অনুমোদনকারী', selectedSub.payment_evidence.approver || '—'],
+                    ['অডিট নোট', selectedSub.payment_evidence.audit_note || '—'],
                   ].map(([label, value]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '7px', gap: '12px' }}>
                       <span style={{ fontSize: '11.5px', color: 'var(--ab-text-muted)', flexShrink: 0 }}>{label}</span>
@@ -680,11 +681,11 @@ export default function AdminSubscribersPage() {
                   {(slipBlobUrl || slipBlobLoading || selectedSub.payment_evidence.has_slip) && (
                     <div style={{ marginTop: '14px', borderTop: '1px solid var(--ab-border)', paddingTop: '12px' }}>
                       <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--ab-text-muted)', display: 'block', marginBottom: '6px' }}>
-                        Payment Proof Slip
+                        পেমেন্ট প্রমাণ স্লিপ
                       </label>
                       <div style={{ border: '1px solid var(--ab-border)', borderRadius: '10px', overflow: 'hidden', textAlign: 'center', background: '#0f172a', minHeight: '140px', maxHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
                         {slipBlobLoading ? (
-                          <div style={{ color: '#94a3b8', fontSize: '12px' }}>Loading payment slip...</div>
+                          <div style={{ color: '#94a3b8', fontSize: '12px' }}>পেমেন্ট স্লিপ লোড হচ্ছে...</div>
                         ) : slipBlobUrl ? (
                           <img
                             src={slipBlobUrl}
@@ -710,7 +711,7 @@ export default function AdminSubscribersPage() {
                               border: '1px solid rgba(99,102,241,0.2)',
                             }}
                           >
-                            <ExternalLink size={13} /> View Slip in New Tab
+                            <ExternalLink size={13} /> নতুন ট্যাবে স্লিপ দেখুন
                           </a>
                         )}
                       </div>
@@ -721,16 +722,16 @@ export default function AdminSubscribersPage() {
                   {selectedSub.payment_evidence.status === 'pending' && (
                     <div style={{ marginTop: '14px', borderTop: '1px solid var(--ab-border)', paddingTop: '12px' }}>
                       <label className="ab-form-label" style={{ fontSize: '12px', fontWeight: 700 }}>
-                        Audit Note for Verification *{' '}
+                        যাচাইয়ের অডিট নোট *{' '}
                         <span style={{ fontWeight: 400, color: 'var(--ab-text-dim)' }}>
-                          (Required before approving or rejecting)
+                          (অনুমোদন বা প্রত্যাখ্যানের জন্য আবশ্যক)
                         </span>
                       </label>
                       <textarea
                         rows={2}
                         value={approvalNote}
                         onChange={(e) => setApprovalNote(e.target.value)}
-                        placeholder="e.g. Verified transaction reference on bKash/bank statement; received full amount."
+                        placeholder="যেমন: বিকাশ বা ব্যাংক স্টেটমেন্টের সাথে ট্রানজেকশন রেফারেন্স মিলিয়ে পুরো অর্থ পাওয়া গেছে।"
                         className="ab-form-textarea"
                         style={{ fontSize: '12px' }}
                       />
@@ -742,17 +743,17 @@ export default function AdminSubscribersPage() {
               {/* Lifecycle Events Timeline */}
               <div>
                 <h3 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ab-text-muted)', marginBottom: '14px' }}>
-                  Subscription Lifecycle Events Timeline
+                  সাবস্ক্রিপশন লাইফসাইকেল ইভেন্ট টাইমলাইন
                 </h3>
 
                 {drawerLoading ? (
                   <div style={{ padding: '30px', textAlign: 'center', color: 'var(--ab-text-muted)' }}>
                     <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
-                    Loading audit trail...
+                    অডিট ট্রেইল লোড হচ্ছে...
                   </div>
                 ) : timeline.length === 0 ? (
                   <div style={{ padding: '30px', textAlign: 'center', color: 'var(--ab-text-muted)', fontSize: '13px' }}>
-                    No audit events recorded for this subscription yet.
+                    এই সাবস্ক্রিপশনের জন্য এখনও কোনো অডিট রেকর্ড পাওয়া যায়নি।
                   </div>
                 ) : (
                   <div className="ab-timeline">
@@ -771,7 +772,7 @@ export default function AdminSubscribersPage() {
                           <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ab-text)' }}>{event.title}</div>
                           <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)', marginTop: '2px' }}>{event.description}</div>
                           <div style={{ fontSize: '10.5px', color: 'var(--ab-text-dim)', marginTop: '4px' }}>
-                            {new Date(event.timestamp).toLocaleString()}
+                            {new Date(event.timestamp).toLocaleString('bn-BD')}
                           </div>
                         </div>
                       </div>
@@ -796,16 +797,16 @@ export default function AdminSubscribersPage() {
                       fontWeight: 700,
                     }}
                     disabled={approvalProcessing || !hasPermission('billing.manual.approve')}
-                    title={!hasPermission('billing.manual.approve') ? 'Insufficient permissions' : 'Approve payment & activate subscription'}
+                    title={!hasPermission('billing.manual.approve') ? 'অনুমতি নেই' : 'পেমেন্ট অনুমোদন ও সাবস্ক্রিপশন সক্রিয় করুন'}
                     aria-label="Approve subscription payment"
                   >
                     {approvalProcessing ? (
                       <>
-                        <RefreshCw size={14} className="animate-spin" /> Processing...
+                        <RefreshCw size={14} className="animate-spin" /> প্রক্রিয়াকরণ...
                       </>
                     ) : (
                       <>
-                        <Check size={15} /> Approve &amp; Activate
+                        <Check size={15} /> অনুমোদন ও সক্রিয় করুন
                       </>
                     )}
                   </button>
@@ -820,10 +821,10 @@ export default function AdminSubscribersPage() {
                       fontWeight: 700,
                     }}
                     disabled={approvalProcessing || !hasPermission('billing.manual.approve')}
-                    title={!hasPermission('billing.manual.approve') ? 'Insufficient permissions' : 'Reject payment'}
+                    title={!hasPermission('billing.manual.approve') ? 'অনুমতি নেই' : 'পেমেন্ট প্রত্যাখ্যান করুন'}
                     aria-label="Reject subscription payment"
                   >
-                    <X size={15} /> Reject
+                    <X size={15} /> প্রত্যাখ্যান করুন
                   </button>
                 </div>
               ) : (
@@ -833,20 +834,20 @@ export default function AdminSubscribersPage() {
                     className="ab-btn-secondary"
                     style={{ flex: 1, justifyContent: 'center', color: '#d97706' }}
                     disabled={!hasPermission('billing.manual.approve')}
-                    title={!hasPermission('billing.manual.approve') ? 'Insufficient permissions' : 'Cancel at period end'}
+                    title={!hasPermission('billing.manual.approve') ? 'অনুমতি নেই' : 'মেয়াদ শেষে বাতিল করুন'}
                     aria-label="Cancel subscription at period end"
                   >
-                    Cancel at Period End
+                    মেয়াদ শেষে বাতিল
                   </button>
                   <button
                     onClick={() => handleCancelSub(true)}
                     className="ab-btn-secondary"
                     style={{ flex: 1, justifyContent: 'center', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                     disabled={!hasPermission('billing.manual.approve')}
-                    title={!hasPermission('billing.manual.approve') ? 'Insufficient permissions' : 'Cancel immediately'}
+                    title={!hasPermission('billing.manual.approve') ? 'অনুমতি নেই' : 'অবিলম্বে বাতিল করুন'}
                     aria-label="Cancel subscription immediately"
                   >
-                    Cancel Immediately
+                    অবিলম্বে বাতিল
                   </button>
                 </div>
               )}

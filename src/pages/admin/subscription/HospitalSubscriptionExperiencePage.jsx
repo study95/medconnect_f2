@@ -306,7 +306,7 @@ export default function HospitalSubscriptionExperiencePage() {
       return (
         <span className="hosp-sub-badge-status active">
           <span className="hosp-sub-dot pulse" style={{ background: '#10b981' }} />
-          Active Facility Tier
+          সক্রিয় ফ্যাসিলিটি প্ল্যান
         </span>
       )
     }
@@ -314,7 +314,7 @@ export default function HospitalSubscriptionExperiencePage() {
       return (
         <span className="hosp-sub-badge-status trialing">
           <span className="hosp-sub-dot pulse" style={{ background: '#2563eb' }} />
-          Trial Period
+          ফ্রি ট্রায়াল
         </span>
       )
     }
@@ -322,14 +322,14 @@ export default function HospitalSubscriptionExperiencePage() {
       return (
         <span className="hosp-sub-badge-status grace">
           <span className="hosp-sub-dot pulse" style={{ background: '#f59e0b' }} />
-          Grace Period
+          গ্রেস পিরিয়ড
         </span>
       )
     }
     return (
       <span className="hosp-sub-badge-status expired">
         <span className="hosp-sub-dot" style={{ background: '#ef4444' }} />
-        {s.toUpperCase()}
+        {s === 'cancelled' ? 'বাতিলকৃত' : s === 'expired' ? 'মেয়াদোত্তীর্ণ' : s.toUpperCase()}
       </span>
     )
   }
@@ -408,20 +408,20 @@ export default function HospitalSubscriptionExperiencePage() {
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
           <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            <span>Dashboard</span>
+            <span>ড্যাশবোর্ড</span>
             <ChevronRight size={13} />
-            <span style={{ color: '#2563eb', fontWeight: 700 }}>Hospital Subscription & Capacity</span>
+            <span style={{ color: '#2563eb', fontWeight: 700 }}>হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি</span>
           </div>
           <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
             <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, letterSpacing: '-0.4px' }}>
-              Hospital Subscription & Capacity Management
+              হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি ব্যবস্থাপনা
             </h1>
             <span className="hosp-sub-badge-tier">
-              Institutional
+              প্রাতিষ্ঠানিক
             </span>
           </div>
           <p className="text-muted" style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
-            {hospital?.name || 'Hospital Clinical Facility'} • License #{hospital?.license_number || 'N/A'} • Multi-Doctor Quotas & Entitlements
+            {hospital?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি'} • লাইসেন্স #{hospital?.license_number || 'প্রযোজ্য নয়'} • মাল্টি-ডাক্তার কোটা ও সুবিধা
           </p>
         </div>
 
@@ -429,20 +429,20 @@ export default function HospitalSubscriptionExperiencePage() {
           <button
             onClick={() => navigate('/admin/subscription/history')}
             className="hosp-sub-btn-secondary"
-            title="View institutional subscription and payment transaction history"
+            title="প্রাতিষ্ঠানিক সাবস্ক্রিপশন ও পেমেন্ট হিস্ট্রি দেখুন"
           >
             <History size={15} style={{ color: '#2563eb' }} />
-            <span>Subscription History</span>
+            <span>সাবস্ক্রিপশন হিস্ট্রি</span>
           </button>
 
           {timeline.length > 0 && (
             <button
               onClick={() => setShowTimeline(true)}
               className="hosp-sub-btn-secondary"
-              title="View lifecycle events timeline"
+              title="লাইফসাইকেল ইভেন্ট টাইমলাইন দেখুন"
             >
               <Activity size={15} style={{ color: '#2563eb' }} />
-              <span>Lifecycle Timeline ({timeline.length})</span>
+              <span>লাইফসাইকেল টাইমলাইন ({timeline.length})</span>
             </button>
           )}
 
@@ -450,10 +450,10 @@ export default function HospitalSubscriptionExperiencePage() {
             onClick={() => loadData(true)}
             disabled={refreshing}
             className="hosp-sub-btn-secondary"
-            title="Synchronize subscription and quota status"
+            title="সাবস্ক্রিপশন ও কোটার স্থিতি সিঙ্ক করুন"
           >
             <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} style={{ color: '#2563eb' }} />
-            <span>{refreshing ? 'Syncing...' : 'Sync'}</span>
+            <span>{refreshing ? 'সিঙ্ক হচ্ছে...' : 'সিঙ্ক করুন'}</span>
           </button>
         </div>
       </div>
@@ -510,10 +510,10 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14.5px' }}>
-                Payment Verification Under Administrative Review
+                পেমেন্ট ভেরিফিকেশন অ্যাডমিন পর্যালোচনায় রয়েছে
               </div>
               <div style={{ fontSize: '12.5px', opacity: 0.95, marginTop: '2px' }}>
-                {overview.lock_reason || 'Your institutional manual payment has been received and is currently under verification. Plan upgrades remain locked until an administrator verifies the transaction reference.'}
+                {overview.lock_reason || 'আপনার প্রাতিষ্ঠানিক ম্যানুয়াল পেমেন্ট গৃহীত হয়েছে এবং বর্তমানে যাচাই চলছে। ট্রানজ্যাকশন অনুমোদিত হলে প্ল্যানটি স্বয়ংক্রিয়ভাবে সক্রিয় হবে।'}
               </div>
             </div>
           </div>
@@ -523,7 +523,7 @@ export default function HospitalSubscriptionExperiencePage() {
               className="hosp-sub-btn-secondary"
               style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700 }}
             >
-              Track in History
+              হিস্ট্রিতে দেখুন
             </button>
             <span
               style={{
@@ -536,7 +536,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 textTransform: 'uppercase'
               }}
             >
-              Under Review
+              পর্যালোচনায়
             </span>
           </div>
         </div>
@@ -575,7 +575,7 @@ export default function HospitalSubscriptionExperiencePage() {
             className="hosp-sub-btn-secondary"
             style={{ fontWeight: 800 }}
           >
-            Manage Renewal
+            রিনিউয়াল পরিচালনা করুন
           </button>
         </div>
       )}
@@ -601,10 +601,10 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14.5px' }}>
-                Pending Institutional Plan Change Request
+                প্রাতিষ্ঠানিক প্ল্যান পরিবর্তনের অনুরোধ অপেক্ষমাণ
               </div>
               <div style={{ fontSize: '12.5px', opacity: 0.95, marginTop: '2px' }}>
-                Requested switch to <strong>{pendingRequest.target_plan}</strong> ({pendingRequest.target_cycle}) with prorated balance ৳{Number(pendingRequest.amount_due).toLocaleString()}. An administrator will activate this once confirmed.
+                অনুরোধকৃত প্ল্যান: <strong>{pendingRequest.target_plan}</strong> ({pendingRequest.target_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}), সমন্বিত ব্যালেন্স: ৳{Number(pendingRequest.amount_due).toLocaleString()}। অ্যাডমিন যাচাইয়ের পর কার্যকর হবে।
               </div>
             </div>
           </div>
@@ -619,7 +619,7 @@ export default function HospitalSubscriptionExperiencePage() {
               textTransform: 'uppercase'
             }}
           >
-            Awaiting Approval
+            অনুমোদনের অপেক্ষায়
           </span>
         </div>
       )}
@@ -633,30 +633,30 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
               <span className="hosp-sub-badge-tier">
                 <Shield size={12} />
-                {sub?.plan?.tier || 'Hospital Starter'} Tier
+                {sub?.plan?.tier_bn || sub?.plan?.tier || 'হাসপাতাল স্টার্টার'} টায়ার
               </span>
               {renderStatusBadge(sub?.status)}
             </div>
 
             <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '6px 0 4px 0', letterSpacing: '-0.4px' }}>
-              {sub?.plan?.name || 'Hospital Clinical Facility Tier'}
+              {sub?.plan?.name_bn || sub?.plan?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি প্ল্যান'}
             </h2>
             <p className="text-muted" style={{ fontSize: '13.5px', margin: 0, maxWidth: '640px' }}>
               {sub?.current_period_ends_at
-                ? `Active institutional period until ${new Date(sub.current_period_ends_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.`
-                : 'Institutional multi-seat license and clinical quotas actively provisioned.'}
+                ? `${new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })} পর্যন্ত বর্তমান প্রাতিষ্ঠানিক সাবস্ক্রিপশন মেয়াদ সক্রিয় রয়েছে।`
+                : 'প্রাতিষ্ঠানিক মাল্টি-সিট লাইসেন্স এবং ক্লিনিক্যাল কোটা সক্রিয় রয়েছে।'}
             </p>
           </div>
 
           <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-4">
             <div className="text-sm-end">
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                Institutional Cycle Fee
+                প্রাতিষ্ঠানিক সাইকেল ফি
               </div>
               <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
                 ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 3500).toLocaleString()}
                 <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>
-                  {' '}/ {sub?.billing_cycle || 'monthly'}
+                  {' '}/ {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
                 </span>
               </div>
             </div>
@@ -667,14 +667,14 @@ export default function HospitalSubscriptionExperiencePage() {
                 className="hosp-sub-btn-primary"
               >
                 <Zap size={14} />
-                <span>Change Tier</span>
+                <span>প্ল্যান পরিবর্তন</span>
               </button>
               {sub?.status === 'active' && (
                 <button
                   onClick={() => setShowCancelModal(true)}
                   className="hosp-sub-btn-danger"
                 >
-                  Cancel Plan
+                  প্ল্যান বাতিল
                 </button>
               )}
             </div>
@@ -689,10 +689,10 @@ export default function HospitalSubscriptionExperiencePage() {
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                Doctor Seats Quota
+                ডাক্তার সিট কোটা
               </div>
               <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                {allocatedSeats} Active {pendingSeats > 0 && <span style={{ fontSize: '13px', fontWeight: 600, color: '#d97706' }}>(+{pendingSeats} reserved)</span>} / {isUnlimitedSeats ? '∞ Unlimited' : totalSeats}
+                {allocatedSeats} জন সক্রিয় {pendingSeats > 0 && <span style={{ fontSize: '13px', fontWeight: 600, color: '#d97706' }}>(+{pendingSeats} সংরক্ষিত)</span>} / {isUnlimitedSeats ? '∞ আনলিমিটেড' : totalSeats}
               </div>
             </div>
             <div
@@ -715,11 +715,11 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>{seatPct}% quota committed</span>
+            <span>{seatPct}% কোটা বরাদ্দকৃত</span>
             <span style={{ fontWeight: 700, color: canAllocateMore ? '#059669' : '#d97706' }}>
               {canAllocateMore
-                ? (isUnlimitedSeats ? 'Unlimited' : `${availableSeats} seats available`)
-                : 'Quota reached'}
+                ? (isUnlimitedSeats ? 'আনলিমিটেড' : `${availableSeats}টি সিট খালি আছে`)
+                : 'কোটা পূর্ণ হয়েছে'}
             </span>
           </div>
         </div>
@@ -734,7 +734,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
                     <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                      OPD Daily Tickets
+                      দৈনিক ওপিডি টিকিট
                     </div>
                     <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
                       {u.used} / {u.limit}
@@ -760,9 +760,9 @@ export default function HospitalSubscriptionExperiencePage() {
                 </div>
 
                 <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-                  <span>Run-rate projection</span>
+                  <span>রান-রেট প্রক্ষেপণ</span>
                   <span style={{ fontWeight: 700, color: '#059669' }}>
-                    ~{u.forecast?.forecasted_usage || u.used} end-cycle
+                    ~{u.forecast?.forecasted_usage || u.used} সাইকেল শেষে
                   </span>
                 </div>
               </div>
@@ -773,10 +773,10 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                  Hospital Units
+                  হাসপাতাল ইউনিট
                 </div>
                 <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                  Active Facility
+                  সক্রিয় ফ্যাসিলিটি
                 </div>
               </div>
               <div
@@ -791,7 +791,7 @@ export default function HospitalSubscriptionExperiencePage() {
               </div>
             </div>
             <div className="text-muted mt-3" style={{ fontSize: '12px' }}>
-              Registered with full institutional modules.
+              সম্পূর্ণ প্রাতিষ্ঠানিক মডিউলসহ সক্রিয় রয়েছে।
             </div>
           </div>
         )}
@@ -801,10 +801,10 @@ export default function HospitalSubscriptionExperiencePage() {
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                Lounge TV Displays
+                লাউঞ্জ টিভি ডিসপ্লে
               </div>
               <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                Multi-Screen Quota
+                মাল্টি-স্ক্রিন কোটা
               </div>
             </div>
             <div
@@ -824,8 +824,8 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>Queue Display Boards</span>
-            <span style={{ fontWeight: 700, color: '#2563eb' }}>Included in Tier</span>
+            <span>কিউ ডিসপ্লে বোর্ড</span>
+            <span style={{ fontWeight: 700, color: '#2563eb' }}>প্ল্যানে অন্তর্ভুক্ত</span>
           </div>
         </div>
 
@@ -834,10 +834,10 @@ export default function HospitalSubscriptionExperiencePage() {
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                Billing Cycle
+                বিলিং সাইকেল
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0', textTransform: 'capitalize' }}>
-                {sub?.billing_cycle || 'Monthly'}
+              <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
+                {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
               </div>
             </div>
             <div
@@ -853,9 +853,9 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center mt-3" style={{ fontSize: '12px', color: '#64748b' }}>
-            <span>Next Invoice Due:</span>
+            <span>পরবর্তী ইনভয়েস ইস্যু:</span>
             <span style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString() : 'Auto-renewing'}
+              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD') : 'স্বয়ংক্রিয় রিনিউয়াল'}
             </span>
           </div>
         </div>
@@ -877,10 +877,10 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
-                Hospital Seat Allocation & Doctor Invitations
+                হাসপাতাল সিট বরাদ্দ ও ডাক্তারদের আমন্ত্রণ
               </h3>
               <p className="text-muted" style={{ fontSize: '12.5px', margin: '2px 0 0 0' }}>
-                Manage practitioner licenses, dispatch official facility invitations, and view the audit history.
+                চিকিৎসকদের লাইসেন্স সিট পরিচালনা করুন, অফিশিয়াল আমন্ত্রণ পাঠান এবং অডিট ইতিহাস পর্যালোচনা করুন।
               </p>
             </div>
           </div>
@@ -893,7 +893,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 type="text"
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder={seatTab === 'invitations' ? "Filter invitations..." : "Search roster..."}
+                placeholder={seatTab === 'invitations' ? "আমন্ত্রণ ফিল্টার করুন..." : "ডাক্তারদের খুঁজুন..."}
                 style={{
                   paddingLeft: '34px',
                   paddingRight: '12px',
@@ -914,10 +914,10 @@ export default function HospitalSubscriptionExperiencePage() {
               onClick={() => setShowAllocateModal(true)}
               disabled={!canAllocateMore}
               className="hosp-sub-btn-primary"
-              title={!canAllocateMore ? 'Doctor seat quota limit reached' : 'Invite or assign seat to a doctor'}
+              title={!canAllocateMore ? 'ডাক্তার সিট কোটা পূর্ণ হয়ে গেছে' : 'ডাক্তারকে সিটে আমন্ত্রণ জানান'}
             >
               <UserPlus size={14} />
-              <span>Invite Doctor to Seat</span>
+              <span>ডাক্তারকে সিটে আমন্ত্রণ জানান</span>
             </button>
           </div>
         </div>
@@ -928,14 +928,14 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center gap-2">
               <AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} />
               <span style={{ fontSize: '12.5px' }}>
-                <strong>Doctor seat allocation quota reached ({allocatedSeats} active + {pendingSeats} reserved of {totalSeats} total).</strong> Upgrade your institutional plan for higher practitioner capacity.
+                <strong>ডাক্তার সিট বরাদ্দের কোটা পূর্ণ হয়েছে ({allocatedSeats} জন সক্রিয় + {pendingSeats} সংরক্ষিত, মোট {totalSeats})।</strong> উচ্চতর ক্যাপাসিটির জন্য আপনার প্রাতিষ্ঠানিক প্ল্যান আপগ্রেড করুন।
               </span>
             </div>
             <button
               onClick={() => document.getElementById('pricing-plans-section')?.scrollIntoView({ behavior: 'smooth' })}
               style={{ background: 'transparent', border: 'none', fontWeight: 800, textDecoration: 'underline', color: 'inherit', cursor: 'pointer' }}
             >
-              Upgrade Tier
+              প্ল্যান আপগ্রেড করুন
             </button>
           </div>
         )}
@@ -948,7 +948,7 @@ export default function HospitalSubscriptionExperiencePage() {
             onClick={() => setSeatTab('roster')}
           >
             <UserCheck size={16} />
-            <span>Active Practicing Roster</span>
+            <span>সক্রিয় ডাক্তার তালিকা</span>
             <span className="hosp-sub-tab-badge">{allocatedDoctors.length}</span>
           </button>
 
@@ -958,10 +958,10 @@ export default function HospitalSubscriptionExperiencePage() {
             onClick={() => setSeatTab('invitations')}
           >
             <Mail size={16} />
-            <span>Seat Invitations</span>
+            <span>সিট আমন্ত্রণসমূহ</span>
             {pendingInvitationsCount > 0 ? (
               <span className="hosp-sub-tab-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', fontWeight: 800 }}>
-                {pendingInvitationsCount} pending
+                {pendingInvitationsCount} জন অপেক্ষমাণ
               </span>
             ) : (
               <span className="hosp-sub-tab-badge">{invitations.length}</span>
@@ -974,7 +974,7 @@ export default function HospitalSubscriptionExperiencePage() {
             onClick={() => setSeatTab('history')}
           >
             <History size={16} />
-            <span>Forensic Audit Ledger</span>
+            <span>অডিট লগ ও ইতিহাস</span>
             {seatHistory.length > 0 && <span className="hosp-sub-tab-badge">{seatHistory.length}</span>}
           </button>
         </div>
@@ -985,11 +985,11 @@ export default function HospitalSubscriptionExperiencePage() {
             <table className="hosp-sub-table">
               <thead>
                 <tr>
-                  <th>Doctor</th>
-                  <th>Specialty & Degree</th>
-                  <th>Contact</th>
-                  <th>Seat Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th>ডাক্তার</th>
+                  <th>বিশেষজ্ঞতা ও ডিগ্রি</th>
+                  <th>যোগাযোগ</th>
+                  <th>সিট অবস্থা</th>
+                  <th style={{ textAlign: 'right' }}>অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody>
@@ -1000,13 +1000,13 @@ export default function HospitalSubscriptionExperiencePage() {
                         <Users size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
                         <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
                           {allocatedDoctors.length === 0
-                            ? 'No doctors currently assigned to this hospital quota'
-                            : 'No doctors match your search query'}
+                            ? 'এই হাসপাতালে এখনও কোনো ডাক্তার বরাদ্দ করা হয়নি'
+                            : 'আপনার অনুসন্ধানের সাথে কোনো ডাক্তার মেলেনি'}
                         </div>
                         <div style={{ fontSize: '12px', marginTop: '4px' }}>
                           {allocatedDoctors.length === 0
-                            ? 'Click "Invite Doctor to Seat" above to assign a practitioner to your facility.'
-                            : 'Try adjusting the search filter.'}
+                            ? 'আপনার ফ্যাসিলিটিতে ডাক্তার যুক্ত করতে উপরের "ডাক্তারকে সিটে আমন্ত্রণ জানান" বাটনে ক্লিক করুন।'
+                            : 'অনুসন্ধানের ফিল্টার পরিবর্তন করে দেখুন।'}
                         </div>
                       </div>
                     </td>
@@ -1029,14 +1029,14 @@ export default function HospitalSubscriptionExperiencePage() {
                                 {doc.name}
                               </div>
                               <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                Doctor ID: #{doc.id} {doc.bmdc_number ? `• BMDC: ${doc.bmdc_number}` : ''}
+                                ডাক্তার আইডি: #{doc.id} {doc.bmdc_number ? `• বিএমডিসি: ${doc.bmdc_number}` : ''}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td>
                           <div style={{ fontWeight: 600 }}>
-                            {doc.specialty?.name || 'General Physician'}
+                            {doc.specialty?.name || 'জেনারেল ফিজিশিয়ান'}
                           </div>
                           <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
                             {doc.degree || 'MBBS'}
@@ -1044,26 +1044,26 @@ export default function HospitalSubscriptionExperiencePage() {
                         </td>
                         <td>
                           <div style={{ fontSize: '12px' }}>
-                            {doc.phone || 'No phone'}
+                            {doc.phone || 'ফোন নম্বর নেই'}
                           </div>
                           <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                            {doc.email || 'No email registered'}
+                            {doc.email || 'ইমেইল নিবন্ধিত নেই'}
                           </div>
                         </td>
                         <td>
                           <span className="hosp-sub-badge-status active">
                             <span className="hosp-sub-dot" style={{ background: '#10b981' }} />
-                            Allocated Seat
+                            বরাদ্দকৃত সিট
                           </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <button
                             onClick={() => setDoctorToRevoke(doc)}
                             className="hosp-sub-btn-danger"
-                            title="Revoke doctor license seat"
+                            title="ডাক্তারের সিট লাইসেন্স বাতিল করুন"
                           >
                             <UserMinus size={13} />
-                            <span>Revoke Seat</span>
+                            <span>সিট বাতিল</span>
                           </button>
                         </td>
                       </tr>
@@ -1082,20 +1082,26 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center justify-content-between p-3 flex-wrap gap-2" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-bg, #f8fafc)' }}>
               <div className="d-flex align-items-center gap-2">
                 <Filter size={14} style={{ color: '#64748b' }} />
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', marginRight: '4px' }}>Filter Status:</span>
-                {['all', 'pending', 'accepted', 'rejected', 'cancelled'].map(st => (
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', marginRight: '4px' }}>ফিল্টার অবস্থা:</span>
+                {[
+                  { key: 'all', label: 'সকল' },
+                  { key: 'pending', label: 'অপেক্ষমাণ' },
+                  { key: 'accepted', label: 'গৃহীত' },
+                  { key: 'rejected', label: 'প্রত্যাখ্যাত' },
+                  { key: 'cancelled', label: 'বাতিলকৃত' }
+                ].map(st => (
                   <button
-                    key={st}
+                    key={st.key}
                     type="button"
-                    className={`hosp-sub-filter-pill ${invitationsFilter === st ? 'active' : ''}`}
-                    onClick={() => setInvitationsFilter(st)}
+                    className={`hosp-sub-filter-pill ${invitationsFilter === st.key ? 'active' : ''}`}
+                    onClick={() => setInvitationsFilter(st.key)}
                   >
-                    {st.charAt(0).toUpperCase() + st.slice(1)}
+                    {st.label}
                   </button>
                 ))}
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                Showing {filteredInvitations.length} of {invitations.length} invitations
+                {invitations.length}টির মধ্যে {filteredInvitations.length}টি আমন্ত্রণ দেখানো হচ্ছে
               </div>
             </div>
 
@@ -1103,12 +1109,12 @@ export default function HospitalSubscriptionExperiencePage() {
               <table className="hosp-sub-table">
                 <thead>
                   <tr>
-                    <th>Doctor</th>
-                    <th>Invited By</th>
-                    <th>Assignment Notes</th>
-                    <th>Sent At / Expiry</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Action</th>
+                    <th>ডাক্তার</th>
+                    <th>আমন্ত্রণকারী</th>
+                    <th>অ্যাসাইনমেন্ট নোট</th>
+                    <th>প্রেরণের সময় / মেয়াদ</th>
+                    <th>অবস্থা</th>
+                    <th style={{ textAlign: 'right' }}>অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1118,10 +1124,10 @@ export default function HospitalSubscriptionExperiencePage() {
                         <div className="d-flex flex-column align-items-center justify-content-center">
                           <Mail size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
                           <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
-                            No invitations match your filter criteria
+                            ফিল্টারের সাথে মেলে এমন কোনো আমন্ত্রণ পাওয়া যায়নি
                           </div>
                           <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                            Click "Invite Doctor to Seat" above to dispatch a formal invitation.
+                            একটি আনুষ্ঠানিক আমন্ত্রণ পাঠাতে উপরের "ডাক্তারকে সিটে আমন্ত্রণ জানান" বাটনে ক্লিক করুন।
                           </div>
                         </div>
                       </td>
@@ -1133,61 +1139,61 @@ export default function HospitalSubscriptionExperiencePage() {
                         <tr key={inv.id}>
                           <td>
                             <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                              {inv.doctor?.name || `Doctor #${inv.doctor_id}`}
+                              {inv.doctor?.name || `ডাক্তার #${inv.doctor_id}`}
                             </div>
                             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                              {inv.doctor?.specialty?.name || 'General Practitioner'} • ID: #{inv.doctor_id}
+                              {inv.doctor?.specialty?.name || 'জেনারেল ফিজিশিয়ান'} • আইডি: #{inv.doctor_id}
                             </div>
                           </td>
                           <td>
                             <div style={{ fontSize: '12px', fontWeight: 600 }}>
-                              {inv.invited_by_user?.name || 'Hospital Admin'}
+                              {inv.invited_by_user?.name || 'হাসপাতাল অ্যাডমিন'}
                             </div>
                             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                              {inv.invited_by_user?.email || 'System'}
+                              {inv.invited_by_user?.email || 'সিস্টেম'}
                             </div>
                           </td>
                           <td>
                             <div style={{ fontSize: '12px', maxWidth: '240px', wordBreak: 'break-word' }}>
-                              {inv.notes || <span className="text-muted italic">No specific notes</span>}
+                              {inv.notes || <span className="text-muted italic">নির্দিষ্ট কোনো নোট নেই</span>}
                             </div>
                           </td>
                           <td>
                             <div style={{ fontSize: '12px' }}>
-                              {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : 'N/A'}
+                              {inv.created_at ? new Date(inv.created_at).toLocaleDateString('bn-BD') : 'N/A'}
                             </div>
                             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                              {inv.expires_at ? `Expires ${new Date(inv.expires_at).toLocaleDateString()}` : '7 days validity'}
+                              {inv.expires_at ? `মেয়াদ শেষ: ${new Date(inv.expires_at).toLocaleDateString('bn-BD')}` : '৭ দিন মেয়াদ'}
                             </div>
                           </td>
                           <td>
                             {status === 'pending' && (
                               <span className="hosp-sub-badge-status pending">
                                 <Clock size={11} />
-                                Pending (Seat Reserved)
+                                অপেক্ষমাণ (সিট সংরক্ষিত)
                               </span>
                             )}
                             {status === 'accepted' && (
                               <span className="hosp-sub-badge-status active">
                                 <Check size={11} />
-                                Accepted
+                                গৃহীত
                               </span>
                             )}
                             {status === 'rejected' && (
                               <span className="hosp-sub-badge-status rejected">
                                 <XCircle size={11} />
-                                Rejected
+                                প্রত্যাখ্যাত
                               </span>
                             )}
                             {status === 'cancelled' && (
                               <span className="hosp-sub-badge-status cancelled">
                                 <X size={11} />
-                                Cancelled
+                                বাতিলকৃত
                               </span>
                             )}
                             {status === 'expired' && (
                               <span className="hosp-sub-badge-status expired">
-                                Expired
+                                মেয়াদোত্তীর্ণ
                               </span>
                             )}
                           </td>
@@ -1199,14 +1205,14 @@ export default function HospitalSubscriptionExperiencePage() {
                                 disabled={cancellingInvitationId === inv.id}
                                 className="hosp-sub-btn-secondary"
                                 style={{ padding: '5px 12px', fontSize: '11.5px', color: '#dc2626' }}
-                                title="Cancel invitation and release reserved seat quota"
+                                title="আমন্ত্রণ বাতিল করে সংরক্ষিত কোটা মুক্ত করুন"
                               >
                                 {cancellingInvitationId === inv.id ? (
                                   <RefreshCw size={12} className="animate-spin" />
                                 ) : (
                                   <X size={12} />
                                 )}
-                                <span>Cancel</span>
+                                <span>বাতিল করুন</span>
                               </button>
                             ) : (
                               <span style={{ fontSize: '11px', color: '#94a3b8' }}>—</span>
@@ -1228,8 +1234,8 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center justify-content-between p-3" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)', background: 'var(--admin-bg, #f8fafc)' }}>
               <div className="d-flex align-items-center gap-2">
                 <History size={15} style={{ color: '#2563eb' }} />
-                <span style={{ fontSize: '13px', fontWeight: 700 }}>Immutable Seat Audit Trail</span>
-                <span className="text-muted" style={{ fontSize: '12px' }}>• All seat allocations, revocations, and lifecycle events</span>
+                <span style={{ fontSize: '13px', fontWeight: 700 }}>অপরিবর্তনীয় সিট অডিট লগ</span>
+                <span className="text-muted" style={{ fontSize: '12px' }}>• সকল সিট বরাদ্দ, প্রত্যাহার এবং লাইফসাইকেল ইভেন্ট</span>
               </div>
               <button
                 type="button"
@@ -1239,7 +1245,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 style={{ padding: '4px 10px', fontSize: '11.5px' }}
               >
                 <RefreshCw size={12} className={loadingHistory ? "animate-spin" : ""} />
-                <span>Refresh Trail</span>
+                <span>লগ রিফ্রেশ</span>
               </button>
             </div>
 
@@ -1247,11 +1253,11 @@ export default function HospitalSubscriptionExperiencePage() {
               <table className="hosp-sub-table">
                 <thead>
                   <tr>
-                    <th>Action Event</th>
-                    <th>Doctor</th>
-                    <th>Actor / Operator</th>
-                    <th>Reason / Audit Notes</th>
-                    <th style={{ textAlign: 'right' }}>Recorded At</th>
+                    <th>ইভেন্টের ধরন</th>
+                    <th>ডাক্তার</th>
+                    <th>সম্পাদনকারী / অপারেটর</th>
+                    <th>কারণ / অডিট নোট</th>
+                    <th style={{ textAlign: 'right' }}>লগ সময়</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1259,7 +1265,7 @@ export default function HospitalSubscriptionExperiencePage() {
                     <tr>
                       <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center' }}>
                         <RefreshCw size={24} className="animate-spin" style={{ color: '#2563eb', margin: '0 auto 8px auto' }} />
-                        <div style={{ fontSize: '12.5px', color: '#64748b' }}>Loading forensic audit trail...</div>
+                        <div style={{ fontSize: '12.5px', color: '#64748b' }}>ফরেনসিক অডিট ট্রেইল লোড হচ্ছে...</div>
                       </td>
                     </tr>
                   ) : seatHistory.length === 0 ? (
@@ -1268,10 +1274,10 @@ export default function HospitalSubscriptionExperiencePage() {
                         <div className="d-flex flex-column align-items-center justify-content-center">
                           <History size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
                           <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
-                            No seat history recorded yet
+                            এখনও কোনো সিট হিস্ট্রি রেকর্ড নেই
                           </div>
                           <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                            Seat assignments and revocations will be permanently recorded here.
+                            সিট বরাদ্দ ও প্রত্যাহারের প্রতিটি ঘটনা এখানে স্থায়ীভাবে রেকর্ড থাকবে।
                           </div>
                         </div>
                       </td>
@@ -1311,15 +1317,15 @@ export default function HospitalSubscriptionExperiencePage() {
                           </td>
                           <td>
                             <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                              {item.doctor?.name || `Doctor #${item.doctor_id}`}
+                              {item.doctor?.name || `ডাক্তার #${item.doctor_id}`}
                             </div>
                             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                              Doctor ID: #{item.doctor_id}
+                              ডাক্তার আইডি: #{item.doctor_id}
                             </div>
                           </td>
                           <td>
                             <div style={{ fontSize: '12px', fontWeight: 600 }}>
-                              {item.actor_type ? `${item.actor_type.split('\\').pop()} #${item.actor_id || ''}` : 'System'}
+                              {item.actor_type ? `${item.actor_type.split('\\').pop()} #${item.actor_id || ''}` : 'সিস্টেম'}
                             </div>
                           </td>
                           <td>
@@ -1328,7 +1334,7 @@ export default function HospitalSubscriptionExperiencePage() {
                             </div>
                           </td>
                           <td style={{ textAlign: 'right', fontSize: '12px', color: '#64748b' }}>
-                            {item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A'}
+                            {item.created_at ? new Date(item.created_at).toLocaleString('bn-BD') : 'N/A'}
                           </td>
                         </tr>
                       )
@@ -1346,10 +1352,10 @@ export default function HospitalSubscriptionExperiencePage() {
         <div className="hosp-sub-card">
           <div className="pb-3 mb-4" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
-              Institutional Quota Consumption & Forecasting
+              প্রাতিষ্ঠানিক কোটা ব্যবহার ও পূর্বাভাস
             </h3>
             <p className="text-muted" style={{ fontSize: '12.5px', margin: '2px 0 0 0' }}>
-              Live capacity monitoring, threshold warnings, and end-of-cycle run-rate projections.
+              রিয়েল-টাইম ক্যাপাসিটি মনিটরিং, সতর্কবার্তা এবং সাইকেল শেষ পর্যন্ত সম্ভাব্য ব্যবহারের পূর্বাভাস।
             </p>
           </div>
 
@@ -1394,7 +1400,7 @@ export default function HospitalSubscriptionExperiencePage() {
                       className="d-flex justify-content-between align-items-center pt-2 mt-3"
                       style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)', fontSize: '11px' }}
                     >
-                      <span style={{ color: '#94a3b8' }}>Forecast Run-Rate:</span>
+                      <span style={{ color: '#94a3b8' }}>পূর্বাভাষিত রান-রেট:</span>
                       <span
                         style={{
                           fontWeight: 700,
@@ -1402,7 +1408,7 @@ export default function HospitalSubscriptionExperiencePage() {
                                  usage.forecast?.projected_status === 'warning'     ? '#d97706' : '#059669'
                         }}
                       >
-                        ~{usage.forecast?.forecasted_usage || usage.used} projected
+                        ~{usage.forecast?.forecasted_usage || usage.used} সম্ভাব্য
                       </span>
                     </div>
                   </div>
@@ -1420,11 +1426,11 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center gap-2">
               <Sparkles size={20} style={{ color: '#2563eb' }} />
               <h3 style={{ fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>
-                Hospital Institutional Tiers
+                হাসপাতাল প্রাতিষ্ঠানিক প্ল্যানসমূহ
               </h3>
             </div>
             <p className="text-muted" style={{ fontSize: '13px', margin: '3px 0 0 0' }}>
-              Select an enterprise clinical capacity tier tailored for medical clinics, multi-specialty centers, and hospital networks.
+              ক্লিনিক, মাল্টি-স্পেশালিটি সেন্টার ও হাসপাতাল নেটওয়ার্কের জন্য উপযোগী প্রাতিষ্ঠানিক ক্যাপাসিটি প্ল্যান বেছে নিন।
             </p>
           </div>
 
@@ -1434,13 +1440,13 @@ export default function HospitalSubscriptionExperiencePage() {
               onClick={() => setBillingCycle('monthly')}
               className={`hosp-sub-toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
             >
-              Monthly Billing
+              মাসিক বিলিং
             </button>
             <button
               onClick={() => setBillingCycle('annual')}
               className={`hosp-sub-toggle-btn ${billingCycle === 'annual' ? 'active' : ''}`}
             >
-              <span>Annual Billing</span>
+              <span>বাৎসরিক বিলিং</span>
               <span
                 style={{
                   fontSize: '10px',
@@ -1452,7 +1458,7 @@ export default function HospitalSubscriptionExperiencePage() {
                   textTransform: 'uppercase'
                 }}
               >
-                Save ~20%
+                ~২০% সাশ্রয়
               </span>
             </button>
           </div>
@@ -1470,24 +1476,24 @@ export default function HospitalSubscriptionExperiencePage() {
               >
                 {plan.is_most_popular && (
                   <div className="hosp-sub-badge-popular">
-                    Most Popular
+                    জনপ্রিয় পছন্দ
                   </div>
                 )}
 
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="hosp-sub-badge-tier">
-                      {plan.tier} Tier
+                      {plan.tier_bn || plan.tier} টায়ার
                     </span>
                     {isCurrent && (
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CheckCircle2 size={14} /> Active Plan
+                        <CheckCircle2 size={14} /> বর্তমান সক্রিয় প্ল্যান
                       </span>
                     )}
                   </div>
 
                   <h4 style={{ fontSize: '20px', fontWeight: 800, margin: '8px 0 4px 0' }}>
-                    {plan.name}
+                    {plan.name_bn || plan.name}
                   </h4>
                   <p className="text-muted" style={{ fontSize: '12.5px', minHeight: '38px', margin: 0, lineHeight: 1.5 }}>
                     {plan.description}
@@ -1499,13 +1505,13 @@ export default function HospitalSubscriptionExperiencePage() {
                         ৳ {Number(displayPrice).toLocaleString()}
                       </span>
                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>
-                        / {billingCycle}
+                        / {billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
                       </span>
                     </div>
                     {billingCycle === 'annual' && plan.annual_savings_amount > 0 && (
                       <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Check size={13} />
-                        <span>Save ৳{Number(plan.annual_savings_amount).toLocaleString()} annually</span>
+                        <span>বছরে ৳{Number(plan.annual_savings_amount).toLocaleString()} সাশ্রয়</span>
                       </div>
                     )}
                   </div>
@@ -1521,7 +1527,7 @@ export default function HospitalSubscriptionExperiencePage() {
                             <X size={14} style={{ color: '#cbd5e1', flexShrink: 0, marginTop: '2px' }} />
                           )}
                           <span style={{ color: f.is_enabled ? 'var(--admin-text, #334155)' : '#94a3b8', textDecoration: f.is_enabled ? 'none' : 'line-through' }}>
-                            {f.feature_name} {f.is_enabled && !f.is_unlimited && `(${f.quota_limit} quota)`}
+                            {f.feature_name} {f.is_enabled && !f.is_unlimited && `(${f.quota_limit} কোটা)`}
                           </span>
                         </div>
                       ))}
@@ -1550,12 +1556,12 @@ export default function HospitalSubscriptionExperiencePage() {
                       }}
                     >
                       <CheckCircle2 size={14} />
-                      <span>Active Institutional Tier</span>
+                      <span>বর্তমান সক্রিয় প্ল্যান</span>
                     </button>
                   ) : overview?.is_checkout_locked ? (
                     <button
                       disabled
-                      title="Plan changes are locked while your payment is under verification"
+                      title="পেমেন্ট যাচাইয়ের অপেক্ষায় থাকায় প্ল্যান পরিবর্তন লক রয়েছে"
                       className="w-100"
                       style={{
                         padding: '11px',
@@ -1573,7 +1579,7 @@ export default function HospitalSubscriptionExperiencePage() {
                       }}
                     >
                       <Lock size={13} />
-                      <span>Payment Under Verification</span>
+                      <span>পেমেন্ট ভেরিফিকেশন চলছে</span>
                     </button>
                   ) : (
                     <button
@@ -1581,7 +1587,7 @@ export default function HospitalSubscriptionExperiencePage() {
                       className="hosp-sub-btn-primary w-100"
                     >
                       <Zap size={14} />
-                      <span>Proceed to Checkout</span>
+                      <span>চেকআউট ও পেমেন্টে এগিয়ে যান</span>
                     </button>
                   )}
                 </div>
@@ -1609,10 +1615,10 @@ export default function HospitalSubscriptionExperiencePage() {
                 <Headphones size={24} style={{ color: '#93c5fd' }} />
               </div>
               <h4 style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.3px', margin: '0 0 10px 0' }}>
-                Enterprise Concierge & Offline Settlement
+                প্রাতিষ্ঠানিক কনসিয়ার্জ ও অফলাইন সেটেলমেন্ট
               </h4>
               <p style={{ fontSize: '12.5px', color: '#bfdbfe', lineHeight: 1.6, margin: 0 }}>
-                Require custom institutional service agreements, multi-facility billing, or corporate bank wire reconciliations? Our account managers are at your service.
+                কাস্টম প্রাতিষ্ঠানিক চুক্তি, একাধিক ব্রাঞ্চের বিলিং কিংবা কর্পোরেট ব্যাংক পেমেন্টের সমন্বয় প্রয়োজন? আমাদের অ্যাকাউন্ট ম্যানেজাররা প্রস্তুত আছেন।
               </p>
             </div>
 
@@ -1620,7 +1626,7 @@ export default function HospitalSubscriptionExperiencePage() {
               <div className="d-flex flex-column gap-3" style={{ fontSize: '12.5px', color: '#dbeafe' }}>
                 <div className="d-flex align-items-center gap-2">
                   <PhoneCall size={15} style={{ color: '#93c5fd' }} />
-                  <span style={{ fontWeight: 600 }}>Priority Hotline: +880 1711 000 000</span>
+                  <span style={{ fontWeight: 600 }}>প্রায়োরিটি হটলাইন: +880 1711 000 000</span>
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <Mail size={15} style={{ color: '#93c5fd' }} />
@@ -1637,27 +1643,27 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex justify-content-between align-items-center pb-3 mb-3" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FileText size={18} style={{ color: '#2563eb' }} />
-                <span>Institutional Billing Invoices</span>
+                <span>প্রাতিষ্ঠানিক বিলিং ইনভয়েস</span>
               </h3>
               <span className="text-muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-                {invoices.length} Total Recorded
+                মোট {invoices.length}টি রেকর্ড
               </span>
             </div>
 
             {invoices.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                No previous invoices recorded for this hospital facility account.
+                এই হাসপাতালের জন্য এখনও কোনো পূর্ববর্তী ইনভয়েস রেকর্ড নেই।
               </div>
             ) : (
               <div className="hosp-sub-table-wrapper">
                 <table className="hosp-sub-table">
                   <thead>
                     <tr>
-                      <th>Invoice #</th>
-                      <th>Issue Date</th>
-                      <th>Total Amount</th>
-                      <th>Payment Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
+                      <th>ইনভয়েস নম্বর</th>
+                      <th>ইস্যুর তারিখ</th>
+                      <th>মোট পরিমাণ</th>
+                      <th>পরিশোধের অবস্থা</th>
+                      <th style={{ textAlign: 'right' }}>অ্যাকশন</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1667,14 +1673,14 @@ export default function HospitalSubscriptionExperiencePage() {
                           {inv.invoice_number}
                         </td>
                         <td className="text-muted" style={{ fontSize: '12px' }}>
-                          {inv.issue_date}
+                          {new Date(inv.issue_date).toLocaleDateString('bn-BD')}
                         </td>
                         <td style={{ fontWeight: 800 }}>
                           ৳ {Number(inv.total_amount).toLocaleString()}
                         </td>
                         <td>
                           <span className={`hosp-sub-badge-status ${inv.status === 'paid' ? 'active' : 'grace'}`}>
-                            {inv.status}
+                            {inv.status === 'paid' ? 'পরিশোধিত' : inv.status === 'pending' ? 'অপেক্ষমাণ' : inv.status}
                           </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
@@ -1684,7 +1690,7 @@ export default function HospitalSubscriptionExperiencePage() {
                               disabled={emailingInvoiceId === inv.id}
                               className="hosp-sub-btn-secondary"
                               style={{ padding: '5px 8px' }}
-                              title="Email invoice receipt"
+                              title="ইমেইলে ইনভয়েস রসিদ পাঠান"
                             >
                               <Mail size={14} className={emailingInvoiceId === inv.id ? 'animate-spin' : ''} />
                             </button>
@@ -1692,7 +1698,7 @@ export default function HospitalSubscriptionExperiencePage() {
                               onClick={handlePrintInvoice}
                               className="hosp-sub-btn-secondary"
                               style={{ padding: '5px 8px' }}
-                              title="Print / Save PDF"
+                              title="ইনভয়েস প্রিন্ট করুন"
                             >
                               <Printer size={14} />
                             </button>
@@ -1726,10 +1732,10 @@ export default function HospitalSubscriptionExperiencePage() {
                 </div>
                 <div>
                   <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0 }}>
-                    Invite Doctor to Facility Seat
+                    হাসপাতাল সিটে ডাক্তার আমন্ত্রণ জানান
                   </h3>
                   <p className="text-muted" style={{ fontSize: '12px', margin: '2px 0 0 0' }}>
-                    Send an official seat invitation to sponsor the practitioner under your institutional plan.
+                    আপনার প্রাতিষ্ঠানিক প্ল্যানের আওতায় ডাক্তারকে স্পন্সর করতে অফিসিয়াল সিট ইনভিটেশন পাঠান।
                   </p>
                 </div>
               </div>
@@ -1745,13 +1751,13 @@ export default function HospitalSubscriptionExperiencePage() {
               {/* Doctor Search input */}
               <div className="mb-3">
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  Search Registered Doctor (Name / Specialty)
+                  নিবন্ধিত ডাক্তার খুঁজুন (নাম / বিশেষজ্ঞতা)
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                   <input
                     type="text"
-                    placeholder="Type doctor's name or specialty..."
+                    placeholder="ডাক্তারের নাম বা বিশেষজ্ঞতা লিখুন..."
                     value={doctorSearchQuery}
                     onChange={(e) => setDoctorSearchQuery(e.target.value)}
                     style={{
@@ -1784,7 +1790,7 @@ export default function HospitalSubscriptionExperiencePage() {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '12.5px' }}>{doc.name}</div>
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                            {doc.specialty?.name || 'General'} • ID: #{doc.id}
+                            {doc.specialty?.name || 'জেনারেল'} • আইডি: #{doc.id}
                           </div>
                         </div>
                         <button
@@ -1792,7 +1798,7 @@ export default function HospitalSubscriptionExperiencePage() {
                           className="hosp-sub-btn-secondary"
                           style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 700 }}
                         >
-                          Select
+                          নির্বাচন করুন
                         </button>
                       </div>
                     ))}
@@ -1803,12 +1809,12 @@ export default function HospitalSubscriptionExperiencePage() {
               {/* Doctor ID input */}
               <div className="mb-3">
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  Or Directly Enter Doctor ID
+                  অথবা সরাসরি ডাক্তার আইডি লিখুন
                 </label>
                 <input
                   type="number"
                   required
-                  placeholder="e.g. 104"
+                  placeholder="যেমন: ১০৪"
                   value={newDoctorId}
                   onChange={(e) => setNewDoctorId(e.target.value)}
                   style={{
@@ -1826,11 +1832,11 @@ export default function HospitalSubscriptionExperiencePage() {
               {/* Invitation Notes */}
               <div className="mb-3">
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  Chamber / Assignment Notes (Optional)
+                  চেম্বার / অ্যাসাইনমেন্ট নোট (ঐচ্ছিক)
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Assigned to Cardiology OPD Chamber 302..."
+                  placeholder="যেমন: কার্ডিওলজি ওপিডি চেম্বার ৩০২-তে নিযুক্ত..."
                   value={invitationNotes}
                   onChange={(e) => setInvitationNotes(e.target.value)}
                   style={{
@@ -1857,7 +1863,7 @@ export default function HospitalSubscriptionExperiencePage() {
                   marginBottom: '20px'
                 }}
               >
-                Sending an invitation reserves 1 seat from your facility's quota for 7 days. Once accepted, the doctor gains immediate access to clinical features and prescription quotas under your institutional tier.
+                আমন্ত্রণ পাঠালে আপনার মোট কোটা থেকে ৭ দিনের জন্য ১টি সিট সংরক্ষিত রাখা হবে। ডাক্তার আমন্ত্রণ গ্রহণ করলে অবিলম্বে আপনার প্রাতিষ্ঠানিক প্ল্যানের ক্লিনিক্যাল সুবিধা ও প্রেসক্রিপশন কোটা ব্যবহার করতে পারবেন।
               </div>
 
               <div className="d-flex justify-content-end gap-2 pt-3" style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
@@ -1866,7 +1872,7 @@ export default function HospitalSubscriptionExperiencePage() {
                   onClick={() => setShowAllocateModal(false)}
                   className="hosp-sub-btn-secondary"
                 >
-                  Cancel
+                  বাতিল
                 </button>
                 <button
                   type="submit"
@@ -1874,7 +1880,7 @@ export default function HospitalSubscriptionExperiencePage() {
                   className="hosp-sub-btn-primary"
                 >
                   <Send size={14} />
-                  <span>{allocatingSeat ? 'Sending Invitation...' : 'Send Seat Invitation'}</span>
+                  <span>{allocatingSeat ? 'আমন্ত্রণ পাঠানো হচ্ছে...' : 'সিট আমন্ত্রণ পাঠান'}</span>
                 </button>
               </div>
             </form>
@@ -1898,23 +1904,23 @@ export default function HospitalSubscriptionExperiencePage() {
                 <AlertTriangle size={22} />
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--admin-text, #0f172a)' }}>
-                Revoke Doctor Seat
+                ডাক্তার সিট লাইসেন্স বাতিল করুন
               </h3>
             </div>
 
             <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
-              Are you sure you want to revoke the facility license seat for <strong>Dr. {doctorToRevoke.name}</strong> (Doctor ID #{doctorToRevoke.id})? This will unbind their access to this hospital's quota and immediately release 1 seat back to your roster.
+              আপনি কি নিশ্চিত যে আপনি <strong>ডা. {doctorToRevoke.name}</strong> (ডাক্তার আইডি #{doctorToRevoke.id})-এর ফ্যাসিলিটি লাইসেন্স সিট বাতিল করতে চান? এতে এই হাসপাতালের কোটায় তাঁর অ্যাক্সেস বাতিল হবে এবং ১টি সিট তাৎক্ষণিক আপনার রোস্টারে ফেরত আসবে।
             </p>
 
             {/* Mandatory Reason Input */}
             <div className="mb-3 mt-3">
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#dc2626', marginBottom: '6px' }}>
-                Mandatory Revocation Reason (Required for Compliance Audit)
+                সিট বাতিলের বাধ্যতামূলক কারণ (কমপ্লায়েন্স অডিটের জন্য আবশ্যক)
               </label>
               <textarea
                 rows={2}
                 required
-                placeholder="e.g. Practitioner completed contract, transferred to external clinic, etc..."
+                placeholder="যেমন: চুক্তির মেয়াদ শেষ, অন্য ক্লিনিকে বদলি, ইত্যাদি..."
                 value={revokeReason}
                 onChange={(e) => setRevokeReason(e.target.value)}
                 style={{
@@ -1929,7 +1935,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 }}
               />
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                Minimum 3 characters required. Recorded in the forensic audit ledger.
+                কমপক্ষে ৩ অক্ষর আবশ্যক। এটি অডিট লেজারে রেকর্ড করা হবে।
               </div>
             </div>
 
@@ -1942,7 +1948,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 }}
                 className="hosp-sub-btn-secondary"
               >
-                Cancel
+                বাতিল
               </button>
               <button
                 type="button"
@@ -1951,7 +1957,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 className="hosp-sub-btn-danger"
               >
                 <UserMinus size={14} />
-                <span>{revokingSeat ? 'Revoking...' : 'Revoke License'}</span>
+                <span>{revokingSeat ? 'বাতিল করা হচ্ছে...' : 'লাইসেন্স বাতিল করুন'}</span>
               </button>
             </div>
           </div>
@@ -1974,13 +1980,14 @@ export default function HospitalSubscriptionExperiencePage() {
                 <AlertTriangle size={22} />
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--admin-text, #0f172a)' }}>
-                Cancel Hospital Subscription
+                হাসপাতাল সাবস্ক্রিপশন বাতিল করুন
               </h3>
             </div>
 
             <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
-              Are you sure you want to cancel your hospital facility subscription? Your institutional features, affiliated doctor seats, and OPD queues will remain active until the end of your current billing cycle on{' '}
-              <strong>{sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString() : 'the cycle end'}</strong>.
+              আপনি কি নিশ্চিত যে হাসপাতাল সাবস্ক্রিপশন বাতিল করতে চান? আপনার বর্তমান বিলিং সাইকেল শেষ হওয়া পর্যন্ত ({' '}
+              <strong>{sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD') : 'সাইকেলের শেষ'}</strong>
+              ) প্রাতিষ্ঠানিক সুবিধা, সংযুক্ত ডাক্তার সিট ও ওপিডি কিউ চালু থাকবে।
             </p>
 
             <div className="d-flex justify-content-end gap-2 pt-3 mt-4" style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
@@ -1989,7 +1996,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 onClick={() => setShowCancelModal(false)}
                 className="hosp-sub-btn-secondary"
               >
-                Keep Subscription
+                সাবস্ক্রিপশন রাখুন
               </button>
               <button
                 type="button"
@@ -1997,7 +2004,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 disabled={cancellingSub}
                 className="hosp-sub-btn-danger"
               >
-                {cancellingSub ? 'Processing...' : 'Confirm Cancellation'}
+                {cancellingSub ? 'প্রক্রিয়াধীন...' : 'বাতিল নিশ্চিত করুন'}
               </button>
             </div>
           </div>
@@ -2012,7 +2019,7 @@ export default function HospitalSubscriptionExperiencePage() {
               <div className="d-flex align-items-center gap-2">
                 <Activity size={18} style={{ color: '#2563eb' }} />
                 <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0 }}>
-                  Subscription Lifecycle Timeline
+                  সাবস্ক্রিপশন লাইফসাইকেল টাইমলাইন
                 </h3>
               </div>
               <button
@@ -2027,7 +2034,7 @@ export default function HospitalSubscriptionExperiencePage() {
               <div className="d-flex flex-column gap-3">
                 {timeline.length === 0 ? (
                   <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '48px 0' }}>
-                    No lifecycle events recorded for this subscription yet.
+                    এই সাবস্ক্রিপশনের জন্য এখনও কোনো লাইফসাইকেল ইভেন্ট রেকর্ড করা হয়নি।
                   </div>
                 ) : (
                   timeline.map((event) => (
@@ -2040,9 +2047,9 @@ export default function HospitalSubscriptionExperiencePage() {
                         {event.description}
                       </div>
                       <div style={{ fontSize: '10.5px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{new Date(event.occurred_at).toLocaleString()}</span>
+                        <span>{new Date(event.occurred_at).toLocaleString('bn-BD')}</span>
                         <span>•</span>
-                        <span>By: {event.performed_by}</span>
+                        <span>দ্বারা: {event.performed_by}</span>
                       </div>
                     </div>
                   ))

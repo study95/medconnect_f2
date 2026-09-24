@@ -83,7 +83,7 @@ export default function AdminTransactionsPage() {
       const list = res.data?.data || []
       setTransactions(Array.isArray(list) ? list : [])
     } catch (err) {
-      setActionError(err?.response?.data?.message || 'Failed to load transactions. Please retry.')
+      setActionError(err?.response?.data?.message || 'লেনদেন তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -138,7 +138,7 @@ export default function AdminTransactionsPage() {
   const handleManualAction = async () => {
     if (!selectedTx || !actionType) return
     if (!verificationNote.trim()) {
-      alert(`Please enter a mandatory audit note before ${actionType === 'approve' ? 'approving' : 'rejecting'} this payment.`)
+      alert(`পেমেন্টটি ${actionType === 'approve' ? 'অনুমোদন' : 'প্রত্যাখ্যান'} করার পূর্বে একটি অডিট নোট প্রদান করা বাধ্যতামূলক।`)
       return
     }
 
@@ -148,10 +148,10 @@ export default function AdminTransactionsPage() {
     try {
       if (actionType === 'approve') {
         await approveAdminManualPayment(selectedTx.id, verificationNote.trim())
-        setActionSuccess('Manual payment approved successfully! Subscription activated.')
+        setActionSuccess('ম্যানুয়াল পেমেন্ট সফলভাবে অনুমোদিত হয়েছে! সাবস্ক্রিপশন সক্রিয় করা হয়েছে।')
       } else if (actionType === 'reject') {
         await rejectAdminManualPayment(selectedTx.id, verificationNote.trim())
-        setActionSuccess('Manual payment rejected and invoice marked as void.')
+        setActionSuccess('ম্যানুয়াল পেমেন্ট প্রত্যাখ্যান করা হয়েছে এবং সংশ্লিষ্ট ইনভয়েস বাতিল করা হয়েছে।')
       }
       setTimeout(() => {
         handleCloseModal()
@@ -159,10 +159,10 @@ export default function AdminTransactionsPage() {
       }, 1500)
     } catch (err) {
       if (err.response?.status === 409) {
-        setActionError('Conflict (409): This transaction has already been processed by another administrator session.')
+        setActionError('কনফ্লিক্ট (৪০৯): এই লেনদেনটি ইতিমধ্যে অন্য কোনো অ্যাডমিনিস্ট্রেটর সেশনে প্রক্রিয়া সম্পন্ন করা হয়েছে।')
       } else {
         const errorData = err.response?.data
-        let errMsg = errorData?.message || `Failed to ${actionType} transaction.`
+        let errMsg = errorData?.message || `লেনদেন ${actionType === 'approve' ? 'অনুমোদন' : 'প্রত্যাখ্যান'} করতে ব্যর্থ হয়েছে।`
         if (errorData?.errors && typeof errorData.errors === 'object') {
           const firstKey = Object.keys(errorData.errors)[0]
           const firstErr = errorData.errors[firstKey]
@@ -193,13 +193,13 @@ export default function AdminTransactionsPage() {
 
   const getStatusBadge = (tx) => {
     if (tx.status === 'verified' || tx.status === 'completed' || tx.status === 'paid') {
-      return <span className="ab-badge ab-badge-emerald"><CheckCircle2 size={11} /> Verified</span>
+      return <span className="ab-badge ab-badge-emerald"><CheckCircle2 size={11} /> যাচাইকৃত</span>
     }
     if (tx.status === 'pending') {
-      return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> Pending Audit</span>
+      return <span className="ab-badge ab-badge-amber"><span className="ab-dot ab-dot-pulse" style={{ background: '#f59e0b' }} /> পর্যালোচনাধীন</span>
     }
     if (tx.status === 'rejected' || tx.status === 'failed') {
-      return <span className="ab-badge ab-badge-rose"><XCircle size={11} /> Rejected</span>
+      return <span className="ab-badge ab-badge-rose"><XCircle size={11} /> প্রত্যাখ্যাত</span>
     }
     return <span className="ab-badge ab-badge-slate">{tx.status}</span>
   }
@@ -210,11 +210,11 @@ export default function AdminTransactionsPage() {
       <div className="ab-header">
         <div>
           <h1 className="ab-title">
-            Transactions &amp; Fraud Detection
-            <span className="ab-title-badge">Security Guard</span>
+            লেনদেন ও নিরাপত্তা পর্যবেক্ষণ
+            <span className="ab-title-badge">নিরাপত্তা গার্ড</span>
           </h1>
           <p className="ab-subtitle">
-            Audit digital gateway settlements, inspect protected manual bank slips, and monitor anomaly indicators.
+            ডিজিটাল গেটওয়ে লেনদেন অডিট করুন, ম্যানুয়াল ব্যাংক স্লিপ যাচাই করুন এবং সন্দেহজনক লেনদেন পর্যবেক্ষণ করুন।
           </p>
         </div>
 
@@ -222,7 +222,7 @@ export default function AdminTransactionsPage() {
           <button
             onClick={loadTransactions}
             className="ab-btn-refresh"
-            title="Refresh Transactions"
+            title="লেনদেন রিফ্রেশ করুন"
             aria-label="Refresh transactions"
             disabled={loading}
           >
@@ -234,31 +234,31 @@ export default function AdminTransactionsPage() {
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
       <nav className="ab-quick-nav">
         <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> Analytics Dashboard
+          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
         </Link>
         <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> Plans &amp; Tiers
+          <Layers size={14} /> প্ল্যান ও টিয়ার
         </Link>
         <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> Feature Matrix
+          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
         </Link>
         <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> Subscribers Roster
+          <Users size={14} /> গ্রাহক তালিকা
         </Link>
         <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> Invoices Ledger
+          <Receipt size={14} /> ইনভয়েস লেজার
         </Link>
         <Link to="/admin/billing/transactions" className="ab-nav-pill active">
-          <CreditCard size={14} /> Manual Transactions
+          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
           {summaryMetrics.pendingManual > 0 && (
             <span className="ab-nav-counter">{summaryMetrics.pendingManual}</span>
           )}
         </Link>
         <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> Discount Coupons
+          <Tag size={14} /> ডিসকাউন্ট কুপন
         </Link>
         <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> Billing Config
+          <Settings size={14} /> বিলিং কনফিগারেশন
         </Link>
       </nav>
 
@@ -266,44 +266,44 @@ export default function AdminTransactionsPage() {
       <div className="ab-kpi-deck">
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Total Transactions</span>
+            <span>সর্বমোট লেনদেন</span>
             <CreditCard size={15} color="#64748b" />
           </div>
           <div className="ab-kpi-value">{summaryMetrics.totalCount}</div>
-          <div className="ab-kpi-footnote">Audit records logged in system</div>
+          <div className="ab-kpi-footnote">সিস্টেমে সংরক্ষিত মোট অডিট রেকর্ড</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Pending Offline Slips</span>
+            <span>অপেক্ষমান অফলাইন স্লিপ</span>
             <Clock size={15} color="#f59e0b" />
           </div>
           <div className="ab-kpi-value" style={{ color: summaryMetrics.pendingManual > 0 ? '#f59e0b' : 'var(--ab-text)' }}>
             {summaryMetrics.pendingManual}
           </div>
-          <div className="ab-kpi-footnote">Awaiting administrator verification</div>
+          <div className="ab-kpi-footnote">অ্যাডমিন অনুমোদনের অপেক্ষায় রয়েছে</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Settled Volume</span>
+            <span>নিষ্পত্তিকৃত নগদ আয়</span>
             <CheckCircle2 size={15} color="#00b875" />
           </div>
           <div className="ab-kpi-value" style={{ color: '#00b875' }}>
             ৳{summaryMetrics.totalVolume.toLocaleString()}
           </div>
-          <div className="ab-kpi-footnote">Net successful customer inflow</div>
+          <div className="ab-kpi-footnote">গ্রাহক থেকে সফলভাবে প্রাপ্ত মোট রাজস্ব</div>
         </div>
 
         <div className="ab-kpi-card">
           <div className="ab-kpi-label">
-            <span>Fraud Alerts / Anomalies</span>
+            <span>জালিয়াতি সতর্কতা / অসঙ্গতি</span>
             <ShieldAlert size={15} color="#ef4444" />
           </div>
           <div className="ab-kpi-value" style={{ color: summaryMetrics.fraudAlerts > 0 ? '#ef4444' : 'var(--ab-text)' }}>
             {summaryMetrics.fraudAlerts}
           </div>
-          <div className="ab-kpi-footnote">Flagged for suspicious traits</div>
+          <div className="ab-kpi-footnote">সন্দেহজনক বৈশিষ্ট্যের কারণে চিহ্নিত</div>
         </div>
       </div>
 
@@ -315,14 +315,14 @@ export default function AdminTransactionsPage() {
               onClick={() => setActiveTab('all')}
               className={`ab-segmented-btn ${activeTab === 'all' ? 'active' : ''}`}
             >
-              All Payment Logs
+              সকল পেমেন্ট লগ
             </button>
             <button
               onClick={() => setActiveTab('manual_pending')}
               className={`ab-segmented-btn ${activeTab === 'manual_pending' ? 'active' : ''}`}
             >
               <Clock size={13} />
-              Pending Manual Verifications
+              অপেক্ষমান ম্যানুয়াল যাচাই
               {summaryMetrics.pendingManual > 0 && (
                 <span className="ab-counter-chip" style={{ background: '#f59e0b', color: '#fff' }}>
                   {summaryMetrics.pendingManual}
@@ -337,12 +337,12 @@ export default function AdminTransactionsPage() {
             className="ab-select"
             disabled={activeTab === 'manual_pending'}
           >
-            <option value="">All Payment Channels</option>
-            <option value="bkash_checkout">bKash Checkout</option>
-            <option value="nagad_direct">Nagad Direct</option>
-            <option value="rocket">Rocket</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="manual_offline">Manual Slip Submission</option>
+            <option value="">সকল পেমেন্ট চ্যানেল</option>
+            <option value="bkash_checkout">বিকাশ চেকআউট (bKash)</option>
+            <option value="nagad_direct">নগদ ডিরেক্ট (Nagad)</option>
+            <option value="rocket">রকেট (Rocket)</option>
+            <option value="bank_transfer">ব্যাংক ট্রান্সফার (Bank Transfer)</option>
+            <option value="manual_offline">ম্যানুয়াল স্লিপ জমা (Manual)</option>
           </select>
         </div>
 
@@ -351,7 +351,7 @@ export default function AdminTransactionsPage() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Search reference, mobile, ID..."
+              placeholder="রেফারেন্স নম্বর, মোবাইল বা ট্রানজেকশন আইডি দিয়ে খুঁজুন..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ab-search-input"
@@ -366,7 +366,7 @@ export default function AdminTransactionsPage() {
         <div className="ab-error-state" role="alert" aria-live="polite">
           <AlertTriangle size={20} />
           <span>{actionError}</span>
-          <button onClick={loadTransactions} className="ab-btn-secondary">Retry</button>
+          <button onClick={loadTransactions} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 
@@ -376,31 +376,31 @@ export default function AdminTransactionsPage() {
           <table className="ab-table" aria-busy={loading}>
             <thead>
               <tr>
-                <th>Transaction Reference</th>
-                <th>Channel / Gateway</th>
-                <th>Payment Amount</th>
-                <th>Status</th>
-                <th>Security &amp; Fraud Risk</th>
-                <th>Timestamp</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>লেনদেন রেফারেন্স / আইডি</th>
+                <th>চ্যানেল / গেটওয়ে</th>
+                <th>পরিশোধিত অর্থ</th>
+                <th>স্ট্যাটাস</th>
+                <th>নিরাপত্তা ও ঝুঁকির মাত্রা</th>
+                <th>তারিখ ও সময়</th>
+                <th style={{ textAlign: 'right' }}>পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="ab-skeleton-row">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j}><div className="ab-skeleton ab-skeleton-text" /></td>
                     ))}
                   </tr>
                 ))
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={7}>
                     <div className="ab-empty-state">
                       <CreditCard size={36} className="ab-empty-icon" />
-                      <div className="ab-empty-title">No transactions found</div>
-                      <div className="ab-empty-sub">Try adjusting your filters or switch tabs</div>
+                      <div className="ab-empty-title">কোনো লেনদেন পাওয়া যায়নি</div>
+                      <div className="ab-empty-sub">ফিল্টার পরিবর্তন করে অথবা অন্য ট্যাবে চেষ্টা করুন</div>
                     </div>
                   </td>
                 </tr>
@@ -419,14 +419,14 @@ export default function AdminTransactionsPage() {
                           {refCode}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--ab-text-dim)' }}>
-                          {senderId ? `Sender: ${senderId}` : `ID #${tx.id}`}
+                          {senderId ? `প্রেরক: ${senderId}` : `আইডি #${tx.id}`}
                         </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {isManual ? <Smartphone size={14} color="#f59e0b" /> : <CreditCard size={14} color="#3b82f6" />}
                           <span style={{ fontWeight: 600, fontSize: '12.5px' }}>
-                            {tx.gateway_payload?.payment_method?.replace('_', ' ') || tx.gateway_title || tx.payment_method || tx.gateway || 'Manual'}
+                            {tx.gateway_payload?.payment_method?.replace('_', ' ') || tx.gateway_title || tx.payment_method || tx.gateway || 'ম্যানুয়াল'}
                           </span>
                         </div>
                       </td>
@@ -440,16 +440,16 @@ export default function AdminTransactionsPage() {
                       <td>
                         {hasFraud ? (
                           <span className="ab-badge ab-badge-rose">
-                            <ShieldAlert size={12} /> High Risk ({tx.fraud_score || 'Alert'})
+                            <ShieldAlert size={12} /> উচ্চ ঝুঁকি ({tx.fraud_score || 'সতর্কতা'})
                           </span>
                         ) : (
                           <span className="ab-badge ab-badge-emerald" style={{ opacity: 0.85 }}>
-                            <ShieldCheck size={12} /> Clean
+                            <ShieldCheck size={12} /> সুরক্ষিত
                           </span>
                         )}
                       </td>
                       <td style={{ fontSize: '12px', color: 'var(--ab-text-muted)' }}>
-                        {tx.created_at ? new Date(tx.created_at).toLocaleString() : '—'}
+                        {tx.created_at ? new Date(tx.created_at).toLocaleString('bn-BD') : '—'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         {isManual && tx.status === 'pending' ? (
@@ -464,10 +464,10 @@ export default function AdminTransactionsPage() {
                               className="ab-btn-primary"
                               style={{ padding: '6px 12px', fontSize: '12px' }}
                               disabled={actionProcessing || !canApprove}
-                              title={!canApprove ? 'Insufficient permissions' : undefined}
+                              title={!canApprove ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
                               aria-label="Approve transaction"
                             >
-                              <Check size={13} /> Verify
+                              <Check size={13} /> যাচাই
                             </button>
                             <button
                               onClick={() => {
@@ -479,7 +479,7 @@ export default function AdminTransactionsPage() {
                               className="ab-btn-secondary"
                               style={{ padding: '6px 10px', fontSize: '12px', color: '#ef4444' }}
                               disabled={actionProcessing || !canApprove}
-                              title={!canApprove ? 'Insufficient permissions' : undefined}
+                              title={!canApprove ? 'পর্যাপ্ত অনুমতি নেই' : undefined}
                               aria-label="Reject transaction"
                             >
                               <X size={13} />
@@ -492,7 +492,7 @@ export default function AdminTransactionsPage() {
                             style={{ padding: '6px 12px', fontSize: '12px' }}
                             aria-label="View payment slip"
                           >
-                            <Eye size={13} /> Inspect
+                            <Eye size={13} /> পরিদর্শন
                           </button>
                         )}
                       </td>
@@ -514,10 +514,10 @@ export default function AdminTransactionsPage() {
             disabled={page <= 1}
             aria-label="Previous page"
           >
-            ← Previous
+            ← পূর্ববর্তী
           </button>
           <span className="ab-pagination-info">
-            Page {meta.current_page || page} of {meta.last_page} &bull; {meta.total} total
+            পৃষ্ঠা {meta.current_page || page} / {meta.last_page} &bull; মোট {meta.total}টি
           </span>
           <button
             className="ab-btn-secondary"
@@ -525,7 +525,7 @@ export default function AdminTransactionsPage() {
             disabled={page >= meta.last_page}
             aria-label="Next page"
           >
-            Next →
+            পরবর্তী →
           </button>
         </div>
       )}
@@ -538,13 +538,13 @@ export default function AdminTransactionsPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ab-text)' }}>
                   {actionType === 'approve'
-                    ? 'Approve Manual Offline Payment'
+                    ? 'ম্যানুয়াল অফলাইন পেমেন্ট অনুমোদন'
                     : actionType === 'reject'
-                    ? 'Reject Manual Payment Request'
-                    : 'Transaction Audit Details'}
+                    ? 'ম্যানুয়াল পেমেন্টের অনুরোধ প্রত্যাখ্যান'
+                    : 'লেনদেন নিরীক্ষা ও বিস্তারিত তথ্য'}
                 </h2>
                 <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)', marginTop: '2px' }}>
-                  Ref: {selectedTx.gateway_transaction_reference || selectedTx.transaction_reference || `TXN-${selectedTx.id}`} • Amount: ৳{Number(selectedTx.amount).toLocaleString()}
+                  রেফারেন্স: {selectedTx.gateway_transaction_reference || selectedTx.transaction_reference || `TXN-${selectedTx.id}`} • পরিমাণ: ৳{Number(selectedTx.amount).toLocaleString()}
                 </div>
               </div>
               <button
@@ -581,20 +581,20 @@ export default function AdminTransactionsPage() {
               <div style={{ background: 'var(--ab-card-header)', border: '1px solid var(--ab-border)', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
                   <div>
-                    <span style={{ color: 'var(--ab-text-muted)' }}>Channel:</span>{' '}
+                    <span style={{ color: 'var(--ab-text-muted)' }}>পেমেন্ট চ্যানেল:</span>{' '}
                     <strong style={{ textTransform: 'uppercase' }}>{selectedTx.gateway_payload?.payment_method?.replace('_', ' ') || selectedTx.gateway_title || selectedTx.payment_method || selectedTx.gateway}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--ab-text-muted)' }}>Sender Number:</span>{' '}
+                    <span style={{ color: 'var(--ab-text-muted)' }}>প্রেরকের নম্বর:</span>{' '}
                     <strong>{selectedTx.sender_identifier || selectedTx.sender_number || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--ab-text-muted)' }}>Timestamp:</span>{' '}
-                    <strong>{new Date(selectedTx.created_at).toLocaleString()}</strong>
+                    <span style={{ color: 'var(--ab-text-muted)' }}>তারিখ ও সময়:</span>{' '}
+                    <strong>{new Date(selectedTx.created_at).toLocaleString('bn-BD')}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--ab-text-muted)' }}>Security Check:</span>{' '}
-                    <strong>{selectedTx.has_fraud_alert ? 'Flagged Alert' : 'Normal'}</strong>
+                    <span style={{ color: 'var(--ab-text-muted)' }}>নিরাপত্তা নিরীক্ষা:</span>{' '}
+                    <strong>{selectedTx.has_fraud_alert ? 'সতর্কতা চিহ্নিত' : 'স্বাভাবিক / সুরক্ষিত'}</strong>
                   </div>
                 </div>
               </div>
@@ -602,10 +602,10 @@ export default function AdminTransactionsPage() {
               {/* Slip Preview if available */}
               {(slipModalUrl || slipLoading || selectedTx.manual_payment_slip_path) && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label className="ab-form-label">Protected Payment Slip</label>
+                  <label className="ab-form-label">সংযুক্ত পেমেন্ট স্লিপের ছবি</label>
                   <div style={{ border: '1px solid var(--ab-border)', borderRadius: '10px', overflow: 'hidden', textAlign: 'center', background: '#0f172a', minHeight: '160px', maxHeight: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
                     {slipLoading ? (
-                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>Loading payment slip...</div>
+                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>পেমেন্ট স্লিপ লোড হচ্ছে...</div>
                     ) : slipModalUrl ? (
                       <img
                         src={slipModalUrl}
@@ -613,7 +613,7 @@ export default function AdminTransactionsPage() {
                         style={{ maxHeight: '230px', maxWidth: '100%', objectFit: 'contain' }}
                       />
                     ) : (
-                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>No slip screenshot uploaded</div>
+                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>কোনো স্লিপের স্ক্রিনশট আপলোড করা হয়নি</div>
                     )}
                   </div>
                 </div>
@@ -623,9 +623,9 @@ export default function AdminTransactionsPage() {
               {(actionType === 'approve' || actionType === 'reject') && (
                 <div>
                   <label className="ab-form-label">
-                    Mandatory Audit Note *{' '}
+                    বাধ্যতামূলক অডিট নোট *{' '}
                     <span style={{ fontWeight: 400, color: 'var(--ab-text-dim)' }}>
-                      (Stored permanently with approver timestamp for compliance)
+                      (কমপ্লায়েন্স ও রেকর্ডের জন্য অনুমোদনকারীর তথ্যসহ স্থায়ীভাবে সংরক্ষিত থাকবে)
                     </span>
                   </label>
                   <textarea
@@ -633,7 +633,7 @@ export default function AdminTransactionsPage() {
                     required
                     value={verificationNote}
                     onChange={(e) => setVerificationNote(e.target.value)}
-                    placeholder={actionType === 'approve' ? 'e.g. Bank slip verified on corporate account; matches deposit.' : 'e.g. Invalid transaction ID; funds not found in bank balance.'}
+                    placeholder={actionType === 'approve' ? 'যেমন: ব্যাংক স্লিপটি কর্পোরেট অ্যাকাউন্টে যাচাই করা হয়েছে; ব্যালেন্সের সাথে মিলেছে।' : 'যেমন: ভুল ট্রানজেকশন আইডি; ব্যাংক স্টেটমেন্টে টাকা জমা পাওয়া যায়নি।'}
                     className="ab-form-textarea"
                   />
                 </div>
@@ -648,7 +648,7 @@ export default function AdminTransactionsPage() {
                 disabled={actionProcessing}
                 aria-label="Close modal"
               >
-                Close
+                বন্ধ করুন
               </button>
 
               {(actionType === 'approve' || actionType === 'reject') && (
@@ -664,15 +664,15 @@ export default function AdminTransactionsPage() {
                 >
                   {actionProcessing ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" /> Processing...
+                      <RefreshCw size={14} className="animate-spin" /> প্রক্রিয়াধীন...
                     </>
                   ) : actionType === 'approve' ? (
                     <>
-                      <Check size={15} /> Confirm &amp; Activate Subscription
+                      <Check size={15} /> অনুমোদন ও সাবস্ক্রিপশন সক্রিয় করুন
                     </>
                   ) : (
                     <>
-                      <X size={15} /> Confirm Rejection
+                      <X size={15} /> প্রত্যাখ্যান নিশ্চিত করুন
                     </>
                   )}
                 </button>
