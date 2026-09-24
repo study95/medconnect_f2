@@ -114,7 +114,7 @@ function SearchableSelect({ id, label, options, value, onChange, placeholder, di
 export default function HospitalFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isManager } = useAuth()
   const { showSuccess, showError } = useDialog()
   const isEdit = Boolean(id)
   const canEditPhone = isAdmin || !isEdit
@@ -429,7 +429,7 @@ export default function HospitalFormPage() {
           message: successMsg,
         })
       }
-      setTimeout(() => navigate('/admin/hospitals'), 1200)
+      setTimeout(() => navigate(isManager ? '/hospital/my-hospital' : '/admin/hospitals'), 1200)
     } catch (err) {
       const backendErrors = err.response?.data?.errors || {}
       const formattedErrors = {}
@@ -463,7 +463,7 @@ export default function HospitalFormPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>{isEdit ? '🏢 Edit Hospital Profile' : '🏥 Register New Hospital'}</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure facility details, license, capacity, and geographical location</p>
         </div>
-        <Link to="/admin/hospitals" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <Link to={isManager ? '/hospital/my-hospital' : '/admin/hospitals'} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 32 }}>

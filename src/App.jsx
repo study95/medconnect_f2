@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import AppNavbar     from './components/layout/Navbar'
 import Footer        from './components/layout/Footer'
@@ -11,6 +11,8 @@ import ErrorBoundary from './components/common/ErrorBoundary'
 import GlobalDialog from './components/common/GlobalDialog'
 import { Toaster } from 'react-hot-toast'
 import AdminRoute    from './components/admin/AdminRoute'
+import DoctorRoute   from './components/admin/DoctorRoute'
+import HospitalRoute from './components/admin/HospitalRoute'
 import AdminLayout   from './components/admin/AdminLayout'
 import SubscriptionGate from './components/admin/SubscriptionGate'
 
@@ -401,6 +403,143 @@ function App() {
 
             {/* Audit Log */}
             <Route path="audit-logs" element={<AuditLogPage />} />
+          </Route>
+
+          {/* ===== DOCTOR PORTAL ROUTES ===== */}
+          <Route
+            path="/doctor/*"
+            element={
+              <DoctorRoute>
+                <AdminLayout />
+              </DoctorRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+
+            {/* Doctor Profile & Chambers */}
+            <Route path="my-profile" element={<DoctorListPage />} />
+            <Route path="profile" element={<DoctorListPage />} />
+            <Route path="doctors" element={<Navigate to="/doctor/my-profile" replace />} />
+            <Route path="my-profile/edit/:id" element={<DoctorFormPage />} />
+            <Route path="profile/edit/:id" element={<DoctorFormPage />} />
+            <Route path="doctors/edit/:id" element={<DoctorFormPage />} />
+            <Route path="doctors/view/:id" element={<DoctorDetailPageAdmin />} />
+            <Route path="chambers" element={<ChamberListPage />} />
+            <Route path="my-chambers" element={<ChamberListPage />} />
+            <Route path="chambers/create" element={<ChamberFormPage />} />
+            <Route path="chambers/edit/:id" element={<ChamberFormPage />} />
+
+            {/* Doctor Leaves */}
+            <Route path="my-leaves" element={<DoctorLeavePage />} />
+            <Route path="leaves" element={<DoctorLeavePage />} />
+
+            {/* Appointments & Live Serial Queue */}
+            <Route path="appointments" element={<AppointmentListPage />} />
+            <Route path="appointments/create" element={<AppointmentFormPage />} />
+            <Route path="appointments/edit/:id" element={<AppointmentFormPage />} />
+            <Route path="appointments/view/:id" element={<AppointmentViewPage />} />
+            <Route path="serial-display" element={<SerialDisplayManagerPage />} />
+            <Route path="queue-display" element={<SerialDisplayManagerPage />} />
+
+            {/* Prescriptions & Clinical Notes */}
+            <Route path="prescriptions" element={<SubscriptionGate moduleName="Prescriptions"><PrescriptionListPage /></SubscriptionGate>} />
+            <Route path="prescriptions/create" element={<SubscriptionGate moduleName="Prescriptions"><PrescriptionFormPage /></SubscriptionGate>} />
+            <Route path="prescriptions/edit/:id" element={<SubscriptionGate moduleName="Prescriptions"><PrescriptionFormPage /></SubscriptionGate>} />
+            <Route path="prescriptions/view/:id" element={<SubscriptionGate moduleName="Prescriptions"><PrescriptionViewPage /></SubscriptionGate>} />
+            <Route path="notes" element={<SubscriptionGate moduleName="My Notes"><DoctorNotesPage /></SubscriptionGate>} />
+
+            {/* Patients */}
+            <Route path="patients" element={<PatientListPage />} />
+            <Route path="patients/create" element={<PatientFormPage />} />
+            <Route path="patients/edit/:id" element={<PatientFormPage />} />
+            <Route path="patients/view/:id" element={<PatientProfilePage />} />
+            <Route path="patients/:id" element={<PatientProfilePage />} />
+
+            {/* Medicines */}
+            <Route path="medicines" element={<SubscriptionGate moduleName="Medicines"><MedicineListPage /></SubscriptionGate>} />
+            <Route path="medicines/create" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
+            <Route path="medicines/edit/:id" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
+
+            {/* Payments */}
+            <Route path="payments" element={<SubscriptionGate moduleName="Payments"><PaymentListPage /></SubscriptionGate>} />
+
+            {/* Subscription Experience */}
+            <Route path="subscription" element={<DoctorSubscriptionExperiencePage />} />
+            <Route path="subscription/packages" element={<SubscriptionPage />} />
+            <Route path="subscription/checkout" element={<CheckoutPage />} />
+            <Route path="subscription/checkout/:packageId" element={<CheckoutPage />} />
+            <Route path="subscription/history" element={<SubscriptionHistoryPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+
+            {/* Reviews */}
+            <Route path="doctor-reviews" element={<DoctorReviewsPage />} />
+
+            {/* Profile & Password */}
+            <Route path="account-profile" element={<AdminProfilePage />} />
+            <Route path="password" element={<AdminPasswordPage />} />
+          </Route>
+
+          {/* ===== HOSPITAL PORTAL ROUTES ===== */}
+          <Route
+            path="/hospital/*"
+            element={
+              <HospitalRoute>
+                <AdminLayout />
+              </HospitalRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+
+            {/* Hospital Facility Profile */}
+            <Route path="my-hospital" element={<HospitalListPage />} />
+            <Route path="hospital-profile" element={<HospitalListPage />} />
+            <Route path="hospitals" element={<Navigate to="/hospital/my-hospital" replace />} />
+            <Route path="my-hospital/edit/:id" element={<HospitalFormPage />} />
+            <Route path="hospitals/create" element={<HospitalFormPage />} />
+            <Route path="hospitals/edit/:id" element={<HospitalFormPage />} />
+            <Route path="hospitals/view/:id" element={<HospitalDetailPageAdmin />} />
+
+            {/* Hospital Doctors & Chambers */}
+            <Route path="doctors" element={<DoctorListPage />} />
+            <Route path="doctors/create" element={<DoctorFormPage />} />
+            <Route path="doctors/edit/:id" element={<DoctorFormPage />} />
+            <Route path="doctors/view/:id" element={<DoctorDetailPageAdmin />} />
+            <Route path="chambers" element={<ChamberListPage />} />
+            <Route path="chambers/create" element={<ChamberFormPage />} />
+            <Route path="chambers/edit/:id" element={<ChamberFormPage />} />
+
+            {/* Appointments & Live Serial Queue */}
+            <Route path="appointments" element={<AppointmentListPage />} />
+            <Route path="appointments/create" element={<AppointmentFormPage />} />
+            <Route path="appointments/edit/:id" element={<AppointmentFormPage />} />
+            <Route path="appointments/view/:id" element={<AppointmentViewPage />} />
+            <Route path="serial-display" element={<SerialDisplayManagerPage />} />
+            <Route path="queue-display" element={<SerialDisplayManagerPage />} />
+
+            {/* Patients */}
+            <Route path="patients" element={<PatientListPage />} />
+            <Route path="patients/create" element={<PatientFormPage />} />
+            <Route path="patients/edit/:id" element={<PatientFormPage />} />
+            <Route path="patients/view/:id" element={<PatientProfilePage />} />
+            <Route path="patients/:id" element={<PatientProfilePage />} />
+
+            {/* Hospital Subscription & Seats */}
+            <Route path="hospital-subscription" element={<HospitalSubscriptionExperiencePage />} />
+            <Route path="subscription" element={<HospitalSubscriptionExperiencePage />} />
+            <Route path="subscription/packages" element={<SubscriptionPage />} />
+            <Route path="subscription/checkout" element={<CheckoutPage />} />
+            <Route path="subscription/checkout/:packageId" element={<CheckoutPage />} />
+            <Route path="subscription/history" element={<SubscriptionHistoryPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+
+            {/* Reviews */}
+            <Route path="hospital-reviews" element={<HospitalReviewsPage />} />
+
+            {/* Profile & Password */}
+            <Route path="profile" element={<AdminProfilePage />} />
+            <Route path="password" element={<AdminPasswordPage />} />
           </Route>
 
           {/* ===== TV DISPLAY ROUTES & ADMIN SECURE ACCESS (Completely standalone) ===== */}

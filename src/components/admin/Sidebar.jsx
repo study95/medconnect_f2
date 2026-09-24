@@ -26,7 +26,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const { unreadCount } = useSubscription()
   const location = useLocation()
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
+  const portalBase = isDoctor ? '/doctor' : (isManager ? '/hospital' : '/admin')
+  const pLink = (subpath) => `${portalBase}${subpath.startsWith('/') ? subpath : '/' + subpath}`
+
+  const isActive = (path) => {
+    const full = path.startsWith('/') ? path : `${portalBase}/${path}`
+    const p = full.split('?')[0]
+    return location.pathname === full || location.pathname === p || (p !== portalBase && location.pathname.startsWith(p + '/'))
+  }
 
   const roleName = getRoles()[0] || 'user'
 
@@ -152,7 +159,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       <aside className={`admin-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* ===== ZONE 1: Brand (Sticky Top) ===== */}
         <div className="sidebar-brand-wrapper">
-          <NavLink to="/admin" className="sidebar-brand" onClick={onClose}>
+          <NavLink to={portalBase} className="sidebar-brand" onClick={onClose}>
             {isCollapsed ? (
               <div className="sidebar-brand-logo-img">
                 <img
@@ -177,9 +184,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         <nav className="sidebar-nav">
           {/* Dashboard — visible to all staff */}
           <NavLink
-            to="/admin"
+            to={portalBase}
             end
-            className={`sidebar-nav-item ${isActive('/admin') && location.pathname === '/admin' ? 'active' : ''}`}
+            className={`sidebar-nav-item ${(location.pathname === portalBase || location.pathname === `${portalBase}/` || location.pathname === `${portalBase}/dashboard`) ? 'active' : ''}`}
             onClick={onClose}
             title={isCollapsed ? 'Dashboard' : undefined}
           >
@@ -260,8 +267,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               <div className="sidebar-section-title">Facilities</div>
 
               <NavLink
-                to="/admin/hospitals"
-                className={`sidebar-nav-item ${isActive('/admin/hospitals') ? 'active' : ''}`}
+                to={isManager ? pLink('/my-hospital') : '/admin/hospitals'}
+                className={`sidebar-nav-item ${isActive(isManager ? pLink('/my-hospital') : '/admin/hospitals') ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? (isManager ? 'My Hospital' : 'Hospitals') : undefined}
               >
@@ -272,8 +279,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               {isManager && (
                 <>
                   <NavLink
-                    to="/admin/hospital-subscription"
-                    className={`sidebar-nav-item ${isActive('/admin/hospital-subscription') ? 'active' : ''}`}
+                    to={pLink('/hospital-subscription')}
+                    className={`sidebar-nav-item ${isActive(pLink('/hospital-subscription')) ? 'active' : ''}`}
                     onClick={onClose}
                     title={isCollapsed ? 'Hospital Plan & Seats' : undefined}
                   >
@@ -282,8 +289,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   </NavLink>
 
                   <NavLink
-                    to="/admin/subscription/history"
-                    className={`sidebar-nav-item ${isActive('/admin/subscription/history') ? 'active' : ''}`}
+                    to={pLink('/subscription/history')}
+                    className={`sidebar-nav-item ${isActive(pLink('/subscription/history')) ? 'active' : ''}`}
                     onClick={onClose}
                     title={isCollapsed ? 'Subscription History' : undefined}
                   >
@@ -292,8 +299,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   </NavLink>
 
                   <NavLink
-                    to="/admin/hospital-reviews"
-                    className={`sidebar-nav-item ${isActive('/admin/hospital-reviews') ? 'active' : ''}`}
+                    to={pLink('/hospital-reviews')}
+                    className={`sidebar-nav-item ${isActive(pLink('/hospital-reviews')) ? 'active' : ''}`}
                     onClick={onClose}
                     title={isCollapsed ? 'Hospital Reviews' : undefined}
                   >
@@ -312,8 +319,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (
             <NavLink
-              to="/admin/doctors"
-              className={`sidebar-nav-item ${isActive('/admin/doctors') ? 'active' : ''}`}
+              to={isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')}
+              className={`sidebar-nav-item ${isActive(isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? (isDoctor ? 'My Profile' : 'Doctors') : undefined}
             >
@@ -324,8 +331,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {(isAdmin || isManager || isDoctor || hasPermission('doctor_chamber.view')) && (
             <NavLink
-              to="/admin/chambers"
-              className={`sidebar-nav-item ${isActive('/admin/chambers') ? 'active' : ''}`}
+              to={pLink('/chambers')}
+              className={`sidebar-nav-item ${isActive(pLink('/chambers')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? (isDoctor ? 'My Chambers' : 'Chambers') : undefined}
             >
@@ -337,8 +344,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {/* Doctor: My Leaves / Admin: Doctor Leaves */}
           {isDoctor && (
             <NavLink
-              to="/admin/my-leaves"
-              className={`sidebar-nav-item ${isActive('/admin/my-leaves') ? 'active' : ''}`}
+              to={pLink('/my-leaves')}
+              className={`sidebar-nav-item ${isActive(pLink('/my-leaves')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? 'My Leaves' : undefined}
             >
@@ -366,8 +373,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
             <NavLink
-              to="/admin/patients"
-              className={`sidebar-nav-item ${isActive('/admin/patients') ? 'active' : ''}`}
+              to={pLink('/patients')}
+              className={`sidebar-nav-item ${isActive(pLink('/patients')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? (isDoctor ? 'My Patients' : 'Patients') : undefined}
             >
@@ -379,8 +386,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
             <>
               <NavLink
-                to="/admin/appointments"
-                className={`sidebar-nav-item ${isActive('/admin/appointments') ? 'active' : ''}`}
+                to={pLink('/appointments')}
+                className={`sidebar-nav-item ${isActive(pLink('/appointments')) ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'Appointments' : undefined}
               >
@@ -389,8 +396,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               </NavLink>
 
               <NavLink
-                to="/admin/serial-display"
-                className={`sidebar-nav-item ${isActive('/admin/serial-display') ? 'active' : ''}`}
+                to={pLink('/serial-display')}
+                className={`sidebar-nav-item ${isActive(pLink('/serial-display')) ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'Serial Display' : undefined}
               >
@@ -402,8 +409,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {(isAdmin || isManager || isDoctor || hasPermission('payment.view')) && (
             <NavLink
-              to="/admin/payments"
-              className={`sidebar-nav-item ${isActive('/admin/payments') ? 'active' : ''}`}
+              to={pLink('/payments')}
+              className={`sidebar-nav-item ${isActive(pLink('/payments')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? 'Payments' : undefined}
             >
@@ -413,13 +420,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           )}
 
           {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (() => {
-            const isDraftActive = location.pathname === '/admin/prescriptions' && location.search.includes('tab=draft')
-            const isMainPrescriptionActive = (location.pathname === '/admin/prescriptions' || location.pathname.startsWith('/admin/prescriptions/')) && !isDraftActive
+            const rxPath = pLink('/prescriptions')
+            const isDraftActive = location.pathname === rxPath && location.search.includes('tab=draft')
+            const isMainPrescriptionActive = (location.pathname === rxPath || location.pathname.startsWith(rxPath + '/')) && !isDraftActive
 
             return (
               <>
                 <Link
-                  to="/admin/prescriptions"
+                  to={rxPath}
                   className={`sidebar-nav-item ${isMainPrescriptionActive ? 'active' : ''}`}
                   onClick={onClose}
                   title={isCollapsed ? 'Prescriptions' : undefined}
@@ -430,7 +438,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
                 {isDoctor && (
                   <Link
-                    to="/admin/prescriptions?tab=draft"
+                    to={`${rxPath}?tab=draft`}
                     className={`sidebar-nav-item ${isDraftActive ? 'active' : ''}`}
                     onClick={onClose}
                     title={isCollapsed ? `Prescription Drafts (${rxDraftCount})` : undefined}
@@ -468,8 +476,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {isDoctor && (
             <NavLink
-              to="/admin/notes"
-              className={`sidebar-nav-item ${isActive('/admin/notes') ? 'active' : ''}`}
+              to={pLink('/notes')}
+              className={`sidebar-nav-item ${isActive(pLink('/notes')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? 'My Notes' : undefined}
             >
@@ -480,8 +488,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {isDoctor && (
             <NavLink
-              to="/admin/doctor-reviews"
-              className={`sidebar-nav-item ${isActive('/admin/doctor-reviews') ? 'active' : ''}`}
+              to={pLink('/doctor-reviews')}
+              className={`sidebar-nav-item ${isActive(pLink('/doctor-reviews')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? 'Patient Reviews' : undefined}
             >
@@ -492,8 +500,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {(isAdmin || isDoctor || (isManager && false) || hasPermission('medicine.view')) && (
             <NavLink
-              to="/admin/medicines"
-              className={`sidebar-nav-item ${isActive('/admin/medicines') ? 'active' : ''}`}
+              to={pLink('/medicines')}
+              className={`sidebar-nav-item ${isActive(pLink('/medicines')) ? 'active' : ''}`}
               onClick={onClose}
               title={isCollapsed ? 'Medicines' : undefined}
             >
@@ -650,8 +658,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               <div className="sidebar-section-title">SUBSCRIPTION</div>
 
               <NavLink
-                to="/admin/subscription"
-                className={`sidebar-nav-item ${isActive('/admin/subscription') && !isActive('/admin/subscription/') ? 'active' : ''}`}
+                to={pLink('/subscription')}
+                className={`sidebar-nav-item ${isActive(pLink('/subscription')) && !isActive(pLink('/subscription/history')) ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'Plans' : undefined}
               >
@@ -660,8 +668,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               </NavLink>
 
               <NavLink
-                to="/admin/subscription/history"
-                className={`sidebar-nav-item ${isActive('/admin/subscription/history') ? 'active' : ''}`}
+                to={pLink('/subscription/history')}
+                className={`sidebar-nav-item ${isActive(pLink('/subscription/history')) ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'My Subscriptions' : undefined}
               >

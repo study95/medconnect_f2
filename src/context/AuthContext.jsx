@@ -104,12 +104,66 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password, role = null) => {
     try {
-      const response = await loginApi({ email, identifier: email, password, role, type: role })
+      const deviceToken = localStorage.getItem('doctor_trusted_device_token') || 
+                          localStorage.getItem('hospital_trusted_device_token') || 
+                          localStorage.getItem('provider_trusted_device_token') || null
+      const response = await loginApi({ 
+        email, 
+        identifier: email, 
+        password, 
+        role, 
+        type: role,
+        device_token: deviceToken
+      })
+
+      // If backend triggers 2FA for New Device on Doctor or Hospital role
+      if (response.data?.requires_2fa) {
+        return {
+          success: false,
+          requires_2fa: true,
+          role: response.data.role || role,
+          session_key: response.data.session_key,
+          masked_mobile: response.data.masked_mobile,
+          dev_otp: response.data.dev_otp,
+          message: response.data.message
+        }
+      }
+
       const { token, user: userData } = response.data
       storeAuth(token, userData)
       return { success: true, user: userData }
     } catch (error) {
       const message = getErrorMessage(error, 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
+      return { success: false, message }
+    }
+  }
+
+  const verifyDoctor2Fa = async ({ session_key, otp, trust_device = false }) => {
+    try {
+      const deviceName = typeof navigator !== 'undefined' && navigator.userAgent 
+        ? (navigator.userAgent.includes('Windows') ? 'Windows PC' : navigator.userAgent.includes('Mac') ? 'Mac' : 'Mobile Browser') 
+        : 'Web Browser'
+
+      const response = await axiosInstance.post('/doctor-verify-2fa', {
+        session_key,
+        otp,
+        trust_device,
+        device_name: deviceName
+      })
+
+      if (response.data?.success) {
+        const { token, user: userData, trusted_device_token } = response.data
+        if (trusted_device_token) {
+          localStorage.setItem('doctor_trusted_device_token', trusted_device_token)
+          localStorage.setItem('hospital_trusted_device_token', trusted_device_token)
+          localStorage.setItem('provider_trusted_device_token', trusted_device_token)
+        }
+        storeAuth(token, userData)
+        return { success: true, user: userData }
+      }
+      return { success: false, message: response.data?.message || 'যাচাইকরণ ব্যর্থ হয়েছে।' }
+    } catch (error) {
+      const message = getErrorMessage(error, 'ভুল সিকিউরিটি কোড! সঠিক কোডটি দিন।')
       return { success: false, message }
     }
   }
@@ -279,6 +333,7 @@ export function AuthProvider({ children }) {
     loading,
     storeAuth,
     login,
+    verifyDoctor2Fa,
     loginAsPatient,
     loginAsDoctor,
     loginAsHospital,

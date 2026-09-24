@@ -24,8 +24,9 @@ export default function AdminLayout() {
     localStorage.setItem('admin_sidebar_collapsed', newState)
   }
 
-  const { user, getRoles, logout } = useAuth()
+  const { user, isAdmin, isDoctor, isManager, getRoles, logout } = useAuth()
   const roleName = getRoles()[0] || 'user'
+  const portalBase = isDoctor ? '/doctor' : ((roleName === 'manager' || roleName === 'hospital' || isManager) ? '/hospital' : '/admin')
   const { unreadCount } = useSubscription()
   const { theme, toggleTheme } = useTheme()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -98,7 +99,7 @@ export default function AdminLayout() {
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 
               {/* Global Notification Bell Dropdown */}
-              <NotificationDropdown targetPath="/admin/notifications" iconColor="var(--admin-text)" />
+              <NotificationDropdown targetPath={`${portalBase}/notifications`} iconColor="var(--admin-text)" />
 
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 
@@ -139,10 +140,10 @@ export default function AdminLayout() {
                         <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{user?.email}</div>
                       </div>
                       <div style={{ padding: 8 }}>
-                        <Link to="/admin/profile" onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <Link to={`${portalBase}/profile`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                           <User size={16} /> Update Profile
                         </Link>
-                        <Link to="/admin/password" onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <Link to={`${portalBase}/password`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                           <Lock size={16} /> Update Password
                         </Link>
                       </div>

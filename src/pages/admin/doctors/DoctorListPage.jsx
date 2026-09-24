@@ -759,7 +759,7 @@ export default function DoctorListPage() {
 
           <button
             className="dr-edit-btn"
-            onClick={() => navigate(`/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
+            onClick={() => navigate(isDoctorOnly ? `/doctor/my-profile/edit/${myProfile.public_id || myProfile.id}` : `/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
           >
             ✏️ Edit Profile
           </button>
@@ -928,7 +928,7 @@ export default function DoctorListPage() {
                     <div style={{ fontSize: 24, marginBottom: 4 }}>📝</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>No signature uploaded yet</div>
                     <button
-                      onClick={() => navigate(`/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
+                      onClick={() => navigate(isDoctorOnly ? `/doctor/my-profile/edit/${myProfile.public_id || myProfile.id}` : `/admin/doctors/edit/${myProfile.public_id || myProfile.id}`)}
                       style={{ marginTop: 8, fontSize: 11.5, color: '#00A88C', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
                     >
                       + Upload Signature

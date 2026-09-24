@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
-import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole } from 'lucide-react'
+import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole, Smartphone } from 'lucide-react'
 import '../styles/auth-premium.css'
 
 function LoginPage() {
-  const { login } = useAuth()
+  const { login, verifyDoctor2Fa } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -25,6 +25,13 @@ function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+
+  // Doctor 2FA verification states
+  const [twoFactorState, setTwoFactorState] = useState(null)
+  const [otp, setOtp] = useState('')
+  const [trustDevice, setTrustDevice] = useState(true)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpError, setOtpError] = useState('')
 
   useEffect(() => {
     if (location.state?.identifier) {
@@ -100,6 +107,52 @@ function LoginPage() {
     }
   }
 
+  const handlePostLoginRedirect = (userData) => {
+    const rawRoles = userData?.roles || userData?.role || []
+    const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r =>
+      typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
+    )
+    const isStaffUser = roles.includes('admin') ||
+                        roles.includes('super-admin') ||
+                        roles.includes('doctor') ||
+                        roles.includes('manager') ||
+                        roles.includes('hospital') ||
+                        [1, 2, 3].includes(userData?.role_id)
+
+    // Pending verification check for doctor / hospital
+    if (role === 'doctor' || role === 'hospital') {
+      const approvedRoles = role === 'doctor'
+        ? ['doctor', 'admin', 'super-admin']
+        : ['manager', 'hospital', 'admin', 'super-admin']
+      const isApproved = approvedRoles.some(r => roles.includes(r))
+        || (role === 'doctor' && (userData?.role_id === 1 || userData?.role_id === 2))
+        || (role === 'hospital' && (userData?.role_id === 1 || userData?.role_id === 3))
+
+      if (!isApproved) {
+        navigate('/pending-verification', {
+          replace: true,
+          state: { type: role, name: userData?.name || '' }
+        })
+        return
+      }
+    }
+
+    // Smart Role-Based Redirect:
+    if (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register')) {
+      navigate(from, { replace: true })
+    } else if (role === 'doctor' || roles.includes('doctor') || userData?.role_id === 2) {
+      navigate('/doctor', { replace: true })
+    } else if (role === 'hospital' || roles.includes('hospital') || roles.includes('manager') || userData?.role_id === 3) {
+      navigate('/hospital', { replace: true })
+    } else if (roles.includes('admin') || roles.includes('super-admin') || userData?.role_id === 1) {
+      navigate('/admin', { replace: true })
+    } else if (isStaffUser) {
+      navigate('/admin', { replace: true })
+    } else {
+      navigate('/', { replace: true })
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFieldErrors({})
@@ -123,44 +176,21 @@ function LoginPage() {
     const result = await login(identifier, password, role)
     setLoading(false)
 
+    if (result.requires_2fa) {
+      setTwoFactorState({
+        session_key: result.session_key,
+        masked_mobile: result.masked_mobile,
+        dev_otp: result.dev_otp,
+        role: result.role || role
+      })
+      setOtp('')
+      setTrustDevice(true)
+      setOtpError('')
+      return
+    }
+
     if (result.success) {
-      const rawRoles = result.user?.roles || result.user?.role || []
-      const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r =>
-        typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
-      )
-      const isStaffUser = roles.includes('admin') ||
-                          roles.includes('super-admin') ||
-                          roles.includes('doctor') ||
-                          roles.includes('manager') ||
-                          roles.includes('hospital') ||
-                          [1, 2, 3].includes(result.user?.role_id)
-
-      // Pending verification check for doctor / hospital
-      if (role === 'doctor' || role === 'hospital') {
-        const approvedRoles = role === 'doctor'
-          ? ['doctor', 'admin', 'super-admin']
-          : ['manager', 'hospital', 'admin', 'super-admin']
-        const isApproved = approvedRoles.some(r => roles.includes(r))
-          || (role === 'doctor' && (result.user?.role_id === 1 || result.user?.role_id === 2))
-          || (role === 'hospital' && (result.user?.role_id === 1 || result.user?.role_id === 3))
-
-        if (!isApproved) {
-          navigate('/pending-verification', {
-            replace: true,
-            state: { type: role, name: result.user?.name || '' }
-          })
-          return
-        }
-      }
-
-      // Smart Role-Based Redirect:
-      if (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register')) {
-        navigate(from, { replace: true })
-      } else if (isStaffUser) {
-        navigate('/admin', { replace: true })
-      } else {
-        navigate('/', { replace: true })
-      }
+      handlePostLoginRedirect(result.user)
     } else {
       const errMsg = result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
       const lower = errMsg.toLowerCase()
@@ -172,8 +202,35 @@ function LoginPage() {
       } else if (lower.includes('পাসওয়ার্ড') || lower.includes('password') || lower.includes('credential') || lower.includes('invalid')) {
         setFieldErrors({ password: errMsg })
       } else {
-        setFieldErrors({ password: errMsg })
+        setFieldErrors({ form: errMsg })
       }
+    }
+  }
+
+  const handleVerifyDoctor2Fa = async (e) => {
+    e.preventDefault()
+    if (!otp || otp.trim().length !== 6) {
+      setOtpError('অনুগ্রহ করে ৬-সংখ্যার সিকিউরিটি কোডটি লিখুন।')
+      return
+    }
+
+    setOtpLoading(true)
+    setOtpError('')
+
+    const res = await verifyDoctor2Fa({
+      session_key: twoFactorState.session_key,
+      otp: otp.trim(),
+      trust_device: trustDevice
+    })
+
+    setOtpLoading(false)
+
+    if (res.success) {
+      setTwoFactorState(null)
+      handlePostLoginRedirect(res.user)
+    } else {
+      setOtp('')
+      setOtpError(res.message || 'ভুল সিকিউরিটি কোড! সঠিক কোডটি দিন।')
     }
   }
 
@@ -218,8 +275,144 @@ function LoginPage() {
           </div>
         </div>
 
-        {/* ===== RIGHT PANEL — CLEAN WHITE ACTIVE LOGIN FORM ===== */}
+        {/* ===== RIGHT PANEL — CLEAN WHITE ACTIVE LOGIN FORM / 2FA ===== */}
         <div className="auth-form-panel">
+          {twoFactorState ? (
+            <div className="slide-in-right" style={{ width: '100%', maxWidth: 420 }}>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #0D9488 0%, #0F766E 100%)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)', marginBottom: 12
+                }}>
+                  <Smartphone size={28} />
+                </div>
+                <h3 style={{ fontWeight: 800, color: '#0F172A', fontSize: 20, marginBottom: 4 }}>
+                  নিরাপত্তা যাচাইকরণ (2FA)
+                </h3>
+                <p style={{ color: '#64748B', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                  নতুন ডিভাইস সনাক্ত হয়েছে। {(twoFactorState?.role === 'hospital' || role === 'hospital') ? 'হাসপাতাল' : 'ডাক্তার'} অ্যাকাউন্টের সুরক্ষায় আপনার নিবন্ধিত মোবাইল নম্বর{' '}
+                  <strong style={{ color: '#0F172A' }}>{twoFactorState.masked_mobile || '017****'}</strong>
+                  -এ ৬ ডিজিটের ওটিপি পাঠানো হয়েছে।
+                </p>
+              </div>
+
+              {twoFactorState.dev_otp && (
+                <div 
+                  onClick={() => setOtp(twoFactorState.dev_otp)}
+                  style={{
+                    background: '#FEF3C7', border: '1px dashed #F59E0B', borderRadius: 8,
+                    padding: '8px 12px', fontSize: 12, color: '#92400E', marginBottom: 16,
+                    cursor: 'pointer', textAlign: 'center'
+                  }}
+                  title="ক্লিক করে ওটিপি বসান"
+                >
+                  ⚡ টেস্ট মোড ওটিপি: <strong>{twoFactorState.dev_otp}</strong> (ক্লিক করলে স্বয়ংক্রিয় বসবে)
+                </div>
+              )}
+
+              {otpError && (
+                <div style={{
+                  background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B',
+                  borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16,
+                  display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyDoctor2Fa}>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    ৬ ডিজিটের ওটিপি কোড
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    autoFocus
+                    placeholder="••••••"
+                    value={otp}
+                    onChange={(e) => {
+                      setOtp(e.target.value.replace(/\D/g, ''))
+                      setOtpError('')
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: 22,
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      letterSpacing: '8px',
+                      borderRadius: 10,
+                      border: '2px solid #CBD5E1',
+                      outline: 'none',
+                      color: '#0F172A',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#0D9488'}
+                    onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                    <input
+                      type="checkbox"
+                      checked={trustDevice}
+                      onChange={(e) => setTrustDevice(e.target.checked)}
+                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#0D9488' }}
+                    />
+                    <span>এই ডিভাইসে আর জিজ্ঞাসা করবেন না</span>
+                  </label>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={otpLoading || otp.length < 6}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    background: 'linear-gradient(135deg, #0D9488 0%, #0F766E 100%)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: otpLoading || otp.length < 6 ? 'not-allowed' : 'pointer',
+                    opacity: otp.length < 6 ? 0.7 : 1
+                  }}
+                >
+                  {otpLoading ? (
+                    <><span className="spinner-border spinner-border-sm me-2" /> যাচাই করা হচ্ছে...</>
+                  ) : (
+                    <>যাচাই করুন ও প্রবেশ করুন <ArrowRight size={17} /></>
+                  )}
+                </Button>
+
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTwoFactorState(null)
+                      setOtp('')
+                      setOtpError('')
+                    }}
+                    style={{
+                      background: 'none', border: 'none', color: '#64748B', fontSize: 13,
+                      cursor: 'pointer', textDecoration: 'underline'
+                    }}
+                  >
+                    লগইন পেজে ফিরে যান
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
           <div className="slide-in-right">
             
             {/* Header */}
@@ -354,14 +547,9 @@ function LoginPage() {
 
               {/* Password Field */}
               <Form.Group style={{ marginBottom: 16 }}>
-                <div className="d-flex justify-content-between align-items-center">
-                  <Form.Label className="auth-label-premium mb-0" style={{ color: !role ? '#94A3B8' : undefined }}>
-                    পাসওয়ার্ড {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
-                  </Form.Label>
-                  <Link to="/forgot-password" style={{ fontSize: 12.5, color: !role ? '#CBD5E1' : '#0D9488', fontWeight: 600, textDecoration: 'none', pointerEvents: !role ? 'none' : 'auto' }}>
-                    ভুলে গেছেন?
-                  </Link>
-                </div>
+                <Form.Label className="auth-label-premium mb-0" style={{ color: !role ? '#94A3B8' : undefined }}>
+                  পাসওয়ার্ড {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
+                </Form.Label>
                 <div
                   className="input-group-premium mt-1.5"
                   onClick={handleLockedFieldClick}
@@ -404,11 +592,31 @@ function LoginPage() {
                     {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
+
                 {fieldErrors.password && (
-                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.password}
                   </p>
                 )}
+
+                {/* Google Style Natural Placement: Forgot Password Link below input */}
+                <div style={{ textAlign: 'right', marginTop: 6, marginBottom: 2 }}>
+                  <Link 
+                    to="/forgot-password" 
+                    style={{ 
+                      fontSize: 12.5, 
+                      color: !role ? '#CBD5E1' : '#0D9488', 
+                      fontWeight: 600, 
+                      textDecoration: 'none', 
+                      pointerEvents: !role ? 'none' : 'auto',
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={(e) => { if (role) e.target.style.textDecoration = 'underline'; }}
+                    onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                  >
+                    পাসওয়ার্ড ভুলে গেছেন?
+                  </Link>
+                </div>
               </Form.Group>
 
               {fieldErrors.general && (
@@ -446,11 +654,11 @@ function LoginPage() {
                 </Link>
               </p>
             </div>
-
           </div>
-        </div>
+        )}
       </div>
     </div>
+  </div>
   )
 }
 

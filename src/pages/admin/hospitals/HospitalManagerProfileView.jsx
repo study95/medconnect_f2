@@ -127,7 +127,7 @@ export default function HospitalManagerProfileView({ hospitalId }) {
             <span>{exporting ? 'Exporting...' : 'Download PDF'}</span>
           </button>
           <Link
-            to={`/admin/hospitals/edit/${hospital.id}`}
+            to={`/hospital/my-hospital/edit/${hospital.id}`}
             className="admin-btn admin-btn-primary"
             style={{ borderRadius: 10, height: 40, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, padding: '0 20px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', border: 'none', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)' }}
           >

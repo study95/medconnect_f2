@@ -169,7 +169,7 @@ function formatExperiencePeriod(fromDate, toDate, isCurrent) {
 export default function DoctorFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin, fetchCurrentUser } = useAuth()
+  const { isAdmin, isDoctor, isManager, fetchCurrentUser } = useAuth()
   const { showSuccess, showError } = useDialog()
   const isEdit = !!id
   const canEditPhone = isAdmin || !isEdit
@@ -610,7 +610,8 @@ export default function DoctorFormPage() {
         })
       }
       
-      setTimeout(() => navigate('/admin/doctors'), 700)
+      const returnPath = isDoctor ? '/doctor/my-profile' : (isManager ? '/hospital/doctors' : '/admin/doctors')
+      setTimeout(() => navigate(returnPath), 700)
     } catch (err) {
       if (err.response?.data?.errors) {
         const errs = err.response.data.errors
@@ -648,7 +649,7 @@ export default function DoctorFormPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>{isEdit ? '🩺 Edit Doctor Profile' : '👨‍⚕️ Register New Doctor'}</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Manage professional credentials, media, and geographical presence</p>
         </div>
-        <Link to="/admin/doctors" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back to List</Link>
+        <Link to={isDoctor ? '/doctor/my-profile' : (isManager ? '/hospital/doctors' : '/admin/doctors')} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 32 }}>

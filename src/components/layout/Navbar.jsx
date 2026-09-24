@@ -76,6 +76,13 @@ function AppNavbar() {
     return 'ম্যানেজমেন্ট প্যানেল'
   }
 
+  const getDashboardPath = () => {
+    if (isAdmin) return '/admin'
+    if (isDoctor) return '/doctor'
+    if (isManager) return '/hospital'
+    return '/admin'
+  }
+
   const NAV_LINKS = [
     { label: 'হোম', path: '/', isHome: true },
     { label: 'ডাক্তার', path: '/doctors' },
@@ -384,7 +391,7 @@ function AppNavbar() {
               </Link>
 
               {isLoggedIn && isStaff && (
-                <NotificationDropdown targetPath="/admin/notifications" iconColor="#ffffff" />
+                <NotificationDropdown targetPath={`${getDashboardPath()}/notifications`} iconColor="#ffffff" />
               )}
 
               {isLoggedIn ? (
@@ -410,7 +417,7 @@ function AppNavbar() {
                       <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
                     </NavDropdown.Item>
                     {isStaff && (
-                      <NavDropdown.Item as={Link} to="/admin" className="user-dropdown-item">
+                      <NavDropdown.Item as={Link} to={getDashboardPath()} className="user-dropdown-item">
                         <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
                       </NavDropdown.Item>
                     )}
@@ -578,7 +585,7 @@ function AppNavbar() {
                   <Calendar size={16} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
                 </Nav.Link>
                 {isStaff && (
-                  <Nav.Link as={Link} to="/admin" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#003820' }}>
+                  <Nav.Link as={Link} to={getDashboardPath()} onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#003820' }}>
                     <LayoutGrid size={16} className="me-2" /> {getAdminLinkLabel()}
                   </Nav.Link>
                 )}
