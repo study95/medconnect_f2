@@ -404,34 +404,129 @@ function formatExactDateTime(dateStr) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-function getUserPublicIdOrName(log) {
-  // 1. If public_id exists (Doctor, Hospital, Patient, Chamber), show that Public ID!
-  if (log.public_id) {
-    return { value: log.public_id, isPublicId: true, label: log.public_id }
+function resolveActorIdentity(log) {
+  if (!log) {
+    return {
+      name: 'System',
+      role: 'AUTOMATED',
+      publicId: null,
+      email: null,
+      primaryText: 'System',
+      secondaryText: 'AUTOMATED',
+      isPublicId: false,
+      label: 'System'
+    }
   }
 
-  // 2. If it's an Admin or named User, show their Name (e.g. Super Admin)
-  if (log.user_name) {
-    return { value: log.user_name, isPublicId: false, label: log.user_name }
-  }
+  // 1. Check if the actor user has an associated profile with a public_id (Patient, Doctor, Hospital)
+  const actorPublicId = log.user?.patient?.public_id ||
+                        log.user?.doctor?.public_id ||
+                        log.user?.hospital?.public_id ||
+                        null
 
-  // 3. If user_email is present
-  if (log.user_email) {
-    return { value: log.user_email, isPublicId: false, label: log.user_email }
-  }
+  // 2. Resolve actor display name
+  const actorName = log.user_name || log.user?.name || null
 
-  // 4. If login failed / OTP / login attempt, extract target email from description
+  // 3. Resolve actor role
+  const rawRole = log.user_role || log.user?.role || log.user?.registration_type || null
+  const role = rawRole ? rawRole.toUpperCase() : null
+
+  // 4. Resolve email
   const emailInDesc = log.description?.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[1]
-  if (emailInDesc) {
-    return { value: emailInDesc, isPublicId: false, label: emailInDesc }
+  const email = log.user_email || log.user?.email || emailInDesc || null
+
+  // Case A: Has both name and actor public ID (e.g. Patient "Rakib", PT-U35HFW)
+  if (actorName && actorPublicId) {
+    return {
+      name: actorName,
+      role: role || 'PATIENT',
+      publicId: actorPublicId,
+      email,
+      primaryText: actorName,
+      secondaryText: actorPublicId,
+      isPublicId: true,
+      label: `${actorName} (${actorPublicId})`
+    }
   }
 
-  // 5. If user_id exists, show User #ID
+  // Case B: Has actor public ID only
+  if (actorPublicId) {
+    return {
+      name: actorName || actorPublicId,
+      role: role || 'USER',
+      publicId: actorPublicId,
+      email,
+      primaryText: actorPublicId,
+      secondaryText: role || null,
+      isPublicId: true,
+      label: actorPublicId
+    }
+  }
+
+  // Case C: Has name (e.g. "Super Admin" or admin user)
+  if (actorName) {
+    return {
+      name: actorName,
+      role: role || (log.user_id ? 'USER' : 'SYSTEM'),
+      publicId: null,
+      email,
+      primaryText: actorName,
+      secondaryText: role || (log.user_id ? `#${log.user_id}` : null),
+      isPublicId: false,
+      label: role ? `${actorName} [${role}]` : actorName
+    }
+  }
+
+  // Case D: Has email (e.g. login attempt, guest, or unlinked user)
+  if (email) {
+    return {
+      name: email,
+      role: role || 'GUEST',
+      publicId: null,
+      email,
+      primaryText: email,
+      secondaryText: role || 'GUEST',
+      isPublicId: false,
+      label: email
+    }
+  }
+
+  // Case E: Has user_id only
   if (log.user_id) {
-    return { value: `#${log.user_id}`, isPublicId: false, label: `User #${log.user_id}` }
+    return {
+      name: `User #${log.user_id}`,
+      role: role || 'USER',
+      publicId: null,
+      email: null,
+      primaryText: `User #${log.user_id}`,
+      secondaryText: role || null,
+      isPublicId: false,
+      label: `User #${log.user_id}`
+    }
   }
 
-  return { value: '—', isPublicId: false, label: 'System' }
+  // Case F: System / automated
+  return {
+    name: 'System',
+    role: 'AUTOMATED',
+    publicId: null,
+    email: null,
+    primaryText: 'System',
+    secondaryText: 'AUTOMATED',
+    isPublicId: false,
+    label: 'System'
+  }
+}
+
+function getUserPublicIdOrName(log) {
+  const actor = resolveActorIdentity(log)
+  return {
+    value: actor.primaryText,
+    secondary: actor.secondaryText,
+    isPublicId: actor.isPublicId,
+    label: actor.label,
+    actor
+  }
 }
 
 // ── Center Details Modal (Center Popup Dialog) ──────────────────────────────
@@ -463,6 +558,7 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
 
   if (!log) return null
 
+  const actor = resolveActorIdentity(log)
   const actionCfg = getActionMeta(log.action)
   const ActionIcon = actionCfg.IconComponent || Activity
   const entityLabel = log.model_label || (log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : null))
@@ -837,18 +933,30 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
               User / Actor Information
             </div>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12,
               padding: '12px 14px', borderRadius: 10, background: 'var(--admin-card-bg, #ffffff)',
               border: '1px solid var(--admin-border, #f1f5f9)'
             }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 2 }}>User Name</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>{log.user_name || 'System Actor'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>{actor.name}</div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 2 }}>Role</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)', textTransform: 'capitalize' }}>{log.user_role || 'Automated'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)', textTransform: 'capitalize' }}>{actor.role || 'Automated'}</div>
               </div>
+              {actor.publicId && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Actor Public ID</div>
+                  <CopyableBadge value={actor.publicId} />
+                </div>
+              )}
+              {log.user_id && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Actor User ID</div>
+                  <CopyableBadge value={String(log.user_id)} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -858,13 +966,13 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
               Event Metadata
             </div>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12,
               padding: '12px 14px', borderRadius: 10, background: 'var(--admin-card-bg, #ffffff)',
               border: '1px solid var(--admin-border, #f1f5f9)'
             }}>
               {log.public_id && (
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Public ID</div>
+                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Resource Public ID</div>
                   <CopyableBadge value={String(log.public_id)} />
                 </div>
               )}
@@ -876,10 +984,10 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
                   </div>
                 </div>
               )}
-              {log.user_id && (
+              {log.model_id && (
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Actor User ID</div>
-                  <CopyableBadge value={String(log.user_id)} />
+                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Entity Database ID</div>
+                  <CopyableBadge value={String(log.model_id)} />
                 </div>
               )}
               <div>
@@ -1073,24 +1181,24 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
                 <tbody>
                   <tr>
                     <td style={{ padding: '4px 0', color: '#64748b', width: '38%' }}>Actor Name:</td>
-                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a' }}>{log.user_name || 'Anonymous / Unauthenticated'}</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a' }}>{actor.name}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 0', color: '#64748b' }}>Account Email:</td>
-                    <td style={{ padding: '4px 0', fontWeight: 600, color: '#0f172a' }}>{log.user_email || '—'}</td>
+                    <td style={{ padding: '4px 0', fontWeight: 600, color: '#0f172a' }}>{actor.email || '—'}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 0', color: '#64748b' }}>System Role:</td>
                     <td style={{ padding: '4px 0' }}>
                       <span style={{ background: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
-                        {log.role ? log.role.toUpperCase() : 'GUEST / VISITOR'}
+                        {actor.role || 'GUEST / VISITOR'}
                       </span>
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>Public / User ID:</td>
-                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0284c7', fontFamily: 'monospace' }}>
-                      {log.public_id || (log.user_id ? `#${log.user_id}` : 'None')}
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Actor Identity:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#4f46e5', fontFamily: 'monospace' }}>
+                      {actor.publicId ? `${actor.publicId} (Profile)` : (log.user_id ? `#${log.user_id}` : 'System')}
                     </td>
                   </tr>
                 </tbody>
@@ -1112,6 +1220,12 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
                     <td style={{ padding: '4px 0', color: '#64748b' }}>Target ID:</td>
                     <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{log.model_id ? `#${log.model_id}` : '—'}</td>
                   </tr>
+                  {log.public_id && (
+                    <tr>
+                      <td style={{ padding: '4px 0', color: '#64748b' }}>Resource Public ID:</td>
+                      <td style={{ padding: '4px 0', fontWeight: 700, color: '#0284c7', fontFamily: 'monospace' }}>{log.public_id}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td style={{ padding: '4px 0', color: '#64748b' }}>Entity Label:</td>
                     <td style={{ padding: '4px 0', fontWeight: 600, color: '#0284c7' }}>{entityLabel || '—'}</td>
@@ -2627,7 +2741,7 @@ export default function AuditLogPage() {
         {/* Table Header Row (Image 1 Style) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 180px 150px 80px',
+          gridTemplateColumns: '1fr 180px 170px 70px',
           padding: '12px 20px', gap: 16, alignItems: 'center',
           background: 'var(--admin-bg, #f8fafc)',
           borderBottom: '1px solid var(--admin-border, #e2e8f0)',
@@ -2642,7 +2756,7 @@ export default function AuditLogPage() {
             <span style={{ fontSize: 12, color: '#94a3b8' }}>▲</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>User / Public ID</span>
+            <span>User / Actor</span>
             <span style={{ fontSize: 12, color: '#94a3b8' }}>⇅</span>
           </div>
           <div style={{ textAlign: 'right', color: 'var(--admin-text-muted, #64748b)', fontSize: 12, fontWeight: 600 }}>
@@ -2676,7 +2790,7 @@ export default function AuditLogPage() {
                 onClick={() => setSelectedLogIndex(index)}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 180px 150px 80px',
+                  gridTemplateColumns: '1fr 180px 170px 70px',
                   padding: '11px 20px', gap: 16, alignItems: 'center',
                   minHeight: 48, boxSizing: 'border-box',
                   borderBottom: '1px solid var(--admin-border, #f1f5f9)',
@@ -2717,20 +2831,41 @@ export default function AuditLogPage() {
                   {formatExactDateTime(log.created_at)}
                 </div>
 
-                {/* 3. User / Public ID Column */}
+                {/* 3. User / Actor Column */}
                 <div
                   style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    minWidth: 0,
+                    lineHeight: 1.3
+                  }}
+                  title={actorInfo.label}
+                >
+                  <div style={{
                     fontSize: 12.5,
-                    fontFamily: actorInfo.isPublicId ? 'monospace' : 'inherit',
-                    color: actorInfo.isPublicId ? '#4338ca' : '#1e293b',
-                    fontWeight: actorInfo.isPublicId ? 700 : 600,
+                    fontWeight: 600,
+                    color: '#1e293b',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
-                  }}
-                  title={log.user_name ? `${log.user_name} (${log.user_role || 'User'})` : actorInfo.label}
-                >
-                  {actorInfo.value}
+                  }}>
+                    {actorInfo.value}
+                  </div>
+                  {actorInfo.secondary && (
+                    <div style={{
+                      fontSize: 11,
+                      fontFamily: actorInfo.isPublicId ? 'monospace' : 'inherit',
+                      fontWeight: actorInfo.isPublicId ? 700 : 500,
+                      color: actorInfo.isPublicId ? '#4f46e5' : '#64748b',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      letterSpacing: actorInfo.isPublicId ? '0.02em' : 'normal'
+                    }}>
+                      {actorInfo.secondary}
+                    </div>
+                  )}
                 </div>
 
                 {/* 4. Actions Column */}
