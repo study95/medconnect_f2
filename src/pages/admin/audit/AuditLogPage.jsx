@@ -24,6 +24,7 @@ const RESOURCE_META = {
   Patient:             { IconComponent: UserIcon,    label: 'Patient',      badgeBg: '#f3e8ff', color: '#7e22ce' },
   Appointment:         { IconComponent: Calendar,    label: 'Appointment',  badgeBg: '#fef3c7', color: '#b45309' },
   Prescription:        { IconComponent: Pill,        label: 'Prescription', badgeBg: '#fce7f3', color: '#be185d' },
+  prescription:        { IconComponent: Pill,        label: 'Prescription', badgeBg: '#fce7f3', color: '#be185d' },
   DoctorChamber:       { IconComponent: Building,    label: 'Chamber',      badgeBg: '#e0e7ff', color: '#4338ca' },
   User:                { IconComponent: UserIcon,    label: 'User',         badgeBg: '#f1f5f9', color: '#475569' },
   Auth:                { IconComponent: Lock,        label: 'Auth',         badgeBg: '#ede9fe', color: '#6d28d9' },
@@ -59,6 +60,58 @@ const ACTION_CONFIG = {
   export:                            { label: 'Exported',       color: '#d97706', bg: '#fffbeb', IconComponent: Download },
   status_change:                     { label: 'Status Changed', color: '#0891b2', bg: '#ecfeff', IconComponent: Activity },
   bulk_action:                       { label: 'Bulk Action',    color: '#c026d3', bg: '#fdf4ff', IconComponent: Flame },
+}
+
+const FILTER_RESOURCE_OPTIONS = [
+  { value: '', label: 'All Resources' },
+  { value: 'Doctor', label: 'Doctor' },
+  { value: 'Hospital', label: 'Hospital' },
+  { value: 'Patient', label: 'Patient' },
+  { value: 'Appointment', label: 'Appointment' },
+  { value: 'Prescription', label: 'Prescription' },
+  { value: 'DoctorChamber', label: 'Chamber' },
+  { value: 'User', label: 'User' },
+  { value: 'Auth', label: 'Auth & Security' },
+  { value: 'DoctorSubscription', label: 'Subscription' },
+  { value: 'SubscriptionPackage', label: 'Package' },
+  { value: 'PromoCode', label: 'Promo Code' },
+]
+
+const ACTION_FILTER_GROUPS = [
+  {
+    group: 'Authentication & Access',
+    options: [
+      { value: 'all_logins', label: '🔑 All Logins (Standard & 2FA)' },
+      { value: '2fa_login', label: '🛡️ 2FA Verified Logins' },
+      { value: 'login_failed', label: '❌ Failed Logins & Alerts' },
+      { value: 'otp', label: '📱 OTP Generated / Sent' },
+      { value: 'logout', label: '🚪 Logged Out' },
+    ]
+  },
+  {
+    group: 'Data Modifications',
+    options: [
+      { value: 'create', label: '➕ Created Records' },
+      { value: 'update', label: '✏️ Updated / Edited' },
+      { value: 'delete', label: '🗑️ Deleted Records' },
+      { value: 'status_change', label: '⚡ Status Changed' },
+    ]
+  },
+  {
+    group: 'System & Security',
+    options: [
+      { value: 'export', label: '📥 Data Exports' },
+      { value: 'admin_honeypot_triggered', label: '⚠️ Honeypot Traps' },
+    ]
+  }
+]
+
+function getActionFilterLabel(val) {
+  for (const grp of ACTION_FILTER_GROUPS) {
+    const found = grp.options.find(o => o.value === val)
+    if (found) return found.label.replace(/^[\p{Emoji}\s]+/u, '')
+  }
+  return val
 }
 
 function getActionMeta(action) {
@@ -133,7 +186,7 @@ function ResourceBadge({ module: resourceModule }) {
   )
 }
 
-function CopyableBadge({ label, value }) {
+function CopyableBadge({ label, value, displayText }) {
   const [copied, setCopied] = useState(false)
   const handleCopy = (e) => {
     e.stopPropagation()
@@ -143,19 +196,21 @@ function CopyableBadge({ label, value }) {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const shownText = displayText !== undefined ? displayText : (value && value.length > 25 ? 'Copy' : value)
+
   return (
     <button
       onClick={handleCopy}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
+        display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
         padding: '3px 8px', borderRadius: 6, fontSize: 11, fontFamily: 'monospace',
         background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155',
-        cursor: 'pointer', transition: 'all 0.15s ease'
+        cursor: 'pointer', transition: 'all 0.15s ease', flexShrink: 0
       }}
       title="Click to copy"
     >
       {label && <span style={{ color: '#64748b', fontWeight: 600 }}>{label}:</span>}
-      <span>{value}</span>
+      {shownText && <span>{shownText}</span>}
       {copied ? <Check size={11} color="#16a34a" /> : <Copy size={11} color="#94a3b8" />}
     </button>
   )
@@ -407,6 +462,7 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
   const ActionIcon = actionCfg.IconComponent || Activity
   const entityLabel = log.model_label || (log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : null))
   const isHighRisk = log.risk_level === 'high' || log.risk_level === 'critical'
+  const isThreat = isHighRisk || log.action === 'admin_honeypot_triggered' || String(log.action || '').toLowerCase().includes('fail')
   const clientInfo = detectClientType(log.user_agent)
 
   return (
@@ -632,11 +688,22 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
                 </div>
               </div>
 
-              {/* ৩. Target Endpoint / Route */}
+              {/* ৩. API Endpoint / Route & Source Page */}
               <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', marginBottom: 4 }}>
-                  ৩. Request URL (আক্রান্ত প্রবেশদ্বার)
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+                    {isThreat ? '৩. Target Endpoint (আক্রান্ত বা টার্গেট প্রবেশদ্বার)' : '৩. API Endpoint (অনুরোধকৃত ব্যাকএন্ড এপিআই)'}
+                  </span>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 9999, fontSize: 10.5, fontWeight: 700,
+                    color: isThreat ? '#b91c1c' : '#0369a1',
+                    background: isThreat ? '#fef2f2' : '#f0f9ff',
+                    border: `1px solid ${isThreat ? '#fca5a5' : '#bae6fd'}`
+                  }}>
+                    {isThreat ? 'Security Event' : 'Backend API'}
+                  </span>
                 </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{
                     padding: '3px 7px', borderRadius: 4, fontSize: 11, fontWeight: 800, fontFamily: 'monospace',
@@ -647,12 +714,38 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
                   </span>
                   <span style={{
                     fontSize: 11.5, fontFamily: 'monospace', color: 'var(--admin-text, #0f172a)',
-                    background: '#f8fafc', padding: '4px 8px', borderRadius: 6, border: '1px solid #f1f5f9',
+                    background: '#f8fafc', padding: '5px 8px', borderRadius: 6, border: '1px solid #f1f5f9',
                     wordBreak: 'break-all', flex: 1
                   }}>
                     {log.request_url || '—'}
                   </span>
+                  {log.request_url && <CopyableBadge value={log.request_url} />}
                 </div>
+
+                {/* Frontend Referer / Source Page */}
+                {(() => {
+                  const referer = log.tags?.referer || (log.request_url?.includes('admin-login') ? 'http://localhost:5173/admin-secure-access' : null)
+                  if (!referer) return null
+
+                  return (
+                    <div style={{
+                      marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                      background: '#f8fafc', border: '1px solid #e2e8f0',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <Globe size={12} color="#0D9488" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>
+                          Frontend Page:
+                        </span>
+                        <span style={{ fontSize: 11.5, fontFamily: 'monospace', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {referer}
+                        </span>
+                      </div>
+                      <CopyableBadge value={referer} />
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* ৪. Exact Timestamp & Velocity */}
@@ -815,16 +908,60 @@ export default function AuditLogPage() {
   const [moduleFilter, setModuleFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [riskFilter, setRiskFilter] = useState('')
+  const [datePreset, setDatePreset] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 20 })
+  const [perPage, setPerPage] = useState(10)
+  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10, from: 1, to: 10 })
 
-  const fetchLogs = useCallback(async (page = 1) => {
+  const handleDatePresetChange = (preset) => {
+    setDatePreset(preset)
+    if (preset === 'custom') return
+
+    const today = new Date()
+    const formatDate = (d) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    if (preset === 'today') {
+      const dStr = formatDate(today)
+      setDateFrom(dStr)
+      setDateTo(dStr)
+    } else if (preset === 'yesterday') {
+      const y = new Date(today)
+      y.setDate(y.getDate() - 1)
+      const dStr = formatDate(y)
+      setDateFrom(dStr)
+      setDateTo(dStr)
+    } else if (preset === '7days') {
+      const past = new Date(today)
+      past.setDate(past.getDate() - 7)
+      setDateFrom(formatDate(past))
+      setDateTo(formatDate(today))
+    } else if (preset === '30days') {
+      const past = new Date(today)
+      past.setDate(past.getDate() - 30)
+      setDateFrom(formatDate(past))
+      setDateTo(formatDate(today))
+    } else if (preset === 'month') {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      setDateFrom(formatDate(startOfMonth))
+      setDateTo(formatDate(today))
+    } else if (preset === 'all') {
+      setDateFrom('')
+      setDateTo('')
+    }
+  }
+
+  const fetchLogs = useCallback(async (page = 1, currentPerPage = perPage) => {
     try {
       setLoading(true)
       const params = {
         page,
-        per_page: pagination.per_page || 20,
+        per_page: currentPerPage,
         ...(search && { search }),
         ...(moduleFilter && { module: moduleFilter }),
         ...(actionFilter && { action: actionFilter }),
@@ -840,7 +977,9 @@ export default function AuditLogPage() {
           current_page: data.current_page,
           last_page: data.last_page,
           total: data.total,
-          per_page: data.per_page
+          per_page: data.per_page,
+          from: data.from,
+          to: data.to
         })
       }
     } catch (err) {
@@ -848,7 +987,7 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, moduleFilter, actionFilter, riskFilter, dateFrom, dateTo, pagination.per_page])
+  }, [search, moduleFilter, actionFilter, riskFilter, dateFrom, dateTo, perPage])
 
   const fetchStats = useCallback(async () => {
     try {
@@ -927,13 +1066,19 @@ export default function AuditLogPage() {
     setModuleFilter('')
     setActionFilter('')
     setRiskFilter('')
+    setDatePreset('all')
     setDateFrom('')
     setDateTo('')
   }
 
   const changePage = (p) => {
     if (p < 1 || p > pagination.last_page) return
-    fetchLogs(p)
+    fetchLogs(p, perPage)
+  }
+
+  const handlePerPageChange = (newSize) => {
+    setPerPage(newSize)
+    fetchLogs(1, newSize)
   }
 
   const selectedLog = selectedLogIndex !== null ? logs[selectedLogIndex] : null
@@ -996,22 +1141,16 @@ export default function AuditLogPage() {
 
       {/* ── Stats Metric Cards (4 Balanced Cards - Mutually Exclusive Selection) ── */}
       {stats && (() => {
-        const isToday = Boolean(dateFrom && !riskFilter && !actionFilter)
+        const isToday = Boolean(datePreset === 'today' || (dateFrom && dateFrom === dateTo && !riskFilter && !actionFilter))
         const isRisk = Boolean(riskFilter === 'high' && !dateFrom && !actionFilter)
-        const isLogin = Boolean(actionFilter === 'login' && !dateFrom && !riskFilter)
-        const isAll = !isToday && !isRisk && !isLogin
+        const isLogin = Boolean((actionFilter === 'login' || actionFilter === 'all_logins') && !dateFrom && !riskFilter)
+        const isAll = !isToday && !isRisk && !isLogin && !search && !moduleFilter
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 20 }}>
             {/* 1. Total Events */}
             <div
-              onClick={() => {
-                setRiskFilter('')
-                setActionFilter('')
-                setDateFrom('')
-                setDateTo('')
-                setSearch('')
-              }}
+              onClick={clearFilters}
               title="Click to show all events"
               style={{
                 background: 'var(--admin-card-bg, #ffffff)',
@@ -1041,14 +1180,11 @@ export default function AuditLogPage() {
             <div
               onClick={() => {
                 if (isToday) {
-                  setDateFrom('')
-                  setDateTo('')
+                  handleDatePresetChange('all')
                 } else {
                   setRiskFilter('')
                   setActionFilter('')
-                  const todayStr = new Date().toISOString().split('T')[0]
-                  setDateFrom(todayStr)
-                  setDateTo(todayStr)
+                  handleDatePresetChange('today')
                 }
               }}
               title="Click to toggle today's events filter"
@@ -1082,8 +1218,7 @@ export default function AuditLogPage() {
                 if (isRisk) {
                   setRiskFilter('')
                 } else {
-                  setDateFrom('')
-                  setDateTo('')
+                  handleDatePresetChange('all')
                   setActionFilter('')
                   setRiskFilter('high')
                 }
@@ -1119,10 +1254,9 @@ export default function AuditLogPage() {
                 if (isLogin) {
                   setActionFilter('')
                 } else {
-                  setDateFrom('')
-                  setDateTo('')
+                  handleDatePresetChange('all')
                   setRiskFilter('')
-                  setActionFilter('login')
+                  setActionFilter('all_logins')
                 }
               }}
               title="Click to toggle login events filter"
@@ -1154,96 +1288,263 @@ export default function AuditLogPage() {
       })()}
 
       {/* ── Toolbar & Filter Bar ── */}
-      <div style={{
-        background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
-        borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        display: 'flex', flexDirection: 'column', gap: 12
-      }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {/* Search Box */}
-          <div style={{ position: 'relative', flex: '1 1 260px' }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#94a3b8' }} />
-            <input
-              type="text"
-              placeholder="Search by action, description, user, IP..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '100%', height: 40, paddingLeft: 36, paddingRight: 12,
-                borderRadius: 9, border: '1px solid var(--admin-border, #e2e8f0)',
-                background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
-                fontSize: 13, outline: 'none'
-              }}
-            />
+      {(() => {
+        const activeFilters = []
+        if (search) activeFilters.push({ type: 'search', label: `Search: "${search.length > 20 ? search.slice(0, 20) + '…' : search}"`, onClear: () => setSearch('') })
+        if (moduleFilter) {
+          const resOption = FILTER_RESOURCE_OPTIONS.find(o => o.value === moduleFilter)
+          activeFilters.push({ type: 'module', label: `Resource: ${resOption?.label || moduleFilter}`, onClear: () => setModuleFilter('') })
+        }
+        if (actionFilter) {
+          activeFilters.push({ type: 'action', label: `Action: ${getActionFilterLabel(actionFilter)}`, onClear: () => setActionFilter('') })
+        }
+        if (riskFilter) {
+          activeFilters.push({ type: 'risk', label: `Risk: ${riskFilter.toUpperCase()}`, onClear: () => setRiskFilter('') })
+        }
+        if (dateFrom || dateTo) {
+          const dateLabel = datePreset === 'today' ? 'Date: Today'
+            : datePreset === 'yesterday' ? 'Date: Yesterday'
+            : datePreset === '7days' ? 'Date: Last 7 Days'
+            : datePreset === '30days' ? 'Date: Last 30 Days'
+            : datePreset === 'month' ? 'Date: This Month'
+            : `Date: ${dateFrom || 'Start'} → ${dateTo || 'End'}`
+          activeFilters.push({
+            type: 'date',
+            label: dateLabel,
+            onClear: () => {
+              setDatePreset('all')
+              setDateFrom('')
+              setDateTo('')
+            }
+          })
+        }
+
+        return (
+          <div style={{
+            background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
+            borderRadius: 14, padding: '14px 16px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            display: 'flex', flexDirection: 'column', gap: 10
+          }}>
+            {/* Filter Inputs Grid / Row */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Search Box */}
+              <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
+                <Search size={15} style={{ position: 'absolute', left: 11, top: 12, color: search ? '#0D9488' : '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search user, public ID, email, action, IP..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{
+                    width: '100%', height: 38, paddingLeft: 34, paddingRight: search ? 32 : 12,
+                    borderRadius: 8,
+                    border: search ? '1.5px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                    background: search ? '#f0fdfa' : 'var(--admin-bg, #f8fafc)',
+                    color: 'var(--admin-text, #0f172a)',
+                    fontSize: 13, outline: 'none', transition: 'all 0.15s ease'
+                  }}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    style={{
+                      position: 'absolute', right: 8, top: 10, background: 'none',
+                      border: 'none', cursor: 'pointer', padding: 2, display: 'flex',
+                      alignItems: 'center', color: '#94a3b8'
+                    }}
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Resource / Module Filter */}
+              <select
+                value={moduleFilter}
+                onChange={e => setModuleFilter(e.target.value)}
+                style={{
+                  height: 38, padding: '0 10px', borderRadius: 8,
+                  border: moduleFilter ? '1.5px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                  background: moduleFilter ? '#f0fdfa' : 'var(--admin-bg, #f8fafc)',
+                  color: 'var(--admin-text, #0f172a)',
+                  fontWeight: moduleFilter ? 600 : 400,
+                  fontSize: 13, minWidth: 135, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                {FILTER_RESOURCE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+
+              {/* Action Filter (Organized & Grouped) */}
+              <select
+                value={actionFilter}
+                onChange={e => setActionFilter(e.target.value)}
+                style={{
+                  height: 38, padding: '0 10px', borderRadius: 8,
+                  border: actionFilter ? '1.5px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                  background: actionFilter ? '#f0fdfa' : 'var(--admin-bg, #f8fafc)',
+                  color: 'var(--admin-text, #0f172a)',
+                  fontWeight: actionFilter ? 600 : 400,
+                  fontSize: 13, minWidth: 150, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                <option value="">All Actions</option>
+                {ACTION_FILTER_GROUPS.map(grp => (
+                  <optgroup key={grp.group} label={grp.group}>
+                    {grp.options.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+
+              {/* Risk Level Filter */}
+              <select
+                value={riskFilter}
+                onChange={e => setRiskFilter(e.target.value)}
+                style={{
+                  height: 38, padding: '0 10px', borderRadius: 8,
+                  border: riskFilter ? '1.5px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                  background: riskFilter ? '#f0fdfa' : 'var(--admin-bg, #f8fafc)',
+                  color: 'var(--admin-text, #0f172a)',
+                  fontWeight: riskFilter ? 600 : 400,
+                  fontSize: 13, minWidth: 120, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                <option value="">All Risks</option>
+                <option value="low">🟢 Low Risk</option>
+                <option value="medium">🟡 Medium Risk</option>
+                <option value="high">🔴 High Risk</option>
+                <option value="critical">🟣 Critical Risk</option>
+              </select>
+
+              {/* Date Preset Filter */}
+              <select
+                value={datePreset}
+                onChange={e => handleDatePresetChange(e.target.value)}
+                style={{
+                  height: 38, padding: '0 10px', borderRadius: 8,
+                  border: datePreset !== 'all' ? '1.5px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                  background: datePreset !== 'all' ? '#f0fdfa' : 'var(--admin-bg, #f8fafc)',
+                  color: 'var(--admin-text, #0f172a)',
+                  fontWeight: datePreset !== 'all' ? 600 : 400,
+                  fontSize: 13, minWidth: 125, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                <option value="all">📅 All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range...</option>
+              </select>
+
+              {/* Custom Date Pickers (Shown if Custom or Dates are Set) */}
+              {(datePreset === 'custom' || (datePreset !== 'all' && datePreset !== 'today' && datePreset !== 'yesterday' && datePreset !== '7days' && datePreset !== '30days' && datePreset !== 'month') || (datePreset === 'custom' && (dateFrom || dateTo))) && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => {
+                      setDatePreset('custom')
+                      setDateFrom(e.target.value)
+                    }}
+                    style={{
+                      height: 38, padding: '0 8px', borderRadius: 8,
+                      border: '1px solid var(--admin-border, #e2e8f0)',
+                      background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
+                      fontSize: 12.5, outline: 'none'
+                    }}
+                    title="From date"
+                  />
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>to</span>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => {
+                      setDatePreset('custom')
+                      setDateTo(e.target.value)
+                    }}
+                    style={{
+                      height: 38, padding: '0 8px', borderRadius: 8,
+                      border: '1px solid var(--admin-border, #e2e8f0)',
+                      background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
+                      fontSize: 12.5, outline: 'none'
+                    }}
+                    title="To date"
+                  />
+                </div>
+              )}
+
+              {/* Reset / Clear Button */}
+              {activeFilters.length > 0 && (
+                <button
+                  onClick={clearFilters}
+                  style={{
+                    height: 38, padding: '0 12px', borderRadius: 8,
+                    border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c',
+                    fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Clear all active filters"
+                >
+                  <X size={14} />
+                  <span>Reset ({activeFilters.length})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Active Filters Pill / Tag Tray */}
+            {activeFilters.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                paddingTop: 8, borderTop: '1px dashed var(--admin-border, #e2e8f0)',
+                marginTop: 2
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Active Filters:
+                </span>
+                {activeFilters.map(f => (
+                  <span
+                    key={f.type}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+                      background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1'
+                    }}
+                  >
+                    {f.label}
+                    <button
+                      onClick={f.onClear}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        display: 'flex', alignItems: 'center', color: '#64748b'
+                      }}
+                      title={`Remove ${f.type} filter`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={clearFilters}
+                  style={{
+                    background: 'none', border: 'none', color: '#ef4444',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    textDecoration: 'underline', padding: '2px 6px'
+                  }}
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Module Filter */}
-          <select
-            value={moduleFilter}
-            onChange={e => setModuleFilter(e.target.value)}
-            style={{
-              height: 40, padding: '0 12px', borderRadius: 9,
-              border: '1px solid var(--admin-border, #e2e8f0)',
-              background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
-              fontSize: 13, minWidth: 140
-            }}
-          >
-            <option value="">All Resources</option>
-            {Object.keys(RESOURCE_META).map(m => (
-              <option key={m} value={m}>{RESOURCE_META[m].label}</option>
-            ))}
-          </select>
-
-          {/* Action Filter */}
-          <select
-            value={actionFilter}
-            onChange={e => setActionFilter(e.target.value)}
-            style={{
-              height: 40, padding: '0 12px', borderRadius: 9,
-              border: '1px solid var(--admin-border, #e2e8f0)',
-              background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
-              fontSize: 13, minWidth: 130
-            }}
-          >
-            <option value="">All Actions</option>
-            {Object.keys(ACTION_CONFIG).map(a => (
-              <option key={a} value={a}>{ACTION_CONFIG[a].label}</option>
-            ))}
-          </select>
-
-          {/* Risk Filter */}
-          <select
-            value={riskFilter}
-            onChange={e => setRiskFilter(e.target.value)}
-            style={{
-              height: 40, padding: '0 12px', borderRadius: 9,
-              border: '1px solid var(--admin-border, #e2e8f0)',
-              background: 'var(--admin-bg, #f8fafc)', color: 'var(--admin-text, #0f172a)',
-              fontSize: 13, minWidth: 120
-            }}
-          >
-            <option value="">All Risks</option>
-            <option value="low">Low Risk</option>
-            <option value="medium">Medium Risk</option>
-            <option value="high">High Risk</option>
-            <option value="critical">Critical Risk</option>
-          </select>
-
-          {(search || moduleFilter || actionFilter || riskFilter || dateFrom || dateTo) && (
-            <button
-              onClick={clearFilters}
-              style={{
-                height: 40, padding: '0 14px', borderRadius: 9,
-                border: '1px solid #fee2e2', background: '#fef2f2', color: '#b91c1c',
-                fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 6
-              }}
-            >
-              <X size={14} /> Clear
-            </button>
-          )}
-        </div>
-      </div>
+        )
+      })()}
 
       {/* ── Enterprise Audit Log Table ── */}
       <div style={{
@@ -1360,59 +1661,30 @@ export default function AuditLogPage() {
                 </div>
 
                 {/* 4. Actions Column */}
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button
+                    className="admin-action-btn admin-action-btn-view"
                     onClick={(e) => {
                       e.stopPropagation()
                       setSelectedLogIndex(index)
                     }}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '5px 10px', borderRadius: 6,
-                      border: '1px solid var(--admin-border, #e2e8f0)',
-                      background: '#ffffff',
-                      color: '#475569',
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = '#eef2ff'
-                      e.currentTarget.style.borderColor = '#c7d2fe'
-                      e.currentTarget.style.color = '#4f46e5'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = '#ffffff'
-                      e.currentTarget.style.borderColor = 'var(--admin-border, #e2e8f0)'
-                      e.currentTarget.style.color = '#475569'
-                    }}
-                    title="View details in popup"
+                    title="View Detail"
                   >
-                    <Eye size={13} />
-                    <span>View</span>
+                    <img src="/icons/view.png" alt="View" />
                   </button>
                 </div>
               </div>
             )
           })
         )}
-      </div>
 
-      {/* ── Bottom Pagination Controls ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginTop: 16, flexWrap: 'wrap', gap: 10
-      }}>
-        {/* Pagination summary info */}
-        <div style={{ fontSize: 13, color: 'var(--admin-text-muted, #64748b)', fontWeight: 500 }}>
-          {pagination.total != null
-            ? <>Page <strong>{pagination.current_page ?? 1}</strong> of <strong>{pagination.last_page ?? 1}</strong> ({pagination.total} entries)</>
-            : 'Loading...'}
-        </div>
-
-        {/* Page navigation buttons */}
-        {pagination.last_page > 1 && (() => {
+        {/* ── Table Footer: Page-Size, Summary & Pagination (Image 1 Style) ── */}
+        {(() => {
           const cur = pagination.current_page || 1
           const last = pagination.last_page || 1
+          const total = pagination.total || 0
+          const from = total === 0 ? 0 : (cur - 1) * perPage + 1
+          const to = Math.min(cur * perPage, total)
 
           const pages = []
           if (last <= 7) {
@@ -1428,53 +1700,127 @@ export default function AuditLogPage() {
           }
 
           const btnBase = {
-            height: 34, minWidth: 34, padding: '0 10px',
-            borderRadius: 8, border: '1.5px solid var(--admin-border, #e2e8f0)',
-            background: 'var(--admin-card-bg, #ffffff)', color: 'var(--admin-text, #334155)',
-            fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.15s ease'
+            height: 34,
+            minWidth: 34,
+            padding: '0 10px',
+            borderRadius: 8,
+            border: '1.5px solid var(--admin-border, #e2e8f0)',
+            background: 'var(--admin-card-bg, #ffffff)',
+            color: 'var(--admin-text, #334155)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.15s ease',
+            lineHeight: 1
           }
+
           const btnActive = {
             ...btnBase,
             border: 'none',
-            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+            background: 'linear-gradient(135deg, #00B875, #009E64)',
             color: '#ffffff',
-            boxShadow: '0 2px 8px rgba(79,70,229,0.3)'
+            boxShadow: '0 2px 8px rgba(0, 184, 117, 0.35)'
           }
-          const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed' }
+
+          const btnDisabled = {
+            ...btnBase,
+            opacity: 0.4,
+            cursor: 'not-allowed'
+          }
 
           return (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                onClick={() => cur > 1 && changePage(1)}
-                style={cur === 1 ? btnDisabled : btnBase}
-                title="First page"
-              >«</button>
-              <button
-                onClick={() => cur > 1 && changePage(cur - 1)}
-                style={cur === 1 ? btnDisabled : btnBase}
-                title="Previous page"
-              >‹</button>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              padding: '12px 20px',
+              borderTop: '1px solid var(--admin-border, #e2e8f0)',
+              background: 'var(--admin-card-bg, #ffffff)',
+              borderBottomLeftRadius: 14,
+              borderBottomRightRadius: 14
+            }}>
+              {/* Left: Page-size selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--admin-text-muted, #64748b)', fontWeight: 500 }}>
+                <span>Show</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                  style={{
+                    height: 30,
+                    padding: '0 8px',
+                    borderRadius: 6,
+                    border: '1px solid var(--admin-border, #e2e8f0)',
+                    background: 'var(--admin-card-bg, #ffffff)',
+                    color: 'var(--admin-text, #0f172a)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  {[10, 25, 50, 100, 500, 1000, 2000, 5000].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <span>entries</span>
+              </div>
 
-              {pages.map((p, i) =>
-                p === '...' ? (
-                  <span key={`dot-${i}`} style={{ width: 28, textAlign: 'center', color: 'var(--admin-text-muted, #94a3b8)', fontSize: 14, fontWeight: 700 }}>…</span>
+              {/* Centre: Summary */}
+              <div style={{ fontSize: 13, color: 'var(--admin-text-muted, #64748b)', fontWeight: 500 }}>
+                {pagination.total != null ? (
+                  <>Showing <strong>{from}</strong>–<strong>{to}</strong> of <strong>{total.toLocaleString()}</strong> entries</>
                 ) : (
-                  <button key={p} onClick={() => changePage(p)} style={p === cur ? btnActive : btnBase}>{p}</button>
-                )
-              )}
+                  'Loading entries...'
+                )}
+              </div>
 
-              <button
-                onClick={() => cur < last && changePage(cur + 1)}
-                style={cur === last ? btnDisabled : btnBase}
-                title="Next page"
-              >›</button>
-              <button
-                onClick={() => cur < last && changePage(last)}
-                style={cur === last ? btnDisabled : btnBase}
-                title="Last page"
-              >»</button>
+              {/* Right: Pagination buttons */}
+              {last > 1 ? (
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    onClick={() => cur > 1 && changePage(1)}
+                    disabled={cur === 1}
+                    style={cur === 1 ? btnDisabled : btnBase}
+                    title="First page"
+                  >«</button>
+                  <button
+                    onClick={() => cur > 1 && changePage(cur - 1)}
+                    disabled={cur === 1}
+                    style={cur === 1 ? btnDisabled : btnBase}
+                    title="Previous page"
+                  >‹</button>
+
+                  {pages.map((p, i) =>
+                    p === '...' ? (
+                      <span key={`dot-${i}`} style={{ width: 28, textAlign: 'center', color: 'var(--admin-text-muted, #94a3b8)', fontSize: 14, fontWeight: 700 }}>…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => changePage(p)}
+                        style={p === cur ? btnActive : btnBase}
+                      >{p}</button>
+                    )
+                  )}
+
+                  <button
+                    onClick={() => cur < last && changePage(cur + 1)}
+                    disabled={cur === last}
+                    style={cur === last ? btnDisabled : btnBase}
+                    title="Next page"
+                  >›</button>
+                  <button
+                    onClick={() => cur < last && changePage(last)}
+                    disabled={cur === last}
+                    style={cur === last ? btnDisabled : btnBase}
+                    title="Last page"
+                  >»</button>
+                </div>
+              ) : null}
             </div>
           )
         })()}
