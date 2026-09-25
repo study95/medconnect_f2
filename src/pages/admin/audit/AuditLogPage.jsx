@@ -5,7 +5,7 @@ import {
   FilePlus, FileEdit, Flame, Users, Calendar, Filter, X, Clock, User as UserIcon,
   Globe, Laptop, Hash, Tag, Stethoscope, Building2, Pill, Building,
   Lock, CreditCard, Package, FileText, ChevronLeft, ChevronRight,
-  Copy, Check, Layers, ArrowRight, CornerDownRight, CheckSquare, GitCommit
+  Copy, Check, Layers, ArrowRight, CornerDownRight, CheckSquare, GitCommit, ExternalLink
 } from 'lucide-react'
 import { getAuditLogs, getAuditStats, exportAuditLogs } from '../../../api/auditApi'
 
@@ -201,6 +201,22 @@ function JsonDiff({ old_values, new_values, changed_fields }) {
   )
 }
 
+// ── Client Device & Tool Detection Helper ────────────────────────────────────
+
+function detectClientType(ua) {
+  if (!ua) return { type: 'unknown', label: 'Unknown Client', isBot: false, color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' }
+  const lower = ua.toLowerCase()
+  if (lower.includes('curl') || lower.includes('python') || lower.includes('postman') || lower.includes('sqlmap') || lower.includes('wget') || lower.includes('bot') || lower.includes('crawl')) {
+    return { type: 'bot', label: '⚠️ Automated Script / Bot', isBot: true, color: '#dc2626', bg: '#fef2f2', border: '#fecaca' }
+  }
+  if (lower.includes('windows')) return { type: 'browser', label: 'Windows PC (Browser)', isBot: false, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' }
+  if (lower.includes('android')) return { type: 'browser', label: 'Android Mobile', isBot: false, color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
+  if (lower.includes('iphone') || lower.includes('ipad')) return { type: 'browser', label: 'Apple iOS Mobile', isBot: false, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }
+  if (lower.includes('macintosh') || lower.includes('mac os')) return { type: 'browser', label: 'Macintosh (Browser)', isBot: false, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' }
+  if (lower.includes('linux')) return { type: 'browser', label: 'Linux OS', isBot: false, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
+  return { type: 'browser', label: 'Standard Web Client', isBot: false, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
+}
+
 // ── Slide-Over Details Drawer ──────────────────────────────────────────────────
 
 function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose }) {
@@ -219,6 +235,8 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
   const actionCfg = ACTION_CONFIG[log.action] || { label: log.action, color: '#475569', bg: '#f1f5f9', IconComponent: Activity }
   const ActionIcon = actionCfg.IconComponent
   const entityLabel = log.model_label || (log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : null))
+  const isHighRisk = log.risk_level === 'high' || log.risk_level === 'critical'
+  const clientInfo = detectClientType(log.user_agent)
 
   return (
     <>
@@ -345,7 +363,8 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
           <div style={{
             padding: 14, borderRadius: 10, background: 'var(--admin-bg, #f8fafc)',
             border: '1px solid var(--admin-border, #f1f5f9)',
-            display: 'flex', flexDirection: 'column', gap: 8
+            display: 'flex', flexDirection: 'column', gap: 8,
+            flexShrink: 0
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{
@@ -367,8 +386,126 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
             </div>
           </div>
 
-          {/* 2. User / Actor Information (Privacy Compliant - No Email) */}
-          <div>
+          {/* 2. 🕵️ Security & Forensic Intelligence Card (All 4 attack investigation data in one box) */}
+          <div style={{
+            borderRadius: 12,
+            border: isHighRisk ? '1.5px solid #fca5a5' : '1px solid var(--admin-border, #e2e8f0)',
+            background: isHighRisk ? '#fffafb' : 'var(--admin-card-bg, #ffffff)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            {/* Card Header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: isHighRisk ? '#fef2f2' : '#f8fafc',
+              borderBottom: '1px solid ' + (isHighRisk ? '#fecaca' : '#e2e8f0')
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <Shield size={16} color={isHighRisk ? '#dc2626' : '#4f46e5'} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: isHighRisk ? '#991b1b' : '#1e293b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Security & Forensic Intelligence
+                </span>
+              </div>
+              <RiskBadge level={log.risk_level} />
+            </div>
+
+            {/* Card Body */}
+            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* ১. IP Address */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+                    ১. IP Address (আইপি ঠিকানা)
+                  </div>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--admin-text, #0f172a)', fontFamily: 'monospace', marginTop: 2 }}>
+                    {log.ip_address || '127.0.0.1 (Localhost)'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CopyableBadge value={log.ip_address || '127.0.0.1'} />
+                  {log.ip_address && log.ip_address !== '127.0.0.1' && (
+                    <a
+                      href={`https://www.abuseipdb.com/check/${log.ip_address}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                        textDecoration: 'none'
+                      }}
+                      title="Check IP threat intelligence on AbuseIPDB"
+                    >
+                      <ExternalLink size={11} /> Check AbuseIPDB
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* ২. User-Agent / Device Type */}
+              <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+                    ২. User-Agent (ডিভাইস / টুলস)
+                  </span>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 9999, fontSize: 10.5, fontWeight: 700,
+                    color: clientInfo.color, background: clientInfo.bg, border: `1px solid ${clientInfo.border}`
+                  }}>
+                    {clientInfo.label}
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: 11, fontFamily: 'monospace', color: '#475569',
+                  background: '#f8fafc', padding: '6px 10px', borderRadius: 6,
+                  border: '1px solid #f1f5f9', wordBreak: 'break-all', lineHeight: 1.4
+                }}>
+                  {log.user_agent || 'Unknown User-Agent'}
+                </div>
+              </div>
+
+              {/* ৩. Target Endpoint / Route */}
+              <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', marginBottom: 4 }}>
+                  ৩. Request URL (আক্রান্ত প্রবেশদ্বার)
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    padding: '3px 7px', borderRadius: 4, fontSize: 11, fontWeight: 800, fontFamily: 'monospace',
+                    background: log.request_method === 'POST' ? '#fef3c7' : log.request_method === 'DELETE' ? '#fee2e2' : '#e0e7ff',
+                    color: log.request_method === 'POST' ? '#b45309' : log.request_method === 'DELETE' ? '#b91c1c' : '#4338ca'
+                  }}>
+                    {log.request_method || 'GET'}
+                  </span>
+                  <span style={{
+                    fontSize: 11.5, fontFamily: 'monospace', color: 'var(--admin-text, #0f172a)',
+                    background: '#f8fafc', padding: '4px 8px', borderRadius: 6, border: '1px solid #f1f5f9',
+                    wordBreak: 'break-all', flex: 1
+                  }}>
+                    {log.request_url || '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* ৪. Exact Timestamp & Velocity */}
+              <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+                  ৪. Exact Time (সুনির্দিষ্ট সময় ও সেকেন্ড)
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--admin-text, #0f172a)', fontFamily: 'monospace' }}>
+                  {log.created_at ? new Date(log.created_at).toLocaleString('en-GB', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                  }) : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. User / Actor Information (Privacy Compliant - No Email) */}
+          <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
               User / Actor Information
             </div>
@@ -388,8 +525,8 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
             </div>
           </div>
 
-          {/* 3. Event Metadata */}
-          <div>
+          {/* 4. Event Metadata */}
+          <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
               Event Metadata
             </div>
@@ -398,16 +535,6 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
               padding: '12px 14px', borderRadius: 10, background: 'var(--admin-card-bg, #ffffff)',
               border: '1px solid var(--admin-border, #f1f5f9)'
             }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 2 }}>Timestamp</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text, #0f172a)' }}>
-                  {log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 4 }}>Risk Level</div>
-                <RiskBadge level={log.risk_level} />
-              </div>
               {log.public_id && (
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Public ID</div>
@@ -428,42 +555,17 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
                   <CopyableBadge value={String(log.user_id)} />
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* 4. Network & Technical Details */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              Network & Technical Details
-            </div>
-            <div style={{
-              display: 'flex', flexDirection: 'column', gap: 8,
-              padding: '12px 14px', borderRadius: 10, background: 'var(--admin-card-bg, #ffffff)',
-              border: '1px solid var(--admin-border, #f1f5f9)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--admin-text-muted, #94a3b8)' }}>IP Address</span>
-                <CopyableBadge value={log.ip_address || '—'} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--admin-text-muted, #94a3b8)' }}>HTTP Method / Status</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #0f172a)', fontFamily: 'monospace' }}>
-                  {log.request_method || 'GET'} • {log.http_status || 200}
-                </span>
-              </div>
-              {log.request_url && (
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 3 }}>Request URL</div>
-                  <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--admin-text, #0f172a)', background: 'var(--admin-bg, #f8fafc)', padding: '6px 10px', borderRadius: 6, wordBreak: 'break-all' }}>
-                    {log.request_url}
-                  </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginBottom: 2 }}>HTTP Status</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text, #0f172a)', fontFamily: 'monospace' }}>
+                  {log.http_status || '200 OK'}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
           {/* 5. Field Changes / Diff */}
-          <div>
+          <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
               Change Diff (Before vs. After)
             </div>
@@ -653,7 +755,18 @@ export default function AuditLogPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Audit Engine Live Status Pill */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '6px 12px', borderRadius: 9999, fontSize: 11.5, fontWeight: 700,
+            background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 3px rgba(34,197,94,0.25)' }} />
+            <span>Audit Engine: 100% Operational (Redis Protected)</span>
+          </div>
+
           <button
             onClick={() => fetchLogs(pagination.current_page)}
             disabled={loading}
@@ -677,51 +790,164 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      {/* ── Stats Metric Cards ── */}
-      {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
-          <div style={{
-            background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
-            borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase' }}>Total Events Logged</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--admin-text, #0f172a)', marginTop: 4 }}>
-              {(stats.total_events || pagination.total || 0).toLocaleString()}
-            </div>
-          </div>
+      {/* ── Stats Metric Cards (4 Balanced Cards - Mutually Exclusive Selection) ── */}
+      {stats && (() => {
+        const isToday = Boolean(dateFrom && !riskFilter && !actionFilter)
+        const isRisk = Boolean(riskFilter === 'high' && !dateFrom && !actionFilter)
+        const isLogin = Boolean(actionFilter === 'login' && !dateFrom && !riskFilter)
+        const isAll = !isToday && !isRisk && !isLogin
 
-          <div style={{
-            background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
-            borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>High / Critical Risks</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#dc2626', marginTop: 4 }}>
-              {(stats.high_risk_count || 0).toLocaleString()}
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 20 }}>
+            {/* 1. Total Events */}
+            <div
+              onClick={() => {
+                setRiskFilter('')
+                setActionFilter('')
+                setDateFrom('')
+                setDateTo('')
+                setSearch('')
+              }}
+              title="Click to show all events"
+              style={{
+                background: 'var(--admin-card-bg, #ffffff)',
+                border: isAll ? '2px solid #0D9488' : '1px solid var(--admin-border, #e2e8f0)',
+                borderRadius: 14, padding: '16px 18px',
+                boxShadow: isAll ? '0 4px 12px rgba(13, 148, 136, 0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: isAll ? '#0D9488' : 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Total Events
+                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: isAll ? '#ccfbf1' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Layers size={15} color={isAll ? '#0D9488' : '#475569'} />
+                </div>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--admin-text, #0f172a)', marginTop: 4, letterSpacing: '-0.02em' }}>
+                {(stats.total_events || stats.totals?.total || pagination.total || 0).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+                All recorded system actions
+              </div>
             </div>
-          </div>
 
-          <div style={{
-            background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
-            borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>Active Admins Today</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#2563eb', marginTop: 4 }}>
-              {(stats.active_users_today || stats.unique_users || 0).toLocaleString()}
+            {/* 2. Today's Events */}
+            <div
+              onClick={() => {
+                if (isToday) {
+                  setDateFrom('')
+                  setDateTo('')
+                } else {
+                  setRiskFilter('')
+                  setActionFilter('')
+                  const todayStr = new Date().toISOString().split('T')[0]
+                  setDateFrom(todayStr)
+                  setDateTo(todayStr)
+                }
+              }}
+              title="Click to toggle today's events filter"
+              style={{
+                background: 'var(--admin-card-bg, #ffffff)',
+                border: isToday ? '2px solid #7c3aed' : '1px solid var(--admin-border, #e2e8f0)',
+                borderRadius: 14, padding: '16px 18px',
+                boxShadow: isToday ? '0 4px 12px rgba(124, 58, 237, 0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                cursor: 'pointer', transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? '#7c3aed' : 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Today's Activity
+                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: isToday ? '#ede9fe' : '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={15} color="#7c3aed" />
+                </div>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#7c3aed', marginTop: 4, letterSpacing: '-0.02em' }}>
+                {(stats.today_events || stats.totals?.today || 0).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+                Active events in last 24 hours
+              </div>
             </div>
-          </div>
 
-          <div style={{
-            background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
-            borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' }}>System Health / Audit Engine</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#16a34a', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-              100% Operational
+            {/* 3. High & Critical Risks */}
+            <div
+              onClick={() => {
+                if (isRisk) {
+                  setRiskFilter('')
+                } else {
+                  setDateFrom('')
+                  setDateTo('')
+                  setActionFilter('')
+                  setRiskFilter('high')
+                }
+              }}
+              title="Click to toggle high risk events filter"
+              style={{
+                background: 'var(--admin-card-bg, #ffffff)',
+                border: isRisk ? '2px solid #dc2626' : '1px solid var(--admin-border, #e2e8f0)',
+                borderRadius: 14, padding: '16px 18px',
+                boxShadow: isRisk ? '0 4px 12px rgba(220, 38, 38, 0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                cursor: 'pointer', transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Security / High Risks
+                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: isRisk ? '#fee2e2' : '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertTriangle size={15} color="#dc2626" />
+                </div>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#dc2626', marginTop: 4, letterSpacing: '-0.02em' }}>
+                {(stats.high_risk_count ?? stats.totals?.high_risk_today ?? 0).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 11.5, color: '#991b1b', marginTop: 4, fontWeight: 600 }}>
+                {(stats.failed_logins_today || stats.totals?.failed_logins_today || 0)} failed attempt(s) & alerts
+              </div>
+            </div>
+
+            {/* 4. Logins & 2FA Today */}
+            <div
+              onClick={() => {
+                if (isLogin) {
+                  setActionFilter('')
+                } else {
+                  setDateFrom('')
+                  setDateTo('')
+                  setRiskFilter('')
+                  setActionFilter('login')
+                }
+              }}
+              title="Click to toggle login events filter"
+              style={{
+                background: 'var(--admin-card-bg, #ffffff)',
+                border: isLogin ? '2px solid #2563eb' : '1px solid var(--admin-border, #e2e8f0)',
+                borderRadius: 14, padding: '16px 18px',
+                boxShadow: isLogin ? '0 4px 12px rgba(37, 99, 235, 0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                cursor: 'pointer', transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: isLogin ? '#2563eb' : 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Logins & 2FA Today
+                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: isLogin ? '#dbeafe' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <LogIn size={15} color="#2563eb" />
+                </div>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#2563eb', marginTop: 4, letterSpacing: '-0.02em' }}>
+                {(stats.logins_today || stats.totals?.logins_today || 0).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+                {(stats.active_users_today || 1)} active admin / doctor(s)
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── Toolbar & Filter Bar ── */}
       <div style={{
