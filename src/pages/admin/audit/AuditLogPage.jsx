@@ -5,9 +5,11 @@ import {
   FilePlus, FileEdit, Flame, Users, Calendar, Filter, X, Clock, User as UserIcon,
   Globe, Laptop, Hash, Tag, Stethoscope, Building2, Pill, Building,
   Lock, CreditCard, Package, FileText, ChevronLeft, ChevronRight,
-  Copy, Check, Layers, ArrowRight, CornerDownRight, CheckSquare, GitCommit, ExternalLink
+  Copy, Check, Layers, ArrowRight, CornerDownRight, CheckSquare, GitCommit, ExternalLink,
+  Printer
 } from 'lucide-react'
-import { getAuditLogs, getAuditStats, exportAuditLogs } from '../../../api/auditApi'
+import { getAuditLogs, getAuditStats, exportAuditLogs, previewAuditPrune, clearOldAuditLogs } from '../../../api/auditApi'
+import toast from 'react-hot-toast'
 
 // ── Configuration & Metadata Mappings ──────────────────────────────────────────
 
@@ -435,6 +437,9 @@ function getUserPublicIdOrName(log) {
 // ── Center Details Modal (Center Popup Dialog) ──────────────────────────────
 
 function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose }) {
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const reportRef = useRef(null)
+
   useEffect(() => {
     if (log) {
       const prevOverflow = document.body.style.overflow
@@ -464,6 +469,69 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
   const isHighRisk = log.risk_level === 'high' || log.risk_level === 'critical'
   const isThreat = isHighRisk || log.action === 'admin_honeypot_triggered' || String(log.action || '').toLowerCase().includes('fail')
   const clientInfo = detectClientType(log.user_agent)
+
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true)
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ])
+      const element = reportRef.current
+      if (!element) return
+
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      })
+
+      const pdfWidth = 210
+      const pdfHeight = 297
+      const margin = 8
+      const printableWidth = pdfWidth - margin * 2
+      const printableHeight = pdfHeight - margin * 2
+
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      const imgRatio = imgWidth / imgHeight
+
+      let renderWidth = printableWidth
+      let renderHeight = printableWidth / imgRatio
+
+      if (renderHeight > printableHeight) {
+        renderHeight = printableHeight
+        renderWidth = printableHeight * imgRatio
+      }
+
+      const x = margin + (printableWidth - renderWidth) / 2
+      const y = margin
+
+      pdf.addImage(imgData, 'PNG', x, y, renderWidth, renderHeight, undefined, 'FAST')
+      pdf.save(`Forensic_Incident_Report_AUDIT_${log.id}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (err) {
+      console.error('Failed to generate incident PDF', err)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  let oldObj = {}, newObj = {}
+  try { oldObj = typeof log.old_values === 'string' ? JSON.parse(log.old_values) : (log.old_values || {}) } catch { oldObj = {} }
+  try { newObj = typeof log.new_values === 'string' ? JSON.parse(log.new_values) : (log.new_values || {}) } catch { newObj = {} }
+  const diffFields = log.changed_fields?.length > 0
+    ? log.changed_fields
+    : Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]))
 
   return (
     <div
@@ -861,14 +929,786 @@ function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose 
             </button>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="admin-btn admin-btn-outline"
+              style={{
+                fontSize: 12.5,
+                padding: '7px 15px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                borderColor: '#cbd5e1',
+                color: '#1e293b',
+                background: '#ffffff'
+              }}
+              title="Download official forensic incident dossier (PDF)"
+            >
+              <Printer size={15} style={{ color: downloadingPdf ? '#94a3b8' : '#64748b' }} />
+              {downloadingPdf ? 'Generating PDF...' : 'Incident Report (PDF)'}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="admin-btn admin-btn-secondary"
+              style={{ fontSize: 12.5, padding: '7px 18px', fontWeight: 600 }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Printable Forensic Incident Report Template (Off-screen rendered for html2canvas) */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+        opacity: 0,
+        zIndex: -9999,
+        overflow: 'hidden'
+      }}>
+        <div
+          ref={reportRef}
+          style={{
+            width: '794px',
+            minHeight: '1090px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            background: '#ffffff',
+            color: '#0f172a',
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            padding: '32px 36px',
+            boxSizing: 'border-box'
+          }}
+        >
+          {/* Main Body Content */}
+          <div style={{ flex: 1 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '14px', marginBottom: '18px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 10, height: 10, background: '#0284c7', borderRadius: '50%' }}></div>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', color: '#0284c7', textTransform: 'uppercase' }}>
+                  DoctorBooklet Security & Audit Subsystem
+                </span>
+              </div>
+              <h1 style={{ margin: '2px 0 3px 0', fontSize: 21, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                FORENSIC INCIDENT & AUDIT DOSSIER
+              </h1>
+              <div style={{ fontSize: 11.5, color: '#64748b' }}>
+                Central Cryptographic & Telemetry Audit Trail • Tamper-Evident Security Record
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'inline-block', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '4px 10px', borderRadius: 6, fontSize: 12.5, fontWeight: 800, color: '#0f172a', fontFamily: 'monospace' }}>
+                DOSSIER #AUD-{log.id}
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: isThreat ? '#dc2626' : '#0284c7', marginTop: 4, letterSpacing: '0.05em' }}>
+                {isThreat ? 'HIGH PRIORITY / SECURITY INCIDENT' : 'RESTRICTED / COMPLIANCE RECORD'}
+              </div>
+              <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2 }}>
+                Generated: {new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Executive Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EVENT ACTION</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginTop: 3, wordBreak: 'break-all' }}>
+                {actionCfg.label || log.action}
+              </div>
+            </div>
+
+            <div style={{ background: isThreat ? '#fef2f2' : '#f8fafc', border: isThreat ? '1px solid #fecaca' : '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: isThreat ? '#dc2626' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RISK CLASSIFICATION</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: isThreat ? '#dc2626' : '#16a34a', marginTop: 3 }}>
+                {(log.risk_level || 'low').toUpperCase()} SEVERITY
+              </div>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RECORDED TIMESTAMP</div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginTop: 3 }}>
+                {formatExactDateTime(log.created_at)}
+              </div>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RECORD STATUS</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#0284c7', marginTop: 3 }}>
+                IMMUTABLE AUDIT LOG
+              </div>
+            </div>
+          </div>
+
+          {/* Incident Narrative */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              1. Incident Narrative & Description
+            </div>
+            <div style={{ background: isThreat ? '#fff5f5' : '#f8fafc', borderLeft: isThreat ? '4px solid #dc2626' : '4px solid #0284c7', borderTop: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', borderRadius: '0 8px 8px 0', fontSize: 12.5, lineHeight: 1.5, color: '#1e293b' }}>
+              {log.description || 'No descriptive narration recorded for this audit entry.'}
+            </div>
+          </div>
+
+          {/* Two Column Grid: Actor Profile & Target Entity */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+            {/* Actor Profile */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', background: '#ffffff' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 9, borderBottom: '1px solid #f1f5f9', paddingBottom: 5 }}>
+                2. Actor & Identity Context
+              </div>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b', width: '38%' }}>Actor Name:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a' }}>{log.user_name || 'Anonymous / Unauthenticated'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Account Email:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 600, color: '#0f172a' }}>{log.user_email || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>System Role:</td>
+                    <td style={{ padding: '4px 0' }}>
+                      <span style={{ background: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                        {log.role ? log.role.toUpperCase() : 'GUEST / VISITOR'}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Public / User ID:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0284c7', fontFamily: 'monospace' }}>
+                      {log.public_id || (log.user_id ? `#${log.user_id}` : 'None')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Target Entity Context */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', background: '#ffffff' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 9, borderBottom: '1px solid #f1f5f9', paddingBottom: 5 }}>
+                3. Target Entity & Resource
+              </div>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b', width: '38%' }}>Target Model:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a' }}>{log.model || 'System / None'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Target ID:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{log.model_id ? `#${log.model_id}` : '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Entity Label:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 600, color: '#0284c7' }}>{entityLabel || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>Resource Type:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 600, color: '#475569' }}>{log.action_category || 'General Audit'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Ingress & Telemetry Forensics */}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', background: '#ffffff', marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 9, borderBottom: '1px solid #f1f5f9', paddingBottom: 5 }}>
+              4. Network Ingress & Telemetry Forensics
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Origin IP Address:</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{log.ip_address || '—'}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Client Environment:</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{clientInfo.browser} on {clientInfo.os}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Backend Request URL:</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  <span style={{ color: '#0284c7', marginRight: 4 }}>{log.method || 'GET'}</span>
+                  {log.url || '—'}
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Frontend Source Page (Referer):</span>
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {log.tags?.referer || 'Direct Access / None'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>Full User-Agent String:</span>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 5, padding: '6px 10px', fontSize: 10.5, fontFamily: 'monospace', color: '#475569', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                {log.user_agent || 'Not captured'}
+              </div>
+            </div>
+          </div>
+
+          {/* State Diff (Before vs After) */}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', background: '#ffffff', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 9, borderBottom: '1px solid #f1f5f9', paddingBottom: 5 }}>
+              5. Database State Delta (Before vs. After)
+            </div>
+
+            {diffFields.length === 0 ? (
+              <div style={{ fontSize: 11.5, color: '#64748b', fontStyle: 'italic', padding: '8px 0' }}>
+                No database state modifications recorded for this entry. Represents point-in-time telemetry or authentication activity.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
+                    <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 800, color: '#475569', width: '25%' }}>FIELD</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 800, color: '#dc2626', width: '37.5%' }}>PREVIOUS VALUE (BEFORE)</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 800, color: '#16a34a', width: '37.5%' }}>NEW VALUE (AFTER)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diffFields.map((fld) => (
+                    <tr key={fld} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '6px 10px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{fld}</td>
+                      <td style={{ padding: '6px 10px', color: '#dc2626', background: '#fef2f2', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                        {oldObj[fld] !== undefined ? JSON.stringify(oldObj[fld]) : '—'}
+                      </td>
+                      <td style={{ padding: '6px 10px', color: '#16a34a', background: '#f0fdf4', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                        {newObj[fld] !== undefined ? JSON.stringify(newObj[fld]) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Solid Divider Line right below Section 5 */}
+          <div style={{ borderBottom: '2px solid #0f172a', marginTop: 18 }} />
+        </div>
+
+        {/* Tamper-Evident Security Seal & Signatures (Pinned to Bottom of Page) */}
+        <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: '#64748b', textTransform: 'uppercase' }}>
+                  CRYPTOGRAPHIC AUDIT DIGEST
+                </div>
+                <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#0f172a', marginTop: 3 }}>
+                  HASH: SHA256-DB-AUD-{log.id}-{(log.id * 179424673).toString(16).toUpperCase()}
+                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                  Secured by DoctorBooklet Immutable Telemetry Engine
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 40 }}>
+                <div style={{ textAlign: 'center' }}>
+                  {/* Clean signature space */}
+                  <div style={{ width: 150, borderBottom: '1.5px solid #475569', height: 50 }}></div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, color: '#334155', marginTop: 6 }}>System Examiner</div>
+                  <div style={{ fontSize: 9.5, color: '#64748b' }}>DoctorBooklet Core</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  {/* Clean signature space */}
+                  <div style={{ width: 150, borderBottom: '1.5px solid #475569', height: 50 }}></div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, color: '#334155', marginTop: 6 }}>Security Officer</div>
+                  <div style={{ fontSize: 9.5, color: '#64748b' }}>Compliance Dept.</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 9.5, color: '#94a3b8', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+              CONFIDENTIAL: This forensic audit dossier contains privileged healthcare operational logs. Generated under strict compliance standards. Unauthorized alteration, forging or duplication is prohibited.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Smart Audit Retention & Pruning Modal ──────────────────────────────────────
+
+function getSevenDaysAgoString() {
+  const d = new Date()
+  d.setDate(d.getDate() - 7)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function AuditPruneModal({ isOpen, onClose, onSuccess }) {
+  const [retentionType, setRetentionType] = useState('90')
+  const [customDate, setCustomDate] = useState(() => getSevenDaysAgoString())
+  const [downloadBackup, setDownloadBackup] = useState(true)
+  const [confirmInput, setConfirmInput] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [pruning, setPruning] = useState(false)
+
+  const maxAllowedDate = getSevenDaysAgoString()
+
+  // Reset confirmation input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmInput('')
+    }
+  }, [isOpen])
+
+  // Fetch live impact preview whenever retention type or custom date changes
+  useEffect(() => {
+    if (!isOpen) return
+    let active = true
+
+    const fetchPreview = async () => {
+      setPreviewLoading(true)
+      try {
+        const params = retentionType === 'custom'
+          ? { date_before: customDate }
+          : { days: parseInt(retentionType, 10) }
+        const res = await previewAuditPrune(params)
+        if (active && res.data?.success) {
+          setPreview(res.data)
+        }
+      } catch (err) {
+        console.error('Prune preview error', err)
+        if (active) {
+          setPreview(null)
+          const msg = err.response?.data?.message || 'Failed to preview retention scope'
+          toast.error(msg)
+        }
+      } finally {
+        if (active) setPreviewLoading(false)
+      }
+    }
+
+    fetchPreview()
+    return () => { active = false }
+  }, [isOpen, retentionType, customDate])
+
+  if (!isOpen) return null
+
+  const isConfirmed = confirmInput.trim().toUpperCase() === 'PRUNE'
+  const canExecute = isConfirmed && !pruning && !previewLoading && (preview?.eligible_count > 0)
+
+  const handleExecutePrune = async () => {
+    if (!canExecute) return
+    try {
+      setPruning(true)
+
+      // 1. Download pre-prune CSV backup if checked
+      if (downloadBackup) {
+        const backupToastId = toast.loading('Generating pre-prune CSV archive...')
+        try {
+          const exportParams = retentionType === 'custom'
+            ? { date_to: customDate }
+            : { date_to: preview?.cutoff_date ? preview.cutoff_date.slice(0, 10) : maxAllowedDate }
+          const res = await exportAuditLogs(exportParams)
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const link = document.createElement('a')
+          link.href = url
+          link.setAttribute('download', `audit_logs_backup_before_${customDate || 'cutoff'}.csv`)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          toast.success('Pre-prune CSV backup downloaded successfully', { id: backupToastId })
+        } catch (exportErr) {
+          console.warn('Backup export warning', exportErr)
+          toast.dismiss(backupToastId)
+        }
+      }
+
+      // 2. Perform backend batched prune
+      const payload = retentionType === 'custom'
+        ? { date_before: customDate }
+        : { days: parseInt(retentionType, 10) }
+
+      const res = await clearOldAuditLogs(payload)
+      if (res.data?.success) {
+        toast.success(
+          `Pruned ${res.data.pruned_count} routine audit logs. ${res.data.protected_count} security records permanently preserved.`,
+          { duration: 5500 }
+        )
+        onSuccess?.()
+        onClose()
+      } else {
+        toast.error(res.data?.message || 'Failed to prune audit logs.')
+      }
+    } catch (err) {
+      console.error('Audit prune failed', err)
+      toast.error(err.response?.data?.message || 'Error occurred while pruning logs.')
+    } finally {
+      setPruning(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(5px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        animation: 'modalFadeIn 0.2s ease-out'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !pruning) onClose()
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: 18,
+          width: '100%',
+          maxWidth: 600,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'modalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '18px 24px',
+          borderBottom: '1px solid #f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#fafafa'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: '#fef2f2', border: '1px solid #fecaca',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#dc2626'
+            }}>
+              <Trash2 size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                Prune Routine Audit Logs
+              </h3>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Database retention policy & performance optimization
+              </p>
+            </div>
+          </div>
+
           <button
             onClick={onClose}
-            className="admin-btn admin-btn-secondary"
-            style={{ fontSize: 12.5, padding: '7px 18px', fontWeight: 600 }}
+            disabled={pruning}
+            style={{
+              background: 'transparent', border: 'none', cursor: pruning ? 'not-allowed' : 'pointer',
+              color: '#94a3b8', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center',
+              justifyContent: 'center'
+            }}
           >
-            Close
+            <X size={18} />
           </button>
         </div>
+
+        {/* Modal Body */}
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 18, maxHeight: '80vh', overflowY: 'auto' }}>
+          
+          {/* Permanent Security Protection Guarantee Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+            border: '1px solid #bbf7d0',
+            borderRadius: 12,
+            padding: '12px 14px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 7,
+              background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#15803d', flexShrink: 0, marginTop: 1
+            }}>
+              <Shield size={16} />
+            </div>
+            <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>
+              <strong style={{ fontWeight: 800, display: 'block', marginBottom: 2 }}>
+                Immutable Security Immunity Active
+              </strong>
+              High & Critical risk security alerts, honeypot traps, failed logins, and deletion logs are 
+              <strong style={{ color: '#047857' }}> permanently protected</strong> and can never be deleted. 
+              Only routine low/medium logs older than 7 days can be pruned.
+            </div>
+          </div>
+
+          {/* Retention Scope Selector */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+              Select Retention Window:
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                { id: '90', label: '90 Days', sub: 'Recommended' },
+                { id: '180', label: '180 Days', sub: 'Half Year' },
+                { id: '365', label: '365 Days', sub: '1 Year' },
+                { id: 'custom', label: 'Custom', sub: 'Min 7 Days' },
+              ].map(opt => {
+                const active = retentionType === opt.id
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setRetentionType(opt.id)}
+                    style={{
+                      padding: '8px 6px',
+                      borderRadius: 10,
+                      border: active ? '2px solid #0D9488' : '1px solid #e2e8f0',
+                      background: active ? '#f0fdfa' : '#ffffff',
+                      color: active ? '#0f766e' : '#475569',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: active ? 800 : 700 }}>{opt.label}</div>
+                    <div style={{ fontSize: 10, color: active ? '#0d9488' : '#94a3b8', marginTop: 1 }}>{opt.sub}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Custom Date Picker (If selected) */}
+          {retentionType === 'custom' && (
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '12px 14px',
+              animation: 'modalFadeIn 0.15s ease-out'
+            }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                Prune routine logs created on or before:
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="date"
+                  value={customDate}
+                  max={maxAllowedDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    color: '#0f172a',
+                    background: '#ffffff',
+                    outline: 'none',
+                    fontWeight: 600
+                  }}
+                />
+                <span style={{ fontSize: 11.5, color: '#64748b' }}>
+                  Safety restriction: Max allowed date is <strong>{maxAllowedDate}</strong> (7 days ago).
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Live Impact Preview Cards */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                Impact Analysis {preview?.cutoff_formatted ? `(Older than ${preview.cutoff_formatted})` : ''}:
+              </span>
+              {previewLoading && (
+                <span style={{ fontSize: 11, color: '#0D9488', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <RefreshCw size={11} className="spin-icon" /> Calculating rows...
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Routine logs to prune */}
+              <div style={{
+                background: '#fff1f2',
+                border: '1px solid #fecdd3',
+                borderRadius: 12,
+                padding: '14px 16px'
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#be123c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Eligible To Prune
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#9f1239', marginTop: 4 }}>
+                  {previewLoading ? '...' : (preview?.eligible_count?.toLocaleString() || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: '#e11d48', marginTop: 3 }}>
+                  Routine events (Low & Medium risk)
+                </div>
+              </div>
+
+              {/* Security logs protected */}
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: 12,
+                padding: '14px 16px'
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Permanently Retained
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#166534', marginTop: 4 }}>
+                  {previewLoading ? '...' : (preview?.protected_count?.toLocaleString() || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>
+                  Security alerts & forensics (100% immune)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pre-Prune Backup Toggle */}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}>
+            <input
+              type="checkbox"
+              checked={downloadBackup}
+              onChange={(e) => setDownloadBackup(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0D9488' }}
+            />
+            <div style={{ fontSize: 12, color: '#334155' }}>
+              <span style={{ fontWeight: 700 }}>Download CSV backup archive before pruning</span>
+              <span style={{ display: 'block', fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                Recommended. Saves a downloadable copy of the targeted logs before database execution.
+              </span>
+            </div>
+          </label>
+
+          {/* GitHub-Style Type-to-Confirm Safeguard */}
+          <div style={{
+            background: '#fafafa',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '14px 16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b91c1c', fontSize: 12, fontWeight: 800 }}>
+              <AlertTriangle size={15} />
+              <span>Explicit Confirmation Required</span>
+            </div>
+            <p style={{ margin: '6px 0 10px 0', fontSize: 11.5, color: '#64748b', lineHeight: 1.4 }}>
+              To prevent accidental deletion, please type <strong style={{ color: '#0f172a', fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>PRUNE</strong> in the box below to unlock the execution button:
+            </p>
+            <input
+              type="text"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
+              placeholder="PRUNE"
+              disabled={pruning}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: isConfirmed ? '2px solid #22c55e' : '1px solid #cbd5e1',
+                background: '#ffffff',
+                fontFamily: 'monospace',
+                fontSize: 14,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                color: isConfirmed ? '#15803d' : '#0f172a',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+        </div>
+
+        {/* Modal Footer / Action Buttons */}
+        <div style={{
+          padding: '14px 24px',
+          borderTop: '1px solid #f1f5f9',
+          background: '#fafafa',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 10
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pruning}
+            className="admin-btn admin-btn-outline"
+            style={{ fontSize: 12.5 }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExecutePrune}
+            disabled={!canExecute}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 18px',
+              borderRadius: 8,
+              fontSize: 12.5,
+              fontWeight: 800,
+              border: 'none',
+              cursor: canExecute ? 'pointer' : 'not-allowed',
+              background: canExecute ? '#dc2626' : '#94a3b8',
+              color: '#ffffff',
+              boxShadow: canExecute ? '0 2px 8px rgba(220, 38, 38, 0.35)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {pruning ? (
+              <>
+                <RefreshCw size={14} className="spin-icon" />
+                <span>Pruning Database (Safe 500-Row Batches)...</span>
+              </>
+            ) : !isConfirmed ? (
+              <>
+                <Lock size={14} />
+                <span>Type PRUNE to Unlock</span>
+              </>
+            ) : preview?.eligible_count === 0 ? (
+              <span>No Logs Match Cutoff</span>
+            ) : (
+              <>
+                <Trash2 size={14} />
+                <span>Prune {preview?.eligible_count?.toLocaleString()} Routine Logs</span>
+              </>
+            )}
+          </button>
+        </div>
+
       </div>
     </div>
   )
@@ -902,6 +1742,7 @@ export default function AuditLogPage() {
   const [statsLoading, setStatsLoading] = useState(true)
   const [selectedLogIndex, setSelectedLogIndex] = useState(null)
   const [exporting, setExporting] = useState(false)
+  const [showPruneModal, setShowPruneModal] = useState(false)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -1135,6 +1976,27 @@ export default function AuditLogPage() {
           >
             <Download size={14} />
             <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+
+          <button
+            onClick={() => setShowPruneModal(true)}
+            className="admin-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(220, 38, 38, 0.08)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Database Auto-Cleanup / Retention Policy"
+          >
+            <Trash2 size={14} />
+            <span>Prune Logs</span>
           </button>
         </div>
       </div>
@@ -1833,6 +2695,16 @@ export default function AuditLogPage() {
         totalCount={logs.length}
         onNavigate={handleDrawerNavigate}
         onClose={() => setSelectedLogIndex(null)}
+      />
+
+      {/* ── Retention Policy & Pruning Modal ── */}
+      <AuditPruneModal
+        isOpen={showPruneModal}
+        onClose={() => setShowPruneModal(false)}
+        onSuccess={() => {
+          fetchLogs(1)
+          fetchStats()
+        }}
       />
 
       <style>{`

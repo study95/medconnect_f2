@@ -31,8 +31,18 @@ export const exportAuditLogs = (params = {}) =>
   })
 
 /**
- * Delete audit log entries older than N days (admin only).
- * @param {number} days - minimum 30, default 365
+ * Preview eligible routine audit logs count vs protected security records before pruning.
+ * @param {Object} params - { days, date_before }
  */
-export const clearOldAuditLogs = (days = 365) =>
-  axiosInstance.delete('/admin/audit-logs/clear', { params: { days } })
+export const previewAuditPrune = (params = {}) =>
+  axiosInstance.get('/admin/audit-logs/prune-preview', { params })
+
+/**
+ * Prune routine audit log entries older than N days or before date_before (admin only).
+ * Permanent immunity applies to high/critical risk logs and threat alerts.
+ * @param {number|Object} params - number of days or object { days, date_before }
+ */
+export const clearOldAuditLogs = (params = 90) => {
+  const queryParams = typeof params === 'number' ? { days: params } : params
+  return axiosInstance.delete('/admin/audit-logs/clear', { params: queryParams })
+}
