@@ -46,3 +46,9 @@ export const clearOldAuditLogs = (params = 90) => {
   const queryParams = typeof params === 'number' ? { days: params } : params
   return axiosInstance.delete('/admin/audit-logs/clear', { params: queryParams })
 }
+
+/**
+ * Get active critical security threats from the last 15 minutes.
+ */
+export const getSecurityAlerts = () =>
+  axiosInstance.get('/admin/audit-logs/security-alerts')

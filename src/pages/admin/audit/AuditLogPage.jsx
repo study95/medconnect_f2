@@ -6,9 +6,9 @@ import {
   Globe, Laptop, Hash, Tag, Stethoscope, Building2, Pill, Building,
   Lock, CreditCard, Package, FileText, ChevronLeft, ChevronRight,
   Copy, Check, Layers, ArrowRight, CornerDownRight, CheckSquare, GitCommit, ExternalLink,
-  Printer
+  Printer, Volume2, VolumeX, Bell
 } from 'lucide-react'
-import { getAuditLogs, getAuditStats, exportAuditLogs, previewAuditPrune, clearOldAuditLogs } from '../../../api/auditApi'
+import { getAuditLogs, getAuditStats, exportAuditLogs, previewAuditPrune, clearOldAuditLogs, getSecurityAlerts } from '../../../api/auditApi'
 import toast from 'react-hot-toast'
 
 // ── Configuration & Metadata Mappings ──────────────────────────────────────────
@@ -1733,6 +1733,27 @@ function getUserInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
+function playSecurityChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(440, ctx.currentTime + 0.15)
+    gain.gain.setValueAtTime(0.12, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.38)
+  } catch (e) {
+    // Audio context may be restricted by autoplay policy
+  }
+}
+
 // ── Main AuditLogPage Component ───────────────────────────────────────────────
 
 export default function AuditLogPage() {
@@ -1743,6 +1764,15 @@ export default function AuditLogPage() {
   const [selectedLogIndex, setSelectedLogIndex] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showPruneModal, setShowPruneModal] = useState(false)
+
+  // Auto-Refresh state (30s interval with safety pause)
+  const [autoRefresh, setAutoRefresh] = useState(false)
+  const [refreshCountdown, setRefreshCountdown] = useState(30)
+
+  // Instant Critical Security Threat state
+  const [activeThreat, setActiveThreat] = useState(null)
+  const [soundMuted, setSoundMuted] = useState(false)
+  const [dismissedThreatIds, setDismissedThreatIds] = useState(() => new Set())
 
   // Filters
   const [search, setSearch] = useState('')
@@ -1797,9 +1827,9 @@ export default function AuditLogPage() {
     }
   }
 
-  const fetchLogs = useCallback(async (page = 1, currentPerPage = perPage) => {
+  const fetchLogs = useCallback(async (page = 1, currentPerPage = perPage, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const params = {
         page,
         per_page: currentPerPage,
@@ -1826,7 +1856,7 @@ export default function AuditLogPage() {
     } catch (err) {
       console.error('Failed to fetch audit logs', err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [search, moduleFilter, actionFilter, riskFilter, dateFrom, dateTo, perPage])
 
@@ -1842,6 +1872,24 @@ export default function AuditLogPage() {
     }
   }, [])
 
+  // Check for critical threats in the last 15 minutes
+  const checkForThreats = useCallback(async () => {
+    try {
+      const res = await getSecurityAlerts()
+      if (res.data?.success && res.data.threats?.length > 0) {
+        const latest = res.data.threats[0]
+        if (!dismissedThreatIds.has(latest.id)) {
+          setActiveThreat(latest)
+          if (!soundMuted) {
+            playSecurityChime()
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Threat check warning:', e)
+    }
+  }, [dismissedThreatIds, soundMuted])
+
   useEffect(() => {
     fetchLogs(1)
   }, [fetchLogs])
@@ -1849,6 +1897,45 @@ export default function AuditLogPage() {
   useEffect(() => {
     fetchStats()
   }, [fetchStats])
+
+  useEffect(() => {
+    checkForThreats()
+  }, [checkForThreats])
+
+  // Auto-Refresh (30s) timer with full safety guards:
+  // - Pauses when tab is hidden/minimized
+  // - Pauses when any detail or prune modal is open
+  // - Only auto-refreshes if on page 1
+  useEffect(() => {
+    if (!autoRefresh) {
+      setRefreshCountdown(30)
+      return
+    }
+
+    const interval = setInterval(() => {
+      // 1. Guard: Tab is hidden/minimized -> pause countdown
+      if (document.hidden) return
+
+      // 2. Guard: Modal or details open -> pause countdown
+      if (selectedLogIndex !== null || showPruneModal) return
+
+      // 3. Guard: On page 2+ -> pause countdown
+      if (pagination.current_page !== 1) return
+
+      setRefreshCountdown((prev) => {
+        if (prev <= 1) {
+          // Trigger silent background refresh
+          fetchLogs(1, perPage, true)
+          fetchStats()
+          checkForThreats()
+          return 30
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, selectedLogIndex, showPruneModal, pagination.current_page, perPage, fetchLogs, fetchStats, checkForThreats])
 
   // Keyboard navigation for drawer and rows
   useEffect(() => {
@@ -1957,6 +2044,37 @@ export default function AuditLogPage() {
             <span>Audit Engine: 100% Operational (Redis Protected)</span>
           </div>
 
+          {/* Auto-Refresh (30s) Toggle Button */}
+          <button
+            onClick={() => setAutoRefresh(prev => !prev)}
+            className="admin-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              background: autoRefresh ? '#f0fdf4' : '#f8fafc',
+              color: autoRefresh ? '#15803d' : '#64748b',
+              border: autoRefresh ? '1.5px solid #86efac' : '1px solid #cbd5e1',
+              fontWeight: 700,
+              fontSize: 12,
+              padding: '6px 12px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: autoRefresh ? '0 0 0 3px rgba(34, 197, 94, 0.15)' : 'none'
+            }}
+            title={autoRefresh ? 'Click to disable auto-refresh' : 'Click to enable 30s auto-refresh'}
+          >
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: autoRefresh ? '#22c55e' : '#94a3b8',
+              boxShadow: autoRefresh ? '0 0 6px #22c55e' : 'none',
+              transition: 'all 0.2s ease'
+            }} />
+            <Clock size={13} />
+            <span>{autoRefresh ? `Auto: ${refreshCountdown}s` : 'Auto: Off'}</span>
+          </button>
+
           <button
             onClick={() => fetchLogs(pagination.current_page)}
             disabled={loading}
@@ -2000,6 +2118,117 @@ export default function AuditLogPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Active Critical Threat Emergency Banner ── */}
+      {activeThreat && (
+        <div style={{
+          background: 'linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)',
+          borderRadius: 14,
+          padding: '14px 18px',
+          marginBottom: 18,
+          border: '2px solid #ef4444',
+          boxShadow: '0 8px 24px -4px rgba(220, 38, 38, 0.4), 0 0 0 1px rgba(239, 68, 68, 0.4)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 14,
+          animation: 'modalFadeIn 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 12px rgba(239, 68, 68, 0.6)'
+            }}>
+              <AlertTriangle size={22} color="#ffffff" className="spin-icon" style={{ animationDuration: '3s' }} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#dc2626', padding: '2px 8px', borderRadius: 4 }}>
+                  CRITICAL THREAT ALERT
+                </span>
+                <span style={{ fontSize: 12, opacity: 0.85 }}>
+                  {formatRelative(activeThreat.created_at)}
+                </span>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>
+                {activeThreat.description}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2, fontFamily: 'monospace' }}>
+                Source IP: <strong>{activeThreat.ip_address}</strong> • Action: <strong>{activeThreat.action}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => {
+                const idx = logs.findIndex(l => l.id === activeThreat.id)
+                if (idx !== -1) {
+                  setSelectedLogIndex(idx)
+                } else {
+                  setSelectedLogIndex(0)
+                }
+              }}
+              style={{
+                background: '#ffffff',
+                color: '#991b1b',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: 8,
+                fontSize: 12.5,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}
+            >
+              <Eye size={14} />
+              <span>Inspect Threat</span>
+            </button>
+
+            <button
+              onClick={() => setSoundMuted(m => !m)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                padding: '8px 10px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title={soundMuted ? 'Unmute alert sound' : 'Mute alert sound'}
+            >
+              {soundMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+
+            <button
+              onClick={() => {
+                setDismissedThreatIds(prev => new Set([...prev, activeThreat.id]))
+                setActiveThreat(null)
+              }}
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '8px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Stats Metric Cards (4 Balanced Cards - Mutually Exclusive Selection) ── */}
       {stats && (() => {
@@ -2339,24 +2568,6 @@ export default function AuditLogPage() {
                     title="To date"
                   />
                 </div>
-              )}
-
-              {/* Reset / Clear Button */}
-              {activeFilters.length > 0 && (
-                <button
-                  onClick={clearFilters}
-                  style={{
-                    height: 38, padding: '0 12px', borderRadius: 8,
-                    border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c',
-                    fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Clear all active filters"
-                >
-                  <X size={14} />
-                  <span>Reset ({activeFilters.length})</span>
-                </button>
               )}
             </div>
 
