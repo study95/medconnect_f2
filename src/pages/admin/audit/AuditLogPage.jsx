@@ -31,18 +31,74 @@ const RESOURCE_META = {
   SubscriptionPackage: { IconComponent: Package,     label: 'Package',      badgeBg: '#ffedd5', color: '#c2410c' },
   PromoCode:           { IconComponent: Tag,         label: 'Promo Code',   badgeBg: '#cffafe', color: '#0e7490' },
   AuditLog:            { IconComponent: Shield,      label: 'Audit Log',    badgeBg: '#e0e7ff', color: '#4f46e5' },
+  Security:            { IconComponent: Shield,      label: 'Security',     badgeBg: '#e0e7ff', color: '#4f46e5' },
 }
 
 const ACTION_CONFIG = {
-  create:        { label: 'Created',       color: '#16a34a', bg: '#f0fdf4', IconComponent: FilePlus },
-  update:        { label: 'Updated',       color: '#2563eb', bg: '#eff6ff', IconComponent: FileEdit },
-  delete:        { label: 'Deleted',       color: '#dc2626', bg: '#fef2f2', IconComponent: Trash2 },
-  login:         { label: 'Logged In',     color: '#7c3aed', bg: '#f5f3ff', IconComponent: LogIn },
-  logout:        { label: 'Logged Out',    color: '#475569', bg: '#f8fafc', IconComponent: LogOut },
-  login_failed:  { label: 'Login Failed',  color: '#b91c1c', bg: '#fef2f2', IconComponent: XCircle },
-  export:        { label: 'Exported',      color: '#d97706', bg: '#fffbeb', IconComponent: Download },
-  status_change: { label: 'Status Change', color: '#0891b2', bg: '#ecfeff', IconComponent: Activity },
-  bulk_action:   { label: 'Bulk Action',   color: '#c026d3', bg: '#fdf4ff', IconComponent: Flame },
+  create:                            { label: 'Created',        color: '#16a34a', bg: '#f0fdf4', IconComponent: FilePlus },
+  store:                             { label: 'Created',        color: '#16a34a', bg: '#f0fdf4', IconComponent: FilePlus },
+  add:                               { label: 'Created',        color: '#16a34a', bg: '#f0fdf4', IconComponent: FilePlus },
+  update:                            { label: 'Updated',        color: '#2563eb', bg: '#eff6ff', IconComponent: FileEdit },
+  edit:                              { label: 'Updated',        color: '#2563eb', bg: '#eff6ff', IconComponent: FileEdit },
+  delete:                            { label: 'Deleted',        color: '#dc2626', bg: '#fef2f2', IconComponent: Trash2 },
+  destroy:                           { label: 'Deleted',        color: '#dc2626', bg: '#fef2f2', IconComponent: Trash2 },
+  login:                             { label: 'Logged In',      color: '#7c3aed', bg: '#f5f3ff', IconComponent: LogIn },
+  logout:                            { label: 'Logged Out',     color: '#475569', bg: '#f8fafc', IconComponent: LogOut },
+  login_failed:                      { label: 'Login Failed',   color: '#b91c1c', bg: '#fef2f2', IconComponent: XCircle },
+  admin_login_failed:                { label: 'Login Failed',   color: '#b91c1c', bg: '#fef2f2', IconComponent: XCircle },
+  doctor_2fa_failed:                 { label: '2FA Failed',     color: '#b91c1c', bg: '#fef2f2', IconComponent: XCircle },
+  admin_trusted_device_login:        { label: 'Trusted Login',  color: '#059669', bg: '#ecfdf5', IconComponent: Shield },
+  admin_2fa_verified:                { label: '2FA Login',      color: '#0d9488', bg: '#f0fdfa', IconComponent: CheckCircle },
+  doctor_2fa_verified:               { label: '2FA Login',      color: '#0d9488', bg: '#f0fdfa', IconComponent: CheckCircle },
+  hospital_2fa_verified:             { label: '2FA Login',      color: '#0d9488', bg: '#f0fdfa', IconComponent: CheckCircle },
+  patient_2fa_verified:              { label: '2FA Login',      color: '#0d9488', bg: '#f0fdfa', IconComponent: CheckCircle },
+  admin_2fa_otp_generated:           { label: '2FA OTP Sent',   color: '#d97706', bg: '#fffbeb', IconComponent: Shield },
+  hospital_new_device_otp_generated: { label: 'New Device OTP', color: '#d97706', bg: '#fffbeb', IconComponent: Shield },
+  doctor_new_device_otp_generated:   { label: 'New Device OTP', color: '#d97706', bg: '#fffbeb', IconComponent: Shield },
+  admin_honeypot_triggered:          { label: 'Honeypot Trap',  color: '#dc2626', bg: '#fef2f2', IconComponent: AlertTriangle },
+  export:                            { label: 'Exported',       color: '#d97706', bg: '#fffbeb', IconComponent: Download },
+  status_change:                     { label: 'Status Changed', color: '#0891b2', bg: '#ecfeff', IconComponent: Activity },
+  bulk_action:                       { label: 'Bulk Action',    color: '#c026d3', bg: '#fdf4ff', IconComponent: Flame },
+}
+
+function getActionMeta(action) {
+  if (!action) return { label: 'Activity', color: '#475569', bg: '#f1f5f9', IconComponent: Activity }
+  if (ACTION_CONFIG[action]) return ACTION_CONFIG[action]
+
+  const lower = action.toLowerCase()
+  if (lower.includes('login_failed') || lower.includes('failed')) {
+    return { label: 'Login Failed', color: '#b91c1c', bg: '#fef2f2', IconComponent: XCircle }
+  }
+  if (lower.includes('2fa_verified') || lower.includes('2fa_login')) {
+    return { label: '2FA Login', color: '#0d9488', bg: '#f0fdfa', IconComponent: CheckCircle }
+  }
+  if (lower.includes('otp')) {
+    return { label: 'OTP Sent', color: '#d97706', bg: '#fffbeb', IconComponent: Shield }
+  }
+  if (lower.includes('login')) {
+    return { label: 'Logged In', color: '#7c3aed', bg: '#f5f3ff', IconComponent: LogIn }
+  }
+  if (lower.includes('logout')) {
+    return { label: 'Logged Out', color: '#475569', bg: '#f8fafc', IconComponent: LogOut }
+  }
+  if (lower.includes('create') || lower.includes('store') || lower.includes('add')) {
+    return { label: 'Created', color: '#16a34a', bg: '#f0fdf4', IconComponent: FilePlus }
+  }
+  if (lower.includes('update') || lower.includes('edit')) {
+    return { label: 'Updated', color: '#2563eb', bg: '#eff6ff', IconComponent: FileEdit }
+  }
+  if (lower.includes('delete') || lower.includes('destroy') || lower.includes('remove')) {
+    return { label: 'Deleted', color: '#dc2626', bg: '#fef2f2', IconComponent: Trash2 }
+  }
+  if (lower.includes('status')) {
+    return { label: 'Status Changed', color: '#0891b2', bg: '#ecfeff', IconComponent: Activity }
+  }
+  if (lower.includes('export')) {
+    return { label: 'Exported', color: '#d97706', bg: '#fffbeb', IconComponent: Download }
+  }
+
+  const formatted = action.split(/[_-\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  return { label: formatted, color: '#475569', bg: '#f1f5f9', IconComponent: Activity }
 }
 
 // ── Visual Micro-Components ───────────────────────────────────────────────────
@@ -204,22 +260,126 @@ function JsonDiff({ old_values, new_values, changed_fields }) {
 // ── Client Device & Tool Detection Helper ────────────────────────────────────
 
 function detectClientType(ua) {
-  if (!ua) return { type: 'unknown', label: 'Unknown Client', isBot: false, color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' }
+  if (!ua) return { type: 'unknown', os: 'Unknown OS', browser: 'Unknown Browser', label: 'Unknown Client', isBot: false, color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' }
   const lower = ua.toLowerCase()
-  if (lower.includes('curl') || lower.includes('python') || lower.includes('postman') || lower.includes('sqlmap') || lower.includes('wget') || lower.includes('bot') || lower.includes('crawl')) {
-    return { type: 'bot', label: '⚠️ Automated Script / Bot', isBot: true, color: '#dc2626', bg: '#fef2f2', border: '#fecaca' }
+  const isBot = lower.includes('curl') || lower.includes('python') || lower.includes('postman') || lower.includes('sqlmap') || lower.includes('wget') || lower.includes('bot') || lower.includes('crawl') || lower.includes('spider')
+
+  // OS detection
+  let os = 'Unknown OS'
+  if (lower.includes('windows nt 10.0')) os = 'Windows 10/11'
+  else if (lower.includes('windows nt 6.3')) os = 'Windows 8.1'
+  else if (lower.includes('windows nt 6.1')) os = 'Windows 7'
+  else if (lower.includes('windows')) os = 'Windows'
+  else if (lower.includes('android')) os = 'Android'
+  else if (lower.includes('iphone') || lower.includes('ipad')) os = 'iOS'
+  else if (lower.includes('macintosh') || lower.includes('mac os')) os = 'macOS'
+  else if (lower.includes('linux')) os = 'Linux'
+
+  // Browser detection
+  let browser = 'Browser'
+  if (lower.includes('edg/')) browser = 'Edge'
+  else if (lower.includes('chrome/')) browser = 'Chrome'
+  else if (lower.includes('firefox/')) browser = 'Firefox'
+  else if (lower.includes('safari/') && !lower.includes('chrome')) browser = 'Safari'
+  else if (lower.includes('postman')) browser = 'Postman'
+  else if (lower.includes('curl')) browser = 'cURL'
+  else if (lower.includes('python')) browser = 'Python'
+  else if (lower.includes('sqlmap')) browser = 'SQLMap'
+
+  const label = isBot ? `⚠️ ${browser}` : `${os} • ${browser}`
+  return {
+    type: isBot ? 'bot' : 'browser',
+    os,
+    browser,
+    label,
+    isBot,
+    color: isBot ? '#dc2626' : '#2563eb',
+    bg: isBot ? '#fef2f2' : '#eff6ff',
+    border: isBot ? '#fecaca' : '#bfdbfe'
   }
-  if (lower.includes('windows')) return { type: 'browser', label: 'Windows PC (Browser)', isBot: false, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' }
-  if (lower.includes('android')) return { type: 'browser', label: 'Android Mobile', isBot: false, color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
-  if (lower.includes('iphone') || lower.includes('ipad')) return { type: 'browser', label: 'Apple iOS Mobile', isBot: false, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }
-  if (lower.includes('macintosh') || lower.includes('mac os')) return { type: 'browser', label: 'Macintosh (Browser)', isBot: false, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' }
-  if (lower.includes('linux')) return { type: 'browser', label: 'Linux OS', isBot: false, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
-  return { type: 'browser', label: 'Standard Web Client', isBot: false, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
 }
 
-// ── Slide-Over Details Drawer ──────────────────────────────────────────────────
+function formatLogDescriptionInline(log) {
+  let baseDesc = log.description || log.model_label || ''
+  
+  if (!baseDesc) {
+    const act = getActionMeta(log.action)?.label || 'Activity'
+    const mod = RESOURCE_META[log.module]?.label || log.module || ''
+    const id = log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : '')
+    baseDesc = `${act} ${mod} ${id}`.trim()
+  } else {
+    // 1. Clarify 2FA verification login descriptions
+    baseDesc = baseDesc
+      .replace(/Hospital 2FA successfully verified for/i, 'Hospital logged in successfully (2FA):')
+      .replace(/Doctor 2FA successfully verified for/i, 'Doctor logged in successfully (2FA):')
+      .replace(/Super Admin 2FA authenticated successfully for/i, 'Super Admin logged in successfully (2FA):')
+      .replace(/2FA successfully verified for/i, 'Logged in successfully (2FA):')
+      .replace(/2FA authenticated successfully for/i, 'Logged in successfully (2FA):')
+  }
 
-function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose }) {
+  // 2. Strip redundant "from IP: ..." since telemetry bracket formats IP cleanly
+  baseDesc = baseDesc.replace(/\s*from IP:\s*[\d\.:a-fA-F]+/i, '').trim()
+
+  // Format telemetry bracket like Image 1: [IP: 114.130.145.18 | OS: Windows 10 | Browser: Chrome 153.0.0.0]
+  const hasTelemetry = baseDesc.includes('[IP:') || baseDesc.includes('IP:')
+  let telemetry = ''
+  
+  if (!hasTelemetry && (log.ip_address || log.user_agent)) {
+    const client = detectClientType(log.user_agent)
+    const parts = []
+    if (log.ip_address) parts.push(`IP: ${log.ip_address}`)
+    if (client.os && client.os !== 'Unknown OS') parts.push(`OS: ${client.os}`)
+    if (client.browser && client.browser !== 'Unknown Browser') parts.push(`Browser: ${client.browser}`)
+    
+    if (parts.length > 0) {
+      telemetry = ` [${parts.join(' | ')}]`
+    }
+  }
+
+  return { text: baseDesc, telemetry }
+}
+
+function formatExactDateTime(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function getUserPublicIdOrName(log) {
+  // 1. If public_id exists (Doctor, Hospital, Patient, Chamber), show that Public ID!
+  if (log.public_id) {
+    return { value: log.public_id, isPublicId: true, label: log.public_id }
+  }
+
+  // 2. If it's an Admin or named User, show their Name (e.g. Super Admin)
+  if (log.user_name) {
+    return { value: log.user_name, isPublicId: false, label: log.user_name }
+  }
+
+  // 3. If user_email is present
+  if (log.user_email) {
+    return { value: log.user_email, isPublicId: false, label: log.user_email }
+  }
+
+  // 4. If login failed / OTP / login attempt, extract target email from description
+  const emailInDesc = log.description?.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[1]
+  if (emailInDesc) {
+    return { value: emailInDesc, isPublicId: false, label: emailInDesc }
+  }
+
+  // 5. If user_id exists, show User #ID
+  if (log.user_id) {
+    return { value: `#${log.user_id}`, isPublicId: false, label: `User #${log.user_id}` }
+  }
+
+  return { value: '—', isPublicId: false, label: 'System' }
+}
+
+// ── Center Details Modal (Center Popup Dialog) ──────────────────────────────
+
+function AuditDetailsModal({ log, currentIndex, totalCount, onNavigate, onClose }) {
   useEffect(() => {
     if (log) {
       const prevOverflow = document.body.style.overflow
@@ -230,134 +390,140 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
     }
   }, [log])
 
+  // Keyboard navigation & Escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') onNavigate(-1)
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') onNavigate(1)
+    }
+    if (log) window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [log, onNavigate, onClose])
+
   if (!log) return null
 
-  const actionCfg = ACTION_CONFIG[log.action] || { label: log.action, color: '#475569', bg: '#f1f5f9', IconComponent: Activity }
-  const ActionIcon = actionCfg.IconComponent
+  const actionCfg = getActionMeta(log.action)
+  const ActionIcon = actionCfg.IconComponent || Activity
   const entityLabel = log.model_label || (log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : null))
   const isHighRisk = log.risk_level === 'high' || log.risk_level === 'critical'
   const clientInfo = detectClientType(log.user_agent)
 
   return (
-    <>
-      {/* Backdrop overlay below header and above footer */}
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(5px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        animation: 'modalFadeIn 0.18s ease-out'
+      }}
+      onClick={onClose}
+    >
       <div
         style={{
-          position: 'fixed',
-          top: 'var(--admin-header-height, 64px)',
-          left: 0,
-          right: 0,
-          bottom: 'var(--admin-footer-height, 46px)',
-          height: 'calc(100vh - var(--admin-header-height, 64px) - var(--admin-footer-height, 46px))',
-          zIndex: 1000,
-          background: 'rgba(15, 23, 42, 0.45)',
-          backdropFilter: 'blur(3px)',
-          animation: 'fadeIn 0.2s ease-out'
-        }}
-        onClick={onClose}
-      />
-
-      {/* Slide-over Drawer Container */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 'var(--admin-header-height, 64px)',
-          right: 0,
-          bottom: 'var(--admin-footer-height, 46px)',
-          height: 'calc(100vh - var(--admin-header-height, 64px) - var(--admin-footer-height, 46px))',
           width: '100%',
-          maxWidth: 460,
-          zIndex: 1010,
+          maxWidth: 680,
+          maxHeight: '90vh',
           background: 'var(--admin-card-bg, #ffffff)',
-          borderLeft: '1px solid var(--admin-border, #e2e8f0)',
-          boxShadow: '-8px 0 24px rgba(0,0,0,0.12)',
+          borderRadius: 16,
+          border: isHighRisk ? '1.5px solid #fca5a5' : '1px solid var(--admin-border, #e2e8f0)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          animation: 'modalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Drawer Header */}
+        {/* Modal Header */}
         <div style={{
-          padding: '14px 18px',
+          padding: '16px 22px',
           borderBottom: '1px solid var(--admin-border, #f1f5f9)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'var(--admin-card-bg, #ffffff)',
+          background: isHighRisk ? '#fff5f5' : 'var(--admin-bg, #f8fafc)',
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <div style={{
-              width: 34, height: 34, borderRadius: 9,
+              width: 40, height: 40, borderRadius: 10,
               background: actionCfg.bg, color: actionCfg.color,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0
+              flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
             }}>
-              <ActionIcon size={17} />
+              <ActionIcon size={20} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--admin-text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                Audit Record Details
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>Audit Record #{log.id}</span>
+                <RiskBadge level={log.risk_level} />
               </div>
-              <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginTop: 1 }}>
-                Record #{log.id} • {formatRelative(log.created_at)}
+              <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
+                {log.created_at ? new Date(log.created_at).toLocaleString('en-GB', {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                }) : '—'} • ({formatRelative(log.created_at)})
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <button
               onClick={() => onNavigate(-1)}
               disabled={currentIndex <= 0}
               style={{
-                width: 28, height: 28, borderRadius: 7, border: '1px solid var(--admin-border, #e2e8f0)',
-                background: 'var(--admin-bg, #f8fafc)', cursor: currentIndex <= 0 ? 'not-allowed' : 'pointer',
+                width: 32, height: 32, borderRadius: 8, border: '1px solid var(--admin-border, #e2e8f0)',
+                background: 'var(--admin-card-bg, #ffffff)', cursor: currentIndex <= 0 ? 'not-allowed' : 'pointer',
                 opacity: currentIndex <= 0 ? 0.35 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
-              title="Previous Record (Up Arrow)"
+              title="Previous Record (Left Arrow)"
             >
-              <ChevronLeft size={15} />
+              <ChevronLeft size={16} />
             </button>
-            <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', fontWeight: 600, padding: '0 2px' }}>
+            <span style={{ fontSize: 11.5, color: 'var(--admin-text-muted, #94a3b8)', fontWeight: 700, padding: '0 4px' }}>
               {currentIndex + 1} of {totalCount}
             </span>
             <button
               onClick={() => onNavigate(1)}
               disabled={currentIndex >= totalCount - 1}
               style={{
-                width: 28, height: 28, borderRadius: 7, border: '1px solid var(--admin-border, #e2e8f0)',
-                background: 'var(--admin-bg, #f8fafc)', cursor: currentIndex >= totalCount - 1 ? 'not-allowed' : 'pointer',
+                width: 32, height: 32, borderRadius: 8, border: '1px solid var(--admin-border, #e2e8f0)',
+                background: 'var(--admin-card-bg, #ffffff)', cursor: currentIndex >= totalCount - 1 ? 'not-allowed' : 'pointer',
                 opacity: currentIndex >= totalCount - 1 ? 0.35 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
-              title="Next Record (Down Arrow)"
+              title="Next Record (Right Arrow)"
             >
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             </button>
             <button
               onClick={onClose}
               style={{
-                width: 28, height: 28, borderRadius: 7, border: 'none',
-                background: 'rgba(0,0,0,0.05)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 4
+                width: 32, height: 32, borderRadius: 8, border: 'none',
+                background: 'rgba(0,0,0,0.06)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 6
               }}
               title="Close (Esc)"
             >
-              <X size={15} />
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Drawer Body */}
+        {/* Modal Body */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          overscrollBehavior: 'contain',
-          padding: '18px 20px',
+          padding: '20px 24px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 18
+          gap: 16
         }}>
           {/* 1. Activity Summary Card */}
           <div style={{
@@ -381,12 +547,12 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
                 {entityLabel}
               </div>
             )}
-            <div style={{ fontSize: 12.5, color: 'var(--admin-text-muted, #64748b)', lineHeight: 1.45 }}>
-              {log.description}
+            <div style={{ fontSize: 13, color: 'var(--admin-text, #334155)', lineHeight: 1.5 }}>
+              {formatLogDescriptionInline(log).text}
             </div>
           </div>
 
-          {/* 2. 🕵️ Security & Forensic Intelligence Card (All 4 attack investigation data in one box) */}
+          {/* 2. 🕵️ Security & Forensic Intelligence Card */}
           <div style={{
             borderRadius: 12,
             border: isHighRisk ? '1.5px solid #fca5a5' : '1px solid var(--admin-border, #e2e8f0)',
@@ -504,7 +670,7 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
             </div>
           </div>
 
-          {/* 3. User / Actor Information (Privacy Compliant - No Email) */}
+          {/* 3. User / Actor Information */}
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
               User / Actor Information
@@ -572,8 +738,46 @@ function AuditDetailsDrawer({ log, currentIndex, totalCount, onNavigate, onClose
             <JsonDiff old_values={log.old_values} new_values={log.new_values} changed_fields={log.changed_fields} />
           </div>
         </div>
+
+        {/* Modal Footer */}
+        <div style={{
+          padding: '14px 22px',
+          borderTop: '1px solid var(--admin-border, #f1f5f9)',
+          background: 'var(--admin-bg, #f8fafc)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => onNavigate(-1)}
+              disabled={currentIndex <= 0}
+              className="admin-btn admin-btn-outline"
+              style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <ChevronLeft size={14} /> Previous
+            </button>
+            <button
+              onClick={() => onNavigate(1)}
+              disabled={currentIndex >= totalCount - 1}
+              className="admin-btn admin-btn-outline"
+              style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="admin-btn admin-btn-secondary"
+            style={{ fontSize: 12.5, padding: '7px 18px', fontWeight: 600 }}
+          >
+            Close
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -1046,22 +1250,30 @@ export default function AuditLogPage() {
         background: 'var(--admin-card-bg, #ffffff)', border: '1px solid var(--admin-border, #e2e8f0)',
         borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
       }}>
-        {/* Table Header Row */}
+        {/* Table Header Row (Image 1 Style) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '150px 140px 1fr 180px 100px 80px',
-          padding: '12px 20px', gap: 12, alignItems: 'center',
+          gridTemplateColumns: '1fr 180px 150px 80px',
+          padding: '12px 20px', gap: 16, alignItems: 'center',
           background: 'var(--admin-bg, #f8fafc)',
           borderBottom: '1px solid var(--admin-border, #e2e8f0)',
-          fontWeight: 700, fontSize: 12, color: 'var(--admin-text-muted, #64748b)',
-          textTransform: 'uppercase', letterSpacing: '0.05em'
+          fontWeight: 700, fontSize: 13, color: 'var(--admin-text, #334155)',
         }}>
-          <div>Time</div>
-          <div>Resource</div>
-          <div>Activity</div>
-          <div>User</div>
-          <div>Risk</div>
-          <div style={{ textAlign: 'right' }}>Actions</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Description</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>⇅</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Date</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>▲</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>User / Public ID</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>⇅</span>
+          </div>
+          <div style={{ textAlign: 'right', color: 'var(--admin-text-muted, #64748b)', fontSize: 12, fontWeight: 600 }}>
+            Actions
+          </div>
         </div>
 
         {/* Table Body Content */}
@@ -1078,10 +1290,11 @@ export default function AuditLogPage() {
           </div>
         ) : (
           logs.map((log, index) => {
-            const actionCfg = ACTION_CONFIG[log.action] || { label: log.action, color: '#475569', bg: '#f1f5f9', IconComponent: Activity }
-            const ActionIcon = actionCfg.IconComponent
             const isSelected = selectedLogIndex === index
-            const entityLabel = log.model_label || (log.public_id ? `#${log.public_id}` : (log.model_id ? `#${log.model_id}` : log.description || '—'))
+            const descData = formatLogDescriptionInline(log)
+            const actorInfo = getUserPublicIdOrName(log)
+            const actionMeta = getActionMeta(log.action)
+            const ActionIcon = actionMeta.IconComponent || Activity
 
             return (
               <div
@@ -1089,97 +1302,64 @@ export default function AuditLogPage() {
                 onClick={() => setSelectedLogIndex(index)}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '150px 140px 1fr 180px 100px 80px',
-                  padding: '10px 20px', gap: 12, alignItems: 'center',
-                  minHeight: 64, boxSizing: 'border-box',
-                  borderBottom: '1px solid var(--admin-border, #e2e8f0)',
-                  background: isSelected ? 'rgba(79, 70, 229, 0.04)' : 'transparent',
-                  cursor: 'pointer', transition: 'all 0.15s ease'
+                  gridTemplateColumns: '1fr 180px 150px 80px',
+                  padding: '11px 20px', gap: 16, alignItems: 'center',
+                  minHeight: 48, boxSizing: 'border-box',
+                  borderBottom: '1px solid var(--admin-border, #f1f5f9)',
+                  background: isSelected ? 'rgba(79, 70, 229, 0.04)' : '#ffffff',
+                  cursor: 'pointer', transition: 'background 0.15s ease'
                 }}
                 onMouseEnter={e => {
                   if (!isSelected) e.currentTarget.style.background = '#f8fafc'
                 }}
                 onMouseLeave={e => {
-                  if (!isSelected) e.currentTarget.style.background = 'transparent'
+                  if (!isSelected) e.currentTarget.style.background = '#ffffff'
                 }}
               >
-                {/* 1. Time Column */}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                    {formatRelative(log.created_at)}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', marginTop: 2 }}>
-                    {log.created_at ? new Date(log.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </div>
-                </div>
-
-                {/* 2. Resource Column */}
-                <div>
-                  <ResourceBadge module={log.module} />
-                </div>
-
-                {/* 3. Activity Column (3-Row Enterprise Layout) */}
-                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
-                  {/* Row 1: Action badge */}
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700,
-                      color: actionCfg.color, background: actionCfg.bg, lineHeight: 1.2
-                    }}>
-                      <ActionIcon size={10} />
-                      <span>{actionCfg.label}</span>
+                {/* 1. Description Column with Action Tag */}
+                <div style={{ minWidth: 0, fontSize: 13, color: '#334155', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+                    color: actionMeta.color, background: actionMeta.bg,
+                    border: `1px solid ${actionMeta.color}30`,
+                    flexShrink: 0
+                  }}>
+                    <ActionIcon size={11} />
+                    <span>{actionMeta.label}</span>
+                  </span>
+                  <span style={{ fontWeight: 500, color: '#1e293b' }}>
+                    {descData.text}
+                  </span>
+                  {descData.telemetry && (
+                    <span style={{ color: '#64748b', fontSize: 12.5, fontWeight: 400 }}>
+                      {descData.telemetry}
                     </span>
-                  </div>
-
-                  {/* Row 2: Entity label in bold */}
-                  <div
-                    style={{
-                      fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      lineHeight: 1.3
-                    }}
-                    title={entityLabel}
-                  >
-                    {entityLabel}
-                  </div>
-
-                  {/* Row 3: Resource type in muted text */}
-                  <div style={{
-                    fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted, #64748b)',
-                    lineHeight: 1.2
-                  }}>
-                    {RESOURCE_META[log.module]?.label || log.module || 'System'}
-                  </div>
+                  )}
                 </div>
 
-                {/* 4. User Column */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
-                    background: log.user_name ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#e2e8f0',
-                    color: log.user_name ? '#ffffff' : '#64748b',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 11, flexShrink: 0
-                  }}>
-                    {getUserInitials(log.user_name)}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {log.user_name || 'System'}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #94a3b8)', textTransform: 'capitalize' }}>
-                      {log.user_role || 'Automated'}
-                    </div>
-                  </div>
+                {/* 2. Date Column */}
+                <div style={{ fontSize: 12.5, fontFamily: 'monospace', color: '#475569', whiteSpace: 'nowrap' }}>
+                  {formatExactDateTime(log.created_at)}
                 </div>
 
-                {/* 5. Risk Badge Column */}
-                <div>
-                  <RiskBadge level={log.risk_level} />
+                {/* 3. User / Public ID Column */}
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    fontFamily: actorInfo.isPublicId ? 'monospace' : 'inherit',
+                    color: actorInfo.isPublicId ? '#4338ca' : '#1e293b',
+                    fontWeight: actorInfo.isPublicId ? 700 : 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={log.user_name ? `${log.user_name} (${log.user_role || 'User'})` : actorInfo.label}
+                >
+                  {actorInfo.value}
                 </div>
 
-                {/* 6. Action Button Column */}
+                {/* 4. Actions Column */}
                 <div style={{ textAlign: 'right' }}>
                   <button
                     onClick={(e) => {
@@ -1188,10 +1368,10 @@ export default function AuditLogPage() {
                     }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '6px 10px', borderRadius: 8,
+                      padding: '5px 10px', borderRadius: 6,
                       border: '1px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)',
-                      color: 'var(--admin-text, #334155)',
+                      background: '#ffffff',
+                      color: '#475569',
                       fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
@@ -1201,10 +1381,11 @@ export default function AuditLogPage() {
                       e.currentTarget.style.color = '#4f46e5'
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.background = 'var(--admin-card-bg, #ffffff)'
+                      e.currentTarget.style.background = '#ffffff'
                       e.currentTarget.style.borderColor = 'var(--admin-border, #e2e8f0)'
-                      e.currentTarget.style.color = 'var(--admin-text, #334155)'
+                      e.currentTarget.style.color = '#475569'
                     }}
+                    title="View details in popup"
                   >
                     <Eye size={13} />
                     <span>View</span>
@@ -1299,8 +1480,8 @@ export default function AuditLogPage() {
         })()}
       </div>
 
-      {/* ── Slide-Over Details Drawer ── */}
-      <AuditDetailsDrawer
+      {/* ── Center Details Modal (Center Popup Dialog) ── */}
+      <AuditDetailsModal
         log={selectedLog}
         currentIndex={selectedLogIndex ?? 0}
         totalCount={logs.length}
@@ -1309,8 +1490,8 @@ export default function AuditLogPage() {
       />
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalZoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .spin-icon { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
