@@ -784,6 +784,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><Settings size={18} /></span>
                 <span className="nav-text">Billing Settings</span>
               </NavLink>
+
+              <NavLink
+                to="/admin/sms-settings"
+                className={`sidebar-nav-item ${isActive('/admin/sms-settings') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'SMS & OTP Settings' : undefined}
+              >
+                <span className="nav-icon"><MessageSquare size={18} /></span>
+                <span className="nav-text">SMS & OTP Settings</span>
+              </NavLink>
             </>
           )}
         </nav>

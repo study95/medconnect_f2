@@ -27,6 +27,7 @@ export default function HospitalRegisterPage() {
   // Check if mobile is verified
   const verified = location.state?.verified
   const verifiedMobile = location.state?.mobile || ''
+  const verificationToken = location.state?.verification_token || ''
 
   useEffect(() => {
     if (!verified) {
@@ -117,6 +118,7 @@ export default function HospitalRegisterPage() {
     Object.keys(form).forEach(key => {
       if (form[key]) formData.append(key, form[key])
     })
+    if (verificationToken) formData.append('verification_token', verificationToken)
 
     const result = await registerHospital(formData)
     setLoading(false)

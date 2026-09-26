@@ -15,6 +15,7 @@ import { Search, Filter, RefreshCw, X, ChevronDown, ChevronUp, SlidersHorizontal
 export default function ListToolbar({
   search = '',
   onSearchChange,
+  onSearchKeyDown,
   searchPlaceholder = 'Quick search...',
   onRefresh,
   refreshing = false,
@@ -77,6 +78,7 @@ export default function ListToolbar({
             type="text"
             value={search}
             onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+            onKeyDown={(e) => onSearchKeyDown && onSearchKeyDown(e)}
             placeholder={searchPlaceholder}
             style={{
               width: '100%',

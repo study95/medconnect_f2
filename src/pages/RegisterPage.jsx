@@ -7,7 +7,7 @@ import {
   Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { sendOtp } from '../api/authApi'
+import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import '../styles/auth-premium.css'
@@ -82,6 +82,7 @@ const RegisterPage = () => {
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [verifying, setVerifying] = useState(false)
+  const [verificationToken, setVerificationToken] = useState('')
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const otpRefs = useRef([])
 
@@ -246,17 +247,26 @@ const RegisterPage = () => {
     }
   }
 
-  const handleVerifyOTP = () => {
+  const handleVerifyOTP = async () => {
     setFieldErrors({})
     if (otp.length !== 6) {
       setFieldErrors({ otp: '৬ সংখ্যার OTP কোড লিখুন' })
       return
     }
     setVerifying(true)
-    setTimeout(() => {
+    try {
+      const res = await verifyOtp({ mobile: form.mobile, otp })
+      if (res.data?.success) {
+        setVerificationToken(res.data?.verification_token || '')
+        setStep(2)
+      } else {
+        setFieldErrors({ otp: res.data?.message || 'ভুল ওটিপি কোড!' })
+      }
+    } catch (err) {
+      setFieldErrors({ otp: err.response?.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।' })
+    } finally {
       setVerifying(false)
-      setStep(2)
-    }, 600)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -279,6 +289,7 @@ const RegisterPage = () => {
     formData.append('email', form.email)
     formData.append('mobile', form.mobile)
     formData.append('password', form.password)
+    if (verificationToken) formData.append('verification_token', verificationToken)
 
     if (role === 'doctor') {
       if (!form.specialty_id) {

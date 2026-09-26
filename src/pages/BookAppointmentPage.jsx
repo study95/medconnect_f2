@@ -15,7 +15,8 @@ import {
   IconArrowRight, IconCheck, IconX, IconStethoscope,
   IconCalendarPlus, IconNotes, IconLoader2, IconChevronLeft, IconChevronRight,
   IconChevronDown, IconInfoCircle, IconCircleCheck, IconPlus, IconMinus, IconBuildingHospital,
-  IconEye, IconEyeOff, IconMail, IconAlertTriangle, IconRefresh
+  IconEye, IconEyeOff, IconMail, IconAlertTriangle, IconRefresh,
+  IconPrinter, IconTicket, IconCopy
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -87,8 +88,35 @@ export default function BookAppointmentPage() {
     }
   }, [doctor?.id])
   
+  const isTestSuccess = Boolean(searchParams.get('test_success'))
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [success, setSuccess] = useState(isTestSuccess)
+  const [confirmedAppointment, setConfirmedAppointment] = useState(() => {
+    if (isTestSuccess) {
+      return {
+        id: 'AP-DBCA6N',
+        public_id: 'AP-DBCA6N',
+        tracking_id: 'AP-DBCA6N',
+        doctor_id: 'DR-NR45FQ',
+        doctor_name: 'ডা. প্রিয়তোষ দাস',
+        specialty: 'হৃদরোগ ও মেডিসিন বিশেষজ্ঞ',
+        degree: 'MBBS, FCPS (Cardiology)',
+        hospital_name: 'পপুলার ডায়াগনস্টিক সেন্টার, ধানমন্ডি',
+        chamber_address: 'বাড়ি #১৬, রোড #২, ধানমন্ডি, ঢাকা',
+        appointment_date: '2026-09-28',
+        appointment_time: '17:30:00',
+        serial_number: 8,
+        booking_for: 'myself',
+        patient_name: 'রাকিব হাসান',
+        fee: 1000,
+        payment_status: 'Unpaid',
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }
+    }
+    return null
+  })
+  const [copiedId, setCopiedId] = useState(false)
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
@@ -526,30 +554,33 @@ export default function BookAppointmentPage() {
       const patientDisplayName = isOther ? payload.patient_name : (user?.name || 'রোগী')
 
       const newAppt = {
-        id: resData.id || Date.now(),
+        id: resData.id || resData.public_id || Date.now(),
         registration_id: resData.registration_id || resData.registration_no,
         tracking_id: resData.public_id || resData.id || resData.registration_id,
         doctor_id: payload.doctor_id,
-        doctor_name: doctor?.name || 'ডাক্তার',
+        doctor_name: resData.doctor_name || doctor?.name || 'ডাক্তার',
         specialty: doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা',
         degree: doctor?.degree || 'MBBS',
-        hospital_name: selectedChamber?.chamber_name || selectedChamber?.hospital?.name || doctor?.workplace || 'হাসপাতাল / চেম্বার',
-        chamber_address: selectedChamber?.address || selectedChamber?.hospital?.address || 'ঢাকা, বাংলাদেশ',
-        appointment_date: payload.appointment_date,
-        appointment_time: payload.appointment_time,
-        serial_number: resData.serial_number,
+        hospital_name: resData.hospital_name || resData.chamber_name || selectedChamber?.chamber_name || selectedChamber?.hospital?.name || doctor?.workplace || 'হাসপাতাল / চেম্বার',
+        chamber_address: resData.chamber_address || resData.hospital_address || selectedChamber?.address || selectedChamber?.hospital?.address || 'ঢাকা, বাংলাদেশ',
+        appointment_date: resData.date || payload.appointment_date,
+        appointment_time: resData.time || form.appointment_time || payload.appointment_time,
+        serial_number: resData.serial_number ?? null,
         booking_for: payload.booking_for || 'myself',
-        patient_name: patientDisplayName,
+        patient_name: resData.patient_name || patientDisplayName,
         patient_age: payload.patient_age,
         patient_relation: payload.patient_relation,
         for_patient_name: payload.patient_name,
         for_patient_age: payload.patient_age,
         for_patient_relation: payload.patient_relation,
+        fee: resData.amount || selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee || null,
+        payment_status: resData.payment_status || 'Unpaid',
         notes: payload.notes,
-        status: 'pending',
-        created_at: new Date().toISOString()
+        status: resData.status || 'pending',
+        created_at: resData.created_at || new Date().toISOString()
       }
 
+      setConfirmedAppointment(newAppt)
       setSuccess(true)
       setShowAuthModal(false)
       window.scrollTo(0, 0)
@@ -866,7 +897,7 @@ export default function BookAppointmentPage() {
   const getFormatDateBn = (dateStr) => {
     if(!dateStr) return ''
     const d = new Date(dateStr)
-    return `${dayNamesBn[d.getDay()]}বার, ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`
+    return `${dayNamesBn[d.getDay()]}বার, ${toBnNum(d.getDate())} ${monthNames[d.getMonth()]} ${toBnNum(d.getFullYear())}`
   }
 
   const dayToBn = {
@@ -879,21 +910,328 @@ export default function BookAppointmentPage() {
     'Friday': 'শুক্রবার'
   };
 
-  if (success) return (
-    <div className="page-wrapper d-flex align-items-center justify-content-center" style={{ minHeight: '80vh', background: '#F8FAFB' }}>
-      <div style={{ background: 'white', borderRadius: 32, padding: '60px 40px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,184,117,0.1)', maxWidth: 500 }}>
-        <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-          <IconCheck size={40} color="white" stroke={3} />
-        </div>
-        <h2 style={{ fontWeight: 900, color: '#0F172A', marginBottom: 12, fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif' }}>বুকিং নিশ্চিত হয়েছে! 🎉</h2>
-        <p style={{ color: '#64748B', fontSize: 16, marginBottom: 40, fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif', lineHeight: 1.6 }}>আপনার অ্যাপয়েন্টমেন্ট সফলভাবে সম্পন্ন হয়েছে। সুস্বাস্থ্য কামনায় সবসময় আপনার পাশে আছি আমরা।</p>
-        <div className="d-flex gap-3 justify-content-center flex-wrap">
-          <button onClick={() => navigate('/my-appointments')} style={{ padding: '12px 24px', borderRadius: 8, background: '#00B875', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700 }}>আমার অ্যাপয়েন্টমেন্ট</button>
-          <button onClick={() => navigate('/')} style={{ padding: '12px 24px', borderRadius: 8, border: '1px solid #E5EAF0', background: 'white', cursor: 'pointer', fontWeight: 700 }}>হোম</button>
+  if (success) {
+    const appt = confirmedAppointment || {}
+    const trackingId = appt.tracking_id || appt.id || ''
+    const serialNo = appt.serial_number ? toBnNum(appt.serial_number) : null
+    const formattedDate = getFormatDateBn(appt.appointment_date) || appt.appointment_date || 'তারিখ নির্ধারিত'
+    const formattedTime = formatTimeBn(appt.appointment_time) || appt.appointment_time || 'সময় নির্ধারিত'
+
+    const handleCopyTrackingId = () => {
+      if (!trackingId) return
+      navigator.clipboard.writeText(trackingId)
+      setCopiedId(true)
+      setTimeout(() => setCopiedId(false), 2000)
+    }
+
+    const handlePrint = () => {
+      window.print()
+    }
+
+    return (
+      <div className="page-wrapper d-flex align-items-center justify-content-center py-5 px-3" style={{ minHeight: '85vh', background: '#F8FAFC' }}>
+        {/* Print Styles */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            body * { visibility: hidden !important; }
+            #printable-booking-slip, #printable-booking-slip * { visibility: visible !important; }
+            #printable-booking-slip {
+              position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important;
+              box-shadow: none !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 20px !important;
+            }
+            .no-print { display: none !important; }
+          }
+        `}} />
+
+        <div style={{ width: '100%', maxWidth: 560 }}>
+          {/* Main Booking Slip Card */}
+          <div
+            id="printable-booking-slip"
+            style={{
+              background: '#ffffff',
+              borderRadius: 24,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 20px 45px -10px rgba(0, 184, 117, 0.12), 0 8px 20px -6px rgba(15, 23, 42, 0.06)',
+              overflow: 'hidden',
+              position: 'relative'
+            }}
+          >
+            {/* Top Green Accent Bar */}
+            <div style={{ height: 6, background: 'linear-gradient(90deg, #00B875 0%, #10B981 50%, #059669 100%)' }} />
+
+            {/* Header Section */}
+            <div style={{ padding: '32px 28px 20px', textAlign: 'center', background: 'radial-gradient(ellipse at top, rgba(0, 184, 117, 0.08) 0%, rgba(255, 255, 255, 0) 70%)' }}>
+              <div style={{
+                width: 68, height: 68, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                boxShadow: '0 10px 22px rgba(0, 184, 117, 0.32)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px', color: 'white'
+              }}>
+                <IconCheck size={36} stroke={3} />
+              </div>
+              <h3 style={{
+                fontWeight: 900, color: '#0F172A', margin: '0 0 8px',
+                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                fontSize: 23, letterSpacing: '-0.01em'
+              }}>
+                বুকিং সফলভাবে নিশ্চিত হয়েছে! 🎉
+              </h3>
+              <p style={{
+                color: '#64748B', fontSize: 14.5, margin: 0,
+                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                lineHeight: 1.5
+              }}>
+                আপনার অ্যাপয়েন্টমেন্ট কনফার্ম করা হয়েছে। নিচে বুকিং স্লিপের বিস্তারিত দেওয়া হলো।
+              </p>
+            </div>
+
+            {/* Ticket / Slip Card Body */}
+            <div style={{ padding: '0 22px 22px' }}>
+              <div style={{
+                background: '#F8FAFC',
+                borderRadius: 18,
+                border: '1.5px dashed #CBD5E1',
+                padding: '20px 20px',
+                position: 'relative'
+              }}>
+                {/* Badge Top Row: Serial & Tracking */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: 10, paddingBottom: 14,
+                  borderBottom: '1px solid #E2E8F0', marginBottom: 16
+                }}>
+                  {/* Serial Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>সিরিয়াল নং:</span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: '#E8F8F2', color: '#00B875',
+                      padding: '4px 12px', borderRadius: 999,
+                      fontWeight: 900, fontSize: 15,
+                      border: '1px solid #A7F3D0',
+                      boxShadow: '0 2px 4px rgba(0, 184, 117, 0.1)'
+                    }}>
+                      #{serialNo || 'নিশ্চিতকরণাধীন'}
+                    </span>
+                  </div>
+
+                  {/* Tracking / Public ID */}
+                  {trackingId && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>অ্যাপয়েন্টমেন্ট আইডি:</span>
+                      <button
+                        onClick={handleCopyTrackingId}
+                        type="button"
+                        style={{
+                          background: '#EEF2FF', color: '#4F46E5',
+                          border: '1px solid #C7D2FE', borderRadius: 6,
+                          padding: '3px 8px', fontSize: 12.5, fontWeight: 700,
+                          fontFamily: 'monospace', cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="কপি করতে ক্লিক করুন"
+                      >
+                        <span>{trackingId}</span>
+                        {copiedId ? <IconCheck size={13} color="#16a34a" /> : <IconCopy size={13} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Doctor Details Row */}
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: '#E8F8F2', border: '1px solid #A7F3D0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, color: '#00B875'
+                  }}>
+                    <IconStethoscope size={23} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ডাক্তার</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '2px 0 2px' }}>
+                      {appt.doctor_name || doctor?.name || 'ডাক্তার'}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#00B875', fontWeight: 600 }}>
+                      {appt.specialty || doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}
+                      {appt.degree ? ` • ${appt.degree}` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location / Chamber Row */}
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: '#FEF3C7', border: '1px solid #FDE68A',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, color: '#D97706'
+                  }}>
+                    <IconBuildingHospital size={23} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>চেম্বার / হাসপাতাল ও ঠিকানা</div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#1E293B', margin: '2px 0 2px' }}>
+                      {appt.hospital_name || 'চেম্বার'}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <IconMapPin size={13} style={{ flexShrink: 0 }} />
+                      <span>{appt.chamber_address || 'ঢাকা, বাংলাদেশ'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Date & Time Grid */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12,
+                  background: '#ffffff', borderRadius: 12, padding: '12px 14px',
+                  border: '1px solid #E2E8F0', marginBottom: 14
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconCalendarEvent size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>অ্যাপয়েন্টমেন্টের তারিখ</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{formattedDate}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#FFF7ED', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconClock size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>সময় / শিফট</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{formattedTime}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Patient & Fee Row */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: 10, fontSize: 12.5, color: '#475569',
+                  paddingTop: 4
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <IconUser size={15} color="#64748B" />
+                    <span>রোগীর নাম: <strong style={{ color: '#0F172A' }}>{appt.patient_name || 'রোগী'}</strong></span>
+                  </div>
+
+                  {appt.fee && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span>পরামর্শ ফি:</span>
+                      <strong style={{ color: '#00B875', fontSize: 13.5 }}>৳ {toBnNum(appt.fee)}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Instructions Callout */}
+              <div style={{
+                background: '#F0FDF4', border: '1px solid #BBF7D0',
+                borderRadius: 12, padding: '12px 14px', marginTop: 14,
+                display: 'flex', gap: 10, alignItems: 'flex-start'
+              }}>
+                <IconInfoCircle size={18} color="#16A34A" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.5 }}>
+                  <strong>জরুরি পরামর্শ:</strong> নির্ধারিত সময়ের অন্তত <strong>১৫ মিনিট পূর্বে</strong> চেম্বারে উপস্থিত থাকুন। রিসেপশনে আপনার সিরিয়াল নম্বর ও আইডি প্রদর্শন করুন।
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div className="no-print" style={{
+              padding: '16px 22px 24px',
+              borderTop: '1px solid #F1F5F9',
+              background: '#FAFAFA',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}>
+              {/* Primary Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+                {trackingId ? (
+                  <button
+                    onClick={() => navigate(`/appointment-ticket/${trackingId}`)}
+                    type="button"
+                    style={{
+                      padding: '12px 16px', borderRadius: 10,
+                      background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                      color: 'white', border: 'none', cursor: 'pointer',
+                      fontWeight: 700, fontSize: 13.5,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)'
+                    }}
+                  >
+                    <IconTicket size={18} />
+                    <span>টিকিট ও লাইভ সিরিয়াল</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/my-appointments')}
+                    type="button"
+                    style={{
+                      padding: '12px 16px', borderRadius: 10,
+                      background: '#00B875', color: 'white', border: 'none',
+                      cursor: 'pointer', fontWeight: 700, fontSize: 13.5
+                    }}
+                  >
+                    আমার অ্যাপয়েন্টমেন্ট
+                  </button>
+                )}
+
+                <button
+                  onClick={handlePrint}
+                  type="button"
+                  style={{
+                    padding: '12px 16px', borderRadius: 10,
+                    background: '#ffffff', color: '#334155',
+                    border: '1.5px solid #CBD5E1', cursor: 'pointer',
+                    fontWeight: 700, fontSize: 13.5,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                  }}
+                >
+                  <IconPrinter size={18} color="#64748B" />
+                  <span>স্লিপ প্রিন্ট / সেভ</span>
+                </button>
+              </div>
+
+              {/* Secondary Links */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginTop: 4 }}>
+                <button
+                  onClick={() => navigate('/my-appointments')}
+                  type="button"
+                  style={{
+                    background: 'none', border: 'none', color: '#4F46E5',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  সকল অ্যাপয়েন্টমেন্ট দেখুন
+                </button>
+                <span style={{ color: '#CBD5E1' }}>•</span>
+                <button
+                  onClick={() => navigate('/')}
+                  type="button"
+                  style={{
+                    background: 'none', border: 'none', color: '#64748B',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  হোমপেজে যান
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderAuthModal = () => {
     if (!showAuthModal) return null

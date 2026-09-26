@@ -161,3 +161,11 @@ export const getPurchaseReport = (params) => axiosInstance.get('/admin/purchase-
 
 // ===== CHAMBER TOGGLE =====
 export const toggleChamberActive = (id) => axiosInstance.put(`/doctor-chambers/${id}/toggle-active`)
+
+// ===== SMS & OTP GATEWAY SETTINGS =====
+export const getAdminSmsSettings = () => axiosInstance.get('/admin/sms/settings')
+export const updateAdminSmsSettings = (data) => axiosInstance.post('/admin/sms/settings', data)
+export const sendAdminTestSms = (data) => axiosInstance.post('/admin/sms/test', data)
+export const getAdminSmsLogs = (params = {}) => axiosInstance.get('/admin/sms/logs', { params })
+export const getAdminSmsBalance = (provider) => axiosInstance.get('/admin/sms/balance', { params: { provider } })
+

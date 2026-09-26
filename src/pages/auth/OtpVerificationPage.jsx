@@ -1,12 +1,7 @@
-// OtpVerificationPage.jsx — Mobile number verification with 6-digit OTP
-// Hardcoded default: mobile 01747465444, otp 123456
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendOtp, verifyOtp } from '../../api/authApi'
 import '../../styles/auth.css'
-
-const DEFAULT_MOBILE = '01747465444'
-const DEFAULT_OTP = '123456'
 
 export default function OtpVerificationPage() {
   const navigate = useNavigate()
@@ -58,19 +53,11 @@ export default function OtpVerificationPage() {
     setLoading(true)
     try {
       // Pass 'registration' so backend knows to check for existing users
-      await sendOtp({ mobile: trimmedMobile, type: 'registration' })
-      
+      const res = await sendOtp({ mobile: trimmedMobile, type: 'registration' })
       setStep(2)
-      setTimer(60)
+      setTimer(res.data?.cooldown_seconds || 60)
     } catch (err) {
-      if (err.response?.status === 400 || err.response?.status === 404) {
-        setMobileError(err.response.data.message)
-      } else {
-        // Fallback: still allow proceeding for demo purposes
-        console.warn('OTP API error or not available, using demo mode')
-        setStep(2)
-        setTimer(60)
-      }
+      setMobileError(err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -117,17 +104,11 @@ export default function OtpVerificationPage() {
 
     setLoading(true)
     try {
-      await verifyOtp({ mobile, otp: otpString })
-      
-      navigate(`/register/${type}`, { state: { verified: true, mobile } })
+      const res = await verifyOtp({ mobile: mobile.trim(), otp: otpString })
+      const verificationToken = res.data?.verification_token || ''
+      navigate(`/register/${type}`, { state: { verified: true, mobile: mobile.trim(), verification_token: verificationToken } })
     } catch (err) {
-      // Demo fallback: check against hardcoded OTP
-      if (otpString === DEFAULT_OTP) {
-        
-        navigate(`/register/${type}`, { state: { verified: true, mobile } })
-      } else {
-        setOtpError('Invalid OTP. Please try again.')
-      }
+      setOtpError(err.response?.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।')
     } finally {
       setLoading(false)
     }
@@ -135,12 +116,15 @@ export default function OtpVerificationPage() {
 
   const handleResend = async () => {
     if (timer > 0) return
+    setLoading(true)
+    setOtpError('')
     try {
-      await sendOtp({ mobile })
-      
-      setTimer(60)
-    } catch {
-      setTimer(60)
+      const res = await sendOtp({ mobile: mobile.trim(), type: 'registration' })
+      setTimer(res.data?.cooldown_seconds || 60)
+    } catch (err) {
+      setOtpError(err.response?.data?.message || 'ওটিপি পুনরায় পাঠাতে সমস্যা হয়েছে।')
+    } finally {
+      setLoading(false)
     }
   }
 

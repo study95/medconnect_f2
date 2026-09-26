@@ -17,10 +17,10 @@ export default function PatientRegisterPage() {
   // Check if mobile is verified
   const verified = location.state?.verified
   const verifiedMobile = location.state?.mobile || ''
+  const verificationToken = location.state?.verification_token || ''
 
   useEffect(() => {
     if (!verified) {
-      
       navigate('/register/patient/verify')
     }
   }, [verified, navigate])
@@ -108,6 +108,7 @@ export default function PatientRegisterPage() {
       if (form[key]) formData.append(key, form[key])
     })
     if (photo) formData.append('profile_pic', photo)
+    if (verificationToken) formData.append('verification_token', verificationToken)
 
     const result = await registerPatient(formData)
     setLoading(false)

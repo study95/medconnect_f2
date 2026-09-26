@@ -127,6 +127,7 @@ const AdminInvoicesPage          = lazy(() => import('./pages/admin/billing/Admi
 const AdminTransactionsPage      = lazy(() => import('./pages/admin/billing/AdminTransactionsPage'))
 const AdminCouponsPage           = lazy(() => import('./pages/admin/billing/AdminCouponsPage'))
 const AdminBillingSettingsPage   = lazy(() => import('./pages/admin/billing/AdminBillingSettingsPage'))
+const AdminSmsSettingsPage       = lazy(() => import('./pages/admin/AdminSmsSettingsPage'))
 
 // Commission & Service Management
 const ServiceEnablementPage  = lazy(() => import('./pages/admin/commission/ServiceEnablementPage'))
@@ -380,6 +381,7 @@ function App() {
             <Route path="billing/transactions" element={<AdminTransactionsPage />} />
             <Route path="billing/coupons" element={<AdminCouponsPage />} />
             <Route path="billing/settings" element={<AdminBillingSettingsPage />} />
+            <Route path="sms-settings" element={<AdminSmsSettingsPage />} />
 
 
             {/* Commission & Service Management */}
