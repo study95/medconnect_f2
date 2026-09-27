@@ -168,4 +168,7 @@ export const updateAdminSmsSettings = (data) => axiosInstance.post('/admin/sms/s
 export const sendAdminTestSms = (data) => axiosInstance.post('/admin/sms/test', data)
 export const getAdminSmsLogs = (params = {}) => axiosInstance.get('/admin/sms/logs', { params })
 export const getAdminSmsBalance = (provider) => axiosInstance.get('/admin/sms/balance', { params: { provider } })
+export const previewAdminSmsPrune = (data) => axiosInstance.post('/admin/sms/prune-preview', data)
+export const executeAdminSmsPrune = (data) => axiosInstance.post('/admin/sms/prune-execute', data)
+export const exportAdminSmsPrune = (params = {}) => axiosInstance.get('/admin/sms/prune-export', { params, responseType: 'blob' })
 

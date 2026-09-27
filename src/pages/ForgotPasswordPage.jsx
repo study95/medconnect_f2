@@ -17,7 +17,8 @@ import {
   Sparkles,
   RefreshCw,
   HelpCircle,
-  UserPlus
+  UserPlus,
+  Clock
 } from 'lucide-react'
 import '../styles/auth-premium.css'
 
@@ -52,6 +53,13 @@ export default function ForgotPasswordPage() {
     const interval = setInterval(() => setTimer(t => t - 1), 1000)
     return () => clearInterval(interval)
   }, [timer])
+
+  const formatCountdown = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60)
+    const secs = totalSeconds % 60
+    const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return str.replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d])
+  }
 
   // Focus first OTP box on Step 2
   useEffect(() => {
@@ -93,9 +101,7 @@ export default function ForgotPasswordPage() {
         setStep(2)
         setTimer(60)
         setOtp(['', '', '', '', '', ''])
-        if (res.data.dev_otp) {
-          setDevOtp(res.data.dev_otp)
-        }
+        setDevOtp('')
         setStatusMsg({
           type: 'success',
           text: res.data.message || 'আপনার মোবাইলে ৬ সংখ্যার ওটিপি (OTP) পাঠানো হয়েছে।'
@@ -109,6 +115,16 @@ export default function ForgotPasswordPage() {
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.message || ''
+
+      const retryAfter = err.response?.data?.retry_after_seconds || err.response?.data?.cooldown_seconds
+      if (status === 429 && retryAfter) {
+        setTimer(Number(retryAfter))
+        setStatusMsg({
+          type: 'danger',
+          text: msg || 'ওটিপি অনুরোধের সীমা পৌঁছেছে।'
+        })
+        return
+      }
 
       if (status === 404 || msg.includes('নিবন্ধিত নয়') || msg.includes('not registered') || msg.includes('not exist')) {
         setIsNotRegistered(true)
@@ -129,14 +145,31 @@ export default function ForgotPasswordPage() {
 
   // ================= STEP 2: OTP INPUT HANDLING =================
   const handleOtpChange = (index, value) => {
-    const digit = value.replace(/[^\d]/g, '').slice(-1)
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = String(value).replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
+
+    if (cleanDigits.length > 1) {
+      const digits = cleanDigits.slice(0, 6).split('')
+      const newOtp = [...otp]
+      digits.forEach((d, i) => {
+        if (index + i < 6) newOtp[index + i] = d
+      })
+      setOtp(newOtp)
+      if (statusMsg.text) setStatusMsg({ type: '', text: '' })
+      const nextFocus = Math.min(index + digits.length - 1, 5)
+      setTimeout(() => otpRefs.current[nextFocus]?.focus(), 10)
+      return
+    }
+
+    const singleDigit = cleanDigits.slice(-1)
     const newOtp = [...otp]
-    newOtp[index] = digit
+    newOtp[index] = singleDigit
     setOtp(newOtp)
     if (statusMsg.text) setStatusMsg({ type: '', text: '' })
 
     // Auto move to next input
-    if (digit && index < 5) {
+    if (singleDigit && index < 5) {
       otpRefs.current[index + 1]?.focus()
     }
   }
@@ -148,28 +181,28 @@ export default function ForgotPasswordPage() {
       otpRefs.current[index - 1]?.focus()
     } else if (e.key === 'ArrowRight' && index < 5) {
       otpRefs.current[index + 1]?.focus()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (otp.join('').length === 6 && !loading) {
+        handleVerifyOtp()
+      }
     }
   }
 
   const handleOtpPaste = (e) => {
     e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/[^\d]/g, '').slice(0, 6)
-    if (!pasted) return
-    const newOtp = [...otp]
-    for (let i = 0; i < pasted.length; i++) {
-      newOtp[i] = pasted[i]
-    }
+    const raw = e.clipboardData?.getData('text')?.trim() || ''
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = raw.replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
+    if (!cleanDigits) return
+    const digits = cleanDigits.slice(0, 6).split('')
+    const newOtp = ['', '', '', '', '', '']
+    digits.forEach((d, i) => { newOtp[i] = d })
     setOtp(newOtp)
-    const focusIdx = Math.min(pasted.length, 5)
-    otpRefs.current[focusIdx]?.focus()
-  }
-
-  // Auto-fill dev OTP for quick testing
-  const handleFillDevOtp = () => {
-    if (!devOtp) return
-    const digits = devOtp.split('').slice(0, 6)
-    setOtp(digits)
-    otpRefs.current[5]?.focus()
+    if (statusMsg.text) setStatusMsg({ type: '', text: '' })
+    const focusIdx = Math.min(digits.length - 1, 5)
+    setTimeout(() => otpRefs.current[focusIdx]?.focus(), 10)
   }
 
   // Verify OTP
@@ -531,29 +564,29 @@ export default function ForgotPasswordPage() {
                       />
                       <button
                         type="submit"
-                        disabled={loading || mobile.length < 11}
+                        disabled={loading || mobile.length < 11 || timer > 0}
                         style={{
                           position: 'absolute',
                           right: 5,
                           top: 5,
                           bottom: 5,
                           padding: '0 14px',
-                          background: (mobile.length === 11 && !loading)
+                          background: (mobile.length === 11 && !loading && timer === 0)
                             ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
                             : '#E2E8F0',
-                          color: (mobile.length === 11 && !loading) ? '#FFFFFF' : '#94A3B8',
+                          color: (mobile.length === 11 && !loading && timer === 0) ? '#FFFFFF' : '#94A3B8',
                           border: 'none',
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 700,
-                          cursor: (loading || mobile.length < 11) ? 'not-allowed' : 'pointer',
+                          cursor: (loading || mobile.length < 11 || timer > 0) ? 'not-allowed' : 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 6,
                           zIndex: 5,
                           transition: 'all 0.2s',
-                          boxShadow: (mobile.length === 11 && !loading) ? '0 2px 8px rgba(0, 184, 117, 0.25)' : 'none'
+                          boxShadow: (mobile.length === 11 && !loading && timer === 0) ? '0 2px 8px rgba(0, 184, 117, 0.25)' : 'none'
                         }}
                       >
                         {loading ? (
@@ -561,11 +594,47 @@ export default function ForgotPasswordPage() {
                             <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13 }} role="status" aria-hidden="true" />
                             <span style={{ fontSize: 11 }}>যাচাই...</span>
                           </>
+                        ) : timer > 0 ? (
+                          <span style={{ fontSize: 11 }}>অপেক্ষা ({formatCountdown(timer)})</span>
                         ) : (
                           'OTP পাঠান'
                         )}
                       </button>
                     </div>
+
+                    {timer > 0 && (
+                      <div className="fade-in-up" style={{
+                        marginTop: 8,
+                        padding: '8px 12px',
+                        background: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 8,
+                        color: '#166534',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Clock size={15} color="#16A34A" style={{ flexShrink: 0 }} />
+                          <span>নতুন ওটিপি পাঠাতে অপেক্ষা করুন:</span>
+                        </div>
+                        <span style={{
+                          padding: '1px 7px',
+                          background: '#DCFCE7',
+                          border: '1px solid #86EFAC',
+                          borderRadius: 5,
+                          color: '#15803D',
+                          fontFamily: "'Inter', monospace",
+                          fontWeight: 800,
+                          fontSize: 12.5
+                        }}>
+                          ⏳ {formatCountdown(timer)}
+                        </span>
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 7, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Sparkles size={12} color="#00B875" />
                       <span>অ্যাকাউন্ট তৈরির সময় ব্যবহৃত ১১ সংখ্যার মোবাইল নম্বরটি লিখুন</span>
@@ -623,33 +692,6 @@ export default function ForgotPasswordPage() {
                   </p>
                 </div>
 
-                {/* Dev OTP helper for quick testing in dev/demo */}
-                {devOtp && (
-                  <div
-                    onClick={handleFillDevOtp}
-                    style={{
-                      background: '#ECFDF5',
-                      border: '1px dashed #059669',
-                      borderRadius: 10,
-                      padding: '8px 12px',
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      color: '#065F46',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 16,
-                      cursor: 'pointer'
-                    }}
-                    title="ক্লিক করে কোড বসিয়ে দিন"
-                  >
-                    <span>🧪 টেস্ট ওটিপি কোড: <strong style={{ letterSpacing: 2 }}>{devOtp}</strong></span>
-                    <span style={{ fontSize: 11, background: '#00B875', color: '#fff', padding: '2px 8px', borderRadius: 6 }}>
-                      অটো ফিল
-                    </span>
-                  </div>
-                )}
-
                 {/* 6-box OTP input */}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
                   {otp.map((digit, idx) => (
@@ -658,11 +700,11 @@ export default function ForgotPasswordPage() {
                       ref={(el) => (otpRefs.current[idx] = el)}
                       type="text"
                       inputMode="numeric"
-                      maxLength={1}
+                      maxLength={6}
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      onPaste={idx === 0 ? handleOtpPaste : undefined}
+                      onPaste={handleOtpPaste}
                       className="fp-otp-box"
                       style={{
                         width: 44,
@@ -726,8 +768,17 @@ export default function ForgotPasswordPage() {
 
                 {/* Resend Timer / Action */}
                 <div style={{ textAlign: 'center', fontSize: 13, color: '#64748B' }}>
+                  <span>কোড পাননি? </span>
                   {timer > 0 ? (
-                    <span>পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন: <strong style={{ color: '#00B875' }}>{timer}s</strong></span>
+                    <span style={{
+                      color: '#94A3B8',
+                      fontWeight: 500,
+                      cursor: 'not-allowed',
+                      userSelect: 'none',
+                      opacity: 0.65
+                    }}>
+                      পুনরায় পাঠান ({formatCountdown(timer)})
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -740,14 +791,11 @@ export default function ForgotPasswordPage() {
                         fontWeight: 700,
                         fontSize: 13,
                         padding: 0,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        textDecoration: 'underline'
                       }}
                     >
-                      <RefreshCw size={13} />
-                      <span>কোড পাননি? পুনরায় ওটিপি পাঠান</span>
+                      {loading ? 'পাঠানো হচ্ছে...' : 'পুনরায় পাঠান'}
                     </button>
                   )}
                 </div>

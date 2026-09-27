@@ -7,7 +7,8 @@ import {
   IconBrandFacebook, IconBrandTwitter, IconBrandInstagram, IconBrandLinkedin,
   IconHome, IconStethoscope, IconBuildingHospital, 
   IconInfoCircle, IconServer, IconMessage, IconUserPlus, IconDashboard, 
-  IconHelp, IconShieldCheck, IconLock, IconReceiptRefund
+  IconHelp, IconShieldCheck, IconLock, IconReceiptRefund,
+  IconPlus, IconMinus
 } from '@tabler/icons-react'
 
 function Footer() {
@@ -85,10 +86,10 @@ function Footer() {
         key={link.label} 
         to={link.to} 
         style={{
-          color: active ? '#00B875' : 'rgba(255,255,255,0.7)',
+          color: active ? '#00B875' : '#064E3B',
           textDecoration: 'none',
           fontSize: 14,
-          fontWeight: active ? 700 : 500,
+          fontWeight: active ? 700 : 600,
           transition: 'all 0.25s ease',
           display: 'flex',
           alignItems: 'center',
@@ -99,7 +100,7 @@ function Footer() {
           e.currentTarget.style.transform = 'translateX(6px)' 
         }}
         onMouseLeave={e => { 
-          e.currentTarget.style.color = active ? '#00B875' : 'rgba(255,255,255,0.7)'
+          e.currentTarget.style.color = active ? '#00B875' : '#064E3B'
           e.currentTarget.style.transform = 'translateX(0)' 
         }}
       >
@@ -124,21 +125,23 @@ function Footer() {
         key={link.label} 
         to={link.to} 
         style={{
-          color: active ? '#00B875' : 'rgba(255,255,255,0.75)',
-          background: active ? 'rgba(0, 184, 117, 0.12)' : 'transparent',
+          color: active ? '#00B875' : '#064E3B',
+          background: active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
+          border: active ? '1px solid #00B875' : '1px solid #DCFCE7',
           textDecoration: 'none',
           fontSize: 15,
-          fontWeight: active ? 700 : 500,
+          fontWeight: active ? 700 : 600,
           display: 'flex',
           alignItems: 'center',
           padding: '12px 16px',
           borderRadius: '12px',
           transition: 'all 0.3s ease',
-          marginBottom: '4px',
+          marginBottom: '6px',
+          gap: 10,
           fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
         }}
       >
-        <span style={{ color: '#00B875', marginRight: 10, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ color: '#00B875', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
           {link.icon}
         </span>
         <span>{link.label}</span>
@@ -150,46 +153,43 @@ function Footer() {
     const isOpen = openSection === id;
     return (
       <div style={{ 
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: isOpen ? 'rgba(255,255,255,0.02)' : 'transparent',
-        transition: 'background 0.4s ease'
+        borderBottom: '1px solid rgba(0, 184, 117, 0.22)',
+        background: isOpen ? 'rgba(0, 184, 117, 0.04)' : 'transparent',
+        transition: 'background 0.3s ease'
       }}>
         <div 
           onClick={() => setOpenSection(isOpen ? null : id)}
           style={{ 
-            padding: '22px 24px', display: 'flex', justifyContent: 'space-between', 
+            padding: '20px 24px', display: 'flex', justifyContent: 'space-between', 
             alignItems: 'center', cursor: 'pointer',
-            fontWeight: 700, fontSize: 16, color: isOpen ? '#ffffff' : 'rgba(255,255,255,0.9)',
+            fontWeight: 800, fontSize: 16, color: isOpen ? '#00B875' : '#02382B',
             fontFamily: "'Inter', 'Hind Siliguri', sans-serif",
-            letterSpacing: '0.3px'
+            letterSpacing: '0.2px'
           }}
         >
-          {title}
+          <span>{title}</span>
           <div style={{ 
             width: 28, height: 28, borderRadius: '50%', 
-            background: isOpen ? 'rgba(0, 184, 117, 0.15)' : 'transparent',
+            background: isOpen ? 'rgba(0, 184, 117, 0.2)' : 'rgba(0, 184, 117, 0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            flexShrink: 0
           }}>
-            <span style={{ 
-              fontSize: 22, fontWeight: 300, color: isOpen ? '#00B875' : 'rgba(255,255,255,0.5)',
-              transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              lineHeight: 1
-            }}>
-              {isOpen ? '-' : '+'}
-            </span>
+            {isOpen ? (
+              <IconMinus size={16} stroke={2.5} color="#00B875" />
+            ) : (
+              <IconPlus size={16} stroke={2.5} color="#00B875" />
+            )}
           </div>
         </div>
         <div style={{ 
-          maxHeight: isOpen ? '500px' : '0px', 
+          maxHeight: isOpen ? '600px' : '0px', 
           overflow: 'hidden', 
-          transition: 'max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           opacity: isOpen ? 1 : 0
         }}>
           <div style={{ 
-            padding: '0 24px 24px', display: 'flex', flexDirection: 'column', 
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.02) 100%)'
+            padding: '0 24px 20px', display: 'flex', flexDirection: 'column'
           }}>
             {children}
           </div>
@@ -202,17 +202,18 @@ function Footer() {
   if (isMobile) {
     return (
       <footer style={{ 
-        background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-        color: 'white',
+        background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)',
+        color: '#02382B',
         fontFamily: "'Inter', 'Hind Siliguri', sans-serif",
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        borderTop: '1px solid rgba(0, 184, 117, 0.22)'
       }}>
         {/* Soft Glassmorphism Glows */}
-        <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.15) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.1) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.08) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.06) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
 
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', position: 'relative', zIndex: 2 }}>
+        <div style={{ borderTop: '1px solid rgba(0, 184, 117, 0.22)', position: 'relative', zIndex: 2 }}>
           <AccordionItem id="brand" title="ডক্টর বুকলেট সম্পর্কে">
             {LEGAL_LINKS.slice(0, 1).map(link => renderMobileLink(link))}
             {QUICK_LINKS.slice(3, 5).map(link => renderMobileLink(link))}
@@ -243,16 +244,18 @@ function Footer() {
                 key={link.label} 
                 href={link.url} 
                 style={{
-                  color: 'rgba(255,255,255,0.8)',
+                  color: '#064E3B',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid #DCFCE7',
                   textDecoration: 'none',
                   fontSize: 15,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   padding: '12px 16px',
                   borderRadius: '12px',
                   transition: 'all 0.3s ease',
-                  marginBottom: '4px',
+                  marginBottom: '6px',
                   gap: 10,
                   fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
                 }}
@@ -273,15 +276,15 @@ function Footer() {
               src="/doctorBookletLogo.png" 
               alt="Doctor Booklet Logo" 
               style={{ 
-                height: '46px', 
+                height: '44px', 
                 width: 'auto', 
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 4px 12px rgba(0, 184, 117, 0.3))' 
+                filter: 'drop-shadow(0 2px 8px rgba(0, 184, 117, 0.15))' 
               }} 
             />
           </Link>
           
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0, fontWeight: 500, letterSpacing: '0.5px', lineHeight: 1.6 }}>
+          <p style={{ color: '#064E3B', fontSize: 13, margin: 0, fontWeight: 500, letterSpacing: '0.5px', lineHeight: 1.6, opacity: 0.85 }}>
             {copyrightText}
           </p>
         </div>
@@ -292,17 +295,17 @@ function Footer() {
   // ─── DESKTOP VIEW (GRID) ────────────────────────────────────────────────────
   return (
     <footer style={{ 
-      background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)', 
+      background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)', 
       padding: '80px 0 30px', 
       position: 'relative', 
       overflow: 'hidden',
-      color: 'white',
+      color: '#02382B',
       fontFamily: "'Hind Siliguri', sans-serif",
-      borderTop: '1px solid rgba(255,255,255,0.05)'
+      borderTop: '1px solid #BBF7D0'
     }}>
       {/* Aesthetic Background Glows */}
-      <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.1) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.08) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       <Container>
         <Row className="g-5">
@@ -313,14 +316,14 @@ function Footer() {
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
                 style={{ 
-                  height: '52px', 
+                  height: '48px', 
                   width: 'auto', 
                   objectFit: 'contain',
-                  filter: 'drop-shadow(0 4px 12px rgba(0, 184, 117, 0.3))' 
+                  filter: 'drop-shadow(0 2px 8px rgba(0, 184, 117, 0.15))' 
                 }} 
               />
             </Link>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7, marginBottom: 32, maxWidth: 340 }}>
+            <p style={{ color: '#064E3B', fontSize: 15, lineHeight: 1.7, marginBottom: 32, maxWidth: 340, opacity: 0.9 }}>
               {site.tagline || 'আমরা আধুনিক প্রযুক্তির মাধ্যমে স্বাস্থ্যসেবাকে আপনার দোরগোড়ায় পৌঁছে দিতে প্রতিশ্রুতিবদ্ধ। বিশ্বস্ত ডাক্তার ও উন্নত হাসপাতালের সাথে যুক্ত থাকুন Doctor Booklet-এর মাধ্যমে।'}
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
@@ -332,23 +335,28 @@ function Footer() {
                     width: 38, 
                     height: 38, 
                     borderRadius: 10, 
-                    background: 'rgba(255,255,255,0.03)', 
-                    border: '1px solid rgba(255,255,255,0.08)', 
+                    background: '#FFFFFF', 
+                    border: '1px solid #BBF7D0', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 
-                    color: '#00B875', 
-                    transition: '0.3s' 
+                    color: '#059669', 
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 2px 6px rgba(0, 184, 117, 0.08)'
                   }}
                   onMouseEnter={e => { 
                     e.currentTarget.style.background = '#00B875'
-                    e.currentTarget.style.color = 'white'
+                    e.currentTarget.style.color = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#00B875'
                     e.currentTarget.style.transform = 'translateY(-3px)' 
+                    e.currentTarget.style.boxShadow = '0 6px 14px rgba(0, 184, 117, 0.25)'
                   }}
                   onMouseLeave={e => { 
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                    e.currentTarget.style.color = '#00B875'
+                    e.currentTarget.style.background = '#FFFFFF'
+                    e.currentTarget.style.color = '#059669'
+                    e.currentTarget.style.borderColor = '#BBF7D0'
                     e.currentTarget.style.transform = 'translateY(0)' 
+                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 184, 117, 0.08)'
                   }}
                 >
                   {link.icon}
@@ -360,7 +368,7 @@ function Footer() {
           {/* 2. QUICK LINKS */}
           <Col lg={2}>
             <h6 style={{ 
-              color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
               <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
@@ -374,7 +382,7 @@ function Footer() {
           {/* 3. FOR PARTNERS */}
           <Col lg={3}>
             <h6 style={{ 
-              color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
               <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
@@ -388,7 +396,7 @@ function Footer() {
           {/* 4. LEGAL & CONTACT */}
           <Col lg={3}>
             <h6 style={{ 
-              color: 'white', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
               <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
@@ -399,39 +407,39 @@ function Footer() {
             </div>
             
             <div className="d-lg-none" style={{ 
-              padding: '24px', borderRadius: 20, background: 'rgba(255,255,255,0.02)', 
-              border: '1px solid rgba(255,255,255,0.05)', maxWidth: 320
+              padding: '24px', borderRadius: 20, background: 'rgba(255,255,255,0.7)', 
+              border: '1px solid #BBF7D0', maxWidth: 320
             }}>
-               <h6 style={{ color: 'white', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 20 }}>যোগাযোগ করুন</h6>
+               <h6 style={{ color: '#02382B', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 20 }}>যোগাযোগ করুন</h6>
                
                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
                         <IconPhone size={18} />
                      </div>
                      <div>
-                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>হেল্পলাইন</p>
+                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>হেল্পলাইন</p>
                         <p style={{ margin: 0, color: '#00B875', fontSize: 15, fontWeight: 900 }}>{site.phone || '017 XXXX XXXX'}</p>
                      </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
                         <IconMail size={18} />
                      </div>
                      <div>
-                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ইমেইল</p>
-                        <p style={{ margin: 0, color: 'white', fontSize: 14, fontWeight: 700 }}>{site.email || 'info@doctorbooklet.com.bd'}</p>
+                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ইমেইল</p>
+                        <p style={{ margin: 0, color: '#02382B', fontSize: 14, fontWeight: 700 }}>{site.email || 'info@doctorbooklet.com.bd'}</p>
                      </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875', marginTop: 2 }}>
+                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875', marginTop: 2 }}>
                         <IconMapPin size={18} />
                      </div>
                      <div>
-                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ঠিকানা</p>
-                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{site.address || 'বনানী, ঢাকা-১২১৩, বাংলাদেশ'}</p>
+                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ঠিকানা</p>
+                        <p style={{ margin: 0, color: '#064E3B', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{site.address || 'বনানী, ঢাকা-১২১৩, বাংলাদেশ'}</p>
                      </div>
                   </div>
                </div>
@@ -441,23 +449,23 @@ function Footer() {
 
         {/* BOTTOM BAR */}
         <div style={{ 
-          marginTop: 60, paddingTop: 30, borderTop: '1px solid rgba(255,255,255,0.05)', 
+          marginTop: 60, paddingTop: 30, borderTop: '1px solid #BBF7D0', 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           flexWrap: 'wrap', gap: 20
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0, fontWeight: 600 }}>
+          <p style={{ color: '#064E3B', fontSize: 13, margin: 0, fontWeight: 600, opacity: 0.9 }}>
             {copyrightText}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
+            <Link to="/legal" style={{ color: '#064E3B', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
+                  onMouseLeave={e => e.currentTarget.style.color = '#064E3B'}>
               ব্যবহারের শর্তাবলী (Terms)
             </Link>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>•</span>
-            <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
+            <span style={{ color: '#86EFAC', fontSize: 12 }}>•</span>
+            <Link to="/legal" style={{ color: '#064E3B', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
+                  onMouseLeave={e => e.currentTarget.style.color = '#064E3B'}>
               গোপনীয়তা নীতি (Privacy)
             </Link>
           </div>

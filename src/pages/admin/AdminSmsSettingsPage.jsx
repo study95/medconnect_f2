@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { getAdminSmsSettings, updateAdminSmsSettings, sendAdminTestSms, getAdminSmsLogs, getAdminSmsBalance } from '../../api/adminApi'
+import {
+  getAdminSmsSettings,
+  updateAdminSmsSettings,
+  sendAdminTestSms,
+  getAdminSmsLogs,
+  getAdminSmsBalance,
+  previewAdminSmsPrune,
+  executeAdminSmsPrune,
+  exportAdminSmsPrune
+} from '../../api/adminApi'
 import {
   MessageSquare,
   Save,
@@ -32,8 +41,14 @@ import {
   X,
   Calendar,
   RotateCcw,
-  Filter
+  Filter,
+  Globe,
+  Monitor,
+  Trash2,
+  Download,
+  AlertOctagon
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import ListToolbar from '../../components/admin/ListToolbar'
 import '../../styles/admin-billing.css'
 
@@ -87,6 +102,9 @@ export default function AdminSmsSettingsPage() {
   const [logsPage, setLogsPage] = useState(1)
   const [selectedLog, setSelectedLog] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(false)
+  const [refreshCountdown, setRefreshCountdown] = useState(30)
+  const [showPruneModal, setShowPruneModal] = useState(false)
 
   const fetchSettings = async () => {
     setLoading(true)
@@ -180,8 +198,8 @@ export default function AdminSmsSettingsPage() {
     setLogsPage(1)
   }
 
-  const fetchLogs = async (page = 1) => {
-    setLogsLoading(true)
+  const fetchLogs = async (page = 1, silent = false) => {
+    if (!silent) setLogsLoading(true)
     try {
       const params = {
         page,
@@ -208,7 +226,7 @@ export default function AdminSmsSettingsPage() {
     } catch {
       // ignore
     } finally {
-      setLogsLoading(false)
+      if (!silent) setLogsLoading(false)
     }
   }
 
@@ -224,6 +242,40 @@ export default function AdminSmsSettingsPage() {
       fetchBalance()
     }
   }, [activeTab, logsPage, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
+
+  // Auto-Refresh (30s) timer with full safety guards:
+  // - Pauses when tab is hidden/minimized
+  // - Pauses when detail modal is open
+  // - Only auto-refreshes if on page 1
+  // - Only runs when activeTab === 'logs'
+  useEffect(() => {
+    if (!autoRefresh || activeTab !== 'logs') {
+      setRefreshCountdown(30)
+      return
+    }
+
+    const interval = setInterval(() => {
+      // 1. Guard: Tab is hidden/minimized -> pause countdown
+      if (document.hidden) return
+
+      // 2. Guard: Details modal or prune modal open -> pause countdown
+      if (selectedLog !== null || showPruneModal) return
+
+      // 3. Guard: On page 2+ -> pause countdown
+      if (logsPagination.current_page !== 1) return
+
+      setRefreshCountdown((prev) => {
+        if (prev <= 1) {
+          // Trigger silent background refresh
+          fetchLogs(1, true)
+          return 30
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, activeTab, selectedLog, showPruneModal, logsPagination.current_page, logsSearch, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
 
   const handleSave = async (e) => {
     if (e) e.preventDefault()
@@ -323,6 +375,48 @@ export default function AdminSmsSettingsPage() {
     if (p === 'maestrosms') return '#7c3aed'
     if (p === 'mimsms') return '#059669'
     return '#64748b'
+  }
+
+  const parseDeviceInfo = (ua) => {
+    if (!ua) return { os: 'অজানা ওএস', browser: 'অজানা ব্রাউজার', isMobile: false, label: 'রেকর্ড নেই (N/A)' }
+    
+    let os = 'অজানা ওএস'
+    let isMobile = false
+    if (/android/i.test(ua)) {
+      os = 'Android'
+      isMobile = true
+    } else if (/iphone|ipad|ipod/i.test(ua)) {
+      os = /ipad/i.test(ua) ? 'iPadOS' : 'iOS (iPhone)'
+      isMobile = true
+    } else if (/windows nt 10/i.test(ua)) {
+      os = 'Windows 10/11'
+    } else if (/windows/i.test(ua)) {
+      os = 'Windows'
+    } else if (/macintosh|mac os x/i.test(ua)) {
+      os = 'macOS'
+    } else if (/linux/i.test(ua)) {
+      os = 'Linux'
+    }
+
+    let browser = 'ব্রাউজার'
+    if (/edg/i.test(ua)) {
+      browser = 'Edge'
+    } else if (/opr\//i.test(ua) || /opera/i.test(ua)) {
+      browser = 'Opera'
+    } else if (/chrome|crios/i.test(ua)) {
+      browser = 'Chrome'
+    } else if (/firefox|fxios/i.test(ua)) {
+      browser = 'Firefox'
+    } else if (/safari/i.test(ua)) {
+      browser = 'Safari'
+    }
+
+    return {
+      os,
+      browser,
+      isMobile,
+      label: `${os} (${browser})`
+    }
   }
 
   return (
@@ -1885,8 +1979,6 @@ export default function AdminSmsSettingsPage() {
                     }
                   }}
                   searchPlaceholder="Search by ID, mobile number, message, IP..."
-                  onRefresh={() => fetchLogs(logsPagination.current_page)}
-                  refreshing={logsLoading}
                   showFilters={showLogsFilters}
                   onToggleFilters={() => setShowLogsFilters(p => !p)}
                   hasActiveFilters={activeFilters.length > 0}
@@ -1898,29 +1990,107 @@ export default function AdminSmsSettingsPage() {
                     onRemove: f.onClear
                   }))}
                   actions={
-                    <button
-                      type="button"
-                      onClick={() => { setLogsPage(1); fetchLogs(1); }}
-                      className="admin-btn admin-btn-primary"
-                      style={{
-                        height: 38,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        borderRadius: 9,
-                        background: '#00A88C',
-                        border: 'none',
-                        color: '#ffffff',
-                        boxShadow: '0 2px 6px rgba(0, 168, 140, 0.25)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Search size={14} />
-                      <span>খুঁজুন</span>
-                    </button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      {/* Prune / Cleanup Logs Button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPruneModal(true)}
+                        className="admin-btn"
+                        style={{
+                          height: 38,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: '#fff',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          fontWeight: 700,
+                          fontSize: 12,
+                          padding: '0 12px',
+                          borderRadius: 9,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fef2f2'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#fff'
+                        }}
+                        title="পুরোনো লগ ক্লিনআপ বা ডিলিট করুন"
+                      >
+                        <Trash2 size={13} color="#dc2626" />
+                        <span>লগ ক্লিনআপ</span>
+                      </button>
+
+                      {/* Auto-Refresh (30s) Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAutoRefresh(prev => {
+                            const next = !prev
+                            if (next) {
+                              fetchLogs(1, true)
+                              setRefreshCountdown(30)
+                            }
+                            return next
+                          })
+                        }}
+                        className="admin-btn"
+                        style={{
+                          height: 38,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 7,
+                          background: autoRefresh ? '#f0fdf4' : 'var(--admin-card-bg, #ffffff)',
+                          color: autoRefresh ? '#15803d' : 'var(--admin-text, #334155)',
+                          border: autoRefresh ? '1.5px solid #86efac' : '1px solid var(--admin-border, #e2e8f0)',
+                          fontWeight: 700,
+                          fontSize: 12,
+                          padding: '0 12px',
+                          borderRadius: 9,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: autoRefresh ? '0 0 0 3px rgba(34, 197, 94, 0.15)' : 'none'
+                        }}
+                        title={autoRefresh ? 'অটো-রিফ্রেশ বন্ধ করতে ক্লিক করুন' : 'প্রতি ৩০ সেকেন্ডে স্বয়ংক্রিয় রিফ্রেশ চালু করতে ক্লিক করুন'}
+                      >
+                        <span style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: autoRefresh ? '#22c55e' : '#94a3b8',
+                          boxShadow: autoRefresh ? '0 0 6px #22c55e' : 'none',
+                          transition: 'all 0.2s ease'
+                        }} />
+                        <Clock size={13} />
+                        <span>{autoRefresh ? `Auto: ${refreshCountdown}s` : 'Auto: Off'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { setLogsPage(1); fetchLogs(1); }}
+                        className="admin-btn admin-btn-primary"
+                        style={{
+                          height: 38,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '0 16px',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          borderRadius: 9,
+                          background: '#00A88C',
+                          border: 'none',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(0, 168, 140, 0.25)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Search size={14} />
+                        <span>খুঁজুন</span>
+                      </button>
+                    </div>
                   }
                 >
                   <div style={{ minWidth: 140, maxWidth: 180, flex: '1 1 150px' }}>
@@ -2297,6 +2467,72 @@ export default function AdminSmsSettingsPage() {
                 </div>
               </div>
 
+              {/* Origin & Security Info (IP & Device) */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                padding: '12px 16px',
+                marginBottom: 16
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Shield size={13} />
+                  রিকোয়েস্টের উৎস ও সিকিউরিটি লগ (Client Origin)
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                      <Globe size={13} color="#64748b" />
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', margin: 0 }}>
+                        আইপি অ্যাড্রেস (IP)
+                      </label>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', fontFamily: 'monospace' }}>
+                      {selectedLog.ip_address || (
+                        <span style={{ color: '#94a3b8', fontWeight: 500, fontSize: 12 }}>রেকর্ড নেই (N/A)</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                      {parseDeviceInfo(selectedLog.user_agent).isMobile ? (
+                        <Smartphone size={13} color="#10b981" />
+                      ) : (
+                        <Monitor size={13} color="#6366f1" />
+                      )}
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', margin: 0 }}>
+                        ডিভাইস ও ব্রাউজার
+                      </label>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                      {parseDeviceInfo(selectedLog.user_agent).label}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedLog.user_agent && (
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed #cbd5e1' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', marginBottom: 2 }}>
+                      পূর্ণাঙ্গ ইউজার-এজেন্ট (User-Agent):
+                    </div>
+                    <div style={{
+                      fontSize: 10.5,
+                      color: '#475569',
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      wordBreak: 'break-all',
+                      lineHeight: 1.4
+                    }}>
+                      {selectedLog.user_agent}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Full Message Box */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -2379,6 +2615,431 @@ export default function AdminSmsSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Prune Logs Modal */}
+      <SmsPruneModal
+        isOpen={showPruneModal}
+        onClose={() => setShowPruneModal(false)}
+        onSuccess={() => {
+          fetchLogs(1)
+        }}
+      />
     </div>
   )
 }
+
+/**
+ * Safe Audit-style SMS Logs Prune / Cleanup Modal
+ */
+function SmsPruneModal({ isOpen, onClose, onSuccess }) {
+  const [retentionDays, setRetentionDays] = useState('30')
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'failed' | 'success'
+  const [customDate, setCustomDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    return d.toISOString().slice(0, 10)
+  })
+  const [downloadBackup, setDownloadBackup] = useState(true)
+  const [confirmInput, setConfirmInput] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [pruning, setPruning] = useState(false)
+
+  const maxAllowedDate = new Date().toISOString().slice(0, 10)
+
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmInput('')
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    let active = true
+
+    const fetchPreview = async () => {
+      setPreviewLoading(true)
+      try {
+        const payload = {
+          status: statusFilter,
+          ...(retentionDays === 'custom' ? { cutoff_date: customDate } : { days: parseInt(retentionDays, 10) })
+        }
+        const res = await previewAdminSmsPrune(payload)
+        if (active && res.data?.success) {
+          setPreview(res.data)
+        }
+      } catch (err) {
+        console.error('SMS prune preview error', err)
+        if (active) {
+          setPreview(null)
+          toast.error(err.response?.data?.message || 'লগ হিসাব করতে সমস্যা হয়েছে।')
+        }
+      } finally {
+        if (active) setPreviewLoading(false)
+      }
+    }
+
+    fetchPreview()
+    return () => { active = false }
+  }, [isOpen, retentionDays, customDate, statusFilter])
+
+  if (!isOpen) return null
+
+  const isConfirmed = confirmInput.trim().toUpperCase() === 'DELETE' || confirmInput.trim().toUpperCase() === 'PRUNE'
+  const canExecute = isConfirmed && !pruning && !previewLoading && (preview?.eligible_count > 0)
+
+  const handleExecutePrune = async () => {
+    if (!canExecute) return
+    try {
+      setPruning(true)
+
+      // 1. Download pre-prune CSV backup if checked
+      if (downloadBackup) {
+        const backupToastId = toast.loading('ডিলিটের পূর্বে ব্যাকআপ CSV প্রস্তুত হচ্ছে...')
+        try {
+          const exportParams = {
+            status: statusFilter,
+            ...(retentionDays === 'custom' ? { cutoff_date: customDate } : { days: parseInt(retentionDays, 10) })
+          }
+          const res = await exportAdminSmsPrune(exportParams)
+          const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+          const link = document.createElement('a')
+          link.href = url
+          link.setAttribute('download', `sms_logs_backup_${new Date().toISOString().slice(0, 10)}.csv`)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          toast.success('লগ ব্যাকআপ সফলভাবে ডাউনলোড হয়েছে!', { id: backupToastId })
+        } catch (exportErr) {
+          console.warn('Backup export warning', exportErr)
+          toast.dismiss(backupToastId)
+        }
+      }
+
+      // 2. Perform backend chunked prune
+      const payload = {
+        confirmation: confirmInput.trim().toUpperCase(),
+        status: statusFilter,
+        ...(retentionDays === 'custom' ? { cutoff_date: customDate } : { days: parseInt(retentionDays, 10) })
+      }
+
+      const res = await executeAdminSmsPrune(payload)
+      if (res.data?.success) {
+        toast.success(res.data.message || 'পুরোনো এসএমএস লগ সফলভাবে মুছে ফেলা হয়েছে।', { duration: 5000 })
+        onSuccess?.()
+        onClose()
+      } else {
+        toast.error(res.data?.message || 'লগ মুছতে ব্যর্থ হয়েছে।')
+      }
+    } catch (err) {
+      console.error('SMS prune execution failed', err)
+      toast.error(err.response?.data?.message || 'লগ মুছতে সমস্যা হয়েছে।')
+    } finally {
+      setPruning(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(5px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !pruning) onClose()
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: 18,
+          width: '100%',
+          maxWidth: 580,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '18px 24px',
+          borderBottom: '1px solid #f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#fafafa'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: '#fef2f2', border: '1px solid #fecaca',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#dc2626'
+            }}>
+              <Trash2 size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, color: '#0f172a' }}>
+                পুরোনো এসএমএস লগ ক্লিনআপ (Prune Logs)
+              </h3>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                ডাটাবেজ রিটেনশন পলিসি ও স্টোরেজ অপ্টিমাইজেশন
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pruning}
+            style={{
+              background: 'transparent', border: 'none', cursor: pruning ? 'not-allowed' : 'pointer',
+              color: '#94a3b8', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '80vh', overflowY: 'auto' }}>
+          {/* Days / Window Selection */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
+              কত দিনের পুরোনো লগ মুছতে চান? (Retention Period):
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+              {[
+                { val: '7', label: '৭ দিনের পুরোনো' },
+                { val: '15', label: '১৫ দিনের পুরোনো' },
+                { val: '30', label: '৩০ দিনের পুরোনো' },
+                { val: '60', label: '৬০ দিনের পুরোনো' },
+                { val: '90', label: '৯০ দিনের পুরোনো' },
+                { val: 'custom', label: 'কাস্টম তারিখ 📅' },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => setRetentionDays(opt.val)}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: retentionDays === opt.val ? '1.5px solid #00A88C' : '1px solid #e2e8f0',
+                    background: retentionDays === opt.val ? '#f0fdfa' : '#ffffff',
+                    color: retentionDays === opt.val ? '#0f766e' : '#475569'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {retentionDays === 'custom' && (
+              <div style={{ marginTop: 8 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>
+                  কাট-অফ তারিখ (এই তারিখ বা তার আগের সব লগ ডিলিট হবে):
+                </label>
+                <input
+                  type="date"
+                  max={maxAllowedDate}
+                  value={customDate}
+                  onChange={e => setCustomDate(e.target.value)}
+                  style={{
+                    width: '100%', height: 38, padding: '0 12px', borderRadius: 8,
+                    border: '1px solid #cbd5e1', fontSize: 13, color: '#0f172a'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Status Filter Selection */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+              লগের ধরন ফিল্টার করুন:
+            </label>
+            <div style={{ display: 'flex', gap: 14 }}>
+              {[
+                { val: 'all', label: 'সব ধরনের এসএমএস (All)' },
+                { val: 'failed', label: 'শুধু ব্যর্থ এসএমএস (Failed Only)' },
+                { val: 'success', label: 'শুধু সফল এসএমএস (Success Only)' },
+              ].map(s => (
+                <label key={s.val} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#334155', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="sms_status_filter"
+                    value={s.val}
+                    checked={statusFilter === s.val}
+                    onChange={() => setStatusFilter(s.val)}
+                  />
+                  <span>{s.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Preview Card */}
+          <div style={{
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '14px 16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
+                লাইভ হিসাব ও প্রভাব (Impact Preview)
+              </span>
+              {previewLoading && (
+                <span style={{ fontSize: 11, color: '#0284c7', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <RefreshCw size={11} className="fa-spin" /> হিসাব হচ্ছে...
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>
+                  🗑️ মুছে ফেলা হবে (Eligible)
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#dc2626' }}>
+                  {preview ? preview.eligible_count.toLocaleString() : '...'} <span style={{ fontSize: 12, fontWeight: 600 }}>টি লগ</span>
+                </div>
+              </div>
+
+              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#065f46', marginBottom: 2 }}>
+                  🛡️ সুরক্ষিত থাকবে (Remaining)
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#059669' }}>
+                  {preview ? preview.remaining_count.toLocaleString() : '...'} <span style={{ fontSize: 12, fontWeight: 600 }}>টি লগ</span>
+                </div>
+              </div>
+            </div>
+
+            {preview?.cutoff_formatted && (
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 10 }}>
+                📅 কাট-অফ ডেট: <strong>{preview.cutoff_formatted}</strong> বা তার পূর্ববর্তী লগসমূহ।
+              </div>
+            )}
+          </div>
+
+          {/* Backup Checkbox */}
+          <div style={{
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: 10,
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10
+          }}>
+            <input
+              type="checkbox"
+              id="download_backup"
+              checked={downloadBackup}
+              onChange={e => setDownloadBackup(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            <label htmlFor="download_backup" style={{ fontSize: 12, fontWeight: 600, color: '#0369a1', margin: 0, cursor: 'pointer' }}>
+              ডিলিট করার পূর্বে একটি ব্যাকআপ CSV ফাইল ডাউনলোড করুন (প্রস্তাবিত)
+            </label>
+          </div>
+
+          {/* Confirmation Box */}
+          <div style={{
+            borderTop: '1px solid #f1f5f9',
+            paddingTop: 14
+          }}>
+            <label style={{ display: 'block', fontSize: 12, color: '#334155', marginBottom: 6 }}>
+              অনাকাঙ্ক্ষিত ডিলিট রোধ করতে নিচের বক্সে <strong style={{ color: '#dc2626', fontFamily: 'monospace', background: '#fee2e2', padding: '1px 6px', borderRadius: 4 }}>DELETE</strong> অথবা <strong style={{ color: '#0f766e', fontFamily: 'monospace', background: '#ccfbf1', padding: '1px 6px', borderRadius: 4 }}>PRUNE</strong> লিখুন:
+            </label>
+            <input
+              type="text"
+              value={confirmInput}
+              onChange={e => setConfirmInput(e.target.value)}
+              placeholder="DELETE অথবা PRUNE"
+              style={{
+                width: '100%',
+                height: 38,
+                padding: '0 12px',
+                borderRadius: 8,
+                border: isConfirmed ? '1.5px solid #22c55e' : '1px solid #cbd5e1',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                color: isConfirmed ? '#15803d' : '#0f172a',
+                outline: 'none'
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '14px 24px',
+          background: '#f8fafc',
+          borderTop: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pruning}
+            className="btn btn-sm btn-secondary"
+            style={{ borderRadius: 8, padding: '6px 16px', fontWeight: 600 }}
+          >
+            বাতিল করুন
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExecutePrune}
+            disabled={!canExecute}
+            className="btn btn-sm btn-danger"
+            style={{
+              borderRadius: 8,
+              padding: '7px 20px',
+              fontWeight: 700,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: canExecute ? '#dc2626' : '#cbd5e1',
+              borderColor: canExecute ? '#dc2626' : '#cbd5e1',
+              cursor: canExecute ? 'pointer' : 'not-allowed',
+              boxShadow: canExecute ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none'
+            }}
+          >
+            {pruning ? (
+              <>
+                <RefreshCw size={14} className="fa-spin" />
+                <span>ডিলিট হচ্ছে...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 size={14} />
+                <span>
+                  {preview && preview.eligible_count > 0
+                    ? `${preview.eligible_count.toLocaleString()} টি লগ মুছুন`
+                    : 'মুছে ফেলুন'}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

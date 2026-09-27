@@ -81,10 +81,51 @@ const RegisterPage = () => {
 
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
+  const [otpTimer, setOtpTimer] = useState(0)
+  const [throttleTimer, setThrottleTimer] = useState(0)
   const [verifying, setVerifying] = useState(false)
   const [verificationToken, setVerificationToken] = useState('')
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const otpRefs = useRef([])
+
+  // Countdown timer effect for OTP resend cooldown
+  useEffect(() => {
+    let interval = null
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer(prev => prev - 1)
+      }, 1000)
+    } else {
+      clearInterval(interval)
+    }
+    return () => clearInterval(interval)
+  }, [otpTimer])
+
+  // Countdown timer effect for rate-limit throttle cooldown
+  useEffect(() => {
+    let interval = null
+    if (throttleTimer > 0) {
+      interval = setInterval(() => {
+        setThrottleTimer(prev => {
+          if (prev <= 1) {
+            setFieldErrors(f => ({ ...f, mobile: '' }))
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } else {
+      clearInterval(interval)
+    }
+    return () => clearInterval(interval)
+  }, [throttleTimer])
+
+  const formatCountdown = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60)
+    const secs = totalSeconds % 60
+    const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return str.replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d])
+  }
 
   const roleConfigs = {
     patient: {
@@ -168,6 +209,7 @@ const RegisterPage = () => {
   }
 
   const handleSendOTP = async () => {
+    if (otpTimer > 0 && otpSent) return
     setFieldErrors({})
     if (!role) {
       setFieldErrors({ role: 'অনুগ্রহ করে প্রথমে ভূমিকা নির্বাচন করুন।' })
@@ -196,18 +238,26 @@ const RegisterPage = () => {
       if (res.data && res.data.already_registered) {
         setLoading(false)
         setIsAlreadyRegistered(true)
-        setFieldErrors({ mobile: translateToBangla(res.data.message || 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত!') })
+        setFieldErrors({ mobile: '' })
         return
       }
 
       if (res.data && res.data.success === false) {
         setLoading(false)
+        if (res.data.retry_after_seconds || res.data.cooldown_seconds) {
+          setThrottleTimer(Number(res.data.retry_after_seconds || res.data.cooldown_seconds))
+        }
         setFieldErrors({ mobile: translateToBangla(res.data.message || 'OTP পাঠানো ব্যর্থ হয়েছে।') })
         return
       }
 
       setLoading(false)
       setOtpSent(true)
+      setOtpDigits(['', '', '', '', '', ''])
+      setOtp('')
+      const cooldown = res.data?.cooldown_seconds || 60
+      setOtpTimer(cooldown)
+      setTimeout(() => otpRefs.current[0]?.focus(), 100)
 
     } catch (err) {
       setLoading(false)
@@ -217,7 +267,14 @@ const RegisterPage = () => {
 
       if (isAlready) {
         setIsAlreadyRegistered(true)
-        setFieldErrors({ mobile: 'এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে লগইন করুন।' })
+        setFieldErrors({ mobile: '' })
+        return
+      }
+
+      const retryAfter = err.response?.data?.retry_after_seconds || err.response?.data?.cooldown_seconds
+      if (status === 429 && retryAfter) {
+        setThrottleTimer(Number(retryAfter))
+        setFieldErrors({ mobile: errMsg || 'ওটিপি অনুরোধের সীমা পৌঁছেছে।' })
         return
       }
 
@@ -226,17 +283,53 @@ const RegisterPage = () => {
     }
   }
 
-  const handleOtpDigitChange = (index, value) => {
-    if (value.length > 1) value = value.slice(-1)
-    if (!/^\d*$/.test(value)) return
+  const handleOtpPaste = (e) => {
+    e.preventDefault()
+    setFieldErrors(prev => ({ ...prev, otp: '' }))
+    const raw = e.clipboardData?.getData('text')?.trim() || ''
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = raw.replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
 
+    if (cleanDigits.length > 0) {
+      const digits = cleanDigits.slice(0, 6).split('')
+      const newDigits = ['', '', '', '', '', '']
+      digits.forEach((d, i) => { newDigits[i] = d })
+      setOtpDigits(newDigits)
+      setOtp(newDigits.join(''))
+      const targetFocus = Math.min(digits.length - 1, 5)
+      setTimeout(() => otpRefs.current[targetFocus]?.focus(), 10)
+    }
+  }
+
+  const handleOtpDigitChange = (index, value) => {
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = String(value).replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
+
+    // If multiple digits pasted / autofilled directly into this input
+    if (cleanDigits.length > 1) {
+      const digits = cleanDigits.slice(0, 6).split('')
+      const newDigits = [...otpDigits]
+      digits.forEach((d, i) => {
+        if (index + i < 6) newDigits[index + i] = d
+      })
+      setOtpDigits(newDigits)
+      setOtp(newDigits.join(''))
+      setFieldErrors(prev => ({ ...prev, otp: '' }))
+      const nextFocus = Math.min(index + digits.length - 1, 5)
+      setTimeout(() => otpRefs.current[nextFocus]?.focus(), 10)
+      return
+    }
+
+    const singleDigit = cleanDigits.slice(-1)
     const newDigits = [...otpDigits]
-    newDigits[index] = value
+    newDigits[index] = singleDigit
     setOtpDigits(newDigits)
     setOtp(newDigits.join(''))
     setFieldErrors(prev => ({ ...prev, otp: '' }))
 
-    if (value && index < 5) {
+    if (singleDigit && index < 5) {
       otpRefs.current[index + 1]?.focus()
     }
   }
@@ -244,18 +337,25 @@ const RegisterPage = () => {
   const handleOtpKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
       otpRefs.current[index - 1]?.focus()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const entered = otpDigits.join('')
+      if (entered.length === 6 && !verifying) {
+        handleVerifyOTP()
+      }
     }
   }
 
   const handleVerifyOTP = async () => {
     setFieldErrors({})
-    if (otp.length !== 6) {
+    const currentOtp = (otp && otp.length === 6) ? otp : otpDigits.join('')
+    if (currentOtp.length !== 6) {
       setFieldErrors({ otp: '৬ সংখ্যার OTP কোড লিখুন' })
       return
     }
     setVerifying(true)
     try {
-      const res = await verifyOtp({ mobile: form.mobile, otp })
+      const res = await verifyOtp({ mobile: form.mobile, otp: currentOtp })
       if (res.data?.success) {
         setVerificationToken(res.data?.verification_token || '')
         setStep(2)
@@ -263,7 +363,13 @@ const RegisterPage = () => {
         setFieldErrors({ otp: res.data?.message || 'ভুল ওটিপি কোড!' })
       }
     } catch (err) {
-      setFieldErrors({ otp: err.response?.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।' })
+      const errMsg = err.response?.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।'
+      setFieldErrors({ otp: errMsg })
+      if (err.response?.status === 429 || errMsg.includes('সীমা') || errMsg.includes('মেয়াদ')) {
+        setOtpDigits(['', '', '', '', '', ''])
+        setOtp('')
+        setTimeout(() => otpRefs.current[0]?.focus(), 50)
+      }
     } finally {
       setVerifying(false)
     }
@@ -558,22 +664,30 @@ const RegisterPage = () => {
                       className="auth-input-premium" disabled={otpSent || !role}
                       style={{ paddingRight: 118, cursor: (!otpSent && !role) ? 'not-allowed' : undefined }}
                       maxLength={11}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading && otpTimer === 0 && throttleTimer === 0) {
+                            handleSendOTP()
+                          }
+                        }
+                      }}
                     />
                     {!otpSent ? (
                       <button
                         type="button"
                         onClick={() => role ? handleSendOTP() : handleLockedFieldClick()}
-                        disabled={loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11}
+                        disabled={loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11 || otpTimer > 0 || throttleTimer > 0}
                         style={{
                           position: 'absolute',
                           right: 5,
                           top: 5,
                           bottom: 5,
                           padding: '0 14px',
-                          background: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                          background: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading && otpTimer === 0 && throttleTimer === 0)
                             ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
                             : '#E2E8F0',
-                          color: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                          color: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading && otpTimer === 0 && throttleTimer === 0)
                             ? '#FFFFFF'
                             : '#94A3B8',
                           border: 'none',
@@ -581,13 +695,13 @@ const RegisterPage = () => {
                           fontSize: 12.5,
                           fontWeight: 700,
                           zIndex: 11,
-                          cursor: (loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11) ? 'not-allowed' : 'pointer',
+                          cursor: (loading || !role || (form.mobile || '').replace(/[^\d]/g, '').length < 11 || otpTimer > 0 || throttleTimer > 0) ? 'not-allowed' : 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 6,
                           transition: 'all 0.2s',
-                          boxShadow: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading)
+                          boxShadow: (role && (form.mobile || '').replace(/[^\d]/g, '').length === 11 && !loading && otpTimer === 0 && throttleTimer === 0)
                             ? '0 2px 8px rgba(0, 184, 117, 0.25)'
                             : 'none'
                         }}
@@ -597,6 +711,10 @@ const RegisterPage = () => {
                             <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13 }} role="status" aria-hidden="true" />
                             <span style={{ fontSize: 11 }}>যাচাই...</span>
                           </>
+                        ) : otpTimer > 0 ? (
+                          <span style={{ fontSize: 11 }}>অপেক্ষা ({formatCountdown(otpTimer)})</span>
+                        ) : throttleTimer > 0 ? (
+                          <span style={{ fontSize: 11 }}>অপেক্ষা ({formatCountdown(throttleTimer)})</span>
                         ) : (
                           'OTP পাঠান'
                         )}
@@ -604,7 +722,7 @@ const RegisterPage = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => { setOtpSent(false); setOtpDigits(['','','','','','']); setOtp(''); setFieldErrors({}) }}
+                        onClick={() => { setOtpSent(false); setOtpDigits(['','','','','','']); setOtp(''); setFieldErrors({}); }}
                         style={{
                           position: 'absolute',
                           right: 6,
@@ -630,8 +748,80 @@ const RegisterPage = () => {
                     )}
                   </div>
 
-                  {/* Inline Red Error under Mobile Field */}
-                  {fieldErrors.mobile && (
+                  {/* Cooldown notice if number was changed while cooldown is active */}
+                  {otpTimer > 0 && !otpSent && !isAlreadyRegistered && throttleTimer === 0 && (
+                    <div className="fade-in-up" style={{
+                      marginTop: 8,
+                      padding: '8px 12px',
+                      background: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 8,
+                      color: '#166534',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Clock size={15} color="#16A34A" style={{ flexShrink: 0 }} />
+                        <span>নতুন নম্বরে ওটিপি পাঠাতে অপেক্ষা করুন:</span>
+                      </div>
+                      <span style={{
+                        padding: '1px 7px',
+                        background: '#DCFCE7',
+                        border: '1px solid #86EFAC',
+                        borderRadius: 5,
+                        color: '#15803D',
+                        fontFamily: "'Inter', monospace",
+                        fontWeight: 800,
+                        fontSize: 12.5
+                      }}>
+                        ⏳ {formatCountdown(otpTimer)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Rate limit throttle live countdown alert card */}
+                  {throttleTimer > 0 && !isAlreadyRegistered && (
+                    <div className="fade-in-up" style={{
+                      marginTop: 10,
+                      padding: '10px 14px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      borderRadius: 10,
+                      color: '#991B1B',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Clock size={16} color="#DC2626" style={{ flexShrink: 0 }} />
+                        <span>ওটিপি অনুরোধের সীমা পূর্ণ হয়েছে। বাকি সময়:</span>
+                      </div>
+                      <span style={{
+                        padding: '2px 8px',
+                        background: '#FEE2E2',
+                        border: '1px solid #FCA5A5',
+                        borderRadius: 6,
+                        color: '#B91C1C',
+                        fontFamily: "'Inter', monospace",
+                        fontWeight: 800,
+                        fontSize: 13,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        ⏳ {formatCountdown(throttleTimer)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Inline Red Error under Mobile Field (only when not throttling) */}
+                  {fieldErrors.mobile && !isAlreadyRegistered && throttleTimer === 0 && (
                     <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.mobile}
                     </p>
@@ -680,17 +870,18 @@ const RegisterPage = () => {
                   <div className="slide-in-right">
                     <Form.Group style={{ marginBottom: 22 }}>
                       <Form.Label className="auth-label-premium" style={{ marginBottom: 10 }}>৬ সংখ্যার OTP কোড লিখুন</Form.Label>
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }} onPaste={handleOtpPaste}>
                         {otpDigits.map((digit, i) => (
                           <input
                             key={i}
                             ref={el => otpRefs.current[i] = el}
                             type="text"
                             inputMode="numeric"
-                            maxLength={1}
+                            maxLength={6}
                             value={digit}
                             onChange={e => handleOtpDigitChange(i, e.target.value)}
                             onKeyDown={e => handleOtpKeyDown(i, e)}
+                            onPaste={handleOtpPaste}
                             style={{
                               width: 44, height: 50, textAlign: 'center',
                               fontSize: 20, fontWeight: 800, borderRadius: 10,
@@ -706,16 +897,72 @@ const RegisterPage = () => {
                         ))}
                       </div>
 
-                      {/* Inline Red Error for OTP */}
+                      {/* Premium Error Alert Card for OTP */}
                       {fieldErrors.otp && (
-                        <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, marginBottom: 0, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                          <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.otp}
-                        </p>
+                        <div className="fade-in-up" style={{
+                          marginTop: 12,
+                          marginBottom: 4,
+                          padding: '9px 14px',
+                          background: '#FEF2F2',
+                          border: '1px solid #FECACA',
+                          borderRadius: 10,
+                          color: '#DC2626',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          textAlign: 'center',
+                          lineHeight: 1.4
+                        }}>
+                          <AlertTriangle size={15} color="#DC2626" style={{ flexShrink: 0 }} />
+                          <span>{fieldErrors.otp}</span>
+                        </div>
                       )}
 
-                      <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 10, fontWeight: 500 }}>
-                        কোড পাননি? <button onClick={handleSendOTP} style={{ background: 'none', border: 'none', color: '#00B875', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>পুনরায় পাঠান</button>
-                      </p>
+                      <div style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 14, fontWeight: 500 }}>
+                        <span>কোড পাননি? </span>
+                        {otpTimer > 0 ? (
+                          <span style={{
+                            color: '#94A3B8',
+                            fontWeight: 500,
+                            cursor: 'not-allowed',
+                            userSelect: 'none',
+                            opacity: 0.65
+                          }}>
+                            পুনরায় পাঠান ({`${Math.floor(otpTimer / 60)}:${(otpTimer % 60).toString().padStart(2, '0')}`.replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d])})
+                          </span>
+                        ) : throttleTimer > 0 ? (
+                          <span style={{
+                            color: '#94A3B8',
+                            fontWeight: 500,
+                            cursor: 'not-allowed',
+                            userSelect: 'none',
+                            opacity: 0.65
+                          }}>
+                            পুনরায় পাঠান ({formatCountdown(throttleTimer)})
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSendOTP}
+                            disabled={loading}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#00B875',
+                              fontWeight: 700,
+                              fontSize: 13,
+                              cursor: loading ? 'not-allowed' : 'pointer',
+                              textDecoration: 'underline',
+                              padding: 0
+                            }}
+                          >
+                            {loading ? 'পাঠানো হচ্ছে...' : 'পুনরায় পাঠান'}
+                          </button>
+                        )}
+                      </div>
                     </Form.Group>
 
                     <Button
