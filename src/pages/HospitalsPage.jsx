@@ -98,8 +98,7 @@ function HospitalsPage() {
   } = useUserLocation()
 
   const [isNearMeActive, setIsNearMeActive] = useState(() => {
-    if (searchParams.get('near_me') === '0') return false
-    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest' || Boolean(hasLocation && !districtParam)
+    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest'
   })
   const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
 
@@ -174,7 +173,6 @@ function HospitalsPage() {
       setIsNearMeActive(true)
       setSortBy('nearest')
       updateUrlParams({ near_me: '1', sort: 'nearest' })
-      toast.success('আপনার অবস্থান শনাক্ত হয়েছে। নিকটবর্তী হাসপাতালগুলো প্রদর্শিত হচ্ছে।', { id: 'geo-active' })
     } catch (err) {
       toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
     }
@@ -189,7 +187,6 @@ function HospitalsPage() {
           setIsNearMeActive(true)
           setSortBy('nearest')
           updateUrlParams({ sort: 'nearest', near_me: '1' })
-          toast.success('নিকটবর্তী হাসপাতাল অনুযায়ী সাজানো হয়েছে।', { id: 'geo-sort' })
         } catch (err) {
           toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
         }
@@ -209,7 +206,6 @@ function HospitalsPage() {
     setIsNearMeActive(true)
     setSortBy('nearest')
     updateUrlParams({ near_me: '1', sort: 'nearest' })
-    toast.success('আপনার অবস্থান শনাক্ত হয়েছে। নিকটবর্তী হাসপাতালগুলো সাজানো হচ্ছে।', { id: 'geo-sort' })
   }
 
   // Sync regional URL params with useLocations
@@ -407,7 +403,7 @@ function HospitalsPage() {
     if (isNearMeActive && userLocation?.latitude) {
       list.push({
         key: 'near_me',
-        label: `📍 নিকটবর্তী ${distanceRadius ? `(${distanceRadius} কিমি)` : ''}`,
+        label: `নিকটবর্তী ${distanceRadius ? `(${distanceRadius} কিমি)` : ''}`,
         clear: () => {
           setIsNearMeActive(false)
           setDistanceRadius('')
@@ -835,7 +831,7 @@ function HospitalsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Sort by:</span>
+              <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
               <select
                 value={sortBy}
                 onChange={e => handleSortChange(e.target.value)}
@@ -848,13 +844,14 @@ function HospitalsPage() {
                   fontWeight: 600,
                   color: '#0F172A',
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: "'Hind Siliguri', sans-serif"
                 }}
               >
-                <option value="newest">Newest First</option>
-                <option value="nearest">📍 নিকটবর্তী হাসপাতাল</option>
-                <option value="name_asc">Name (A - Z)</option>
-                <option value="name_desc">Name (Z - A)</option>
+                <option value="newest">সর্বশেষ যুক্ত</option>
+                <option value="nearest">নিকটবর্তী হাসপাতাল</option>
+                <option value="name_asc">নাম (A - Z)</option>
+                <option value="name_desc">নাম (Z - A)</option>
               </select>
             </div>
 
@@ -1042,15 +1039,10 @@ function HospitalsPage() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
               }}>
                 {/* Filter Sidebar Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <IconAdjustmentsHorizontal size={18} color="#0F172A" />
-                    <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Filters</h3>
-                      <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
-                        Showing <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}</strong> properties
-                      </div>
-                    </div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Filters</h3>
                   </div>
                 </div>
 
@@ -1096,40 +1088,58 @@ function HospitalsPage() {
                   </div>
                 )}
 
-                {/* Accordion 0: Distance Radius Filter (when Near Me active) */}
-                {isNearMeActive && (
-                  <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
-                    <div onClick={() => toggleAccordion('distance')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        <IconNavigation size={15} />
-                        <span>দূরত্ব ফিল্টার (Radius)</span>
-                      </span>
-                      {openAccordions.distance ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                {/* Live Location / Near Me (Desktop Sidebar - Firstly) */}
+                <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী হাসপাতাল</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleNearMe}
+                    disabled={locationLoading}
+                    style={{
+                      width: '100%',
+                      padding: '9px 14px',
+                      borderRadius: 8,
+                      background: isNearMeActive ? '#059669' : '#F1F5F9',
+                      color: isNearMeActive ? 'white' : '#334155',
+                      border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      marginBottom: isNearMeActive ? 12 : 0,
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                  >
+                    {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
+                    <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের হাসপাতাল খুঁজুন'}</span>
+                  </button>
+                  {isNearMeActive && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
+                      {RADIUS_OPTIONS.map(r => {
+                        const isChecked = distanceRadius === r.id
+                        return (
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            <input
+                              type="radio"
+                              name="desktop_hospital_distance_radius"
+                              checked={isChecked}
+                              onChange={() => {
+                                setDistanceRadius(r.id)
+                                updateUrlParams({ radius: r.id })
+                              }}
+                              style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                            />
+                            <span>{r.label}</span>
+                          </label>
+                        )
+                      })}
                     </div>
-                    {openAccordions.distance && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                        {RADIUS_OPTIONS.map(r => {
-                          const isChecked = distanceRadius === r.id
-                          return (
-                            <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                              <input
-                                type="radio"
-                                name="distance_radius"
-                                checked={isChecked}
-                                onChange={() => {
-                                  setDistanceRadius(r.id)
-                                  updateUrlParams({ radius: r.id })
-                                }}
-                                style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
-                              />
-                              <span>{r.label}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Accordion 1: Make / Hospital Type */}
                 <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
@@ -1158,7 +1168,7 @@ function HospitalsPage() {
                 </div>
 
                 {/* Accordion 2: Location */}
-                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                <div style={{ marginBottom: 4 }}>
                   <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
                     {openAccordions.location ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
@@ -1227,62 +1237,6 @@ function HospitalsPage() {
                           ))}
                         </select>
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Accordion 3: Bed Ranges */}
-                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
-                  <div onClick={() => toggleAccordion('beds')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Beds Range</span>
-                    {openAccordions.beds ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
-                  </div>
-                  {openAccordions.beds && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                      {BED_RANGES.map(b => {
-                        const isChecked = selectedBeds === b.id
-                        return (
-                          <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: isChecked ? 700 : 500 }}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => setSelectedBeds(isChecked ? '' : b.id)}
-                              style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
-                            />
-                            <span>{b.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Accordion 4: Special Facilities */}
-                <div style={{ marginBottom: 4 }}>
-                  <div onClick={() => toggleAccordion('extras')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Facilities</span>
-                    {openAccordions.extras ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
-                  </div>
-                  {openAccordions.extras && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: emergencyOnly ? 700 : 500 }}>
-                        <input
-                          type="checkbox"
-                          checked={emergencyOnly}
-                          onChange={() => setEmergencyOnly(v => !v)}
-                          style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
-                        />
-                        <span>২৪/৭ জরুরি সেবা</span>
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: openTodayOnly ? 700 : 500 }}>
-                        <input
-                          type="checkbox"
-                          checked={openTodayOnly}
-                          onChange={() => setOpenTodayOnly(v => !v)}
-                          style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
-                        />
-                        <span>আজ খোলা আছে</span>
-                      </label>
                     </div>
                   )}
                 </div>
@@ -1394,7 +1348,7 @@ function HospitalsPage() {
               }}
             >
               {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
-              <span>{isNearMeActive ? '📍 নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : '📍 আমার কাছের হাসপাতাল খুঁজুন'}</span>
+              <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের হাসপাতাল খুঁজুন'}</span>
             </button>
             {isNearMeActive && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
@@ -1504,52 +1458,6 @@ function HospitalsPage() {
                   ))}
                 </select>
               </div>
-            </div>
-          </div>
-
-          {/* Bed Ranges */}
-          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>শয্যা সংখ্যা (Beds)</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {BED_RANGES.map(b => {
-                const isChecked = selectedBeds === b.id
-                return (
-                  <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => setSelectedBeds(isChecked ? '' : b.id)}
-                      style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
-                    />
-                    <span>{b.label}</span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Special Facilities */}
-          <div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>বিশেষ সুবিধা</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: emergencyOnly ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                <input
-                  type="checkbox"
-                  checked={emergencyOnly}
-                  onChange={() => setEmergencyOnly(v => !v)}
-                  style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
-                />
-                <span>২৪/৭ জরুরি সেবা</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: openTodayOnly ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                <input
-                  type="checkbox"
-                  checked={openTodayOnly}
-                  onChange={() => setOpenTodayOnly(v => !v)}
-                  style={{ width: 16, height: 16, accentColor: '#0B192C', borderRadius: 4 }}
-                />
-                <span>আজ খোলা আছে</span>
-              </label>
             </div>
           </div>
         </div>

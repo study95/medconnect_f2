@@ -35,6 +35,7 @@ export default function LocationPromptBanner({
   useEffect(() => {
     if (hasLocation || dismissed) {
       setIsVisible(false)
+      setJustActivated(false)
       return
     }
 
@@ -48,6 +49,7 @@ export default function LocationPromptBanner({
   // Handle immediate dismiss
   const handleDismiss = () => {
     setIsVisible(false)
+    setJustActivated(false)
     setDismissed(true)
     try {
       sessionStorage.setItem('medconnect_loc_prompt_dismissed', '1')
@@ -67,6 +69,7 @@ export default function LocationPromptBanner({
           // Hide smoothly after 1.4 seconds showing the success checkmark
           setTimeout(() => {
             setIsVisible(false)
+            setJustActivated(false)
           }, 1400)
         }
       } catch (err) {
@@ -75,7 +78,7 @@ export default function LocationPromptBanner({
     }
   }
 
-  if (!isVisible && !justActivated) {
+  if ((!isVisible && !justActivated) || (hasLocation && !justActivated)) {
     return null
   }
 
