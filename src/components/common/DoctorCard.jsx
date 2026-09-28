@@ -1,11 +1,12 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase
+  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase, IconNavigation
 } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
+import { formatDistance, findNearestChamber, calculateDistance } from '../../utils/geoUtils'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 
@@ -22,7 +23,7 @@ const VerifiedBlueBadge = ({ size = 20 }) => (
   </svg>
 )
 
-function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'grid' }) {
+function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'grid', userLocation = null }) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
   const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
@@ -199,6 +200,51 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const primaryHospital = rawChamberName || workplaceName || doctor.chamber_address || 'পপুলার ডায়াগনস্টিক সেন্টার'
 
   const locationText = chamberLocation || currentExp?.address || doctorGeneralLocation
+
+  // Nearest chamber distance calculation
+  const nearestChamberInfo = (() => {
+    // 1. If backend matched_chamber already has distance_km
+    if (matchedChamber?.distance_km !== undefined && matchedChamber?.distance_km !== null) {
+      return {
+        chamber: matchedChamber,
+        distanceKm: matchedChamber.distance_km,
+        formattedDistance: formatDistance(matchedChamber.distance_km)
+      }
+    }
+    // 2. If client has userLocation and doctor has chambers
+    if (userLocation && Array.isArray(doctor?.chambers) && doctor.chambers.length > 0) {
+      const nearest = findNearestChamber(doctor.chambers, userLocation)
+      if (nearest) {
+        return {
+          chamber: nearest.chamber,
+          distanceKm: nearest.distanceKm,
+          formattedDistance: nearest.formattedDistance || formatDistance(nearest.distanceKm)
+        }
+      }
+    }
+    // 3. Fallback: if doctor has distance_km directly from backend
+    if (doctor?.distance_km !== undefined && doctor?.distance_km !== null) {
+      return {
+        chamber: null,
+        distanceKm: doctor.distance_km,
+        formattedDistance: formatDistance(doctor.distance_km)
+      }
+    }
+    // 4. Fallback: if userLocation and doctor has associated hospital with coordinates
+    if (userLocation && (doctor?.hospital?.latitude || doctor?.hospital_lat) && (doctor?.hospital?.longitude || doctor?.hospital_lng)) {
+      const hLat = doctor?.hospital?.latitude || doctor?.hospital_lat
+      const hLng = doctor?.hospital?.longitude || doctor?.hospital_lng
+      const dist = calculateDistance(userLocation.latitude, userLocation.longitude, hLat, hLng)
+      if (dist !== null) {
+        return {
+          chamber: null,
+          distanceKm: dist,
+          formattedDistance: formatDistance(dist)
+        }
+      }
+    }
+    return null
+  })()
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
@@ -513,8 +559,32 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     marginTop: 3
                   }}>
                     <IconMapPin size={14} color="#00B875" />
-                    <span>{locationText || 'ঢাকা'}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {locationText || 'ঢাকা'}
+                    </span>
                   </div>
+
+                  {nearestChamberInfo?.formattedDistance && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      alignSelf: 'flex-start',
+                      width: 'fit-content',
+                      gap: 4,
+                      background: '#ECFDF5',
+                      color: '#059669',
+                      border: '1px solid #A7F3D0',
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      marginTop: 6
+                    }}>
+                      <IconNavigation size={12} color="#059669" />
+                      <span>{nearestChamberInfo.formattedDistance} দূরে</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Share & Heart Action Icons */}
@@ -745,6 +815,31 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               {locationText || 'ঢাকা'}
             </span>
           </div>
+
+          {nearestChamberInfo?.formattedDistance && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              alignSelf: 'flex-start',
+              width: 'fit-content',
+              gap: 4,
+              background: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              borderRadius: 6,
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              marginTop: 3,
+              marginBottom: 2
+            }}>
+              <IconNavigation size={11} color="#059669" style={{ flexShrink: 0 }} />
+              <span>
+                {nearestChamberInfo.formattedDistance} দূরে
+              </span>
+            </div>
+          )}
 
           <div style={{ fontSize: 12, color: '#334155', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 1 }}>
             {experience} বছর অভিজ্ঞতা • ৳ {fee} ফি

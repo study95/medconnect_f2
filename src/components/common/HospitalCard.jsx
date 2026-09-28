@@ -2,10 +2,11 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getHospitalUrl } from '../../utils/identifierHelper'
-import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck } from '@tabler/icons-react'
+import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck, IconNavigation, IconDirections } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
+import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl } from '../../utils/geoUtils'
 
 const DEMO_HOSPITAL = 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80'
 
@@ -139,7 +140,7 @@ function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
   )
 }
 
-function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
+function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = null }) {
   const navigate = useNavigate()
   const { isHospitalFavorite, toggleFavoriteHospital } = useFavorites()
   const isFavorite = isHospitalFavorite(hospital.id)
@@ -196,6 +197,13 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
     hospital.district?.name_bn || hospital.district?.name || 'ঢাকা'
   ].filter(Boolean).join(', ')
 
+  // Distance computation (either pre-calculated by backend API, or client-side calculated)
+  let effectiveDistance = hospital.distance_km !== undefined && hospital.distance_km !== null ? hospital.distance_km : null
+  if (effectiveDistance === null && userLocation?.latitude && userLocation?.longitude && hospital?.latitude && hospital?.longitude) {
+    effectiveDistance = calculateDistance(userLocation.latitude, userLocation.longitude, hospital.latitude, hospital.longitude)
+  }
+  const distanceText = effectiveDistance !== null ? formatDistance(effectiveDistance, { locale: 'bn' }) : null
+
   /* ── 1. COMPACT MAP VIEW CARD (Matching Right Column in Map Screenshot) ── */
   if (viewMode === 'map-compact') {
     return (
@@ -250,9 +258,28 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                 </button>
               </div>
             </div>
-            <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <IconMapPin size={12} color="#94A3B8" />
-              <span>{locationText || 'ঢাকা'}</span>
+            <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <IconMapPin size={12} color="#94A3B8" />
+                <span>{locationText || 'ঢাকা'}</span>
+              </span>
+              {distanceText && (
+                <span style={{
+                  background: '#ECFDF5',
+                  color: '#059669',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: 12,
+                  padding: '1px 6px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3
+                }}>
+                  <IconNavigation size={10} />
+                  <span>{distanceText}</span>
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 11, color: '#475569', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span>🛏️ ২৫০+ শয্যা</span>
@@ -429,14 +456,35 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 5,
+                    gap: 8,
                     color: '#64748B',
                     fontSize: 13,
                     fontWeight: 500,
-                    fontFamily: "'Hind Siliguri', sans-serif"
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    flexWrap: 'wrap'
                   }}>
-                    <IconMapPin size={14} color="#94A3B8" />
-                    <span>{locationText || 'ঢাকা'}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <IconMapPin size={14} color="#94A3B8" />
+                      <span>{locationText || 'ঢাকা'}</span>
+                    </span>
+                    {distanceText && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: 20,
+                        padding: '2px 8px',
+                        fontSize: 11.5,
+                        fontWeight: 700
+                      }}>
+                        <IconNavigation size={12} color="#059669" />
+                        <span>{distanceText}</span>
+                        <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 500 }}>(সরল দূরত্ব)</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -633,11 +681,28 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list' }) {
             {hospital.name}
           </h4>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748B', fontSize: 13, fontWeight: 500 }}>
-            <IconMapPin size={14} color="#00A88C" />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {locationText || 'ঢাকা'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748B', fontSize: 13, fontWeight: 500, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <IconMapPin size={14} color="#00A88C" />
+              <span>{locationText || 'ঢাকা'}</span>
             </span>
+            {distanceText && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                background: '#ECFDF5',
+                color: '#059669',
+                border: '1px solid #A7F3D0',
+                borderRadius: 12,
+                padding: '1px 6px',
+                fontSize: 11,
+                fontWeight: 700
+              }}>
+                <IconNavigation size={11} color="#059669" />
+                <span>{distanceText}</span>
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748B', fontSize: 13, fontWeight: 500 }}>

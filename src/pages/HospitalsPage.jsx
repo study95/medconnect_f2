@@ -12,12 +12,16 @@ import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
 import useDebounce from '../hooks/useDebounce'
+import useUserLocation from '../hooks/useUserLocation'
+import { calculateDistance } from '../utils/geoUtils'
+import { toast } from 'react-hot-toast'
 import {
   IconBuildingHospital, IconShieldCheck, IconSearch,
   IconChevronRight, IconChevronLeft, IconClock, IconHeadset, IconLock,
   IconAdjustmentsHorizontal, IconX, IconCheck, IconTrash, IconMapPin,
   IconChevronUp, IconChevronDown, IconStethoscope, IconAlertTriangle,
-  IconCalendarCheck, IconStar, IconListDetails, IconGridDots, IconMap
+  IconCalendarCheck, IconStar, IconListDetails, IconGridDots, IconMap,
+  IconCurrentLocation, IconNavigation, IconLoader2
 } from '@tabler/icons-react'
 
 const HOSPITAL_TYPES = [
@@ -37,6 +41,14 @@ const BED_RANGES = [
   { id: '51-150',  label: '৫১ - ১৫০ শয্যা' },
   { id: '151-300', label: '১৫১ - ৩০০ শয্যা' },
   { id: '301-999', label: '৩০০+ শয্যা' },
+]
+
+const RADIUS_OPTIONS = [
+  { id: '',   label: 'সকল দূরত্ব (যেকোনো দূরত্ব)' },
+  { id: '5',  label: '৫ কিমি এর মধ্যে' },
+  { id: '10', label: '১০ কিমি এর মধ্যে' },
+  { id: '25', label: '২৫ কিমি এর মধ্যে' },
+  { id: '50', label: '৫০ কিমি এর মধ্যে' },
 ]
 
 function HospitalsPage() {
@@ -70,7 +82,18 @@ function HospitalsPage() {
   const debouncedSearchText                       = useDebounce(searchText, 400)
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
-  const [sortBy, setSortBy]   = useState('newest')
+  const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'newest')
+
+  const {
+    location: userLocation,
+    loading: locationLoading,
+    requestLocation,
+    hasLocation
+  } = useUserLocation()
+
+  const [isNearMeActive, setIsNearMeActive] = useState(() => searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest')
+  const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
+
   const [viewMode, setViewModeState] = useState(() => {
     try {
       return localStorage.getItem('hospitals_view_mode') || 'list'
@@ -92,6 +115,7 @@ function HospitalsPage() {
 
   // Accordion open/close state inside left filter panel & mobile drawer
   const [openAccordions, setOpenAccordions] = useState({
+    distance: true,
     type: true,
     location: true,
     beds: true,
@@ -121,6 +145,55 @@ function HospitalsPage() {
       return next
     }, { replace: true })
   }, [setSearchParams])
+
+  // Near Me Toggle Handler
+  const handleToggleNearMe = async () => {
+    if (isNearMeActive) {
+      setIsNearMeActive(false)
+      setDistanceRadius('')
+      if (sortBy === 'nearest') {
+        setSortBy('newest')
+        updateUrlParams({ near_me: '', radius: '', sort: '' })
+      } else {
+        updateUrlParams({ near_me: '', radius: '' })
+      }
+      return
+    }
+
+    try {
+      await requestLocation()
+      setIsNearMeActive(true)
+      setSortBy('nearest')
+      updateUrlParams({ near_me: '1', sort: 'nearest' })
+      toast.success('আপনার অবস্থান শনাক্ত হয়েছে। নিকটবর্তী হাসপাতালগুলো প্রদর্শিত হচ্ছে।', { id: 'geo-active' })
+    } catch (err) {
+      toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
+    }
+  }
+
+  // Sort change handler with location prompt on 'nearest'
+  const handleSortChange = async (newSort) => {
+    if (newSort === 'nearest') {
+      if (!hasLocation) {
+        try {
+          await requestLocation()
+          setIsNearMeActive(true)
+          setSortBy('nearest')
+          updateUrlParams({ sort: 'nearest', near_me: '1' })
+          toast.success('নিকটবর্তী হাসপাতাল অনুযায়ী সাজানো হয়েছে।', { id: 'geo-sort' })
+        } catch (err) {
+          toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
+        }
+      } else {
+        setIsNearMeActive(true)
+        setSortBy('nearest')
+        updateUrlParams({ sort: 'nearest', near_me: '1' })
+      }
+    } else {
+      setSortBy(newSort)
+      updateUrlParams({ sort: newSort })
+    }
+  }
 
   // Sync regional URL params with useLocations
   useEffect(() => {
@@ -178,8 +251,14 @@ function HospitalsPage() {
     if (emergencyOnly)             p.emergency_only = true
     if (openTodayOnly)             p.open_today    = true
     if (effectiveSearch)           p.search        = effectiveSearch
+    if (isNearMeActive && userLocation?.latitude && userLocation?.longitude) {
+      p.latitude = userLocation.latitude
+      p.longitude = userLocation.longitude
+      if (distanceRadius) p.radius = distanceRadius
+    }
+    if (sortBy)                    p.sort          = sortBy
     return p
-  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, effectiveSearch])
+  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, effectiveSearch, isNearMeActive, userLocation, distanceRadius, sortBy])
 
   const { hospitals, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteHospitals(appliedFilters)
 
@@ -187,8 +266,15 @@ function HospitalsPage() {
     const list = [...hospitals]
     if (sortBy === 'name_asc')  return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     if (sortBy === 'name_desc') return list.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+    if (sortBy === 'nearest' && userLocation?.latitude && userLocation?.longitude) {
+      return list.sort((a, b) => {
+        const da = a.distance_km ?? (a.latitude && a.longitude ? calculateDistance(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude) : 999999)
+        const db = b.distance_km ?? (b.latitude && b.longitude ? calculateDistance(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude) : 999999)
+        return da - db
+      })
+    }
     return list
-  }, [hospitals, sortBy])
+  }, [hospitals, sortBy, userLocation])
 
   // Helper for location display name
   const getLocName = (item, fallback) => {
@@ -301,6 +387,18 @@ function HospitalsPage() {
     if (openTodayOnly) {
       list.push({ key: 'open_today', label: 'Open Today', clear: () => setOpenTodayOnly(false) })
     }
+    if (isNearMeActive && userLocation?.latitude) {
+      list.push({
+        key: 'near_me',
+        label: `📍 নিকটবর্তী ${distanceRadius ? `(${distanceRadius} কিমি)` : ''}`,
+        clear: () => {
+          setIsNearMeActive(false)
+          setDistanceRadius('')
+          if (sortBy === 'nearest') setSortBy('newest')
+          updateUrlParams({ near_me: '', radius: '', sort: '' })
+        }
+      })
+    }
     if (searchText.trim()) {
       list.push({
         key: 'search',
@@ -312,7 +410,8 @@ function HospitalsPage() {
   }, [
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText,
-    divisions, districts, upazilas, unions, specialties, updateUrlParams
+    divisions, districts, upazilas, unions, specialties, updateUrlParams,
+    isNearMeActive, userLocation, distanceRadius, sortBy
   ])
 
   const activeCount = activeFilters.length
@@ -328,6 +427,9 @@ function HospitalsPage() {
     setEmergencyOnly(false)
     setOpenTodayOnly(false)
     setSearchText('')
+    setIsNearMeActive(false)
+    setDistanceRadius('')
+    if (sortBy === 'nearest') setSortBy('newest')
     prevParamsRef.current = ''
     setSearchParams({}, { replace: true })
   }
@@ -549,6 +651,37 @@ function HospitalsPage() {
             )}
           </form>
 
+          {/* Mobile Near Me Button */}
+          <button
+            type="button"
+            onClick={handleToggleNearMe}
+            disabled={locationLoading}
+            style={{
+              height: 42,
+              padding: '0 10px',
+              borderRadius: 8,
+              background: isNearMeActive ? '#059669' : '#F8FAFC',
+              color: isNearMeActive ? 'white' : '#334155',
+              border: isNearMeActive ? '1px solid #059669' : '1.5px solid #CBD5E1',
+              fontWeight: 700,
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            title={isNearMeActive ? "নিকটবর্তী ফিল্টার বন্ধ করুন" : "আমার নিকটবর্তী হাসপাতাল খুঁজুন"}
+          >
+            {locationLoading ? (
+              <IconLoader2 size={16} className="spin-animation" />
+            ) : (
+              <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />
+            )}
+            <span>{isNearMeActive ? 'কাছের' : 'কাছে'}</span>
+          </button>
+
           {/* Filter Button */}
           <button
             type="button"
@@ -692,6 +825,35 @@ function HospitalsPage() {
               <IconX size={16} />
             </button>
           )}
+          <button
+            type="button"
+            onClick={handleToggleNearMe}
+            disabled={locationLoading}
+            style={{
+              background: isNearMeActive ? '#059669' : '#F8FAFC',
+              color: isNearMeActive ? '#FFFFFF' : '#334155',
+              border: isNearMeActive ? '1px solid #059669' : '1px solid #CBD5E1',
+              borderRadius: 6,
+              padding: '10px 14px',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+            title={isNearMeActive ? "নিকটবর্তী ফিল্টার বন্ধ করুন" : "আমার নিকটবর্তী হাসপাতাল খুঁজুন"}
+          >
+            {locationLoading ? (
+              <IconLoader2 size={16} className="spin-animation" />
+            ) : (
+              <IconCurrentLocation size={16} color={isNearMeActive ? '#FFFFFF' : '#00B875'} />
+            )}
+            <span>{isNearMeActive ? 'কাছের হাসপাতাল (চালু)' : 'আমার কাছে'}</span>
+          </button>
           <button type="submit" style={{
             background: '#00B875',
             color: 'white',
@@ -719,7 +881,7 @@ function HospitalsPage() {
               <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
+                onChange={e => handleSortChange(e.target.value)}
                 style={{
                   background: 'white',
                   border: '1px solid #CBD5E1',
@@ -733,6 +895,7 @@ function HospitalsPage() {
                 }}
               >
                 <option value="newest">Newest First</option>
+                <option value="nearest">নিকটবর্তী হাসপাতাল প্রথমে (Nearest First)</option>
                 <option value="name_asc">Name (A - Z)</option>
                 <option value="name_desc">Name (Z - A)</option>
               </select>
@@ -901,7 +1064,7 @@ function HospitalsPage() {
               </div>
               <div style={{ maxHeight: 585, overflowY: 'auto', paddingRight: 4 }}>
                 {sortedHospitals.map((h, i) => (
-                  <HospitalCard key={h.id} hospital={h} index={i} viewMode="map-compact" />
+                  <HospitalCard key={h.id} hospital={h} index={i} viewMode="map-compact" userLocation={userLocation} />
                 ))}
               </div>
             </Col>
@@ -973,6 +1136,41 @@ function HospitalsPage() {
                         </span>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Accordion 0: Distance Radius Filter (when Near Me active) */}
+                {isNearMeActive && (
+                  <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                    <div onClick={() => toggleAccordion('distance')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <IconNavigation size={15} />
+                        <span>দূরত্ব ফিল্টার (Radius)</span>
+                      </span>
+                      {openAccordions.distance ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                    </div>
+                    {openAccordions.distance && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                        {RADIUS_OPTIONS.map(r => {
+                          const isChecked = distanceRadius === r.id
+                          return (
+                            <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              <input
+                                type="radio"
+                                name="distance_radius"
+                                checked={isChecked}
+                                onChange={() => {
+                                  setDistanceRadius(r.id)
+                                  updateUrlParams({ radius: r.id })
+                                }}
+                                style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                              />
+                              <span>{r.label}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1155,7 +1353,7 @@ function HospitalsPage() {
                     <Row className="g-3">
                       {sortedHospitals.map((h, i) => (
                         <Col key={h.id} xs={12} md={6} xl={4}>
-                          <HospitalCard hospital={h} index={i} viewMode="grid" />
+                          <HospitalCard hospital={h} index={i} viewMode="grid" userLocation={userLocation} />
                         </Col>
                       ))}
                     </Row>
@@ -1163,7 +1361,7 @@ function HospitalsPage() {
                     /* DEFAULT LIST VIEW (Matching screenshot) */
                     <div>
                       {sortedHospitals.map((h, i) => (
-                        <HospitalCard key={h.id} hospital={h} index={i} viewMode="list" />
+                        <HospitalCard key={h.id} hospital={h} index={i} viewMode="list" userLocation={userLocation} />
                       ))}
                     </div>
                   )}
@@ -1213,6 +1411,59 @@ function HospitalsPage() {
 
         {/* Drawer Scroll Body */}
         <div className="drawer-scroll-body">
+          {/* Near Me & Distance (Mobile) */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী হাসপাতাল</span>
+            <button
+              type="button"
+              onClick={handleToggleNearMe}
+              disabled={locationLoading}
+              style={{
+                width: '100%',
+                padding: '9px 14px',
+                borderRadius: 8,
+                background: isNearMeActive ? '#059669' : '#F1F5F9',
+                color: isNearMeActive ? 'white' : '#334155',
+                border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
+                fontWeight: 700,
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                marginBottom: isNearMeActive ? 12 : 0,
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}
+            >
+              {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
+              <span>{isNearMeActive ? '📍 নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : '📍 আমার কাছের হাসপাতাল খুঁজুন'}</span>
+            </button>
+            {isNearMeActive && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
+                {RADIUS_OPTIONS.map(r => {
+                  const isChecked = distanceRadius === r.id
+                  return (
+                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <input
+                        type="radio"
+                        name="mobile_distance_radius"
+                        checked={isChecked}
+                        onChange={() => {
+                          setDistanceRadius(r.id)
+                          updateUrlParams({ radius: r.id })
+                        }}
+                        style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                      />
+                      <span>{r.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Hospital Type */}
           <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল ধরন</span>

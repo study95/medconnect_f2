@@ -24,12 +24,15 @@ import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
 import { getMediaUrl } from '../utils/mediaUtils'
+import useUserLocation from '../hooks/useUserLocation'
+import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl } from '../utils/geoUtils'
 import { 
   IconHeart, IconShare, IconMapPin, IconClock, 
   IconBriefcase, IconStar, 
   IconSchool, IconUsers, IconCheck, IconChevronRight,
   IconCalendarEvent, IconSparkles, 
-  IconBuildingHospital, IconShieldCheck, IconUser, IconArrowLeft
+  IconBuildingHospital, IconShieldCheck, IconUser, IconArrowLeft,
+  IconNavigation, IconCurrentLocation, IconLoader2
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -51,6 +54,8 @@ function DoctorDetailPageContent() {
   const { t, i18n } = useTranslation()
   const language = i18n?.language || 'bn'
   const { user, isLoggedIn } = useAuth() || {}
+
+  const { location: userLocation, loading: locationLoading, requestLocation, hasLocation } = useUserLocation()
 
   const { doctor, chambers, groupedChambers: rawGroupedChambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
   const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
@@ -229,6 +234,25 @@ function DoctorDetailPageContent() {
     }
     return []
   }, [doctor?.grouped_chambers, rawGroupedChambers])
+
+  // Identify index of the closest chamber for the user
+  const closestChamberIndex = useMemo(() => {
+    if (!userLocation?.latitude || !userLocation?.longitude || !groupedChambers.length) return -1
+    let min = Infinity
+    let minIdx = -1
+    groupedChambers.forEach((g, idx) => {
+      const lat = g.latitude || g.hospital?.latitude || g.schedules?.[0]?.latitude || g.schedules?.[0]?.hospital?.latitude || null
+      const lng = g.longitude || g.hospital?.longitude || g.schedules?.[0]?.longitude || g.schedules?.[0]?.hospital?.longitude || null
+      const dist = g.distance_km ?? (
+        lat && lng ? calculateDistance(userLocation.latitude, userLocation.longitude, lat, lng) : null
+      )
+      if (dist !== null && dist < min) {
+        min = dist
+        minIdx = idx
+      }
+    })
+    return (min !== Infinity && groupedChambers.length > 1) ? minIdx : -1
+  }, [userLocation, groupedChambers])
 
   const lowestFee = doctor?.fees?.consultation ?? doctor?.fees?.min ?? doctor?.fee ?? 0
 
@@ -973,23 +997,79 @@ function DoctorDetailPageContent() {
                           চেম্বার ও সাক্ষাতের সময়সূচি
                         </h3>
                       </div>
-                      {groupedChambers.length > 0 && (
-                        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#007A65', background: lightGreenBg, padding: '4px 12px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
-                          {groupedChambers.length}টি চেম্বার লোকেশন
-                        </span>
-                      )}
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        {groupedChambers.length > 0 && (
+                          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#007A65', background: lightGreenBg, padding: '4px 12px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
+                            {groupedChambers.length}টি চেম্বার লোকেশন
+                          </span>
+                        )}
+                        {!hasLocation ? (
+                          <button
+                            type="button"
+                            onClick={requestLocation}
+                            disabled={locationLoading}
+                            style={{
+                              background: '#ECFDF5',
+                              color: '#059669',
+                              border: '1px solid #A7F3D0',
+                              borderRadius: 20,
+                              padding: '4px 12px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontFamily: "'Hind Siliguri', sans-serif"
+                            }}
+                          >
+                            {locationLoading ? <IconLoader2 size={13} className="animate-spin" /> : <IconCurrentLocation size={13} />}
+                            <span>আমার থেকে দূরত্ব জানুন</span>
+                          </button>
+                        ) : (
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#059669',
+                            background: '#ECFDF5',
+                            padding: '4px 12px',
+                            borderRadius: 20,
+                            border: '1px solid #A7F3D0',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}>
+                            <IconNavigation size={13} />
+                            <span>আপনার অবস্থান সক্রিয়</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="d-flex flex-column gap-3">
-                      {groupedChambers.map((group, idx) => (
+                      {groupedChambers.map((group, idx) => {
+                        const isClosest = idx === closestChamberIndex
+                        const chamberLat = group.latitude || group.hospital?.latitude || group.schedules?.[0]?.latitude || group.schedules?.[0]?.hospital?.latitude || null
+                        const chamberLng = group.longitude || group.hospital?.longitude || group.schedules?.[0]?.longitude || group.schedules?.[0]?.hospital?.longitude || null
+                        const distanceKm = group.distance_km ?? (
+                          userLocation?.latitude && userLocation?.longitude && chamberLat && chamberLng
+                            ? calculateDistance(userLocation.latitude, userLocation.longitude, chamberLat, chamberLng)
+                            : null
+                        )
+                        const directionsUrl = chamberLat && chamberLng
+                          ? getGoogleMapsDirectionsUrl(chamberLat, chamberLng, userLocation, group.chamber_name || group.name || group.hospital_name)
+                          : null
+
+                        return (
                         <div 
                           key={group.hospitalId || idx}
                           style={{
                             padding: '20px 22px',
                             borderRadius: 16,
                             background: '#FFFFFF',
-                            border: `1.5px solid ${cardBorderColor}`,
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+                            border: isClosest ? '1.5px solid #00B875' : `1.5px solid ${cardBorderColor}`,
+                            boxShadow: isClosest ? '0 4px 16px rgba(0, 184, 117, 0.08)' : '0 2px 12px rgba(0,0,0,0.03)',
                             transition: 'all 0.25s ease'
                           }}
                         >
@@ -1021,7 +1101,64 @@ function DoctorDetailPageContent() {
                               </div>
                             </div>
 
-                            <div className="d-flex align-items-center gap-2">
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                              {isClosest && (
+                                <span style={{
+                                  background: '#ECFDF5',
+                                  color: '#059669',
+                                  fontSize: 11.5,
+                                  fontWeight: 800,
+                                  padding: '3px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid #A7F3D0',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}>
+                                  ✨ নিকটতম
+                                </span>
+                              )}
+                              {distanceKm !== null && (
+                                <span style={{
+                                  background: '#ECFDF5',
+                                  color: '#059669',
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  padding: '3px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid #A7F3D0',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}>
+                                  <IconNavigation size={12} color="#059669" />
+                                  <span>{formatDistance(distanceKm)} দূরে</span>
+                                </span>
+                              )}
+                              {directionsUrl && (
+                                <a
+                                  href={directionsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    background: '#F0F9FF',
+                                    color: '#0284C7',
+                                    fontSize: 11.5,
+                                    fontWeight: 700,
+                                    padding: '3px 10px',
+                                    borderRadius: 6,
+                                    border: '1px solid #BAE6FD',
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                  title="গুগল ম্যাপে দিকনির্দেশনা দেখুন"
+                                >
+                                  <IconNavigation size={12} />
+                                  <span>দিকনির্দেশনা</span>
+                                </a>
+                              )}
                               {group.is_personal && (
                                 <span style={{
                                   background: '#EFF6FF',
@@ -1127,7 +1264,7 @@ function DoctorDetailPageContent() {
                             })}
                           </div>
                         </div>
-                      ))}
+                      )})}
                       {groupedChambers.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '36px 20px', background: '#F8FAFC', borderRadius: 16, border: '1px dashed #CBD5E1', color: '#64748B' }}>
                           <IconBuildingHospital size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
@@ -1346,7 +1483,7 @@ function DoctorDetailPageContent() {
             <Row className="g-3 g-md-4">
               {(showAllRelated ? relatedDoctors : relatedDoctors.slice(0, 3)).map((relDoc, idx) => (
                 <Col key={relDoc.id || idx} xs={12} sm={6} md={6} lg={4} xl={4}>
-                  <DoctorCard doctor={relDoc} viewMode="grid" />
+                  <DoctorCard doctor={relDoc} viewMode="grid" userLocation={userLocation} />
                 </Col>
               ))}
             </Row>

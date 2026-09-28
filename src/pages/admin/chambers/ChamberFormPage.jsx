@@ -241,6 +241,8 @@ export default function ChamberFormPage() {
     district_id: '',
     upazila_id: '',
     address: '',
+    latitude: '',
+    longitude: '',
     is_primary: false,
     display_order: '0',
     consultation_type: 'hospital',
@@ -263,9 +265,36 @@ export default function ChamberFormPage() {
   const [chamberData, setChamberData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [errors, setErrors] = useState({})
   const [serverFeedback, setServerFeedback] = useState(null)
   const [myDoctorProfile, setMyDoctorProfile] = useState(null)
+
+  const handleAutoPinGps = () => {
+    if (!navigator.geolocation) {
+      toast.error('আপনার ব্রাউজারে লোকেশন সার্ভিস সাপোর্ট করে না।')
+      return
+    }
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(7))
+        const lng = Number(pos.coords.longitude.toFixed(7))
+        setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))
+        toast.success(`চেম্বারের লোকেশন পিন করা হয়েছে: ${lat}, ${lng}`)
+        setGpsLoading(false)
+      },
+      (err) => {
+        setGpsLoading(false)
+        if (err.code === 1) {
+          toast.error('লোকেশন পারমিশন ডিনাই করা হয়েছে। ব্রাউজার সেটিংসে গিয়ে অনুমতি দিন।')
+        } else {
+          toast.error('লোকেশন শনাক্ত করতে ব্যর্থ হয়েছে। জিপিএস সক্রিয় কিনা নিশ্চিত করুন।')
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    )
+  }
 
   // Load divisions and districts on mount
   useEffect(() => {
@@ -382,6 +411,8 @@ export default function ChamberFormPage() {
         district_id: d.district_id ? String(d.district_id) : (d.district?.id ? String(d.district.id) : ''),
         upazila_id: d.upazila_id ? String(d.upazila_id) : (d.upazila?.id ? String(d.upazila.id) : ''),
         address: d.address || '',
+        latitude: d.latitude ?? '',
+        longitude: d.longitude ?? '',
         is_primary: Boolean(d.is_primary),
         display_order: String(d.display_order ?? '0'),
         consultation_type: d.consultation_type || (hospIdentifier ? 'hospital' : 'physical'),
@@ -489,6 +520,8 @@ export default function ChamberFormPage() {
       district_id: isHospitalMode ? null : (form.district_id ? Number(form.district_id) : null),
       upazila_id: isHospitalMode ? null : (form.upazila_id ? Number(form.upazila_id) : null),
       address: isHospitalMode ? null : (form.address ? form.address.trim() : null),
+      latitude: isHospitalMode ? null : (form.latitude ? parseFloat(form.latitude) : null),
+      longitude: isHospitalMode ? null : (form.longitude ? parseFloat(form.longitude) : null),
       is_primary: Boolean(form.is_primary),
       display_order: Number(form.display_order) || 0,
       consultation_type: isHospitalMode ? 'hospital' : 'physical',
@@ -957,6 +990,108 @@ export default function ChamberFormPage() {
                     }}
                   />
                   {errors.address && <div style={{ fontSize: 11.5, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>{errors.address}</div>}
+                </div>
+
+                {/* GPS Auto-Pin Banner & Coordinates */}
+                <div style={{
+                  background: '#F0FDF4',
+                  border: '1.5px dashed #00B875',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                  marginTop: 2
+                }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
+                      📍 চেম্বার জিপিএস লোকেশন (GPS Coordinates)
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 1 }}>
+                      রোগীরা যাতে সহজে আপনার চেম্বারের সঠিক দূরত্ব দেখতে পারে।
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {form.latitude && form.longitude && (
+                      <a
+                        href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: 'white',
+                          color: '#0284C7',
+                          border: '1px solid #BAE6FD',
+                          borderRadius: 6,
+                          padding: '6px 10px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          textDecoration: 'none'
+                        }}
+                      >
+                        🗺️ ম্যাপে দেখুন
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAutoPinGps}
+                      disabled={gpsLoading}
+                      style={{
+                        background: '#00B875',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: gpsLoading ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5
+                      }}
+                    >
+                      {gpsLoading ? '⏳ লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Latitude (অক্ষাংশ)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 23.8103"
+                      value={form.latitude}
+                      onChange={e => setForm({ ...form, latitude: e.target.value })}
+                      style={{
+                        width: '100%', height: 42, padding: '0 12px', borderRadius: 8,
+                        border: '1.5px solid #cbd5e1', outline: 'none', background: '#ffffff',
+                        fontSize: 13, color: '#0f172a'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Longitude (দ্রাঘিমাংশ)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 90.4125"
+                      value={form.longitude}
+                      onChange={e => setForm({ ...form, longitude: e.target.value })}
+                      style={{
+                        width: '100%', height: 42, padding: '0 12px', borderRadius: 8,
+                        border: '1.5px solid #cbd5e1', outline: 'none', background: '#ffffff',
+                        fontSize: 13, color: '#0f172a'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             )}

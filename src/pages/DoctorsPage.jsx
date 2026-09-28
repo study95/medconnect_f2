@@ -13,12 +13,16 @@ import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useHospitals from '../hooks/useHospitals'
 import useDebounce from '../hooks/useDebounce'
+import useUserLocation from '../hooks/useUserLocation'
+import { formatDistance, calculateDistance } from '../utils/geoUtils'
+import { toast } from 'react-hot-toast'
 import {
   IconSearch, IconStethoscope, IconHeart, IconEye, IconBone,
   IconMoodSmile, IconBabyCarriage, IconDroplet, IconShieldCheck,
   IconLock, IconClock, IconHeadset, IconChevronLeft, IconChevronRight,
   IconAdjustmentsHorizontal, IconX, IconMapPin, IconChevronDown, IconChevronUp, IconBrain, IconGenderFemale, IconDental,
-  IconBuildingHospital, IconStar, IconTrash, IconActivity, IconCheck, IconVideo, IconCalendarCheck, IconListDetails, IconGridDots
+  IconBuildingHospital, IconStar, IconTrash, IconActivity, IconCheck, IconVideo, IconCalendarCheck, IconListDetails, IconGridDots,
+  IconCurrentLocation, IconNavigation, IconLoader2
 } from '@tabler/icons-react'
 
 const POPULAR_DEPARTMENTS = [
@@ -44,6 +48,14 @@ const EXP_RANGES = [
   { id: '6-10', label: '৬ - ১০ বছর' },
   { id: '11-20', label: '১১ - ২০ বছর' },
   { id: '21-99', label: '২০+ বছর' }
+]
+
+const RADIUS_OPTIONS = [
+  { id: '',   label: 'সকল দূরত্ব (যেকোনো দূরত্ব)' },
+  { id: '5',  label: '৫ কিমি এর মধ্যে' },
+  { id: '10', label: '১০ কিমি এর মধ্যে' },
+  { id: '25', label: '২৫ কিমি এর মধ্যে' },
+  { id: '50', label: '৫০ কিমি এর মধ্যে' },
 ]
 
 const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
@@ -104,7 +116,18 @@ function DoctorsPage() {
   const [specialtySearch, setSpecialtySearch]     = useState('')
   const [hospitalSearch, setHospitalSearch]       = useState('')
 
-  const [sortBy, setSortBy]   = useState('relevance')
+  const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'relevance')
+
+  const {
+    location: userLocation,
+    loading: locationLoading,
+    requestLocation,
+    hasLocation
+  } = useUserLocation()
+
+  const [isNearMeActive, setIsNearMeActive] = useState(() => searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest')
+  const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
+
   const [viewMode, setViewModeState] = useState(() => {
     try {
       return localStorage.getItem('doctors_view_mode') || 'grid'
@@ -125,6 +148,7 @@ function DoctorsPage() {
 
   // Accordion state
   const [openAccordions, setOpenAccordions] = useState({
+    distance: true,
     specialty: true,
     location: true,
     fee: true,
@@ -155,6 +179,55 @@ function DoctorsPage() {
       return next
     }, { replace: true })
   }, [setSearchParams])
+
+  // Near Me Toggle Handler
+  const handleToggleNearMe = async () => {
+    if (isNearMeActive) {
+      setIsNearMeActive(false)
+      setDistanceRadius('')
+      if (sortBy === 'nearest') {
+        setSortBy('relevance')
+        updateUrlParams({ near_me: '', radius: '', sort: '' })
+      } else {
+        updateUrlParams({ near_me: '', radius: '' })
+      }
+      return
+    }
+
+    try {
+      await requestLocation()
+      setIsNearMeActive(true)
+      setSortBy('nearest')
+      updateUrlParams({ near_me: '1', sort: 'nearest' })
+      toast.success('আপনার অবস্থান শনাক্ত হয়েছে। নিকটবর্তী ডাক্তার ও চেম্বারগুলো সাজানো হচ্ছে।', { id: 'doc-geo-active' })
+    } catch (err) {
+      toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'doc-geo-err', duration: 4500 })
+    }
+  }
+
+  // Sort change handler with location prompt on 'nearest'
+  const handleSortChange = async (newSort) => {
+    if (newSort === 'nearest') {
+      if (!hasLocation) {
+        try {
+          await requestLocation()
+          setIsNearMeActive(true)
+          setSortBy('nearest')
+          updateUrlParams({ sort: 'nearest', near_me: '1' })
+          toast.success('নিকটবর্তী চেম্বার অনুযায়ী ডাক্তারদের সাজানো হয়েছে।', { id: 'doc-geo-sort' })
+        } catch (err) {
+          toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'doc-geo-err', duration: 4500 })
+        }
+      } else {
+        setIsNearMeActive(true)
+        setSortBy('nearest')
+        updateUrlParams({ sort: 'nearest', near_me: '1' })
+      }
+    } else {
+      setSortBy(newSort)
+      updateUrlParams({ sort: newSort })
+    }
+  }
 
   // Sync regional URL params with useLocations
   useEffect(() => {
@@ -225,8 +298,14 @@ function DoctorsPage() {
     if (telemedicineOnly)          p.available_telemedicine = 'yes'
     if (availableToday)            p.available_today = true
     if (effectiveSearch)           p.search        = effectiveSearch
+    if (isNearMeActive && userLocation?.latitude && userLocation?.longitude) {
+      p.latitude = userLocation.latitude
+      p.longitude = userLocation.longitude
+      if (distanceRadius) p.radius = distanceRadius
+    }
+    if (sortBy)                    p.sort          = sortBy
     return p
-  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, effectiveSearch])
+  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, effectiveSearch, isNearMeActive, userLocation, distanceRadius, sortBy])
 
   const { doctors, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteDoctors(appliedFilters)
 
@@ -259,6 +338,13 @@ function DoctorsPage() {
       list = list.filter(d => Boolean(d.available_telemedicine ?? d.telemedicine ?? true))
     }
 
+    if (sortBy === 'nearest' && userLocation?.latitude && userLocation?.longitude) {
+      return list.sort((a, b) => {
+        const da = a.matched_chamber?.distance_km ?? a.distance_km ?? 999999
+        const db = b.matched_chamber?.distance_km ?? b.distance_km ?? 999999
+        return da - db
+      })
+    }
     if (sortBy === 'fee_low') {
       return list.sort((a, b) => (parseFloat(a.fee) || 0) - (parseFloat(b.fee) || 0))
     }
@@ -273,7 +359,7 @@ function DoctorsPage() {
       })
     }
     return list
-  }, [doctors, sortBy, selectedFee, selectedExp, telemedicineOnly])
+  }, [doctors, sortBy, selectedFee, selectedExp, telemedicineOnly, userLocation])
 
   // Helper for location display name
   const getLocName = (item, fallback) => {
@@ -412,10 +498,18 @@ function DoctorsPage() {
         clear: handleClearSearch
       })
     }
+    if (isNearMeActive) {
+      list.push({
+        key: 'near_me',
+        label: `📍 নিকটবর্তী${distanceRadius ? ` (${distanceRadius} কিমি)` : ''}`,
+        clear: handleToggleNearMe
+      })
+    }
     return list
   }, [
     selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, searchText,
+    isNearMeActive, distanceRadius, handleToggleNearMe,
     specialties, divisions, districts, upazilas, unions, hospitals, updateUrlParams, handleDateChange
   ])
 
@@ -434,6 +528,9 @@ function DoctorsPage() {
     setTelemedicineOnly(false)
     setAvailableToday(false)
     setSearchText('')
+    setIsNearMeActive(false)
+    setDistanceRadius('')
+    setSortBy('relevance')
     prevParamsRef.current = ''
     setSearchParams({}, { replace: true })
   }
@@ -665,6 +762,32 @@ function DoctorsPage() {
             )}
           </form>
 
+          {/* Near Me Toggle Button */}
+          <button
+            type="button"
+            onClick={handleToggleNearMe}
+            disabled={locationLoading}
+            style={{
+              height: 42,
+              padding: '0 12px',
+              borderRadius: 8,
+              background: isNearMeActive ? '#00B875' : '#F1F5F9',
+              color: isNearMeActive ? 'white' : '#334155',
+              border: isNearMeActive ? '1px solid #00B875' : '1px solid #CBD5E1',
+              fontWeight: 700,
+              fontSize: 12.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+          >
+            {locationLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconCurrentLocation size={16} />}
+            <span>কাছে</span>
+          </button>
+
           {/* Filter Button */}
           <button
             type="button"
@@ -821,6 +944,32 @@ function DoctorsPage() {
           }}>
             Search
           </button>
+
+          {/* Near Me Quick Button */}
+          <button
+            type="button"
+            onClick={handleToggleNearMe}
+            disabled={locationLoading}
+            style={{
+              background: isNearMeActive ? '#00B875' : '#F8FAFC',
+              color: isNearMeActive ? 'white' : '#334155',
+              border: isNearMeActive ? '1.5px solid #00B875' : '1.5px solid #CBD5E1',
+              borderRadius: 6,
+              padding: '10px 16px',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: "'Hind Siliguri', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {locationLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconCurrentLocation size={16} />}
+            <span>{isNearMeActive ? '📍 আমার কাছে (সক্রিয়)' : '📍 আমার কাছে'}</span>
+          </button>
         </form>
 
         {/* ── POPULAR DEPARTMENTS CHIP STRIP ── */}
@@ -876,7 +1025,7 @@ function DoctorsPage() {
               <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
+                onChange={e => handleSortChange(e.target.value)}
                 style={{
                   background: 'white',
                   border: '1px solid #CBD5E1',
@@ -887,10 +1036,11 @@ function DoctorsPage() {
                   color: '#0F172A',
                   outline: 'none',
                   cursor: 'pointer',
-                  maxWidth: 150
+                  maxWidth: 180
                 }}
               >
                 <option value="relevance">Relevance</option>
+                <option value="nearest">📍 নিকটবর্তী চেম্বার</option>
                 <option value="fee_low">Fee: Low to High</option>
                 <option value="fee_high">Fee: High to Low</option>
                 <option value="exp_high">Experience: High to Low</option>
@@ -1002,6 +1152,41 @@ function DoctorsPage() {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Accordion 0: Distance Radius Filter (when Near Me active) */}
+              {isNearMeActive && (
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('distance')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <IconNavigation size={15} />
+                      <span>দূরত্ব ফিল্টার (Radius)</span>
+                    </span>
+                    {openAccordions.distance ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.distance && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {RADIUS_OPTIONS.map(r => {
+                        const isChecked = distanceRadius === r.id
+                        return (
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            <input
+                              type="radio"
+                              name="doc_distance_radius"
+                              checked={isChecked}
+                              onChange={() => {
+                                setDistanceRadius(r.id)
+                                updateUrlParams({ radius: r.id })
+                              }}
+                              style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                            />
+                            <span>{r.label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1213,7 +1398,7 @@ function DoctorsPage() {
               <Row className="g-3">
                 {sortedDoctors.map(doctor => (
                   <Col key={doctor.id} xs={12} md={viewMode === 'grid' ? 6 : 12} xl={viewMode === 'grid' ? 4 : 12}>
-                    <DoctorCard doctor={doctor} showBookingButton={true} viewMode={viewMode} />
+                    <DoctorCard doctor={doctor} showBookingButton={true} viewMode={viewMode} userLocation={userLocation} />
                   </Col>
                 ))}
               </Row>
@@ -1261,6 +1446,60 @@ function DoctorsPage() {
 
         {/* Drawer Scroll Body */}
         <div className="drawer-scroll-body">
+          {/* Near Me & Distance Radius (Mobile Drawer) */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <IconNavigation size={16} color="#059669" />
+                <span>আমার কাছের ডাক্তার ও চেম্বার</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleNearMe}
+                disabled={locationLoading}
+                style={{
+                  background: isNearMeActive ? '#00B875' : '#F1F5F9',
+                  color: isNearMeActive ? 'white' : '#334155',
+                  border: isNearMeActive ? '1px solid #00B875' : '1px solid #CBD5E1',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                {locationLoading ? <IconLoader2 size={13} className="animate-spin" /> : <IconCurrentLocation size={13} />}
+                <span>{isNearMeActive ? 'চালু' : 'বন্ধ'}</span>
+              </button>
+            </div>
+            {isNearMeActive && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, background: '#F8FAFC', padding: 10, borderRadius: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>দূরত্ব নির্ধারণ করুন:</span>
+                {RADIUS_OPTIONS.map(r => {
+                  const isChecked = distanceRadius === r.id
+                  return (
+                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <input
+                        type="radio"
+                        name="m_doc_distance_radius"
+                        checked={isChecked}
+                        onChange={() => {
+                          setDistanceRadius(r.id)
+                          updateUrlParams({ radius: r.id })
+                        }}
+                        style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                      />
+                      <span>{r.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Specialty */}
           <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>বিশেষজ্ঞ বিভাগ</span>

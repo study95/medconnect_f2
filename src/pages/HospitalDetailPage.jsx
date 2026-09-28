@@ -23,13 +23,16 @@ import { useFavorites } from '../context/FavoritesContext'
 import { useAuth } from '../context/AuthContext'
 import useShare from '../hooks/useShare'
 import ShareModal from '../components/common/ShareModal'
+import useUserLocation from '../hooks/useUserLocation'
+import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl } from '../utils/geoUtils'
 import { 
   IconHeart, IconShare, IconCircleCheckFilled, IconMapPin, IconClock, 
   IconPhone, IconWorld, IconStar, IconUsers, IconBed, 
   IconAmbulance, IconStethoscope, IconMicroscope,
   IconChevronRight, IconPhoto,
   IconCalendarEvent, IconCheck, IconDiscountCheckFilled,
-  IconScissors, IconEye, IconBuildingHospital, IconSend, IconLayoutGrid, IconActivity, IconPlus, IconX, IconSearch, IconMail, IconCompass, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconBrandFacebook
+  IconScissors, IconEye, IconBuildingHospital, IconSend, IconLayoutGrid, IconActivity, IconPlus, IconX, IconSearch, IconMail, IconCompass, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconBrandFacebook,
+  IconNavigation
 } from '@tabler/icons-react'
 
 const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003f?q=80&w=2070&auto=format&fit=crop'
@@ -81,6 +84,18 @@ function HospitalDetailPage() {
   const [deptSearchQuery, setDeptSearchQuery] = useState('')
 
   const { hospital, loading: loadingHeader, error: errorHeader, refetch: refetchHospital } = useHospitalDetail({ district, upazila, slug, id })
+  const { location: userLocation } = useUserLocation()
+
+  const effectiveDistance = useMemo(() => {
+    if (hospital?.distance_km !== undefined && hospital?.distance_km !== null) return hospital.distance_km
+    if (userLocation?.latitude && userLocation?.longitude && hospital?.latitude && hospital?.longitude) {
+      return calculateDistance(userLocation.latitude, userLocation.longitude, hospital.latitude, hospital.longitude)
+    }
+    return null
+  }, [hospital?.distance_km, hospital?.latitude, hospital?.longitude, userLocation])
+
+  const distanceText = effectiveDistance !== null ? formatDistance(effectiveDistance, { locale: 'bn' }) : null
+
   const hospitalIdentifier = hospital?.slug || slug || hospital?.public_id || hospital?.id || id
   const { doctors, loading: loadingDocs } = useDoctors({ hospital_id: hospital?.id || hospital?.public_id || id })
   const { doctors: relatedDoctors, relatedHospitals, loading: loadingRelated } = useHospitalRelated(hospitalIdentifier)
@@ -632,6 +647,27 @@ function HospitalDetailPage() {
                       </div>
                     )}
 
+                    {/* Distance from current user */}
+                    {distanceText && (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: 20,
+                        padding: '2px 8px',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}>
+                        <IconNavigation size={12} color="#059669" />
+                        <span>{distanceText} (সরল দূরত্ব)</span>
+                      </div>
+                    )}
+
                     {/* Phone */}
                     {hospital?.phone && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
@@ -728,9 +764,7 @@ function HospitalDetailPage() {
 
                   {/* 3. Direction */}
                   <a
-                    href={(hospital?.latitude && hospital?.longitude)
-                      ? `https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}`
-                      : `https://maps.google.com/?q=${encodeURIComponent(hospital?.address || hospital?.name || '')}`}
+                    href={getGoogleMapsDirectionsUrl(hospital?.latitude, hospital?.longitude, hospital?.address || hospital?.name || '', userLocation?.latitude, userLocation?.longitude)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="দিক নির্দেশনা"
@@ -1308,7 +1342,7 @@ function HospitalDetailPage() {
                   <Row className="g-3">
                     {displayDoctors.slice(0, 4).map((doc, idx) => (
                       <Col key={doc.id || idx} xs={12} sm={6}>
-                        <DoctorCard doctor={doc} viewMode="grid" />
+                        <DoctorCard doctor={doc} viewMode="grid" userLocation={userLocation} />
                       </Col>
                     ))}
                   </Row>
@@ -1649,9 +1683,7 @@ function HospitalDetailPage() {
 
                   {/* Direction Button */}
                   <a 
-                    href={(hospital?.latitude && hospital?.longitude)
-                      ? `https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}`
-                      : `https://maps.google.com/?q=${encodeURIComponent([hospital?.name, hospital?.address].filter(Boolean).join(', '))}`}
+                    href={getGoogleMapsDirectionsUrl(hospital?.latitude, hospital?.longitude, [hospital?.name, hospital?.address].filter(Boolean).join(', '), userLocation?.latitude, userLocation?.longitude)}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
@@ -1776,7 +1808,7 @@ function HospitalDetailPage() {
             <Row className="g-3">
               {relatedHospitals.slice(0, 3).map((hosp, idx) => (
                 <Col key={hosp.id || idx} xs={12} md={4}>
-                  <HospitalCard hospital={hosp} viewMode="grid" />
+                  <HospitalCard hospital={hosp} viewMode="grid" userLocation={userLocation} />
                 </Col>
               ))}
             </Row>

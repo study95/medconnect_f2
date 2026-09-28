@@ -157,7 +157,36 @@ export default function HospitalFormPage() {
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [errors, setErrors] = useState({})
+
+  const handleAutoPinGps = () => {
+    if (!navigator.geolocation) {
+      toast.error('আপনার ব্রাউজারে লোকেশন সার্ভিস সাপোর্ট করে না।')
+      return
+    }
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(7))
+        const lng = Number(pos.coords.longitude.toFixed(7))
+        setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))
+        if (errors.latitude) setErrors(e => ({ ...e, latitude: '' }))
+        if (errors.longitude) setErrors(e => ({ ...e, longitude: '' }))
+        toast.success(`লোকেশন সফলভাবে পিন করা হয়েছে: ${lat}, ${lng}`)
+        setGpsLoading(false)
+      },
+      (err) => {
+        setGpsLoading(false)
+        if (err.code === 1) {
+          toast.error('লোকেশন পারমিশন ডিনাই করা হয়েছে। ব্রাউজার সেটিংসে গিয়ে লোকেশন অনুমতি দিন।')
+        } else {
+          toast.error('লোকেশন শনাক্ত করতে ব্যর্থ হয়েছে। জিপিএস চালু আছে কিনা নিশ্চিত করুন।')
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    )
+  }
 
   useEffect(() => { if (isEdit) loadHospital() }, [id])
 
@@ -833,6 +862,75 @@ export default function HospitalFormPage() {
                 style={{ height: 100, padding: '12px 16px', resize: 'none' }}
               />
               {errors.address && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.address}</div>}
+            </div>
+
+            {/* GPS Auto-pin Helper Banner (Spans 2 columns) */}
+            <div style={{
+              gridColumn: 'span 2',
+              background: '#F0FDF4',
+              border: '1.5px dashed #00B875',
+              borderRadius: 12,
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📍 সঠিক জিপিএস লোকেশন (GPS Coordinates)</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  ব্যবহারকারীরা যাতে আপনার হাসপাতাল কত দূরে তা নির্ভুল দেখতে পারে, সেজন্য জিপিএস কোঅর্ডিনেট যুক্ত করুন।
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {form.latitude && form.longitude && (
+                  <a
+                    href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: 'white',
+                      color: '#0284C7',
+                      border: '1px solid #BAE6FD',
+                      borderRadius: 8,
+                      padding: '8px 12px',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    🗺️ গুগল ম্যাপসে দেখুন
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAutoPinGps}
+                  disabled={gpsLoading}
+                  style={{
+                    background: '#00B875',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: gpsLoading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 2px 6px rgba(0, 184, 117, 0.25)'
+                  }}
+                >
+                  {gpsLoading ? '⏳ লোকেশন লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
+                </button>
+              </div>
             </div>
 
             <div className="admin-form-group">

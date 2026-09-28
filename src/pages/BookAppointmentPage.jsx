@@ -9,6 +9,8 @@ import { BookAppointmentSkeleton } from '../components/common/Skeletons'
 import { useTranslation } from 'react-i18next'
 import { translateMetadata } from '../utils/translationUtils'
 import useDoctorDetail from '../hooks/useDoctorDetail'
+import useUserLocation from '../hooks/useUserLocation'
+import { calculateDistance, formatDistance } from '../utils/geoUtils'
 import {
   IconCalendarEvent, IconClock, IconMapPin, IconPhone,
   IconShieldCheck, IconUser, IconLock, IconDeviceMobile,
@@ -16,7 +18,7 @@ import {
   IconCalendarPlus, IconNotes, IconLoader2, IconChevronLeft, IconChevronRight,
   IconChevronDown, IconInfoCircle, IconCircleCheck, IconPlus, IconMinus, IconBuildingHospital,
   IconEye, IconEyeOff, IconMail, IconAlertTriangle, IconRefresh,
-  IconPrinter, IconTicket, IconCopy
+  IconPrinter, IconTicket, IconCopy, IconNavigation
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -40,6 +42,7 @@ export default function BookAppointmentPage() {
   const language = i18n.language
 
   const { doctor, chambers: rawChambers, loading } = useDoctorDetail(doctorId)
+  const { location: userLocation, hasLocation, requestLocation, loading: locationLoading } = useUserLocation()
 
   // Registration state for unauthenticated patient
   const [regForm, setRegForm] = useState({
@@ -176,19 +179,51 @@ export default function BookAppointmentPage() {
       const hospId = chamber.hospital_id || chamber.hospital?.id || chamber.chamber_name || chamber.address || 'default'
       if (!map.has(hospId)) {
         const chamberName = chamber.chamber_name || chamber.hospital?.name || 'চেম্বার'
+        const lat = chamber.latitude || chamber.hospital?.latitude || null
+        const lng = chamber.longitude || chamber.hospital?.longitude || null
         map.set(hospId, {
           hospitalId: chamber.hospital_id || chamber.hospital?.id,
           chamber_name: chamberName,
           hospitalName: chamberName,
           is_personal: !chamber.hospital_id && !chamber.hospital?.id,
           address: chamber.address || chamber.hospital?.address || chamber.hospital?.location || 'ঢাকা, বাংলাদেশ',
+          latitude: lat,
+          longitude: lng,
           schedules: []
         })
       }
       map.get(hospId).schedules.push(chamber)
     })
-    return Array.from(map.values())
-  }, [filteredChambers])
+
+    const list = Array.from(map.values())
+
+    // Compute live distance if user location is available
+    if (userLocation?.latitude && userLocation?.longitude) {
+      let minDistance = Infinity
+      let closestGroup = null
+
+      list.forEach(group => {
+        if (group.latitude && group.longitude) {
+          const dist = calculateDistance(userLocation.latitude, userLocation.longitude, group.latitude, group.longitude)
+          if (dist !== null) {
+            group.distanceKm = dist
+            group.formattedDistance = formatDistance(dist)
+            if (dist < minDistance) {
+              minDistance = dist
+              closestGroup = group
+            }
+          }
+        }
+      })
+
+      // If there are multiple distinct chambers and a valid closest one is identified
+      if (closestGroup && minDistance !== Infinity && list.length > 1) {
+        closestGroup.isClosest = true
+      }
+    }
+
+    return list
+  }, [filteredChambers, userLocation])
   
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -2049,6 +2084,51 @@ export default function BookAppointmentPage() {
                 {/* Step 1: Chamber Selection */}
                 {currentStep === 1 && (
                   <div>
+                    {/* Location Status / Activation Banner */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                      {!hasLocation ? (
+                        <button
+                          type="button"
+                          onClick={requestLocation}
+                          disabled={locationLoading}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: '#ECFDF5',
+                            color: '#059669',
+                            border: '1px solid #A7F3D0',
+                            borderRadius: 8,
+                            padding: '6px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: locationLoading ? 'not-allowed' : 'pointer',
+                            fontFamily: "'Hind Siliguri', sans-serif",
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <IconNavigation size={15} color="#059669" />
+                          <span>{locationLoading ? 'লোকেশন যাচাই হচ্ছে...' : '📍 নিকটতম চেম্বার ও দূরত্ব জানতে লোকেশন চালু করুন'}</span>
+                        </button>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: '#ECFDF5',
+                          color: '#059669',
+                          border: '1px solid #A7F3D0',
+                          borderRadius: 8,
+                          padding: '5px 12px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          fontFamily: "'Hind Siliguri', sans-serif"
+                        }}>
+                          <IconNavigation size={14} color="#059669" />
+                          <span>আপনার লোকেশন অনুযায়ী নিকটতম চেম্বার শনাক্ত করা হয়েছে</span>
+                        </span>
+                      )}
+                    </div>
                   
                   {uniqueHospitals.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
@@ -2110,26 +2190,53 @@ export default function BookAppointmentPage() {
                                   </h6>
                                 </div>
                               </div>
-                              {group.schedules.length > 1 && (
-                                <span style={{
-                                  background: '#F1F5F9',
-                                  color: '#334155',
-                                  padding: '2px 8px',
-                                  borderRadius: 12,
-                                  fontSize: 11.5,
-                                  fontWeight: 700,
-                                  border: '1px solid #E2E8F0',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {toBnNum(group.schedules.length)}টি শিডিউল
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                {group.isClosest && (
+                                  <span style={{
+                                    background: '#ECFDF5',
+                                    color: '#059669',
+                                    padding: '2px 8px',
+                                    borderRadius: 12,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    border: '1px solid #A7F3D0',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    ✨ নিকটতম
+                                  </span>
+                                )}
+                                {group.schedules.length > 1 && (
+                                  <span style={{
+                                    background: '#F1F5F9',
+                                    color: '#334155',
+                                    padding: '2px 8px',
+                                    borderRadius: 12,
+                                    fontSize: 11.5,
+                                    fontWeight: 700,
+                                    border: '1px solid #E2E8F0',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {toBnNum(group.schedules.length)}টি শিডিউল
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Address Row */}
-                            <div className="chamber-address-row" style={{ marginBottom: 10 }}>
+                            {/* Address Row & Distance */}
+                            <div className="chamber-address-row" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                               <IconMapPin size={13} color="#00B875" style={{ flexShrink: 0 }} />
                               <span className="chamber-address-text">{group.address}</span>
+                              {group.formattedDistance && (
+                                <span style={{
+                                  color: '#059669',
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  fontFamily: "'Hind Siliguri', sans-serif",
+                                  marginLeft: 4
+                                }}>
+                                  • {group.formattedDistance} দূরে
+                                </span>
+                              )}
                             </div>
                           </div>
 
