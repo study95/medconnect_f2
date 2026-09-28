@@ -1,26 +1,25 @@
 import { useState, useEffect, useCallback, useTransition } from 'react'
 
-const GEO_STORAGE_KEY = 'medconnect_user_geo_v1'
+const GEO_STORAGE_KEY = 'medconnect_user_geo_v2'
 
 /**
  * useUserLocation
- * Enterprise-grade hook for browser geolocation with session caching,
- * defensive permission checking, and localized user-friendly error guidance.
+ * Enterprise-grade hook for browser geolocation with persistent caching (localStorage),
+ * defensive permission checking, silent background re-validation, and localized user-friendly guidance.
  */
 export function useUserLocation() {
   const [location, setLocation] = useState(() => {
     if (typeof window === 'undefined') return null
     try {
-      const cached = sessionStorage.getItem(GEO_STORAGE_KEY)
+      const cached = localStorage.getItem(GEO_STORAGE_KEY) || sessionStorage.getItem('medconnect_user_geo_v1')
       if (cached) {
         const parsed = JSON.parse(cached)
-        // Ensure parsed coordinates are valid
         if (parsed?.latitude && parsed?.longitude) {
           return parsed
         }
       }
     } catch {
-      // Ignore sessionStorage read failures (e.g. private browsing restrictions)
+      // Ignore storage read failures (e.g. strict private browsing)
     }
     return null
   })
@@ -29,7 +28,7 @@ export function useUserLocation() {
   const [error, setError] = useState(null)
   const [permissionStatus, setPermissionStatus] = useState('unknown') // 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'
 
-  // Query browser permission status when available
+  // Query browser permission status when available & silently sync in background if granted
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator?.permissions?.query) {
       if (typeof window !== 'undefined' && !('geolocation' in navigator)) {
@@ -43,6 +42,8 @@ export function useUserLocation() {
       .query({ name: 'geolocation' })
       .then((permission) => {
         if (!isMounted) return
+        setPermissionStatus(permission.state)
+
         if (permission.state === 'granted') {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -55,7 +56,7 @@ export function useUserLocation() {
               }
               setLocation(locData)
               try {
-                sessionStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
+                localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
               } catch {
                 // ignore
               }
@@ -69,10 +70,9 @@ export function useUserLocation() {
           if (!isMounted) return
           setPermissionStatus(permission.state)
           if (permission.state === 'denied') {
-            // Permission revoked
             setLocation(null)
             try {
-              sessionStorage.removeItem(GEO_STORAGE_KEY)
+              localStorage.removeItem(GEO_STORAGE_KEY)
             } catch {
               // ignore
             }
@@ -88,7 +88,7 @@ export function useUserLocation() {
                 }
                 setLocation(locData)
                 try {
-                  sessionStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
+                  localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
                 } catch {
                   // ignore
                 }
@@ -150,9 +150,9 @@ export function useUserLocation() {
           setLocation(locData)
 
           try {
-            sessionStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
+            localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(locData))
           } catch {
-            // ignore session storage save failure
+            // ignore local storage save failure
           }
 
           resolve(locData)
@@ -194,7 +194,7 @@ export function useUserLocation() {
     setLocation(null)
     setError(null)
     try {
-      sessionStorage.removeItem(GEO_STORAGE_KEY)
+      localStorage.removeItem(GEO_STORAGE_KEY)
     } catch {
       // ignore
     }
@@ -209,6 +209,7 @@ export function useUserLocation() {
     loading,
     error,
     permissionStatus,
+    isDenied: permissionStatus === 'denied',
     requestLocation,
     clearLocation,
   }

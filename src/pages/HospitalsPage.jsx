@@ -13,6 +13,7 @@ import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
 import useDebounce from '../hooks/useDebounce'
 import useUserLocation from '../hooks/useUserLocation'
+import LocationPromptBanner from '../components/common/LocationPromptBanner'
 import { calculateDistance } from '../utils/geoUtils'
 import { toast } from 'react-hot-toast'
 import {
@@ -88,10 +89,15 @@ function HospitalsPage() {
     location: userLocation,
     loading: locationLoading,
     requestLocation,
-    hasLocation
+    hasLocation,
+    error: locationError,
+    permissionStatus,
   } = useUserLocation()
 
-  const [isNearMeActive, setIsNearMeActive] = useState(() => searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest')
+  const [isNearMeActive, setIsNearMeActive] = useState(() => {
+    if (searchParams.get('near_me') === '0') return false
+    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest' || Boolean(hasLocation && !districtParam)
+  })
   const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
@@ -193,6 +199,14 @@ function HospitalsPage() {
       setSortBy(newSort)
       updateUrlParams({ sort: newSort })
     }
+  }
+
+  // Location Banner Success Callback
+  const handleLocationBannerSuccess = () => {
+    setIsNearMeActive(true)
+    setSortBy('nearest')
+    updateUrlParams({ near_me: '1', sort: 'nearest' })
+    toast.success('আপনার অবস্থান শনাক্ত হয়েছে। নিকটবর্তী হাসপাতালগুলো সাজানো হচ্ছে।', { id: 'geo-sort' })
   }
 
   // Sync regional URL params with useLocations
@@ -651,37 +665,6 @@ function HospitalsPage() {
             )}
           </form>
 
-          {/* Mobile Near Me Button */}
-          <button
-            type="button"
-            onClick={handleToggleNearMe}
-            disabled={locationLoading}
-            style={{
-              height: 42,
-              padding: '0 10px',
-              borderRadius: 8,
-              background: isNearMeActive ? '#059669' : '#F8FAFC',
-              color: isNearMeActive ? 'white' : '#334155',
-              border: isNearMeActive ? '1px solid #059669' : '1.5px solid #CBD5E1',
-              fontWeight: 700,
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
-            title={isNearMeActive ? "নিকটবর্তী ফিল্টার বন্ধ করুন" : "আমার নিকটবর্তী হাসপাতাল খুঁজুন"}
-          >
-            {locationLoading ? (
-              <IconLoader2 size={16} className="spin-animation" />
-            ) : (
-              <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />
-            )}
-            <span>{isNearMeActive ? 'কাছের' : 'কাছে'}</span>
-          </button>
-
           {/* Filter Button */}
           <button
             type="button"
@@ -825,35 +808,6 @@ function HospitalsPage() {
               <IconX size={16} />
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleToggleNearMe}
-            disabled={locationLoading}
-            style={{
-              background: isNearMeActive ? '#059669' : '#F8FAFC',
-              color: isNearMeActive ? '#FFFFFF' : '#334155',
-              border: isNearMeActive ? '1px solid #059669' : '1px solid #CBD5E1',
-              borderRadius: 6,
-              padding: '10px 14px',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
-            title={isNearMeActive ? "নিকটবর্তী ফিল্টার বন্ধ করুন" : "আমার নিকটবর্তী হাসপাতাল খুঁজুন"}
-          >
-            {locationLoading ? (
-              <IconLoader2 size={16} className="spin-animation" />
-            ) : (
-              <IconCurrentLocation size={16} color={isNearMeActive ? '#FFFFFF' : '#00B875'} />
-            )}
-            <span>{isNearMeActive ? 'কাছের হাসপাতাল (চালু)' : 'আমার কাছে'}</span>
-          </button>
           <button type="submit" style={{
             background: '#00B875',
             color: 'white',
@@ -895,7 +849,7 @@ function HospitalsPage() {
                 }}
               >
                 <option value="newest">Newest First</option>
-                <option value="nearest">নিকটবর্তী হাসপাতাল প্রথমে (Nearest First)</option>
+                <option value="nearest">📍 নিকটবর্তী হাসপাতাল</option>
                 <option value="name_asc">Name (A - Z)</option>
                 <option value="name_desc">Name (Z - A)</option>
               </select>
@@ -1607,6 +1561,17 @@ function HospitalsPage() {
           </button>
         </div>
       </div>
+
+      {/* Floating Smart Location Prompt Banner */}
+      <LocationPromptBanner
+        userLocation={userLocation}
+        loading={locationLoading}
+        error={locationError}
+        permissionStatus={permissionStatus}
+        onRequestLocation={requestLocation}
+        entityType="hospital"
+        onSuccess={handleLocationBannerSuccess}
+      />
     </div>
   )
 }

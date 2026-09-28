@@ -14,6 +14,7 @@ import useSpecialties from '../hooks/useSpecialties'
 import useHospitals from '../hooks/useHospitals'
 import useDebounce from '../hooks/useDebounce'
 import useUserLocation from '../hooks/useUserLocation'
+import LocationPromptBanner from '../components/common/LocationPromptBanner'
 import { formatDistance, calculateDistance } from '../utils/geoUtils'
 import { toast } from 'react-hot-toast'
 import {
@@ -122,10 +123,15 @@ function DoctorsPage() {
     location: userLocation,
     loading: locationLoading,
     requestLocation,
-    hasLocation
+    hasLocation,
+    error: locationError,
+    permissionStatus,
   } = useUserLocation()
 
-  const [isNearMeActive, setIsNearMeActive] = useState(() => searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest')
+  const [isNearMeActive, setIsNearMeActive] = useState(() => {
+    if (searchParams.get('near_me') === '0') return false
+    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest' || Boolean(hasLocation && !districtParam)
+  })
   const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
@@ -227,6 +233,14 @@ function DoctorsPage() {
       setSortBy(newSort)
       updateUrlParams({ sort: newSort })
     }
+  }
+
+  // Location Banner Success Callback
+  const handleLocationBannerSuccess = () => {
+    setIsNearMeActive(true)
+    setSortBy('nearest')
+    updateUrlParams({ near_me: '1', sort: 'nearest' })
+    toast.success('নিকটবর্তী চেম্বার অনুযায়ী ডাক্তারদের সাজানো হয়েছে।', { id: 'doc-geo-sort' })
   }
 
   // Sync regional URL params with useLocations
@@ -762,32 +776,6 @@ function DoctorsPage() {
             )}
           </form>
 
-          {/* Near Me Toggle Button */}
-          <button
-            type="button"
-            onClick={handleToggleNearMe}
-            disabled={locationLoading}
-            style={{
-              height: 42,
-              padding: '0 12px',
-              borderRadius: 8,
-              background: isNearMeActive ? '#00B875' : '#F1F5F9',
-              color: isNearMeActive ? 'white' : '#334155',
-              border: isNearMeActive ? '1px solid #00B875' : '1px solid #CBD5E1',
-              fontWeight: 700,
-              fontSize: 12.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
-          >
-            {locationLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconCurrentLocation size={16} />}
-            <span>কাছে</span>
-          </button>
-
           {/* Filter Button */}
           <button
             type="button"
@@ -943,32 +931,6 @@ function DoctorsPage() {
             fontFamily: "'Inter', sans-serif"
           }}>
             Search
-          </button>
-
-          {/* Near Me Quick Button */}
-          <button
-            type="button"
-            onClick={handleToggleNearMe}
-            disabled={locationLoading}
-            style={{
-              background: isNearMeActive ? '#00B875' : '#F8FAFC',
-              color: isNearMeActive ? 'white' : '#334155',
-              border: isNearMeActive ? '1.5px solid #00B875' : '1.5px solid #CBD5E1',
-              borderRadius: 6,
-              padding: '10px 16px',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              fontFamily: "'Hind Siliguri', sans-serif",
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {locationLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconCurrentLocation size={16} />}
-            <span>{isNearMeActive ? '📍 আমার কাছে (সক্রিয়)' : '📍 আমার কাছে'}</span>
           </button>
         </form>
 
@@ -1671,6 +1633,17 @@ function DoctorsPage() {
           </button>
         </div>
       </div>
+
+      {/* Floating Smart Location Prompt Banner */}
+      <LocationPromptBanner
+        userLocation={userLocation}
+        loading={locationLoading}
+        error={locationError}
+        permissionStatus={permissionStatus}
+        onRequestLocation={requestLocation}
+        entityType="doctor"
+        onSuccess={handleLocationBannerSuccess}
+      />
     </div>
   )
 }
