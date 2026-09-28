@@ -52,6 +52,9 @@ const RADIUS_OPTIONS = [
   { id: '50', label: '৫০ কিমি এর মধ্যে' },
 ]
 
+const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
+
 function HospitalsPage() {
   const { district: districtParam, upazila: upazilaParam } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -825,8 +828,8 @@ function HospitalsPage() {
 
         {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ color: '#64748B', fontSize: 13, fontWeight: 500 }}>
-            Showing <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}</strong> out of <strong style={{ color: '#0F172A' }}>{total || sortedHospitals.length}</strong> properties
+          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

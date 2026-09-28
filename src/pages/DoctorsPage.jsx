@@ -977,11 +977,11 @@ function DoctorsPage() {
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ color: '#64748B', fontSize: 13, fontWeight: 500 }}>
-            Showing <strong style={{ color: '#0F172A' }}>{sortedDoctors.length}</strong> out of <strong style={{ color: '#0F172A' }}>{total || sortedDoctors.length}</strong> doctors
+          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedDoctors.length)}</strong> জন ডাক্তার
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1, minWidth: 260, gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Sort by:</span>
@@ -1010,7 +1010,7 @@ function DoctorsPage() {
             </div>
 
             {/* View Mode Toggle Buttons (Aligned to Right Edge) */}
-            <div style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0, marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}

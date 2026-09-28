@@ -90,19 +90,42 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
   }
 
   return (
-    <div
-      style={{
-        background: '#FFFFFF',
-        borderRadius: 12,
-        border: '1px solid #E2E8F0',
-        padding: '12px 16px',
-        marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      {/* ── Scoped Responsive Styles for Mobile Ergonomics ── */}
+    <div className="avail-date-container">
+      {/* ── Scoped Responsive Styles for Single Row Horizontal Scroll & Desktop Card ── */}
       <style>{`
+        .avail-date-container {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+          transition: all 0.2s ease;
+        }
+        @media (max-width: 767px) {
+          .avail-date-container {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin-bottom: 16px !important;
+            box-shadow: none !important;
+          }
+        }
+        .avail-date-scroll-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          overflow-x: auto;
+          flex-wrap: nowrap !important;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 2px;
+        }
+        .avail-date-scroll-row::-webkit-scrollbar {
+          display: none;
+        }
         .avail-date-chip {
           height: 38px;
           padding: 0 14px;
@@ -113,6 +136,7 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           gap: 6px;
           cursor: pointer;
           white-space: nowrap;
+          flex-shrink: 0;
           font-family: 'Hind Siliguri', sans-serif;
           transition: all 0.2s ease;
           outline: none;
@@ -123,9 +147,9 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
         }
         @media (max-width: 767px) {
           .avail-date-chip {
-            height: 42px !important;
-            padding: 0 16px !important;
-            font-size: 13.5px !important;
+            height: 38px !important;
+            padding: 0 14px !important;
+            font-size: 13px !important;
           }
         }
       `}</style>
@@ -136,16 +160,15 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 10,
-          flexWrap: 'wrap',
+          marginBottom: 8,
           gap: 6
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <IconCalendar size={18} color="#00B875" />
+          <IconCalendar size={17} color="#00B875" />
           <span
             style={{
-              fontSize: 14.5,
+              fontSize: 13.5,
               fontWeight: 800,
               color: '#0F172A',
               fontFamily: "'Hind Siliguri', sans-serif",
@@ -165,31 +188,25 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
               background: 'none',
               border: 'none',
               color: '#EF4444',
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 3,
               fontFamily: "'Hind Siliguri', sans-serif",
-              padding: 0
+              padding: '2px 6px',
+              borderRadius: 4
             }}
           >
-            <span>রিসেট করুন</span>
+            <span>রিসেট</span>
             <IconX size={13} />
           </button>
         )}
       </div>
 
-      {/* ── Option Chips Strip ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexWrap: 'wrap'
-        }}
-      >
+      {/* ── Single Row Horizontal Scroll Chips Strip ── */}
+      <div className="avail-date-scroll-row">
         {/* 1. আজ (Today) */}
         <button
           type="button"
@@ -197,11 +214,11 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           onClick={() => handlePillClick('today')}
           aria-pressed={value === 'today'}
           style={{
-            border: value === 'today' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
-            background: value === 'today' ? '#00B875' : '#F8FAFC',
+            border: value === 'today' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+            background: value === 'today' ? '#00B875' : '#FFFFFF',
             color: value === 'today' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'today' ? 800 : 600,
-            boxShadow: value === 'today' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            boxShadow: value === 'today' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.04)'
           }}
         >
           {value === 'today' ? <IconCheck size={15} /> : <IconCalendarEvent size={15} color="#64748B" />}
@@ -215,11 +232,11 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           onClick={() => handlePillClick('tomorrow')}
           aria-pressed={value === 'tomorrow'}
           style={{
-            border: value === 'tomorrow' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
-            background: value === 'tomorrow' ? '#00B875' : '#F8FAFC',
+            border: value === 'tomorrow' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+            background: value === 'tomorrow' ? '#00B875' : '#FFFFFF',
             color: value === 'tomorrow' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'tomorrow' ? 800 : 600,
-            boxShadow: value === 'tomorrow' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            boxShadow: value === 'tomorrow' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.04)'
           }}
         >
           {value === 'tomorrow' ? <IconCheck size={15} /> : <IconCalendarStats size={15} color="#64748B" />}
@@ -233,11 +250,11 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           onClick={() => handlePillClick('next_7_days')}
           aria-pressed={value === 'next_7_days'}
           style={{
-            border: value === 'next_7_days' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
-            background: value === 'next_7_days' ? '#00B875' : '#F8FAFC',
+            border: value === 'next_7_days' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+            background: value === 'next_7_days' ? '#00B875' : '#FFFFFF',
             color: value === 'next_7_days' ? '#FFFFFF' : '#334155',
             fontWeight: value === 'next_7_days' ? 800 : 600,
-            boxShadow: value === 'next_7_days' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            boxShadow: value === 'next_7_days' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.04)'
           }}
         >
           {value === 'next_7_days' ? <IconCheck size={15} /> : <IconCalendar size={15} color="#64748B" />}
@@ -253,11 +270,11 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
             aria-pressed={isCustomDate}
             aria-label={isCustomDate ? `নির্বাচিত তারিখ: ${formatCustomDateBn(value)}` : 'নির্দিষ্ট তারিখ নির্বাচন করুন'}
             style={{
-              border: isCustomDate ? '1.5px solid #00B875' : '1px solid #CBD5E1',
-              background: isCustomDate ? '#00B875' : '#F8FAFC',
+              border: isCustomDate ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+              background: isCustomDate ? '#00B875' : '#FFFFFF',
               color: isCustomDate ? '#FFFFFF' : '#334155',
               fontWeight: isCustomDate ? 800 : 600,
-              boxShadow: isCustomDate ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+              boxShadow: isCustomDate ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.04)'
             }}
           >
             {isCustomDate ? <IconCheck size={15} /> : <IconCalendarEvent size={15} color="#00B875" />}
