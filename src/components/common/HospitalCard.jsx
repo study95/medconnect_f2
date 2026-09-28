@@ -2,11 +2,11 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getHospitalUrl } from '../../utils/identifierHelper'
-import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconBed, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck, IconNavigation, IconDirections } from '@tabler/icons-react'
+import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck, IconNavigation, IconDirections, IconStethoscope } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
-import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl } from '../../utils/geoUtils'
+import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl, toBengaliNumerals } from '../../utils/geoUtils'
 
 const DEMO_HOSPITAL = 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80'
 
@@ -204,6 +204,15 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
   }
   const distanceText = effectiveDistance !== null ? formatDistance(effectiveDistance, { locale: 'bn' }) : null
 
+  // Doctor count computation
+  const doctorsCount = Number(
+    hospital.doctors_count ?? 
+    hospital.doctor_count ?? 
+    hospital.stats?.doctors?.count ?? 
+    (Array.isArray(hospital.doctors) ? hospital.doctors.length : 0)
+  ) || 0
+  const doctorsText = doctorsCount > 0 ? `${toBengaliNumerals(doctorsCount)} জন ডাক্তার` : 'অভিজ্ঞ ডাক্তার সুবিধা'
+
   /* ── 1. COMPACT MAP VIEW CARD (Matching Right Column in Map Screenshot) ── */
   if (viewMode === 'map-compact') {
     return (
@@ -258,12 +267,12 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
                 </button>
               </div>
             </div>
-            <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <IconMapPin size={12} color="#94A3B8" />
-                <span>{locationText || 'ঢাকা'}</span>
-              </span>
-              {distanceText && (
+            <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <IconMapPin size={12} color="#94A3B8" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locationText || 'ঢাকা'}</span>
+            </div>
+            {distanceText && (
+              <div style={{ marginTop: 2 }}>
                 <span style={{
                   background: '#ECFDF5',
                   color: '#059669',
@@ -279,10 +288,10 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
                   <IconNavigation size={10} />
                   <span>{distanceText}</span>
                 </span>
-              )}
-            </div>
+              </div>
+            )}
             <div style={{ fontSize: 11, color: '#475569', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span>🛏️ ২৫০+ শয্যা</span>
+              <span>🩺 {doctorsCount > 0 ? `${toBengaliNumerals(doctorsCount)} জন ডাক্তার` : 'অভিজ্ঞ ডাক্তার'}</span>
               <span>•</span>
               <span>🚑 ২৪/৭ জরুরি</span>
             </div>
@@ -456,18 +465,19 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 5,
                     color: '#64748B',
                     fontSize: 13,
                     fontWeight: 500,
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    flexWrap: 'wrap'
+                    fontFamily: "'Hind Siliguri', sans-serif"
                   }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      <IconMapPin size={14} color="#94A3B8" />
-                      <span>{locationText || 'ঢাকা'}</span>
+                    <IconMapPin size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {locationText || 'ঢাকা'}
                     </span>
-                    {distanceText && (
+                  </div>
+                  {distanceText && (
+                    <div style={{ marginTop: 4 }}>
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -484,7 +494,20 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
                         <span>{distanceText}</span>
                         <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 500 }}>(সরল দূরত্ব)</span>
                       </span>
-                    )}
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#64748B',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    marginTop: 4
+                  }}>
+                    <IconStethoscope size={14} color="#00A88C" style={{ flexShrink: 0 }} />
+                    <span>{doctorsText}</span>
                   </div>
                 </div>
 
@@ -554,16 +577,6 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
                 }}>
                   {hospital.hospital_type || (hospital.type === 'private' ? 'প্রাইভেট' : hospital.type === 'government' ? 'সরকারি' : 'হাসপাতাল')}
                 </span>
-                <span style={{
-                  background: '#F1F5F9',
-                  color: '#475569',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 4
-                }}>
-                  ২৫০+ শয্যা
-                </span>
                 {hospital.has_emergency && (
                   <span style={{
                     background: '#FEF2F2',
@@ -579,13 +592,8 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
               </div>
             </div>
 
-            {/* Subtext & Bottom Buttons */}
-            <div className="hosp-card-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-              <div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#475569', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  ১৫+ বিশেষায়িত বিভাগ
-                </span>
-              </div>
+            {/* Bottom Buttons */}
+            <div className="hosp-card-bottom" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 14 }}>
 
               {/* Action Buttons */}
               <div className="hosp-card-actions">
@@ -681,33 +689,36 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
             {hospital.name}
           </h4>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748B', fontSize: 13, fontWeight: 500, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <IconMapPin size={14} color="#00A88C" />
-              <span>{locationText || 'ঢাকা'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 13, fontWeight: 500 }}>
+            <IconMapPin size={14} color="#00A88C" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {locationText || 'ঢাকা'}
             </span>
-            {distanceText && (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 3,
-                background: '#ECFDF5',
-                color: '#059669',
-                border: '1px solid #A7F3D0',
-                borderRadius: 12,
-                padding: '1px 6px',
-                fontSize: 11,
-                fontWeight: 700
-              }}>
-                <IconNavigation size={11} color="#059669" />
-                <span>{distanceText}</span>
-              </span>
-            )}
           </div>
 
+          {distanceText && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              alignSelf: 'flex-start',
+              width: 'fit-content',
+              gap: 3,
+              background: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              borderRadius: 12,
+              padding: '1px 7px',
+              fontSize: 11,
+              fontWeight: 700
+            }}>
+              <IconNavigation size={11} color="#059669" style={{ flexShrink: 0 }} />
+              <span>{distanceText}</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748B', fontSize: 13, fontWeight: 500 }}>
-            <IconBed size={14} color="#00A88C" />
-            <span>২৫০+ শয্যা সুবিধা</span>
+            <IconStethoscope size={15} color="#00A88C" />
+            <span>{doctorsText}</span>
           </div>
         </div>
       </div>
