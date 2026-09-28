@@ -1189,7 +1189,7 @@ const RegisterPage = () => {
                           >
                             <option value="">স্পেশালটি নির্বাচন করুন</option>
                             {specialties.map(s => (
-                              <option key={s.id} value={s.id}>{s.name} ({s.name_bn || s.name})</option>
+                              <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
                           </Form.Select>
                         </div>

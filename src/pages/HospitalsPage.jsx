@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 
 import HospitalCard from '../components/common/HospitalCard'
+import CustomCheckbox from '../components/common/CustomCheckbox'
 import ErrorState from '../components/common/ErrorState'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
@@ -21,7 +22,7 @@ import {
   IconChevronRight, IconChevronLeft, IconClock, IconHeadset, IconLock,
   IconAdjustmentsHorizontal, IconX, IconCheck, IconTrash, IconMapPin,
   IconChevronUp, IconChevronDown, IconStethoscope, IconAlertTriangle,
-  IconCalendarCheck, IconStar, IconListDetails, IconGridDots, IconMap,
+  IconCalendarCheck, IconStar, IconListDetails, IconGridDots,
   IconCurrentLocation, IconNavigation, IconLoader2
 } from '@tabler/icons-react'
 
@@ -104,7 +105,8 @@ function HospitalsPage() {
 
   const [viewMode, setViewModeState] = useState(() => {
     try {
-      return localStorage.getItem('hospitals_view_mode') || 'list'
+      const saved = localStorage.getItem('hospitals_view_mode')
+      return (saved === 'grid' || saved === 'list') ? saved : 'list'
     } catch {
       return 'list'
     }
@@ -855,7 +857,7 @@ function HospitalsPage() {
               </select>
             </div>
 
-            {/* View Mode Toggle Buttons (List :== , Grid ::: , Map [ ]) */}
+            {/* View Mode Toggle Buttons (List :== , Grid :::) */}
             <div style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white' }}>
               <button
                 type="button"
@@ -890,142 +892,12 @@ function HospitalsPage() {
               >
                 <IconGridDots size={18} />
               </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('map')}
-                title="Map View"
-                style={{
-                  padding: '6px 10px',
-                  background: viewMode === 'map' ? '#00B875' : 'white',
-                  color: viewMode === 'map' ? 'white' : '#64748B',
-                  border: 'none',
-                  borderLeft: '1px solid #CBD5E1',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <IconMap size={18} />
-              </button>
             </div>
           </div>
         </div>
 
-        {/* ── MAIN CONTENT AREA ── */}
-        {viewMode === 'map' ? (
-          /* ── MAP VIEW: NO LEFT FILTER SIDEBAR, FULL-WIDTH 2-COLUMN SPLIT MAP ── */
-          <Row className="g-3">
-            {/* Left ~65% Live Hospital Map Area */}
-            <Col xs={12} lg={7} xl={8}>
-              <div style={{
-                position: 'relative',
-                height: 580,
-                borderRadius: 10,
-                border: '1px solid #CBD5E1',
-                overflow: 'hidden',
-                background: '#E5E7EB',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-              }}>
-                {/* Live OpenStreetMap Embed */}
-                <iframe
-                  title="Hospital Live Map View"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight="0"
-                  marginWidth="0"
-                  src="https://www.openstreetmap.org/export/embed.html?bbox=90.350%2C23.830%2C90.430%2C23.900&amp;layer=mapnik"
-                  style={{ border: 0, filter: 'contrast(1.02) saturate(1.05)' }}
-                />
-
-                {/* Live Hospital Pin Markers (NO TAKA / MONEY, ONLY HOSPITAL NAMES) */}
-                {sortedHospitals.slice(0, 6).map((h, idx) => {
-                  const positions = [
-                    { top: '32%', left: '36%' },
-                    { top: '48%', left: '55%' },
-                    { top: '62%', left: '26%' },
-                    { top: '25%', left: '58%' },
-                    { top: '72%', left: '46%' },
-                    { top: '50%', left: '72%' }
-                  ]
-                  const pos = positions[idx % positions.length]
-                  return (
-                    <div
-                      key={h.id}
-                      onClick={() => navigate(getHospitalUrl(h))}
-                      style={{
-                        position: 'absolute',
-                        top: pos.top,
-                        left: pos.left,
-                        background: '#00B875',
-                        color: 'white',
-                        padding: '5px 12px',
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
-                        border: '2px solid white',
-                        cursor: 'pointer',
-                        zIndex: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        fontFamily: "'Hind Siliguri', sans-serif",
-                        transition: 'all 0.2s ease',
-                        whiteSpace: 'nowrap'
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'scale(1.08)'
-                        e.currentTarget.style.background = '#008767'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'scale(1)'
-                        e.currentTarget.style.background = '#00B875'
-                      }}
-                    >
-                      <span>🏥</span>
-                      <span>{h.name}</span>
-                    </div>
-                  )
-                })}
-
-                {/* Map Controls (Top Right) */}
-                <div style={{
-                  position: 'absolute',
-                  top: 14,
-                  right: 14,
-                  background: 'white',
-                  borderRadius: 8,
-                  border: '1px solid #CBD5E1',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-                  zIndex: 20
-                }}>
-                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontWeight: 800, fontSize: 16, color: '#0F172A' }}>+</button>
-                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontWeight: 800, fontSize: 16, color: '#0F172A' }}>-</button>
-                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', borderBottom: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎯</button>
-                  <button type="button" style={{ width: 34, height: 34, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⤢</button>
-                </div>
-              </div>
-            </Col>
-
-            {/* Right ~35% Scrollable Hospital List */}
-            <Col xs={12} lg={5} xl={4}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#64748B', marginBottom: 12, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                ম্যাপে <strong style={{ color: '#0F172A' }}>{sortedHospitals.length}টি</strong> হাসপাতাল দেখানো হচ্ছে
-              </div>
-              <div style={{ maxHeight: 585, overflowY: 'auto', paddingRight: 4 }}>
-                {sortedHospitals.map((h, i) => (
-                  <HospitalCard key={h.id} hospital={h} index={i} viewMode="map-compact" userLocation={userLocation} />
-                ))}
-              </div>
-            </Col>
-          </Row>
-        ) : (
-          /* ── LIST & GRID VIEW (WITH LEFT FILTER SIDEBAR) ── */
-          <Row className="g-4">
+        {/* ── MAIN CONTENT AREA (LIST & GRID VIEW) ── */}
+        <Row className="g-4">
 
             {/* ── LEFT COLUMN: FILTERS PANEL (Desktop Only ≥992px) ── */}
             <Col xs={12} lg={3} className="d-none d-lg-block">
@@ -1152,12 +1024,10 @@ function HospitalsPage() {
                       {HOSPITAL_TYPES.map(t => {
                         const isChecked = hospitalType === t.id
                         return (
-                          <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: isChecked ? 700 : 500 }}>
-                            <input
-                              type="checkbox"
+                          <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, userSelect: 'none' }}>
+                            <CustomCheckbox
                               checked={isChecked}
                               onChange={() => setHospitalType(isChecked ? '' : t.id)}
-                              style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4, cursor: 'pointer' }}
                             />
                             <span>{t.label}</span>
                           </label>
@@ -1297,7 +1167,6 @@ function HospitalsPage() {
               {fetchingNext && <div style={{ paddingTop: 10 }}><HospitalGridSkeleton count={2} /></div>}
             </Col>
           </Row>
-        )}
       </Container>
 
       {/* ── MOBILE FILTER DRAWER BACKDROP ── */}
@@ -1382,12 +1251,10 @@ function HospitalsPage() {
               {HOSPITAL_TYPES.map(t => {
                 const isChecked = hospitalType === t.id
                 return (
-                  <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    <input
-                      type="checkbox"
+                  <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                    <CustomCheckbox
                       checked={isChecked}
                       onChange={() => setHospitalType(isChecked ? '' : t.id)}
-                      style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                     />
                     <span>{t.icon} {t.label}</span>
                   </label>

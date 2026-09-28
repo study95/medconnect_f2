@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 
 import DoctorCard from '../components/common/DoctorCard'
+import CustomCheckbox from '../components/common/CustomCheckbox'
 import ErrorState from '../components/common/ErrorState'
 import { DoctorGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
@@ -1181,12 +1182,11 @@ function DoctorsPage() {
                       {filteredSpecialties.map(s => {
                         const isChecked = String(selectedSpecialty) === String(s.id)
                         return (
-                          <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                            <input
-                              type="checkbox"
+                          <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                            <CustomCheckbox
                               checked={isChecked}
                               onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
-                              style={{ width: 15, height: 15, accentColor: '#00B875', borderRadius: 4 }}
+                              size={17}
                             />
                             <span>{s.name_bn || s.name}</span>
                           </label>
@@ -1403,12 +1403,10 @@ function DoctorsPage() {
               {filteredSpecialties.map(s => {
                 const isChecked = String(selectedSpecialty) === String(s.id)
                 return (
-                  <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    <input
-                      type="checkbox"
+                  <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                    <CustomCheckbox
                       checked={isChecked}
                       onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
-                      style={{ width: 16, height: 16, accentColor: '#00B875', borderRadius: 4 }}
                     />
                     <span>{s.name_bn || s.name}</span>
                   </label>
