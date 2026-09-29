@@ -624,6 +624,20 @@ function HospitalsPage() {
             display: none !important;
           }
         }
+        @media (max-width: 767px) {
+          .hosp-results-bar {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .hosp-results-controls {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .hosp-view-toggle {
+            margin-left: auto !important;
+          }
+        }
       `}</style>
 
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
@@ -825,12 +839,12 @@ function HospitalsPage() {
         </form>
 
         {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div className="hosp-results-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
             <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="hosp-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
@@ -858,7 +872,7 @@ function HospitalsPage() {
             </div>
 
             {/* View Mode Toggle Buttons (List :== , Grid :::) */}
-            <div style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white' }}>
+            <div className="hosp-view-toggle" style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
