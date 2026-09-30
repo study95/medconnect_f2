@@ -1,6 +1,7 @@
 // AdminBillingDashboardPage.jsx — Enterprise Billing & Revenue Analytics
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { getBillingDashboard } from '../../../api/billingAdminApi'
 import { useAuth } from '../../../context/AuthContext'
 import {
@@ -8,13 +9,14 @@ import {
   CheckCircle2, RefreshCw, ArrowUpRight, ArrowDownRight,
   ShieldAlert, CreditCard, Tag, FileText, ChevronRight,
   Layers, Settings, Sparkles, ArrowRight, Clock, Activity,
-  PieChart as PieIcon, ShieldCheck
+  PieChart as PieIcon, ShieldCheck, Grid
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from 'recharts'
 import '../../../styles/admin-billing-dashboard.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 // Custom tooltip for Recharts
 function CustomTooltip({ active, payload, label }) {
@@ -50,29 +52,24 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function AdminBillingDashboardPage() {
   const { isAdmin } = useAuth()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState(null)
 
-  const loadData = async (isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true)
-      else setLoading(true)
-      setError(null)
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'dashboard'],
+    queryFn: async () => {
       const res = await getBillingDashboard()
-      setData(res.data)
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'বিলিং মেট্রিক্স লোড করা সম্ভব হয়নি')
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }
+      return res.data
+    },
+    enabled: !!isAdmin,
+    staleTime: 60 * 1000, // 1 minute fresh cache
+  })
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const error = queryError?.response?.data?.message || queryError?.message || null
 
   if (!isAdmin) {
     return (
@@ -80,27 +77,6 @@ export default function AdminBillingDashboardPage() {
         <ShieldAlert size={40} className="mx-auto text-danger mb-3" />
         <h4 style={{ fontWeight: 800 }}>অ্যাডমিন অ্যাক্সেস সীমাবদ্ধ</h4>
         <p className="text-muted">আর্থিক রাজস্ব ও টেলিমেট্রি দেখার জন্য আপনার অ্যাডমিন অনুমতি নেই।</p>
-      </div>
-    )
-  }
-
-  // ─── SKELETON LOADER ───
-  if (loading) {
-    return (
-      <div className="admin-billing-container space-y-4">
-        <div className="abd-skeleton" style={{ height: '36px', width: '380px' }} />
-        <div className="abd-skeleton" style={{ height: '52px', width: '100%', borderRadius: '12px' }} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="abd-skeleton" style={{ height: '140px', borderRadius: '16px' }} />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="abd-skeleton" style={{ height: '90px', borderRadius: '14px' }} />
-          ))}
-        </div>
-        <div className="abd-skeleton" style={{ height: '320px', width: '100%', borderRadius: '16px' }} />
       </div>
     )
   }
@@ -139,59 +115,20 @@ export default function AdminBillingDashboardPage() {
 
         <div className="d-flex align-items-center gap-2">
           <button
-            onClick={() => loadData(true)}
-            disabled={refreshing}
+            onClick={() => refetch()}
+            disabled={isFetching}
             className="abd-nav-link"
             style={{ cursor: 'pointer', background: 'transparent' }}
             title="মেট্রিক্স রিফ্রেশ করুন"
           >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-            <span>{refreshing ? 'আপডেট হচ্ছে...' : 'মেট্রিক্স আপডেট করুন'}</span>
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+            <span>{isFetching ? 'আপডেট হচ্ছে...' : 'মেট্রিক্স আপডেট করুন'}</span>
           </button>
         </div>
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <div className="abd-quick-nav">
-        <Link to="/admin/billing/plans" className="abd-nav-link">
-          <Layers size={14} />
-          <span>প্ল্যান ও টিয়ার</span>
-        </Link>
-        <Link to="/admin/billing/subscribers" className="abd-nav-link">
-          <Users size={14} />
-          <span>গ্রাহক তালিকা</span>
-        </Link>
-        <Link to="/admin/billing/invoices" className="abd-nav-link">
-          <FileText size={14} />
-          <span>ইনভয়েস</span>
-        </Link>
-        <Link to="/admin/billing/transactions" className="abd-nav-link">
-          <CreditCard size={14} />
-          <span>ম্যানুয়াল লেনদেন</span>
-          {kpis.pending_offline_payments > 0 && (
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 800,
-                padding: '1px 6px',
-                borderRadius: '9999px',
-                background: '#ef4444',
-                color: '#ffffff'
-              }}
-            >
-              {kpis.pending_offline_payments}
-            </span>
-          )}
-        </Link>
-        <Link to="/admin/billing/coupons" className="abd-nav-link">
-          <Tag size={14} />
-          <span>কুপন</span>
-        </Link>
-        <Link to="/admin/billing/settings" className="abd-nav-link">
-          <Settings size={14} />
-          <span>বিলিং সেটিংস</span>
-        </Link>
-      </div>
+      <AdminBillingTabs pendingCount={kpis.pending_offline_payments} />
 
       {/* ─── ERROR TOAST ─── */}
       {error && (
@@ -201,8 +138,25 @@ export default function AdminBillingDashboardPage() {
         </div>
       )}
 
-      {/* ─── 3. ACTION ALERT: PENDING OFFLINE PAYMENTS ─── */}
-      {kpis.pending_offline_payments > 0 && (
+      {/* ─── SKELETON (BELOW TABS) ON INITIAL LOAD ─── */}
+      {isLoading ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="abd-skeleton" style={{ height: '140px', borderRadius: '16px' }} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="abd-skeleton" style={{ height: '90px', borderRadius: '14px' }} />
+            ))}
+          </div>
+          <div className="abd-skeleton" style={{ height: '320px', width: '100%', borderRadius: '16px' }} />
+        </div>
+      ) : (
+        <>
+          {/* ─── 3. ACTION ALERT: PENDING OFFLINE PAYMENTS ─── */}
+          {kpis.pending_offline_payments > 0 && (
         <div className="abd-alert-banner abd-fade-in">
           <div className="d-flex align-items-center gap-3">
             <div
@@ -680,6 +634,8 @@ export default function AdminBillingDashboardPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

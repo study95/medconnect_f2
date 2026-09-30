@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getDoctors, updateDoctor,
   getHospitals, updateHospital
 } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import debounce from 'lodash/debounce'
 
@@ -15,9 +17,8 @@ const TABS = {
 }
 
 export default function HighlightManagementPage() {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState(TABS.DOCTORS)
-  const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState([])
 
   // Search state for "Add" feature
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,9 +40,13 @@ export default function HighlightManagementPage() {
   const [removingItem, setRemovingItem] = useState(null)
   const [processing, setProcessing] = useState(false)
 
-  const loadItems = async () => {
-    setLoading(true)
-    try {
+  const {
+    data: items = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.highlights.list({ tab: activeTab }),
+    queryFn: async () => {
       let res
       if (activeTab === TABS.DOCTORS) {
         res = await getDoctors({ top_10: 1, per_page: 50 })
@@ -50,21 +55,10 @@ export default function HighlightManagementPage() {
       } else if (activeTab === TABS.TELEMEDICINE) {
         res = await getDoctors({ telemedicine: 1, per_page: 50 })
       }
-
-      // Handle different response formats (DoctorResource vs Hospital pagination)
-      const data = res.data.data?.data || res.data.data || []
-      setItems(data)
-    } catch (err) {
-      console.error('Highlight Load Error:', err)
-      
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadItems()
-  }, [activeTab])
+      return res?.data?.data?.data || res?.data?.data || []
+    },
+    staleTime: 60 * 1000,
+  })
 
   // Debounced search for adding new items
   const handleSearch = useCallback(
@@ -117,7 +111,9 @@ export default function HighlightManagementPage() {
       
       setSearchQuery('')
       setShowSearch(false)
-      loadItems()
+      queryClient.invalidateQueries({ queryKey: queryKeys.highlights.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.all })
     } catch (err) {
       
     }
@@ -142,7 +138,9 @@ export default function HighlightManagementPage() {
         await updateDoctor(removingItem.id, formData)
       }
       
-      loadItems()
+      queryClient.invalidateQueries({ queryKey: queryKeys.highlights.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.all })
     } catch (err) {
       
     } finally {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   getAdminNotifications, 
   sendAdminNotification, 
@@ -6,6 +7,7 @@ import {
   deleteAdminNotification 
 } from '../../../api/subscriptionApi'
 import { getDoctors, getHospitals } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -191,11 +193,8 @@ function SearchableSelect({
 }
 
 export default function AdminMessagesPage() {
+  const queryClient = useQueryClient()
   const { confirm, showSuccess, showError } = useDialog()
-  const [notifications, setNotifications] = useState([])
-  const [doctors, setDoctors] = useState([])
-  const [hospitals, setHospitals] = useState([])
-  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editNotice, setEditNotice] = useState(null)
   const [viewNotice, setViewNotice] = useState(null)
@@ -214,39 +213,35 @@ export default function AdminMessagesPage() {
     is_popup: false 
   })
 
-  useEffect(() => { 
-    load()
-    loadDoctors()
-    loadHospitals()
-  }, [])
-
-  const load = async () => {
-    try {
+  const { data: notifications = [], isLoading: loading, refetch } = useQuery({
+    queryKey: queryKeys.messages.list(),
+    queryFn: async () => {
       const res = await getAdminNotifications()
       const data = res.data?.data
-      setNotifications(data?.data || data || [])
-    } catch { 
-      // silent
-    } finally { 
-      setLoading(false) 
-    }
-  }
+      return data?.data || data || []
+    },
+    staleTime: 60 * 1000,
+  })
 
-  const loadDoctors = async () => {
-    try {
+  const { data: doctors = [] } = useQuery({
+    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryFn: async () => {
       const res = await getDoctors({ per_page: 500 })
       const data = res.data?.data || res.data || []
-      setDoctors(Array.isArray(data) ? data : data.data || [])
-    } catch {}
-  }
+      return Array.isArray(data) ? data : data.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
-  const loadHospitals = async () => {
-    try {
+  const { data: hospitals = [] } = useQuery({
+    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryFn: async () => {
       const res = await getHospitals({ per_page: 500 })
       const data = res.data?.data || res.data || []
-      setHospitals(Array.isArray(data) ? data : data.data || [])
-    } catch {}
-  }
+      return Array.isArray(data) ? data : data.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
   const openCreateModal = () => {
     setEditNotice(null)
@@ -340,7 +335,7 @@ export default function AdminMessagesPage() {
 
       setShowModal(false)
       setEditNotice(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.messages.all })
     } catch (err) {
       const valErrors = err.response?.data?.errors
       let errorMsg = err.response?.data?.message || 'নোটিফিকেশন পাঠাতে সমস্যা হয়েছে।'
@@ -365,7 +360,7 @@ export default function AdminMessagesPage() {
       toast.success('Notice deleted successfully')
       if (viewNotice?.id === deleteTarget.id) setViewNotice(null)
       setDeleteTarget(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.messages.all })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete notice')
     } finally {

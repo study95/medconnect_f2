@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getBillingSettings, updateBillingSettings } from '../../../api/billingAdminApi'
 import { useAuth } from '../../../context/AuthContext'
 import {
@@ -24,16 +25,17 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import '../../../styles/admin-billing.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 
 export default function AdminBillingSettingsPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
   const [settings, setSettings] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
-  const [error, setError] = useState(null)
+  const [saveError, setSaveError] = useState(null)
   const [activeTab, setActiveTab] = useState('financial') // 'financial' | 'lifecycle' | 'manual' | 'invoice'
 
   const [form, setForm] = useState({
@@ -63,61 +65,40 @@ export default function AdminBillingSettingsPage() {
     support_contact: '',
   })
 
-  const loadSettings = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  const { data: settingsData, isLoading: loading, error: queryError, refetch: loadSettings } = useQuery({
+    queryKey: ['admin', 'billing', 'settings'],
+    queryFn: async () => {
       const res = await getBillingSettings()
-      const d = res.data || {}
-      setSettings(d)
-      setForm({
-        default_currency: d.default_currency || 'BDT',
-        tax_rate_percent: d.tax_rate_percent || 0,
-        invoice_prefix: d.invoice_prefix || 'INV-',
-        trial_period_days: d.trial_period_days || 14,
-        grace_period_days: d.grace_period_days || 7,
-        auto_retry_past_due: d.auto_retry_past_due ?? true,
-        invoice_company_name: d.invoice_company_name || '',
-        invoice_company_address: d.invoice_company_address || '',
-        invoice_company_tax_id: d.invoice_company_tax_id || '',
-        offline_instructions: d.offline_instructions || '',
-        manual_payment_enabled: d.manual_payment_enabled ?? true,
-        manual_payment_amount_tolerance: d.manual_payment_amount_tolerance ?? 0,
-        manual_payment_expiration_days: d.manual_payment_expiration_days ?? 7,
-        manual_payment_instructions: d.manual_payment_instructions || '',
-        bkash_number: d.bkash_number || '',
-        nagad_number: d.nagad_number || '',
-        rocket_number: d.rocket_number || '',
-        bank_name: d.bank_name || '',
-        bank_account_name: d.bank_account_name || '',
-        bank_account_number: d.bank_account_number || '',
-        bank_branch: d.bank_branch || '',
-        bank_routing_number: d.bank_routing_number || '',
-        support_contact: d.support_contact || '',
-      })
-    } catch (err) {
-      setError(err?.response?.data?.message || 'বিলিং কনফিগারেশন লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return res.data || {}
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
   useEffect(() => {
-    loadSettings()
-  }, [])
+    if (settingsData) {
+      setSettings(settingsData)
+      setForm(prev => ({
+        ...prev,
+        ...settingsData
+      }))
+    }
+  }, [settingsData])
+
+  const error = saveError || queryError?.response?.data?.message || queryError?.message || null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       setSaving(true)
       setSavedSuccess(false)
-      setError(null)
+      setSaveError(null)
       await updateBillingSettings(form)
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'settings'] })
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 4000)
 
     } catch (err) {
-      setError(err?.response?.data?.message || 'বিলিং কনফিগারেশন সংরক্ষণে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
+      setSaveError(err?.response?.data?.message || 'বিলিং কনফিগারেশন সংরক্ষণে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
     } finally {
       setSaving(false)
     }
@@ -162,32 +143,7 @@ export default function AdminBillingSettingsPage() {
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav" aria-label="Billing navigation">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill active" aria-current="page">
-          <Settings size={14} /> বিলিং কনফিগারেশন
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── SUCCESS ALERT BANNER ─── */}
       {savedSuccess && (

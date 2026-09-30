@@ -278,6 +278,14 @@ export function invalidateLeaves(queryClient, { doctorId = null, leaveId = null 
   }
 }
 
+/**
+ * Invalidate Payment records
+ */
+export function invalidatePayments(queryClient) {
+  if (!queryClient) return
+  queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
+}
+
 export default {
   doctors: invalidateDoctors,
   hospitals: invalidateHospitals,
@@ -293,4 +301,5 @@ export default {
   dashboard: invalidateDashboard,
   commissions: invalidateCommissions,
   leaves: invalidateLeaves,
+  payments: invalidatePayments,
 }

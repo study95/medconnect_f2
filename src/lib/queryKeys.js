@@ -117,9 +117,12 @@ export const queryKeys = {
     all: ['medicines'],
     lists: () => [...queryKeys.medicines.all, 'list'],
     list: (filters = {}) => [...queryKeys.medicines.lists(), filters],
+    adminLists: () => [...queryKeys.medicines.all, 'admin-list'],
+    adminList: (filters = {}) => [...queryKeys.medicines.adminLists(), filters],
     details: () => [...queryKeys.medicines.all, 'detail'],
     detail: (id) => [...queryKeys.medicines.details(), String(id)],
     search: (query) => [...queryKeys.medicines.all, 'search', String(query)],
+    pendingCount: () => [...queryKeys.medicines.all, 'pending-count'],
   },
 
   // ===== REVIEWS =====
@@ -208,6 +211,47 @@ export const queryKeys = {
     all: ['content'],
     cms: (slug) => [...queryKeys.content.all, 'cms', String(slug)],
     homepage: () => ['homepage'],
+  },
+
+  // ===== PAYMENTS =====
+  payments: {
+    all: ['payments'],
+    lists: () => [...queryKeys.payments.all, 'list'],
+    list: (filters = {}) => [...queryKeys.payments.lists(), filters],
+    adminLists: () => [...queryKeys.payments.all, 'admin-list'],
+    adminList: (filters = {}) => [...queryKeys.payments.adminLists(), filters],
+    detail: (id) => [...queryKeys.payments.all, 'detail', String(id)],
+  },
+
+  // ===== HIGHLIGHTS =====
+  highlights: {
+    all: ['highlights'],
+    list: (filters = {}) => [...queryKeys.highlights.all, 'list', filters],
+  },
+
+  // ===== SERIAL DISPLAY =====
+  serialDisplay: {
+    all: ['serial-display'],
+    list: (filters = {}) => [...queryKeys.serialDisplay.all, 'list', filters],
+  },
+
+  // ===== SERVICES =====
+  services: {
+    all: ['services'],
+    list: (filters = {}) => [...queryKeys.services.all, 'list', filters],
+    detail: (id) => [...queryKeys.services.all, 'detail', String(id)],
+  },
+
+  // ===== MESSAGES =====
+  messages: {
+    all: ['admin-messages'],
+    list: (filters = {}) => [...queryKeys.messages.all, 'list', filters],
+  },
+
+  // ===== SMS SETTINGS =====
+  smsSettings: {
+    all: ['sms-settings'],
+    settings: () => [...queryKeys.smsSettings.all, 'settings'],
   },
 }
 

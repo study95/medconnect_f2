@@ -2,7 +2,7 @@
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useAdminHospitals, useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
@@ -190,17 +190,20 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function HospitalListPage() {
   const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialIsActive = searchParams.get('is_active')
+  const initialStatus = searchParams.get('status') || (initialIsActive !== null ? (initialIsActive === '0' ? 'inactive' : 'active') : '')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(initialStatus !== '')
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
   // Filters
   const [search, setSearch] = useState('')
   const [hospitalIdFilter, setHospitalIdFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
 
   // Location Filters
   const [divisionId, setDivisionId] = useState('')

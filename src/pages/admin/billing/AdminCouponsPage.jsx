@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminCoupons,
   createAdminCoupon,
@@ -34,22 +35,18 @@ import {
 import useDebounce from '../../../hooks/useDebounce'
 import { useAuth } from '../../../context/AuthContext'
 import '../../../styles/admin-billing.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminCouponsPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [coupons, setCoupons] = useState([])
-  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState(null)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [entityFilter, setEntityFilter] = useState('all')
-  const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({})
-
-  const debouncedSearch = useDebounce(search, 400)
 
   const [form, setForm] = useState({
     code: '',
@@ -62,36 +59,40 @@ export default function AdminCouponsPage() {
     is_active: true,
   })
 
-  const loadCoupons = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const res = await getAdminCoupons({
-        search: debouncedSearch.trim() || undefined,
-        page,
-        per_page: 15,
-      })
-      const resMeta = res.data?.meta || {}
-      setMeta(resMeta)
-      const list = res.data?.data || res.data || []
-      setCoupons(Array.isArray(list) ? list : [])
-    } catch (err) {
-      console.error('Failed to load coupons', err)
-      setError(err?.response?.data?.message || 'কুপন তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Main data-fetch effect: re-runs on page or debounced search change
-  useEffect(() => {
-    loadCoupons()
-  }, [page, debouncedSearch]) // eslint-disable-line react-hooks/exhaustive-deps
+  const debouncedSearch = useDebounce(search, 400)
 
   // Reset to page 1 when search query changes
   useEffect(() => {
     setPage(1)
   }, [debouncedSearch])
+
+  // TanStack Query for Coupons
+  const {
+    data: couponResponse,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'coupons', { search: debouncedSearch.trim() || undefined, page }],
+    queryFn: async () => {
+      const res = await getAdminCoupons({
+        search: debouncedSearch.trim() || undefined,
+        page,
+        per_page: 15,
+      })
+      return res.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const coupons = useMemo(() => {
+    const list = couponResponse?.data || couponResponse || []
+    return Array.isArray(list) ? list : []
+  }, [couponResponse])
+
+  const meta = couponResponse?.meta || {}
+  const error = queryError?.response?.data?.message || (queryError ? 'কুপন তালিকা লোড করতে ব্যর্থ হয়েছে।' : null)
 
   const openCreate = () => {
     setEditingCoupon(null)
@@ -140,7 +141,7 @@ export default function AdminCouponsPage() {
         await createAdminCoupon(payload)
       }
       setShowModal(false)
-      loadCoupons()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'coupons'] })
     } catch (err) {
       alert(err.response?.data?.message || 'প্রমোশনাল কুপন সংরক্ষণে সমস্যা হয়েছে।')
     } finally {
@@ -152,7 +153,7 @@ export default function AdminCouponsPage() {
     if (!window.confirm(`কুপন "${coupon.code}" নিষ্ক্রিয় বা মুছে ফেলতে চান?`)) return
     try {
       await deleteAdminCoupon(coupon.id)
-      loadCoupons()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'coupons'] })
     } catch (err) {
       alert(err.response?.data?.message || 'কুপন মুছতে সমস্যা হয়েছে।')
     }
@@ -193,13 +194,13 @@ export default function AdminCouponsPage() {
 
         <div className="ab-header-actions">
           <button
-            onClick={loadCoupons}
+            onClick={() => refetch()}
             className="ab-btn-refresh"
             title="কুপন রিফ্রেশ করুন"
-            disabled={loading}
+            disabled={loading || isFetching}
             aria-label="Refresh coupons list"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
           <button
             onClick={openCreate}
@@ -213,32 +214,7 @@ export default function AdminCouponsPage() {
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill active">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> বিলিং কনফিগারেশন
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">

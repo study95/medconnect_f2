@@ -1,0 +1,87 @@
+/* ===================================================================
+   ADMIN BILLING UNIFIED SUB-NAVIGATION BAR (Image 1 Style)
+   =================================================================== */
+
+.abt-quick-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  margin-bottom: 24px;
+  padding: 6px 2px 14px 2px;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  /* Hide scrollbar track completely while keeping touch/scroll functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.abt-quick-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.abt-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--admin-card-bg, #ffffff);
+  border: 1px solid var(--admin-border, #e2e8f0);
+  color: var(--admin-text, #0f172a);
+  text-decoration: none;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.abt-nav-link:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: var(--admin-primary, #00B875);
+}
+
+.abt-nav-link.active {
+  background: rgba(0, 184, 117, 0.12) !important;
+  border-color: rgba(0, 184, 117, 0.45) !important;
+  color: var(--admin-primary, #00B875) !important;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 184, 117, 0.08);
+}
+
+.abt-nav-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+/* ─── Dark Theme Support ─── */
+[data-theme='dark'] .abt-quick-nav {
+  border-bottom-color: #1e293b;
+}
+
+[data-theme='dark'] .abt-nav-link {
+  background: #0f172a;
+  border-color: #1e293b;
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .abt-nav-link:hover {
+  background: #1e293b;
+  border-color: #334155;
+  color: #00B875;
+}
+
+[data-theme='dark'] .abt-nav-link.active {
+  background: rgba(0, 184, 117, 0.2) !important;
+  border-color: rgba(0, 184, 117, 0.5) !important;
+  color: #00B875 !important;
+}

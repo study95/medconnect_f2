@@ -1,7 +1,9 @@
 // PurchaseReportPage.jsx — Admin Purchase Income Report
 import { useState, useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getPurchaseReport, getDoctors, getHospitals } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
 const MONTHS = [
@@ -106,15 +108,9 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function PurchaseReportPage() {
-  const [data, setData] = useState([])
-  const [summary, setSummary] = useState({})
-  const [loading, setLoading] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
-  
-  const [doctors, setDoctors] = useState([])
-  const [hospitals, setHospitals] = useState([])
 
   const [filters, setFilters] = useState({ 
     subscriber_id: '',
@@ -125,43 +121,66 @@ export default function PurchaseReportPage() {
     month: '', 
     year: new Date().getFullYear().toString() 
   })
+  const [appliedFilters, setAppliedFilters] = useState(filters)
 
   const hasFilters = Boolean(filters.subscriber_id || filters.plan_name || filters.month || filters.date_from || filters.date_to)
 
-  useEffect(() => { 
-    loadOptions()
-    fetchReport() 
-  }, [])
+  const { data: doctors = [] } = useQuery({
+    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryFn: async () => {
+      const res = await getDoctors({ per_page: 500 })
+      return res.data?.data?.data || res.data?.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: hospitals = [] } = useQuery({
+    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryFn: async () => {
+      const res = await getHospitals({ per_page: 500 })
+      return res.data?.data?.data || res.data?.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const {
+    data: report = { data: [], summary: {} },
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.commissions.purchaseReport(appliedFilters),
+    queryFn: async () => {
+      const params = {}
+      Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[k] = v })
+      const res = await getPurchaseReport(params)
+      const reportData = res.data?.data?.data || res.data?.data || res.data?.purchases || (Array.isArray(res.data) ? res.data : [])
+      const reportSummary = res.data?.summary || res.data?.stats || res.data?.total || {}
+      return { data: reportData, summary: reportSummary }
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const data = report.data
+  const summary = report.summary
 
   useEffect(() => { setCurrentPage(1) }, [data.length])
 
-  const loadOptions = async () => {
-    try {
-      const [docRes, hospRes] = await Promise.all([
-        getDoctors({ per_page: 500 }),
-        getHospitals({ per_page: 500 })
-      ])
-      setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
-      setHospitals(hospRes.data?.data?.data || hospRes.data?.data || [])
-    } catch (err) { console.error(err) }
+  const fetchReport = () => {
+    setAppliedFilters({ ...filters })
   }
 
-  const fetchReport = async () => {
-    setLoading(true)
-    try {
-      const params = {}
-      Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
-      const res = await getPurchaseReport(params)
-      // Robust data mapping for various API response patterns (paginated, nested, or direct array)
-      const reportData = res.data?.data?.data || res.data?.data || res.data?.purchases || (Array.isArray(res.data) ? res.data : [])
-      const reportSummary = res.data?.summary || res.data?.stats || res.data?.total || {}
-      
-      setData(reportData)
-      setSummary(reportSummary)
-    } catch (err) {
-    } finally {
-      setLoading(false)
+  const handleReset = () => {
+    const emptyFilters = { 
+      subscriber_id: '',
+      subscriber_role: '',
+      plan_name: '',
+      date_from: '', 
+      date_to: '', 
+      month: '', 
+      year: new Date().getFullYear().toString() 
     }
+    setFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
   }
 
   const handleFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
@@ -281,7 +300,7 @@ export default function PurchaseReportPage() {
                 <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, flex: 1 }}>Filter</button>
                 <button 
                   className="admin-btn admin-btn-outline" 
-                  onClick={() => setFilters({ subscriber_id: '', subscriber_role: '', plan_name: '', date_from: '', date_to: '', month: '', year: new Date().getFullYear().toString() })}
+                  onClick={handleReset}
                   style={{ height: 42 }}
                 >
                   Reset

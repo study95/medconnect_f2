@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
@@ -92,9 +92,11 @@ function TableCheckbox({ checked, indeterminate, onChange, title }) {
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status') || ''
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [changingStatus, setChangingStatus] = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(Boolean(initialStatus))
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
@@ -107,14 +109,14 @@ export default function AppointmentListPage() {
   const [doctorId, setDoctorId] = useState('')
   const [hospitalId, setHospitalId] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  const [activeTab, setActiveTab] = useState('all')
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
   // Reset to page 1 whenever any filter or search changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, activeTab])
+  }, [debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Memoized server filters for TanStack Query
   const serverFilters = useMemo(() => {
@@ -129,9 +131,9 @@ export default function AppointmentListPage() {
     if (doctorId) params.doctor_id = doctorId
     if (hospitalId) params.hospital_id = hospitalId
     if (roleFilter) params.role = roleFilter
-    if (activeTab !== 'all') params.status = activeTab
+    if (statusFilter) params.status = statusFilter
     return params
-  }, [currentPage, perPage, debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, activeTab])
+  }, [currentPage, perPage, debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Enterprise TanStack Query Hooks
   const { appointments, total, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
@@ -209,8 +211,15 @@ export default function AppointmentListPage() {
     setDoctorId('')
     setHospitalId('')
     setRoleFilter('')
-    setActiveTab('all')
+    setStatusFilter('')
   }
+
+  const statusOptions = [
+    { id: 'pending', name: 'Pending' },
+    { id: 'confirmed', name: 'Confirmed' },
+    { id: 'completed', name: 'Completed' },
+    { id: 'cancelled', name: 'Cancelled' },
+  ]
 
   const roleOptions = [
     { id: 'patient', name: '😷 Patient' },
@@ -249,7 +258,7 @@ export default function AppointmentListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)}
+        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || statusFilter || search)}
         onClearFilters={clearFilters}
         activeFilters={[
           date && { key: 'date', label: `Date: ${date}`, onRemove: () => setDate('') },
@@ -257,8 +266,8 @@ export default function AppointmentListPage() {
           year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
           hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
+          statusFilter && { key: 'status', label: `Status: ${statusOptions.find(s => s.id === statusFilter)?.name || statusFilter}`, onRemove: () => setStatusFilter('') },
           roleFilter && { key: 'role', label: `Role: ${roleFilter}`, onRemove: () => setRoleFilter('') },
-          activeTab !== 'all' && { key: 'status', label: `Status: ${activeTab.toUpperCase()}`, onRemove: () => setActiveTab('all') },
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 140 }}>
@@ -279,11 +288,12 @@ export default function AppointmentListPage() {
             {years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
           </select>
         </div>
+        <SearchableSelect label="Status" placeholder="All Statuses" options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+        <SearchableSelect label="Role" placeholder="All Roles" options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
         <SearchableSelect label="Doctor" placeholder="All Doctors" options={doctors} value={doctorId} onChange={setDoctorId} />
         {!isManager && (
           <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
         )}
-        <SearchableSelect label="Role" placeholder="All Roles" options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
       </ListToolbar>
 
       <div className="admin-card">

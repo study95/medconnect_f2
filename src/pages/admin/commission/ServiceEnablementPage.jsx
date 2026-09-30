@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { queryKeys } from '../../../lib/queryKeys'
 import {
   getServiceEnablements, updateServiceEnablement,
   getHospitalCommissions, updateHospitalCommission,
@@ -198,9 +200,8 @@ export default function ServiceEnablementPage() {
 }
 
 function DoctorServiceTab() {
-  const [doctorsData, setDoctorsData] = useState([])
+  const queryClient = useQueryClient()
   const [doctorsOptions, setDoctorsOptions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   
@@ -219,8 +220,17 @@ function DoctorServiceTab() {
   const [upazilas, setUpazilas] = useState([])
   const [unions, setUnions] = useState([])
 
+  const { data: doctorsData = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.commissions.serviceEnablements(),
+    queryFn: async () => {
+      const res = await getServiceEnablements({ per_page: 500 })
+      const raw = res.data?.data
+      return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
+    },
+    staleTime: 60 * 1000,
+  })
+
   useEffect(() => { 
-    fetchData()
     loadOptions()
     loadInitialLocations()
   }, [])
@@ -271,20 +281,6 @@ function DoctorServiceTab() {
 
   useEffect(() => { loadOptions() }, [divisionId, districtId, upazilaId, unionId])
 
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const res = await getServiceEnablements({ per_page: 500 })
-      const raw = res.data?.data
-      const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
-      setDoctorsData(list)
-    } catch (err) {
-      setDoctorsData([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleUpdate = async (doctorId, field, value) => {
     const doctor = (Array.isArray(doctorsData) ? doctorsData : []).find(d => d.id === doctorId)
     if (doctor?.has_active_access && field !== 'is_enabled') {
@@ -305,7 +301,7 @@ function DoctorServiceTab() {
     setSaving(doctorId)
     try {
       await updateServiceEnablement(doctorId, payload)
-      fetchData()
+      queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
     } catch (err) {
     } finally {
       setSaving(null)
@@ -530,9 +526,8 @@ function DoctorServiceTab() {
 }
 
 function HospitalCommissionTab() {
-  const [hospitalsData, setHospitalsData] = useState([])
+  const queryClient = useQueryClient()
   const [hospitalsOptions, setHospitalsOptions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
   const [search, setSearch] = useState('')
   const [hospitalFilter, setHospitalFilter] = useState('')
@@ -546,8 +541,17 @@ function HospitalCommissionTab() {
   const [upazilas, setUpazilas] = useState([])
   const [unions, setUnions] = useState([])
 
+  const { data: hospitalsData = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.commissions.hospitalCommissions(),
+    queryFn: async () => {
+      const res = await getHospitalCommissions({ per_page: 500 })
+      const raw = res.data?.data
+      return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
+    },
+    staleTime: 60 * 1000,
+  })
+
   useEffect(() => { 
-    fetchData() 
     loadOptions()
     loadInitialLocations()
   }, [])
@@ -597,20 +601,6 @@ function HospitalCommissionTab() {
 
   useEffect(() => { loadOptions() }, [divisionId, districtId, upazilaId, unionId])
 
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const res = await getHospitalCommissions({ per_page: 500 })
-      const raw = res.data?.data
-      const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
-      setHospitalsData(list)
-    } catch (err) {
-setHospitalsData([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleUpdate = async (hospitalId, field, value) => {
     const hospital = (Array.isArray(hospitalsData) ? hospitalsData : []).find(h => h.id === hospitalId)
     const current = hospital?.commission || {}
@@ -623,10 +613,9 @@ setHospitalsData([])
     setSaving(hospitalId)
     try {
       await updateHospitalCommission(hospitalId, payload)
-      
-      fetchData()
+      queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
     } catch (err) {
-} finally {
+    } finally {
       setSaving(null)
     }
   }
@@ -797,8 +786,7 @@ setHospitalsData([])
 }
 
 function PatientBookingTab() {
-  const [settings, setSettings] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     commission_percent: 10,
@@ -807,34 +795,33 @@ function PatientBookingTab() {
     waive_if_doctor_subscribed: true,
   })
 
-  useEffect(() => { fetchData() }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
+  const { data: settings = null, isLoading: loading } = useQuery({
+    queryKey: queryKeys.commissions.patientBookingCommission(),
+    queryFn: async () => {
       const res = await getPatientBookingCommission()
-      const data = res.data?.data || {}
-      setSettings(data)
+      return res.data?.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (settings) {
       setForm({
-        commission_percent: data.commission_percent ?? 10,
-        apply_to_patient_booking: data.apply_to_patient_booking ?? true,
-        apply_to_manager_booking: data.apply_to_manager_booking ?? true,
-        waive_if_doctor_subscribed: data.waive_if_doctor_subscribed ?? true,
+        commission_percent: settings.commission_percent ?? 10,
+        apply_to_patient_booking: settings.apply_to_patient_booking ?? true,
+        apply_to_manager_booking: settings.apply_to_manager_booking ?? true,
+        waive_if_doctor_subscribed: settings.waive_if_doctor_subscribed ?? true,
       })
-    } catch (err) {
-} finally {
-      setLoading(false)
     }
-  }
+  }, [settings])
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await updatePatientBookingCommission(form)
-      
-      fetchData()
+      queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
     } catch (err) {
-} finally {
+    } finally {
       setSaving(false)
     }
   }

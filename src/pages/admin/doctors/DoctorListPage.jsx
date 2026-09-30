@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Filter, ChevronDown, ChevronUp, Award } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useAdminDoctors, useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -185,9 +185,11 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function DoctorListPage() {
   const { user, isAdmin, isManager, isDoctor } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialStatusParam = searchParams.get('is_active')
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(initialStatusParam !== null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
@@ -196,7 +198,7 @@ export default function DoctorListPage() {
   const [districtId, setDistrictId] = useState('')
   const [upazilaId, setUpazilaId] = useState('')
   const [unionId, setUnionId] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(initialStatusParam !== null ? initialStatusParam : '')
   const [top10Filter, setTop10Filter] = useState('')
   const [telemedicineFilter, setTelemedicineFilter] = useState('')
   const [specialtyId, setSpecialtyId] = useState('')

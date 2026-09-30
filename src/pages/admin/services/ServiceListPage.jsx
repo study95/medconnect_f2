@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Table, Modal, Button } from 'react-bootstrap'
 import {
   IconTicket, IconSearch, IconRefresh, IconEye, IconTrash,
@@ -6,6 +7,7 @@ import {
   IconChecklist
 } from '@tabler/icons-react'
 import axiosInstance from '../../../api/axiosInstance'
+import { queryKeys } from '../../../lib/queryKeys'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -57,9 +59,7 @@ function StatCard({ label, value, icon, color }) {
 }
 
 export default function ServiceListPage() {
-  const [tickets, setTickets] = useState([])
-  const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 })
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')
@@ -71,10 +71,14 @@ export default function ServiceListPage() {
   const [copied, setCopied] = useState(null)
   const [updatingStatus, setUpdatingStatus] = useState(null)
 
-  const fetchTickets = useCallback(async () => {
-    setLoading(true)
-    try {
-      // Fetch dynamic ticket data and database counts
+  const {
+    data: ticketRes = { data: [], stats: { total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 } },
+    isLoading: loading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.services.list({ search, status: filterStatus, priority: filterPriority, perPage, currentPage }),
+    queryFn: async () => {
       const res = await axiosInstance.get('/admin/services', {
         params: {
           search: search || undefined,
@@ -86,48 +90,39 @@ export default function ServiceListPage() {
       })
 
       if (res.data?.data) {
-        setTickets(res.data.data)
-        if (res.data.stats) {
-          setStats(res.data.stats)
+        return {
+          data: res.data.data,
+          stats: res.data.stats || { total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 }
         }
       } else if (Array.isArray(res.data)) {
-        setTickets(res.data)
-        setStats({
-          total: res.data.length,
-          pending: res.data.filter(t => t.status === 'pending').length,
-          processing: res.data.filter(t => t.status === 'processing').length,
-          resolved: res.data.filter(t => t.status === 'resolved').length,
-          closed: res.data.filter(t => t.status === 'closed').length,
-        })
-      } else {
-        setTickets([])
-        setStats({ total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 })
+        return {
+          data: res.data,
+          stats: {
+            total: res.data.length,
+            pending: res.data.filter(t => t.status === 'pending').length,
+            processing: res.data.filter(t => t.status === 'processing').length,
+            resolved: res.data.filter(t => t.status === 'resolved').length,
+            closed: res.data.filter(t => t.status === 'closed').length,
+          }
+        }
       }
-    } catch {
-      setTickets([])
-      setStats({ total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 })
-    } finally {
-      setLoading(false)
-    }
-  }, [search, filterStatus, filterPriority, perPage, currentPage])
+      return { data: [], stats: { total: 0, pending: 0, processing: 0, resolved: 0, closed: 0 } }
+    },
+    staleTime: 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchTickets()
-  }, [fetchTickets])
+  const tickets = ticketRes.data
+  const stats = ticketRes.stats
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
       await axiosInstance.delete(`/admin/services/${deleteId}`)
-      setTickets(prev => prev.filter(t => t.id !== deleteId))
-      setStats(prev => ({
-        ...prev,
-        total: Math.max(0, prev.total - 1),
-      }))
+      queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
       setDeleteId(null)
       if (viewTicket?.id === deleteId) setViewTicket(null)
     } catch {
-      setTickets(prev => prev.filter(t => t.id !== deleteId))
+      queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
       setDeleteId(null)
       if (viewTicket?.id === deleteId) setViewTicket(null)
     }
@@ -137,11 +132,9 @@ export default function ServiceListPage() {
     setUpdatingStatus(ticketId)
     try {
       await axiosInstance.patch(`/admin/services/${ticketId}/status`, { status: newStatus })
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t))
+      queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
       if (viewTicket?.id === ticketId) setViewTicket(prev => ({ ...prev, status: newStatus }))
-      fetchTickets()
     } catch {
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t))
       if (viewTicket?.id === ticketId) setViewTicket(prev => ({ ...prev, status: newStatus }))
     } finally {
       setUpdatingStatus(null)
@@ -178,7 +171,7 @@ export default function ServiceListPage() {
           <p className="admin-page-subtitle">ব্যবহারকারীদের প্রেরিত অভিযোগ ও সাপোর্ট রিকোয়েস্ট পরিচালনা করুন</p>
         </div>
         <button
-          onClick={fetchTickets}
+          onClick={() => refetch()}
           style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #00B875, #009E64)', color: 'white', border: 'none', borderRadius: 12, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,184,117,0.25)' }}
         >
           <IconRefresh size={17} /> রিফ্রেশ তালিকা
@@ -197,8 +190,8 @@ export default function ServiceListPage() {
         search={search}
         onSearchChange={val => { setSearch(val); setCurrentPage(1) }}
         searchPlaceholder="টিকিট নম্বর, নাম, ফোন বা ইমেইল খুঁজুন..."
-        onRefresh={fetchTickets}
-        refreshing={loading}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(filterStatus !== 'all' || filterPriority !== 'all')}

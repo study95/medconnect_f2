@@ -1,8 +1,10 @@
 // PrescriptionListPage.jsx — List all prescriptions (doctor sees own, admin sees all)
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
 import { getPrescriptions, deletePrescription } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -14,12 +16,11 @@ import { FileText, PenLine, CheckCircle2, Clock, AlertCircle } from 'lucide-reac
 
 export default function PrescriptionListPage() {
   const { user, isAdmin, isDoctor } = useAuth()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTabParam = searchParams.get('tab') || 'all'
 
-  const [prescriptions, setPrescriptions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [statusTab, setStatusTab] = useState(activeTabParam)
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
@@ -49,9 +50,14 @@ export default function PrescriptionListPage() {
     ? `doc_${user.doctor.id}` 
     : (user?.doctor_id ? `doc_${user.doctor_id}` : (user?.id ? `usr_${user.id}` : null))
 
-  const fetchPrescriptions = async () => {
-    try {
-      setLoading(true)
+  const {
+    data: prescriptions = [],
+    isLoading: loading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.prescriptions.list({ doctorScopeId }),
+    queryFn: async () => {
       const res = await getPrescriptions({ per_page: 200 })
       const dbList = res.data?.data?.data || res.data?.data || res.data || []
 
@@ -127,14 +133,10 @@ export default function PrescriptionListPage() {
         } catch (e) {}
       }
 
-      setPrescriptions([...localDrafts, ...dbList])
-    } catch (err) {
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchPrescriptions() }, [doctorScopeId])
+      return [...localDrafts, ...dbList]
+    },
+    staleTime: 45 * 1000,
+  })
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -142,10 +144,10 @@ export default function PrescriptionListPage() {
     try {
       if (deleteTarget.is_local_draft && deleteTarget.local_key) {
         localStorage.removeItem(deleteTarget.local_key)
-        setPrescriptions(prescriptions.filter(p => p.id !== deleteTarget.id))
+        queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.all })
       } else {
         await deletePrescription(deleteTarget.id)
-        setPrescriptions(prescriptions.filter(p => p.id !== deleteTarget.id))
+        queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.all })
       }
     } catch (err) {
     } finally {
@@ -314,8 +316,8 @@ export default function PrescriptionListPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by patient, ID, diagnosis..."
-        onRefresh={fetchPrescriptions}
-        refreshing={loading}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(dateFilter)}

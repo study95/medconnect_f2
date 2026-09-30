@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminSubscribers,
   getAdminSubscriberDetails,
@@ -41,18 +42,16 @@ import {
 import useDebounce from '../../../hooks/useDebounce'
 import { useAuth } from '../../../context/AuthContext'
 import '../../../styles/admin-billing.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminSubscribersPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [subscribers, setSubscribers] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [entityFilter, setEntityFilter] = useState('all')
-  const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({})
 
   const debouncedSearch = useDebounce(search, 400)
 
@@ -69,10 +68,26 @@ export default function AdminSubscribersPage() {
   const [slipBlobUrl, setSlipBlobUrl] = useState(null)
   const [slipBlobLoading, setSlipBlobLoading] = useState(false)
 
-  const loadSubscribers = async () => {
-    try {
-      setError(null)
-      setLoading(true)
+  // Reset page to 1 whenever filters or search change
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, entityFilter, debouncedSearch])
+
+  // TanStack Query for Subscribers
+  const {
+    data: subResponse,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'subscribers', {
+      search: debouncedSearch.trim() || undefined,
+      status: statusFilter || undefined,
+      entity_type: entityFilter !== 'all' ? (entityFilter === 'doctor' ? 'Doctor' : 'Hospital') : undefined,
+      page,
+    }],
+    queryFn: async () => {
       const res = await getAdminSubscribers({
         search: debouncedSearch.trim() || undefined,
         status: statusFilter || undefined,
@@ -80,20 +95,18 @@ export default function AdminSubscribersPage() {
         page,
         per_page: 15,
       })
-      const responseMeta = res.data?.meta || {}
-      setMeta(responseMeta)
-      const list = res.data?.data || []
-      setSubscribers(Array.isArray(list) ? list : [])
-    } catch (err) {
-      setError(err?.response?.data?.message || 'গ্রাহক তালিকা লোড করা সম্ভব হয়নি। আবার চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return res.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
 
-  useEffect(() => {
-    loadSubscribers()
-  }, [statusFilter, entityFilter, page, debouncedSearch])
+  const subscribers = useMemo(() => {
+    const list = subResponse?.data || []
+    return Array.isArray(list) ? list : []
+  }, [subResponse])
+
+  const meta = subResponse?.meta || {}
+  const error = queryError?.response?.data?.message || (queryError ? 'গ্রাহক তালিকা লোড করা সম্ভব হয়নি। আবার চেষ্টা করুন।' : null)
 
   // Reset page to 1 whenever filters or search change
   useEffect(() => {
@@ -183,7 +196,9 @@ export default function AdminSubscribersPage() {
         setSelectedSub(res.data?.subscription || selectedSub)
         setTimeline(res.data?.timeline || [])
         setApprovalSuccess(null)
-        loadSubscribers()
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'subscribers'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'transactions'] })
       }, 1200)
     } catch (err) {
       if (err.response?.status === 409) {
@@ -216,7 +231,8 @@ export default function AdminSubscribersPage() {
     try {
       await cancelAdminSubscriber(selectedSub.id, immediately)
       openDrawer(selectedSub)
-      loadSubscribers()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'subscribers'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
     } catch (err) {
       alert(err.response?.data?.message || 'Error cancelling subscription')
     }
@@ -277,43 +293,18 @@ export default function AdminSubscribersPage() {
 
         <div className="ab-header-actions">
           <button
-            onClick={loadSubscribers}
+            onClick={() => refetch()}
             className="ab-btn-refresh"
             title="তালিকা রিফ্রেশ করুন"
-            disabled={loading}
+            disabled={loading || isFetching}
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill active">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> বিলিং সেটিংস
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">

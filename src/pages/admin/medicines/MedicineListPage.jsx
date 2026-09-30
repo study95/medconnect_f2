@@ -1,15 +1,13 @@
 // MedicineListPage.jsx — Admin medicine list with search, filter, pagination & bulk delete
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { 
-  getMedicines, 
-  deleteMedicine, 
-  bulkDeleteMedicines,
-  getMedicinesPendingCount,
-  approveMedicine,
-  rejectMedicine
-} from '../../../api/adminApi'
+import {
+  useAdminMedicines,
+  useAdminMedicinesPendingCount,
+  useAdminMedicineMutations,
+} from '../../../features/medicines/useAdminMedicines'
+import useDebounce from '../../../hooks/useDebounce'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -652,117 +650,76 @@ function ReviewApproveModal({ medicine, onClose, onSuccess }) {
 export default function MedicineListPage() {
   const navigate = useNavigate()
   const { isAdmin, hasPermission } = useAuth()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('active') // 'active' | 'pending'
-  const [pendingCount, setPendingCount] = useState(0)
   const [reviewTarget, setReviewTarget] = useState(null)
-  const [rejecting, setRejecting] = useState(false)
   const [search, setSearch] = useState('')
   const [dosageFilter, setDosageFilter] = useState('ALL')
   const [companyFilter, setCompanyFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [perPage, setPerPage] = useState(25)
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
+  const [currentPage, setCurrentPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
   const [viewTarget, setViewTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  const [bulkDeleting, setBulkDeleting] = useState(false)
-  const searchTimeout = useRef(null)
 
-  const fetchData = async (page = 1, q = search, dosage = dosageFilter, company = companyFilter, limit = perPage, tab = activeTab) => {
-    setLoading(true)
-    try {
-      const params = { page, per_page: limit, status: tab }
-      if (q) params.search = q
-      if (dosage && dosage !== 'ALL') params.dosage_type = dosage
-      if (company) params.company = company
-      const res = await getMedicines(params)
-      const data = res.data?.data || res.data
-      setItems(Array.isArray(data) ? data : (data?.data || []))
-      if (data?.current_page) {
-        setPagination({
-          current_page: data.current_page,
-          last_page: data.last_page || 1,
-          total: data.total || 0
-        })
-      } else if (res.data?.current_page) {
-        setPagination({
-          current_page: res.data.current_page,
-          last_page: res.data.last_page || 1,
-          total: res.data.total || 0
-        })
-      } else {
-        setPagination({
-          current_page: page,
-          last_page: 1,
-          total: Array.isArray(data) ? data.length : 0
-        })
-      }
-    } catch (err) {
-      console.error('Error loading medicines:', err)
-      setItems([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const debouncedSearch = useDebounce(search, 400)
 
-  const fetchPendingCount = async () => {
-    try {
-      const res = await getMedicinesPendingCount()
-      if (res.data?.count !== undefined) {
-        setPendingCount(res.data.count)
-      }
-    } catch (e) {}
-  }
-
+  // Reset page when filters or tabs change
   useEffect(() => {
-    fetchData(1, search, dosageFilter, companyFilter, perPage, 'active')
-    fetchPendingCount()
-  }, [])
+    setCurrentPage(1)
+    setSelectedIds([])
+  }, [activeTab, debouncedSearch, dosageFilter, companyFilter, perPage])
+
+  // Query Parameters
+  const queryParams = useMemo(() => {
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+      status: activeTab,
+    }
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim()
+    if (dosageFilter && dosageFilter !== 'ALL') params.dosage_type = dosageFilter
+    if (companyFilter.trim()) params.company = companyFilter.trim()
+    return params
+  }, [currentPage, perPage, activeTab, debouncedSearch, dosageFilter, companyFilter])
+
+  // TanStack Query Hooks
+  const {
+    items,
+    pagination,
+    isLoading: loading,
+    isFetching: refreshing,
+    refetch,
+  } = useAdminMedicines(queryParams)
+
+  const {
+    pendingCount,
+    refetch: refetchPendingCount,
+  } = useAdminMedicinesPendingCount()
+
+  const {
+    deleteMedicine,
+    isDeleting: deleting,
+    bulkDeleteMedicines,
+    isBulkDeleting: bulkDeleting,
+    rejectMedicine,
+    isRejecting: rejecting,
+  } = useAdminMedicineMutations()
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setSelectedIds([])
-    fetchData(1, search, dosageFilter, companyFilter, perPage, tab)
   }
 
   const handleReject = async (med) => {
     if (!window.confirm(`Are you sure you want to reject suggestion "${med.medicine_name}"?`)) return
-    setRejecting(true)
     try {
       await rejectMedicine(med.id)
       toast.success(`"${med.medicine_name}" suggestion rejected.`)
-      fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage, activeTab)
-      fetchPendingCount()
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to reject suggestion'))
-    } finally {
-      setRejecting(false)
     }
-  }
-
-  const handleSearch = (val) => {
-    setSearch(val)
-    if (searchTimeout.current) clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      fetchData(1, val, dosageFilter, companyFilter, perPage)
-    }, 400)
-  }
-
-  const handleDosageFilter = (val) => {
-    setDosageFilter(val)
-    fetchData(1, search, val, companyFilter, perPage)
-  }
-
-  const handleCompanyFilter = (val) => {
-    setCompanyFilter(val)
-    if (searchTimeout.current) clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      fetchData(1, search, dosageFilter, val, perPage)
-    }, 400)
   }
 
   // Selection handlers
@@ -787,35 +744,27 @@ export default function MedicineListPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       await deleteMedicine(deleteTarget.id)
       toast.success('Medicine deleted successfully')
       setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
       setDeleteTarget(null)
-      fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete medicine'))
       console.error(err)
-    } finally {
-      setDeleting(false)
     }
   }
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return
-    setBulkDeleting(true)
     try {
       const res = await bulkDeleteMedicines(selectedIds)
-      toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} medicine(s)`)
+      toast.success(res?.data?.message || `Successfully deleted ${selectedIds.length} medicine(s)`)
       setSelectedIds([])
       setShowBulkDeleteModal(false)
-      fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete selected medicines'))
       console.error(err)
-    } finally {
-      setBulkDeleting(false)
     }
   }
 
@@ -843,17 +792,17 @@ export default function MedicineListPage() {
 
       <ListToolbar
         search={search}
-        onSearchChange={handleSearch}
+        onSearchChange={(val) => { setSearch(val); setCurrentPage(1); }}
         searchPlaceholder="Search medicine or generic name..."
-        onRefresh={() => fetchData(1, search, dosageFilter, companyFilter, perPage)}
-        refreshing={loading}
+        onRefresh={() => { refetch(); refetchPendingCount(); }}
+        refreshing={loading || refreshing}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(dosageFilter !== 'ALL' || companyFilter)}
-        onClearFilters={() => { setDosageFilter('ALL'); setCompanyFilter(''); fetchData(1, search, 'ALL', '', perPage) }}
+        onClearFilters={() => { setDosageFilter('ALL'); setCompanyFilter(''); setCurrentPage(1); }}
         activeFilters={[
-          dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => { setDosageFilter('ALL'); fetchData(1, search, 'ALL', companyFilter, perPage) } },
-          companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => { setCompanyFilter(''); fetchData(1, search, dosageFilter, '', perPage) } },
+          dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => { setDosageFilter('ALL'); setCurrentPage(1); } },
+          companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => { setCompanyFilter(''); setCurrentPage(1); } },
         ].filter(Boolean)}
         actions={
           (isAdmin || hasPermission('medicine.create')) && (
@@ -865,13 +814,13 @@ export default function MedicineListPage() {
       >
         <div style={{ minWidth: 160 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Dosage Type</label>
-          <select className="status-select" value={dosageFilter} onChange={e => handleDosageFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+          <select className="status-select" value={dosageFilter} onChange={e => { setDosageFilter(e.target.value); setCurrentPage(1); }} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             {DOSAGE_TYPES.map(t => <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>)}
           </select>
         </div>
         <div style={{ minWidth: 180 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Company</label>
-          <input type="text" placeholder="Filter company..." value={companyFilter} onChange={e => handleCompanyFilter(e.target.value)} className="admin-form-input" style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
+          <input type="text" placeholder="Filter company..." value={companyFilter} onChange={e => { setCompanyFilter(e.target.value); setCurrentPage(1); }} className="admin-form-input" style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
         </div>
       </ListToolbar>
 
@@ -1237,10 +1186,10 @@ export default function MedicineListPage() {
 
       <TableFooter
         total={pagination.total || 0}
-        currentPage={pagination.current_page || 1}
-        setCurrentPage={(p) => fetchData(p, search, dosageFilter, companyFilter, perPage)}
+        currentPage={pagination.current_page || currentPage}
+        setCurrentPage={(p) => setCurrentPage(p)}
         perPage={perPage}
-        setPerPage={(n) => { setPerPage(n); fetchData(1, search, dosageFilter, companyFilter, n) }}
+        setPerPage={(n) => { setPerPage(n); setCurrentPage(1); }}
         perPageOptions={[10, 25, 50, 100, 500]}
       />
 
@@ -1276,8 +1225,8 @@ export default function MedicineListPage() {
           medicine={reviewTarget}
           onClose={() => setReviewTarget(null)}
           onSuccess={() => {
-            fetchData(pagination.current_page, search, dosageFilter, companyFilter, perPage, activeTab)
-            fetchPendingCount()
+            refetch()
+            refetchPendingCount()
           }}
         />
       )}

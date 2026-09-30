@@ -7,7 +7,52 @@ import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { getPrescriptions } from '../../api/adminApi'
 
-import { Sun, Moon, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical, CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt, ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket, Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings, Tag, Clock, Megaphone } from 'lucide-react'
+import {
+  Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+  LayoutDashboard, Map, MapPin, Building2, Building, Stethoscope, BriefcaseMedical,
+  CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt,
+  ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
+  Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
+  Tag, Clock, Megaphone
+} from 'lucide-react'
+
+// ─── Collapsible Section Component ────────────────────────────────────────────
+function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed, openSections, onToggle, children }) {
+  const location = useLocation()
+
+  // Force open if the current page belongs to this section
+  const isActiveSection = routes.some(r =>
+    location.pathname === r ||
+    location.pathname.startsWith(r + '/') ||
+    location.pathname.startsWith(r + '?')
+  )
+
+  const isOpen = isActiveSection || openSections[id] !== false // default open
+
+  // When sidebar is icon-only, always show children (can't show section headers)
+  if (sidebarCollapsed) {
+    return <>{children}</>
+  }
+
+  return (
+    <div className="sidebar-section-group">
+      <button
+        className={`sidebar-section-header${isActiveSection ? ' active-section' : ''}`}
+        onClick={() => onToggle(id)}
+        title={label}
+      >
+        <span className="sidebar-section-label">{label}</span>
+        <span className="sidebar-section-chevron">
+          {isOpen
+            ? <ChevronUp size={12} />
+            : <ChevronDown size={12} />
+          }
+        </span>
+      </button>
+      {isOpen && <div className="sidebar-section-items">{children}</div>}
+    </div>
+  )
+}
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
@@ -41,7 +86,28 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     ? `doc_${user.doctor.id}`
     : (user?.doctor_id ? `doc_${user.doctor_id}` : (user?.id ? `usr_${user.id}` : null))
 
-  // Prescription Drafts Count Badge
+  // ─── Section open/close state (persisted in localStorage) ─────────────────
+  const STORAGE_KEY = `sidebar_sections_${roleName}`
+
+  const [openSections, setOpenSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  const handleToggleSection = (id) => {
+    setOpenSections(prev => {
+      const current = prev[id] !== false // default open
+      const next = { ...prev, [id]: !current }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  // ─── Prescription Drafts Count Badge ──────────────────────────────────────
   const [rxDraftCount, setRxDraftCount] = useState(0)
 
   const updateRxDraftCount = useCallback(async () => {
@@ -52,7 +118,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       const dbDrafts = Array.isArray(allPrescriptions) ? allPrescriptions.filter(p => p.status === 'draft') : []
       let count = dbDrafts.length
 
-      // Check local browser drafts and clean up stale/finalized drafts
       if (doctorScopeId) {
         try {
           const prefix = `dr_rx_draft_${doctorScopeId}_`
@@ -92,11 +157,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               ) : null
 
               if (dbMatch) {
-                // If the prescription is finalized or locked, purge the stale local draft
                 if (dbMatch.status === 'finalized' || dbMatch.status === 'locked') {
                   localStorage.removeItem(key)
                 }
-                // If it is in DB as a draft, it is already counted in dbDrafts.length
                 continue
               }
 
@@ -148,6 +211,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     return () => window.removeEventListener('rx-draft-count-updated', handleDraftEvent)
   }, [updateRxDraftCount, location.pathname])
 
+  // ─── Shared props for SidebarSection ──────────────────────────────────────
+  const sectionProps = { isCollapsed, openSections, onToggle: handleToggleSection }
+
   return (
     <>
       {/* Mobile overlay */}
@@ -194,11 +260,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <span className="nav-text">Dashboard</span>
           </NavLink>
 
-          {/* Core Management — restricted if not admin/manager and no permissions */}
-          {(isAdmin || isManager || hasPermission('division.view') || hasPermission('district.view') || hasPermission('specialty.view')) && (
-            <>
-              <div className="sidebar-section-title">Management</div>
-
+          {/* ── GEOGRAPHY ── Admin only */}
+          {(isAdmin || hasPermission('division.view') || hasPermission('district.view') || hasPermission('specialty.view')) && (
+            <SidebarSection id="geography" label="Geography" routes={['/admin/divisions', '/admin/districts', '/admin/upazilas', '/admin/unions']} {...sectionProps}>
               {(isAdmin || hasPermission('division.view')) && (
                 <NavLink
                   to="/admin/divisions"
@@ -246,7 +310,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   <span className="nav-text">Unions</span>
                 </NavLink>
               )}
+            </SidebarSection>
+          )}
 
+          {/* ── CONFIGURATION ── Admin only */}
+          {(isAdmin || hasPermission('specialty.view') || hasPermission('medicine.view')) && (
+            <SidebarSection id="configuration" label="Configuration" routes={['/admin/specialties', '/admin/medicines', '/doctor/medicines', '/hospital/medicines']} {...sectionProps}>
               {(isAdmin || hasPermission('specialty.view')) && (
                 <NavLink
                   to="/admin/specialties"
@@ -258,24 +327,98 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   <span className="nav-text">Specialties</span>
                 </NavLink>
               )}
-            </>
+
+              {(isAdmin || hasPermission('medicine.view')) && (
+                <NavLink
+                  to={pLink('/medicines')}
+                  className={`sidebar-nav-item ${isActive(pLink('/medicines')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Medicines' : undefined}
+                >
+                  <span className="nav-icon"><Pill size={18} /></span>
+                  <span className="nav-text">Medicines</span>
+                </NavLink>
+              )}
+            </SidebarSection>
           )}
 
-          {/* Hospitals — admin, manager, or permission */}
-          {(isAdmin || isManager || hasPermission('hospital.view')) && (
-            <>
-              <div className="sidebar-section-title">Facilities</div>
+          {/* ── CLINICAL ── Admin, Manager, Doctor */}
+          {(isAdmin || isManager || isDoctor || hasPermission('doctor.view') || hasPermission('hospital.view')) && (
+            <SidebarSection
+              id="clinical"
+              label={isDoctor ? 'My Profile' : 'Clinical'}
+              routes={[
+                '/admin/doctors', '/admin/hospitals', '/admin/chambers', '/admin/doctor-leaves',
+                '/doctor/my-profile', '/doctor/chambers', '/doctor/my-leaves', '/doctor/hospital-subscription', '/doctor/hospital-reviews',
+                '/hospital/my-hospital', '/hospital/doctors', '/hospital/chambers', '/hospital/doctor-leaves', '/hospital/hospital-subscription', '/hospital/hospital-reviews',
+              ]}
+              {...sectionProps}
+            >
+              {/* Doctors */}
+              {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (
+                <NavLink
+                  to={isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')}
+                  className={`sidebar-nav-item ${isActive(isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? (isDoctor ? 'My Profile' : 'Doctors') : undefined}
+                >
+                  <span className="nav-icon"><Stethoscope size={18} /></span>
+                  <span className="nav-text">{isDoctor ? 'My Profile' : 'Doctors'}</span>
+                </NavLink>
+              )}
 
-              <NavLink
-                to={isManager ? pLink('/my-hospital') : '/admin/hospitals'}
-                className={`sidebar-nav-item ${isActive(isManager ? pLink('/my-hospital') : '/admin/hospitals') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? (isManager ? 'My Hospital' : 'Hospitals') : undefined}
-              >
-                <span className="nav-icon"><Building2 size={18} /></span>
-                <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
-              </NavLink>
+              {/* Hospitals */}
+              {(isAdmin || isManager || hasPermission('hospital.view')) && (
+                <NavLink
+                  to={isManager ? pLink('/my-hospital') : '/admin/hospitals'}
+                  className={`sidebar-nav-item ${isActive(isManager ? pLink('/my-hospital') : '/admin/hospitals') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? (isManager ? 'My Hospital' : 'Hospitals') : undefined}
+                >
+                  <span className="nav-icon"><Building2 size={18} /></span>
+                  <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
+                </NavLink>
+              )}
 
+              {/* Chambers */}
+              {(isAdmin || isManager || isDoctor || hasPermission('doctor_chamber.view')) && (
+                <NavLink
+                  to={pLink('/chambers')}
+                  className={`sidebar-nav-item ${isActive(pLink('/chambers')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? (isDoctor ? 'My Chambers' : 'Chambers') : undefined}
+                >
+                  <span className="nav-icon"><BriefcaseMedical size={18} /></span>
+                  <span className="nav-text">{isDoctor ? 'My Chambers' : 'Chambers'}</span>
+                </NavLink>
+              )}
+
+              {/* Doctor Leaves */}
+              {isDoctor && (
+                <NavLink
+                  to={pLink('/my-leaves')}
+                  className={`sidebar-nav-item ${isActive(pLink('/my-leaves')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'My Leaves' : undefined}
+                >
+                  <span className="nav-icon"><CalendarOff size={18} /></span>
+                  <span className="nav-text">My Leaves</span>
+                </NavLink>
+              )}
+
+              {(isAdmin || isManager || hasPermission('doctor_leave.view')) && !isDoctor && (
+                <NavLink
+                  to="/admin/doctor-leaves"
+                  className={`sidebar-nav-item ${isActive('/admin/doctor-leaves') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Doctor Leaves' : undefined}
+                >
+                  <span className="nav-icon"><CalendarOff size={18} /></span>
+                  <span className="nav-text">Doctor Leaves</span>
+                </NavLink>
+              )}
+
+              {/* Manager-only hospital extras */}
               {isManager && (
                 <>
                   <NavLink
@@ -309,211 +452,213 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   </NavLink>
                 </>
               )}
-            </>
+            </SidebarSection>
           )}
 
-          {/* Clinical Section */}
-          <div className="sidebar-section-title">
-            {isDoctor ? 'My Profile' : 'Clinical'}
-          </div>
-
-          {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (
-            <NavLink
-              to={isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')}
-              className={`sidebar-nav-item ${isActive(isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? (isDoctor ? 'My Profile' : 'Doctors') : undefined}
+          {/* ── BOOKINGS ── Admin, Manager, Doctor */}
+          {(isAdmin || isManager || isDoctor || hasPermission('appointment.view') || hasPermission('patient.view')) && (
+            <SidebarSection
+              id="bookings"
+              label={isDoctor ? 'My Patients' : 'Bookings'}
+              routes={[
+                '/admin/patients', '/admin/appointments', '/admin/serial-display', '/admin/prescriptions',
+                '/doctor/patients', '/doctor/appointments', '/doctor/serial-display', '/doctor/prescriptions', '/doctor/notes', '/doctor/doctor-reviews',
+                '/hospital/patients', '/hospital/appointments', '/hospital/serial-display', '/hospital/prescriptions',
+              ]}
+              {...sectionProps}
             >
-              <span className="nav-icon"><Stethoscope size={18} /></span>
-              <span className="nav-text">{isDoctor ? 'My Profile' : 'Doctors'}</span>
-            </NavLink>
-          )}
-
-          {(isAdmin || isManager || isDoctor || hasPermission('doctor_chamber.view')) && (
-            <NavLink
-              to={pLink('/chambers')}
-              className={`sidebar-nav-item ${isActive(pLink('/chambers')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? (isDoctor ? 'My Chambers' : 'Chambers') : undefined}
-            >
-              <span className="nav-icon"><BriefcaseMedical size={18} /></span>
-              <span className="nav-text">{isDoctor ? 'My Chambers' : 'Chambers'}</span>
-            </NavLink>
-          )}
-
-          {/* Doctor: My Leaves / Admin: Doctor Leaves */}
-          {isDoctor && (
-            <NavLink
-              to={pLink('/my-leaves')}
-              className={`sidebar-nav-item ${isActive(pLink('/my-leaves')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'My Leaves' : undefined}
-            >
-              <span className="nav-icon"><CalendarOff size={18} /></span>
-              <span className="nav-text">My Leaves</span>
-            </NavLink>
-          )}
-
-          {(isAdmin || isManager || hasPermission('doctor_leave.view')) && !isDoctor && (
-            <NavLink
-              to="/admin/doctor-leaves"
-              className={`sidebar-nav-item ${isActive('/admin/doctor-leaves') ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Doctor Leaves' : undefined}
-            >
-              <span className="nav-icon"><CalendarOff size={18} /></span>
-              <span className="nav-text">Doctor Leaves</span>
-            </NavLink>
-          )}
-
-          {/* Bookings Section */}
-          <div className="sidebar-section-title">
-            {isDoctor ? 'My Patients' : 'Bookings'}
-          </div>
-
-          {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
-            <NavLink
-              to={pLink('/patients')}
-              className={`sidebar-nav-item ${isActive(pLink('/patients')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? (isDoctor ? 'My Patients' : 'Patients') : undefined}
-            >
-              <span className="nav-icon"><Users size={18} /></span>
-              <span className="nav-text">{isDoctor ? 'My Patients' : 'Patients'}</span>
-            </NavLink>
-          )}
-
-          {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
-            <>
-              <NavLink
-                to={pLink('/appointments')}
-                className={`sidebar-nav-item ${isActive(pLink('/appointments')) ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Appointments' : undefined}
-              >
-                <span className="nav-icon"><CalendarCheck size={18} /></span>
-                <span className="nav-text">Appointments</span>
-              </NavLink>
-
-              <NavLink
-                to={pLink('/serial-display')}
-                className={`sidebar-nav-item ${isActive(pLink('/serial-display')) ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Serial Display' : undefined}
-              >
-                <span className="nav-icon"><Tv size={18} /></span>
-                <span className="nav-text">Serial Display</span>
-              </NavLink>
-            </>
-          )}
-
-          {(isAdmin || isManager || isDoctor || hasPermission('payment.view')) && (
-            <NavLink
-              to={pLink('/payments')}
-              className={`sidebar-nav-item ${isActive(pLink('/payments')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Payments' : undefined}
-            >
-              <span className="nav-icon"><CreditCard size={18} /></span>
-              <span className="nav-text">Payments</span>
-            </NavLink>
-          )}
-
-          {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (() => {
-            const rxPath = pLink('/prescriptions')
-            const isDraftActive = location.pathname === rxPath && location.search.includes('tab=draft')
-            const isMainPrescriptionActive = (location.pathname === rxPath || location.pathname.startsWith(rxPath + '/')) && !isDraftActive
-
-            return (
-              <>
-                <Link
-                  to={rxPath}
-                  className={`sidebar-nav-item ${isMainPrescriptionActive ? 'active' : ''}`}
+              {/* Patients */}
+              {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
+                <NavLink
+                  to={pLink('/patients')}
+                  className={`sidebar-nav-item ${isActive(pLink('/patients')) ? 'active' : ''}`}
                   onClick={onClose}
-                  title={isCollapsed ? 'Prescriptions' : undefined}
+                  title={isCollapsed ? (isDoctor ? 'My Patients' : 'Patients') : undefined}
                 >
-                  <span className="nav-icon"><FileText size={18} /></span>
-                  <span className="nav-text">Prescriptions</span>
-                </Link>
+                  <span className="nav-icon"><Users size={18} /></span>
+                  <span className="nav-text">{isDoctor ? 'My Patients' : 'Patients'}</span>
+                </NavLink>
+              )}
 
-                {isDoctor && (
-                  <Link
-                    to={`${rxPath}?tab=draft`}
-                    className={`sidebar-nav-item ${isDraftActive ? 'active' : ''}`}
+              {/* Appointments + Serial Display */}
+              {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
+                <>
+                  <NavLink
+                    to={pLink('/appointments')}
+                    className={`sidebar-nav-item ${isActive(pLink('/appointments')) ? 'active' : ''}`}
                     onClick={onClose}
-                    title={isCollapsed ? `Prescription Drafts (${rxDraftCount})` : undefined}
+                    title={isCollapsed ? 'Appointments' : undefined}
                   >
-                    <span className="nav-icon">
-                      <Clock size={18} />
-                    </span>
-                    <span className="nav-text">Rx Drafts (খসড়া)</span>
-                    {!isCollapsed && (
-                      <span 
-                        style={{
-                          marginLeft: 'auto',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: '1.5px 7px',
-                          borderRadius: 10,
-                          lineHeight: '14px',
-                          background: isDraftActive ? '#ffffff' : '#FEF3C7',
-                          color: isDraftActive ? '#00B875' : '#D97706',
-                          border: isDraftActive ? 'none' : '1px solid #FDE68A',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
+                    <span className="nav-icon"><CalendarCheck size={18} /></span>
+                    <span className="nav-text">Appointments</span>
+                  </NavLink>
+
+                  <NavLink
+                    to={pLink('/serial-display')}
+                    className={`sidebar-nav-item ${isActive(pLink('/serial-display')) ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Serial Display' : undefined}
+                  >
+                    <span className="nav-icon"><Tv size={18} /></span>
+                    <span className="nav-text">Serial Display</span>
+                  </NavLink>
+                </>
+              )}
+
+              {/* Prescriptions */}
+              {!isManager && (isAdmin || isDoctor || hasPermission('prescription.view')) && (() => {
+                const rxPath = pLink('/prescriptions')
+                const isDraftActive = location.pathname === rxPath && location.search.includes('tab=draft')
+                const isMainPrescriptionActive = (location.pathname === rxPath || location.pathname.startsWith(rxPath + '/')) && !isDraftActive
+
+                return (
+                  <>
+                    <Link
+                      to={rxPath}
+                      className={`sidebar-nav-item ${isMainPrescriptionActive ? 'active' : ''}`}
+                      onClick={onClose}
+                      title={isCollapsed ? 'Prescriptions' : undefined}
+                    >
+                      <span className="nav-icon"><FileText size={18} /></span>
+                      <span className="nav-text">Prescriptions</span>
+                    </Link>
+
+                    {isDoctor && (
+                      <Link
+                        to={`${rxPath}?tab=draft`}
+                        className={`sidebar-nav-item ${isDraftActive ? 'active' : ''}`}
+                        onClick={onClose}
+                        title={isCollapsed ? `Prescription Drafts (${rxDraftCount})` : undefined}
                       >
-                        {rxDraftCount}
-                      </span>
+                        <span className="nav-icon">
+                          <Clock size={18} />
+                        </span>
+                        <span className="nav-text">Rx Drafts (খসড়া)</span>
+                        {!isCollapsed && (
+                          <span
+                            style={{
+                              marginLeft: 'auto',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '1.5px 7px',
+                              borderRadius: 10,
+                              lineHeight: '14px',
+                              background: isDraftActive ? '#ffffff' : '#FEF3C7',
+                              color: isDraftActive ? '#00B875' : '#D97706',
+                              border: isDraftActive ? 'none' : '1px solid #FDE68A',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            {rxDraftCount}
+                          </span>
+                        )}
+                      </Link>
                     )}
-                  </Link>
-                )}
-              </>
-            )
-          })()}
+                  </>
+                )
+              })()}
 
-          {isDoctor && (
-            <NavLink
-              to={pLink('/notes')}
-              className={`sidebar-nav-item ${isActive(pLink('/notes')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'My Notes' : undefined}
-            >
-              <span className="nav-icon"><ClipboardPlus size={18} /></span>
-              <span className="nav-text">My Notes</span>
-            </NavLink>
+              {/* Doctor-only extras */}
+              {isDoctor && (
+                <NavLink
+                  to={pLink('/notes')}
+                  className={`sidebar-nav-item ${isActive(pLink('/notes')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'My Notes' : undefined}
+                >
+                  <span className="nav-icon"><ClipboardPlus size={18} /></span>
+                  <span className="nav-text">My Notes</span>
+                </NavLink>
+              )}
+
+              {isDoctor && (
+                <NavLink
+                  to={pLink('/doctor-reviews')}
+                  className={`sidebar-nav-item ${isActive(pLink('/doctor-reviews')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Patient Reviews' : undefined}
+                >
+                  <span className="nav-icon"><MessageSquare size={18} /></span>
+                  <span className="nav-text">Patient Reviews</span>
+                </NavLink>
+              )}
+            </SidebarSection>
           )}
 
-          {isDoctor && (
-            <NavLink
-              to={pLink('/doctor-reviews')}
-              className={`sidebar-nav-item ${isActive(pLink('/doctor-reviews')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Patient Reviews' : undefined}
-            >
-              <span className="nav-icon"><MessageSquare size={18} /></span>
-              <span className="nav-text">Patient Reviews</span>
-            </NavLink>
+          {/* ── FINANCE ── Admin, Manager, Doctor */}
+          {(isAdmin || isManager || isDoctor || hasPermission('payment.view') || hasPermission('commission.view')) && (
+            <SidebarSection id="finance" label="Finance" routes={['/admin/payments', '/admin/commission', '/admin/reports', '/admin/billing', '/doctor/payments', '/hospital/payments']} {...sectionProps}>
+              {/* Payments */}
+              {(isAdmin || isManager || isDoctor || hasPermission('payment.view')) && (
+                <NavLink
+                  to={pLink('/payments')}
+                  className={`sidebar-nav-item ${isActive(pLink('/payments')) ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Payments' : undefined}
+                >
+                  <span className="nav-icon"><CreditCard size={18} /></span>
+                  <span className="nav-text">Payments</span>
+                </NavLink>
+              )}
+
+              {/* Commission & Reports — Admin + Manager */}
+              {(isAdmin || isManager || hasPermission('commission.view')) && (
+                <>
+                  {isAdmin && (
+                    <NavLink
+                      to="/admin/commission"
+                      className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
+                      onClick={onClose}
+                      title={isCollapsed ? 'Commission' : undefined}
+                    >
+                      <span className="nav-icon"><Receipt size={18} /></span>
+                      <span className="nav-text">Commission & Service</span>
+                    </NavLink>
+                  )}
+
+                  <NavLink
+                    to="/admin/reports/commission"
+                    className={`sidebar-nav-item ${isActive('/admin/reports/commission') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Commission Report' : undefined}
+                  >
+                    <span className="nav-icon"><Receipt size={18} /></span>
+                    <span className="nav-text">Commission Report</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/reports/purchase"
+                    className={`sidebar-nav-item ${isActive('/admin/reports/purchase') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Purchase Report' : undefined}
+                  >
+                    <span className="nav-icon"><ShoppingCart size={18} /></span>
+                    <span className="nav-text">Purchase Report</span>
+                  </NavLink>
+                </>
+              )}
+
+              {/* Enterprise Billing — Admin only */}
+              {isAdmin && (
+                <NavLink
+                  to="/admin/billing/dashboard"
+                  className={`sidebar-nav-item ${isActive('/admin/billing') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Enterprise Billing' : undefined}
+                >
+                  <span className="nav-icon"><CreditCard size={18} /></span>
+                  <span className="nav-text">Enterprise Billing</span>
+                </NavLink>
+              )}
+            </SidebarSection>
           )}
 
-          {(isAdmin || isDoctor || (isManager && false) || hasPermission('medicine.view')) && (
-            <NavLink
-              to={pLink('/medicines')}
-              className={`sidebar-nav-item ${isActive(pLink('/medicines')) ? 'active' : ''}`}
-              onClick={onClose}
-              title={isCollapsed ? 'Medicines' : undefined}
-            >
-              <span className="nav-icon"><Pill size={18} /></span>
-              <span className="nav-text">Medicines</span>
-            </NavLink>
-          )}
-
-          {/* Marketing Section — Admin & Manager */}
+          {/* ── PROMOTION ── Admin + Manager */}
           {(isAdmin || isManager || hasPermission('commission.view')) && (
-            <>
-              <div className="sidebar-section-title">Promotion</div>
+            <SidebarSection id="promotion" label="Promotion" routes={['/admin/highlights']} {...sectionProps}>
               <NavLink
                 to="/admin/highlights"
                 className={`sidebar-nav-item ${isActive('/admin/highlights') ? 'active' : ''}`}
@@ -523,45 +668,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><Sparkles size={18} /></span>
                 <span className="nav-text">Highlights</span>
               </NavLink>
-
-              {isAdmin && (
-                <NavLink
-                  to="/admin/commission"
-                  className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? 'Commission' : undefined}
-                >
-                  <span className="nav-icon"><Receipt size={18} /></span>
-                  <span className="nav-text">Commission & Service</span>
-                </NavLink>
-              )}
-
-              <NavLink
-                to="/admin/reports/commission"
-                className={`sidebar-nav-item ${isActive('/admin/reports/commission') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Commission Report' : undefined}
-              >
-                <span className="nav-icon"><Receipt size={18} /></span>
-                <span className="nav-text">Commission Report</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/reports/purchase"
-                className={`sidebar-nav-item ${isActive('/admin/reports/purchase') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Purchase Report' : undefined}
-              >
-                <span className="nav-icon"><ShoppingCart size={18} /></span>
-                <span className="nav-text">Purchase Report</span>
-              </NavLink>
-            </>
+            </SidebarSection>
           )}
 
-          {/* Review Moderation Section — Admin */}
+          {/* ── MODERATION ── Admin only */}
           {isAdmin && (
-            <>
-              <div className="sidebar-section-title">MODERATION</div>
+            <SidebarSection id="moderation" label="Moderation" routes={['/admin/reviews']} {...sectionProps}>
               <NavLink
                 to="/admin/reviews/moderation"
                 className={`sidebar-nav-item ${isActive('/admin/reviews/moderation') ? 'active' : ''}`}
@@ -581,26 +693,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><Shield size={18} /></span>
                 <span className="nav-text">Dispute Reports</span>
               </NavLink>
-            </>
+            </SidebarSection>
           )}
 
-          {/* System Admin Section */}
-          {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('payment.view') || hasPermission('content.update') || hasPermission('patient.view')) && (
-            <>
-              <div className="sidebar-section-title">System</div>
-
-              {!isDoctor && (isAdmin || isManager || hasPermission('patient.view')) && (
-                <NavLink
-                  to="/admin/patients"
-                  className={`sidebar-nav-item ${isActive('/admin/patients') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? 'Patients' : undefined}
-                >
-                  <span className="nav-icon"><Users size={18} /></span>
-                  <span className="nav-text">Patients</span>
-                </NavLink>
-              )}
-
+          {/* ── SYSTEM ── Admin, Manager, Doctor */}
+          {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('content.update')) && (
+            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/sms-settings', '/admin/audit-logs']} {...sectionProps}>
+              {/* Users — Admin only */}
               {(isAdmin || hasPermission('user.view')) && (
                 <NavLink
                   to="/admin/users"
@@ -613,7 +712,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </NavLink>
               )}
 
-
+              {/* Content CMS & Support Ticket */}
               {(isAdmin || hasPermission('content.update')) && (
                 <>
                   <NavLink
@@ -638,6 +737,20 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </>
               )}
 
+              {/* SMS Settings — Admin only */}
+              {isAdmin && (
+                <NavLink
+                  to="/admin/sms-settings"
+                  className={`sidebar-nav-item ${isActive('/admin/sms-settings') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'SMS & OTP Settings' : undefined}
+                >
+                  <span className="nav-icon"><MessageSquare size={18} /></span>
+                  <span className="nav-text">SMS & OTP Settings</span>
+                </NavLink>
+              )}
+
+              {/* Audit Log — Admin only */}
               {isAdmin && (
                 <NavLink
                   to="/admin/audit-logs"
@@ -649,14 +762,27 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   <span className="nav-text">Audit Log</span>
                 </NavLink>
               )}
-            </>
+            </SidebarSection>
           )}
 
-          {/* Subscription Section — Doctor */}
-          {isDoctor && (
-            <>
-              <div className="sidebar-section-title">SUBSCRIPTION</div>
+          {/* ── COMMUNICATION ── Admin only */}
+          {isAdmin && (
+            <SidebarSection id="communication" label="Communication" routes={['/admin/messages']} {...sectionProps}>
+              <NavLink
+                to="/admin/messages"
+                className={`sidebar-nav-item ${isActive('/admin/messages') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Notices & Broadcasts' : undefined}
+              >
+                <span className="nav-icon"><Megaphone size={18} /></span>
+                <span className="nav-text">Notices & Broadcasts</span>
+              </NavLink>
+            </SidebarSection>
+          )}
 
+          {/* ── SUBSCRIPTION ── Doctor only */}
+          {isDoctor && (
+            <SidebarSection id="subscription" label="Subscription" routes={['/doctor/subscription']} {...sectionProps}>
               <NavLink
                 to={pLink('/subscription')}
                 className={`sidebar-nav-item ${isActive(pLink('/subscription')) && !isActive(pLink('/subscription/history')) ? 'active' : ''}`}
@@ -676,126 +802,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <span className="nav-icon"><History size={18} /></span>
                 <span className="nav-text">My Subscriptions</span>
               </NavLink>
-
-
-            </>
+            </SidebarSection>
           )}
 
-
-
-          {/* Admin Communication & Notices */}
-          {isAdmin && (
-            <>
-              <div className="sidebar-section-title">COMMUNICATION</div>
-
-              <NavLink
-                to="/admin/messages"
-                className={`sidebar-nav-item ${isActive('/admin/messages') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Notices & Broadcasts' : undefined}
-              >
-                <span className="nav-icon"><Megaphone size={18} /></span>
-                <span className="nav-text">Notices & Broadcasts</span>
-              </NavLink>
-            </>
-          )}
-
-          {isAdmin && (
-            <>
-              {/* ===== ENTERPRISE BILLING & REVENUE (PHASE 3) ===== */}
-              <div className="sidebar-section-title">ENTERPRISE BILLING</div>
-
-              <NavLink
-                to="/admin/billing/dashboard"
-                className={`sidebar-nav-item ${isActive('/admin/billing/dashboard') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Revenue Analytics' : undefined}
-              >
-                <span className="nav-icon"><DollarSign size={18} /></span>
-                <span className="nav-text">Revenue Analytics</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/plans"
-                className={`sidebar-nav-item ${isActive('/admin/billing/plans') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Subscription Plans' : undefined}
-              >
-                <span className="nav-icon"><CreditCard size={18} /></span>
-                <span className="nav-text">Subscription Plans</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/matrix"
-                className={`sidebar-nav-item ${isActive('/admin/billing/matrix') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Feature Matrix' : undefined}
-              >
-                <span className="nav-icon"><Layers size={18} /></span>
-                <span className="nav-text">Feature Matrix</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/subscribers"
-                className={`sidebar-nav-item ${isActive('/admin/billing/subscribers') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Subscribers & Lifecycle' : undefined}
-              >
-                <span className="nav-icon"><Users size={18} /></span>
-                <span className="nav-text">Subscribers & Lifecycle</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/invoices"
-                className={`sidebar-nav-item ${isActive('/admin/billing/invoices') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Invoices' : undefined}
-              >
-                <span className="nav-icon"><FileText size={18} /></span>
-                <span className="nav-text">Invoices</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/transactions"
-                className={`sidebar-nav-item ${isActive('/admin/billing/transactions') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Transactions & Fraud' : undefined}
-              >
-                <span className="nav-icon"><Shield size={18} /></span>
-                <span className="nav-text">Transactions & Fraud</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/coupons"
-                className={`sidebar-nav-item ${isActive('/admin/billing/coupons') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Coupons & Vouchers' : undefined}
-              >
-                <span className="nav-icon"><Tag size={18} /></span>
-                <span className="nav-text">Coupons & Vouchers</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/billing/settings"
-                className={`sidebar-nav-item ${isActive('/admin/billing/settings') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'Billing Settings' : undefined}
-              >
-                <span className="nav-icon"><Settings size={18} /></span>
-                <span className="nav-text">Billing Settings</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/sms-settings"
-                className={`sidebar-nav-item ${isActive('/admin/sms-settings') ? 'active' : ''}`}
-                onClick={onClose}
-                title={isCollapsed ? 'SMS & OTP Settings' : undefined}
-              >
-                <span className="nav-icon"><MessageSquare size={18} /></span>
-                <span className="nav-text">SMS & OTP Settings</span>
-              </NavLink>
-            </>
-          )}
         </nav>
 
       </aside>

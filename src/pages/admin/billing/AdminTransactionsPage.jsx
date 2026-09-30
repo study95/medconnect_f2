@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminTransactions,
   verifyPaymentTransaction,
@@ -38,20 +39,17 @@ import {
 import useDebounce from '../../../hooks/useDebounce'
 import { useAuth } from '../../../context/AuthContext'
 import '../../../styles/admin-billing.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminTransactionsPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [transactions, setTransactions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [gatewayFilter, setGatewayFilter] = useState('')
   const [fraudFilter, setFraudFilter] = useState(false)
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'manual_pending'
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({})
-
-  const debouncedSearch = useDebounce(search, 400)
 
   // Verification & Audit Modal
   const [selectedTx, setSelectedTx] = useState(null)
@@ -63,10 +61,29 @@ export default function AdminTransactionsPage() {
   const [actionError, setActionError] = useState(null)
   const [actionSuccess, setActionSuccess] = useState(null)
 
-  const loadTransactions = async () => {
-    try {
-      setLoading(true)
-      setActionError(null)
+  const debouncedSearch = useDebounce(search, 400)
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [activeTab, gatewayFilter, fraudFilter, debouncedSearch])
+
+  // TanStack Query for Transactions
+  const {
+    data: txResponse,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'transactions', {
+      search: debouncedSearch.trim() || undefined,
+      gateway: activeTab === 'manual_pending' ? 'manual_offline' : gatewayFilter || undefined,
+      has_fraud_alert: fraudFilter || undefined,
+      status: activeTab === 'manual_pending' ? 'pending' : undefined,
+      page,
+    }],
+    queryFn: async () => {
       const params = {
         search: debouncedSearch.trim() || undefined,
         gateway: activeTab === 'manual_pending' ? 'manual_offline' : gatewayFilter || undefined,
@@ -78,26 +95,18 @@ export default function AdminTransactionsPage() {
         params.status = 'pending'
       }
       const res = await getAdminTransactions(params)
-      const resMeta = res.data?.meta || {}
-      setMeta(resMeta)
-      const list = res.data?.data || []
-      setTransactions(Array.isArray(list) ? list : [])
-    } catch (err) {
-      setActionError(err?.response?.data?.message || 'লেনদেন তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return res.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
 
-  // Load transactions when filters or page change
-  useEffect(() => {
-    loadTransactions()
-  }, [activeTab, gatewayFilter, fraudFilter, page, debouncedSearch])
+  const transactions = useMemo(() => {
+    const list = txResponse?.data || []
+    return Array.isArray(list) ? list : []
+  }, [txResponse])
 
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setPage(1)
-  }, [activeTab, gatewayFilter, fraudFilter, debouncedSearch])
+  const meta = txResponse?.meta || {}
+  const error = queryError?.response?.data?.message || (queryError ? 'লেনদেন তালিকা লোড করতে ব্যর্থ হয়েছে।' : null)
 
   const fetchSlipBlob = async (txId) => {
     setSlipLoading(true)
@@ -155,7 +164,10 @@ export default function AdminTransactionsPage() {
       }
       setTimeout(() => {
         handleCloseModal()
-        loadTransactions()
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'transactions'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'subscribers'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'invoices'] })
       }, 1500)
     } catch (err) {
       if (err.response?.status === 409) {
@@ -220,47 +232,19 @@ export default function AdminTransactionsPage() {
 
         <div className="ab-header-actions">
           <button
-            onClick={loadTransactions}
+            onClick={() => refetch()}
             className="ab-btn-refresh"
             title="লেনদেন রিফ্রেশ করুন"
             aria-label="Refresh transactions"
-            disabled={loading}
+            disabled={loading || isFetching}
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill active">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-          {summaryMetrics.pendingManual > 0 && (
-            <span className="ab-nav-counter">{summaryMetrics.pendingManual}</span>
-          )}
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> বিলিং কনফিগারেশন
-        </Link>
-      </nav>
+      <AdminBillingTabs pendingCount={summaryMetrics.pendingManual} />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">
@@ -366,7 +350,7 @@ export default function AdminTransactionsPage() {
         <div className="ab-error-state" role="alert" aria-live="polite">
           <AlertTriangle size={20} />
           <span>{actionError}</span>
-          <button onClick={loadTransactions} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
+          <button onClick={() => refetch()} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 

@@ -110,3 +110,28 @@ export const approveAdminManualPayment = (id, note) =>
 export const rejectAdminManualPayment = (id, reason) => 
   axiosInstance.post(`${BASE}/manual-payments/${id}/reject`, { reason }).then(res => res.data)
 
+// ===== 9. PAYMENT GATEWAY ADMIN CONTROL =====
+export const getAdminGateways = () =>
+  axiosInstance.get(`${BASE}/gateways`).then(res => res.data)
+
+export const getAdminGateway = (gatewayKey) =>
+  axiosInstance.get(`${BASE}/gateways/${gatewayKey}`).then(res => res.data)
+
+export const getAdminEnabledGateways = () =>
+  axiosInstance.get(`${BASE}/gateways/enabled`).then(res => res.data)
+
+export const toggleAdminGateway = (gatewayKey, enabled) =>
+  axiosInstance.post(`${BASE}/gateways/${gatewayKey}/toggle`, { enabled }).then(res => res.data)
+
+export const setAdminGatewaySandbox = (gatewayKey, sandbox) =>
+  axiosInstance.post(`${BASE}/gateways/${gatewayKey}/sandbox`, { sandbox }).then(res => res.data)
+
+export const updateAdminGatewayMerchant = (gatewayKey, data) =>
+  axiosInstance.post(`${BASE}/gateways/${gatewayKey}/merchant`, data).then(res => res.data)
+
+// ⚠️ Credentials are write-only — never returned by API
+export const updateAdminGatewayCredentials = (gatewayKey, credentials) =>
+  axiosInstance.post(`${BASE}/gateways/${gatewayKey}/credentials`, { credentials }).then(res => res.data)
+
+export const clearAdminGatewayCredentials = (gatewayKey) =>
+  axiosInstance.post(`${BASE}/gateways/${gatewayKey}/clear-credentials`).then(res => res.data)

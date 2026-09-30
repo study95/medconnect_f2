@@ -1,7 +1,9 @@
 // CommissionReportPage.jsx — Admin Commission Report with premium filters
 import { useState, useEffect, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getCommissionReport, getDoctors, getHospitals, updateAppointment, bulkUpdateCommissionStatus } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import CommissionMemo from './CommissionMemo'
 
@@ -107,16 +109,10 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function CommissionReportPage() {
-  const [loading, setLoading] = useState(false)
+  const queryClient = useQueryClient()
   const [updating, setUpdating] = useState(null)
   const [bulking, setBulking] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  
-  const [data, setData] = useState([])
-  const [summary, setSummary] = useState({})
-  
-  const [doctors, setDoctors] = useState([])
-  const [hospitals, setHospitals] = useState([])
   
   const [filters, setFilters] = useState({
     doctor_id: '',
@@ -125,6 +121,7 @@ export default function CommissionReportPage() {
     year: new Date().getFullYear(),
     status: ''
   })
+  const [appliedFilters, setAppliedFilters] = useState(filters)
 
   const [selectedAppointments, setSelectedAppointments] = useState([])
   const [showMemo, setShowMemo] = useState(false)
@@ -134,10 +131,41 @@ export default function CommissionReportPage() {
 
   const hasFilters = Boolean(filters.doctor_id || filters.hospital_id || filters.month || filters.status)
 
-  useEffect(() => {
-    loadOptions()
-    fetchReport()
-  }, [])
+  const { data: doctors = [] } = useQuery({
+    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryFn: async () => {
+      const res = await getDoctors({ per_page: 500 })
+      return res.data?.data?.data || res.data?.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: hospitals = [] } = useQuery({
+    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryFn: async () => {
+      const res = await getHospitals({ per_page: 500 })
+      return res.data?.data?.data || res.data?.data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const {
+    data: report = { data: [], summary: {} },
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.commissions.commissionReport(appliedFilters),
+    queryFn: async () => {
+      const res = await getCommissionReport(appliedFilters)
+      const reportData = res.data?.data?.data || res.data?.data || res.data?.commissions || (Array.isArray(res.data) ? res.data : [])
+      const reportSummary = res.data?.summary || res.data?.stats || {}
+      return { data: reportData, summary: reportSummary }
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const data = report.data
+  const summary = report.summary
 
   useEffect(() => {
     setCurrentPage(1)
@@ -145,40 +173,24 @@ export default function CommissionReportPage() {
 
   const paginatedData = data.slice((currentPage - 1) * perPage, currentPage * perPage)
 
-  const loadOptions = async () => {
-    try {
-      const [docRes, hospRes] = await Promise.all([
-        getDoctors({ per_page: 500 }),
-        getHospitals({ per_page: 500 })
-      ])
-      setDoctors(docRes.data?.data?.data || docRes.data?.data || [])
-      setHospitals(hospRes.data?.data?.data || hospRes.data?.data || [])
-    } catch (err) { console.error(err) }
+  const fetchReport = () => {
+    setAppliedFilters({ ...filters })
+    setSelectedAppointments([])
   }
 
-  const fetchReport = async () => {
-    setLoading(true)
-    try {
-      const res = await getCommissionReport(filters)
-      // Robust data mapping for various API response patterns
-      const reportData = res.data?.data?.data || res.data?.data || res.data?.commissions || (Array.isArray(res.data) ? res.data : [])
-      const reportSummary = res.data?.summary || res.data?.stats || {}
-      
-      setData(reportData)
-      setSummary(reportSummary)
-      setSelectedAppointments([])
-    } catch (err) {
-    } finally {
-      setLoading(false)
-    }
+  const handleReset = () => {
+    const emptyFilters = { doctor_id: '', hospital_id: '', month: '', year: new Date().getFullYear(), status: '' }
+    setFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
+    setSelectedAppointments([])
   }
 
   const handleUpdateStatus = async (id, status) => {
     setUpdating(id)
     try {
       await updateAppointment(id, { commission_status: status })
-      
-      fetchReport()
+      queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
     } catch (err) {
     } finally {
       setUpdating(null)
@@ -193,8 +205,9 @@ export default function CommissionReportPage() {
         appointment_ids: selectedAppointments,
         commission_status: status
       })
-      
-      fetchReport()
+      queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
+      setSelectedAppointments([])
     } catch (err) {
     } finally {
       setBulking(false)
@@ -293,7 +306,7 @@ export default function CommissionReportPage() {
                 <button className="admin-btn admin-btn-primary" onClick={fetchReport} style={{ height: 42, padding: '0 24px' }}>Filter</button>
                 <button 
                   className="admin-btn admin-btn-outline" 
-                  onClick={() => setFilters({ doctor_id: '', hospital_id: '', month: '', year: new Date().getFullYear(), status: '' })}
+                  onClick={handleReset}
                   style={{ height: 42 }}
                 >
                   Reset

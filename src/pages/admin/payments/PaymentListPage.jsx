@@ -1,8 +1,9 @@
-// PaymentListPage.jsx — Admin payment records management
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
 import { getPayments, updatePayment, deletePayment, bulkDeletePayments } from '../../../api/adminApi'
+import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -93,8 +94,7 @@ const PAYMENT_STATUSES = ['all', 'paid', 'unpaid', 'refunded', 'partial']
 
 export default function PaymentListPage() {
   const { isAdmin } = useAuth()
-  const [payments, setPayments] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [methodFilter, setMethodFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -109,25 +109,28 @@ export default function PaymentListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const fetchPayments = async () => {
-    try {
-      setLoading(true)
-      const params = {}
-      if (search) params.search = search
-      if (methodFilter !== 'all') params.payment_method = methodFilter
-      if (statusFilter !== 'all') params.payment_status = statusFilter
-      if (dateFrom) params.date_from = dateFrom
-      if (dateTo) params.date_to = dateTo
+  const queryParams = useMemo(() => {
+    const params = {}
+    if (methodFilter !== 'all') params.payment_method = methodFilter
+    if (statusFilter !== 'all') params.payment_status = statusFilter
+    if (dateFrom) params.date_from = dateFrom
+    if (dateTo) params.date_to = dateTo
+    return params
+  }, [methodFilter, statusFilter, dateFrom, dateTo])
 
-      const res = await getPayments(params)
-      setPayments(res.data?.data?.data || res.data?.data || res.data || [])
-    } catch (err) {
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchPayments() }, [methodFilter, statusFilter])
+  const {
+    data: payments = [],
+    isLoading: loading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.payments.adminList(queryParams),
+    queryFn: async () => {
+      const res = await getPayments(queryParams)
+      return res.data?.data?.data || res.data?.data || res.data || []
+    },
+    staleTime: 60 * 1000,
+  })
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -135,7 +138,7 @@ export default function PaymentListPage() {
     try {
       await deletePayment(deleteTarget.id)
       toast.success('Payment record deleted successfully.')
-      setPayments(prev => prev.filter(p => p.id !== deleteTarget.id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
       setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
     } catch (err) {
       console.error('Failed to delete payment', err)
@@ -152,7 +155,7 @@ export default function PaymentListPage() {
     try {
       const res = await bulkDeletePayments(selectedIds)
       toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} payment record(s).`)
-      setPayments(prev => prev.filter(p => !selectedIds.includes(p.id)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
       setSelectedIds([])
       setShowBulkDeleteModal(false)
     } catch (err) {
@@ -166,7 +169,7 @@ export default function PaymentListPage() {
   const handleStatusUpdate = async (id, newStatus) => {
     try {
       await updatePayment(id, { payment_status: newStatus })
-      setPayments(payments.map(p => p.id === id ? { ...p, payment_status: newStatus } : p))
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
       toast.success('পেমেন্ট স্ট্যাটাস আপডেট হয়েছে')
     } catch (err) {
       toast.error(err.response?.data?.message || 'পেমেন্ট স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।')
@@ -179,7 +182,6 @@ export default function PaymentListPage() {
     setStatusFilter('all')
     setDateFrom('')
     setDateTo('')
-    setTimeout(fetchPayments, 0)
   }
 
   const filtered = payments.filter(pay => {
@@ -250,8 +252,8 @@ export default function PaymentListPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by patient, doctor, transaction ID..."
-        onRefresh={fetchPayments}
-        refreshing={loading}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(methodFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo)}

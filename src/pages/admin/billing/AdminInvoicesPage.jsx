@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminInvoices,
   markInvoicePaid,
@@ -34,54 +35,54 @@ import {
 import useDebounce from '../../../hooks/useDebounce'
 import { useAuth } from '../../../context/AuthContext'
 import '../../../styles/admin-billing.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminInvoicesPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [invoices, setInvoices] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [actionProcessing, setActionProcessing] = useState(false)
   const [actionMessage, setActionMessage] = useState(null)
-  const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({})
 
   const debouncedSearch = useDebounce(search, 400)
 
-  const loadInvoices = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  // Reset to page 1 whenever filters/search change
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, debouncedSearch])
+
+  // TanStack Query for Invoices
+  const {
+    data: invoicesResponse,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'invoices', { search: debouncedSearch.trim() || undefined, status: statusFilter || undefined, page }],
+    queryFn: async () => {
       const res = await getAdminInvoices({
         search: debouncedSearch.trim() || undefined,
         status: statusFilter || undefined,
         page,
         per_page: 15,
       })
-      const responseMeta = res.data?.meta || {}
-      setMeta(responseMeta)
-      const list = res.data?.data || []
-      setInvoices(Array.isArray(list) ? list : [])
-    } catch (err) {
-      console.error('Failed to load invoices', err)
-      setError(err?.response?.data?.message || 'ইনভয়েস তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return res.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
 
-  // Main data-loading effect — reruns when filters or page changes
-  useEffect(() => {
-    loadInvoices()
-  }, [statusFilter, page, debouncedSearch])
+  const invoices = useMemo(() => {
+    const list = invoicesResponse?.data || []
+    return Array.isArray(list) ? list : []
+  }, [invoicesResponse])
 
-  // Reset to page 1 whenever filters/search change
-  useEffect(() => {
-    setPage(1)
-  }, [statusFilter, debouncedSearch])
+  const meta = invoicesResponse?.meta || {}
+  const error = queryError?.response?.data?.message || (queryError ? 'ইনভয়েস তালিকা লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।' : null)
 
   const handleMarkPaid = async (inv) => {
     if (!window.confirm(`ইনভয়েস #${inv.invoice_number} কে 'পরিশোধিত' (PAID) হিসেবে চিহ্নিত করতে চান?`)) return
@@ -89,7 +90,9 @@ export default function AdminInvoicesPage() {
       setActionProcessing(true)
       await markInvoicePaid(inv.id)
       setActionMessage({ type: 'success', text: `ইনভয়েস #${inv.invoice_number} সফলভাবে পরিশোধিত হিসেবে চিহ্নিত হয়েছে।` })
-      loadInvoices()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'subscribers'] })
       if (selectedInvoice?.id === inv.id) setSelectedInvoice(null)
     } catch (err) {
       setActionMessage({ type: 'error', text: err.response?.data?.message || 'ইনভয়েস পরিশোধিত হিসেবে চিহ্নিত করতে সমস্যা হয়েছে।' })
@@ -104,7 +107,7 @@ export default function AdminInvoicesPage() {
       setActionProcessing(true)
       await regenerateInvoice(inv.id)
       setActionMessage({ type: 'success', text: `ইনভয়েস #${inv.invoice_number} পুনরায় হিসাব ও প্রস্তুত করা হয়েছে।` })
-      loadInvoices()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'invoices'] })
     } catch (err) {
       setActionMessage({ type: 'error', text: 'ইনভয়েস পুনর্গণনায় সমস্যা হয়েছে।' })
     } finally {
@@ -181,43 +184,18 @@ export default function AdminInvoicesPage() {
 
         <div className="ab-header-actions">
           <button
-            onClick={loadInvoices}
+            onClick={() => refetch()}
             className="ab-btn-refresh"
             title="ইনভয়েস রিফ্রেশ করুন"
-            disabled={loading}
+            disabled={loading || isFetching}
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill active">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> বিলিং কনফিগারেশন
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">
@@ -320,7 +298,7 @@ export default function AdminInvoicesPage() {
         <div className="ab-error-state" role="alert">
           <AlertTriangle size={20} />
           <span>{error}</span>
-          <button onClick={loadInvoices} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
+          <button onClick={() => refetch()} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
         </div>
       )}
 

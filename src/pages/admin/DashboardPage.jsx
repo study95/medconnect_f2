@@ -1,453 +1,849 @@
-// DashboardPage.jsx — Premium Analytics Dashboard with Recharts
-import { useState, useEffect, useCallback } from 'react'
+// DashboardPage.jsx — Enterprise Executive Health System Command Center
+// Inspired by Google Cloud Console & Stripe Dashboard Architecture: High-Density, Zero-Clutter, Action-Oriented
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getDashboardStats, getDashboardAnalytics } from '../../api/adminApi'
+import { queryKeys } from '../../lib/queryKeys'
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
+import {
+  DollarSign, Calendar, Stethoscope, Users, Building2,
+  CheckCircle2, AlertCircle, ArrowUpRight, RefreshCw, ShieldCheck,
+  ChevronRight, Clock, FileText, ArrowRight, Activity, ShieldAlert,
+  MessageSquare
+} from 'lucide-react'
 
 const RANGE_OPTIONS = [
-  { key: 'day', label: 'Daily (30d)' },
-  { key: 'week', label: 'Weekly (12w)' },
-  { key: 'month', label: 'Monthly (12m)' },
+  { key: 'day', label: '30D' },
+  { key: 'week', label: '12W' },
+  { key: 'month', label: '12M' },
 ]
 
-const PIE_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444']
-
-// Animated number counter
-function AnimatedNumber({ value, prefix = '', suffix = '' }) {
-  const [display, setDisplay] = useState(0)
-  useEffect(() => {
-    const num = typeof value === 'number' ? value : parseInt(value) || 0
-    if (num === 0) { setDisplay(0); return }
-    const duration = 800
-    const steps = 30
-    const increment = num / steps
-    let current = 0
-    const timer = setInterval(() => {
-      current += increment
-      if (current >= num) { setDisplay(num); clearInterval(timer) }
-      else setDisplay(Math.floor(current))
-    }, duration / steps)
-    return () => clearInterval(timer)
-  }, [value])
-  return <>{prefix}{display.toLocaleString()}{suffix}</>
-}
-
-// Premium tooltip
-function ChartTooltip({ active, payload, label }) {
+// Professional clean tooltip
+function MetricTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
-      background: 'var(--admin-card-bg)', backdropFilter: 'blur(12px)',
-      padding: '12px 16px', borderRadius: 12, border: '1px solid var(--admin-border)',
-      boxShadow: 'var(--admin-shadow-lg)'
+      background: 'var(--admin-card-bg)',
+      padding: '10px 14px', borderRadius: 8,
+      border: '1px solid var(--admin-border)',
+      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+      fontSize: 12,
+      fontFamily: 'inherit'
     }}>
-      <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>{label}</p>
+      <div style={{ fontWeight: 600, color: 'var(--admin-text-muted)', marginBottom: 6 }}>{label}</div>
       {payload.map((p, i) => (
-        <p key={i} style={{ margin: '2px 0', fontSize: 13, fontWeight: 700, color: p.color || 'var(--admin-text)' }}>
-          {p.name}: {typeof p.value === 'number' && p.value > 99 ? `৳${p.value.toLocaleString()}` : p.value}
-        </p>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, margin: '3px 0' }}>
+          <span style={{ color: p.color, fontWeight: 600 }}>{p.name}:</span>
+          <span style={{ fontWeight: 800, color: 'var(--admin-text)', fontVariantNumeric: 'tabular-nums' }}>
+            {p.dataKey === 'Revenue' ? `৳${Number(p.value).toLocaleString()}` : Number(p.value).toLocaleString()}
+          </span>
+        </div>
       ))}
     </div>
   )
 }
 
-// Stat card
-function StatCard({ icon, label, value, prefix, suffix, color, bg, to }) {
-  const inner = (
+// Executive KPI Metric Card (Stripe-Style)
+function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPositive, to }) {
+  const card = (
     <div style={{
-      background: 'var(--admin-card-bg)', borderRadius: 20, padding: '24px 20px',
-      display: 'flex', alignItems: 'center', gap: 18,
-      border: `1px solid var(--admin-border)`, transition: 'all 0.3s',
-      cursor: to ? 'pointer' : 'default', position: 'relative', overflow: 'hidden'
+      background: 'var(--admin-card-bg)',
+      border: '1px solid var(--admin-border)',
+      borderRadius: 14,
+      padding: '18px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      transition: 'all 0.2s ease',
+      cursor: to ? 'pointer' : 'default',
+      position: 'relative'
     }}
-    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${color}25` }}
-    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+    onMouseEnter={e => { if (to) e.currentTarget.style.borderColor = 'var(--admin-primary)' }}
+    onMouseLeave={e => { if (to) e.currentTarget.style.borderColor = 'var(--admin-border)' }}
     >
-      <div style={{
-        position: 'absolute', top: -20, right: -20, width: 100, height: 100,
-        borderRadius: '50%', background: `${color}08`
-      }} />
-      <div style={{
-        width: 56, height: 56, borderRadius: 16, background: `${color}15`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 26, flexShrink: 0
-      }}>
-        {icon}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <p style={{
-          margin: 0, fontSize: 28, fontWeight: 900, color: 'var(--admin-text)',
-          lineHeight: 1.1, letterSpacing: '-0.5px'
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)', letterSpacing: '0.2px' }}>
+          {title}
+        </span>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'var(--admin-bg)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--admin-text-muted)'
         }}>
-          <AnimatedNumber value={value} prefix={prefix || ''} suffix={suffix || ''} />
-        </p>
-        <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', letterSpacing: '0.3px' }}>
-          {label}
-        </p>
+          <Icon size={16} />
+        </div>
       </div>
-    </div>
-  )
-  return to ? <Link to={to} style={{ textDecoration: 'none' }}>{inner}</Link> : inner
-}
 
-// Chart card wrapper
-function ChartCard({ title, subtitle, children, span = 1 }) {
-  return (
-    <div style={{
-      background: 'var(--admin-card-bg)', borderRadius: 20, padding: '24px',
-      border: '1px solid var(--admin-border)', boxShadow: 'var(--admin-shadow)',
-      gridColumn: span > 1 ? `span ${span}` : undefined,
-      transition: 'box-shadow 0.3s',
-    }}
-    onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--admin-shadow-md)'}
-    onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--admin-shadow)'}
-    >
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--admin-text)' }}>{title}</h3>
-        {subtitle && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500 }}>{subtitle}</p>}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{
+          fontSize: 26, fontWeight: 800, color: 'var(--admin-text)',
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px', lineHeight: 1.1
+        }}>
+          {value}
+        </div>
+        {badge && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+            background: trendPositive ? 'rgba(0, 184, 117, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+            color: trendPositive ? '#00B875' : '#D97706',
+            fontVariantNumeric: 'tabular-nums'
+          }}>
+            {badge}
+          </span>
+        )}
       </div>
-      {children}
+
+      <div style={{
+        marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--admin-border)',
+        fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <span>{subtext}</span>
+        {to && <ArrowUpRight size={13} color="var(--admin-text-muted)" />}
+      </div>
     </div>
   )
+
+  return to ? <Link to={to} style={{ textDecoration: 'none' }}>{card}</Link> : card
 }
 
 export default function DashboardPage() {
   const { isAdmin, isDoctor, isManager, user } = useAuth()
-  const [stats, setStats] = useState(null)
-  const [analytics, setAnalytics] = useState(null)
   const [range, setRange] = useState('month')
-  const [loading, setLoading] = useState(true)
-  const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports'
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await getDashboardStats()
-      setStats(res.data.data)
-    } catch (err) { console.error('Stats error:', err) }
-    finally { setLoading(false) }
-  }, [])
+  const { data: stats = null, isLoading: loading, refetch: refetchStats } = useQuery({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: async () => {
+      try {
+        const res = await getDashboardStats()
+        return res.data?.data || null
+      } catch (err) {
+        console.error('Stats fetch error:', err)
+        return null
+      }
+    },
+    staleTime: 60 * 1000,
+  })
 
-  const fetchAnalytics = useCallback(async (r) => {
-    try {
-      setAnalyticsLoading(true)
-      const res = await getDashboardAnalytics({ range: r })
-      setAnalytics(res.data.data)
-    } catch (err) { console.error('Analytics error:', err) }
-    finally { setAnalyticsLoading(false) }
-  }, [])
+  const { data: analytics = null, isLoading: analyticsLoading } = useQuery({
+    queryKey: queryKeys.dashboard.analytics({ range }),
+    queryFn: async () => {
+      try {
+        const res = await getDashboardAnalytics({ range })
+        return res.data?.data || null
+      } catch (err) {
+        console.error('Analytics fetch error:', err)
+        return null
+      }
+    },
+    staleTime: 60 * 1000,
+  })
 
-  useEffect(() => { fetchStats() }, [fetchStats])
-  useEffect(() => { fetchAnalytics(range) }, [range, fetchAnalytics])
-
-  const handleRangeChange = (r) => setRange(r)
-
-  // Format period labels for readability
+  // Format label for chart timeline
   const formatLabel = (period) => {
     if (!period) return ''
     if (range === 'day') {
       const d = new Date(period)
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
-    if (range === 'week') return period.replace(/^\d{4}-/, '')
+    if (range === 'week') return String(period).replace(/^\d{4}-/, '')
     if (range === 'month') {
-      const [y, m] = period.split('-')
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-      return `${months[parseInt(m)-1]} ${y.slice(2)}`
+      const parts = String(period).split('-')
+      if (parts.length >= 2) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        return `${months[parseInt(parts[1])-1] || ''} '${parts[0]?.slice(2) || ''}`
+      }
     }
     return period
   }
 
-  // Build chart data from analytics
-  const appointmentsChartData = analytics?.appointments?.trend?.map(d => ({
-    name: formatLabel(d.period),
-    Total: d.value,
-    Pending: analytics.appointments.by_status.pending?.find(x => x.period === d.period)?.value || 0,
-    Confirmed: analytics.appointments.by_status.confirmed?.find(x => x.period === d.period)?.value || 0,
-    Completed: analytics.appointments.by_status.completed?.find(x => x.period === d.period)?.value || 0,
-    Cancelled: analytics.appointments.by_status.cancelled?.find(x => x.period === d.period)?.value || 0,
-  })) || []
+  // Combined chart dataset
+  const combinedTrendData = useMemo(() => {
+    const appts = analytics?.appointments?.trend || []
+    const payments = analytics?.payments?.paid || []
 
-  const paymentsChartData = analytics?.payments?.paid?.map((d, i) => ({
-    name: formatLabel(d.period),
-    Paid: d.value,
-    Unpaid: analytics.payments.unpaid?.[i]?.value || 0,
-  })) || []
+    return appts.map((item, idx) => ({
+      name: formatLabel(item.period),
+      Appointments: item.value || 0,
+      Revenue: payments[idx]?.value || 0,
+      Completed: analytics?.appointments?.by_status?.completed?.find(x => x.period === item.period)?.value || 0,
+    }))
+  }, [analytics, range])
 
-  const growthChartData = analytics?.users?.map((d, i) => ({
-    name: formatLabel(d.period),
-    Users: d.value,
-    Patients: analytics.patients?.[i]?.value || 0,
-    Doctors: analytics.doctors?.[i]?.value || 0,
-  })) || []
+  // Action desk critical items
+  const actionItems = useMemo(() => {
+    const list = []
+    if (stats?.action_required?.inactive_doctors > 0) {
+      list.push({
+        id: 'doc',
+        title: 'ডাক্তার প্রোফাইল যাচাইকরণ',
+        description: `${stats.action_required.inactive_doctors} জন নতুন ডাক্তারের তথ্য ও BMDC সনদ যাচাই বাকি`,
+        linkText: 'যাচাই করুন',
+        to: '/admin/doctors?is_active=0',
+        severity: 'amber'
+      })
+    }
+    if (stats?.action_required?.inactive_hospitals > 0) {
+      list.push({
+        id: 'hosp',
+        title: 'হাসপাতাল সক্রিয়করণ',
+        description: `${stats.action_required.inactive_hospitals} টি হাসপাতালের অনবোর্ডিং অনুমোদন অপেক্ষমান`,
+        linkText: 'অনুমোদন দিন',
+        to: '/admin/hospitals?is_active=0',
+        severity: 'amber'
+      })
+    }
+    if (stats?.action_required?.pending_reports > 0) {
+      list.push({
+        id: 'rep',
+        title: 'রিভিউ বিরোধ ও মডারেশন',
+        description: `${stats.action_required.pending_reports} টি বিতর্কিত রোগীর রিভিউ রিপোর্টের সিদ্ধান্ত প্রয়োজন`,
+        linkText: 'রিভিউ দেখুন',
+        to: '/admin/reviews/reports',
+        severity: 'red'
+      })
+    }
+    if (stats?.action_required?.pending_commissions > 0) {
+      list.push({
+        id: 'comm',
+        title: 'কমিশন সেটেলমেন্ট',
+        description: `${stats.action_required.pending_commissions} টি অ্যাপয়েন্টমেন্টের কমিশন বকেয়া নিষ্পত্তি প্রয়োজন`,
+        linkText: 'নিষ্পত্তি করুন',
+        to: '/admin/reports/commission?commission_status=pending',
+        severity: 'blue'
+      })
+    }
+    return list
+  }, [stats])
 
-  const statusPieData = analytics?.appointments?.status_breakdown
-    ? Object.entries(analytics.appointments.status_breakdown).map(([k, v]) => ({
-        name: k.charAt(0).toUpperCase() + k.slice(1), value: v
-      }))
-    : []
-
-  const topDoctorsData = (analytics?.top_doctors || []).map(d => ({
-    name: d.name?.length > 15 ? d.name.slice(0, 15) + '…' : d.name,
-    Appointments: d.total_appointments,
-    Revenue: Math.round(d.total_revenue),
-  }))
+  // Success rate computation
+  const successRate = useMemo(() => {
+    if (!stats?.total_appointments) return 100
+    return Math.round(((stats.completed_appointments || 0) / stats.total_appointments) * 100)
+  }, [stats])
 
   if (loading) {
-    return <div className="admin-loading"><div className="admin-spinner" /> Loading dashboard...</div>
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
+        <div className="admin-spinner" style={{ marginRight: 10 }} />
+        <span style={{ color: 'var(--admin-text-muted)', fontSize: 13, fontWeight: 500 }}>
+          লোড হচ্ছে এক্সিকিউটিভ ড্যাশবোর্ড...
+        </span>
+      </div>
+    )
   }
 
   return (
-    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      {/* Header */}
+    <div style={{ animation: 'fadeIn 0.3s ease-out', maxWidth: 1400, margin: '0 auto' }}>
+      {/* 1. EXECUTIVE HEADER BAR */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-        flexWrap: 'wrap', gap: 16, marginBottom: 32
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        flexWrap: 'wrap', gap: 16, marginBottom: 20, paddingBottom: 16,
+        borderBottom: '1px solid var(--admin-border)'
       }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: 'var(--admin-text)', letterSpacing: '-0.5px' }}>
-            {isDoctor ? `Welcome, Dr. ${user?.name}` : '📊 Analytics Dashboard'}
-          </h2>
-          <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-            {isAdmin && 'System-wide performance overview'}
-            {isManager && 'Hospital performance overview'}
-            {isDoctor && 'Your practice performance overview'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h1 style={{
+                margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--admin-text)',
+                letterSpacing: '-0.3px', lineHeight: 1.2
+              }}>
+                {isDoctor ? `Dr. ${user?.name} · Clinical Overview` : isManager ? 'Hospital Operations Portal' : 'Executive Overview'}
+              </h1>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '3px 8px', borderRadius: 20,
+                background: 'rgba(0, 184, 117, 0.08)',
+                border: '1px solid rgba(0, 184, 117, 0.2)',
+                fontSize: 11, fontWeight: 700, color: '#00B875'
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00B875' }} />
+                <span>Live System</span>
+              </div>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
+              {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · প্ল্যাটফর্ম সেন্ট্রাল কমান্ড ও রিয়েল-টাইম অপারেশন মনিটর
+            </p>
+            {isAdmin && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, marginTop: 5,
+                fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600, flexWrap: 'wrap'
+              }}>
+                <span style={{ color: 'var(--admin-primary)' }}>নেটওয়ার্ক বিস্তার:</span>
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_divisions || 0} বিভাগ</span> · 
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_districts || 0} জেলা</span> · 
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_upazilas || 0} উপজেলা</span> · 
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_unions || 0} ইউনিয়ন</span> · 
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_specialties || 0} স্পেশালিটি</span>
+              </div>
+            )}
+          </div>
         </div>
-        <div style={{
-          display: 'flex', gap: 4, padding: 4, background: 'var(--admin-bg)',
-          borderRadius: 14, border: '1px solid var(--admin-border)'
-        }}>
-          {RANGE_OPTIONS.map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => handleRangeChange(opt.key)}
-              style={{
-                padding: '10px 18px', borderRadius: 10, border: 'none',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                background: range === opt.key ? 'var(--admin-primary)' : 'transparent',
-                color: range === opt.key ? '#FFFFFF' : 'var(--admin-text-muted)',
-                boxShadow: range === opt.key ? '0 4px 12px rgba(0, 184, 117, 0.25)' : 'none',
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
+
+        {/* Minimal Time-Horizon Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            display: 'flex', padding: 2, background: 'var(--admin-bg)',
+            borderRadius: 8, border: '1px solid var(--admin-border)'
+          }}>
+            {RANGE_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setRange(opt.key)}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, border: 'none',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  transition: '0.15s ease',
+                  background: range === opt.key ? 'var(--admin-card-bg)' : 'transparent',
+                  color: range === opt.key ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+                  boxShadow: range === opt.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => refetchStats()}
+            title="রিফ্রেশ"
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              border: '1px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)', color: 'var(--admin-text-muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: '0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--admin-text)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--admin-text-muted)'}
+          >
+            <RefreshCw size={14} />
+          </button>
         </div>
       </div>
 
-      {/* KPI Stats Row */}
-      {stats && (
+      {/* 2. THE 4 NORTH STAR METRICS (STRIPE-STYLE) */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: 14, marginBottom: 20
+      }}>
+        {isAdmin && (
+          <>
+            <ExecutiveMetricCard
+              title="নিবন্ধিত ডাক্তার (Total Doctors)"
+              value={`${Number(stats?.total_doctors || 0).toLocaleString()} জন`}
+              subtext={`সক্রিয়: ${Math.max(0, (stats?.total_doctors || 0) - (stats?.action_required?.inactive_doctors || 0))} জন · ${stats?.action_required?.inactive_doctors || 0} জন অপেক্ষমান`}
+              icon={Stethoscope}
+              badge={`+${stats?.today?.new_doctors || 0} আজ`}
+              trendPositive={Boolean(stats?.today?.new_doctors)}
+              to="/admin/doctors"
+            />
+            <ExecutiveMetricCard
+              title="হাসপাতাল ও ক্লিনিক (Hospitals)"
+              value={`${Number(stats?.total_hospitals || 0).toLocaleString()} টি`}
+              subtext={`সক্রিয়: ${Math.max(0, (stats?.total_hospitals || 0) - (stats?.action_required?.inactive_hospitals || 0))} টি · ${stats?.action_required?.inactive_hospitals || 0} টি অপেক্ষমান`}
+              icon={Building2}
+              badge={`+${stats?.today?.new_hospitals || 0} আজ`}
+              trendPositive={Boolean(stats?.today?.new_hospitals)}
+              to="/admin/hospitals"
+            />
+            <ExecutiveMetricCard
+              title="অ্যাপয়েন্টমেন্ট থ্রুপুট (Bookings)"
+              value={`${Number(stats?.total_appointments || 0).toLocaleString()} টি`}
+              subtext={`সম্পন্ন: ${stats?.completed_appointments || 0} · কনফার্মড: ${stats?.confirmed_appointments || 0} · পেন্ডিং: ${stats?.pending_appointments || 0} · বাতিল: ${stats?.cancelled_appointments || 0}`}
+              icon={Calendar}
+              badge={`${stats?.today?.appointments_total || 0} টি আজ`}
+              trendPositive={Boolean(stats?.today?.appointments_total)}
+              to="/admin/appointments"
+            />
+            <ExecutiveMetricCard
+              title="রোগী ও ব্যবহারকারী (Users & Patients)"
+              value={`${Number(stats?.total_users || 0).toLocaleString()} জন`}
+              subtext={`${stats?.total_prescriptions || 0} টি ডিজিটাল প্রেসক্রিপশন সংরক্ষিত`}
+              icon={Users}
+              badge={`+${stats?.today?.new_patients || 0} আজ`}
+              trendPositive={Boolean(stats?.today?.new_patients)}
+              to="/admin/patients"
+            />
+          </>
+        )}
+
+        {isDoctor && (
+          <>
+            <ExecutiveMetricCard
+              title="আমার অর্জিত ফি"
+              value={`৳${Number(stats?.total_payments_collected || 0).toLocaleString()}`}
+              subtext="মোট সংগৃহীত পরামর্শ ফি"
+              icon={DollarSign}
+              to="/doctor/payments"
+            />
+            <ExecutiveMetricCard
+              title="মোট রোগী ও বুকিং"
+              value={Number(stats?.total_appointments || 0).toLocaleString()}
+              subtext={`সম্পন্ন: ${stats?.completed_appointments || 0} · পেন্ডিং: ${stats?.pending_appointments || 0}`}
+              icon={Calendar}
+              to="/doctor/appointments"
+            />
+            <ExecutiveMetricCard
+              title="সক্রিয় চেম্বার"
+              value={`${stats?.total_chambers || 0} টি`}
+              subtext="রোগী দেখার নির্ধারিত চেম্বার"
+              icon={Building2}
+              to="/doctor/chambers"
+            />
+            <ExecutiveMetricCard
+              title="ডিজিটাল প্রেসক্রিপশন"
+              value={`${stats?.total_prescriptions || 0} টি`}
+              subtext="তৈরিকৃত চিকিৎসা পরামর্শপত্র"
+              icon={FileText}
+              to="/doctor/prescriptions"
+            />
+          </>
+        )}
+
+        {isManager && (
+          <>
+            <ExecutiveMetricCard
+              title="হাসপাতাল বুকিং"
+              value={Number(stats?.total_appointments || 0).toLocaleString()}
+              subtext={`পেন্ডিং: ${stats?.pending_appointments || 0}`}
+              icon={Calendar}
+              to="/hospital/appointments"
+            />
+            <ExecutiveMetricCard
+              title="হাসপাতালের ডাক্তার"
+              value={`${stats?.total_doctors || 0} জন`}
+              subtext="তালিকাভুক্ত বিশেষজ্ঞ চিকিৎসক"
+              icon={Stethoscope}
+              to="/hospital/doctors"
+            />
+            <ExecutiveMetricCard
+              title="সক্রিয় চেম্বার ও বিভাগ"
+              value={`${stats?.total_chambers || 0} টি`}
+              subtext="কার্যক্রম চলমান চেম্বার"
+              icon={Building2}
+              to="/hospital/chambers"
+            />
+            <ExecutiveMetricCard
+              title="হাসপাতাল প্রোফাইল"
+              value="অ্যাক্টিভ"
+              subtext="হাসপাতালের বিবরণ ও সেবা"
+              icon={Activity}
+              to="/hospital/my-hospital"
+            />
+          </>
+        )}
+      </div>
+
+      {/* 3. DUAL GRID: UNIFIED ANALYTICAL TREND (60%) + ACTION DESK (40%) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isAdmin ? '1.5fr 1fr' : '1fr',
+        gap: 16, marginBottom: 20
+      }}>
+        {/* Left: Primary Operational Trend Chart */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16, marginBottom: 32
+          background: 'var(--admin-card-bg)',
+          border: '1px solid var(--admin-border)',
+          borderRadius: 14,
+          padding: '20px',
+          display: 'flex', flexDirection: 'column'
         }}>
-          {isAdmin && <>
-            <StatCard icon="👨‍⚕️" label="Total Doctors" value={stats.total_doctors} color="#6366F1" to="/admin/doctors" />
-            <StatCard icon="🏥" label="Total Hospitals" value={stats.total_hospitals} color="#0EA5E9" to="/admin/hospitals" />
-            <StatCard icon="📅" label="Total Appointments" value={stats.total_appointments} color="#F59E0B" to="/admin/appointments" />
-            <StatCard icon="💰" label="Revenue Collected" value={stats.total_payments_collected || 0} prefix="৳" color="#10B981" to="/admin/payments" />
-            <StatCard icon="👥" label="Total Users" value={stats.total_users} color="#8B5CF6" to="/admin/users" />
-          </>}
-          {isDoctor && <>
-            <StatCard icon="📅" label="Total Appointments" value={stats.total_appointments} color="#6366F1" to="/admin/appointments" />
-            <StatCard icon="⏳" label="Pending" value={stats.pending_appointments} color="#F59E0B" />
-            <StatCard icon="✅" label="Confirmed" value={stats.confirmed_appointments} color="#3B82F6" />
-            <StatCard icon="✔️" label="Completed" value={stats.completed_appointments} color="#10B981" />
-            <StatCard icon="💰" label="My Earnings" value={stats.total_payments_collected || 0} prefix="৳" color="#8B5CF6" to="/admin/payments" />
-          </>}
-          {isManager && <>
-            <StatCard icon="👨‍⚕️" label="Doctors" value={stats.total_doctors} color="#6366F1" />
-            <StatCard icon="🏢" label="Chambers" value={stats.total_chambers} color="#0EA5E9" to="/admin/chambers" />
-            <StatCard icon="📅" label="Appointments" value={stats.total_appointments} color="#F59E0B" to="/admin/appointments" />
-            <StatCard icon="⏳" label="Pending" value={stats.pending_appointments} color="#EF4444" />
-          </>}
-        </div>
-      )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>
+                অ্যাপয়েন্টমেন্ট ভলিউম ও সেবা সমাপ্তির ট্রেন্ড
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500, marginTop: 2 }}>
+                নির্বাচিত সময়কালের বুকিং চাহিদা ও সম্পন্ন সেবার বিশ্লেষণ
+              </div>
+            </div>
 
-      {/* Charts Loading */}
-      {analyticsLoading ? (
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          padding: 60, color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 600
-        }}>
-          <div className="admin-spinner" style={{ marginRight: 12 }} /> Loading analytics...
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 24,
-        }}>
-          {/* 1. Appointments Trend — Area Chart */}
-          <ChartCard title="📅 Appointments Trend" subtitle={`${range === 'day' ? 'Last 30 days' : range === 'week' ? 'Last 12 weeks' : 'Last 12 months'}`}>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={appointmentsChartData}>
-                <defs>
-                  <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="Total" stroke="#6366F1" strokeWidth={2.5} fill="url(#gradTotal)" />
-                <Area type="monotone" dataKey="Completed" stroke="#10B981" strokeWidth={1.5} fill="none" strokeDasharray="4 4" />
-                <Area type="monotone" dataKey="Cancelled" stroke="#EF4444" strokeWidth={1.5} fill="none" strokeDasharray="4 4" />
-                <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B875' }} />
+                <span style={{ color: 'var(--admin-text)' }}>মোট বুকিং</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+                <span style={{ color: 'var(--admin-text-muted)' }}>সম্পন্ন সেবা</span>
+              </div>
+            </div>
+          </div>
 
-          {/* 2. Appointment Status — Pie/Doughnut */}
-          <ChartCard title="📊 Status Breakdown" subtitle="Current period distribution">
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={statusPieData}
-                  cx="50%" cy="50%"
-                  innerRadius={65} outerRadius={100}
-                  paddingAngle={4}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {statusPieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<ChartTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: 12, fontWeight: 600 }}
-                  formatter={(value) => <span style={{ color: 'var(--admin-text)' }}>{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* 3. Revenue Analytics — Bar Chart */}
-          <ChartCard title="💰 Revenue Analytics" subtitle={`Paid: ৳${(analytics?.payments?.total_paid || 0).toLocaleString()} · Unpaid: ৳${(analytics?.payments?.total_unpaid || 0).toLocaleString()}`}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={paymentsChartData} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="Paid" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                <Bar dataKey="Unpaid" fill="#F59E0B" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* 4. Growth Chart — Admin/Manager only */}
-          {(isAdmin || isManager) && growthChartData.length > 0 && (
-            <ChartCard title="📈 User & Registration Growth" subtitle="New registrations over time">
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={growthChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" vertical={false} />
+          <div style={{ height: 260, width: '100%' }}>
+            {analyticsLoading ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                লোড হচ্ছে ট্রেন্ড ডেটা...
+              </div>
+            ) : combinedTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={combinedTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="primaryAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#00B875" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#00B875" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" vertical={false} opacity={0.6} />
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Line type="monotone" dataKey="Users" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 4, fill: '#8B5CF6' }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="Patients" stroke="#0EA5E9" strokeWidth={2.5} dot={{ r: 4, fill: '#0EA5E9' }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="Doctors" stroke="#10B981" strokeWidth={2.5} dot={{ r: 4, fill: '#10B981' }} activeDot={{ r: 6 }} />
-                  <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }} />
-                </LineChart>
+                  <Tooltip content={<MetricTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="Appointments"
+                    name="মোট বুকিং"
+                    stroke="#00B875"
+                    strokeWidth={2}
+                    fill="url(#primaryAreaGrad)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Completed"
+                    name="সম্পন্ন সেবা"
+                    stroke="#10B981"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    fill="none"
+                  />
+                </AreaChart>
               </ResponsiveContainer>
-            </ChartCard>
-          )}
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                কোনো ট্রেন্ড রেকর্ড নেই
+              </div>
+            )}
+          </div>
+        </div>
 
-          {/* 5. Top Doctors — Admin/Manager only */}
-          {(isAdmin || isManager) && topDoctorsData.length > 0 && (
-            <ChartCard title="🏆 Top Doctors" subtitle="By appointment volume" span={2}>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={topDoctorsData} layout="vertical" barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: 'var(--admin-text)', fontWeight: 600 }} tickLine={false} axisLine={false} width={130} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="Appointments" fill="#6366F1" radius={[0, 8, 8, 0]} maxBarSize={28} />
-                  <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
+        {/* Right: Inbound Requests & Approvals Pipeline (Admin Only) */}
+        {isAdmin && (() => {
+          const inbound = stats?.inbound_requests || {
+            counts: { doctors: 0, hospitals: 0, tickets: 0, reports: 0, total: 0 },
+            doctors: [],
+            hospitals: [],
+            tickets: [],
+            reports: []
+          }
 
-          {/* Doctor-only: Additional quick stats */}
-          {isDoctor && stats && (
-            <ChartCard title="📋 Quick Stats" subtitle="Your practice summary" span={2}>
+          const inboundTabs = [
+            { key: 'doctors', label: 'ডাক্তার', count: inbound.counts?.doctors || 0, viewAll: '/admin/doctors?is_active=0' },
+            { key: 'hospitals', label: 'হাসপাতাল', count: inbound.counts?.hospitals || 0, viewAll: '/admin/hospitals?is_active=0' },
+            { key: 'tickets', label: 'সাপোর্ট টিকিট', count: inbound.counts?.tickets || 0, viewAll: '/admin/services' },
+            { key: 'reports', label: 'রিভিউ বিরোধ', count: inbound.counts?.reports || 0, viewAll: '/admin/reviews/reports' },
+          ]
+
+          const activeInboundList = inbound[inboundTab] || []
+
+          return (
+            <div style={{
+              background: 'var(--admin-card-bg)',
+              border: '1px solid var(--admin-border)',
+              borderRadius: 14,
+              padding: '18px 20px',
+              display: 'flex', flexDirection: 'column'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>
+                    আগত আবেদন ও টিকিট কিউ
+                  </span>
+                  {inbound.counts?.total > 0 ? (
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
+                      background: '#EF4444', color: '#FFFFFF'
+                    }}>
+                      {inbound.counts.total}টি অপেক্ষমান
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                      background: 'rgba(0, 184, 117, 0.1)', color: '#00B875'
+                    }}>
+                      সব সম্পন্ন ✓
+                    </span>
+                  )}
+                </div>
+                <Link
+                  to={inboundTabs.find(t => t.key === inboundTab)?.viewAll || '/admin'}
+                  style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textDecoration: 'none' }}
+                >
+                  সবগুলো দেখুন →
+                </Link>
+              </div>
+
+              {/* Pipeline Category Sub-tabs */}
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                gap: 16
+                display: 'flex', gap: 4, background: 'var(--admin-bg)', padding: 3,
+                borderRadius: 8, border: '1px solid var(--admin-border)', marginBottom: 12
               }}>
-                {[
-                  { icon: '🏢', label: 'My Chambers', value: stats.total_chambers, color: '#6366F1' },
-                  { icon: '📋', label: 'Prescriptions', value: stats.total_prescriptions, color: '#10B981' },
-                  { icon: '❌', label: 'Cancelled', value: stats.cancelled_appointments, color: '#EF4444' },
-                ].map(s => (
-                  <div key={s.label} style={{
-                    padding: '20px 16px', borderRadius: 16,
-                    background: 'var(--admin-bg)', border: `1px solid var(--admin-border)`,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: 28, marginBottom: 4 }}>{s.icon}</div>
-                    <p style={{ margin: 0, fontSize: 24, fontWeight: 900, color: 'var(--admin-text)' }}>
-                      <AnimatedNumber value={s.value} />
-                    </p>
-                    <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{s.label}</p>
-                  </div>
+                {inboundTabs.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setInboundTab(tab.key)}
+                    style={{
+                      flex: 1, border: 'none', padding: '6px 4px', borderRadius: 6,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: '0.15s',
+                      background: inboundTab === tab.key ? 'var(--admin-card-bg)' : 'transparent',
+                      color: inboundTab === tab.key ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+                      boxShadow: inboundTab === tab.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.count > 0 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 8,
+                        background: inboundTab === tab.key ? '#EF4444' : 'rgba(239, 68, 68, 0.2)',
+                        color: inboundTab === tab.key ? '#FFFFFF' : '#EF4444'
+                      }}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-            </ChartCard>
-          )}
 
-          {/* Admin extra stats row */}
-          {isAdmin && stats && (
-            <ChartCard title="🗺️ Platform Overview" subtitle="Locations & infrastructure" span={2}>
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: 12
-              }}>
-                {[
-                  { icon: '🏷️', label: 'Specialties', value: stats.total_specialties, color: '#10B981', to: '/admin/specialties' },
-                  { icon: '🗺️', label: 'Divisions', value: stats.total_divisions, color: '#0EA5E9', to: '/admin/divisions' },
-                  { icon: '📍', label: 'Districts', value: stats.total_districts, color: '#6366F1', to: '/admin/districts' },
-                  { icon: '🏢', label: 'Chambers', value: stats.total_chambers, color: '#8B5CF6', to: '/admin/chambers' },
-                  { icon: '📋', label: 'Prescriptions', value: stats.total_prescriptions, color: '#00A88C', to: '/admin/prescriptions' },
-                ].map(s => {
-                  const card = (
-                    <div key={s.label} style={{
-                      padding: '18px 14px', borderRadius: 14,
-                      background: 'var(--admin-bg)', border: `1px solid var(--admin-border)`,
-                      textAlign: 'center', cursor: s.to ? 'pointer' : 'default',
-                      transition: 'transform 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                      <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
-                      <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: 'var(--admin-text)' }}>
-                        <AnimatedNumber value={s.value} />
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{s.label}</p>
+              {/* Request Items List */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activeInboundList.length > 0 ? (
+                  activeInboundList.map(item => (
+                    <div key={item.id} style={{
+                      padding: '10px 12px', borderRadius: 8,
+                      background: 'var(--admin-bg)',
+                      border: '1px solid var(--admin-border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 10
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 700, color: 'var(--admin-text)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>
+                          {item.title}
+                        </div>
+                        <div style={{
+                          fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>
+                          {item.subtitle} · <span style={{ color: 'var(--admin-text-muted)' }}>{item.time}</span>
+                        </div>
+                      </div>
+                      <Link
+                        to={item.action_url}
+                        style={{
+                          padding: '5px 10px', borderRadius: 6,
+                          background: 'var(--admin-card-bg)',
+                          border: '1px solid var(--admin-border)',
+                          color: 'var(--admin-text)', textDecoration: 'none',
+                          fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          transition: '0.15s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--admin-primary)'; e.currentTarget.style.color = 'var(--admin-primary)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--admin-border)'; e.currentTarget.style.color = 'var(--admin-text)' }}
+                      >
+                        <span>{inboundTab === 'tickets' ? 'সমাধান' : inboundTab === 'reports' ? 'মডারেশন' : 'যাচাই'}</span>
+                        <ChevronRight size={11} />
+                      </Link>
                     </div>
-                  )
-                  return s.to ? <Link key={s.label} to={s.to} style={{ textDecoration: 'none' }}>{card}</Link> : card
-                })}
+                  ))
+                ) : (
+                  <div style={{
+                    height: '100%', minHeight: 180,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: 16, textAlign: 'center',
+                    background: 'var(--admin-bg)', borderRadius: 8, border: '1px dashed var(--admin-border)'
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', background: 'rgba(0, 184, 117, 0.1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+                      color: '#00B875'
+                    }}>
+                      <ShieldCheck size={20} />
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>
+                      ইনবক্স একদম ক্লিয়ার
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                      এই ক্যাটাগরিতে কোনো পেন্ডিং আবেদন বা টিকিট নেই।
+                    </div>
+                  </div>
+                )}
               </div>
-            </ChartCard>
-          )}
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* 4. LIVE TRANSACTION & RECENT ACTIVITY LEDGER (STRIPE-STYLE TABLE) */}
+      {isAdmin && (
+        <div style={{
+          background: 'var(--admin-card-bg)',
+          border: '1px solid var(--admin-border)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          marginBottom: 20
+        }}>
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--admin-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--admin-card-bg)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>
+                রিয়েল-টাইম অপারেশন লেজার (Live Bookings Ledger)
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                background: 'var(--admin-bg)', color: 'var(--admin-text-muted)',
+                border: '1px solid var(--admin-border)'
+              }}>
+                সর্বশেষ ৬টি লেনদেন
+              </span>
+            </div>
+            <Link
+              to="/admin/appointments"
+              style={{
+                fontSize: 12, fontWeight: 700, color: 'var(--admin-primary)',
+                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <span>সকল অ্যাপয়েন্টমেন্ট</span>
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--admin-bg)', borderBottom: '1px solid var(--admin-border)' }}>
+                  <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>রোগী</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>চিকিৎসক ও প্রতিষ্ঠান</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পরামর্শ ফি</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পেমেন্ট</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>স্ট্যাটাস</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>সময়কাল</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats?.recent_activities && stats.recent_activities.length > 0 ? (
+                  stats.recent_activities.map((act) => (
+                    <tr
+                      key={act.id}
+                      style={{
+                        borderBottom: '1px solid var(--admin-border)',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 18px', fontWeight: 700, color: 'var(--admin-text)' }}>
+                        {act.patient_name}
+                      </td>
+                      <td style={{ padding: '12px 18px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{act.doctor_name}</div>
+                        {act.hospital_name && (
+                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>{act.hospital_name}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'right', fontWeight: 800, color: 'var(--admin-text)', fontVariantNumeric: 'tabular-nums' }}>
+                        ৳{act.amount}
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4,
+                          background: act.payment_status === 'Paid' ? 'rgba(0, 184, 117, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: act.payment_status === 'Paid' ? '#00B875' : '#D97706',
+                          textTransform: 'uppercase'
+                        }}>
+                          {act.payment_status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                          background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)',
+                          textTransform: 'capitalize'
+                        }}>
+                          {act.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 12, color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+                        {act.time}
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                        <Link
+                          to={`/admin/appointments/view/${act.id}`}
+                          style={{
+                            fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)',
+                            textDecoration: 'none', padding: '4px 8px', borderRadius: 4
+                          }}
+                        >
+                          দেখুন
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                      কোনো সাম্প্রতিক ট্রানজ্যাকশন নেই
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      {/* 5. TOP PERFORMING SPECIALTIES & HEALTHCARE FOOTPRINT (COMPACT 2-COLUMN BOTTOM) */}
+      {isAdmin && stats?.top_specialties && stats.top_specialties.length > 0 && (
+        <div style={{
+          background: 'var(--admin-card-bg)',
+          border: '1px solid var(--admin-border)',
+          borderRadius: 14,
+          padding: '18px 20px',
+          marginBottom: 20
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>
+              জনপ্রিয় স্পেশালিটি ও ডাক্তার কভারেজ (Specialty Coverage)
+            </span>
+            <Link to="/admin/specialties" style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textDecoration: 'none' }}>
+              সকল স্পেশালিটি দেখুন →
+            </Link>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            {stats.top_specialties.map((spec, i) => (
+              <div key={spec.id} style={{
+                background: 'var(--admin-bg)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: 8,
+                padding: '10px 14px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text)' }}>{spec.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {spec.doctors_count} জন
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       `}} />
     </div>
   )

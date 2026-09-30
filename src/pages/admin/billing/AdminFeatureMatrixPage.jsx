@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getFeatureMatrix, updateFeatureMatrix } from '../../../api/billingAdminApi'
 import { useAuth } from '../../../context/AuthContext'
 import {
@@ -24,40 +25,44 @@ import {
   Info,
 } from 'lucide-react'
 import '../../../styles/admin-billing.css'
-
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminFeatureMatrixPage() {
   const { hasPermission } = useAuth()
+  const queryClient = useQueryClient()
 
   const [plans, setPlans] = useState([])
   const [matrix, setMatrix] = useState([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const [error, setError] = useState(null)
 
   // Filters
   const [search, setSearch] = useState('')
   const [entityFilter, setEntityFilter] = useState('all') // 'all' | 'doctor' | 'hospital'
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      setFeedback(null)
-      setError(null)
+  const {
+    data: matrixData,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'feature-matrix'],
+    queryFn: async () => {
       const res = await getFeatureMatrix()
-      setPlans(res.data?.plans || [])
-      setMatrix(res.data?.matrix || [])
-    } catch (err) {
-      setError(err?.response?.data?.message || 'ফিচার ম্যাট্রিক্স লোড করা সম্ভব হয়নি। পুনরায় চেষ্টা করুন।')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return res.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const error = queryError?.response?.data?.message || (queryError ? 'ফিচার ম্যাট্রিক্স লোড করা সম্ভব হয়নি। পুনরায় চেষ্টা করুন।' : null)
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (matrixData) {
+      setPlans(matrixData.plans || [])
+      setMatrix(matrixData.matrix || [])
+    }
+  }, [matrixData])
 
   // Toggle feature enablement for a specific plan
   const handleToggle = (featureKey, planId) => {
@@ -118,6 +123,8 @@ export default function AdminFeatureMatrixPage() {
       })
 
       await updateFeatureMatrix(payload)
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'feature-matrix'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'plans'] })
       setFeedback({ type: 'success', text: 'সকল সক্রিয় প্ল্যানে ফিচার সুবিধা ও কোটা সফলভাবে সংরক্ষিত ও সিঙ্ক করা হয়েছে!' })
     } catch (err) {
       setFeedback({ type: 'error', text: err.response?.data?.message || 'ফিচার ম্যাট্রিক্স সংরক্ষণে সমস্যা হয়েছে।' })
@@ -177,13 +184,13 @@ export default function AdminFeatureMatrixPage() {
 
         <div className="ab-header-actions">
           <button
-            onClick={loadData}
+            onClick={() => refetch()}
             className="ab-btn-refresh"
             title="ম্যাট্রিক্স রিফ্রেশ করুন"
             aria-label="Refresh feature matrix"
-            disabled={loading || saving}
+            disabled={loading || saving || isFetching}
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
           <button
             onClick={handleSave}
@@ -198,32 +205,7 @@ export default function AdminFeatureMatrixPage() {
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="ab-quick-nav">
-        <Link to="/admin/billing/dashboard" className="ab-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="ab-nav-pill">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/matrix" className="ab-nav-pill active">
-          <Sparkles size={14} /> ফিচার ম্যাট্রিক্স
-        </Link>
-        <Link to="/admin/billing/subscribers" className="ab-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="ab-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="ab-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="ab-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="ab-nav-pill">
-          <Settings size={14} /> বিলিং সেটিংস
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="ab-kpi-deck">

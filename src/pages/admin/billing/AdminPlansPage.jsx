@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminPlans,
   createAdminPlan,
@@ -35,6 +36,7 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import '../../../styles/admin-billing-plans.css'
+import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 // ─── STANDARD SYSTEM FEATURES CATALOG ───
 export const STANDARD_FEATURES = {
@@ -179,19 +181,13 @@ export const getFeatureMeta = (entity, key) => {
 }
 
 export default function AdminPlansPage() {
-  const [plans, setPlans] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const queryClient = useQueryClient()
 
   // View & Filtering
   const [viewMode, setViewMode] = useState('catalog') // 'catalog' | 'matrix'
   const [entityFilter, setEntityFilter] = useState('all') // 'all' | 'doctor' | 'hospital'
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'active' | 'inactive'
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Feature Matrix State
-  const [matrixData, setMatrixData] = useState(null)
-  const [matrixLoading, setMatrixLoading] = useState(false)
 
   // Modal State
   const [showModal, setShowModal] = useState(false)
@@ -217,44 +213,40 @@ export default function AdminPlansPage() {
     features: [],
   })
 
-  // Load plans catalog
-  const loadPlans = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  // TanStack Query for Plans
+  const {
+    data: plansData,
+    isLoading: loading,
+    isFetching,
+    error: plansError,
+    refetch: refetchPlans,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'plans'],
+    queryFn: async () => {
       const res = await getAdminPlans()
-      // API returns { success: true, data: { data: [...] } } or { data: [...] }
       const plansList = res.data?.data || res.data || []
-      setPlans(Array.isArray(plansList) ? plansList : [])
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'সাবস্ক্রিপশন প্ল্যানসমূহ লোড করা সম্ভব হয়নি')
-    } finally {
-      setLoading(false)
-    }
-  }
+      return Array.isArray(plansList) ? plansList : []
+    },
+    staleTime: 60 * 1000,
+  })
 
-  // Load feature matrix
-  const loadMatrix = async () => {
-    try {
-      setMatrixLoading(true)
+  const plans = plansData || []
+  const error = plansError?.response?.data?.message || plansError?.message || (plansError ? 'সাবস্ক্রিপশন প্ল্যানসমূহ লোড করা সম্ভব হয়নি' : null)
+
+  // TanStack Query for Feature Matrix (when in matrix view)
+  const {
+    data: matrixData,
+    isLoading: matrixLoading,
+    refetch: refetchMatrix,
+  } = useQuery({
+    queryKey: ['admin', 'billing', 'feature-matrix'],
+    queryFn: async () => {
       const res = await getFeatureMatrix()
-      setMatrixData(res.data || null)
-    } catch (err) {
-      console.error('Failed to load feature matrix', err)
-    } finally {
-      setMatrixLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadPlans()
-  }, [])
-
-  useEffect(() => {
-    if (viewMode === 'matrix' && !matrixData) {
-      loadMatrix()
-    }
-  }, [viewMode])
+      return res.data || null
+    },
+    enabled: viewMode === 'matrix',
+    staleTime: 60 * 1000,
+  })
 
   // Computed summary metrics
   const summaryMetrics = useMemo(() => {
@@ -528,8 +520,9 @@ export default function AdminPlansPage() {
       }
 
       setShowModal(false)
-      loadPlans()
-      if (viewMode === 'matrix') loadMatrix()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'plans'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'feature-matrix'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
     } catch (err) {
       alert(err.response?.data?.message || err.message || 'প্ল্যান সংরক্ষণে সমস্যা হয়েছে')
     } finally {
@@ -543,7 +536,8 @@ export default function AdminPlansPage() {
       await updateAdminPlan(plan.id, {
         is_active: !plan.is_active,
       })
-      loadPlans()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'plans'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'feature-matrix'] })
     } catch (err) {
       alert(err.response?.data?.message || 'প্ল্যানের স্ট্যাটাস পরিবর্তনে সমস্যা হয়েছে')
     }
@@ -556,8 +550,9 @@ export default function AdminPlansPage() {
     }
     try {
       await deleteAdminPlan(plan.id)
-      loadPlans()
-      if (viewMode === 'matrix') loadMatrix()
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'plans'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'feature-matrix'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
     } catch (err) {
       alert(err.response?.data?.message || 'প্ল্যান মুছে ফেলতে সমস্যা হয়েছে')
     }
@@ -579,12 +574,12 @@ export default function AdminPlansPage() {
 
         <div className="abp-header-actions">
           <button
-            onClick={() => { loadPlans(); if (viewMode === 'matrix') loadMatrix(); }}
+            onClick={() => { refetchPlans(); if (viewMode === 'matrix') refetchMatrix(); }}
             className="abp-btn-refresh"
             title="রিফ্রেশ করুন"
-            disabled={loading}
+            disabled={loading || isFetching}
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading || isFetching ? 'animate-spin' : ''} />
           </button>
           <button
             onClick={openCreate}
@@ -596,29 +591,7 @@ export default function AdminPlansPage() {
       </div>
 
       {/* ─── 2. QUICK NAVIGATION BAR ─── */}
-      <nav className="abp-quick-nav">
-        <Link to="/admin/billing/dashboard" className="abp-nav-pill">
-          <Grid size={14} /> অ্যানালিটিক্স ড্যাশবোর্ড
-        </Link>
-        <Link to="/admin/billing/plans" className="abp-nav-pill active">
-          <Layers size={14} /> প্ল্যান ও টিয়ার
-        </Link>
-        <Link to="/admin/billing/subscribers" className="abp-nav-pill">
-          <Users size={14} /> গ্রাহক তালিকা
-        </Link>
-        <Link to="/admin/billing/invoices" className="abp-nav-pill">
-          <Receipt size={14} /> ইনভয়েস লেজার
-        </Link>
-        <Link to="/admin/billing/transactions" className="abp-nav-pill">
-          <CreditCard size={14} /> ম্যানুয়াল লেনদেন
-        </Link>
-        <Link to="/admin/billing/coupons" className="abp-nav-pill">
-          <Tag size={14} /> ডিসকাউন্ট কুপন
-        </Link>
-        <Link to="/admin/billing/settings" className="abp-nav-pill">
-          <Settings size={14} /> বিলিং সেটিংস
-        </Link>
-      </nav>
+      <AdminBillingTabs />
 
       {/* ─── 3. KPI METRICS DECK ─── */}
       <div className="abp-kpi-deck">
@@ -755,7 +728,7 @@ export default function AdminPlansPage() {
           <AlertCircle size={36} color="#ef4444" style={{ margin: '0 auto 12px auto' }} />
           <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 700 }}>প্ল্যান লোড করা ব্যর্থ হয়েছে</h3>
           <p style={{ color: 'var(--abp-text-muted)', fontSize: '13px', margin: '0 0 16px 0' }}>{error}</p>
-          <button onClick={loadPlans} className="abp-btn-primary" style={{ margin: '0 auto' }}>
+          <button onClick={() => refetchPlans()} className="abp-btn-primary" style={{ margin: '0 auto' }}>
             <RefreshCw size={14} /> পুনরায় চেষ্টা করুন
           </button>
         </div>
@@ -912,7 +885,7 @@ export default function AdminPlansPage() {
               </p>
             </div>
             <button
-              onClick={loadMatrix}
+              onClick={() => refetchMatrix()}
               className="abp-btn-refresh"
               title="ম্যাট্রিক্স রিফ্রেশ করুন"
               disabled={matrixLoading}

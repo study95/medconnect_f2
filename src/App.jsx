@@ -127,6 +127,7 @@ const AdminInvoicesPage          = lazy(() => import('./pages/admin/billing/Admi
 const AdminTransactionsPage      = lazy(() => import('./pages/admin/billing/AdminTransactionsPage'))
 const AdminCouponsPage           = lazy(() => import('./pages/admin/billing/AdminCouponsPage'))
 const AdminBillingSettingsPage   = lazy(() => import('./pages/admin/billing/AdminBillingSettingsPage'))
+const AdminGatewaySettingsPage   = lazy(() => import('./pages/admin/billing/AdminGatewaySettingsPage'))
 const AdminSmsSettingsPage       = lazy(() => import('./pages/admin/AdminSmsSettingsPage'))
 
 // Commission & Service Management
@@ -373,6 +374,7 @@ function App() {
             <Route path="messages" element={<AdminMessagesPage />} />
 
             {/* Enterprise Admin Billing Management (Phase 3) */}
+            <Route path="billing" element={<Navigate to="/admin/billing/dashboard" replace />} />
             <Route path="billing/dashboard" element={<AdminBillingDashboardPage />} />
             <Route path="billing/plans" element={<AdminPlansPage />} />
             <Route path="billing/matrix" element={<AdminFeatureMatrixPage />} />
@@ -381,6 +383,7 @@ function App() {
             <Route path="billing/transactions" element={<AdminTransactionsPage />} />
             <Route path="billing/coupons" element={<AdminCouponsPage />} />
             <Route path="billing/settings" element={<AdminBillingSettingsPage />} />
+            <Route path="billing/gateways" element={<AdminGatewaySettingsPage />} />
             <Route path="sms-settings" element={<AdminSmsSettingsPage />} />
 
 
