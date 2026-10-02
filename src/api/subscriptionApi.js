@@ -102,6 +102,9 @@ export const getHospitalSeatSummary = () =>
 export const getHospitalAllocatedDoctors = () => 
   axiosInstance.get('/hospital/billing/seats/doctors').then(res => res.data)
 
+export const getHospitalEligibleDoctors = (params) => 
+  axiosInstance.get('/hospital/billing/seats/eligible-doctors', { params }).then(res => res.data)
+
 export const getHospitalSeatInvitations = (params) => 
   axiosInstance.get('/hospital/billing/seats/invitations', { params }).then(res => res.data)
 

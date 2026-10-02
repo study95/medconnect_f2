@@ -177,6 +177,8 @@ export const queryKeys = {
     hospitalCommissions: (filters = {}) => [...queryKeys.commissions.all, 'hospital-commissions', filters],
     patientBookingCommission: () => [...queryKeys.commissions.all, 'patient-booking'],
     commissionReport: (filters = {}) => [...queryKeys.commissions.all, 'commission-report', filters],
+    hospitalCommissionReport: (filters = {}) => [...queryKeys.commissions.all, 'hospital-commission-report', filters],
+    doctorCommissionReport: (filters = {}) => [...queryKeys.commissions.all, 'doctor-commission-report', filters],
     purchaseReport: (filters = {}) => [...queryKeys.commissions.all, 'purchase-report', filters],
   },
 

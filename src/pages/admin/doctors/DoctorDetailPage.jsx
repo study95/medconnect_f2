@@ -120,6 +120,7 @@ export default function DoctorDetailPage() {
               </div>
 
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid var(--admin-border)' }}>
+                <InfoItem label="Doctor ID (Public ID)" value={doctor.public_id || doctor.id} icon="🆔" />
                 <InfoItem label="BMDC Registration" value={doctor.bmdc} icon="🪪" />
                 <InfoItem label="Primary Phone" value={doctor.phone} icon="📞" />
                 <InfoItem label="Official Email" value={doctor.email} icon="✉️" />

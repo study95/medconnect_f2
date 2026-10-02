@@ -176,6 +176,19 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
   )
 }
 
+function calculateAge(dobString) {
+  if (!dobString || dobString === '1900-01-01' || dobString === '0000-00-00') return null
+  const dob = new Date(dobString)
+  if (isNaN(dob.getTime())) return null
+  const today = new Date()
+  let age = today.getFullYear() - dob.getFullYear()
+  const m = today.getMonth() - dob.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--
+  }
+  return age >= 1 && age <= 120 ? age : null
+}
+
 export default function PatientListPage() {
   const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
@@ -187,6 +200,8 @@ export default function PatientListPage() {
   
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [bloodGroupFilter, setBloodGroupFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
   const [divisionId, setDivisionId] = useState('')
   const [districtId, setDistrictId] = useState('')
   const [upazilaId, setUpazilaId] = useState('')
@@ -195,7 +210,10 @@ export default function PatientListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const hasFilters = Boolean(search || divisionId || districtId || upazilaId || unionId || dateFrom)
+  const hasFilters = Boolean(
+    search || divisionId || districtId || upazilaId || unionId || 
+    bloodGroupFilter || genderFilter || dateFrom || dateTo
+  )
 
   // Cached cascading location lookups
   const { divisions, districts, upazilas, unions } = useAdminPatientLookups({
@@ -211,9 +229,12 @@ export default function PatientListPage() {
     if (districtId) params.district_id = districtId
     if (upazilaId) params.upazila_id = upazilaId
     if (unionId) params.union_id = unionId
+    if (bloodGroupFilter) params.blood_group = bloodGroupFilter
+    if (genderFilter) params.gender = genderFilter
     if (dateFrom) params.date_from = dateFrom
+    if (dateTo) params.date_to = dateTo
     return params
-  }, [divisionId, districtId, upazilaId, unionId, dateFrom])
+  }, [divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
 
   // Enterprise TanStack Query Hooks
   const { patients, isLoading: loading, refetch: fetchPatients } = useAdminPatients(serverFilters)
@@ -226,7 +247,10 @@ export default function PatientListPage() {
 
   const clearFilters = () => {
     setSearch('')
+    setBloodGroupFilter('')
+    setGenderFilter('')
     setDateFrom('')
+    setDateTo('')
     setDivisionId(''); setDistrictId(''); setUpazilaId(''); setUnionId('')
   }
 
@@ -259,6 +283,23 @@ export default function PatientListPage() {
   // Client-side real-time filtering
   const filtered = useMemo(() => {
     return patients.filter(patient => {
+      // Blood group filter
+      if (bloodGroupFilter && patient.blood_group !== bloodGroupFilter) {
+        return false
+      }
+
+      // Gender filter
+      if (genderFilter && (patient.gender || '').toLowerCase() !== genderFilter.toLowerCase()) {
+        return false
+      }
+
+      // Date range filter
+      if (patient.created_at) {
+        const pDate = patient.created_at.substring(0, 10)
+        if (dateFrom && pDate < dateFrom) return false
+        if (dateTo && pDate > dateTo) return false
+      }
+
       const searchLower = search.trim().toLowerCase()
       if (!searchLower) return true
 
@@ -290,7 +331,7 @@ export default function PatientListPage() {
         upazilaName.includes(searchLower) ||
         unionName.includes(searchLower)
     })
-  }, [patients, search])
+  }, [patients, search, bloodGroupFilter, genderFilter, dateFrom, dateTo])
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
@@ -337,14 +378,17 @@ export default function PatientListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)}
+        hasActiveFilters={hasFilters}
         onClearFilters={clearFilters}
         activeFilters={[
           divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => setDivisionId('') },
           districtId && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtId))?.name || districtId}`, onRemove: () => setDistrictId('') },
           upazilaId && { key: 'upazila', label: `Upazila: ${upazilas.find(u => String(u.id) === String(upazilaId))?.name || upazilaId}`, onRemove: () => setUpazilaId('') },
           unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
-          dateFrom && { key: 'date', label: `Registered From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          bloodGroupFilter && { key: 'blood_group', label: `Blood: ${bloodGroupFilter}`, onRemove: () => setBloodGroupFilter('') },
+          genderFilter && { key: 'gender', label: `Gender: ${genderFilter}`, onRemove: () => setGenderFilter('') },
+          dateFrom && { key: 'dateFrom', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          dateTo && { key: 'dateTo', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
         ].filter(Boolean)}
         actions={
           isAdmin && (
@@ -358,9 +402,93 @@ export default function PatientListPage() {
         <SearchableSelect label="District" placeholder="All Districts" options={districts} value={districtId} onChange={setDistrictId} disabled={!divisionId} />
         <SearchableSelect label="Upazila" placeholder="All Upazilas" options={upazilas} value={upazilaId} onChange={setUpazilaId} disabled={!districtId} />
         <SearchableSelect label="Union" placeholder="All Unions" options={unions} value={unionId} onChange={setUnionId} disabled={!upazilaId} />
-        <div style={{ minWidth: 150 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Registered From</label>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
+        <div style={{ minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Blood Group</label>
+          <select
+            value={bloodGroupFilter}
+            onChange={e => setBloodGroupFilter(e.target.value)}
+            style={{
+              width: '100%',
+              height: 42,
+              padding: '0 12px',
+              borderRadius: 10,
+              border: '1px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)',
+              color: bloodGroupFilter ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="">All Blood Groups</option>
+            {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => (
+              <option key={bg} value={bg}>{bg}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ minWidth: 130, flex: '1 1 130px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</label>
+          <select
+            value={genderFilter}
+            onChange={e => setGenderFilter(e.target.value)}
+            style={{
+              width: '100%',
+              height: 42,
+              padding: '0 12px',
+              borderRadius: 10,
+              border: '1px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)',
+              color: genderFilter ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div style={{ minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registered From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            style={{
+              width: '100%',
+              height: 42,
+              padding: '0 10px',
+              borderRadius: 10,
+              border: '1px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)',
+              color: 'var(--admin-text)',
+              fontSize: 13,
+              outline: 'none'
+            }}
+          />
+        </div>
+        <div style={{ minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registered To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            style={{
+              width: '100%',
+              height: 42,
+              padding: '0 10px',
+              borderRadius: 10,
+              border: '1px solid var(--admin-border)',
+              background: 'var(--admin-card-bg)',
+              color: 'var(--admin-text)',
+              fontSize: 13,
+              outline: 'none'
+            }}
+          />
         </div>
       </ListToolbar>
 
@@ -493,21 +621,23 @@ export default function PatientListPage() {
                 padding: '4px 10px',
                 borderRadius: 8,
                 border: '1px solid var(--admin-border, #E2E8F0)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
               }}
             >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Accounts Found
+              {loading ? (
+                <span className="skeleton-box" style={{ width: 22, height: 14, borderRadius: 4 }} />
+              ) : (
+                <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong>
+              )}
+              <span>Accounts Found</span>
             </div>
           </div>
         </div>
 
-        {loading ? (
-          <TableSkeleton 
-            rowCount={8} 
-            columnWidths={isAdmin ? ['44px', '110px', '20%', '18%', '16%', '20%', '14%', '130px'] : ['110px', '22%', '20%', '18%', '20%', '15%', '80px']} 
-            headers={isAdmin ? ['', 'ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions'] : ['ID', 'Patient', 'Contact Info', 'Clinical Info', 'Location Profile', 'Registered', 'Actions']} 
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || dateFrom || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
+        {!loading && filtered.length === 0 ? (
+          <EmptyState hasFilters={hasFilters} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -516,28 +646,78 @@ export default function PatientListPage() {
                   {isAdmin && (
                     <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
                       <TableCheckbox
-                        checked={isAllSelected}
-                        indeterminate={isSomeSelected && !isAllSelected}
+                        checked={!loading && isAllSelected}
+                        indeterminate={!loading && isSomeSelected && !isAllSelected}
                         onChange={toggleSelectAll}
                         title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
                       />
                     </th>
                   )}
-                  <th style={{ width: 130, color: 'var(--admin-text-muted)' }}>ID</th>
-                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Patient</th>
-                  <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
-                  <th style={{ width: '16%', color: 'var(--admin-text-muted)' }}>Clinical Info</th>
-                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Location Profile</th>
-                  <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Registered</th>
+                  <th style={{ width: '25%', color: 'var(--admin-text-muted)' }}>Patient</th>
+                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
+                  <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Clinical Info</th>
+                  <th style={{ width: '21%', color: 'var(--admin-text-muted)' }}>Location Profile</th>
+                  <th style={{ width: '16%', color: 'var(--admin-text-muted)' }}>Registered</th>
                   <th style={{ width: isAdmin ? 130 : 80, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(patient => {
+                {loading ? (
+                  Array.from({ length: 8 }).map((_, rIdx) => (
+                    <tr key={`patient-skeleton-${rIdx}`}>
+                      {isAdmin && (
+                        <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                          <div className="skeleton-box" style={{ width: 18, height: 18, borderRadius: 5, margin: '0 auto' }} />
+                        </td>
+                      )}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="skeleton-box" style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
+                            <div className="skeleton-box" style={{ width: `${60 + (rIdx % 3) * 15}%`, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 85, height: 12, borderRadius: 4 }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: 95, height: 14, borderRadius: 4 }} />
+                          <div className="skeleton-box" style={{ width: `${65 + (rIdx % 3) * 12}%`, height: 11, borderRadius: 4 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: 50, height: 20, borderRadius: 6 }} />
+                          <div className="skeleton-box" style={{ width: 55, height: 20, borderRadius: 6 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: `${72 + (rIdx % 3) * 10}%`, height: 14, borderRadius: 4 }} />
+                          <div className="skeleton-box" style={{ width: `${48 + (rIdx % 2) * 16}%`, height: 11, borderRadius: 4 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: 85, height: 14, borderRadius: 4 }} />
+                          <div className="skeleton-box" style={{ width: 58, height: 11, borderRadius: 4 }} />
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                          <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                          {isAdmin && <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : paginatedData.map(patient => {
                   const isSelected = selectedIds.includes(patient.id)
                   const displayName = patient.name || patient.user?.name || 'Unnamed'
                   const displayPhone = patient.phone || patient.mobile || patient.user?.phone || patient.user?.mobile
                   const displayEmail = patient.email || patient.user?.email
+                  const patientAge = calculateAge(patient.date_of_birth || patient.dob || patient.user?.date_of_birth)
 
                   return (
                     <tr
@@ -556,12 +736,9 @@ export default function PatientListPage() {
                           />
                         </td>
                       )}
-                      <td style={{ whiteSpace: 'nowrap' }}>
-                        <CompactUlid value={patient.public_id || patient.id} />
-                      </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, overflow: 'hidden', flexShrink: 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, overflow: 'hidden', flexShrink: 0 }}>
                             {patient.profile_pic || patient.photo ? (
                               <img src={getMediaUrl(patient.profile_pic || patient.photo)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none' }} />
                             ) : (
@@ -569,10 +746,10 @@ export default function PatientListPage() {
                             )}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13.5 }}>{displayName}</div>
-                            {patient.patient_id && (
-                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>#{patient.patient_id}</div>
-                            )}
+                            <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13.5, marginBottom: 2 }}>{displayName}</div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              <CompactUlid value={patient.public_id || patient.id} />
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -582,35 +759,61 @@ export default function PatientListPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ 
-                            fontSize: 11, 
-                            fontWeight: 700, 
-                            padding: '2px 8px', 
-                            borderRadius: 12, 
-                            background: patient.blood_group ? 'rgba(239, 68, 68, 0.1)' : 'rgba(100, 116, 139, 0.1)', 
-                            color: patient.blood_group ? '#EF4444' : 'var(--admin-text-muted)' 
-                          }}>
-                            {patient.blood_group || 'Blood N/A'}
-                          </span>
-                          <span style={{ 
-                            fontSize: 11, 
-                            fontWeight: 600, 
-                            padding: '2px 8px', 
-                            borderRadius: 12, 
-                            background: 'rgba(99, 102, 241, 0.1)', 
-                            color: '#6366f1' 
-                          }}>
-                            {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : 'Gender N/A'}
-                          </span>
+                          {patient.blood_group ? (
+                            <span style={{ 
+                              fontSize: 11, 
+                              fontWeight: 700, 
+                              padding: '2px 8px', 
+                              borderRadius: 6, 
+                              background: 'rgba(239, 68, 68, 0.1)', 
+                              color: '#EF4444',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 2
+                            }}>
+                              🩸 {patient.blood_group}
+                            </span>
+                          ) : null}
+                          {patient.gender ? (
+                            <span style={{ 
+                              fontSize: 11, 
+                              fontWeight: 600, 
+                              padding: '2px 8px', 
+                              borderRadius: 6, 
+                              background: 'rgba(99, 102, 241, 0.1)', 
+                              color: '#6366f1' 
+                            }}>
+                              {patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)}
+                            </span>
+                          ) : null}
+                          {patientAge !== null ? (
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              color: '#059669'
+                            }}>
+                              {patientAge} Yrs
+                            </span>
+                          ) : null}
+                          {!patient.blood_group && !patient.gender && patientAge === null && (
+                            <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>—</span>
+                          )}
                         </div>
                       </td>
                       <td>
                         <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text)' }}>
-                          {[patient.division?.name, patient.district?.name].filter(Boolean).join(', ') || 'No regional profile'}
+                          {[patient.division?.name, patient.district?.name].filter(Boolean).join(', ') || (
+                            <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>—</span>
+                          )}
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                          {[patient.upazila?.name, patient.union?.name].filter(Boolean).join(', ')}
-                        </div>
+                        {Boolean(patient.upazila?.name || patient.union?.name) && (
+                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                            {[patient.upazila?.name, patient.union?.name].filter(Boolean).join(', ')}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 500 }}>

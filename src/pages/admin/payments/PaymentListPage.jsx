@@ -227,9 +227,9 @@ export default function PaymentListPage() {
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
             <span style={{ marginRight: 12 }}>💳</span>
-            Payment Transactions
+            Patient Payments
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Financial accounts, settlement logs, and billing ledger</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Appointment booking fees, patient transaction records, and settlement logs</p>
         </div>
       </div>
 

@@ -597,61 +597,89 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   to={pLink('/payments')}
                   className={`sidebar-nav-item ${isActive(pLink('/payments')) ? 'active' : ''}`}
                   onClick={onClose}
-                  title={isCollapsed ? 'Payments' : undefined}
+                  title={isCollapsed ? 'Patient Payments' : undefined}
                 >
                   <span className="nav-icon"><CreditCard size={18} /></span>
-                  <span className="nav-text">Payments</span>
+                  <span className="nav-text">Patient Payments</span>
                 </NavLink>
               )}
 
-              {/* Commission & Reports — Admin + Manager */}
-              {(isAdmin || isManager || hasPermission('commission.view')) && (
+              {/* Commission & Reports — Admin, Manager, Doctor */}
+              {(isAdmin || isManager || isDoctor || hasPermission('commission.view')) && (
                 <>
                   {isAdmin && (
                     <NavLink
                       to="/admin/commission"
                       className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
                       onClick={onClose}
-                      title={isCollapsed ? 'Commission' : undefined}
+                      title={isCollapsed ? 'Commission Controls' : undefined}
                     >
-                      <span className="nav-icon"><Receipt size={18} /></span>
-                      <span className="nav-text">Commission & Service</span>
+                      <span className="nav-icon"><Settings size={18} /></span>
+                      <span className="nav-text">Commission Controls</span>
                     </NavLink>
                   )}
 
-                  <NavLink
-                    to="/admin/reports/commission"
-                    className={`sidebar-nav-item ${isActive('/admin/reports/commission') ? 'active' : ''}`}
-                    onClick={onClose}
-                    title={isCollapsed ? 'Commission Report' : undefined}
-                  >
-                    <span className="nav-icon"><Receipt size={18} /></span>
-                    <span className="nav-text">Commission Report</span>
-                  </NavLink>
+                  {isAdmin && (
+                    <NavLink
+                      to="/admin/reports/commission"
+                      className={`sidebar-nav-item ${isActive('/admin/reports/commission') ? 'active' : ''}`}
+                      onClick={onClose}
+                      title={isCollapsed ? 'Commission Report' : undefined}
+                    >
+                      <span className="nav-icon"><FileText size={18} /></span>
+                      <span className="nav-text">Commission Report</span>
+                    </NavLink>
+                  )}
 
-                  <NavLink
-                    to="/admin/reports/purchase"
-                    className={`sidebar-nav-item ${isActive('/admin/reports/purchase') ? 'active' : ''}`}
-                    onClick={onClose}
-                    title={isCollapsed ? 'Purchase Report' : undefined}
-                  >
-                    <span className="nav-icon"><ShoppingCart size={18} /></span>
-                    <span className="nav-text">Purchase Report</span>
-                  </NavLink>
+                  {isManager && (
+                    <NavLink
+                      to={pLink('/commission-report')}
+                      className={`sidebar-nav-item ${isActive(pLink('/commission-report')) ? 'active' : ''}`}
+                      onClick={onClose}
+                      title={isCollapsed ? 'Commission & Settlement' : undefined}
+                    >
+                      <span className="nav-icon"><FileText size={18} /></span>
+                      <span className="nav-text">Commission & Settlement</span>
+                    </NavLink>
+                  )}
+
+                  {isDoctor && (
+                    <NavLink
+                      to={pLink('/commission-report')}
+                      className={`sidebar-nav-item ${isActive(pLink('/commission-report')) ? 'active' : ''}`}
+                      onClick={onClose}
+                      title={isCollapsed ? 'Earnings & Commission' : undefined}
+                    >
+                      <span className="nav-icon"><FileText size={18} /></span>
+                      <span className="nav-text">Earnings & Commission</span>
+                    </NavLink>
+                  )}
                 </>
               )}
 
-              {/* Enterprise Billing — Admin only */}
+              {/* Enterprise Billing & Subscriber Management — Admin only */}
               {isAdmin && (
-                <NavLink
-                  to="/admin/billing/dashboard"
-                  className={`sidebar-nav-item ${isActive('/admin/billing') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? 'Enterprise Billing' : undefined}
-                >
-                  <span className="nav-icon"><CreditCard size={18} /></span>
-                  <span className="nav-text">Enterprise Billing</span>
-                </NavLink>
+                <>
+                  <NavLink
+                    to="/admin/billing/subscribers"
+                    className={`sidebar-nav-item ${isActive('/admin/billing/subscribers') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Subscriber Management' : undefined}
+                  >
+                    <span className="nav-icon"><Users size={18} /></span>
+                    <span className="nav-text">Subscriber Management</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/billing/dashboard"
+                    className={`sidebar-nav-item ${isActive('/admin/billing/dashboard') || (isActive('/admin/billing') && !isActive('/admin/billing/subscribers')) ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Enterprise Billing Suite' : undefined}
+                  >
+                    <span className="nav-icon"><Layers size={18} /></span>
+                    <span className="nav-text">Enterprise Billing Suite</span>
+                  </NavLink>
+                </>
               )}
             </SidebarSection>
           )}

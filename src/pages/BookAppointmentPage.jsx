@@ -646,6 +646,12 @@ export default function BookAppointmentPage() {
             onClose: () => setCurrentStep(2)
           }
         )
+      } else if (lower.includes('currently unavailable') || lower.includes('clinic authority') || lower.includes('enable the service')) {
+        showWarning(
+          'বুকিং সম্পন্ন করা যায়নি',
+          'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।',
+          { type: 'error' }
+        )
       } else {
         showWarning(
           'বুকিং সম্পন্ন করা যায়নি',

@@ -135,6 +135,8 @@ const ServiceEnablementPage  = lazy(() => import('./pages/admin/commission/Servi
 
 // Reports
 const CommissionReportPage   = lazy(() => import('./pages/admin/reports/CommissionReportPage'))
+const HospitalCommissionReportPage = lazy(() => import('./pages/admin/reports/HospitalCommissionReportPage'))
+const DoctorCommissionReportPage = lazy(() => import('./pages/admin/reports/DoctorCommissionReportPage'))
 const PurchaseReportPage     = lazy(() => import('./pages/admin/reports/PurchaseReportPage'))
 
 // Admin Profile & Password
@@ -469,6 +471,10 @@ function App() {
             {/* Payments */}
             <Route path="payments" element={<SubscriptionGate moduleName="Payments"><PaymentListPage /></SubscriptionGate>} />
 
+            {/* Doctor Earnings & Commission Statement */}
+            <Route path="commission-report" element={<DoctorCommissionReportPage />} />
+            <Route path="earnings" element={<DoctorCommissionReportPage />} />
+
             {/* Subscription Experience */}
             <Route path="subscription" element={<DoctorSubscriptionExperiencePage />} />
             <Route path="subscription/packages" element={<SubscriptionPage />} />
@@ -541,6 +547,10 @@ function App() {
 
             {/* Reviews */}
             <Route path="hospital-reviews" element={<HospitalReviewsPage />} />
+
+            {/* Hospital Commission & Settlements */}
+            <Route path="commission-report" element={<HospitalCommissionReportPage />} />
+            <Route path="settlements" element={<HospitalCommissionReportPage />} />
 
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />

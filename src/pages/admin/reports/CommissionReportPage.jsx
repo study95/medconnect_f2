@@ -237,9 +237,9 @@ export default function CommissionReportPage() {
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
             <span style={{ marginRight: 12 }}>🧾</span>
-            Commission Reports
+            Commission Settlement Report
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Analyze and manage commissions for doctors and hospitals</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Analyze earned appointment commissions, payout status, and generate settlement memos</p>
         </div>
         <button
           type="button"

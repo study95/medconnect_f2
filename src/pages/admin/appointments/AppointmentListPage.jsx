@@ -103,7 +103,8 @@ export default function AppointmentListPage() {
   // Filters State
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
-  const [date, setDate] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [month, setMonth] = useState('')
   const [year, setYear] = useState('')
   const [doctorId, setDoctorId] = useState('')
@@ -116,7 +117,7 @@ export default function AppointmentListPage() {
   // Reset to page 1 whenever any filter or search changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, statusFilter])
+  }, [debouncedSearch, dateFrom, dateTo, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Memoized server filters for TanStack Query
   const serverFilters = useMemo(() => {
@@ -125,7 +126,8 @@ export default function AppointmentListPage() {
       per_page: perPage,
     }
     if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
-    if (date) params.date = date
+    if (dateFrom) params.date_from = dateFrom
+    if (dateTo) params.date_to = dateTo
     if (month) params.month = month
     if (year) params.year = year
     if (doctorId) params.doctor_id = doctorId
@@ -133,7 +135,7 @@ export default function AppointmentListPage() {
     if (roleFilter) params.role = roleFilter
     if (statusFilter) params.status = statusFilter
     return params
-  }, [currentPage, perPage, debouncedSearch, date, month, year, doctorId, hospitalId, roleFilter, statusFilter])
+  }, [currentPage, perPage, debouncedSearch, dateFrom, dateTo, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Enterprise TanStack Query Hooks
   const { appointments, total, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
@@ -205,7 +207,8 @@ export default function AppointmentListPage() {
 
   const clearFilters = () => {
     setSearch('')
-    setDate('')
+    setDateFrom('')
+    setDateTo('')
     setMonth('')
     setYear('')
     setDoctorId('')
@@ -258,10 +261,11 @@ export default function AppointmentListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || statusFilter || search)}
+        hasActiveFilters={Boolean(dateFrom || dateTo || month || year || doctorId || hospitalId || roleFilter || statusFilter || search)}
         onClearFilters={clearFilters}
         activeFilters={[
-          date && { key: 'date', label: `Date: ${date}`, onRemove: () => setDate('') },
+          dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
           month && { key: 'month', label: `Month: ${months.find(m => String(m.id) === String(month))?.name || month}`, onRemove: () => setMonth('') },
           year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
@@ -271,8 +275,12 @@ export default function AppointmentListPage() {
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 140 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>From Date</label>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
+        </div>
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>To Date</label>
+          <input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
         </div>
         <div style={{ minWidth: 130 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Month</label>
@@ -425,22 +433,24 @@ export default function AppointmentListPage() {
                 padding: '4px 10px',
                 borderRadius: 8,
                 border: '1px solid var(--admin-border, #E2E8F0)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
               }}
             >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong> Results
+              {loading ? (
+                <span className="skeleton-box" style={{ width: 22, height: 14, borderRadius: 4 }} />
+              ) : (
+                <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong>
+              )}
+              <span>Results</span>
             </div>
           </div>
         </div>
 
         <div className="admin-card-body" style={{ padding: 0 }}>
-          {loading ? (
-            <TableSkeleton 
-              rowCount={8} 
-              columnWidths={isAdmin ? ['44px', '120px', '22%', '20%', '18%', '12%', '16%'] : ['120px', '22%', '20%', '18%', '12%', '16%']} 
-              headers={isAdmin ? ['', 'ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions'] : ['ID & Serial', 'Patient Info', 'Doctor & Chamber', 'Appointment Schedule', 'Status & Payment', 'Actions']} 
-            />
-          ) : appointments.length === 0 ? (
-            <EmptyState hasFilters={Boolean(date || month || year || doctorId || hospitalId || roleFilter || activeTab !== 'all' || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
+          {!loading && appointments.length === 0 ? (
+            <EmptyState hasFilters={Boolean(dateFrom || dateTo || month || year || doctorId || hospitalId || roleFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="📅" title="No appointments found" description="Try selecting a different date range or reset active filters." />
           ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
@@ -449,8 +459,8 @@ export default function AppointmentListPage() {
                     {isAdmin && (
                       <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
                         <TableCheckbox
-                          checked={isAllSelected}
-                          indeterminate={isSomeSelected && !isAllSelected}
+                          checked={!loading && isAllSelected}
+                          indeterminate={!loading && isSomeSelected && !isAllSelected}
                           onChange={toggleSelectAll}
                           title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
                         />
@@ -467,7 +477,57 @@ export default function AppointmentListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {appointments.map(appt => {
+                  {loading ? (
+                    Array.from({ length: 8 }).map((_, rIdx) => (
+                      <tr key={`appt-skeleton-${rIdx}`}>
+                        {isAdmin && (
+                          <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
+                            <div className="skeleton-box" style={{ width: 18, height: 18, borderRadius: 5, margin: '0 auto' }} />
+                          </td>
+                        )}
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div className="skeleton-box" style={{ width: 85, height: 22, borderRadius: 6 }} />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-box" style={{ width: 110, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 80, height: 11, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-box" style={{ width: 120, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 75, height: 11, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-box" style={{ width: 130, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 90, height: 11, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div className="skeleton-box" style={{ width: 70, height: 20, borderRadius: 12 }} />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-box" style={{ width: 85, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 60, height: 11, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div className="skeleton-box" style={{ width: 80, height: 24, borderRadius: 12 }} />
+                        </td>
+                        <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                            <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                            {isAdmin && <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : appointments.map(appt => {
                     const isSelected = selectedIds.includes(appt.id)
                     return (
                     <tr

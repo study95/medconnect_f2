@@ -1,13 +1,13 @@
 // PrescriptionListPage.jsx — List all prescriptions (doctor sees own, admin sees all)
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
-import { getPrescriptions, deletePrescription } from '../../../api/adminApi'
+import { getPrescriptions, deletePrescription, getDoctors } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
-import { TableSkeleton } from '../../../components/common/Skeletons'
+import SearchableSelect from '../../../components/common/SearchableSelect'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
@@ -23,7 +23,10 @@ export default function PrescriptionListPage() {
 
   const [statusTab, setStatusTab] = useState(activeTabParam)
   const [search, setSearch] = useState('')
-  const [dateFilter, setDateFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [doctorFilter, setDoctorFilter] = useState('')
+  const [sourceTypeFilter, setSourceTypeFilter] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -56,9 +59,14 @@ export default function PrescriptionListPage() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.prescriptions.list({ doctorScopeId }),
+    queryKey: ['admin', 'prescriptions', { doctorScopeId, doctorFilter, sourceTypeFilter, dateFrom, dateTo }],
     queryFn: async () => {
-      const res = await getPrescriptions({ per_page: 200 })
+      const params = { per_page: 200 }
+      if (doctorFilter) params.doctor_id = doctorFilter
+      if (dateFrom) params.date_from = dateFrom
+      if (dateTo) params.date_to = dateTo
+      if (sourceTypeFilter && sourceTypeFilter !== 'all') params.source_type = sourceTypeFilter
+      const res = await getPrescriptions(params)
       const dbList = res.data?.data?.data || res.data?.data || res.data || []
 
       // Also merge any local browser drafts for this doctor
@@ -123,6 +131,9 @@ export default function PrescriptionListPage() {
                   diagnosis: item.form.diagnosis || '',
                   medicines: item.form.medicines?.filter(m => (m.medicine_name || '').trim()) || [],
                   appointment_id: item.form.appointment_id || undefined,
+                  doctor_id: user?.doctor?.id || user?.doctor_id || undefined,
+                  doctor_public_id: user?.doctor?.public_id || undefined,
+                  doctor_name: user?.doctor?.name || user?.name || undefined,
                   local_key: key
                 })
               } else {
@@ -137,6 +148,33 @@ export default function PrescriptionListPage() {
     },
     staleTime: 45 * 1000,
   })
+
+  // Doctor lookup for Admin filter
+  const { data: doctorsData = [] } = useQuery({
+    queryKey: ['admin', 'doctors', 'lookup'],
+    queryFn: async () => {
+      const res = await getDoctors({ per_page: 500 })
+      return res.data?.data?.data || res.data?.data || res.data || []
+    },
+    enabled: !!isAdmin,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const doctorOptions = useMemo(() => {
+    return [
+      { id: '', name: 'All Doctors' },
+      ...doctorsData.map(d => ({
+        id: String(d.id),
+        name: d.name ? `Dr. ${d.name.replace(/^dr\.?\s*/i, '')}` : `Doctor #${d.id}`
+      }))
+    ]
+  }, [doctorsData])
+
+  const sourceTypeOptions = [
+    { id: 'all', name: 'All Sources' },
+    { id: 'appointment', name: '📅 From Appointment' },
+    { id: 'walkin', name: '🚶 Walk-in / Direct' },
+  ]
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -165,6 +203,21 @@ export default function PrescriptionListPage() {
     }
   }, [draftCount, loading])
 
+  const getPrescriptionDateStr = (p) => {
+    if (p.prescription_date && /^\d{4}-\d{2}-\d{2}/.test(p.prescription_date)) {
+      return p.prescription_date.substring(0, 10)
+    }
+    if (p.visited_at) {
+      try {
+        const d = new Date(p.visited_at)
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().substring(0, 10)
+        }
+      } catch (e) {}
+    }
+    return ''
+  }
+
   const filtered = prescriptions.filter(p => {
     if (statusTab === 'draft' && p.status !== 'draft') return false
     if (statusTab === 'finalized' && p.status === 'draft') return false
@@ -179,9 +232,32 @@ export default function PrescriptionListPage() {
       const matchReg = p.registration_no?.toLowerCase().includes(q)
       if (!matchName && !matchDoc && !matchDiag && !matchId && !matchPublicId && !matchReg) return false
     }
-    if (dateFilter && p.prescription_date) {
-      if (!p.prescription_date.startsWith(dateFilter)) return false
+
+    const pDate = getPrescriptionDateStr(p)
+    if (dateFrom) {
+      if (pDate && pDate < dateFrom) return false
     }
+    if (dateTo) {
+      if (pDate && pDate > dateTo) return false
+    }
+
+    if (doctorFilter) {
+      const matchDoc =
+        String(p.doctor_public_id || '') === String(doctorFilter) ||
+        String(p.doctor_id || '') === String(doctorFilter) ||
+        String(p.doctor?.public_id || '') === String(doctorFilter) ||
+        String(p.doctor?.id || '') === String(doctorFilter)
+      if (!matchDoc) return false
+    }
+
+    if (sourceTypeFilter === 'appointment') {
+      const hasAppt = Boolean(p.appointment_id && String(p.appointment_id) !== 'null' && String(p.appointment_id) !== 'undefined')
+      if (!hasAppt) return false
+    } else if (sourceTypeFilter === 'walkin') {
+      const hasAppt = Boolean(p.appointment_id && String(p.appointment_id) !== 'null' && String(p.appointment_id) !== 'undefined')
+      if (hasAppt) return false
+    }
+
     return true
   })
 
@@ -320,10 +396,26 @@ export default function PrescriptionListPage() {
         refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(dateFilter)}
-        onClearFilters={() => setDateFilter('')}
+        hasActiveFilters={Boolean(dateFrom || dateTo || (isAdmin && doctorFilter) || (sourceTypeFilter && sourceTypeFilter !== 'all'))}
+        onClearFilters={() => {
+          setDateFrom('')
+          setDateTo('')
+          setDoctorFilter('')
+          setSourceTypeFilter('all')
+        }}
         activeFilters={[
-          dateFilter && { key: 'date', label: `Date: ${dateFilter}`, onRemove: () => setDateFilter('') },
+          dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
+          isAdmin && doctorFilter && {
+            key: 'doctor',
+            label: `Doctor: ${doctorOptions.find(d => String(d.id) === String(doctorFilter))?.name || doctorFilter}`,
+            onRemove: () => setDoctorFilter('')
+          },
+          sourceTypeFilter && sourceTypeFilter !== 'all' && {
+            key: 'source_type',
+            label: sourceTypeOptions.find(s => s.id === sourceTypeFilter)?.name || sourceTypeFilter,
+            onRemove: () => setSourceTypeFilter('all')
+          },
         ].filter(Boolean)}
         actions={
           isDoctor && (
@@ -333,15 +425,44 @@ export default function PrescriptionListPage() {
           )
         }
       >
-        <div style={{ minWidth: 160 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Date</label>
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>From Date</label>
           <input
             type="date"
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
             style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
           />
         </div>
+
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>To Date</label>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={e => setDateTo(e.target.value)}
+            style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+          />
+        </div>
+
+        {isAdmin && (
+          <SearchableSelect
+            label="Doctor"
+            placeholder="All Doctors"
+            options={doctorOptions}
+            value={doctorFilter}
+            onChange={setDoctorFilter}
+          />
+        )}
+
+        <SearchableSelect
+          label="Source"
+          placeholder="All Sources"
+          options={sourceTypeOptions}
+          value={sourceTypeFilter}
+          onChange={setSourceTypeFilter}
+        />
       </ListToolbar>
 
       <div className="admin-card">
@@ -349,16 +470,22 @@ export default function PrescriptionListPage() {
           <h3 className="admin-card-title">
             {statusTab === 'draft' ? 'Draft Prescriptions (খসড়া)' : statusTab === 'finalized' ? 'Completed Prescriptions' : 'Prescription Records'}
           </h3>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>{filtered.length} total</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)' }}>
+            {loading ? <span className="skeleton-box" style={{ width: 22, height: 14, borderRadius: 4, display: 'inline-block' }} /> : `${filtered.length} total`}
+          </span>
         </div>
 
-        {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['100px', '22%', '14%', '12%', '18%', '12%', '16%']} headers={['ID', 'Patient', 'Status', 'Date', 'Diagnosis', 'Medicines', 'Actions']} />
-        ) : filtered.length === 0 ? (
+        {!loading && filtered.length === 0 ? (
           <EmptyState 
-            hasFilters={Boolean(search || dateFilter || statusTab !== 'all')} 
+            hasFilters={Boolean(search || dateFrom || dateTo || doctorFilter || (sourceTypeFilter && sourceTypeFilter !== 'all') || statusTab !== 'all')} 
             searchQuery={search} 
-            onClearFilters={() => { setDateFilter(''); setStatusTab('all') }} 
+            onClearFilters={() => {
+              setDateFrom('')
+              setDateTo('')
+              setDoctorFilter('')
+              setSourceTypeFilter('all')
+              setStatusTab('all')
+            }} 
             onClearSearch={() => setSearch('')} 
             icon={statusTab === 'draft' ? '📝' : '📋'} 
             title={statusTab === 'draft' ? 'No draft prescriptions' : 'No prescriptions found'} 
@@ -370,7 +497,7 @@ export default function PrescriptionListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th style={{ width: 120 }}>ID</th>
                   <th>Patient</th>
                   {isAdmin && <th>Doctor</th>}
                   <th>Status</th>
@@ -381,7 +508,47 @@ export default function PrescriptionListPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(p => (
+                {loading ? (
+                  Array.from({ length: 8 }).map((_, rIdx) => (
+                    <tr key={`rx-skeleton-${rIdx}`}>
+                      <td>
+                        <div className="skeleton-box" style={{ width: 85, height: 22, borderRadius: 6 }} />
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: 110, height: 14, borderRadius: 4 }} />
+                          <div className="skeleton-box" style={{ width: 70, height: 11, borderRadius: 4 }} />
+                        </div>
+                      </td>
+                      {isAdmin && (
+                        <td>
+                          <div className="skeleton-box" style={{ width: 120, height: 14, borderRadius: 4 }} />
+                        </td>
+                      )}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div className="skeleton-box" style={{ width: 75, height: 20, borderRadius: 6 }} />
+                          <div className="skeleton-box" style={{ width: 85, height: 16, borderRadius: 4 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div className="skeleton-box" style={{ width: 80, height: 14, borderRadius: 4 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-box" style={{ width: `${75 + (rIdx % 3) * 15}%`, height: 14, borderRadius: 4 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-box" style={{ width: 55, height: 18, borderRadius: 12 }} />
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                          <div className="skeleton-box" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : paginatedData.map(p => (
                   <tr key={p.id}>
                     <td>
                       <CompactUlid value={p.public_id || p.id} />
@@ -397,37 +564,72 @@ export default function PrescriptionListPage() {
                       </td>
                     )}
                     <td>
-                      {p.status === 'draft' ? (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: p.is_local_draft ? '#fef9c3' : '#fef3c7',
-                          color: p.is_local_draft ? '#854d0e' : '#d97706',
-                          border: p.is_local_draft ? '1px solid #fde047' : '1px solid #fcd34d'
-                        }}>
-                          <Clock size={11} /> {p.is_local_draft ? 'Draft (Local)' : 'Draft'}
-                        </span>
-                      ) : (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: '#dcfce7',
-                          color: '#15803d',
-                          border: '1px solid #86efac'
-                        }}>
-                          <CheckCircle2 size={11} /> Finalized
-                        </span>
-                      )}
+                      <div>
+                        {p.status === 'draft' ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: p.is_local_draft ? '#fef9c3' : '#fef3c7',
+                            color: p.is_local_draft ? '#854d0e' : '#d97706',
+                            border: p.is_local_draft ? '1px solid #fde047' : '1px solid #fcd34d'
+                          }}>
+                            <Clock size={11} /> {p.is_local_draft ? 'Draft (Local)' : 'Draft'}
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            border: '1px solid #86efac'
+                          }}>
+                            <CheckCircle2 size={11} /> Finalized
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ marginTop: 4 }}>
+                        {p.appointment_id ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe'
+                          }}>
+                            📅 Appointment
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: '#fef3c7',
+                            color: '#92400e',
+                            border: '1px solid #fde68a'
+                          }}>
+                            🚶 Walk-in
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>{p.prescription_date || (p.visited_at ? new Date(p.visited_at).toLocaleDateString() : '—')}</td>
                     <td>

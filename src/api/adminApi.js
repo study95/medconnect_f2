@@ -156,6 +156,8 @@ export const updatePatientBookingCommission = (data) => axiosInstance.put('/admi
 
 // ===== COMMISSION & PURCHASE REPORTS =====
 export const getCommissionReport = (params) => axiosInstance.get('/admin/commission-report', { params })
+export const getHospitalCommissionReport = (params) => axiosInstance.get('/hospital/commission-report', { params })
+export const getDoctorCommissionReport = (params) => axiosInstance.get('/doctor/commission-report', { params })
 export const bulkUpdateCommissionStatus = (data) => axiosInstance.post('/admin/commission-bulk-update', data)
 export const getPurchaseReport = (params) => axiosInstance.get('/admin/purchase-report', { params })
 

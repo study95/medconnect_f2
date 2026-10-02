@@ -208,10 +208,10 @@ export default function PurchaseReportPage() {
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
-            <span style={{ marginRight: 12 }}>📊</span>
-            Purchase Income Report
+            <span style={{ marginRight: 12 }}>📦</span>
+            Package Sales Report
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Subscription purchase analytics and financial overview</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Doctor and hospital subscription package purchases, plan renewals, and revenue log</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button

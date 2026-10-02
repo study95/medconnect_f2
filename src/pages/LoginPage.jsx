@@ -180,7 +180,6 @@ function LoginPage() {
       setTwoFactorState({
         session_key: result.session_key,
         masked_mobile: result.masked_mobile,
-        dev_otp: result.dev_otp,
         role: result.role || role
       })
       setOtp('')
@@ -297,20 +296,6 @@ function LoginPage() {
                   -এ ৬ ডিজিটের ওটিপি পাঠানো হয়েছে।
                 </p>
               </div>
-
-              {twoFactorState.dev_otp && (
-                <div 
-                  onClick={() => setOtp(twoFactorState.dev_otp)}
-                  style={{
-                    background: '#FEF3C7', border: '1px dashed #F59E0B', borderRadius: 8,
-                    padding: '8px 12px', fontSize: 12, color: '#92400E', marginBottom: 16,
-                    cursor: 'pointer', textAlign: 'center'
-                  }}
-                  title="ক্লিক করে ওটিপি বসান"
-                >
-                  ⚡ টেস্ট মোড ওটিপি: <strong>{twoFactorState.dev_otp}</strong> (ক্লিক করলে স্বয়ংক্রিয় বসবে)
-                </div>
-              )}
 
               {otpError && (
                 <div style={{

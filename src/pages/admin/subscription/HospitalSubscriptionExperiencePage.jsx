@@ -1,5 +1,6 @@
 // HospitalSubscriptionExperiencePage.jsx — Phase 4.2, 4.4 & Phase 6 Enterprise Hospital Subscription & Capacity Experience
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
   getHospitalBillingOverview,
@@ -11,6 +12,7 @@ import {
   emailHospitalInvoice,
   getHospitalSeatSummary,
   getHospitalAllocatedDoctors,
+  getHospitalEligibleDoctors,
   getHospitalSeatInvitations,
   sendHospitalDoctorInvitation,
   cancelHospitalDoctorInvitation,
@@ -53,10 +55,16 @@ export default function HospitalSubscriptionExperiencePage() {
 
   const [doctorSearch, setDoctorSearch] = useState('')
   const [showAllocateModal, setShowAllocateModal] = useState(false)
-  const [newDoctorId, setNewDoctorId] = useState('')
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [eligibleHospitalDoctors, setEligibleHospitalDoctors] = useState([])
+  const [hospitalDocFilter, setHospitalDocFilter] = useState('')
+  const [otherDoctorResults, setOtherDoctorResults] = useState([])
+  const [loadingEligible, setLoadingEligible] = useState(false)
+  const [allocationMode, setAllocationMode] = useState('invite') // 'invite' | 'direct'
   const [doctorSearchQuery, setDoctorSearchQuery] = useState('')
-  const [doctorSearchResults, setDoctorSearchResults] = useState([])
   const [searchingDoctors, setSearchingDoctors] = useState(false)
+  const [hasSearchedDoctorId, setHasSearchedDoctorId] = useState(false)
+  const [doctorSearchFeedback, setDoctorSearchFeedback] = useState(null)
   const [allocatingSeat, setAllocatingSeat] = useState(false)
   const [doctorToRevoke, setDoctorToRevoke] = useState(null)
   const [revokingSeat, setRevokingSeat] = useState(false)
@@ -140,58 +148,115 @@ export default function HospitalSubscriptionExperiencePage() {
     }
   }, [actionFeedback])
 
-  // Search doctors when doctorSearchQuery changes inside the allocate modal
-  useEffect(() => {
-    if (!doctorSearchQuery.trim() || doctorSearchQuery.length < 2) {
-      setDoctorSearchResults([])
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      try {
+  // Load eligible hospital doctors and search other platform doctors
+  const loadEligibleDoctors = async (query = '') => {
+    try {
+      if (query && query.trim().length >= 2) {
         setSearchingDoctors(true)
-        const res = await getDoctors({ search: doctorSearchQuery.trim(), per_page: 8 })
-        const list = res.data?.data || res.data || []
-        setDoctorSearchResults(Array.isArray(list) ? list : [])
-      } catch (err) {
-        console.error('Error searching doctors:', err)
-      } finally {
-        setSearchingDoctors(false)
+      } else {
+        setLoadingEligible(true)
       }
-    }, 350)
 
-    return () => clearTimeout(timer)
-  }, [doctorSearchQuery])
+      const res = await getHospitalEligibleDoctors({ search: query.trim() || undefined })
+      const data = res?.data || {}
+      setEligibleHospitalDoctors(Array.isArray(data.hospital_doctors) ? data.hospital_doctors : [])
+      setOtherDoctorResults(Array.isArray(data.other_doctors) ? data.other_doctors : [])
+      setDoctorSearchFeedback(data.search_message || null)
+    } catch (err) {
+      console.error('Error loading eligible doctors:', err)
+    } finally {
+      setLoadingEligible(false)
+      setSearchingDoctors(false)
+    }
+  }
+
+  // Reload eligible doctors whenever the modal is opened
+  useEffect(() => {
+    if (showAllocateModal) {
+      setSelectedDoctor(null)
+      setDoctorSearchQuery('')
+      setHospitalDocFilter('')
+      setInvitationNotes('')
+      setAllocationMode('invite')
+      setOtherDoctorResults([])
+      setHasSearchedDoctorId(false)
+      setDoctorSearchFeedback(null)
+      loadEligibleDoctors()
+    }
+  }, [showAllocateModal])
+
+  // Doctor Public ID format validation helper:
+  // Must be exact 'DR-XXXXXX' (exact 9 characters) or numeric primary ID
+  const isDoctorPublicIdValid = (id) => {
+    if (!id) return false
+    const trimmed = id.trim().toUpperCase()
+    if (/^DR-[A-Z0-9]{6}$/.test(trimmed)) return true
+    if (/^\d{1,8}$/.test(trimmed)) return true
+    return false
+  }
+
+  // Explicit verification on button click or Enter key — NO partial auto-fetch to protect privacy
+  const handleVerifyDoctorPublicId = async (e) => {
+    if (e) e.preventDefault()
+    const q = doctorSearchQuery.trim().toUpperCase()
+    if (!isDoctorPublicIdValid(q) || searchingDoctors) return
+
+    setSearchingDoctors(true)
+    setHasSearchedDoctorId(true)
+    setOtherDoctorResults([])
+    setDoctorSearchFeedback(null)
+    try {
+      await loadEligibleDoctors(q)
+    } catch (err) {
+      console.error('Error verifying doctor Public ID:', err)
+    } finally {
+      setSearchingDoctors(false)
+    }
+  }
 
   // Redirect to Checkout — the ONLY way to subscribe or change plans.
   const handleProceedToCheckout = (plan) => {
     navigate(`/admin/subscription/checkout?plan_id=${plan.id}&cycle=${billingCycle}`)
   }
 
-  // Phase 6: Official Seat Invitation
-  const handleSendDoctorInvitation = async (e) => {
+  // Phase 6: Assign or Invite Doctor
+  const handleAssignOrInviteDoctor = async (e) => {
     if (e) e.preventDefault()
-    if (!newDoctorId) return
+    if (!selectedDoctor?.id) {
+      setActionFeedback({
+        type: 'error',
+        text: 'অনুগ্রহ করে প্রথমে একজন ডাক্তার নির্বাচন করুন।'
+      })
+      return
+    }
+
     try {
       setAllocatingSeat(true)
-      const res = await sendHospitalDoctorInvitation({
-        doctor_id: Number(newDoctorId),
-        notes: invitationNotes.trim() || undefined
-      })
-      setActionFeedback({
-        type: 'success',
-        text: res.message || `Official invitation sent to Doctor ID #${newDoctorId}! Seat reserved.`
-      })
-      setNewDoctorId('')
-      setDoctorSearchQuery('')
-      setDoctorSearchResults([])
-      setInvitationNotes('')
+      if (allocationMode === 'direct') {
+        const res = await allocateHospitalDoctorSeat(selectedDoctor.id)
+        setActionFeedback({
+          type: 'success',
+          text: res.message || `ডাঃ ${selectedDoctor.name}-কে সরাসরি হাসপাতালের সক্রিয় রোস্টারে সিট বরাদ্দ দেওয়া হয়েছে!`
+        })
+        setSeatTab('roster')
+      } else {
+        const res = await sendHospitalDoctorInvitation({
+          doctor_id: selectedDoctor.id,
+          notes: invitationNotes.trim() || undefined
+        })
+        setActionFeedback({
+          type: 'success',
+          text: res.message || `ডাঃ ${selectedDoctor.name}-কে প্রাতিষ্ঠানিক সিট আমন্ত্রণ পাঠানো হয়েছে! কোটা সংরক্ষিত হয়েছে।`
+        })
+        setSeatTab('invitations')
+      }
       setShowAllocateModal(false)
+      setSelectedDoctor(null)
       loadData(true)
     } catch (err) {
       setActionFeedback({
         type: 'error',
-        text: err.response?.data?.message || 'Failed to send doctor seat invitation. Please check doctor eligibility.'
+        text: err.response?.data?.message || 'ডাক্তার সিট বরাদ্দ/আমন্ত্রণ পাঠাতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
       })
     } finally {
       setAllocatingSeat(false)
@@ -216,12 +281,6 @@ export default function HospitalSubscriptionExperiencePage() {
     } finally {
       setCancellingInvitationId(null)
     }
-  }
-
-  const handleSelectDoctorFromSearch = (doc) => {
-    setNewDoctorId(String(doc.id))
-    setDoctorSearchQuery(`${doc.name} (ID: #${doc.id})`)
-    setDoctorSearchResults([])
   }
 
   // Phase 6: Revoke Doctor Seat with Mandatory Audit Reason
@@ -373,6 +432,19 @@ export default function HospitalSubscriptionExperiencePage() {
   const seatPct = seatAllocation.utilization_pct ?? (totalSeats > 0 ? Math.round(((allocatedSeats + pendingSeats) / totalSeats) * 100) : 0)
   const seatProgressColor = seatPct >= 90 ? 'rose' : seatPct >= 70 ? 'amber' : 'emerald'
 
+  // Calculate trial status & days left
+  const isTrial = sub?.status === 'trialing' ||
+    sub?.plan?.tier === 'free' ||
+    (sub?.plan?.name && sub.plan.name.toLowerCase().includes('trial')) ||
+    (sub?.plan?.name_bn && (sub.plan.name_bn.includes('ট্রায়াল') || sub.plan.name_bn.includes('ট্রায়াল'))) ||
+    Number(sub?.current_price ?? sub?.plan?.price_monthly ?? 0) === 0
+
+  let daysRemaining = null
+  if (sub?.current_period_ends_at) {
+    const diffTime = new Date(sub.current_period_ends_at).getTime() - new Date().getTime()
+    daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+  }
+
   // Filter allocated doctors based on search
   const filteredDoctors = allocatedDoctors.filter(doc => {
     if (!doctorSearch.trim()) return true
@@ -402,6 +474,16 @@ export default function HospitalSubscriptionExperiencePage() {
 
   const pendingInvitationsCount = invitations.filter(i => i.status === 'pending').length
 
+  const filteredHospitalDoctors = eligibleHospitalDoctors.filter((doc) => {
+    if (!hospitalDocFilter.trim()) return true
+    const q = hospitalDocFilter.trim().toLowerCase()
+    return (
+      (doc.name && doc.name.toLowerCase().includes(q)) ||
+      (doc.specialty?.name && doc.specialty.name.toLowerCase().includes(q)) ||
+      (doc.degree && doc.degree.toLowerCase().includes(q))
+    )
+  })
+
   return (
     <div className="hosp-sub-container hosp-sub-fade-in">
       {/* ─── PAGE HEADER & CONTROLS ─── */}
@@ -413,14 +495,15 @@ export default function HospitalSubscriptionExperiencePage() {
             <span style={{ color: '#2563eb', fontWeight: 700 }}>হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি</span>
           </div>
           <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
-            <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, letterSpacing: '-0.4px' }}>
-              হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি ব্যবস্থাপনা
+            <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
+              হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি
             </h1>
             <span className="hosp-sub-badge-tier">
+              <Shield size={11} />
               প্রাতিষ্ঠানিক
             </span>
           </div>
-          <p className="text-muted" style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
+          <p className="text-muted" style={{ fontSize: '12.5px', margin: '4px 0 0 0' }}>
             {hospital?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি'} • লাইসেন্স #{hospital?.license_number || 'প্রযোজ্য নয়'} • মাল্টি-ডাক্তার কোটা ও সুবিধা
           </p>
         </div>
@@ -633,32 +716,64 @@ export default function HospitalSubscriptionExperiencePage() {
             <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
               <span className="hosp-sub-badge-tier">
                 <Shield size={12} />
-                {sub?.plan?.tier_bn || sub?.plan?.tier || 'হাসপাতাল স্টার্টার'} টায়ার
+                {isTrial ? 'ফ্রি ট্রায়াল' : (sub?.plan?.tier_bn || sub?.plan?.tier || 'প্রাতিষ্ঠানিক')} টায়ার
               </span>
               {renderStatusBadge(sub?.status)}
+              {daysRemaining !== null && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(37, 99, 235, 0.1)',
+                    color: daysRemaining <= 3 ? '#dc2626' : '#2563eb',
+                    border: `1px solid ${daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`
+                  }}
+                >
+                  <Clock size={11} />
+                  {daysRemaining > 0 ? `${daysRemaining} দিন বাকি` : 'মেয়াদ উত্তীর্ণ'}
+                </span>
+              )}
             </div>
 
-            <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '6px 0 4px 0', letterSpacing: '-0.4px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '6px 0 6px 0', letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
               {sub?.plan?.name_bn || sub?.plan?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি প্ল্যান'}
             </h2>
-            <p className="text-muted" style={{ fontSize: '13.5px', margin: 0, maxWidth: '640px' }}>
+            <p className="text-muted" style={{ fontSize: '13px', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
               {sub?.current_period_ends_at
                 ? `${new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })} পর্যন্ত বর্তমান প্রাতিষ্ঠানিক সাবস্ক্রিপশন মেয়াদ সক্রিয় রয়েছে।`
                 : 'প্রাতিষ্ঠানিক মাল্টি-সিট লাইসেন্স এবং ক্লিনিক্যাল কোটা সক্রিয় রয়েছে।'}
             </p>
           </div>
 
-          <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-4">
+          <div className="hosp-sub-hero-price-box flex-column flex-sm-row">
             <div className="text-sm-end">
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                প্রাতিষ্ঠানিক সাইকেল ফি
+                {isTrial ? 'বর্তমান ট্রায়াল চার্জ' : 'প্রাতিষ্ঠানিক সাইকেল ফি'}
               </div>
-              <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
-                ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 3500).toLocaleString()}
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>
-                  {' '}/ {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
-                </span>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', lineHeight: 1.2 }}>
+                {isTrial ? (
+                  <span>
+                    ৳ ০ <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>(বিনামূল্যে)</span>
+                  </span>
+                ) : (
+                  <span>
+                    ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 3500).toLocaleString()}
+                    <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#94a3b8' }}>
+                      {' '}/ {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
+                    </span>
+                  </span>
+                )}
               </div>
+              {isTrial && (
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                  পরবর্তী সাইকেল: ৳ {Number(sub?.plan?.price_monthly || 3500).toLocaleString()} / {sub?.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
+                </div>
+              )}
             </div>
 
             <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -667,9 +782,9 @@ export default function HospitalSubscriptionExperiencePage() {
                 className="hosp-sub-btn-primary"
               >
                 <Zap size={14} />
-                <span>প্ল্যান পরিবর্তন</span>
+                <span>{isTrial ? 'প্ল্যান আপগ্রেড করুন' : 'প্ল্যান পরিবর্তন'}</span>
               </button>
-              {sub?.status === 'active' && (
+              {sub?.status === 'active' && !isTrial && (
                 <button
                   onClick={() => setShowCancelModal(true)}
                   className="hosp-sub-btn-danger"
@@ -684,25 +799,18 @@ export default function HospitalSubscriptionExperiencePage() {
 
       {/* ─── 3. CAPACITY & KPI METRIC DECK ─── */}
       <div className="hosp-sub-kpi-grid">
-        {/* Doctor Seats Utilization (Phase 6) */}
+        {/* Doctor Seats Utilization */}
         <div className="hosp-sub-kpi-card">
           <div className="d-flex justify-content-between align-items-start">
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                ডাক্তার সিট কোটা
+              <div className="hosp-sub-kpi-label">
+                ডাক্তার সিট ক্যাপাসিটি
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                {allocatedSeats} জন সক্রিয় {pendingSeats > 0 && <span style={{ fontSize: '13px', fontWeight: 600, color: '#d97706' }}>(+{pendingSeats} সংরক্ষিত)</span>} / {isUnlimitedSeats ? '∞ আনলিমিটেড' : totalSeats}
+              <div className="hosp-sub-kpi-value">
+                {allocatedSeats} <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ {isUnlimitedSeats ? '∞ আনলিমিটেড' : `${totalSeats} সিট`}</span>
               </div>
             </div>
-            <div
-              style={{
-                padding: '8px',
-                borderRadius: '10px',
-                background: 'rgba(37, 99, 235, 0.1)',
-                color: '#2563eb'
-              }}
-            >
+            <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb' }}>
               <Users size={18} />
             </div>
           </div>
@@ -715,11 +823,11 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>{seatPct}% কোটা বরাদ্দকৃত</span>
+            <span>{seatPct}% কোটা ব্যবহৃত</span>
             <span style={{ fontWeight: 700, color: canAllocateMore ? '#059669' : '#d97706' }}>
               {canAllocateMore
-                ? (isUnlimitedSeats ? 'আনলিমিটেড' : `${availableSeats}টি সিট খালি আছে`)
-                : 'কোটা পূর্ণ হয়েছে'}
+                ? (isUnlimitedSeats ? 'আনলিমিটেড খালি' : `${availableSeats}টি সিট খালি`)
+                : 'কোটা পূর্ণ'}
             </span>
           </div>
         </div>
@@ -733,21 +841,14 @@ export default function HospitalSubscriptionExperiencePage() {
               <div className="hosp-sub-kpi-card" key="opd">
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                    <div className="hosp-sub-kpi-label">
                       দৈনিক ওপিডি টিকিট
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                      {u.used} / {u.limit}
+                    <div className="hosp-sub-kpi-value">
+                      {u.used} <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ {u.limit}</span>
                     </div>
                   </div>
-                  <div
-                    style={{
-                      padding: '8px',
-                      borderRadius: '10px',
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      color: '#059669'
-                    }}
-                  >
+                  <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
                     <Activity size={18} />
                   </div>
                 </div>
@@ -760,7 +861,7 @@ export default function HospitalSubscriptionExperiencePage() {
                 </div>
 
                 <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-                  <span>রান-রেট প্রক্ষেপণ</span>
+                  <span>দৈনিক ব্যবহারের গতিধারা</span>
                   <span style={{ fontWeight: 700, color: '#059669' }}>
                     ~{u.forecast?.forecasted_usage || u.used} সাইকেল শেষে
                   </span>
@@ -772,26 +873,25 @@ export default function HospitalSubscriptionExperiencePage() {
           <div className="hosp-sub-kpi-card">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                  হাসপাতাল ইউনিট
+                <div className="hosp-sub-kpi-label">
+                  দৈনিক ওপিডি টিকিট কোটা
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                  সক্রিয় ফ্যাসিলিটি
+                <div className="hosp-sub-kpi-value">
+                  ৫০০ <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ দিন ক্যাপাসিটি</span>
                 </div>
               </div>
-              <div
-                style={{
-                  padding: '8px',
-                  borderRadius: '10px',
-                  background: 'rgba(99, 102, 241, 0.1)',
-                  color: '#4f46e5'
-                }}
-              >
-                <Building2 size={18} />
+              <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                <Activity size={18} />
               </div>
             </div>
-            <div className="text-muted mt-3" style={{ fontSize: '12px' }}>
-              সম্পূর্ণ প্রাতিষ্ঠানিক মডিউলসহ সক্রিয় রয়েছে।
+
+            <div className="hosp-sub-progress-track">
+              <div className="hosp-sub-progress-bar emerald" style={{ width: '8%' }} />
+            </div>
+
+            <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
+              <span>দৈনিক অ্যাপয়েন্টমেন্ট কোটা</span>
+              <span style={{ fontWeight: 700, color: '#059669' }}>সক্রিয় ও প্রস্তুত</span>
             </div>
           </div>
         )}
@@ -800,32 +900,25 @@ export default function HospitalSubscriptionExperiencePage() {
         <div className="hosp-sub-kpi-card">
           <div className="d-flex justify-content-between align-items-start">
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+              <div className="hosp-sub-kpi-label">
                 লাউঞ্জ টিভি ডিসপ্লে
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                মাল্টি-স্ক্রিন কোটা
+              <div className="hosp-sub-kpi-value">
+                ১ <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ ২ স্ক্রিন সক্রিয়</span>
               </div>
             </div>
-            <div
-              style={{
-                padding: '8px',
-                borderRadius: '10px',
-                background: 'rgba(147, 51, 234, 0.1)',
-                color: '#9333ea'
-              }}
-            >
+            <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(147, 51, 234, 0.1)', color: '#9333ea' }}>
               <Monitor size={18} />
             </div>
           </div>
 
           <div className="hosp-sub-progress-track">
-            <div className="hosp-sub-progress-bar blue" style={{ width: '45%' }} />
+            <div className="hosp-sub-progress-bar blue" style={{ width: '50%' }} />
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>কিউ ডিসপ্লে বোর্ড</span>
-            <span style={{ fontWeight: 700, color: '#2563eb' }}>প্ল্যানে অন্তর্ভুক্ত</span>
+            <span>লাইভ কিউ ডিসপ্লে বোর্ড</span>
+            <span style={{ fontWeight: 700, color: '#2563eb' }}>কানেক্টেড</span>
           </div>
         </div>
 
@@ -833,29 +926,29 @@ export default function HospitalSubscriptionExperiencePage() {
         <div className="hosp-sub-kpi-card">
           <div className="d-flex justify-content-between align-items-start">
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                বিলিং সাইকেল
+              <div className="hosp-sub-kpi-label">
+                বিলিং ও রিনিউয়াল
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>
-                {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
+              <div className="hosp-sub-kpi-value">
+                {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'} <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>({isTrial ? 'ফ্রি ট্রায়াল' : 'অটো-পে'})</span>
               </div>
             </div>
-            <div
-              style={{
-                padding: '8px',
-                borderRadius: '10px',
-                background: 'rgba(245, 158, 11, 0.1)',
-                color: '#d97706'
-              }}
-            >
+            <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
               <Calendar size={18} />
             </div>
           </div>
 
-          <div className="d-flex justify-content-between align-items-center mt-3" style={{ fontSize: '12px', color: '#64748b' }}>
-            <span>পরবর্তী ইনভয়েস ইস্যু:</span>
+          <div className="hosp-sub-progress-track">
+            <div
+              className="hosp-sub-progress-bar amber"
+              style={{ width: daysRemaining !== null && daysRemaining <= 30 ? `${Math.max(10, Math.round(((30 - Math.min(30, daysRemaining)) / 30) * 100))}%` : '100%' }}
+            />
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
+            <span>পরবর্তী রিনিউয়াল তারিখ</span>
             <span style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD') : 'স্বয়ংক্রিয় রিনিউয়াল'}
+              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD') : 'স্বয়ংক্রিয়'}
             </span>
           </div>
         </div>
@@ -995,19 +1088,42 @@ export default function HospitalSubscriptionExperiencePage() {
               <tbody>
                 {filteredDoctors.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={5} style={{ padding: '56px 24px', textAlign: 'center' }}>
                       <div className="d-flex flex-column align-items-center justify-content-center">
-                        <Users size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
-                        <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
+                        <div
+                          style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '16px',
+                            background: 'rgba(37, 99, 235, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#2563eb',
+                            marginBottom: '16px'
+                          }}
+                        >
+                          <Users size={28} />
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #1e293b)' }}>
                           {allocatedDoctors.length === 0
-                            ? 'এই হাসপাতালে এখনও কোনো ডাক্তার বরাদ্দ করা হয়নি'
+                            ? 'এই হাসপাতালে এখনও কোনো ডাক্তার যুক্ত হননি'
                             : 'আপনার অনুসন্ধানের সাথে কোনো ডাক্তার মেলেনি'}
                         </div>
-                        <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                        <p style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '440px', margin: '6px 0 18px 0', lineHeight: 1.5 }}>
                           {allocatedDoctors.length === 0
-                            ? 'আপনার ফ্যাসিলিটিতে ডাক্তার যুক্ত করতে উপরের "ডাক্তারকে সিটে আমন্ত্রণ জানান" বাটনে ক্লিক করুন।'
+                            ? `আপনার বর্তমান প্রাতিষ্ঠানিক প্ল্যানে ${isUnlimitedSeats ? 'আনলিমিটেড' : `${availableSeats}টি`} ডাক্তার সিট খালি রয়েছে। নতুন ডাক্তারকে যুক্ত করতে সরাসরি অফিশিয়াল আমন্ত্রণ পাঠান।`
                             : 'অনুসন্ধানের ফিল্টার পরিবর্তন করে দেখুন।'}
-                        </div>
+                        </p>
+                        {allocatedDoctors.length === 0 && canAllocateMore && (
+                          <button
+                            onClick={() => setShowAllocateModal(true)}
+                            className="hosp-sub-btn-primary"
+                          >
+                            <UserPlus size={14} />
+                            <span>প্রথম ডাক্তারকে সিটে আমন্ত্রণ জানান</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1120,15 +1236,43 @@ export default function HospitalSubscriptionExperiencePage() {
                 <tbody>
                   {filteredInvitations.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                      <td colSpan={6} style={{ padding: '56px 24px', textAlign: 'center' }}>
                         <div className="d-flex flex-column align-items-center justify-content-center">
-                          <Mail size={38} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
-                          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--admin-text, #334155)' }}>
-                            ফিল্টারের সাথে মেলে এমন কোনো আমন্ত্রণ পাওয়া যায়নি
+                          <div
+                            style={{
+                              width: '56px',
+                              height: '56px',
+                              borderRadius: '16px',
+                              background: 'rgba(37, 99, 235, 0.08)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#2563eb',
+                              marginBottom: '16px'
+                            }}
+                          >
+                            <Mail size={28} />
                           </div>
-                          <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                            একটি আনুষ্ঠানিক আমন্ত্রণ পাঠাতে উপরের "ডাক্তারকে সিটে আমন্ত্রণ জানান" বাটনে ক্লিক করুন।
+                          <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #334155)' }}>
+                            {invitations.length === 0
+                              ? 'এখনও কোনো ডাক্তারকে সিট আমন্ত্রণ পাঠানো হয়নি'
+                              : 'ফিল্টারের সাথে মেলে এমন কোনো আমন্ত্রণ পাওয়া যায়নি'}
                           </div>
+                          <p style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '440px', margin: '6px 0 18px 0', lineHeight: 1.5 }}>
+                            {invitations.length === 0
+                              ? 'আপনার হাসপাতালের ডাক্তারদের লাইসেন্স প্রদান করতে বা নতুন ডাক্তারকে যুক্ত করতে সরাসরি সিট আমন্ত্রণ পাঠান।'
+                              : 'অনুসন্ধানের ফিল্টার পরিবর্তন করে দেখুন।'}
+                          </p>
+                          {canAllocateMore && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllocateModal(true)}
+                              className="hosp-sub-btn-primary"
+                            >
+                              <UserPlus size={14} />
+                              <span>ডাক্তারকে সিটে আমন্ত্রণ জানান</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1715,9 +1859,14 @@ export default function HospitalSubscriptionExperiencePage() {
       </div>
 
       {/* ─── 8. DOCTOR SEAT INVITATION / ALLOCATION MODAL (PHASE 6) ─── */}
-      {showAllocateModal && (
-        <div className="hosp-sub-modal-backdrop">
-          <div className="hosp-sub-modal hosp-sub-fade-in">
+      {showAllocateModal && createPortal(
+        <div className="hosp-sub-modal-backdrop" onClick={() => setShowAllocateModal(false)}>
+          <div
+            className="hosp-sub-modal hosp-sub-fade-in"
+            style={{ maxWidth: '600px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
             <div className="d-flex justify-content-between align-items-start pb-3 mb-3" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
               <div className="d-flex align-items-center gap-2">
                 <div
@@ -1731,15 +1880,16 @@ export default function HospitalSubscriptionExperiencePage() {
                   <Send size={18} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0 }}>
-                    হাসপাতাল সিটে ডাক্তার আমন্ত্রণ জানান
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: 'var(--admin-text, #0f172a)' }}>
+                    হাসপাতাল সিটে ডাক্তার বরাদ্দ ও আমন্ত্রণ
                   </h3>
                   <p className="text-muted" style={{ fontSize: '12px', margin: '2px 0 0 0' }}>
-                    আপনার প্রাতিষ্ঠানিক প্ল্যানের আওতায় ডাক্তারকে স্পন্সর করতে অফিসিয়াল সিট ইনভিটেশন পাঠান।
+                    আপনার হাসপাতালের ডাক্তারদের মধ্য থেকে সহজে সিট বরাদ্দ দিন অথবা আমন্ত্রণ পাঠান।
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAllocateModal(false)}
                 style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
               >
@@ -1747,58 +1897,235 @@ export default function HospitalSubscriptionExperiencePage() {
               </button>
             </div>
 
-            <form onSubmit={handleSendDoctorInvitation}>
-              {/* Doctor Search input */}
+            <form onSubmit={handleAssignOrInviteDoctor}>
+              {/* SECTION 1: HOSPITAL DOCTORS (DROPDOWN SELECT) */}
               <div className="mb-3">
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  নিবন্ধিত ডাক্তার খুঁজুন (নাম / বিশেষজ্ঞতা)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    placeholder="ডাক্তারের নাম বা বিশেষজ্ঞতা লিখুন..."
-                    value={doctorSearchQuery}
-                    onChange={(e) => setDoctorSearchQuery(e.target.value)}
-                    style={{
-                      width: '100%',
-                      paddingLeft: '34px',
-                      paddingRight: '12px',
-                      paddingTop: '9px',
-                      paddingBottom: '9px',
-                      fontSize: '13px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-bg, #f8fafc)',
-                      outline: 'none'
-                    }}
-                  />
-                  {searchingDoctors && (
-                    <RefreshCw size={13} className="animate-spin" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2563eb' }} />
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#1e40af', margin: 0, letterSpacing: '0.04em' }}>
+                    🏥 আপনার হাসপাতালের ডাক্তারদের তালিকা (সিট বরাদ্দযোগ্য)
+                  </label>
+                  {loadingEligible ? (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                      <RefreshCw size={11} className="animate-spin me-1" /> লোড হচ্ছে...
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                      মোট {eligibleHospitalDoctors.length} জন উপলব্ধ
+                    </span>
                   )}
                 </div>
 
-                {/* Suggestions List */}
-                {doctorSearchResults.length > 0 && (
-                  <div className="hosp-sub-doc-suggestions">
-                    {doctorSearchResults.map(doc => (
+                {eligibleHospitalDoctors.length > 0 ? (
+                  <div className="d-flex flex-column gap-2">
+                    {/* Filter search if list has more than 4 doctors */}
+                    {eligibleHospitalDoctors.length > 4 && (
+                      <div style={{ position: 'relative' }}>
+                        <Search size={13} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                        <input
+                          type="text"
+                          placeholder="হাসপাতালের ডাক্তারদের ফিল্টার করুন..."
+                          value={hospitalDocFilter}
+                          onChange={(e) => setHospitalDocFilter(e.target.value)}
+                          style={{
+                            width: '100%',
+                            paddingLeft: '32px',
+                            paddingRight: '12px',
+                            paddingTop: '7px',
+                            paddingBottom: '7px',
+                            fontSize: '12px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--admin-border, #e2e8f0)',
+                            background: 'var(--admin-bg, #f8fafc)',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Clean Modern Dropdown Select */}
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        className="hosp-sub-select"
+                        value={selectedDoctor?.is_hospital_doctor ? selectedDoctor.id : ''}
+                        onChange={(e) => {
+                          const docId = e.target.value
+                          if (!docId) {
+                            if (selectedDoctor?.is_hospital_doctor) setSelectedDoctor(null)
+                            return
+                          }
+                          const doc = eligibleHospitalDoctors.find((d) => String(d.id) === String(docId))
+                          if (doc) {
+                            setSelectedDoctor({ ...doc, is_hospital_doctor: true })
+                            setDoctorSearchQuery('')
+                            setOtherDoctorResults([])
+                            setHasSearchedDoctorId(false)
+                          }
+                        }}
+                      >
+                        <option value="">
+                          {selectedDoctor?.is_hospital_doctor
+                            ? `✓ নির্বাচিত: ${selectedDoctor.name}`
+                            : `-- ডাক্তার নির্বাচন করুন (মোট ${filteredHospitalDoctors.length} জন) --`}
+                        </option>
+                        {filteredHospitalDoctors.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.name} — {doc.specialty?.name || 'জেনারেল ফিজিশিয়ান'}{doc.degree ? ` (${doc.degree})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : !loadingEligible ? (
+                  <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--admin-bg, #f8fafc)', border: '1px solid var(--admin-border, #e2e8f0)', fontSize: '12px', color: '#64748b' }}>
+                    হাসপাতালের কোনো ডাক্তার খালি নেই। নিচের বক্সে ডাক্তার আইডি লিখে খুঁজুন।
+                  </div>
+                ) : null}
+              </div>
+
+              {/* SECTION 2: VERIFY & INVITE DOCTOR BY DOCTOR ID */}
+              <div className="mb-3 pt-3" style={{ borderTop: '1px solid var(--admin-border, #f1f5f9)' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#1e40af', marginBottom: '8px', letterSpacing: '0.04em' }}>
+                  🔍 অন্যান্য ডাক্তার (আইডি দিয়ে খুঁজুন)
+                </label>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Lock size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      placeholder="ডাক্তার আইডি লিখুন (যেমন: DR-QPAQF5)..."
+                      value={doctorSearchQuery}
+                      maxLength={12}
+                      onChange={(e) => {
+                        setDoctorSearchQuery(e.target.value.toUpperCase())
+                        setOtherDoctorResults([])
+                        setHasSearchedDoctorId(false)
+                        setDoctorSearchFeedback(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (isDoctorPublicIdValid(doctorSearchQuery) && !searchingDoctors) {
+                            handleVerifyDoctorPublicId()
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        paddingLeft: '34px',
+                        paddingRight: doctorSearchQuery ? '34px' : '12px',
+                        paddingTop: '9px',
+                        paddingBottom: '9px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        borderRadius: '10px',
+                        border: isDoctorPublicIdValid(doctorSearchQuery) ? '1.5px solid #2563eb' : '1px solid var(--admin-border, #e2e8f0)',
+                        background: 'var(--admin-bg, #f8fafc)',
+                        outline: 'none',
+                        textTransform: 'uppercase'
+                      }}
+                    />
+                    {doctorSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDoctorSearchQuery('')
+                          setOtherDoctorResults([])
+                          setHasSearchedDoctorId(false)
+                          setDoctorSearchFeedback(null)
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '3px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '6px'
+                        }}
+                        title="মুছে ফেলুন"
+                      >
+                        <X size={15} />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleVerifyDoctorPublicId}
+                    disabled={!isDoctorPublicIdValid(doctorSearchQuery) || searchingDoctors}
+                    className="hosp-sub-btn-primary"
+                    style={{
+                      padding: '9px 18px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      whiteSpace: 'nowrap',
+                      opacity: !isDoctorPublicIdValid(doctorSearchQuery) ? 0.45 : 1,
+                      cursor: !isDoctorPublicIdValid(doctorSearchQuery) ? 'not-allowed' : 'pointer'
+                    }}
+                    title={!isDoctorPublicIdValid(doctorSearchQuery) ? 'সম্পূর্ণ ডাক্তার আইডি লিখুন' : 'যাচাই করুন'}
+                  >
+                    {searchingDoctors ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>যাচাই করা হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search size={14} />
+                        <span>যাচাই করুন</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Verification Result: Not Found or Specific Status */}
+                {hasSearchedDoctorId && !searchingDoctors && otherDoctorResults.length === 0 && isDoctorPublicIdValid(doctorSearchQuery) && (
+                  <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <AlertCircle size={14} />
+                    <span>{doctorSearchFeedback || `আইডি ${doctorSearchQuery} অনুযায়ী কোনো ডাক্তার পাওয়া যায়নি।`}</span>
+                  </div>
+                )}
+
+                {/* Verification Result: Found */}
+                {otherDoctorResults.length > 0 && (
+                  <div className="hosp-sub-doc-suggestions mt-2">
+                    {otherDoctorResults.map(doc => (
                       <div
                         key={doc.id}
                         className="hosp-sub-doc-item"
-                        onClick={() => handleSelectDoctorFromSearch(doc)}
+                        onClick={() => {
+                          setSelectedDoctor({ ...doc, is_hospital_doctor: false })
+                          setOtherDoctorResults([])
+                          setHasSearchedDoctorId(false)
+                        }}
+                        style={{ padding: '10px 14px', background: 'rgba(37, 99, 235, 0.04)', border: '1px solid #bfdbfe' }}
                       >
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '12.5px' }}>{doc.name}</div>
-                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                            {doc.specialty?.name || 'জেনারেল'} • আইডি: #{doc.id}
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', fontSize: '11px', fontWeight: 800 }}>
+                            {doc.public_id || `#${doc.id}`}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--admin-text, #0f172a)' }}>{doc.name}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>
+                              {doc.specialty?.name || 'জেনারেল ফিজিশিয়ান'} {doc.degree ? `• ${doc.degree}` : ''}
+                            </div>
                           </div>
                         </div>
                         <button
                           type="button"
-                          className="hosp-sub-btn-secondary"
-                          style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 700 }}
+                          className="hosp-sub-btn-primary"
+                          style={{ padding: '5px 14px', fontSize: '11.5px', fontWeight: 700 }}
                         >
-                          নির্বাচন করুন
+                          সিলেক্ট করুন
                         </button>
                       </div>
                     ))}
@@ -1806,90 +2133,198 @@ export default function HospitalSubscriptionExperiencePage() {
                 )}
               </div>
 
-              {/* Doctor ID input */}
-              <div className="mb-3">
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  অথবা সরাসরি ডাক্তার আইডি লিখুন
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="যেমন: ১০৪"
-                  value={newDoctorId}
-                  onChange={(e) => setNewDoctorId(e.target.value)}
+              {/* SECTION 3: SELECTED DOCTOR SUMMARY CARD */}
+              {selectedDoctor && (
+                <div
+                  className="mb-3 p-3 rounded-3"
                   style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--admin-border, #e2e8f0)',
-                    background: 'var(--admin-bg, #f8fafc)',
-                    outline: 'none'
+                    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(37, 99, 235, 0.02) 100%)',
+                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
                   }}
-                />
-              </div>
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="hosp-sub-avatar" style={{ background: '#2563eb' }}>
+                      <UserCheck size={18} />
+                    </div>
+                    <div>
+                      <div className="d-flex align-items-center gap-2">
+                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#1e3a8a' }}>
+                          {selectedDoctor.name}
+                        </span>
+                        <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.15)', color: '#1e40af', fontSize: '11px', fontWeight: 800 }}>
+                          {selectedDoctor.public_id || `#${selectedDoctor.id}`}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#3b82f6', fontWeight: 600 }}>
+                        {selectedDoctor.specialty?.name || 'জেনারেল ফিজিশিয়ান'} • {selectedDoctor.is_hospital_doctor ? 'হাসপাতালের ডাক্তার' : 'প্ল্যাটফর্ম ডাক্তার'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDoctor(null)}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                    title="নির্বাচন বাতিল করুন"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
 
-              {/* Invitation Notes */}
-              <div className="mb-3">
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                  চেম্বার / অ্যাসাইনমেন্ট নোট (ঐচ্ছিক)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="যেমন: কার্ডিওলজি ওপিডি চেম্বার ৩০২-তে নিযুক্ত..."
-                  value={invitationNotes}
-                  onChange={(e) => setInvitationNotes(e.target.value)}
+              {/* SECTION 4: ALLOCATION MODE */}
+              {selectedDoctor && (
+                <div className="mb-3">
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
+                    বরাদ্দের ধরন নির্বাচন করুন
+                  </label>
+                  <div className="d-flex gap-2 flex-wrap">
+                    <label
+                      style={{
+                        flex: 1,
+                        minWidth: '200px',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: allocationMode === 'invite' ? '2px solid #2563eb' : '1px solid var(--admin-border, #e2e8f0)',
+                        background: allocationMode === 'invite' ? 'rgba(37, 99, 235, 0.05)' : 'var(--admin-bg, #f8fafc)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        fontWeight: 700
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="alloc_mode"
+                        checked={allocationMode === 'invite'}
+                        onChange={() => setAllocationMode('invite')}
+                      />
+                      <span>✉️ অফিশিয়াল আমন্ত্রণ পাঠান</span>
+                    </label>
+
+                    {selectedDoctor.is_hospital_doctor && (
+                      <label
+                        style={{
+                          flex: 1,
+                          minWidth: '200px',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          border: allocationMode === 'direct' ? '2px solid #059669' : '1px solid var(--admin-border, #e2e8f0)',
+                          background: allocationMode === 'direct' ? 'rgba(5, 150, 105, 0.05)' : 'var(--admin-bg, #f8fafc)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="alloc_mode"
+                          checked={allocationMode === 'direct'}
+                          onChange={() => setAllocationMode('direct')}
+                        />
+                        <span>⚡ সরাসরি সিট বরাদ্দ দিন</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 5: NOTES */}
+              {selectedDoctor && allocationMode === 'invite' && (
+                <div className="mb-3">
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
+                    চেম্বার / অ্যাসাইনমেন্ট নোট (ঐচ্ছিক)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="যেমন: কার্ডিওলজি ওপিডি চেম্বার ৩০২-তে নিযুক্ত..."
+                    value={invitationNotes}
+                    onChange={(e) => setInvitationNotes(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      fontSize: '13px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--admin-border, #e2e8f0)',
+                      background: 'var(--admin-bg, #f8fafc)',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Information text (shown only when a doctor is selected) */}
+              {selectedDoctor && (
+                <div
                   style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--admin-border, #e2e8f0)',
-                    background: 'var(--admin-bg, #f8fafc)',
-                    outline: 'none',
-                    resize: 'vertical'
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(37, 99, 235, 0.06)',
+                    border: '1px solid rgba(37, 99, 235, 0.15)',
+                    fontSize: '11.5px',
+                    color: '#1e40af',
+                    marginBottom: '14px'
                   }}
-                />
-              </div>
+                >
+                  {allocationMode === 'direct'
+                    ? '⚡ সরাসরি বরাদ্দ দিলে ডাক্তার তাৎক্ষণিকভাবে হাসপাতালের সক্রিয় লাইসেন্স সিট পাবেন।'
+                    : '✉️ আমন্ত্রণ পাঠালে কোটা থেকে ৭ দিনের জন্য ১টি সিট সংরক্ষিত রাখা হবে।'}
+                </div>
+              )}
 
-              <div
-                style={{
-                  padding: '12px',
-                  borderRadius: '10px',
-                  background: 'rgba(37, 99, 235, 0.08)',
-                  border: '1px solid rgba(37, 99, 235, 0.2)',
-                  fontSize: '12px',
-                  color: '#1e40af',
-                  marginBottom: '20px'
-                }}
-              >
-                আমন্ত্রণ পাঠালে আপনার মোট কোটা থেকে ৭ দিনের জন্য ১টি সিট সংরক্ষিত রাখা হবে। ডাক্তার আমন্ত্রণ গ্রহণ করলে অবিলম্বে আপনার প্রাতিষ্ঠানিক প্ল্যানের ক্লিনিক্যাল সুবিধা ও প্রেসক্রিপশন কোটা ব্যবহার করতে পারবেন।
-              </div>
-
+              {/* Submit / Cancel Actions */}
               <div className="d-flex justify-content-end gap-2 pt-3" style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
                 <button
                   type="button"
                   onClick={() => setShowAllocateModal(false)}
                   className="hosp-sub-btn-secondary"
+                  disabled={allocatingSeat}
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  disabled={allocatingSeat || !newDoctorId}
+                  disabled={!selectedDoctor || allocatingSeat}
                   className="hosp-sub-btn-primary"
+                  style={{
+                    opacity: (!selectedDoctor || allocatingSeat) ? 0.6 : 1,
+                    cursor: (!selectedDoctor || allocatingSeat) ? 'not-allowed' : 'pointer'
+                  }}
                 >
-                  <Send size={14} />
-                  <span>{allocatingSeat ? 'আমন্ত্রণ পাঠানো হচ্ছে...' : 'সিট আমন্ত্রণ পাঠান'}</span>
+                  {allocatingSeat ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>প্রক্রিয়াধীন...</span>
+                    </>
+                  ) : allocationMode === 'direct' ? (
+                    <>
+                      <Zap size={14} />
+                      <span>সরাসরি সিট বরাদ্দ দিন</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      <span>আমন্ত্রণ পাঠান</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── 9. REVOKE DOCTOR SEAT CONFIRMATION MODAL (PHASE 6 AUDITED) ─── */}
-      {doctorToRevoke && (
+      {doctorToRevoke && createPortal(
         <div className="hosp-sub-modal-backdrop">
           <div className="hosp-sub-modal hosp-sub-fade-in">
             <div className="d-flex align-items-center gap-2 mb-3" style={{ color: '#dc2626' }}>
@@ -1961,11 +2396,12 @@ export default function HospitalSubscriptionExperiencePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── 10. SUBSCRIPTION CANCELLATION MODAL ─── */}
-      {showCancelModal && (
+      {showCancelModal && createPortal(
         <div className="hosp-sub-modal-backdrop">
           <div className="hosp-sub-modal hosp-sub-fade-in">
             <div className="d-flex align-items-center gap-2 mb-3" style={{ color: '#dc2626' }}>
@@ -2008,11 +2444,12 @@ export default function HospitalSubscriptionExperiencePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── 11. LIFECYCLE TIMELINE DRAWER ─── */}
-      {showTimeline && (
+      {showTimeline && createPortal(
         <div className="hosp-sub-drawer-backdrop" onClick={() => setShowTimeline(false)}>
           <div className="hosp-sub-drawer hosp-sub-fade-in" onClick={e => e.stopPropagation()}>
             <div className="hosp-sub-drawer-header">
@@ -2057,7 +2494,8 @@ export default function HospitalSubscriptionExperiencePage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

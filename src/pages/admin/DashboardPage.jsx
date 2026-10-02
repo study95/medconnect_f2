@@ -363,8 +363,8 @@ export default function DashboardPage() {
               to="/admin/appointments"
             />
             <ExecutiveMetricCard
-              title="রোগী ও ব্যবহারকারী (Users & Patients)"
-              value={`${Number(stats?.total_users || 0).toLocaleString()} জন`}
+              title="নিবন্ধিত রোগী (Patients)"
+              value={`${Number(stats?.total_patients ?? stats?.total_users ?? 0).toLocaleString()} জন`}
               subtext={`${stats?.total_prescriptions || 0} টি ডিজিটাল প্রেসক্রিপশন সংরক্ষিত`}
               icon={Users}
               badge={`+${stats?.today?.new_patients || 0} আজ`}

@@ -158,6 +158,7 @@ export default function HospitalFormPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
+  const [gpsSource, setGpsSource] = useState('none') // 'none' | 'auto' | 'manual' | 'saved'
   const [errors, setErrors] = useState({})
 
   const handleAutoPinGps = () => {
@@ -171,6 +172,7 @@ export default function HospitalFormPage() {
         const lat = Number(pos.coords.latitude.toFixed(7))
         const lng = Number(pos.coords.longitude.toFixed(7))
         setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))
+        setGpsSource('auto')
         if (errors.latitude) setErrors(e => ({ ...e, latitude: '' }))
         if (errors.longitude) setErrors(e => ({ ...e, longitude: '' }))
         toast.success(`লোকেশন সফলভাবে পিন করা হয়েছে: ${lat}, ${lng}`)
@@ -186,6 +188,14 @@ export default function HospitalFormPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
+  }
+
+  const handleClearGps = () => {
+    setForm(prev => ({ ...prev, latitude: '', longitude: '' }))
+    setGpsSource('none')
+    if (errors.latitude) setErrors(e => ({ ...e, latitude: '' }))
+    if (errors.longitude) setErrors(e => ({ ...e, longitude: '' }))
+    toast.success('জিপিএস লোকেশন মুছে ফেলা হয়েছে। এখন নতুন করে পিন বা ইনপুট দিতে পারেন।')
   }
 
   useEffect(() => { if (isEdit) loadHospital() }, [id])
@@ -228,6 +238,11 @@ export default function HospitalFormPage() {
         top_10_hospital: h.top_10_hospital === 'yes' ? 'yes' : 'no',
         is_active: h.is_active ?? true
       })
+      if (h.latitude && h.longitude) {
+        setGpsSource('saved')
+      } else {
+        setGpsSource('none')
+      }
       if (h.medical_test_list) setTests(Array.isArray(h.medical_test_list) ? h.medical_test_list : [])
       setMedia(m => ({
         ...m,
@@ -246,6 +261,9 @@ export default function HospitalFormPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    if (name === 'latitude' || name === 'longitude') {
+      setGpsSource('manual')
+    }
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
@@ -867,10 +885,10 @@ export default function HospitalFormPage() {
             {/* GPS Auto-pin Helper Banner (Spans 2 columns) */}
             <div style={{
               gridColumn: 'span 2',
-              background: '#F0FDF4',
-              border: '1.5px dashed #00B875',
+              background: form.latitude && form.longitude ? '#F8FAFC' : '#F0FDF4',
+              border: `1.5px dashed ${form.latitude && form.longitude ? '#94A3B8' : '#00B875'}`,
               borderRadius: 12,
-              padding: '12px 16px',
+              padding: '14px 16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -878,63 +896,115 @@ export default function HospitalFormPage() {
               gap: 12
             }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span>📍 সঠিক জিপিএস লোকেশন (GPS Coordinates)</span>
+                  {form.latitude && form.longitude ? (
+                    gpsSource === 'auto' ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20, border: '1px solid #86EFAC' }}>
+                        ✓ ডিভাইস জিপিএস থেকে পিন্ড
+                      </span>
+                    ) : gpsSource === 'manual' ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, background: '#EEF2FF', color: '#4338CA', padding: '2px 8px', borderRadius: 20, border: '1px solid #C7D2FE' }}>
+                        ✍️ ম্যানুয়ালি ইনপুটকৃত
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 700, background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
+                        ✓ সক্রিয় লোকেশন
+                      </span>
+                    )
+                  ) : (
+                    <span style={{ fontSize: 11, fontWeight: 700, background: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: 20, border: '1px solid #FDE68A' }}>
+                      ⚠️ লোকেশন সেট করা নেই
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                  ব্যবহারকারীরা যাতে আপনার হাসপাতাল কত দূরে তা নির্ভুল দেখতে পারে, সেজন্য জিপিএস কোঅর্ডিনেট যুক্ত করুন।
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+                  {form.latitude && form.longitude 
+                    ? `বর্তমান কোঅর্ডিনেট সংরক্ষিত আছে। নতুন করে সেট বা পরিবর্তন করতে '🗑️ লোকেশন মুছুন / পরিবর্তন করুন' বাটনে চাপ দিন।`
+                    : 'ব্যবহারকারীরা যাতে আপনার হাসপাতাল কত দূরে তা নির্ভুল দেখতে পারে, সেজন্য জিপিএস কোঅর্ডিনেট যুক্ত করুন।'
+                  }
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {form.latitude && form.longitude && (
-                  <a
-                    href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {form.latitude && form.longitude ? (
+                  <>
+                    <a
+                      href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: 'white',
+                        color: '#0284C7',
+                        border: '1px solid #BAE6FD',
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      🗺️ গুগল ম্যাপসে দেখুন
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleClearGps}
+                      title="জিপিএস মুছে নতুন করে সেট করার অনুমতি দিন"
+                      style={{
+                        background: '#FEF2F2',
+                        color: '#DC2626',
+                        border: '1px solid #FECACA',
+                        borderRadius: 8,
+                        padding: '8px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 1px 2px rgba(220, 38, 38, 0.08)'
+                      }}
+                    >
+                      🗑️ লোকেশন মুছুন / পরিবর্তন করুন
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAutoPinGps}
+                    disabled={gpsLoading}
                     style={{
-                      background: 'white',
-                      color: '#0284C7',
-                      border: '1px solid #BAE6FD',
+                      background: '#00B875',
+                      color: 'white',
+                      border: 'none',
                       borderRadius: 8,
-                      padding: '8px 12px',
+                      padding: '8px 14px',
                       fontSize: 12.5,
                       fontWeight: 700,
-                      textDecoration: 'none',
+                      cursor: gpsLoading ? 'not-allowed' : 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 4
+                      gap: 6,
+                      boxShadow: '0 2px 6px rgba(0, 184, 117, 0.25)'
                     }}
                   >
-                    🗺️ গুগল ম্যাপসে দেখুন
-                  </a>
+                    {gpsLoading ? '⏳ লোকেশন লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
+                  </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleAutoPinGps}
-                  disabled={gpsLoading}
-                  style={{
-                    background: '#00B875',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '8px 14px',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: gpsLoading ? 'not-allowed' : 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    boxShadow: '0 2px 6px rgba(0, 184, 117, 0.25)'
-                  }}
-                >
-                  {gpsLoading ? '⏳ লোকেশন লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
-                </button>
               </div>
             </div>
 
             <div className="admin-form-group">
-              <label className="admin-form-label">Map Latitude (অক্ষাংশ)</label>
+              <label className="admin-form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Map Latitude (অক্ষাংশ)</span>
+                {form.latitude && form.longitude && (
+                  <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>🔒 সংরক্ষিত</span>
+                )}
+              </label>
               <input
                 type="number"
                 step="any"
@@ -943,12 +1013,22 @@ export default function HospitalFormPage() {
                 value={form.latitude}
                 onChange={handleChange}
                 placeholder="e.g. 23.8103"
+                readOnly={Boolean(form.latitude && form.longitude && gpsSource !== 'manual')}
+                style={{
+                  background: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'rgba(0,0,0,0.03)' : 'var(--admin-card-bg)',
+                  cursor: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'not-allowed' : 'text'
+                }}
               />
               {errors.latitude && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.latitude}</div>}
             </div>
 
             <div className="admin-form-group">
-              <label className="admin-form-label">Map Longitude (দ্রাঘিমাংশ)</label>
+              <label className="admin-form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Map Longitude (দ্রাঘিমাংশ)</span>
+                {form.latitude && form.longitude && (
+                  <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>🔒 সংরক্ষিত</span>
+                )}
+              </label>
               <input
                 type="number"
                 step="any"
@@ -957,6 +1037,11 @@ export default function HospitalFormPage() {
                 value={form.longitude}
                 onChange={handleChange}
                 placeholder="e.g. 90.4125"
+                readOnly={Boolean(form.latitude && form.longitude && gpsSource !== 'manual')}
+                style={{
+                  background: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'rgba(0,0,0,0.03)' : 'var(--admin-card-bg)',
+                  cursor: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'not-allowed' : 'text'
+                }}
               />
               {errors.longitude && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.longitude}</div>}
             </div>
@@ -1157,38 +1242,40 @@ export default function HospitalFormPage() {
           </div>
         </div>
 
-        {/* Global Settings */}
-        <div className="admin-card" style={{ border: '1px solid rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.03)' }}>
-          <div className="admin-card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#D97706' }}>⭐ Visibility & Status</h3>
-              <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '4px 0 0' }}>Configure how this hospital appears to the public</p>
-            </div>
-            <div style={{ display: 'flex', gap: 40 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>Top 10 Hospital</span>
-                <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.top_10_hospital === 'yes'} onChange={(e) => setForm(f => ({ ...f, top_10_hospital: e.target.checked ? 'yes' : 'no' }))} />
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981' }}>Active Status</span>
-                <div
-                  onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
-                  style={{
-                    width: 48, height: 26, borderRadius: 14, padding: 3, cursor: 'pointer',
-                    background: form.is_active ? '#10B981' : '#CBD5E1',
-                    display: 'flex', transition: '0.3s',
-                    justifyContent: form.is_active ? 'flex-end' : 'flex-start'
-                  }}
-                >
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white' }} />
+        {/* Global Settings — Only visible to and controllable by Administrators */}
+        {isAdmin && (
+          <div className="admin-card" style={{ border: '1px solid rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.03)' }}>
+            <div className="admin-card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#D97706' }}>⭐ Visibility & Status</h3>
+                <p style={{ fontSize: 13, color: 'var(--admin-text-muted)', margin: '4px 0 0' }}>Configure how this hospital appears to the public</p>
+              </div>
+              <div style={{ display: 'flex', gap: 40 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>Top 10 Hospital</span>
+                  <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.top_10_hospital === 'yes'} onChange={(e) => setForm(f => ({ ...f, top_10_hospital: e.target.checked ? 'yes' : 'no' }))} />
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981' }}>Active Status</span>
+                  <div
+                    onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
+                    style={{
+                      width: 48, height: 26, borderRadius: 14, padding: 3, cursor: 'pointer',
+                      background: form.is_active ? '#10B981' : '#CBD5E1',
+                      display: 'flex', transition: '0.3s',
+                      justifyContent: form.is_active ? 'flex-end' : 'flex-start'
+                    }}
+                  >
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white' }} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginBottom: 60 }}>
-          <Link to="/admin/hospitals" className="admin-btn admin-btn-outline" style={{ padding: '14px 32px' }}>Discard Changes</Link>
+          <Link to={isManager ? '/hospital/my-hospital' : '/admin/hospitals'} className="admin-btn admin-btn-outline" style={{ padding: '14px 32px' }}>Discard Changes</Link>
           <button type="submit" className="admin-btn admin-btn-primary" disabled={saving} style={{ padding: '14px 48px', fontSize: 16, fontWeight: 800, borderRadius: 14, boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)' }}>
             {saving ? 'Processing...' : isEdit ? '💾 Update Hospital Profile' : '🚀 Register Hospital'}
           </button>

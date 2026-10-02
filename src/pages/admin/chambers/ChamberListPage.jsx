@@ -256,8 +256,15 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
             
             {/* Hospital / Facility */}
             <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--admin-bg, #f8fafc)', border: '1px solid var(--admin-border, #e2e8f0)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>
-                🏥 Hospital & Facility
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase' }}>
+                  {(!chamber.hospital_id || !chamber.hospital) ? '🏠 Private Facility' : '🏥 Hospital & Facility'}
+                </span>
+                {(!chamber.hospital_id || !chamber.hospital) && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, background: '#EEF2FF', color: '#4F46E5', padding: '1px 6px', borderRadius: 4, border: '1px solid #C7D2FE' }}>
+                    Private
+                  </span>
+                )}
               </div>
               <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text, #0f172a)' }}>
                 {chamber.chamber_name || chamber.hospital?.name || 'ব্যক্তিগত চেম্বার'}
@@ -387,6 +394,7 @@ export default function ChamberListPage() {
   const [hospitalId, setHospitalId] = useState('')
   const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [dayFilter, setDayFilter] = useState('')
+  const [venueTypeFilter, setVenueTypeFilter] = useState('all') // 'all' | 'hospital' | 'private'
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
 
@@ -430,6 +438,7 @@ export default function ChamberListPage() {
     setHospitalId('')
     setStatusFilter('all')
     setDayFilter('')
+    setVenueTypeFilter('all')
     const newParams = new URLSearchParams(searchParams)
     newParams.delete('status')
     setSearchParams(newParams, { replace: true })
@@ -514,9 +523,12 @@ export default function ChamberListPage() {
     }
   }
 
-  const hasActiveFilters = Boolean(search || doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter)
+  const hasActiveFilters = Boolean(search || doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter || (venueTypeFilter && venueTypeFilter !== 'all'))
 
   const filtered = items.filter(i => {
+    const isPrivate = !i.hospital_id || i.consultation_type === 'physical' || !i.hospital
+    if (venueTypeFilter === 'hospital' && isPrivate) return false
+    if (venueTypeFilter === 'private' && !isPrivate) return false
     if (dayFilter && i.day !== dayFilter) return false
     if (statusFilter === 'active' && !i.is_active) return false
     if (statusFilter === 'inactive' && i.is_active) return false
@@ -528,6 +540,7 @@ export default function ChamberListPage() {
       const bmdc = (i.doctor?.bmdc || '').toLowerCase()
       const hospName = (i.hospital?.name || i.hospital_name || '').toLowerCase()
       const hospNameBn = (i.hospital?.name_bn || '').toLowerCase()
+      const chamberName = (i.chamber_name || '').toLowerCase()
       const hospAddress = (i.hospital?.address || i.address || '').toLowerCase()
       const day = (i.day || '').toLowerCase()
       const room = (i.room_number || '').toLowerCase()
@@ -541,6 +554,7 @@ export default function ChamberListPage() {
         bmdc.includes(q) ||
         hospName.includes(q) ||
         hospNameBn.includes(q) ||
+        chamberName.includes(q) ||
         hospAddress.includes(q) ||
         day.includes(q) ||
         room.includes(q) ||
@@ -576,11 +590,16 @@ export default function ChamberListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter)}
+        hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
         activeFilters={[
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
           hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
+          (venueTypeFilter && venueTypeFilter !== 'all') && {
+            key: 'venueType',
+            label: `Venue: ${venueTypeFilter === 'private' ? 'Private Chambers' : 'Hospital Chambers'}`,
+            onRemove: () => setVenueTypeFilter('all')
+          },
           dayFilter && { key: 'day', label: `Day: ${dayFilter}`, onRemove: () => setDayFilter('') },
           (statusFilter && statusFilter !== 'all') && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => handleStatusChange('all') },
         ].filter(Boolean)}
@@ -610,6 +629,18 @@ export default function ChamberListPage() {
           <SearchableSelect label="Doctor" placeholder="All Doctors" options={doctors} value={doctorId} onChange={setDoctorId} />
         )}
         <SearchableSelect label="Hospital" placeholder="All Hospitals" options={hospitals} value={hospitalId} onChange={setHospitalId} />
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Venue Type</label>
+          <select 
+            value={venueTypeFilter} 
+            onChange={e => setVenueTypeFilter(e.target.value)} 
+            style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+          >
+            <option value="all">All Types</option>
+            <option value="hospital">🏥 Hospital Only</option>
+            <option value="private">🏠 Private Only</option>
+          </select>
+        </div>
         <div style={{ minWidth: 140 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Day</label>
           <select value={dayFilter} onChange={e => setDayFilter(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}>
@@ -686,27 +717,75 @@ export default function ChamberListPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map((chamber) => (
-                  <tr key={chamber.id} style={{ transition: 'background 0.15s' }}>
-                    <td style={{ paddingLeft: 24 }}>
-                      <CompactUlid value={chamber.public_id || chamber.id} />
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{chamber.doctor?.name || 'Unknown Doctor'}</div>
-                      <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 600, marginTop: 2 }}>
-                        BMDC: {chamber.doctor?.bmdc || '—'}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>{chamber.chamber_name || chamber.hospital?.name || 'ব্যক্তিগত চেম্বার'}</div>
-                      {(chamber.hospital?.public_id || chamber.hospital_id) && (
-                        <div style={{ marginTop: 2 }}>
-                          <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />
+                {paginatedData.map((chamber) => {
+                  const isPrivate = !chamber.hospital_id || chamber.consultation_type === 'physical' || !chamber.hospital
+
+                  return (
+                    <tr 
+                      key={chamber.id} 
+                      style={{ 
+                        transition: 'background 0.15s',
+                        background: isPrivate ? 'rgba(99, 102, 241, 0.03)' : 'transparent',
+                        borderLeft: isPrivate ? '4px solid #6366F1' : '4px solid transparent'
+                      }}
+                    >
+                      <td style={{ paddingLeft: 24 }}>
+                        <CompactUlid value={chamber.public_id || chamber.id} />
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{chamber.doctor?.name || 'Unknown Doctor'}</div>
+                        <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 600, marginTop: 2 }}>
+                          BMDC: {chamber.doctor?.bmdc || '—'}
                         </div>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 6, background: 'rgba(0, 168, 140, 0.1)', color: '#00A88C', fontWeight: 700, fontSize: 11.5, marginBottom: 2 }}>
+                      </td>
+                      <td>
+                        {isPrivate ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                background: '#EEF2FF',
+                                color: '#4F46E5',
+                                border: '1px solid #C7D2FE',
+                                padding: '2px 7px',
+                                borderRadius: 6
+                              }}>
+                                🏠 Private Chamber
+                              </span>
+                            </div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>
+                              {chamber.chamber_name || 'ডক্টরস ব্যক্তিগত চেম্বার'}
+                            </div>
+                            {chamber.address && (
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <span>📍 {chamber.address}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>
+                              {chamber.chamber_name || chamber.hospital?.name}
+                            </div>
+                            {(chamber.hospital?.public_id || chamber.hospital_id) && (
+                              <div style={{ marginTop: 2 }}>
+                                <CompactUlid value={chamber.hospital?.public_id || chamber.hospital_id} />
+                              </div>
+                            )}
+                            {chamber.room_number && (
+                              <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                                Room: {chamber.room_number}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 6, background: 'rgba(0, 168, 140, 0.1)', color: '#00A88C', fontWeight: 700, fontSize: 11.5, marginBottom: 2 }}>
                         {chamber.day || 'Daily'}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 500 }}>
@@ -829,7 +908,7 @@ export default function ChamberListPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

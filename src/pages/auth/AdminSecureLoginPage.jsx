@@ -409,27 +409,6 @@ export default function AdminSecureLoginPage() {
               </p>
             </div>
 
-            {/* Dev Mode OTP Indicator for smooth local testing */}
-            {twoFactorData?.dev_otp && (
-              <div 
-                onClick={() => setOtp(twoFactorData.dev_otp)}
-                style={{
-                  background: '#FEF3C7',
-                  border: '1px dashed #F59E0B',
-                  borderRadius: '10px',
-                  padding: '9px 14px',
-                  marginBottom: '18px',
-                  cursor: 'pointer',
-                  textAlign: 'center'
-                }}
-                title="ক্লিক করে কোডটি অটো-ফিল করুন"
-              >
-                <span style={{ color: '#92400E', fontSize: '12px', fontWeight: 600 }}>
-                  ⚡ টেস্ট মোড ওটিপি: <strong>{twoFactorData.dev_otp}</strong> (ক্লিক করলে অটো-ফিল হবে)
-                </span>
-              </div>
-            )}
-
             {/* 2FA Error Alert */}
             {otpError && (
               <div style={{

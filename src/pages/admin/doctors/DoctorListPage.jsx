@@ -1,6 +1,6 @@
 // DoctorListPage.jsx — Admin doctor management + Doctor own profile
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Filter, ChevronDown, ChevronUp, Award } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -192,6 +192,7 @@ export default function DoctorListPage() {
   const [showFilters, setShowFilters] = useState(initialStatusParam !== null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [copiedDoctorId, setCopiedDoctorId] = useState(false)
 
   // Filters State
   const [divisionId, setDivisionId] = useState('')
@@ -831,19 +832,75 @@ export default function DoctorListPage() {
                 </span>
               )}
 
-              {/* Experience */}
-              {myProfile.experience ? (
-                <span className="dr-meta-pill" style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}>
-                  ⭐ {myProfile.experience} Years Experience
-                </span>
-              ) : null}
-
-              {/* Workplace */}
-              {myProfile.workplace && (
-                <span className="dr-meta-pill" style={{ background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0' }}>
-                  🏥 {myProfile.workplace}
+              {/* Doctor Public ID (Doctor ID Number) */}
+              {(myProfile.public_id || myProfile.id) && (
+                <span 
+                  className="dr-meta-pill" 
+                  style={{ 
+                    background: '#f0fdfa', 
+                    color: '#0f766e', 
+                    border: '1.5px solid #99f6e4', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: 6,
+                    boxShadow: '0 1px 3px rgba(13, 148, 136, 0.08)'
+                  }}
+                  title="Official Doctor ID Number (Doctor Public ID)"
+                >
+                  <IdCard size={14} color="#0d9488" style={{ flexShrink: 0 }} />
+                  <span style={{ color: '#115e59', fontWeight: 800, fontSize: 12 }}>Doctor ID:</span>
+                  <strong style={{ 
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', 
+                    fontSize: 13, 
+                    color: '#042f2e',
+                    letterSpacing: '0.04em',
+                    fontWeight: 800
+                  }}>
+                    {myProfile.public_id || myProfile.id}
+                  </strong>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const val = String(myProfile.public_id || myProfile.id).replace(/^#+/, '').trim()
+                      if (navigator?.clipboard?.writeText) {
+                        navigator.clipboard.writeText(val)
+                      }
+                      setCopiedDoctorId(true)
+                      setTimeout(() => setCopiedDoctorId(false), 1600)
+                      toast.success(`Doctor ID (${val}) copied to clipboard!`)
+                    }}
+                    style={{
+                      background: copiedDoctorId ? '#ccfbf1' : 'transparent',
+                      border: copiedDoctorId ? '1px solid #5eead4' : 'none',
+                      padding: copiedDoctorId ? '1px 5px' : '2px 4px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      color: copiedDoctorId ? '#0f766e' : '#0d9488',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      transition: 'all 0.15s ease',
+                      marginLeft: 2
+                    }}
+                    title="Copy Doctor ID"
+                    aria-label="Copy Doctor ID"
+                  >
+                    {copiedDoctorId ? (
+                      <>
+                        <Check size={11} strokeWidth={2.5} />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <Copy size={12} strokeWidth={2.2} />
+                    )}
+                  </button>
                 </span>
               )}
+
+              {/* End of meta badges */}
             </div>
           </div>
         </div>
@@ -952,6 +1009,20 @@ export default function DoctorListPage() {
               </div>
 
               <div className="dr-contact-list">
+                {(myProfile.public_id || myProfile.id) && (
+                  <div className="dr-contact-item">
+                    <div className="dr-contact-icon">🆔</div>
+                    <div>
+                      <div className="dr-contact-text-label">Doctor ID (Public ID)</div>
+                      <div className="dr-contact-text-val" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', color: '#0f766e', fontWeight: 800 }}>
+                          {myProfile.public_id || myProfile.id}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="dr-contact-item">
                   <div className="dr-contact-icon">🏥</div>
                   <div>

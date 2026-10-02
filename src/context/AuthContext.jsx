@@ -124,7 +124,6 @@ export function AuthProvider({ children }) {
           role: response.data.role || role,
           session_key: response.data.session_key,
           masked_mobile: response.data.masked_mobile,
-          dev_otp: response.data.dev_otp,
           message: response.data.message
         }
       }

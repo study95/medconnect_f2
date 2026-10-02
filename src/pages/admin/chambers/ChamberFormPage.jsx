@@ -266,6 +266,7 @@ export default function ChamberFormPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
+  const [gpsSource, setGpsSource] = useState('none') // 'none' | 'auto' | 'manual' | 'saved'
   const [errors, setErrors] = useState({})
   const [serverFeedback, setServerFeedback] = useState(null)
   const [myDoctorProfile, setMyDoctorProfile] = useState(null)
@@ -281,6 +282,7 @@ export default function ChamberFormPage() {
         const lat = Number(pos.coords.latitude.toFixed(7))
         const lng = Number(pos.coords.longitude.toFixed(7))
         setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))
+        setGpsSource('auto')
         toast.success(`চেম্বারের লোকেশন পিন করা হয়েছে: ${lat}, ${lng}`)
         setGpsLoading(false)
       },
@@ -294,6 +296,12 @@ export default function ChamberFormPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
+  }
+
+  const handleClearGps = () => {
+    setForm(prev => ({ ...prev, latitude: '', longitude: '' }))
+    setGpsSource('none')
+    toast.success('চেম্বারের জিপিএস লোকেশন মুছে ফেলা হয়েছে। এখন নতুন লোকেশন সেট করতে পারেন।')
   }
 
   // Load divisions and districts on mount
@@ -423,6 +431,11 @@ export default function ChamberFormPage() {
         fee: d.fee || '500',
         slot_duration_minutes: d.slot_duration_minutes ? String(d.slot_duration_minutes) : '15'
       })
+      if (d.latitude && d.longitude) {
+        setGpsSource('saved')
+      } else {
+        setGpsSource('none')
+      }
       if (d.day) {
         setSelectedDays([d.day])
       }
@@ -994,8 +1007,8 @@ export default function ChamberFormPage() {
 
                 {/* GPS Auto-Pin Banner & Coordinates */}
                 <div style={{
-                  background: '#F0FDF4',
-                  border: '1.5px dashed #00B875',
+                  background: form.latitude && form.longitude ? '#F8FAFC' : '#F0FDF4',
+                  border: `1.5px dashed ${form.latitude && form.longitude ? '#94A3B8' : '#00B875'}`,
                   borderRadius: 12,
                   padding: '12px 14px',
                   display: 'flex',
@@ -1006,88 +1019,154 @@ export default function ChamberFormPage() {
                   marginTop: 2
                 }}>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
-                      📍 চেম্বার জিপিএস লোকেশন (GPS Coordinates)
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span>📍 চেম্বার জিপিএস লোকেশন (GPS Coordinates)</span>
+                      {form.latitude && form.longitude ? (
+                        gpsSource === 'auto' ? (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 7px', borderRadius: 16, border: '1px solid #86EFAC' }}>
+                            ✓ ডিভাইস জিপিএস থেকে পিন্ড
+                          </span>
+                        ) : gpsSource === 'manual' ? (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, background: '#EEF2FF', color: '#4338CA', padding: '2px 7px', borderRadius: 16, border: '1px solid #C7D2FE' }}>
+                            ✍️ ম্যানুয়ালি ইনপুটকৃত
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 16, border: '1px solid #A7F3D0' }}>
+                            ✓ সক্রিয় লোকেশন
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, background: '#FEF3C7', color: '#B45309', padding: '2px 7px', borderRadius: 16, border: '1px solid #FDE68A' }}>
+                          ⚠️ লোকেশন সেট করা নেই
+                        </span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 1 }}>
-                      রোগীরা যাতে সহজে আপনার চেম্বারের সঠিক দূরত্ব দেখতে পারে।
+                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
+                      {form.latitude && form.longitude 
+                        ? `বর্তমান কোঅর্ডিনেট সংরক্ষিত আছে। নতুন করে সেট বা পরিবর্তন করতে '🗑️ লোকেশন মুছুন / পরিবর্তন করুন' বাটনে চাপ দিন।`
+                        : 'রোগীরা যাতে সহজে আপনার চেম্বারের সঠিক দূরত্ব দেখতে পারে সেজন্য জিপিএস কোঅর্ডিনেট যুক্ত করুন।'
+                      }
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {form.latitude && form.longitude && (
-                      <a
-                        href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {form.latitude && form.longitude ? (
+                      <>
+                        <a
+                          href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            background: 'white',
+                            color: '#0284C7',
+                            border: '1px solid #BAE6FD',
+                            borderRadius: 6,
+                            padding: '6px 10px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          🗺️ ম্যাপে দেখুন
+                        </a>
+                        <button
+                          type="button"
+                          onClick={handleClearGps}
+                          title="জিপিএস মুছে নতুন করে সেট করার অনুমতি দিন"
+                          style={{
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA',
+                            borderRadius: 6,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5
+                          }}
+                        >
+                          🗑️ লোকেশন মুছুন / পরিবর্তন করুন
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAutoPinGps}
+                        disabled={gpsLoading}
                         style={{
-                          background: 'white',
-                          color: '#0284C7',
-                          border: '1px solid #BAE6FD',
+                          background: '#00B875',
+                          color: 'white',
+                          border: 'none',
                           borderRadius: 6,
-                          padding: '6px 10px',
+                          padding: '6px 12px',
                           fontSize: 12,
                           fontWeight: 700,
-                          textDecoration: 'none'
+                          cursor: gpsLoading ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
                         }}
                       >
-                        🗺️ ম্যাপে দেখুন
-                      </a>
+                        {gpsLoading ? '⏳ লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
+                      </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={handleAutoPinGps}
-                      disabled={gpsLoading}
-                      style={{
-                        background: '#00B875',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 12px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: gpsLoading ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5
-                      }}
-                    >
-                      {gpsLoading ? '⏳ লোড হচ্ছে...' : '📍 বর্তমান লোকেশন থেকে অটো-পিন করুন'}
-                    </button>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
-                      Latitude (অক্ষাংশ)
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      <span>Latitude (অক্ষাংশ)</span>
+                      {form.latitude && form.longitude && (
+                        <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>🔒 সংরক্ষিত</span>
+                      )}
                     </label>
                     <input
                       type="number"
                       step="any"
                       placeholder="e.g. 23.8103"
                       value={form.latitude}
-                      onChange={e => setForm({ ...form, latitude: e.target.value })}
+                      onChange={e => {
+                        setForm({ ...form, latitude: e.target.value })
+                        setGpsSource('manual')
+                      }}
+                      readOnly={Boolean(form.latitude && form.longitude && gpsSource !== 'manual')}
                       style={{
                         width: '100%', height: 42, padding: '0 12px', borderRadius: 8,
-                        border: '1.5px solid #cbd5e1', outline: 'none', background: '#ffffff',
+                        border: '1.5px solid #cbd5e1', outline: 'none',
+                        background: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'rgba(0,0,0,0.03)' : '#ffffff',
+                        cursor: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'not-allowed' : 'text',
                         fontSize: 13, color: '#0f172a'
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
-                      Longitude (দ্রাঘিমাংশ)
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      <span>Longitude (দ্রাঘিমাংশ)</span>
+                      {form.latitude && form.longitude && (
+                        <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>🔒 সংরক্ষিত</span>
+                      )}
                     </label>
                     <input
                       type="number"
                       step="any"
                       placeholder="e.g. 90.4125"
                       value={form.longitude}
-                      onChange={e => setForm({ ...form, longitude: e.target.value })}
+                      onChange={e => {
+                        setForm({ ...form, longitude: e.target.value })
+                        setGpsSource('manual')
+                      }}
+                      readOnly={Boolean(form.latitude && form.longitude && gpsSource !== 'manual')}
                       style={{
                         width: '100%', height: 42, padding: '0 12px', borderRadius: 8,
-                        border: '1.5px solid #cbd5e1', outline: 'none', background: '#ffffff',
+                        border: '1.5px solid #cbd5e1', outline: 'none',
+                        background: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'rgba(0,0,0,0.03)' : '#ffffff',
+                        cursor: Boolean(form.latitude && form.longitude && gpsSource !== 'manual') ? 'not-allowed' : 'text',
                         fontSize: 13, color: '#0f172a'
                       }}
                     />
