@@ -1,6 +1,6 @@
 // DoctorListPage.jsx — Admin doctor management + Doctor own profile
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check, AlertTriangle } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -13,6 +13,7 @@ import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import toast from 'react-hot-toast'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { getDoctorSeatInvitations, acceptDoctorSeatInvitation, rejectDoctorSeatInvitation } from '../../../api/subscriptionApi'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
 
@@ -344,10 +345,80 @@ export default function DoctorListPage() {
 
   const myProfile = isDoctorOnly ? allowedDoctors[0] : null
 
+  // Doctor Institutional Seat Invitations State
+  const [seatInvitations, setSeatInvitations] = useState([])
+  const [loadingInvitations, setLoadingInvitations] = useState(false)
+  const [respondingInviteId, setRespondingInviteId] = useState(null)
+
+  const loadDoctorInvitations = async () => {
+    if (!isDoctorOnly) return
+    try {
+      setLoadingInvitations(true)
+      const res = await getDoctorSeatInvitations()
+      const list = res.data || []
+      setSeatInvitations(Array.isArray(list) ? list : [])
+    } catch (err) {
+      console.error('Failed to load doctor seat invitations:', err)
+    } finally {
+      setLoadingInvitations(false)
+    }
+  }
+
+  const handleAcceptInvitation = async (invitation) => {
+    try {
+      setRespondingInviteId(invitation.id)
+      const res = await acceptDoctorSeatInvitation(invitation.id)
+      toast.success(res.message || 'আমন্ত্রণটি সফলভাবে গৃহীত হয়েছে!')
+      await loadDoctorInvitations()
+      await fetchDoctors()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'আমন্ত্রণ গ্রহণ করতে ব্যর্থ হয়েছে।')
+    } finally {
+      setRespondingInviteId(null)
+    }
+  }
+
+  // Rejection modal state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejectingInvitation, setRejectingInvitation] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [submittingReject, setSubmittingReject] = useState(false)
+
+  const REJECT_PRESETS = [
+    'বর্তমানে চেম্বার শিডিউল সম্পূর্ণ ব্যস্ত।',
+    'হাসপাতালের লোকেশন বা দূরত্ব সুবিধাজনক নয়।',
+    'সম্মানী বা প্রাতিষ্ঠানিক শর্তাবলীর সাথে সমন্বয় হচ্ছে না।',
+    'অন্যান্য ব্যক্তিগত কারণ।'
+  ]
+
+  const handleOpenRejectModal = (invitation) => {
+    setRejectingInvitation(invitation)
+    setRejectReason('')
+    setRejectModalOpen(true)
+  }
+
+  const handleConfirmReject = async () => {
+    if (!rejectingInvitation) return
+    try {
+      setSubmittingReject(true)
+      const res = await rejectDoctorSeatInvitation(rejectingInvitation.id, rejectReason)
+      toast.success(res.message || 'আমন্ত্রণটি প্রত্যাখ্যান করা হয়েছে।')
+      setRejectModalOpen(false)
+      setRejectingInvitation(null)
+      await loadDoctorInvitations()
+      await fetchDoctors()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'আমন্ত্রণ প্রত্যাখ্যান করতে ব্যর্থ হয়েছে।')
+    } finally {
+      setSubmittingReject(false)
+    }
+  }
+
   // Ensure doctor's own profile view is always freshly fetched on mount
   useEffect(() => {
     if (isDoctorOnly) {
       fetchDoctors()
+      loadDoctorInvitations()
     }
   }, [isDoctorOnly])
 
@@ -767,6 +838,155 @@ export default function DoctorListPage() {
             ✏️ Edit Profile
           </button>
         </div>
+
+        {/* Pending Hospital Invitations Banner */}
+        {(() => {
+          const pendingInvitations = seatInvitations.filter(
+            (i) => i.status === 'pending' || i.status?.value === 'pending'
+          )
+          if (pendingInvitations.length === 0) return null
+
+          return (
+            <div style={{ marginBottom: 20 }}>
+              {pendingInvitations.map((inv) => (
+                <div
+                  key={inv.id}
+                  style={{
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                    border: '1.5px solid #6ee7b7',
+                    borderRadius: 18,
+                    padding: '20px 24px',
+                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 20,
+                    flexWrap: 'wrap',
+                    marginBottom: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, minWidth: 260, flex: 1 }}>
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 14,
+                        background: '#10b981',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 22,
+                        flexShrink: 0,
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                      }}
+                    >
+                      🏥
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#065f46' }}>
+                          {inv.hospital?.name || 'হাসপাতাল'} আপনাকে প্রাতিষ্ঠানিক সিট বরাদ্দ আমন্ত্রণ পাঠিয়েছে
+                        </h3>
+                        <span
+                          style={{
+                            background: '#d1fae5',
+                            color: '#047857',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #a7f3d0',
+                          }}
+                        >
+                          অপেক্ষমাণ আমন্ত্রণ
+                        </span>
+                      </div>
+
+                      <p style={{ margin: '6px 0 0', fontSize: 13, color: '#047857', lineHeight: 1.4 }}>
+                        {inv.hospital?.address && (
+                          <span>📍 {inv.hospital.address} &bull; </span>
+                        )}
+                        <span>আমন্ত্রণকারী: {inv.invited_by_user?.name || 'হাসপাতাল কর্তৃপক্ষ'}</span>
+                      </p>
+
+                      {(inv.notes || inv.response_note) && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            background: '#F0FDF4',
+                            border: '1px solid #A7F3D0',
+                            borderLeft: '4px solid #10B981',
+                            borderRadius: 8,
+                            padding: '8px 14px',
+                            fontSize: 13,
+                            color: '#065F46',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, display: 'block', fontSize: 11.5, color: '#047857', marginBottom: 2 }}>
+                            💬 হাসপাতালের বিশেষ বার্তা / অফার:
+                          </span>
+                          &ldquo;{inv.notes || inv.response_note}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      disabled={respondingInviteId === inv.id}
+                      onClick={() => handleAcceptInvitation(inv)}
+                      style={{
+                        background: '#10b981',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: 10,
+                        padding: '10px 20px',
+                        fontSize: 13.5,
+                        fontWeight: 700,
+                        cursor: respondingInviteId === inv.id ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                        transition: 'all 0.15s ease',
+                        opacity: respondingInviteId === inv.id ? 0.7 : 1,
+                      }}
+                    >
+                      ✓ গ্রহণ করুন (Accept)
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={respondingInviteId === inv.id || submittingReject}
+                      onClick={() => handleOpenRejectModal(inv)}
+                      style={{
+                        background: '#ffffff',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: 10,
+                        padding: '10px 16px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: respondingInviteId === inv.id || submittingReject ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'all 0.15s ease',
+                        opacity: respondingInviteId === inv.id || submittingReject ? 0.7 : 1,
+                      }}
+                    >
+                      ✕ প্রত্যাখ্যান
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* 2. Unified Doctor Profile Card */}
         <div className="dr-profile-header-card">
@@ -1250,6 +1470,185 @@ export default function DoctorListPage() {
             )}
           </div>
         </div>
+
+        {/* Centered Rejection Reason Modal */}
+        {rejectModalOpen && (
+          <div 
+            className="admin-modal-overlay" 
+            onClick={() => !submittingReject && setRejectModalOpen(false)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 100000, padding: 16
+            }}
+          >
+            <div 
+              className="admin-modal"
+              onClick={e => e.stopPropagation()}
+              style={{
+                maxWidth: 480,
+                width: '100%',
+                background: '#FFFFFF',
+                borderRadius: 18,
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                overflow: 'hidden',
+                border: '1px solid #E2E8F0',
+                animation: 'fadeIn 0.2s ease-out'
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '18px 24px',
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#FFF5F5'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: '#FEE2E2',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#DC2626', flexShrink: 0
+                  }}>
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#991B1B' }}>
+                      আমন্ত্রণ প্রত্যাখ্যানের কারণ
+                    </h4>
+                    <span style={{ fontSize: 12, color: '#DC2626' }}>
+                      {rejectingInvitation?.hospital?.name || 'হাসপাতাল'}-এর জন্য কারণ উল্লেখ করুন
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={submittingReject}
+                  onClick={() => setRejectModalOpen(false)}
+                  style={{
+                    border: 'none', background: 'transparent',
+                    cursor: 'pointer', color: '#94A3B8', fontSize: 16
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '22px 24px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 13.5, color: '#475569', lineHeight: 1.6 }}>
+                  হাসপাতাল কর্তৃপক্ষকে জানাতে আপনি কেন আমন্ত্রণটি গ্রহণ করতে পারছেন না তা নির্বাচন করুন বা লিখে দিন:
+                </p>
+
+                {/* Presets */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                  {REJECT_PRESETS.map((preset, idx) => {
+                    const isSelected = rejectReason === preset
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={submittingReject}
+                        onClick={() => setRejectReason(preset)}
+                        style={{
+                          textAlign: 'left',
+                          padding: '9px 14px',
+                          borderRadius: 10,
+                          fontSize: 12.5,
+                          fontWeight: isSelected ? 700 : 500,
+                          border: isSelected ? '1.5px solid #EF4444' : '1px solid #E2E8F0',
+                          background: isSelected ? '#FEF2F2' : '#F8FAFC',
+                          color: isSelected ? '#991B1B' : '#334155',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {isSelected ? '✓ ' : '• '} {preset}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Custom Text Area */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                    অথবা বিস্তারিত মন্তব্য / কারণ লিখুন:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="যেমন: বর্তমানে চেম্বার শিডিউল ব্যস্ত, আগামী মাসে আলোচনা করতে পারি..."
+                    disabled={submittingReject}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #CBD5E1',
+                      fontSize: 13,
+                      outline: 'none',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      color: '#0F172A',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#EF4444'}
+                    onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: '14px 24px',
+                borderTop: '1px solid #F1F5F9',
+                background: '#FAFBFD',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 10
+              }}>
+                <button
+                  type="button"
+                  disabled={submittingReject}
+                  onClick={() => setRejectModalOpen(false)}
+                  className="admin-btn admin-btn-outline"
+                  style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, background: '#FFFFFF' }}
+                >
+                  বাতিল করুন
+                </button>
+
+                <button
+                  type="button"
+                  disabled={submittingReject}
+                  onClick={handleConfirmReject}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: 'none',
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    cursor: submittingReject ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                    opacity: submittingReject ? 0.7 : 1
+                  }}
+                >
+                  {submittingReject ? 'প্রক্রিয়াধীন...' : '✕ নিশ্চিতভাবে প্রত্যাখ্যান করুন'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

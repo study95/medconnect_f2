@@ -1,5 +1,5 @@
 // HospitalSubscriptionExperiencePage.jsx — Phase 4.2, 4.4 & Phase 6 Enterprise Hospital Subscription & Capacity Experience
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -25,8 +25,10 @@ import {
   RefreshCw, Lock, FileText, Calendar, Info, AlertCircle,
   CheckCircle2, ChevronRight, X, UserPlus, UserMinus, Monitor,
   Activity, PhoneCall, Mail, Headphones, History, Search,
-  Printer, Sparkles, Send, UserCheck, XCircle, Tag, CheckCircle
+  Printer, Sparkles, Send, UserCheck, XCircle, Tag, CheckCircle,
+  Filter
 } from 'lucide-react'
+import UpgradePromptModal from '../../../components/admin/UpgradePromptModal'
 import '../../../styles/hospital-subscription.css'
 
 export default function HospitalSubscriptionExperiencePage() {
@@ -40,6 +42,7 @@ export default function HospitalSubscriptionExperiencePage() {
   // Modal & Drawer states
   const [actionFeedback, setActionFeedback] = useState(null)
   const [showTimeline, setShowTimeline] = useState(false)
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
 
   // Doctor Seat Management states (Phase 6)
   const [seatSummary, setSeatSummary] = useState(null)
@@ -47,13 +50,17 @@ export default function HospitalSubscriptionExperiencePage() {
   const [invitations, setInvitations] = useState([])
   const [invitationsFilter, setInvitationsFilter] = useState('all')
   const [invitationNotes, setInvitationNotes] = useState('')
+  const invitationWordCount = useMemo(() => {
+    if (!invitationNotes || !invitationNotes.trim()) return 0
+    return invitationNotes.trim().split(/\s+/).filter(Boolean).length
+  }, [invitationNotes])
+  const isInvitationOverLimit = invitationWordCount > 250
   const [cancellingInvitationId, setCancellingInvitationId] = useState(null)
   const [seatHistory, setSeatHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [revokeReason, setRevokeReason] = useState('')
   const [liveAllocatedDoctors, setLiveAllocatedDoctors] = useState(null)
 
-  const [doctorSearch, setDoctorSearch] = useState('')
   const [showAllocateModal, setShowAllocateModal] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [eligibleHospitalDoctors, setEligibleHospitalDoctors] = useState([])
@@ -216,7 +223,10 @@ export default function HospitalSubscriptionExperiencePage() {
 
   // Redirect to Checkout — the ONLY way to subscribe or change plans.
   const handleProceedToCheckout = (plan) => {
-    navigate(`/admin/subscription/checkout?plan_id=${plan.id}&cycle=${billingCycle}`)
+    const tierKey = (plan?.tier || '').toLowerCase()
+    const isFree = tierKey === 'free' || Number(plan?.price_monthly) === 0
+    const cycleParam = isFree ? 'monthly' : billingCycle
+    navigate(`/admin/subscription/checkout?plan_id=${plan.id}&cycle=${cycleParam}`)
   }
 
   // Phase 6: Assign or Invite Doctor
@@ -240,6 +250,15 @@ export default function HospitalSubscriptionExperiencePage() {
         })
         setSeatTab('roster')
       } else {
+        const words = invitationNotes.trim().split(/\s+/).filter(Boolean)
+        if (words.length > 250) {
+          setActionFeedback({
+            type: 'error',
+            text: `বার্তার দৈর্ঘ্য সর্বোচ্চ ২৫০ শব্দ হতে পারবে (বর্তমানে ${words.length} শব্দ রয়েছে)।`
+          })
+          return
+        }
+
         const res = await sendHospitalDoctorInvitation({
           doctor_id: selectedDoctor.id,
           notes: invitationNotes.trim() || undefined
@@ -445,31 +464,21 @@ export default function HospitalSubscriptionExperiencePage() {
     daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
   }
 
-  // Filter allocated doctors based on search
-  const filteredDoctors = allocatedDoctors.filter(doc => {
-    if (!doctorSearch.trim()) return true
-    const q = doctorSearch.toLowerCase()
-    return (
-      doc.name?.toLowerCase().includes(q) ||
-      doc.specialty?.name?.toLowerCase().includes(q) ||
-      doc.degree?.toLowerCase().includes(q) ||
-      doc.phone?.toLowerCase().includes(q) ||
-      doc.email?.toLowerCase().includes(q) ||
-      String(doc.id).includes(q)
-    )
-  })
+  const isSubExpired = Boolean(banners?.is_expired) || sub?.status === 'expired' || (daysRemaining !== null && daysRemaining <= 0 && isTrial)
 
-  // Filter invitations based on tab filter & search
+  // Calculate lowest paid plan starting price dynamically
+  const lowestPaidPlan = plans
+    ?.filter(p => Number(p.price_monthly) > 0)
+    ?.sort((a, b) => Number(a.price_monthly) - Number(b.price_monthly))[0]
+  const startingPrice = lowestPaidPlan ? Number(lowestPaidPlan.price_monthly) : 3500
+
+  // Allocated doctors
+  const filteredDoctors = allocatedDoctors
+
+  // Filter invitations based on status filter
   const filteredInvitations = invitations.filter(inv => {
     if (invitationsFilter !== 'all' && inv.status !== invitationsFilter) return false
-    if (!doctorSearch.trim()) return true
-    const q = doctorSearch.toLowerCase()
-    return (
-      inv.doctor?.name?.toLowerCase().includes(q) ||
-      inv.doctor?.specialty?.name?.toLowerCase().includes(q) ||
-      String(inv.doctor_id).includes(q) ||
-      inv.invited_by_user?.name?.toLowerCase().includes(q)
-    )
+    return true
   })
 
   const pendingInvitationsCount = invitations.filter(i => i.status === 'pending').length
@@ -489,35 +498,15 @@ export default function HospitalSubscriptionExperiencePage() {
       {/* ─── PAGE HEADER & CONTROLS ─── */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
-          <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            <span>ড্যাশবোর্ড</span>
-            <ChevronRight size={13} />
-            <span style={{ color: '#2563eb', fontWeight: 700 }}>হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি</span>
-          </div>
-          <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
-            <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
-              হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি
-            </h1>
-            <span className="hosp-sub-badge-tier">
-              <Shield size={11} />
-              প্রাতিষ্ঠানিক
-            </span>
-          </div>
-          <p className="text-muted" style={{ fontSize: '12.5px', margin: '4px 0 0 0' }}>
-            {hospital?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি'} • লাইসেন্স #{hospital?.license_number || 'প্রযোজ্য নয়'} • মাল্টি-ডাক্তার কোটা ও সুবিধা
+          <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
+            হাসপাতাল সাবস্ক্রিপশন ও ক্যাপাসিটি
+          </h1>
+          <p className="text-muted" style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
+            প্রাতিষ্ঠানিক প্ল্যান, ডাক্তার সিট বরাদ্দ ও ক্লিনিক্যাল কোটা বিবরণী
           </p>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <button
-            onClick={() => navigate('/admin/subscription/history')}
-            className="hosp-sub-btn-secondary"
-            title="প্রাতিষ্ঠানিক সাবস্ক্রিপশন ও পেমেন্ট হিস্ট্রি দেখুন"
-          >
-            <History size={15} style={{ color: '#2563eb' }} />
-            <span>সাবস্ক্রিপশন হিস্ট্রি</span>
-          </button>
-
           {timeline.length > 0 && (
             <button
               onClick={() => setShowTimeline(true)}
@@ -533,10 +522,10 @@ export default function HospitalSubscriptionExperiencePage() {
             onClick={() => loadData(true)}
             disabled={refreshing}
             className="hosp-sub-btn-secondary"
-            title="সাবস্ক্রিপশন ও কোটার স্থিতি সিঙ্ক করুন"
+            title="সর্বশেষ ডেটা রিফ্রেশ করুন"
           >
-            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} style={{ color: '#2563eb' }} />
-            <span>{refreshing ? 'সিঙ্ক হচ্ছে...' : 'সিঙ্ক করুন'}</span>
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} style={{ color: '#2563eb' }} />
+            <span>{refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</span>
           </button>
         </div>
       </div>
@@ -708,91 +697,138 @@ export default function HospitalSubscriptionExperiencePage() {
       )}
 
       {/* ─── 2. INSTITUTIONAL HERO BANNER ─── */}
-      <div className="hosp-sub-hero">
+      <div className={`hosp-sub-hero ${isSubExpired ? 'expired' : ''}`}>
         <div className="hosp-sub-hero-glow" />
 
         <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-4 position-relative" style={{ zIndex: 1 }}>
           <div>
             <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-              <span className="hosp-sub-badge-tier">
-                <Shield size={12} />
-                {isTrial ? 'ফ্রি ট্রায়াল' : (sub?.plan?.tier_bn || sub?.plan?.tier || 'প্রাতিষ্ঠানিক')} টায়ার
-              </span>
-              {renderStatusBadge(sub?.status)}
-              {daysRemaining !== null && (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    background: daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(37, 99, 235, 0.1)',
-                    color: daysRemaining <= 3 ? '#dc2626' : '#2563eb',
-                    border: `1px solid ${daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`
-                  }}
-                >
-                  <Clock size={11} />
-                  {daysRemaining > 0 ? `${daysRemaining} দিন বাকি` : 'মেয়াদ উত্তীর্ণ'}
-                </span>
+              {isSubExpired ? (
+                <>
+                  <span className="hosp-sub-badge-tier" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                    <Shield size={12} />
+                    ফ্রি ট্রায়াল সমাপ্ত
+                  </span>
+                  <span className="hosp-sub-badge-status expired">
+                    <span className="hosp-sub-dot" style={{ background: '#ef4444' }} />
+                    সেবা স্থগিত
+                  </span>
+                </>
+              ) : isTrial ? (
+                <>
+                  <span className="hosp-sub-badge-tier">
+                    <Shield size={12} />
+                    ফ্রি ট্রায়াল
+                  </span>
+                  {daysRemaining !== null && (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(37, 99, 235, 0.1)',
+                        color: daysRemaining <= 3 ? '#dc2626' : '#2563eb',
+                        border: `1px solid ${daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`
+                      }}
+                    >
+                      <Clock size={11} />
+                      {daysRemaining} দিন বাকি
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="hosp-sub-badge-tier">
+                    <Shield size={12} />
+                    {sub?.plan?.tier_bn || sub?.plan?.tier || 'প্রাতিষ্ঠানিক'} টায়ার
+                  </span>
+                  {renderStatusBadge(sub?.status)}
+                  {daysRemaining !== null && (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(37, 99, 235, 0.1)',
+                        color: daysRemaining <= 3 ? '#dc2626' : '#2563eb',
+                        border: `1px solid ${daysRemaining <= 3 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`
+                      }}
+                    >
+                      <Clock size={11} />
+                      {daysRemaining > 0 ? `${daysRemaining} দিন বাকি` : 'মেয়াদ উত্তীর্ণ'}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
             <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '6px 0 6px 0', letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
-              {sub?.plan?.name_bn || sub?.plan?.name || 'হাসপাতাল ক্লিনিক্যাল ফ্যাসিলিটি প্ল্যান'}
+              {isSubExpired
+                ? 'প্রাতিষ্ঠানিক ক্লিনিক্যাল প্ল্যান'
+                : isTrial
+                ? 'হাসপাতাল ফ্রি ট্রায়াল'
+                : (sub?.plan?.name_bn || sub?.plan?.name || 'প্রাতিষ্ঠানিক ক্লিনিক্যাল প্ল্যান')}
             </h2>
-            <p className="text-muted" style={{ fontSize: '13px', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
-              {sub?.current_period_ends_at
-                ? `${new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })} পর্যন্ত বর্তমান প্রাতিষ্ঠানিক সাবস্ক্রিপশন মেয়াদ সক্রিয় রয়েছে।`
-                : 'প্রাতিষ্ঠানিক মাল্টি-সিট লাইসেন্স এবং ক্লিনিক্যাল কোটা সক্রিয় রয়েছে।'}
+            <p className="text-muted" style={{ fontSize: '13.5px', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
+              {isSubExpired
+                ? 'সেবা নিরবচ্ছিন্ন রাখতে অনুগ্রহ করে আপনার প্রাতিষ্ঠানিক প্যাকেজে আপগ্রেড করুন।'
+                : isTrial
+                ? 'বর্তমানে ১৪ দিনের ফ্রি ট্রায়াল সক্রিয় রয়েছে। ডাক্তার সিট বরাদ্দ, ওপিডি ও সকল সুবিধা উপভোগ করুন।'
+                : 'হাসপাতাল প্ল্যাটফর্মে ডাক্তার সিট বরাদ্দ ও প্রাতিষ্ঠানিক ক্লিনিক্যাল সুবিধা কার্যকর রয়েছে।'}
             </p>
           </div>
 
-          <div className="hosp-sub-hero-price-box flex-column flex-sm-row">
-            <div className="text-sm-end">
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-                {isTrial ? 'বর্তমান ট্রায়াল চার্জ' : 'প্রাতিষ্ঠানিক সাইকেল ফি'}
+          <div className="hosp-sub-hero-price-box">
+            <div className="text-end" style={{ whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}>
+                {isSubExpired ? 'প্যাকেজ শুরু' : isTrial ? 'বর্তমান চার্জ' : 'সাইকেল ফি'}
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', lineHeight: 1.2 }}>
-                {isTrial ? (
+                {isSubExpired ? (
                   <span>
-                    ৳ ০ <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>(বিনামূল্যে)</span>
+                    ৳ {startingPrice.toLocaleString()}
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}> / মাস</span>
+                  </span>
+                ) : isTrial ? (
+                  <span>
+                    ৳ ০ <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>(ফ্রি)</span>
                   </span>
                 ) : (
                   <span>
-                    ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 3500).toLocaleString()}
+                    ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 0).toLocaleString()}
                     <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#94a3b8' }}>
-                      {' '}/ {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
+                      {' '}/ {sub?.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
                     </span>
                   </span>
                 )}
               </div>
-              {isTrial && (
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
-                  পরবর্তী সাইকেল: ৳ {Number(sub?.plan?.price_monthly || 3500).toLocaleString()} / {sub?.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
-                </div>
-              )}
             </div>
 
-            <div className="d-flex align-items-center gap-2 flex-wrap">
+            <button
+              onClick={() => document.getElementById('pricing-plans-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="hosp-sub-btn-primary"
+              style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontWeight: 700 }}
+            >
+              <Zap size={14} />
+              <span>আপগ্রেড করুন</span>
+            </button>
+            {sub?.status === 'active' && !isTrial && (
               <button
-                onClick={() => document.getElementById('pricing-plans-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="hosp-sub-btn-primary"
+                onClick={() => setShowCancelModal(true)}
+                className="hosp-sub-btn-danger"
+                style={{ whiteSpace: 'nowrap' }}
               >
-                <Zap size={14} />
-                <span>{isTrial ? 'প্ল্যান আপগ্রেড করুন' : 'প্ল্যান পরিবর্তন'}</span>
+                বাতিল
               </button>
-              {sub?.status === 'active' && !isTrial && (
-                <button
-                  onClick={() => setShowCancelModal(true)}
-                  className="hosp-sub-btn-danger"
-                >
-                  প্ল্যান বাতিল
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -823,7 +859,9 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>{seatPct}% কোটা ব্যবহৃত</span>
+            <span>
+              {seatPct}% ব্যবহৃত {pendingSeats > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}>({pendingSeats}টি অপেক্ষমাণ)</span>}
+            </span>
             <span style={{ fontWeight: 700, color: canAllocateMore ? '#059669' : '#d97706' }}>
               {canAllocateMore
                 ? (isUnlimitedSeats ? 'আনলিমিটেড খালি' : `${availableSeats}টি সিট খালি`)
@@ -833,122 +871,132 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>
 
         {/* OPD Ticket Quota */}
-        {usages.find(u => u.key === 'opd_tickets' || u.key === 'tickets') ? (
-          (() => {
-            const u = usages.find(item => item.key === 'opd_tickets' || item.key === 'tickets')
-            const color = u.status === 'critical' ? 'rose' : u.status === 'warning' ? 'amber' : 'emerald'
-            return (
-              <div className="hosp-sub-kpi-card" key="opd">
-                <div className="d-flex justify-content-between align-items-start">
-                  <div>
-                    <div className="hosp-sub-kpi-label">
-                      দৈনিক ওপিডি টিকিট
-                    </div>
-                    <div className="hosp-sub-kpi-value">
-                      {u.used} <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ {u.limit}</span>
-                    </div>
+        {(() => {
+          const u = usages.find(item => item.key === 'opd_tickets' || item.key === 'tickets')
+          const isUnlimited = u ? (u.limit === -1 || u.limit === 999999 || u.limit === 'Unlimited' || u.is_unlimited) : true
+          const usedCount = u?.used ?? 0
+          const color = u?.status === 'critical' ? 'rose' : u?.status === 'warning' ? 'amber' : 'emerald'
+
+          return (
+            <div className="hosp-sub-kpi-card" key="opd">
+              <div className="d-flex justify-content-between align-items-start">
+                <div>
+                  <div className="hosp-sub-kpi-label">
+                    দৈনিক ওপিডি টিকিট কোটা
                   </div>
-                  <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
-                    <Activity size={18} />
+                  <div className="hosp-sub-kpi-value">
+                    {usedCount}{' '}
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>
+                      / {isUnlimited ? '∞ আনলিমিটেড' : `${u?.limit ?? 0}টি`}
+                    </span>
                   </div>
                 </div>
-
-                <div className="hosp-sub-progress-track">
-                  <div
-                    className={`hosp-sub-progress-bar ${color}`}
-                    style={{ width: `${Math.min(100, u.percentage || 0)}%` }}
-                  />
-                </div>
-
-                <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-                  <span>দৈনিক ব্যবহারের গতিধারা</span>
-                  <span style={{ fontWeight: 700, color: '#059669' }}>
-                    ~{u.forecast?.forecasted_usage || u.used} সাইকেল শেষে
-                  </span>
+                <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                  <Activity size={18} />
                 </div>
               </div>
-            )
-          })()
-        ) : (
-          <div className="hosp-sub-kpi-card">
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <div className="hosp-sub-kpi-label">
-                  দৈনিক ওপিডি টিকিট কোটা
+
+              <div className="hosp-sub-progress-track">
+                <div
+                  className={`hosp-sub-progress-bar ${color}`}
+                  style={{ width: `${isUnlimited ? (usedCount > 0 ? 100 : 0) : Math.min(100, u?.percentage || 0)}%` }}
+                />
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
+                <span>ওপিডি ট্র্যাকিং সুবিধা</span>
+                <span style={{ fontWeight: 700, color: '#059669' }}>
+                  {isUnlimited ? 'সীমাহীন অ্যাক্সেস' : `~${u?.forecast?.forecasted_usage || usedCount} সাইকেল শেষে`}
+                </span>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Waiting Lounge TV Screens — Completely Dynamic */}
+        {(() => {
+          const tvUsage = usages.find(item => item.key === 'live_queue_tv' || item.key === 'waiting_lounge_screens' || item.key === 'tv_screens')
+          const tvUsed = tvUsage ? (tvUsage.used ?? 0) : 0
+          const tvLimit = tvUsage ? (tvUsage.limit === 'Unlimited' ? -1 : (tvUsage.limit ?? 1)) : 1
+          const isUnlimitedTv = tvLimit === -1 || tvLimit === 999999 || tvLimit === 'Unlimited'
+          const tvPct = !isUnlimitedTv && tvLimit > 0 ? Math.min(100, Math.round((tvUsed / tvLimit) * 100)) : (tvUsed > 0 ? 100 : 0)
+          const isConnected = tvUsed > 0
+
+          return (
+            <div className="hosp-sub-kpi-card" key="tv">
+              <div className="d-flex justify-content-between align-items-start">
+                <div>
+                  <div className="hosp-sub-kpi-label">
+                    লাউঞ্জ টিভি ডিসপ্লে
+                  </div>
+                  <div className="hosp-sub-kpi-value">
+                    {tvUsed}{' '}
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>
+                      / {isUnlimitedTv ? '∞ আনলিমিটেড' : `${tvLimit} স্ক্রিন সক্রিয়`}
+                    </span>
+                  </div>
                 </div>
-                <div className="hosp-sub-kpi-value">
-                  ৫০০ <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ দিন ক্যাপাসিটি</span>
+                <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(147, 51, 234, 0.1)', color: '#9333ea' }}>
+                  <Monitor size={18} />
                 </div>
               </div>
-              <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
-                <Activity size={18} />
+
+              <div className="hosp-sub-progress-track">
+                <div className="hosp-sub-progress-bar blue" style={{ width: `${tvPct}%` }} />
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
+                <span>লাইভ কিউ ডিসপ্লে বোর্ড</span>
+                <span style={{ fontWeight: 700, color: isConnected ? '#059669' : '#0284c7' }}>
+                  {isConnected ? 'সক্রিয় ও কানেক্টেড' : '১টি স্ক্রিন প্রস্তুত'}
+                </span>
               </div>
             </div>
-
-            <div className="hosp-sub-progress-track">
-              <div className="hosp-sub-progress-bar emerald" style={{ width: '8%' }} />
-            </div>
-
-            <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-              <span>দৈনিক অ্যাপয়েন্টমেন্ট কোটা</span>
-              <span style={{ fontWeight: 700, color: '#059669' }}>সক্রিয় ও প্রস্তুত</span>
-            </div>
-          </div>
-        )}
-
-        {/* Waiting Lounge TV Screens */}
-        <div className="hosp-sub-kpi-card">
-          <div className="d-flex justify-content-between align-items-start">
-            <div>
-              <div className="hosp-sub-kpi-label">
-                লাউঞ্জ টিভি ডিসপ্লে
-              </div>
-              <div className="hosp-sub-kpi-value">
-                ১ <span style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8' }}>/ ২ স্ক্রিন সক্রিয়</span>
-              </div>
-            </div>
-            <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(147, 51, 234, 0.1)', color: '#9333ea' }}>
-              <Monitor size={18} />
-            </div>
-          </div>
-
-          <div className="hosp-sub-progress-track">
-            <div className="hosp-sub-progress-bar blue" style={{ width: '50%' }} />
-          </div>
-
-          <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>লাইভ কিউ ডিসপ্লে বোর্ড</span>
-            <span style={{ fontWeight: 700, color: '#2563eb' }}>কানেক্টেড</span>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* Institutional Billing Cycle */}
         <div className="hosp-sub-kpi-card">
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <div className="hosp-sub-kpi-label">
-                বিলিং ও রিনিউয়াল
+                বিলিং ও সাবস্ক্রিপশন
               </div>
               <div className="hosp-sub-kpi-value">
-                {sub?.billing_cycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'} <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>({isTrial ? 'ফ্রি ট্রায়াল' : 'অটো-পে'})</span>
+                {isSubExpired
+                  ? 'মেয়াদ উত্তীর্ণ'
+                  : isTrial
+                  ? 'ফ্রি ট্রায়াল'
+                  : sub?.billing_cycle === 'annual'
+                  ? 'বাৎসরিক'
+                  : 'মাসিক'}
+                {!isSubExpired && (
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: isTrial ? '#10b981' : '#6366f1' }}>
+                    {' '}({isTrial ? 'সক্রিয়' : 'অটো-পে'})
+                  </span>
+                )}
               </div>
             </div>
-            <div className="hosp-sub-kpi-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
+            <div className="hosp-sub-kpi-icon-wrap" style={{ background: isSubExpired ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: isSubExpired ? '#dc2626' : '#d97706' }}>
               <Calendar size={18} />
             </div>
           </div>
 
           <div className="hosp-sub-progress-track">
             <div
-              className="hosp-sub-progress-bar amber"
-              style={{ width: daysRemaining !== null && daysRemaining <= 30 ? `${Math.max(10, Math.round(((30 - Math.min(30, daysRemaining)) / 30) * 100))}%` : '100%' }}
+              className={`hosp-sub-progress-bar ${isSubExpired ? 'rose' : 'amber'}`}
+              style={{
+                width: isSubExpired ? '100%' : (daysRemaining !== null && daysRemaining <= 30
+                  ? `${Math.max(10, Math.round(((30 - Math.min(30, daysRemaining)) / 30) * 100))}%`
+                  : '100%')
+              }}
             />
           </div>
 
           <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px', color: '#64748b' }}>
-            <span>পরবর্তী রিনিউয়াল তারিখ</span>
-            <span style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD') : 'স্বয়ংক্রিয়'}
+            <span>{isSubExpired ? 'মেয়াদ শেষ হয়েছে' : 'পরবর্তী রিনিউয়াল তারিখ'}</span>
+            <span style={{ fontWeight: 700, color: isSubExpired ? '#dc2626' : 'var(--admin-text, #0f172a)' }}>
+              {sub?.current_period_ends_at ? new Date(sub.current_period_ends_at).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) : (isSubExpired ? 'অপেক্ষমাণ' : 'স্বয়ংক্রিয়')}
             </span>
           </div>
         </div>
@@ -979,35 +1027,12 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            {/* Search Input */}
-            <div style={{ position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input
-                type="text"
-                value={doctorSearch}
-                onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder={seatTab === 'invitations' ? "আমন্ত্রণ ফিল্টার করুন..." : "ডাক্তারদের খুঁজুন..."}
-                style={{
-                  paddingLeft: '34px',
-                  paddingRight: '12px',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                  fontSize: '12px',
-                  background: 'var(--admin-bg, #f8fafc)',
-                  border: '1px solid var(--admin-border, #e2e8f0)',
-                  borderRadius: '10px',
-                  outline: 'none',
-                  minWidth: '200px'
-                }}
-              />
-            </div>
-
             {/* Allocate / Invite Doctor Seat Button */}
             <button
-              onClick={() => setShowAllocateModal(true)}
-              disabled={!canAllocateMore}
+              onClick={() => (isSubExpired ? setShowUpgradePrompt(true) : setShowAllocateModal(true))}
+              disabled={!canAllocateMore && !isSubExpired}
               className="hosp-sub-btn-primary"
-              title={!canAllocateMore ? 'ডাক্তার সিট কোটা পূর্ণ হয়ে গেছে' : 'ডাক্তারকে সিটে আমন্ত্রণ জানান'}
+              title={isSubExpired ? 'ট্রায়ালের মেয়াদ শেষ — আপগ্রেড আবশ্যক' : (!canAllocateMore ? 'ডাক্তার সিট কোটা পূর্ণ হয়ে গেছে' : 'ডাক্তারকে সিটে আমন্ত্রণ জানান')}
             >
               <UserPlus size={14} />
               <span>ডাক্তারকে সিটে আমন্ত্রণ জানান</span>
@@ -1033,43 +1058,47 @@ export default function HospitalSubscriptionExperiencePage() {
           </div>
         )}
 
-        {/* Phase 6 Workspace Tabs Navigation */}
-        <div className="hosp-sub-tabs-nav">
-          <button
-            type="button"
-            className={`hosp-sub-tab-btn ${seatTab === 'roster' ? 'active' : ''}`}
-            onClick={() => setSeatTab('roster')}
-          >
-            <UserCheck size={16} />
-            <span>সক্রিয় ডাক্তার তালিকা</span>
-            <span className="hosp-sub-tab-badge">{allocatedDoctors.length}</span>
-          </button>
+        {/* Phase 6 Workspace Tabs Navigation — Modern Segmented Control */}
+        <div className="hosp-sub-tabs-container">
+          <div className="hosp-sub-segmented-group" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={seatTab === 'roster'}
+              className={`hosp-sub-segmented-btn ${seatTab === 'roster' ? 'active' : ''}`}
+              onClick={() => setSeatTab('roster')}
+            >
+              <UserCheck size={15} />
+              <span>সক্রিয় ডাক্তার তালিকা</span>
+              <span className="hosp-sub-segmented-badge">{allocatedDoctors.length}</span>
+            </button>
 
-          <button
-            type="button"
-            className={`hosp-sub-tab-btn ${seatTab === 'invitations' ? 'active' : ''}`}
-            onClick={() => setSeatTab('invitations')}
-          >
-            <Mail size={16} />
-            <span>সিট আমন্ত্রণসমূহ</span>
-            {pendingInvitationsCount > 0 ? (
-              <span className="hosp-sub-tab-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', fontWeight: 800 }}>
-                {pendingInvitationsCount} জন অপেক্ষমাণ
+            <button
+              type="button"
+              role="tab"
+              aria-selected={seatTab === 'invitations'}
+              className={`hosp-sub-segmented-btn ${seatTab === 'invitations' ? 'active' : ''}`}
+              onClick={() => setSeatTab('invitations')}
+            >
+              <Mail size={15} />
+              <span>সিট আমন্ত্রণসমূহ</span>
+              <span className={`hosp-sub-segmented-badge ${pendingInvitationsCount > 0 ? 'warning' : ''}`}>
+                {pendingInvitationsCount > 0 ? `${pendingInvitationsCount} অপেক্ষমাণ` : invitations.length}
               </span>
-            ) : (
-              <span className="hosp-sub-tab-badge">{invitations.length}</span>
-            )}
-          </button>
+            </button>
 
-          <button
-            type="button"
-            className={`hosp-sub-tab-btn ${seatTab === 'history' ? 'active' : ''}`}
-            onClick={() => setSeatTab('history')}
-          >
-            <History size={16} />
-            <span>অডিট লগ ও ইতিহাস</span>
-            {seatHistory.length > 0 && <span className="hosp-sub-tab-badge">{seatHistory.length}</span>}
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={seatTab === 'history'}
+              className={`hosp-sub-segmented-btn ${seatTab === 'history' ? 'active' : ''}`}
+              onClick={() => setSeatTab('history')}
+            >
+              <History size={15} />
+              <span>অডিট লগ ও ইতিহাস</span>
+              {seatHistory.length > 0 && <span className="hosp-sub-segmented-badge">{seatHistory.length}</span>}
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: ACTIVE PRACTICING ROSTER */}
@@ -1117,7 +1146,7 @@ export default function HospitalSubscriptionExperiencePage() {
                         </p>
                         {allocatedDoctors.length === 0 && canAllocateMore && (
                           <button
-                            onClick={() => setShowAllocateModal(true)}
+                            onClick={() => (isSubExpired ? setShowUpgradePrompt(true) : setShowAllocateModal(true))}
                             className="hosp-sub-btn-primary"
                           >
                             <UserPlus size={14} />
@@ -1491,77 +1520,7 @@ export default function HospitalSubscriptionExperiencePage() {
         )}
       </div>
 
-      {/* ─── 5. INSTITUTIONAL USAGE GAUGES & FORECASTING ─── */}
-      {usages.length > 0 && (
-        <div className="hosp-sub-card">
-          <div className="pb-3 mb-4" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
-              প্রাতিষ্ঠানিক কোটা ব্যবহার ও পূর্বাভাস
-            </h3>
-            <p className="text-muted" style={{ fontSize: '12.5px', margin: '2px 0 0 0' }}>
-              রিয়েল-টাইম ক্যাপাসিটি মনিটরিং, সতর্কবার্তা এবং সাইকেল শেষ পর্যন্ত সম্ভাব্য ব্যবহারের পূর্বাভাস।
-            </p>
-          </div>
 
-          <div className="row g-3">
-            {usages.map((usage) => {
-              const color = usage.status === 'critical' ? 'rose' : usage.status === 'warning' ? 'amber' : 'blue'
-              return (
-                <div key={usage.key} className="col-12 col-sm-6 col-lg-3">
-                  <div
-                    style={{
-                      padding: '18px',
-                      borderRadius: '16px',
-                      border: '1px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-card-bg, #ffffff)',
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div>
-                      <div className="d-flex justify-content-between align-items-start mb-2">
-                        <span style={{ fontSize: '13px', fontWeight: 700 }}>{usage.title}</span>
-                        <span style={{ fontSize: '13px', fontWeight: 800 }}>
-                          {usage.used} / {usage.limit}
-                        </span>
-                      </div>
-
-                      <div className="hosp-sub-progress-track">
-                        <div
-                          className={`hosp-sub-progress-bar ${color}`}
-                          style={{ width: `${Math.min(100, usage.percentage || 0)}%` }}
-                        />
-                      </div>
-
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>
-                        {usage.description}
-                      </div>
-                    </div>
-
-                    <div
-                      className="d-flex justify-content-between align-items-center pt-2 mt-3"
-                      style={{ borderTop: '1px solid var(--admin-border, #e2e8f0)', fontSize: '11px' }}
-                    >
-                      <span style={{ color: '#94a3b8' }}>পূর্বাভাষিত রান-রেট:</span>
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: usage.forecast?.projected_status === 'will_exceed' ? '#dc2626' :
-                                 usage.forecast?.projected_status === 'warning'     ? '#d97706' : '#059669'
-                        }}
-                      >
-                        ~{usage.forecast?.forecasted_usage || usage.used} সম্ভাব্য
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ─── 6. HOSPITAL INSTITUTIONAL TIERS MATRIX & PRICING ─── */}
       <div id="pricing-plans-section" className="hosp-sub-card">
@@ -1611,87 +1570,184 @@ export default function HospitalSubscriptionExperiencePage() {
         <div className="hosp-sub-pricing-grid">
           {plans.map(plan => {
             const isCurrent = sub?.plan?.id === plan.id
-            const displayPrice = billingCycle === 'annual' ? plan.price_annual : plan.price_monthly
+            const isPopular = plan.is_most_popular
+            const tierKey = (plan.tier || '').toLowerCase()
+            const isFree = tierKey === 'free' || Number(plan.price_monthly) === 0
+            const displayPrice = isFree ? 0 : (billingCycle === 'annual' ? plan.price_annual : plan.price_monthly)
+            const isEnterprise = tierKey === 'enterprise' || tierKey.includes('enterprise')
+
+            // Deduplicate and format feature list cleanly
+            const cleanFeatures = (() => {
+              const seen = new Set()
+              return (plan.features || []).filter(f => {
+                const name = (f.feature_name || '').trim()
+                const lower = name.toLowerCase()
+                if (lower.includes('chamber') || lower.includes('seat')) {
+                  if (seen.has('seat_feature')) return false
+                  seen.add('seat_feature')
+                  return true
+                }
+                if (seen.has(lower)) return false
+                seen.add(lower)
+                return true
+              })
+            })()
 
             return (
               <div
                 key={plan.id}
-                className={`hosp-sub-plan-card ${plan.is_most_popular ? 'popular' : ''} ${isCurrent ? 'current' : ''}`}
+                className={`hosp-sub-plan-card ${isPopular ? 'popular' : ''} ${isCurrent ? 'current' : ''}`}
               >
-                {plan.is_most_popular && (
+                {isPopular && (
                   <div className="hosp-sub-badge-popular">
-                    জনপ্রিয় পছন্দ
+                    <Sparkles size={13} />
+                    <span>জনপ্রিয় পছন্দ</span>
                   </div>
                 )}
 
                 <div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="hosp-sub-badge-tier">
-                      {plan.tier_bn || plan.tier} টায়ার
+                  {/* Top Tier Badge & Active Indicator */}
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        background: isFree ? '#ecfdf5' : isEnterprise ? '#f5f3ff' : '#eff6ff',
+                        color: isFree ? '#047857' : isEnterprise ? '#6d28d9' : '#1d4ed8',
+                        border: `1px solid ${isFree ? '#a7f3d0' : isEnterprise ? '#ddd6fe' : '#bfdbfe'}`
+                      }}
+                    >
+                      {plan.tier_bn || plan.tier} টায়ার
                     </span>
+
                     {isCurrent && (
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CheckCircle2 size={14} /> বর্তমান সক্রিয় প্ল্যান
+                      <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', padding: '3px 10px', borderRadius: '999px' }}>
+                        <CheckCircle2 size={13} /> সক্রিয় প্ল্যান
                       </span>
                     )}
                   </div>
 
-                  <h4 style={{ fontSize: '20px', fontWeight: 800, margin: '8px 0 4px 0' }}>
+                  {/* Plan Name & Fixed-Height Subtitle */}
+                  <h4 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px 0', color: 'var(--admin-text, #0f172a)', letterSpacing: '-0.3px' }}>
                     {plan.name_bn || plan.name}
                   </h4>
-                  <p className="text-muted" style={{ fontSize: '12.5px', minHeight: '38px', margin: 0, lineHeight: 1.5 }}>
+                  <p className="text-muted" style={{ fontSize: '12.5px', minHeight: '44px', margin: 0, lineHeight: 1.55 }}>
                     {plan.description}
                   </p>
 
-                  <div style={{ margin: '20px 0' }}>
+                  {/* Price Box with Equal Alignment */}
+                  <div style={{ margin: '22px 0 18px' }}>
                     <div className="d-flex align-items-baseline gap-1">
-                      <span style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.5px' }}>
-                        ৳ {Number(displayPrice).toLocaleString()}
+                      <span style={{ fontSize: '34px', fontWeight: 900, letterSpacing: '-0.5px', color: 'var(--admin-text, #0f172a)', lineHeight: 1 }}>
+                        ৳ {isFree ? '০' : Number(displayPrice).toLocaleString()}
                       </span>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>
-                        / {billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}
+                      <span style={{ fontSize: '12.5px', fontWeight: 600, color: isFree ? '#059669' : '#94a3b8' }}>
+                        / {isFree ? `${plan.trial_period_days || 14} দিনের ট্রায়াল` : (billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক')}
                       </span>
                     </div>
-                    {billingCycle === 'annual' && plan.annual_savings_amount > 0 && (
-                      <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Check size={13} />
-                        <span>বছরে ৳{Number(plan.annual_savings_amount).toLocaleString()} সাশ্রয়</span>
-                      </div>
-                    )}
+
+                    {/* Annual Savings Pill */}
+                    <div style={{ minHeight: '26px', marginTop: '6px' }}>
+                      {isFree ? (
+                        <div style={{
+                          fontSize: '11px', color: '#047857', fontWeight: 700,
+                          background: '#ecfdf5', padding: '3px 10px', borderRadius: '999px',
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          border: '1px solid #a7f3d0'
+                        }}>
+                          <Check size={12} strokeWidth={3} />
+                          <span>কোনো পেমেন্ট বা কার্ড প্রয়োজন নেই</span>
+                        </div>
+                      ) : billingCycle === 'annual' && plan.annual_savings_amount > 0 ? (
+                        <div style={{
+                          fontSize: '11px', color: '#047857', fontWeight: 700,
+                          background: '#ecfdf5', padding: '3px 10px', borderRadius: '999px',
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          border: '1px solid #a7f3d0'
+                        }}>
+                          <Check size={12} strokeWidth={3} />
+                          <span>বছরে ৳{Number(plan.annual_savings_amount).toLocaleString()} সাশ্রয়</span>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                          স্ট্যান্ডার্ড প্রাতিষ্ঠানিক চার্জ
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Feature Checklist */}
+                  {/* Modern Feature Checklist */}
                   <div style={{ paddingTop: '16px', borderTop: '1px solid var(--admin-border, #e2e8f0)', fontSize: '12.5px' }}>
                     <div className="d-flex flex-column gap-2">
-                      {plan.features?.map((f, idx) => (
-                        <div key={idx} className="d-flex align-items-start gap-2">
-                          {f.is_enabled ? (
-                            <Check size={14} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
-                          ) : (
-                            <X size={14} style={{ color: '#cbd5e1', flexShrink: 0, marginTop: '2px' }} />
+                      {cleanFeatures.map((f, idx) => (
+                        <div key={idx} className="d-flex align-items-center justify-content-between" style={{ padding: '3px 0' }}>
+                          <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                            <div
+                              style={{
+                                width: 19, height: 19, borderRadius: '50%',
+                                background: f.is_enabled ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.12)',
+                                color: f.is_enabled ? '#059669' : '#94a3b8',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              {f.is_enabled ? <Check size={11} strokeWidth={3} /> : <X size={11} strokeWidth={2.5} />}
+                            </div>
+                            <span
+                              style={{
+                                fontSize: '12.5px',
+                                fontWeight: f.is_enabled ? 500 : 400,
+                                color: f.is_enabled ? 'var(--admin-text, #334155)' : '#94a3b8',
+                                textDecoration: f.is_enabled ? 'none' : 'line-through',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {f.feature_name}
+                            </span>
+                          </div>
+
+                          {f.is_enabled && (
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: 700,
+                                padding: '2px 7px',
+                                borderRadius: '6px',
+                                background: 'rgba(0, 0, 0, 0.04)',
+                                color: '#475569',
+                                flexShrink: 0,
+                                marginLeft: '8px'
+                              }}
+                            >
+                              {f.is_unlimited ? 'আনলিমিটেড' : f.quota_limit ? `${f.quota_limit} কোটা` : 'সক্রিয়'}
+                            </span>
                           )}
-                          <span style={{ color: f.is_enabled ? 'var(--admin-text, #334155)' : '#94a3b8', textDecoration: f.is_enabled ? 'none' : 'line-through' }}>
-                            {f.feature_name} {f.is_enabled && !f.is_unlimited && `(${f.quota_limit} কোটা)`}
-                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
+                {/* Card Action Button */}
                 <div style={{ paddingTop: '20px', marginTop: '20px', borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
                   {isCurrent ? (
                     <button
                       disabled
                       className="w-100"
                       style={{
-                        padding: '11px',
+                        padding: '12px',
                         background: 'rgba(16, 185, 129, 0.1)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        border: '1.5px solid rgba(16, 185, 129, 0.3)',
                         color: '#059669',
                         fontWeight: 700,
                         borderRadius: '12px',
-                        fontSize: '12.5px',
+                        fontSize: '13px',
                         cursor: 'default',
                         display: 'flex',
                         alignItems: 'center',
@@ -1699,7 +1755,7 @@ export default function HospitalSubscriptionExperiencePage() {
                         gap: '6px'
                       }}
                     >
-                      <CheckCircle2 size={14} />
+                      <CheckCircle2 size={15} />
                       <span>বর্তমান সক্রিয় প্ল্যান</span>
                     </button>
                   ) : overview?.is_checkout_locked ? (
@@ -1708,13 +1764,13 @@ export default function HospitalSubscriptionExperiencePage() {
                       title="পেমেন্ট যাচাইয়ের অপেক্ষায় থাকায় প্ল্যান পরিবর্তন লক রয়েছে"
                       className="w-100"
                       style={{
-                        padding: '11px',
+                        padding: '12px',
                         background: 'var(--admin-bg, #f1f5f9)',
                         border: '1px solid var(--admin-border, #e2e8f0)',
                         color: '#94a3b8',
                         fontWeight: 700,
                         borderRadius: '12px',
-                        fontSize: '12.5px',
+                        fontSize: '13px',
                         cursor: 'not-allowed',
                         display: 'flex',
                         alignItems: 'center',
@@ -1722,16 +1778,41 @@ export default function HospitalSubscriptionExperiencePage() {
                         gap: '6px'
                       }}
                     >
-                      <Lock size={13} />
+                      <Lock size={14} />
                       <span>পেমেন্ট ভেরিফিকেশন চলছে</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => handleProceedToCheckout(plan)}
-                      className="hosp-sub-btn-primary w-100"
+                      className={isPopular ? 'hosp-sub-btn-primary w-100' : 'hosp-sub-btn-primary w-100'}
+                      style={{
+                        padding: '12px',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        background: isFree
+                          ? '#059669'
+                          : isPopular
+                            ? 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)'
+                            : '#2563eb',
+                        boxShadow: isFree
+                          ? '0 4px 14px rgba(5, 150, 105, 0.25)'
+                          : isPopular
+                            ? '0 4px 14px rgba(37, 99, 235, 0.35)'
+                            : undefined
+                      }}
                     >
-                      <Zap size={14} />
-                      <span>চেকআউট ও পেমেন্টে এগিয়ে যান</span>
+                      {isFree ? (
+                        <>
+                          <Sparkles size={14} />
+                          <span>১৪ দিনের ফ্রি ট্রায়াল শুরু করুন</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={14} />
+                          <span>চেকআউট ও পেমেন্টে এগিয়ে যান</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1741,122 +1822,7 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>
       </div>
 
-      {/* ─── 7. ENTERPRISE CONCIERGE & INVOICES ─── */}
-      <div className="row g-4">
-        {/* Enterprise Concierge Card */}
-        <div className="col-12 col-lg-4">
-          <div className="hosp-sub-concierge h-100">
-            <div>
-              <div
-                style={{
-                  padding: '12px',
-                  borderRadius: '14px',
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  width: 'fit-content',
-                  marginBottom: '16px'
-                }}
-              >
-                <Headphones size={24} style={{ color: '#93c5fd' }} />
-              </div>
-              <h4 style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.3px', margin: '0 0 10px 0' }}>
-                প্রাতিষ্ঠানিক কনসিয়ার্জ ও অফলাইন সেটেলমেন্ট
-              </h4>
-              <p style={{ fontSize: '12.5px', color: '#bfdbfe', lineHeight: 1.6, margin: 0 }}>
-                কাস্টম প্রাতিষ্ঠানিক চুক্তি, একাধিক ব্রাঞ্চের বিলিং কিংবা কর্পোরেট ব্যাংক পেমেন্টের সমন্বয় প্রয়োজন? আমাদের অ্যাকাউন্ট ম্যানেজাররা প্রস্তুত আছেন।
-              </p>
-            </div>
 
-            <div style={{ paddingTop: '20px', marginTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.15)' }}>
-              <div className="d-flex flex-column gap-3" style={{ fontSize: '12.5px', color: '#dbeafe' }}>
-                <div className="d-flex align-items-center gap-2">
-                  <PhoneCall size={15} style={{ color: '#93c5fd' }} />
-                  <span style={{ fontWeight: 600 }}>প্রায়োরিটি হটলাইন: +880 1711 000 000</span>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <Mail size={15} style={{ color: '#93c5fd' }} />
-                  <span style={{ fontWeight: 600 }}>institutional-billing@medconnect.com</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Invoices List */}
-        <div className="col-12 col-lg-8">
-          <div className="hosp-sub-card h-100 mb-0">
-            <div className="d-flex justify-content-between align-items-center pb-3 mb-3" style={{ borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18} style={{ color: '#2563eb' }} />
-                <span>প্রাতিষ্ঠানিক বিলিং ইনভয়েস</span>
-              </h3>
-              <span className="text-muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-                মোট {invoices.length}টি রেকর্ড
-              </span>
-            </div>
-
-            {invoices.length === 0 ? (
-              <div style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                এই হাসপাতালের জন্য এখনও কোনো পূর্ববর্তী ইনভয়েস রেকর্ড নেই।
-              </div>
-            ) : (
-              <div className="hosp-sub-table-wrapper">
-                <table className="hosp-sub-table">
-                  <thead>
-                    <tr>
-                      <th>ইনভয়েস নম্বর</th>
-                      <th>ইস্যুর তারিখ</th>
-                      <th>মোট পরিমাণ</th>
-                      <th>পরিশোধের অবস্থা</th>
-                      <th style={{ textAlign: 'right' }}>অ্যাকশন</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoices.map(inv => (
-                      <tr key={inv.id}>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>
-                          {inv.invoice_number}
-                        </td>
-                        <td className="text-muted" style={{ fontSize: '12px' }}>
-                          {new Date(inv.issue_date).toLocaleDateString('bn-BD')}
-                        </td>
-                        <td style={{ fontWeight: 800 }}>
-                          ৳ {Number(inv.total_amount).toLocaleString()}
-                        </td>
-                        <td>
-                          <span className={`hosp-sub-badge-status ${inv.status === 'paid' ? 'active' : 'grace'}`}>
-                            {inv.status === 'paid' ? 'পরিশোধিত' : inv.status === 'pending' ? 'অপেক্ষমাণ' : inv.status}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div className="d-flex align-items-center justify-content-end gap-1">
-                            <button
-                              onClick={() => handleEmailInvoice(inv.id, inv.invoice_number)}
-                              disabled={emailingInvoiceId === inv.id}
-                              className="hosp-sub-btn-secondary"
-                              style={{ padding: '5px 8px' }}
-                              title="ইমেইলে ইনভয়েস রসিদ পাঠান"
-                            >
-                              <Mail size={14} className={emailingInvoiceId === inv.id ? 'animate-spin' : ''} />
-                            </button>
-                            <button
-                              onClick={handlePrintInvoice}
-                              className="hosp-sub-btn-secondary"
-                              style={{ padding: '5px 8px' }}
-                              title="ইনভয়েস প্রিন্ট করুন"
-                            >
-                              <Printer size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ─── 8. DOCTOR SEAT INVITATION / ALLOCATION MODAL (PHASE 6) ─── */}
       {showAllocateModal && createPortal(
@@ -2239,25 +2205,51 @@ export default function HospitalSubscriptionExperiencePage() {
               {/* SECTION 5: NOTES */}
               {selectedDoctor && allocationMode === 'invite' && (
                 <div className="mb-3">
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-                    চেম্বার / অ্যাসাইনমেন্ট নোট (ঐচ্ছিক)
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', margin: 0 }}>
+                      💬 ডাক্তারের উদ্দেশ্যে বিশেষ বার্তা / অফার ও সুবিধার বিবরণ (ঐচ্ছিক)
+                    </label>
+                    <span 
+                      style={{ 
+                        fontSize: '11.5px', 
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        background: isInvitationOverLimit ? '#FEE2E2' : invitationWordCount > 200 ? '#FEF3C7' : '#F1F5F9',
+                        color: isInvitationOverLimit ? '#DC2626' : invitationWordCount > 200 ? '#B45309' : '#64748B',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      📝 {invitationWordCount} / ২৫০ শব্দ
+                    </span>
+                  </div>
                   <textarea
-                    rows={2}
-                    placeholder="যেমন: কার্ডিওলজি ওপিডি চেম্বার ৩০২-তে নিযুক্ত..."
+                    rows={4}
+                    placeholder="যেমন: কার্ডিওলজি ওপিডি চেম্বার ৩০২-তে দায়িত্ব পালন, আকর্ষণীয় রোগী শেয়ারিং এবং ফ্রন্টডেস্ক সাপোর্ট প্রদান করা হবে..."
                     value={invitationNotes}
                     onChange={(e) => setInvitationNotes(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '9px 12px',
+                      padding: '10px 12px',
                       fontSize: '13px',
                       borderRadius: '10px',
-                      border: '1px solid var(--admin-border, #e2e8f0)',
-                      background: 'var(--admin-bg, #f8fafc)',
+                      border: isInvitationOverLimit ? '1.5px solid #EF4444' : '1.5px solid var(--admin-border, #e2e8f0)',
+                      background: isInvitationOverLimit ? '#FEF2F2' : 'var(--admin-bg, #f8fafc)',
                       outline: 'none',
-                      resize: 'vertical'
+                      resize: 'vertical',
+                      lineHeight: 1.5,
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.2s ease, background 0.2s ease'
                     }}
                   />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', marginTop: '5px' }}>
+                    <span style={{ color: isInvitationOverLimit ? '#DC2626' : '#64748B', fontWeight: isInvitationOverLimit ? 600 : 400 }}>
+                      {isInvitationOverLimit ? '⚠️ বার্তার দৈর্ঘ্য ২৫০ শব্দ অতিক্রম করেছে! অনুগ্রহ করে সংক্ষেপ করুন।' : 'ℹ️ এই বার্তাটি ডাক্তার তার নোটিফিকেশন ও প্রোফাইল ইনভাইটেশন ব্যানারে দেখতে পাবেন।'}
+                    </span>
+                    <span style={{ color: '#94A3B8', fontSize: '11px' }}>
+                      {invitationNotes.length} অক্ষর
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -2292,11 +2284,11 @@ export default function HospitalSubscriptionExperiencePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedDoctor || allocatingSeat}
+                  disabled={!selectedDoctor || allocatingSeat || (allocationMode === 'invite' && isInvitationOverLimit)}
                   className="hosp-sub-btn-primary"
                   style={{
-                    opacity: (!selectedDoctor || allocatingSeat) ? 0.6 : 1,
-                    cursor: (!selectedDoctor || allocatingSeat) ? 'not-allowed' : 'pointer'
+                    opacity: (!selectedDoctor || allocatingSeat || (allocationMode === 'invite' && isInvitationOverLimit)) ? 0.6 : 1,
+                    cursor: (!selectedDoctor || allocatingSeat || (allocationMode === 'invite' && isInvitationOverLimit)) ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {allocatingSeat ? (
@@ -2497,6 +2489,13 @@ export default function HospitalSubscriptionExperiencePage() {
         </div>,
         document.body
       )}
+
+      <UpgradePromptModal
+        isOpen={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        targetEntity="hospital"
+        featureName="ডাক্তার সিট বরাদ্দ ও রোস্টার ব্যবস্থাপনা"
+      />
     </div>
   )
 }

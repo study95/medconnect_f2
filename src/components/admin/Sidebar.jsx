@@ -810,10 +810,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {/* ── SUBSCRIPTION ── Doctor only */}
           {isDoctor && (
-            <SidebarSection id="subscription" label="Subscription" routes={['/doctor/subscription']} {...sectionProps}>
+            <SidebarSection id="subscription" label="Subscription" routes={['/doctor/subscription', '/doctor/subscription/history']} {...sectionProps}>
               <NavLink
                 to={pLink('/subscription')}
-                className={`sidebar-nav-item ${isActive(pLink('/subscription')) && !isActive(pLink('/subscription/history')) ? 'active' : ''}`}
+                end
+                className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'Plans' : undefined}
               >
@@ -823,7 +824,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
               <NavLink
                 to={pLink('/subscription/history')}
-                className={`sidebar-nav-item ${isActive(pLink('/subscription/history')) ? 'active' : ''}`}
+                end
+                className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                 onClick={onClose}
                 title={isCollapsed ? 'My Subscriptions' : undefined}
               >

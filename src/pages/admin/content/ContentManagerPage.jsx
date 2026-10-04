@@ -7,7 +7,7 @@ import {
   IconHome, IconPhoto, IconLink, IconExternalLink,
   IconInfoCircle, IconHeadphones, IconPhone, IconFileText,
   IconShieldCheck, IconReceiptRefund, IconListNumbers, IconAlertCircle,
-  IconTicket
+  IconTicket, IconFileCheck, IconCreditCard
 } from '@tabler/icons-react'
 
 const TABS = [
@@ -23,6 +23,8 @@ const TABS = [
   { key: 'legal_terms', label: 'শর্তাবলী - Terms of Service (/legal)', icon: <IconFileText size={18} /> },
   { key: 'legal_privacy', label: 'গোপনীয়তা নীতি - Privacy Policy (/legal)', icon: <IconShieldCheck size={18} /> },
   { key: 'legal_refund', label: 'রিফান্ড ও বাতিলকরণ নীতি (/legal)', icon: <IconReceiptRefund size={18} /> },
+  { key: 'legal_subscription', label: 'সাবস্ক্রিপশন চুক্তি - B2B SaaS (/legal?tab=subscription)', icon: <IconFileCheck size={18} /> },
+  { key: 'legal_billing', label: 'বিলিং ও পেমেন্ট নীতিমালা (/legal?tab=billing)', icon: <IconCreditCard size={18} /> },
 ]
 
 function FieldInput({ label, value, onChange, multiline = false, rows = 3, placeholder = '' }) {
@@ -1115,6 +1117,8 @@ export default function ContentManagerPage() {
       case 'legal_terms': return <LegalPolicyTab sectionName="ব্যবহারের শর্তাবলী (Terms)" defaultTitle="ব্যবহারের শর্তাবলী (Terms of Service)" data={sec} onChange={upd} />
       case 'legal_privacy': return <LegalPolicyTab sectionName="গোপনীয়তা নীতি (Privacy)" defaultTitle="গোপনীয়তা নীতি (Privacy Policy)" data={sec} onChange={upd} />
       case 'legal_refund': return <LegalPolicyTab sectionName="রিফান্ড ও বাতিলকরণ নীতি (Refund)" defaultTitle="রিফান্ড ও বাতিলকরণ নীতি (Refund Policy)" data={sec} onChange={upd} />
+      case 'legal_subscription': return <LegalPolicyTab sectionName="সাবস্ক্রিপশন চুক্তি (B2B SaaS Agreement)" defaultTitle="সাবস্ক্রিপশন সেবা চুক্তি (Master Subscription Agreement)" data={sec} onChange={upd} />
+      case 'legal_billing': return <LegalPolicyTab sectionName="বিলিং ও পেমেন্ট নীতিমালা (Billing & Proration Policy)" defaultTitle="বিলিং, পেমেন্ট ও প্রোরেশন নীতিমালা (Enterprise Billing Policy)" data={sec} onChange={upd} />
       default: return <div style={{ color: '#64748B', padding: 40, textAlign: 'center' }}>কন্টেন্ট লোড হচ্ছে...</div>
     }
   }

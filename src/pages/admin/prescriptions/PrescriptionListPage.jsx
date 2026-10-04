@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
+import { useSubscription } from '../../../context/SubscriptionContext'
+import UpgradePromptModal from '../../../components/admin/UpgradePromptModal'
 import { getPrescriptions, deletePrescription, getDoctors } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -32,6 +34,19 @@ export default function PrescriptionListPage() {
   const [deleting, setDeleting] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+
+  const { hasActiveSubscription, isExpired } = useSubscription()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const isSubscriptionBlocked = isDoctor && (!hasActiveSubscription || isExpired)
+
+  const handleCreatePrescriptionClick = (e, targetPath = '/admin/prescriptions/create') => {
+    if (isSubscriptionBlocked) {
+      if (e) e.preventDefault()
+      setShowUpgradeModal(true)
+    } else {
+      navigate(targetPath)
+    }
+  }
 
   useEffect(() => {
     if (activeTabParam && ['all', 'draft', 'finalized'].includes(activeTabParam)) {
@@ -419,9 +434,14 @@ export default function PrescriptionListPage() {
         ].filter(Boolean)}
         actions={
           isDoctor && (
-            <Link to="/admin/prescriptions/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={(e) => handleCreatePrescriptionClick(e, '/admin/prescriptions/create')}
+              className="admin-btn admin-btn-primary"
+              style={{ height: 38, display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+            >
               + New Prescription
-            </Link>
+            </button>
           )
         }
       >
@@ -665,6 +685,10 @@ export default function PrescriptionListPage() {
                                     boxShadow: '0 2px 4px rgba(0,168,140,0.2)'
                                   }}
                                   onClick={() => {
+                                    if (isSubscriptionBlocked) {
+                                      setShowUpgradeModal(true)
+                                      return
+                                    }
                                     if (p.is_local_draft) {
                                       if (p.appointment_id) {
                                         navigate(`/admin/prescriptions/create?appointment_id=${p.appointment_id}`)
@@ -737,6 +761,13 @@ export default function PrescriptionListPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
+      />
+
+      <UpgradePromptModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        targetEntity="doctor"
+        featureName="ডিজিটাল প্রেসক্রিপশন"
       />
     </div>
   )

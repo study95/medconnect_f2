@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { Star, MessageSquare, ShieldAlert, CheckCircle, Bell, ArrowRight } from 'lucide-react'
+import { Star, MessageSquare, ShieldAlert, CheckCircle, Bell, ArrowRight, Building2 } from 'lucide-react'
 import { formatReviewDate } from '../../features/reviews/mappers'
 
 /**
@@ -17,6 +17,9 @@ const NotificationItem = memo(function NotificationItem({
   const type = notification.type || data.type || 'system'
 
   const getIcon = () => {
+    if (type.includes('invitation') || type.includes('hospital') || (notification.title && notification.title.includes('আমন্ত্রণ'))) {
+      return <Building2 size={16} color="#00A88C" />
+    }
     if (type.includes('Review') || data.title?.includes('Review')) {
       return <Star size={16} className="text-warning" fill="#f59e0b" />
     }
@@ -34,7 +37,21 @@ const NotificationItem = memo(function NotificationItem({
 
   const title = notification.title || data.title || 'New Notification'
   const rawMessage = notification.message || data.message || data.comment_preview || ''
-  const message = typeof rawMessage === 'string' ? rawMessage.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : ''
+  
+  // Clean, short teaser: take only text before any embedded container, strip HTML and decode common entities
+  const teaser = typeof rawMessage === 'string'
+    ? rawMessage
+        .split(/<div style=/i)[0]
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&ldquo;|&rdquo;|&quot;/g, '"')
+        .replace(/&lsquo;|&rsquo;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    : ''
+
+  const hasCustomNote = typeof rawMessage === 'string' && (rawMessage.includes('হাসপাতালের বিশেষ বার্তা') || rawMessage.includes('response_note'))
   const createdAt = notification.created_at || data.created_at
 
   return (
@@ -69,10 +86,43 @@ const NotificationItem = memo(function NotificationItem({
           )}
         </div>
 
-        {message && (
-          <p className="extra-small text-muted mb-1 lh-base text-truncate-2">
-            {message}
+        {teaser && (
+          <p 
+            className="extra-small text-muted mb-1 lh-base"
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontSize: '12px',
+              lineHeight: 1.45,
+              wordBreak: 'break-word'
+            }}
+          >
+            {teaser}
           </p>
+        )}
+
+        {hasCustomNote && (
+          <div style={{ marginBottom: '4px' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: '10.5px',
+                fontWeight: 600,
+                background: '#ecfdf5',
+                color: '#047857',
+                border: '1px solid #a7f3d0',
+                padding: '1px 6px',
+                borderRadius: '5px'
+              }}
+            >
+              ✉️ বিশেষ বার্তা সংযুক্ত
+            </span>
+          </div>
         )}
 
         <div className="extra-small text-secondary" style={{ fontSize: '0.72rem' }}>

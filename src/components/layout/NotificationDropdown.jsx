@@ -51,19 +51,21 @@ export default function NotificationDropdown({
     return () => window.removeEventListener('notification-read-updated', handleUpdate)
   }, [queryClient])
 
-  // 2. Fetch notifications list when dropdown is open
+  // 2. Fetch notifications list when dropdown is open (Unread only)
   const { data: notificationsData, isLoading } = useQuery({
-    queryKey: ['notifications', 'list'],
+    queryKey: ['notifications', 'list', 'unread'],
     queryFn: async () => {
-      const res = await axiosInstance.get('/v1/notifications?per_page=10')
+      const res = await axiosInstance.get('/v1/notifications?unread_only=true&per_page=15')
       const raw = res.data?.data || res.data || []
       return Array.isArray(raw) ? raw : raw.data || []
     },
     enabled: isOpen,
-    staleTime: 1000 * 10,
+    staleTime: 1000 * 5,
   })
 
-  const notifications = Array.isArray(notificationsData) ? notificationsData : []
+  // Ensure only unread notifications are rendered in the top bell dropdown
+  const notifications = (Array.isArray(notificationsData) ? notificationsData : [])
+    .filter((item) => !item.is_read && !item.read_at)
 
   // 3. Mark single notification read mutation
   const markReadMutation = useMutation({
@@ -101,12 +103,11 @@ export default function NotificationDropdown({
 
   const handleNotificationClick = (item) => {
     setIsOpen(false)
-    const data = item.data || {}
-    if (data.action_url) {
-      navigate(data.action_url)
-    } else if (targetPath) {
-      navigate(targetPath)
+    if (!item.is_read && !item.read_at) {
+      markReadMutation.mutate(item.id)
     }
+    const path = targetPath || '/notifications'
+    navigate(path, { state: { selectedNotificationId: item.id } })
   }
 
   return (
@@ -262,9 +263,9 @@ export default function NotificationDropdown({
               <NotificationSkeleton count={3} />
             ) : notifications.length === 0 ? (
               <div className="text-center py-5 px-3 text-muted">
-                <BellOff size={32} className="mb-2 opacity-50 d-block mx-auto" />
-                <div className="fw-semibold small">No notifications yet</div>
-                <div className="extra-small text-muted">You will be notified of new notices and updates here.</div>
+                <BellOff size={32} className="mb-2 opacity-50 d-block mx-auto text-success" />
+                <div className="fw-semibold small">কোনো অপঠিত নোটিফিকেশন নেই</div>
+                <div className="extra-small text-muted">নতুন কোনো নোটিশ আসলে তা এখানে দেখতে পাবেন। পূর্বের সব নোটিশ দেখতে নিচে ক্লিক করুন।</div>
               </div>
             ) : (
               notifications.map((item) => (

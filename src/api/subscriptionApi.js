@@ -120,10 +120,21 @@ export const revokeHospitalDoctorSeatRecord = (data) =>
 export const getHospitalSeatHistory = (params) => 
   axiosInstance.get('/hospital/billing/seats/history', { params }).then(res => res.data)
 
+// ===== DOCTOR SEAT INVITATIONS (HOSPITAL INVITATIONS) =====
+export const getDoctorSeatInvitations = () =>
+  axiosInstance.get('/doctor/seat-invitations').then(res => res.data)
+
+export const acceptDoctorSeatInvitation = (id) =>
+  axiosInstance.post(`/doctor/seat-invitations/${id}/accept`).then(res => res.data)
+
+export const rejectDoctorSeatInvitation = (id, reason = '') =>
+  axiosInstance.post(`/doctor/seat-invitations/${id}/reject`, { reason }).then(res => res.data)
+
 // ===== ENTERPRISE CHECKOUT (PHASE 4.3) =====
 export const getCheckoutSummary = (planId, billingCycle = 'monthly', couponCode = '') =>
   axiosInstance.get('/billing/checkout/summary', {
-    params: { plan_id: planId, billing_cycle: billingCycle, coupon_code: couponCode || undefined }
+    params: { plan_id: planId, billing_cycle: billingCycle, coupon_code: couponCode || undefined },
+    skipGlobalToast: true
   }).then(res => res.data)
 
 export const applyCheckoutCoupon = (planId, couponCode, billingCycle = 'monthly') =>
@@ -131,7 +142,7 @@ export const applyCheckoutCoupon = (planId, couponCode, billingCycle = 'monthly'
     plan_id: planId,
     coupon_code: couponCode,
     billing_cycle: billingCycle
-  }).then(res => res.data)
+  }, { skipGlobalToast: true }).then(res => res.data)
 
 export const createCheckoutSession = (data) =>
   axiosInstance.post('/billing/checkout/create-session', data).then(res => res.data)

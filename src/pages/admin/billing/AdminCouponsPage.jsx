@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminCoupons,
@@ -100,7 +101,7 @@ export default function AdminCouponsPage() {
       code: '',
       discount_type: 'percentage',
       discount_value: 15,
-      applies_to_entity: 'Doctor',
+      applies_to_entity: 'doctor',
       max_redemptions: 50,
       valid_from: new Date().toISOString().slice(0, 10),
       valid_until: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
@@ -115,7 +116,7 @@ export default function AdminCouponsPage() {
       code: cpn.code,
       discount_type: cpn.discount_type,
       discount_value: cpn.discount_value,
-      applies_to_entity: cpn.applies_to_entity || 'Doctor',
+      applies_to_entity: (cpn.applies_to_entity || 'doctor').toLowerCase(),
       max_redemptions: cpn.max_redemptions || 100,
       valid_from: cpn.valid_from ? cpn.valid_from.slice(0, 10) : new Date().toISOString().slice(0, 10),
       valid_until: cpn.valid_until ? cpn.valid_until.slice(0, 10) : new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
@@ -131,19 +132,28 @@ export default function AdminCouponsPage() {
       const payload = {
         ...form,
         code: form.code.trim().toUpperCase(),
+        applies_to_entity: (form.applies_to_entity || 'doctor').toLowerCase(),
         discount_value: parseFloat(form.discount_value) || 0,
         max_redemptions: parseInt(form.max_redemptions) || 0,
       }
 
       if (editingCoupon) {
         await updateAdminCoupon(editingCoupon.id, payload)
+        toast.success(`কুপন "${payload.code}" সফলভাবে আপডেট হয়েছে!`)
       } else {
         await createAdminCoupon(payload)
+        toast.success(`নতুন কুপন "${payload.code}" সফলভাবে তৈরি হয়েছে!`)
       }
       setShowModal(false)
       queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'coupons'] })
     } catch (err) {
-      alert(err.response?.data?.message || 'প্রমোশনাল কুপন সংরক্ষণে সমস্যা হয়েছে।')
+      const fieldErrors = err.response?.data?.errors
+      let errorText = err.response?.data?.message || 'প্রমোশনাল কুপন সংরক্ষণে সমস্যা হয়েছে।'
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstField = Object.values(fieldErrors).flat()[0]
+        if (firstField) errorText = firstField
+      }
+      toast.error(errorText)
     } finally {
       setSaving(false)
     }
@@ -153,9 +163,10 @@ export default function AdminCouponsPage() {
     if (!window.confirm(`কুপন "${coupon.code}" নিষ্ক্রিয় বা মুছে ফেলতে চান?`)) return
     try {
       await deleteAdminCoupon(coupon.id)
+      toast.success(`কুপন "${coupon.code}" সফলভাবে মুছে ফেলা হয়েছে!`)
       queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'coupons'] })
     } catch (err) {
-      alert(err.response?.data?.message || 'কুপন মুছতে সমস্যা হয়েছে।')
+      toast.error(err.response?.data?.message || 'কুপন মুছতে সমস্যা হয়েছে।')
     }
   }
 
@@ -517,8 +528,8 @@ export default function AdminCouponsPage() {
                       onChange={(e) => setForm({ ...form, applies_to_entity: e.target.value })}
                       className="ab-form-select"
                     >
-                      <option value="Doctor">শুধুমাত্র ডাক্তারদের জন্য</option>
-                      <option value="Hospital">শুধুমাত্র হাসপাতালের জন্য</option>
+                      <option value="doctor">শুধুমাত্র ডাক্তারদের জন্য</option>
+                      <option value="hospital">শুধুমাত্র হাসপাতালের জন্য</option>
                       <option value="all">সকল গ্রাহক (ডাক্তার ও হাসপাতাল)</option>
                     </select>
                   </div>
