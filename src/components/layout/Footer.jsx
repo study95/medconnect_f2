@@ -39,7 +39,10 @@ function Footer() {
                      location.pathname.startsWith('/forgot-password') ||
                      location.pathname.startsWith('/reset-password')
 
-  if (isAuthPage) {
+  const isQuickApptPage = location.pathname.startsWith('/quick-appointment') ||
+                         location.pathname.startsWith('/book-appointment')
+
+  if (isAuthPage || (isMobile && isQuickApptPage)) {
     return null
   }
 

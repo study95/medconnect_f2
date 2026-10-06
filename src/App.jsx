@@ -26,6 +26,7 @@ const SpecialtiesPage     = lazy(() => import('./pages/SpecialtiesPage'))
 const SpecialtyDetailPage = lazy(() => import('./pages/SpecialtyDetailPage'))
 const SearchPage          = lazy(() => import('./pages/SearchPage'))
 const BookAppointmentPage = lazy(() => import('./pages/BookAppointmentPage'))
+const QuickAppointmentPage = lazy(() => import('./pages/QuickAppointmentPage'))
 const MyAppointmentsPage    = lazy(() => import('./pages/MyAppointmentsPage'))
 const AppointmentTicketPage = lazy(() => import('./pages/AppointmentTicketPage'))
 const ProfilePage           = lazy(() => import('./pages/ProfilePage'))
@@ -608,6 +609,8 @@ function App() {
                   <Route path="/specialties/:slug/:district" element={<SpecialtyDetailPage />} />
                   <Route path="/specialties/:slug" element={<SpecialtyDetailPage />} />
                   <Route path="/search"      element={<SearchPage />} />
+                  <Route path="/quick-appointment" element={<QuickAppointmentPage />} />
+                  <Route path="/book-appointment"  element={<QuickAppointmentPage />} />
 
                   <Route path="/top-10-doctors" element={<TopDoctorsPage />} />
                   <Route path="/top-10-hospitals" element={<TopHospitalsPage />} />

@@ -4,7 +4,7 @@ import {
   IconHome,
   IconStethoscope,
   IconBuildingHospital,
-  IconLayoutGrid,
+  IconCalendarEvent,
   IconUser
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
@@ -19,12 +19,12 @@ export default function FloatingBottomNav() {
     return null;
   }
 
-  // Sequence: Home -> Doctor -> Hospital -> Service -> Login
+  // Sequence: Home -> Doctor -> Hospital -> Booking -> Account
   const navItems = [
     { id: 'home', icon: <IconHome size={22} stroke={1.8} />, path: '/', label: 'হোম' },
     { id: 'doctor', icon: <IconStethoscope size={22} stroke={1.8} />, path: '/doctors', label: 'ডাক্তার' },
     { id: 'hospital', icon: <IconBuildingHospital size={22} stroke={1.8} />, path: '/hospitals', label: 'হাসপাতাল' },
-    { id: 'service', icon: <IconLayoutGrid size={22} stroke={1.8} />, path: '/services', label: 'সেবা' },
+    { id: 'booking', icon: <IconCalendarEvent size={22} stroke={1.8} />, path: '/quick-appointment', label: 'বুকিং' },
     { 
       id: 'account', 
       icon: <IconUser size={22} stroke={1.8} />, 

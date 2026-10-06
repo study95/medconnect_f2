@@ -479,7 +479,7 @@ function AppNavbar() {
 
             {/* Action Buttons */}
             <div className="d-flex align-items-center" style={{ gap: '14px' }}>
-              <Link to="/doctors" className="db-btn-primary">
+              <Link to="/quick-appointment" className="db-btn-primary">
                 <CalendarCheck size={18} strokeWidth={2.2} />
                 <span>অ্যাপয়েন্টমেন্ট বুক করুন</span>
               </Link>
