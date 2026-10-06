@@ -450,14 +450,22 @@ export default function CheckoutPage() {
 
       const res = await createCheckoutSession(payload)
       if (res?.success && res?.data) {
+        const redirectUrl = res.data.redirect_url || res.data.bkashURL || res.data.gateway_result?.bkashURL || res.data.gateway_result?.redirect_url
+        if (redirectUrl) {
+          window.location.href = redirectUrl
+          return
+        }
+
         setSessionSuccessData(res.data)
         if (isFreePlan) {
           refreshSubscription?.()
         }
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'চেকআউট সম্পন্ন করা সম্ভব হয়নি। ইনপুটগুলো যাচাই করুন।'
+      const fieldMsg = err.response?.data?.errors?.payment_method?.[0] || err.response?.data?.errors?.payment?.[0]
+      const msg = fieldMsg || err.response?.data?.message || 'চেকআউট সম্পন্ন করা সম্ভব হয়নি। ইনপুটগুলো যাচাই করুন।'
       setErrorMsg(msg)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setSubmitting(false)
     }
@@ -1531,6 +1539,14 @@ export default function CheckoutPage() {
                   </span>
                 </label>
               </div>
+
+              {/* Inline Error Alert for instant visibility at bottom */}
+              {errorMsg && (
+                <div className="chk-banner error chk-fade-in" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 12 }}>
+                  <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: '13px', lineHeight: 1.5, fontWeight: 600 }}>{errorMsg}</div>
+                </div>
+              )}
 
               {/* Submit CTA */}
               <button
