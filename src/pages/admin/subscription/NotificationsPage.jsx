@@ -10,6 +10,7 @@ import {
   rejectDoctorSeatInvitation
 } from '../../../api/subscriptionApi'
 import { useSubscription } from '../../../context/SubscriptionContext'
+import { sanitizeHtml } from '../../../utils/sanitizeHtml'
 import toast from 'react-hot-toast'
 import { 
   Award, Users, Calendar, ShieldCheck, Check, X, ChevronDown, ChevronUp, 
@@ -848,7 +849,7 @@ export default function NotificationsPage() {
                     lineHeight: 1.7,
                     wordBreak: 'break-word'
                   }}
-                  dangerouslySetInnerHTML={{ __html: selectedNotification.message }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedNotification.message) }}
                 />
 
                 {/* Fallback Custom Note Display if not already in message HTML */}

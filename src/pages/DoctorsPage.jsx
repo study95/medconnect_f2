@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Container, Row, Col } from 'react-bootstrap'
+import { Container, Row, Col, Modal } from 'react-bootstrap'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 
 import DoctorCard from '../components/common/DoctorCard'
@@ -27,16 +27,42 @@ import {
   IconCurrentLocation, IconNavigation, IconLoader2
 } from '@tabler/icons-react'
 
-const POPULAR_DEPARTMENTS = [
-  { enName: 'Cardiologist', bnName: 'হৃদরোগ বিশেষজ্ঞ', searchKey: 'cardio', bnKey: 'হৃদরোগ', icon: <IconHeart size={18} color="#EF4444" /> },
-  { enName: 'Medicine Specialist', bnName: 'মেডিসিন বিশেষজ্ঞ', searchKey: 'med', bnKey: 'মেডিসিন', icon: <IconStethoscope size={18} color="#2563EB" /> },
-  { enName: 'Dermatologist', bnName: 'চর্মরোগ বিশেষজ্ঞ', searchKey: 'derma', bnKey: 'চর্মরোগ', icon: <IconDroplet size={18} color="#D97706" /> },
-  { enName: 'Neurologist', bnName: 'স্নায়ুরোগ বিশেষজ্ঞ', searchKey: 'neuro', bnKey: 'স্নায়ুরোগ', icon: <IconBrain size={18} color="#9333EA" /> },
-  { enName: 'Pediatrician', bnName: 'শিশু রোগ বিশেষজ্ঞ', searchKey: 'pedia', bnKey: 'শিশু', icon: <IconBabyCarriage size={18} color="#0284C7" /> },
-  { enName: 'Gynecologist', bnName: 'স্ত্রী ও প্রসূতি রোগ', searchKey: 'gyne', bnKey: 'স্ত্রী', icon: <IconGenderFemale size={18} color="#DB2777" /> },
-  { enName: 'Dentist', bnName: 'দন্ত বিশেষজ্ঞ', searchKey: 'dent', bnKey: 'দন্ত', icon: <IconDental size={18} color="#16A34A" /> },
-  { enName: 'Orthopedist', bnName: 'অর্থোপেডিক্স', searchKey: 'ortho', bnKey: 'অর্থোপেডিক্স', icon: <IconBone size={18} color="#EA580C" /> }
-]
+const getSpecialtyIcon = (name = '', slug = '', isSelected = false) => {
+  const text = (String(name) + ' ' + String(slug)).toLowerCase()
+
+  if (text.includes('cardio') || text.includes('heart') || text.includes('হৃদ')) {
+    return <IconHeart size={18} color={isSelected ? 'white' : '#EF4444'} />
+  }
+  if (text.includes('med') || text.includes('মেডিসিন') || text.includes('সাধারণ')) {
+    return <IconStethoscope size={18} color={isSelected ? 'white' : '#2563EB'} />
+  }
+  if (text.includes('derma') || text.includes('skin') || text.includes('চর্ম')) {
+    return <IconDroplet size={18} color={isSelected ? 'white' : '#D97706'} />
+  }
+  if (text.includes('neuro') || text.includes('brain') || text.includes('স্নায়ু')) {
+    return <IconBrain size={18} color={isSelected ? 'white' : '#9333EA'} />
+  }
+  if (text.includes('pedia') || text.includes('child') || text.includes('শিশু')) {
+    return <IconBabyCarriage size={18} color={isSelected ? 'white' : '#0284C7'} />
+  }
+  if (text.includes('gyne') || text.includes('female') || text.includes('woman') || text.includes('স্ত্রী') || text.includes('প্রসূতি')) {
+    return <IconGenderFemale size={18} color={isSelected ? 'white' : '#DB2777'} />
+  }
+  if (text.includes('dent') || text.includes('দন্ত') || text.includes('দাঁত')) {
+    return <IconDental size={18} color={isSelected ? 'white' : '#16A34A'} />
+  }
+  if (text.includes('ortho') || text.includes('bone') || text.includes('অর্থোপেডিক্স') || text.includes('হাড়')) {
+    return <IconBone size={18} color={isSelected ? 'white' : '#EA580C'} />
+  }
+  if (text.includes('eye') || text.includes('ophthalm') || text.includes('চক্ষু') || text.includes('চোখ')) {
+    return <IconEye size={18} color={isSelected ? 'white' : '#0D9488'} />
+  }
+  if (text.includes('psychi') || text.includes('mind') || text.includes('মানসিক')) {
+    return <IconMoodSmile size={18} color={isSelected ? 'white' : '#8B5CF6'} />
+  }
+
+  return <IconStethoscope size={18} color={isSelected ? 'white' : '#00B875'} />
+}
 
 const FEE_RANGES = [
   { id: '0-500', label: '৳ ০ - ৫০০' },
@@ -117,6 +143,65 @@ function DoctorsPage() {
   const [telemedicineOnly, setTelemedicineOnly]   = useState(false)
   const [specialtySearch, setSpecialtySearch]     = useState('')
   const [hospitalSearch, setHospitalSearch]       = useState('')
+
+  const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
+  const [modalSpecialtySearch, setModalSpecialtySearch]         = useState('')
+
+  // Dynamically sort specialties by popularity (doctors_count) or name
+  const sortedPopularSpecialties = useMemo(() => {
+    if (!specialties || specialties.length === 0) return []
+    return [...specialties].sort((a, b) => {
+      const cntA = Number(a.doctors_count ?? a.doctor_count ?? 0)
+      const cntB = Number(b.doctors_count ?? b.doctor_count ?? 0)
+      if (cntB !== cntA) return cntB - cntA
+      const nameA = a.name_bn || a.name || ''
+      const nameB = b.name_bn || b.name || ''
+      return nameA.localeCompare(nameB, 'bn')
+    })
+  }, [specialties])
+
+  const popularChipSpecialties = useMemo(() => {
+    return sortedPopularSpecialties.slice(0, 10)
+  }, [sortedPopularSpecialties])
+
+  // Desktop Horizontal Scroll State & Arrow Handlers
+  const chipContainerRef = useRef(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = useCallback(() => {
+    const el = chipContainerRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 5)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5)
+  }, [])
+
+  useEffect(() => {
+    const el = chipContainerRef.current
+    if (!el) return
+    checkScroll()
+    el.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [checkScroll, popularChipSpecialties])
+
+  const scrollChips = (direction) => {
+    const el = chipContainerRef.current
+    if (!el) return
+    const amount = direction === 'left' ? -280 : 280
+    el.scrollBy({ left: amount, behavior: 'smooth' })
+  }
+
+  const handleChipWheel = (e) => {
+    const el = chipContainerRef.current
+    if (!el) return
+    if (e.deltaY !== 0) {
+      el.scrollLeft += e.deltaY
+    }
+  }
 
   const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'relevance')
 
@@ -725,6 +810,9 @@ function DoctorsPage() {
           .doc-mobile-search-bar {
             display: block !important;
           }
+          .doc-chip-scroll-btn {
+            display: none !important;
+          }
         }
         @media (min-width: 992px) {
           .doc-mobile-search-bar {
@@ -945,39 +1033,164 @@ function DoctorsPage() {
           </button>
         </form>
 
-        {/* ── POPULAR DEPARTMENTS CHIP STRIP ── */}
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16, scrollbarWidth: 'none' }}>
-          {POPULAR_DEPARTMENTS.map((dept, idx) => {
-            const matchedSpec = specialties.find(s => (s.name || '').toLowerCase().includes(dept.searchKey) || (s.name_bn || '').includes(dept.bnKey))
-            const specId = matchedSpec ? String(matchedSpec.id) : null
-            const isSelected = selectedSpecialty === specId && specId !== null
-            return (
+        {/* ── POPULAR DEPARTMENTS CHIP STRIP (DYNAMIC WITH DESKTOP SCROLL & ARROWS) ── */}
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          {/* Left Arrow Button (Desktop Only) */}
+          {canScrollLeft && (
+            <button
+              type="button"
+              className="doc-chip-scroll-btn"
+              onClick={() => scrollChips('left')}
+              aria-label="Scroll Left"
+              style={{
+                position: 'absolute',
+                left: -14,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: 'white',
+                border: '1px solid #CBD5E1',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#0F172A',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <IconChevronLeft size={18} />
+            </button>
+          )}
+
+          {/* Right Arrow Button (Desktop Only) */}
+          {canScrollRight && (
+            <button
+              type="button"
+              className="doc-chip-scroll-btn"
+              onClick={() => scrollChips('right')}
+              aria-label="Scroll Right"
+              style={{
+                position: 'absolute',
+                right: -14,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: 'white',
+                border: '1px solid #CBD5E1',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#0F172A',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <IconChevronRight size={18} />
+            </button>
+          )}
+
+          <div
+            ref={chipContainerRef}
+            onWheel={handleChipWheel}
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 8,
+              paddingTop: 4,
+              paddingLeft: 4,
+              paddingRight: 4,
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
+              alignItems: 'center',
+              scrollBehavior: 'smooth'
+            }}
+          >
+            {popularChipSpecialties.map((spec) => {
+              const specId = String(spec.id)
+              const isSelected = selectedSpecialty === specId
+              const displayName = spec.name_bn || spec.name || 'বিশেষজ্ঞ'
+              const docCount = spec.doctors_count ?? spec.doctor_count
+
+              return (
+                <button
+                  key={spec.id}
+                  type="button"
+                  onClick={() => setSelectedSpecialty(isSelected ? '' : specId)}
+                  style={{
+                    background: isSelected ? '#00B875' : 'white',
+                    color: isSelected ? 'white' : '#334155',
+                    border: isSelected ? '1px solid #00B875' : '1px solid #CBD5E1',
+                    borderRadius: 20,
+                    padding: '6px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <span>{getSpecialtyIcon(displayName, spec.slug, isSelected)}</span>
+                  <span>{displayName}</span>
+                  {docCount !== undefined && docCount !== null && (
+                    <span style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : '#F1F5F9',
+                      color: isSelected ? 'white' : '#64748B',
+                      padding: '1px 7px',
+                      borderRadius: 10,
+                      marginLeft: 2
+                    }}>
+                      {toBengaliNumber(docCount)}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+
+            {/* "সকল বিভাগ ❯" Trigger Button */}
+            {specialties?.length > 0 && (
               <button
-                key={idx}
                 type="button"
-                onClick={() => setSelectedSpecialty(isSelected ? '' : specId)}
+                onClick={() => setIsAllSpecialtiesModalOpen(true)}
                 style={{
-                  background: isSelected ? '#00B875' : 'white',
-                  color: isSelected ? 'white' : '#334155',
-                  border: isSelected ? '1px solid #00B875' : '1px solid #E2E8F0',
+                  background: '#F0FDF4',
+                  color: '#00B875',
+                  border: '1.5px dashed #00B875',
                   borderRadius: 20,
                   padding: '6px 14px',
                   fontSize: 12.5,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 4,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   fontFamily: "'Hind Siliguri', sans-serif",
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
                 }}
               >
-                <span>{dept.icon}</span>
-                <span>{dept.bnName}</span>
+                <span>সকল বিভাগ ❯</span>
               </button>
-            )
-          })}
+            )}
+          </div>
         </div>
 
         {/* ── AVAILABILITY DATE FILTER (PLACED ABOVE DOCTORS LISTING) ── */}
@@ -1516,6 +1729,121 @@ function DoctorsPage() {
         entityType="doctor"
         onSuccess={handleLocationBannerSuccess}
       />
+
+      {/* ── ALL SPECIALTIES MODAL ── */}
+      <Modal
+        show={isAllSpecialtiesModalOpen}
+        onHide={() => setIsAllSpecialtiesModalOpen(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 20px' }}>
+          <Modal.Title style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: 20, maxHeight: '70vh', overflowY: 'auto' }}>
+          <div style={{ position: 'relative', marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="বিশেষজ্ঞ বিভাগের নাম দিয়ে খুঁজুন..."
+              value={modalSpecialtySearch}
+              onChange={(e) => setModalSpecialtySearch(e.target.value)}
+              style={{
+                width: '100%',
+                height: 42,
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                padding: '0 36px 0 14px',
+                fontSize: 14,
+                color: '#0F172A',
+                fontWeight: 600,
+                outline: 'none',
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}
+            />
+            {modalSpecialtySearch ? (
+              <button
+                type="button"
+                onClick={() => setModalSpecialtySearch('')}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+              >
+                <IconX size={18} />
+              </button>
+            ) : (
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
+                <IconSearch size={18} />
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {specialties
+              .filter(s => {
+                if (!modalSpecialtySearch.trim()) return true
+                const q = modalSpecialtySearch.toLowerCase()
+                return (s.name || '').toLowerCase().includes(q) || (s.name_bn || '').includes(q)
+              })
+              .map((spec) => {
+                const specId = String(spec.id)
+                const isSelected = selectedSpecialty === specId
+                const displayName = spec.name_bn || spec.name || 'বিশেষজ্ঞ'
+                const docCount = spec.doctors_count ?? spec.doctor_count
+
+                return (
+                  <button
+                    key={spec.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSpecialty(isSelected ? '' : specId)
+                      setIsAllSpecialtiesModalOpen(false)
+                    }}
+                    style={{
+                      background: isSelected ? '#F0FDF4' : 'white',
+                      border: isSelected ? '2px solid #00B875' : '1px solid #E2E8F0',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                      <span>{getSpecialtyIcon(displayName, spec.slug, false)}</span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: isSelected ? 800 : 600,
+                        color: isSelected ? '#00B875' : '#1E293B',
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {displayName}
+                      </span>
+                    </div>
+                    {docCount !== undefined && docCount !== null && (
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isSelected ? '#00B875' : '#64748B',
+                        background: isSelected ? '#DCFCE7' : '#F1F5F9',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        marginLeft: 6
+                      }}>
+                        {toBengaliNumber(docCount)}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+          </div>
+        </Modal.Body>
+      </Modal>
     </div>
   )
 }

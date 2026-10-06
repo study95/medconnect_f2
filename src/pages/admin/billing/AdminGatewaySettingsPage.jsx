@@ -7,6 +7,8 @@ import {
   updateAdminGatewayMerchant,
   updateAdminGatewayCredentials,
   clearAdminGatewayCredentials,
+  getBillingSettings,
+  updateBillingSettings,
 } from '../../../api/billingAdminApi'
 import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 import {
@@ -29,6 +31,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Settings,
+  Building2,
 } from 'lucide-react'
 import '../../../styles/admin-billing.css'
 
@@ -81,19 +84,6 @@ const GATEWAY_META = {
     credentialFields: [
       { key: 'store_id',       label: 'Store ID',       placeholder: 'SSLCommerz Store ID',       type: 'text' },
       { key: 'store_password', label: 'Store Password', placeholder: 'SSLCommerz Store Password', type: 'password' },
-    ],
-  },
-  stripe: {
-    label: 'Stripe',
-    labelBn: 'স্ট্রাইপ',
-    color: '#635BFF',
-    bgColor: 'rgba(99,91,255,0.08)',
-    borderColor: 'rgba(99,91,255,0.25)',
-    description: 'Stripe Payment — আন্তর্জাতিক ক্রেডিট/ডেবিট কার্ড',
-    credentialFields: [
-      { key: 'secret_key',      label: 'Secret Key',      placeholder: 'sk_live_... or sk_test_...', type: 'password' },
-      { key: 'publishable_key', label: 'Publishable Key', placeholder: 'pk_live_... or pk_test_...', type: 'text' },
-      { key: 'webhook_secret',  label: 'Webhook Secret',  placeholder: 'whsec_...',                  type: 'password' },
     ],
   },
 }
@@ -439,7 +429,29 @@ export default function AdminGatewaySettingsPage() {
     staleTime: 30_000,
   })
 
+  const { data: settingsRes, refetch: refetchSettings } = useQuery({
+    queryKey: ['adminBillingSettings'],
+    queryFn: getBillingSettings,
+  })
+
+  const masterOnlineMut = useMutation({
+    mutationFn: (enabled) => updateBillingSettings({ online_payment_enabled: enabled }),
+    onSuccess: () => {
+      refetchSettings()
+      refetch()
+    },
+  })
+
+  const isOnlineMasterEnabled = settingsRes?.data?.online_payment_enabled !== false
+
   const gateways = Array.isArray(data) ? data : []
+  const manualGateway = gateways.find(gw => gw.gateway_key === 'manual_offline')
+  const onlineGateways = gateways.filter(gw => gw.gateway_key !== 'manual_offline')
+
+  const manualToggleMut = useMutation({
+    mutationFn: (enabled) => toggleAdminGateway('manual_offline', enabled),
+    onSuccess: () => refetch(),
+  })
 
   return (
     <div className="ab-container">
@@ -455,7 +467,7 @@ export default function AdminGatewaySettingsPage() {
           </p>
         </div>
         <div className="ab-header-actions">
-          <button onClick={() => refetch()} className="ab-btn-refresh" title="রিলোড করুন">
+          <button onClick={() => { refetchSettings(); refetch(); }} className="ab-btn-refresh" title="রিলোড করুন">
             <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -474,32 +486,208 @@ export default function AdminGatewaySettingsPage() {
         </div>
       </div>
 
-      {/* Gateway list */}
-      {isLoading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ height: '72px', background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px' }} className="ab-skeleton" />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="ab-error-state">
-          <AlertTriangle size={20} />
-          <span>Gateway তথ্য লোড হয়নি: {error?.message || 'অজানা ত্রুটি'}</span>
-          <button onClick={() => refetch()} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {gateways.map(gw => (
-            <GatewayCard key={gw.gateway_key} gateway={gw} onRefresh={refetch} />
-          ))}
-          {gateways.length === 0 && (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--ab-text-muted)' }}>
-              <Settings size={32} style={{ opacity: 0.3, marginBottom: '10px' }} />
-              <p>কোনো gateway তথ্য পাওয়া যায়নি।</p>
+      {/* ── Top Master Control Cards (2 Columns Grid) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {/* Card 1: Master Online Payment Control */}
+        <div style={{
+          padding: '18px 20px',
+          borderRadius: '16px',
+          background: isOnlineMasterEnabled ? 'rgba(0,184,117,0.06)' : 'rgba(239,68,68,0.06)',
+          border: `1px solid ${isOnlineMasterEnabled ? 'rgba(0,184,117,0.25)' : 'rgba(239,68,68,0.25)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: '14px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              background: isOnlineMasterEnabled ? 'rgba(0,184,117,0.15)' : 'rgba(239,68,68,0.15)',
+              color: isOnlineMasterEnabled ? '#00B875' : '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Zap size={22} />
             </div>
-          )}
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ab-text)' }}>
+                অনলাইন পেমেন্ট মাস্টার কন্ট্রোল
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)', marginTop: '2px' }}>
+                bKash, Nagad ও SSLCommerz মাস্টার সুইচ
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <span style={{
+              fontSize: '12px',
+              padding: '3px 10px',
+              borderRadius: '6px',
+              fontWeight: 700,
+              background: isOnlineMasterEnabled ? 'rgba(0,184,117,0.15)' : 'rgba(239,68,68,0.15)',
+              color: isOnlineMasterEnabled ? '#00B875' : '#ef4444'
+            }}>
+              {isOnlineMasterEnabled ? '⚡ মাস্টার অনলাইন সক্রিয় (ON)' : '🔴 মাস্টার অনলাইন বন্ধ (OFF)'}
+            </span>
+
+            <button
+              onClick={() => masterOnlineMut.mutate(!isOnlineMasterEnabled)}
+              disabled={masterOnlineMut.isPending}
+              style={{
+                padding: '7px 16px',
+                borderRadius: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: '12.5px',
+                background: isOnlineMasterEnabled ? '#ef4444' : '#00B875',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+              }}
+            >
+              {isOnlineMasterEnabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              <span>{isOnlineMasterEnabled ? 'OFF করুন' : 'ON করুন'}</span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Card 2: Manual Transfer Gateway Control */}
+        {manualGateway && (
+          <div style={{
+            padding: '18px 20px',
+            borderRadius: '16px',
+            background: manualGateway.is_enabled ? 'rgba(59,130,246,0.06)' : 'rgba(100,116,139,0.06)',
+            border: `1px solid ${manualGateway.is_enabled ? 'rgba(59,130,246,0.25)' : 'rgba(100,116,139,0.25)'}`,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: manualGateway.is_enabled ? 'rgba(59,130,246,0.15)' : 'rgba(100,116,139,0.15)',
+                color: manualGateway.is_enabled ? '#3B82F6' : '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Building2 size={22} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ab-text)' }}>
+                  ম্যানুয়াল ট্রান্সফার কন্ট্রোল (Bank & Slips)
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--ab-text-muted)', marginTop: '2px' }}>
+                  ব্যাংক জমা, ম্যানুয়াল বিকাশ/নগদ ও স্লিপ ভেরিফিকেশন
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <span style={{
+                fontSize: '12px',
+                padding: '3px 10px',
+                borderRadius: '6px',
+                fontWeight: 700,
+                background: manualGateway.is_enabled ? 'rgba(59,130,246,0.15)' : 'rgba(100,116,139,0.15)',
+                color: manualGateway.is_enabled ? '#3B82F6' : '#64748b'
+              }}>
+                {manualGateway.is_enabled ? '📋 ম্যানুয়াল ডিপোজিট সক্রিয় (ON)' : '⚪ ম্যানুয়াল ডিপোজিট বন্ধ (OFF)'}
+              </span>
+
+              <button
+                onClick={() => manualToggleMut.mutate(!manualGateway.is_enabled)}
+                disabled={manualToggleMut.isPending}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '12.5px',
+                  background: manualGateway.is_enabled ? '#ef4444' : '#3B82F6',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                }}
+              >
+                {manualGateway.is_enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                <span>{manualGateway.is_enabled ? 'OFF করুন' : 'ON করুন'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Online Gateway Sub-List (bKash, Nagad, SSLCommerz) ── */}
+      <div style={{ marginTop: '16px' }}>
+        <h3 style={{ fontWeight: 800, fontSize: '14.5px', marginBottom: '14px', color: 'var(--ab-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={16} style={{ color: '#00B875' }} />
+          <span>ইনস্ট্যান্ট অনলাইন গেটওয়ে চ্যানেল কনফিগারেশন:</span>
+        </h3>
+
+        {isLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ height: '72px', background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px' }} className="ab-skeleton" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="ab-error-state">
+            <AlertTriangle size={20} />
+            <span>Gateway তথ্য লোড হয়নি: {error?.message || 'অজানা ত্রুটি'}</span>
+            <button onClick={() => refetch()} className="ab-btn-secondary">পুনরায় চেষ্টা করুন</button>
+          </div>
+        ) : !isOnlineMasterEnabled ? (
+          <div style={{
+            padding: '32px 20px',
+            borderRadius: '16px',
+            background: 'rgba(239, 68, 68, 0.04)',
+            border: '1px dashed rgba(239, 68, 68, 0.25)',
+            textAlign: 'center',
+            color: 'var(--ab-text-muted)'
+          }}>
+            <Lock size={30} style={{ opacity: 0.5, marginBottom: '8px', color: '#ef4444' }} />
+            <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ab-text)' }}>
+              অনলাইন পেমেন্ট মাস্টার কন্ট্রোল বন্ধ রাখা হয়েছে
+            </div>
+            <div style={{ fontSize: '12.5px', marginTop: '4px', color: 'var(--ab-text-muted)' }}>
+              নিচের অনলাইন গেটওয়েসমূহ (bKash, Nagad, SSLCommerz) কনফিগার বা টগল করতে উপরের "Master Online ON" বাটনে ক্লিক করুন।
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {onlineGateways.map(gw => (
+              <GatewayCard key={gw.gateway_key} gateway={gw} onRefresh={refetch} />
+            ))}
+            {onlineGateways.length === 0 && (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--ab-text-muted)' }}>
+                <Settings size={32} style={{ opacity: 0.3, marginBottom: '10px' }} />
+                <p>কোনো অনলাইন গেটওয়ে তথ্য পাওয়া যায়নি।</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Webhook reference */}
       <div style={{ marginTop: '28px', padding: '18px', background: 'var(--ab-card)', border: '1px solid var(--ab-border)', borderRadius: '16px' }}>

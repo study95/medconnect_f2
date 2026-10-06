@@ -166,7 +166,21 @@ export default function CheckoutPage() {
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
   const isFreePlan = (summaryData?.target_plan?.tier === 'free') || (Number(summaryData?.pricing?.total_amount || 0) <= 0)
-  const isManualMethod = !isFreePlan && paymentMode === 'manual'
+  const isManualEnabled = summaryData?.manual_payment_settings?.enabled !== false
+  const isOnlineMasterEnabled = summaryData?.online_payment_enabled !== false
+  const enabledGatewayKeys = summaryData?.enabled_gateways || []
+
+  const filteredOnlineGateways = ONLINE_GATEWAY_METHODS.filter(m => {
+    if (!enabledGatewayKeys || enabledGatewayKeys.length === 0) return true
+    if (m.key === 'sslcommerz') return enabledGatewayKeys.includes('sslcommerz')
+    if (m.key === 'bkash') return enabledGatewayKeys.includes('bkash_checkout') || enabledGatewayKeys.includes('bkash')
+    if (m.key === 'nagad') return enabledGatewayKeys.includes('nagad_pg') || enabledGatewayKeys.includes('nagad')
+    return true
+  })
+
+  const isOnlinePaymentAvailable = isOnlineMasterEnabled && filteredOnlineGateways.length > 0
+  const isManualMethod = !isFreePlan && isManualEnabled && paymentMode === 'manual'
+  const isAnyPaymentAvailable = isFreePlan || isOnlinePaymentAvailable || isManualEnabled
 
   // Manual payment method breakdown
   const [manualMethod, setManualMethod] = useState('bank_transfer')
@@ -326,6 +340,13 @@ export default function CheckoutPage() {
               city: prev.city || ent.city || 'ঢাকা',
               country: 'বাংলাদেশ',
             }))
+          }
+          const hasOnline = (res.data.online_payment_enabled !== false) && (!res.data.enabled_gateways || res.data.enabled_gateways.some(g => ['sslcommerz', 'bkash_checkout', 'nagad_pg', 'bkash', 'nagad'].includes(g)))
+          const hasManual = res.data.manual_payment_settings?.enabled !== false
+          if (!hasOnline && hasManual) {
+            setPaymentMode('manual')
+          } else if (hasOnline) {
+            setPaymentMode('online')
           }
           setLoading(false)
           return
@@ -664,7 +685,7 @@ export default function CheckoutPage() {
             </p>
           </div>
 
-          <div className="d-flex align-items-center gap-2">
+          <div className="chk-header-actions">
             <button
               type="button"
               className="chk-btn-outline"
@@ -678,6 +699,68 @@ export default function CheckoutPage() {
             </Link>
           </div>
         </div>
+
+        {/* ─── PAYMENT CALLBACK RESULT BANNER ─── */}
+        {searchParams.get('result') && (
+          <div className={`chk-banner ${
+            searchParams.get('result') === 'paid' ? 'success' :
+            searchParams.get('result') === 'processing' ? 'info' :
+            searchParams.get('result') === 'cancelled' ? 'warning' : 'danger'
+          } chk-fade-in`}>
+            {searchParams.get('result') === 'paid' && (
+              <>
+                <CheckCircle2 size={28} style={{ color: '#10B981', flexShrink: 0 }} />
+                <div className="flex-grow-1">
+                  <div style={{ fontWeight: 800, fontSize: '16px', color: '#065F46' }}>
+                    অনলাইন পেমেন্ট সফলভাবে সম্পন্ন হয়েছে!
+                  </div>
+                  <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#047857' }}>
+                    আপনার ট্রানজ্যাকশন ভেরিফাই করা হয়েছে এবং সাবস্ক্রিপশন প্ল্যানটি সচল করা হয়েছে।
+                  </p>
+                </div>
+              </>
+            )}
+            {searchParams.get('result') === 'processing' && (
+              <>
+                <Clock size={28} style={{ color: '#0284C7', flexShrink: 0 }} />
+                <div className="flex-grow-1">
+                  <div style={{ fontWeight: 800, fontSize: '16px', color: '#075985' }}>
+                    পেমেন্ট ভেরিফিকেশন চলমান (Review Required)
+                  </div>
+                  <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#0369A1' }}>
+                    আপনার পেমেন্ট গেটওয়েতে সম্পন্ন হয়েছে। নিরাপত্তা পরীক্ষার পর অ্যাডমিন প্যানেল থেকে প্ল্যানটি সচল করা হবে।
+                  </p>
+                </div>
+              </>
+            )}
+            {searchParams.get('result') === 'cancelled' && (
+              <>
+                <AlertTriangle size={28} style={{ color: '#D97706', flexShrink: 0 }} />
+                <div className="flex-grow-1">
+                  <div style={{ fontWeight: 800, fontSize: '16px', color: '#92400E' }}>
+                    পেমেন্ট বাতিল করা হয়েছে
+                  </div>
+                  <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#B45309' }}>
+                    আপনি পেমেন্ট গেটওয়ে থেকে পেমেন্ট প্রক্রিয়া বাতিল করেছেন। চাইলে নিচের মাধ্যমসমূহ দিয়ে পুনরায় চেষ্টা করতে পারেন।
+                  </p>
+                </div>
+              </>
+            )}
+            {searchParams.get('result') === 'failed' && (
+              <>
+                <X size={28} style={{ color: '#DC2626', flexShrink: 0 }} />
+                <div className="flex-grow-1">
+                  <div style={{ fontWeight: 800, fontSize: '16px', color: '#991B1B' }}>
+                    পেমেন্ট ব্যর্থ হয়েছে
+                  </div>
+                  <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#B91C1C' }}>
+                    {searchParams.get('reason') || 'পেমেন্ট গেটওয়েতে কোনো সমস্যা দেখা দিয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন বা ব্যাংক/বিকাশ সাপোর্ট সংযোগ করুন।'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* ─── VERIFICATION LOCK BANNER ─── */}
         {summaryData?.is_checkout_locked && (
@@ -996,186 +1079,210 @@ export default function CheckoutPage() {
                     </span>
                   </div>
 
-                  {/* ─── TWO MASTER PILLAR CARDS ─── */}
-                  <div className="chk-pillar-grid">
-                    {/* Pillar 1: Online */}
-                    <div
-                      onClick={() => handleSelectPaymentMode('online')}
-                      className={`chk-pillar-card ${paymentMode === 'online' ? 'active-online' : ''}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-start mb-2">
-                        <div className="d-flex align-items-center gap-3">
-                          <div style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 10,
-                            background: paymentMode === 'online' ? '#00B875' : 'rgba(0, 184, 117, 0.1)',
-                            color: paymentMode === 'online' ? '#ffffff' : '#00B875',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Zap size={20} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #0f172a)' }}>
-                              অনলাইন তাৎক্ষণিক পেমেন্ট
-                            </div>
-                            <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted, #64748b)', marginTop: '1px' }}>
-                              কার্ড, বিকাশ ও নগদ অটোমেটিক গেটওয়ে
-                            </div>
-                          </div>
-                        </div>
-                        <div className="chk-pillar-radio-dot">
-                          {paymentMode === 'online' && <Check size={12} color="#ffffff" strokeWidth={3.5} />}
-                        </div>
-                      </div>
-
-                      <div className="chk-pillar-footer">
-                        <span className="chk-pillar-badge" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#059669' }}>
-                          ⚡ তাৎক্ষণিক সক্রিয়
-                        </span>
-                        <span className="chk-pillar-hint">
-                          স্লিপ প্রয়োজন নেই
-                        </span>
+                  {/* ─── PAYMENT SELECTION OR NO GATEWAYS WARNING ─── */}
+                  {!isAnyPaymentAvailable ? (
+                    <div style={{
+                      padding: '24px 20px',
+                      borderRadius: '16px',
+                      background: 'rgba(239, 68, 68, 0.07)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: '#991B1B',
+                      textAlign: 'center'
+                    }}>
+                      <AlertTriangle size={28} style={{ marginBottom: '8px', color: '#ef4444' }} />
+                      <div style={{ fontWeight: 800, fontSize: '15.5px' }}>বর্তমানে সকল পেমেন্ট চ্যানেল সাময়িকভাবে বন্ধ আছে</div>
+                      <div style={{ fontSize: '12.5px', marginTop: '4px', color: '#7f1d1d' }}>
+                        কর্তৃপক্ষ অনলাইন এবং ম্যানুয়াল ডিপোজিট বন্ধ রেখেছেন। অনুগ্রহ করে সরাসরি হেল্পডেস্ক বা যোগাযোগের মাধ্যমে প্যাকেজ অ্যাক্টিভ করুন।
                       </div>
                     </div>
-
-                    {/* Pillar 2: Manual / Bank */}
-                    <div
-                      onClick={() => handleSelectPaymentMode('manual')}
-                      className={`chk-pillar-card ${paymentMode === 'manual' ? 'active-manual' : ''}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-start mb-2">
-                        <div className="d-flex align-items-center gap-3">
-                          <div style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 10,
-                            background: paymentMode === 'manual' ? '#0284c7' : 'rgba(2, 132, 199, 0.1)',
-                            color: paymentMode === 'manual' ? '#ffffff' : '#0284c7',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Building2 size={20} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #0f172a)' }}>
-                              প্রাতিষ্ঠানিক ব্যাংক ও ডিপোজিট
-                            </div>
-                            <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted, #64748b)', marginTop: '1px' }}>
-                              ব্যাংক অ্যাকাউন্ট, বিকাশ, নগদ ও রকেট
-                            </div>
-                          </div>
-                        </div>
-                        <div className="chk-pillar-radio-dot">
-                          {paymentMode === 'manual' && <Check size={12} color="#ffffff" strokeWidth={3.5} />}
-                        </div>
-                      </div>
-
-                      <div className="chk-pillar-footer">
-                        <span className="chk-pillar-badge" style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
-                          📋 ম্যানুয়াল ডিপোজিট
-                        </span>
-                        <span className="chk-pillar-hint">
-                          স্লিপ ও TrxID যাচাই
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ─── EXPANDED CONTENT: ONLINE GATEWAY ─── */}
-                  {paymentMode === 'online' && (
-                    <div className="chk-suboptions-box">
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Zap size={15} style={{ color: '#00B875' }} />
-                        <span>অনলাইন গেটওয়ে চ্যানেল নির্বাচন করুন:</span>
-                      </div>
-
-                      <div className="chk-pay-grid">
-                        {ONLINE_GATEWAY_METHODS.map(m => {
-                          const isSelected = onlineGateway === m.key
-                          const Icon = m.icon
-                          return (
-                            <div
-                              key={m.key}
-                              onClick={() => handleSelectOnlineGateway(m.key)}
-                              className={`chk-pay-card ${isSelected ? 'active' : ''}`}
-                              style={{
-                                borderColor: isSelected ? m.color : undefined,
-                                background: isSelected ? `${m.color}0a` : undefined,
-                              }}
-                            >
+                  ) : (
+                    <>
+                      {/* ─── MASTER PILLAR CARDS ─── */}
+                      <div className="chk-pillar-grid" style={!(isOnlinePaymentAvailable && isManualEnabled) ? { gridTemplateColumns: '1fr' } : undefined}>
+                        {/* Pillar 1: Online */}
+                        {isOnlinePaymentAvailable && (
+                          <div
+                            onClick={() => handleSelectPaymentMode('online')}
+                            className={`chk-pillar-card ${paymentMode === 'online' ? 'active-online' : ''}`}
+                          >
+                            <div className="d-flex justify-content-between align-items-start mb-2">
                               <div className="d-flex align-items-center gap-3">
-                                <input
-                                  type="radio"
-                                  name="online_gateway"
-                                  value={m.key}
-                                  checked={isSelected}
-                                  onChange={() => handleSelectOnlineGateway(m.key)}
-                                  style={{ accentColor: m.color, width: 18, height: 18, cursor: 'pointer' }}
-                                />
                                 <div style={{
-                                  width: 34,
-                                  height: 34,
-                                  borderRadius: 8,
-                                  background: `${m.color}15`,
-                                  color: m.color,
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: 10,
+                                  background: paymentMode === 'online' ? '#00B875' : 'rgba(0, 184, 117, 0.1)',
+                                  color: paymentMode === 'online' ? '#ffffff' : '#00B875',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   flexShrink: 0
                                 }}>
-                                  <Icon size={18} />
+                                  <Zap size={20} />
                                 </div>
                                 <div>
-                                  <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--admin-text, #0f172a)' }}>
-                                    {m.label}
+                                  <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #0f172a)' }}>
+                                    অনলাইন তাৎক্ষণিক পেমেন্ট
                                   </div>
-                                  <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
-                                    {m.sublabel}
+                                  <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted, #64748b)', marginTop: '1px' }}>
+                                    কার্ড, বিকাশ ও নগদ অটোমেটিক গেটওয়ে
                                   </div>
                                 </div>
                               </div>
-                              <span
-                                style={{
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  background: isSelected ? `${m.color}18` : 'var(--admin-bg, #f1f5f9)',
-                                  color: isSelected ? m.color : '#64748b',
-                                  flexShrink: 0
-                                }}
-                              >
-                                {m.badge}
+                              <div className="chk-pillar-radio-dot">
+                                {paymentMode === 'online' && <Check size={12} color="#ffffff" strokeWidth={3.5} />}
+                              </div>
+                            </div>
+
+                            <div className="chk-pillar-footer">
+                              <span className="chk-pillar-badge" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#059669' }}>
+                                ⚡ তাৎক্ষণিক সক্রিয়
+                              </span>
+                              <span className="chk-pillar-hint">
+                                স্লিপ প্রয়োজন নেই
                               </span>
                             </div>
-                          )
-                        })}
+                          </div>
+                        )}
+
+                        {/* Pillar 2: Manual / Bank (Shown only when enabled by admin) */}
+                        {isManualEnabled && (
+                          <div
+                            onClick={() => handleSelectPaymentMode('manual')}
+                            className={`chk-pillar-card ${paymentMode === 'manual' ? 'active-manual' : ''}`}
+                          >
+                            <div className="d-flex justify-content-between align-items-start mb-2">
+                              <div className="d-flex align-items-center gap-3">
+                                <div style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: 10,
+                                  background: paymentMode === 'manual' ? '#0284c7' : 'rgba(2, 132, 199, 0.1)',
+                                  color: paymentMode === 'manual' ? '#ffffff' : '#0284c7',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  <Building2 size={20} />
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--admin-text, #0f172a)' }}>
+                                    প্রাতিষ্ঠানিক ব্যাংক ও ডিপোজিট
+                                  </div>
+                                  <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted, #64748b)', marginTop: '1px' }}>
+                                    ব্যাংক অ্যাকাউন্ট, বিকাশ, নগদ ও রকেট
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="chk-pillar-radio-dot">
+                                {paymentMode === 'manual' && <Check size={12} color="#ffffff" strokeWidth={3.5} />}
+                              </div>
+                            </div>
+
+                            <div className="chk-pillar-footer">
+                              <span className="chk-pillar-badge" style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
+                                📋 ম্যানুয়াল ডিপোজিট
+                              </span>
+                              <span className="chk-pillar-hint">
+                                স্লিপ ও TrxID যাচাই
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{
-                        marginTop: '14px',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        background: 'rgba(0, 184, 117, 0.05)',
-                        border: '1px solid rgba(0, 184, 117, 0.2)',
-                        fontSize: '12px',
-                        color: '#065F46',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <Shield size={15} style={{ color: '#00B875', flexShrink: 0 }} />
-                        <span>
-                          SSLCommerz ও ডিরেক্ট চেকআউট সম্পূর্ণ এনক্রিপ্টেড এবং বাংলাদেশ ব্যাংক নির্দেশিকা অনুযায়ী সুরক্ষিত। পেমেন্ট সফল হওয়ামাত্রই অ্যাকাউন্ট স্বয়ংক্রিয়ভাবে সক্রিয় হবে।
-                        </span>
-                      </div>
-                    </div>
+                      {/* ─── EXPANDED CONTENT: ONLINE GATEWAY ─── */}
+                      {paymentMode === 'online' && isOnlinePaymentAvailable && (
+                        <div className="chk-suboptions-box">
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Zap size={15} style={{ color: '#00B875' }} />
+                            <span>অনলাইন গেটওয়ে চ্যানেল নির্বাচন করুন:</span>
+                          </div>
+
+                          <div className="chk-pay-grid">
+                            {filteredOnlineGateways.map(m => {
+                              const isSelected = onlineGateway === m.key
+                              const Icon = m.icon
+                              return (
+                                <div
+                                  key={m.key}
+                                  onClick={() => handleSelectOnlineGateway(m.key)}
+                                  className={`chk-pay-card ${isSelected ? 'active' : ''}`}
+                                  style={{
+                                    borderColor: isSelected ? m.color : undefined,
+                                    background: isSelected ? `${m.color}0a` : undefined,
+                                  }}
+                                >
+                                  <div className="d-flex align-items-center gap-3">
+                                    <input
+                                      type="radio"
+                                      name="online_gateway"
+                                      value={m.key}
+                                      checked={isSelected}
+                                      onChange={() => handleSelectOnlineGateway(m.key)}
+                                      style={{ accentColor: m.color, width: 18, height: 18, cursor: 'pointer' }}
+                                    />
+                                    <div style={{
+                                      width: 34,
+                                      height: 34,
+                                      borderRadius: 8,
+                                      background: `${m.color}15`,
+                                      color: m.color,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}>
+                                      <Icon size={18} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--admin-text, #0f172a)' }}>
+                                        {m.label}
+                                      </div>
+                                      <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
+                                        {m.sublabel}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      padding: '3px 8px',
+                                      borderRadius: '6px',
+                                      background: isSelected ? `${m.color}18` : 'var(--admin-bg, #f1f5f9)',
+                                      color: isSelected ? m.color : '#64748b',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {m.badge}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          <div style={{
+                            marginTop: '14px',
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            background: 'rgba(0, 184, 117, 0.05)',
+                            border: '1px solid rgba(0, 184, 117, 0.2)',
+                            fontSize: '12px',
+                            color: '#065F46',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <Shield size={15} style={{ color: '#00B875', flexShrink: 0 }} />
+                            <span>
+                              অনলাইন পেমেন্ট এনক্রিপ্টেড এবং বাংলাদেশ ব্যাংক নির্দেশিকা অনুযায়ী সুরক্ষিত। পেমেন্ট সফল হওয়ামাত্রই অ্যাকাউন্ট স্বয়ংক্রিয়ভাবে সক্রিয় হবে।
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* ─── EXPANDED CONTENT: MANUAL / OFFLINE SETTLEMENT ─── */}

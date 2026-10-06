@@ -714,3 +714,148 @@
   background: #1e293b;
   border-color: #334155;
 }
+
+/* ─── MOBILE RESPONSIVENESS & FLUID BREAKPOINTS ─── */
+@media (max-width: 992px) {
+  .chk-summary-sticky {
+    position: static !important;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .chk-container {
+    padding: 0 14px 48px;
+  }
+  .chk-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .chk-channel-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .chk-legal-overlay {
+    padding: 10px;
+  }
+  .chk-legal-modal {
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+  .chk-legal-modal-header {
+    padding: 14px 16px;
+  }
+  .chk-legal-modal-body {
+    padding: 16px 18px;
+  }
+  .chk-legal-modal-footer {
+    padding: 12px 16px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .chk-legal-modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .chk-container {
+    padding: 0 10px 40px;
+  }
+  .chk-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .chk-title {
+    font-size: 19px;
+    flex-wrap: wrap;
+  }
+  .chk-header-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .chk-header-actions .chk-btn-outline {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .chk-card {
+    padding: 16px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+  }
+  .chk-card-title {
+    font-size: 14.5px;
+    margin-bottom: 12px;
+  }
+  .chk-plan-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+  }
+  .chk-profile-summary {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .chk-profile-item-val {
+    word-break: break-all;
+  }
+  .chk-acc-box {
+    padding: 14px;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chk-cycle-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .chk-savings-badge {
+    right: 10px;
+    top: -8px;
+    font-size: 9.5px;
+  }
+  .chk-pillar-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .chk-pillar-footer {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chk-pillar-hint {
+    font-size: 11px;
+    white-space: normal;
+  }
+  .chk-channel-nav {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .chk-channel-btn {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    justify-content: flex-start;
+  }
+  .chk-suboptions-box {
+    padding: 14px 12px;
+    border-radius: 14px;
+  }
+  .chk-dropzone {
+    padding: 16px 12px;
+  }
+  .chk-btn-primary {
+    padding: 13px 16px;
+    font-size: 14px;
+  }
+}
+

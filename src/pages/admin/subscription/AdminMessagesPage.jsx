@@ -10,6 +10,7 @@ import { getDoctors, getHospitals } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
+import { sanitizeHtml } from '../../../utils/sanitizeHtml'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import toast from 'react-hot-toast'
 import { 
@@ -807,7 +808,7 @@ export default function AdminMessagesPage() {
                     fontSize: 14,
                     color: 'var(--admin-text, #0F172A)'
                   }}
-                  dangerouslySetInnerHTML={{ __html: viewNotice.message }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewNotice.message) }}
                 />
               </div>
             </div>
