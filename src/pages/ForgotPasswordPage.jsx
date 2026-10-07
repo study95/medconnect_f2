@@ -65,13 +65,22 @@ export default function ForgotPasswordPage() {
     }
   }, [step])
 
+  // Strictly limit mobile input to 11 digits & support Bengali numerals
+  const handleMobileChange = (e) => {
+    const val = e.target.value
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = val.replace(/[০-৯]/g, (d) => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '').slice(0, 11)
+    setMobile(cleanDigits)
+    if (statusMsg.text) setStatusMsg({ type: '', text: '' })
+  }
+
   // ================= STEP 1: SEND OTP =================
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault()
     setStatusMsg({ type: '', text: '' })
 
-    const raw = mobile.replace(/[^\d]/g, '')
-    const cleanMobile = raw.startsWith('8801') ? raw.slice(2) : raw
+    const cleanMobile = mobile.replace(/[^\d]/g, '').slice(0, 11)
 
     if (!cleanMobile) {
       setStatusMsg({ type: 'danger', text: 'অনুগ্রহ করে আপনার মোবাইল নম্বরটি লিখুন।' })
@@ -366,38 +375,37 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSendOtp} className="fp-form">
               <div className="fp-field-group">
                 <label className="fp-field-label">মোবাইল নম্বর</label>
-                <div className="fp-input-wrapper">
+                <div className="fp-input-wrapper fp-input-wrapper-inline-btn">
                   <Smartphone size={18} className="fp-input-icon" />
                   <input
                     type="tel"
                     className="fp-text-input"
                     placeholder="01XXXXXXXXX"
                     value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    onChange={handleMobileChange}
                     autoFocus
-                    maxLength={14}
+                    maxLength={11}
                   />
+                  <button
+                    type="submit"
+                    disabled={loading || mobile.length !== 11}
+                    className="fp-inline-otp-btn"
+                    title={mobile.length !== 11 ? "১১ সংখ্যার মোবাইল নম্বর দিন" : "ওটিপি পাঠান"}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCw size={13} className="fp-spin-anim" />
+                        <span>পাঠানো হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={13} />
+                        <span>ওটিপি পাঠান</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="fp-submit-btn"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw size={17} className="fp-spin-anim" />
-                    <span>পাঠানো হচ্ছে...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send size={17} />
-                    <span>ওটিপি পাঠান</span>
-                    <ArrowRight size={17} />
-                  </>
-                )}
-              </button>
             </form>
           )}
 
@@ -713,6 +721,43 @@ export default function ForgotPasswordPage() {
           box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
         }
 
+        .fp-input-wrapper-inline-btn {
+          height: 52px;
+          padding-left: 14px;
+          padding-right: 6px;
+        }
+
+        .fp-inline-otp-btn {
+          height: 40px;
+          padding: 0 14px;
+          border-radius: 9px;
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          color: #FFFFFF;
+          border: none;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .fp-inline-otp-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 184, 117, 0.35);
+        }
+
+        .fp-inline-otp-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
         .fp-input-icon {
           color: #64748B;
           margin-right: 10px;
@@ -949,6 +994,13 @@ export default function ForgotPasswordPage() {
             width: 42px;
             height: 48px;
             font-size: 18px;
+          }
+
+          .fp-inline-otp-btn {
+            padding: 0 10px;
+            font-size: 12px;
+            gap: 4px;
+            height: 38px;
           }
         }
       `}</style>
