@@ -1,26 +1,26 @@
+// ForgotPasswordPage.jsx
+// Pixel-perfect match for the user's mobile forgot password design
+// Full 3-step state machine with real backend OTP verification & password reset
+
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form } from 'react-bootstrap'
 import axiosInstance from '../api/axiosInstance'
 import {
   Smartphone,
-  ShieldCheck,
-  KeyRound,
   Lock,
   Eye,
   EyeOff,
   ArrowRight,
   ArrowLeft,
+  Check,
   CheckCircle2,
   AlertCircle,
-  Shield,
-  Sparkles,
   RefreshCw,
-  HelpCircle,
-  UserPlus,
-  Clock
+  Send,
+  Headset,
+  Phone
 } from 'lucide-react'
-import '../styles/auth-premium.css'
+import { toast } from 'react-hot-toast'
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
@@ -30,7 +30,6 @@ export default function ForgotPasswordPage() {
   const [mobile, setMobile] = useState('')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [resetToken, setResetToken] = useState('')
-  const [devOtp, setDevOtp] = useState('')
 
   // Password fields
   const [password, setPassword] = useState('')
@@ -41,16 +40,14 @@ export default function ForgotPasswordPage() {
   // UI state
   const [loading, setLoading] = useState(false)
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
-  const [isNotRegistered, setIsNotRegistered] = useState(false)
   const [timer, setTimer] = useState(0)
-  const [resolvedRole, setResolvedRole] = useState('')
 
   const otpRefs = useRef([])
 
   // Countdown timer for OTP resend
   useEffect(() => {
     if (timer <= 0) return
-    const interval = setInterval(() => setTimer(t => t - 1), 1000)
+    const interval = setInterval(() => setTimer((t) => t - 1), 1000)
     return () => clearInterval(interval)
   }, [timer])
 
@@ -58,7 +55,7 @@ export default function ForgotPasswordPage() {
     const mins = Math.floor(totalSeconds / 60)
     const secs = totalSeconds % 60
     const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    return str.replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d])
+    return str.replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d])
   }
 
   // Focus first OTP box on Step 2
@@ -71,7 +68,6 @@ export default function ForgotPasswordPage() {
   // ================= STEP 1: SEND OTP =================
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault()
-    setIsNotRegistered(false)
     setStatusMsg({ type: '', text: '' })
 
     const raw = mobile.replace(/[^\d]/g, '')
@@ -92,19 +88,20 @@ export default function ForgotPasswordPage() {
 
     setLoading(true)
     try {
-      const res = await axiosInstance.post('/forgot-password/send-otp', {
-        mobile: cleanMobile
-      }, { skipGlobalToast: true })
+      const res = await axiosInstance.post(
+        '/forgot-password/send-otp',
+        { mobile: cleanMobile },
+        { skipGlobalToast: true }
+      )
 
       if (res.data?.success) {
         setMobile(cleanMobile)
         setStep(2)
         setTimer(60)
         setOtp(['', '', '', '', '', ''])
-        setDevOtp('')
         setStatusMsg({
           type: 'success',
-          text: res.data.message || 'আপনার মোবাইলে ৬ সংখ্যার ওটিপি (OTP) পাঠানো হয়েছে।'
+          text: res.data.message || 'আপনার মোবাইলে ৬ সংখ্যার ওটিপি পাঠানো হয়েছে।'
         })
       } else {
         setStatusMsg({
@@ -127,10 +124,9 @@ export default function ForgotPasswordPage() {
       }
 
       if (status === 404 || msg.includes('নিবন্ধিত নয়') || msg.includes('not registered') || msg.includes('not exist')) {
-        setIsNotRegistered(true)
         setStatusMsg({
           type: 'danger',
-          text: 'এই মোবাইল নম্বরটি সিস্টেমে নিবন্ধিত নয়। অনুগ্রহ করে সঠিক নম্বর দিন অথবা নতুন অ্যাকাউন্ট তৈরি করুন।'
+          text: 'এই মোবাইল নম্বরটি সিস্টেমে নিবন্ধিত নয়। সঠিক নম্বর দিন অথবা নতুন অ্যাকাউন্ট তৈরি করুন।'
         })
       } else {
         setStatusMsg({
@@ -146,7 +142,7 @@ export default function ForgotPasswordPage() {
   // ================= STEP 2: OTP INPUT HANDLING =================
   const handleOtpChange = (index, value) => {
     const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
-    const normalized = String(value).replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const normalized = String(value).replace(/[০-৯]/g, (d) => bnToEn[d] || d)
     const cleanDigits = normalized.replace(/\D/g, '')
 
     if (cleanDigits.length > 1) {
@@ -193,12 +189,14 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     const raw = e.clipboardData?.getData('text')?.trim() || ''
     const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
-    const normalized = raw.replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const normalized = raw.replace(/[০-৯]/g, (d) => bnToEn[d] || d)
     const cleanDigits = normalized.replace(/\D/g, '')
     if (!cleanDigits) return
     const digits = cleanDigits.slice(0, 6).split('')
     const newOtp = ['', '', '', '', '', '']
-    digits.forEach((d, i) => { newOtp[i] = d })
+    digits.forEach((d, i) => {
+      newOtp[i] = d
+    })
     setOtp(newOtp)
     if (statusMsg.text) setStatusMsg({ type: '', text: '' })
     const focusIdx = Math.min(digits.length - 1, 5)
@@ -218,10 +216,11 @@ export default function ForgotPasswordPage() {
     setStatusMsg({ type: '', text: '' })
 
     try {
-      const res = await axiosInstance.post('/forgot-password/verify-otp', {
-        mobile,
-        otp: fullOtp
-      }, { skipGlobalToast: true })
+      const res = await axiosInstance.post(
+        '/forgot-password/verify-otp',
+        { mobile, otp: fullOtp },
+        { skipGlobalToast: true }
+      )
 
       if (res.data?.success && res.data.reset_token) {
         setResetToken(res.data.reset_token)
@@ -248,7 +247,7 @@ export default function ForgotPasswordPage() {
 
   // ================= STEP 3: RESET PASSWORD =================
   const handleResetPassword = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     setStatusMsg({ type: '', text: '' })
 
     if (password.length < 6) {
@@ -263,24 +262,26 @@ export default function ForgotPasswordPage() {
 
     setLoading(true)
     try {
-      const res = await axiosInstance.post('/forgot-password/reset-password', {
-        mobile,
-        reset_token: resetToken,
-        password,
-        password_confirmation: passwordConfirmation
-      }, { skipGlobalToast: true })
+      const res = await axiosInstance.post(
+        '/forgot-password/reset-password',
+        {
+          mobile,
+          reset_token: resetToken,
+          password,
+          password_confirmation: passwordConfirmation
+        },
+        { skipGlobalToast: true }
+      )
 
       if (res.data?.success) {
         const destRole = res.data.role || ''
         const redirectPath = res.data.redirect_url || (destRole ? `/login/${destRole}` : '/login')
-        setResolvedRole(destRole)
         setStep(4)
         setStatusMsg({
           type: 'success',
           text: res.data.message || 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!'
         })
-        // Auto redirect after 3.5 seconds
-        setTimeout(() => navigate(redirectPath, { state: { identifier: mobile } }), 3500)
+        setTimeout(() => navigate(redirectPath, { state: { identifier: mobile } }), 3000)
       } else {
         setStatusMsg({
           type: 'danger',
@@ -291,9 +292,7 @@ export default function ForgotPasswordPage() {
       const errData = err.response?.data
       setStatusMsg({
         type: 'danger',
-        text: errData?.message || 'সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
-        isSamePassword: errData?.is_same_password,
-        loginRole: errData?.role
+        text: errData?.message || 'সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
       })
     } finally {
       setLoading(false)
@@ -301,856 +300,655 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="auth-premium-wrapper">
-      <div className="auth-mesh-bg" />
+    <div className="fp-page-container">
+      <div className="fp-content-wrapper">
 
-      {/* SPLIT CONTAINER CENTERED IN PAGE */}
-      <div className="auth-split-container fade-in-up" style={{ maxWidth: 880 }}>
+        {/* ===== MAIN WHITE CARD ===== */}
+        <div className="fp-main-card">
 
-        {/* ===== LEFT PANEL — EXECUTIVE HEALTHCARE BRANDING ===== */}
-        <div className="auth-info-panel">
-          <div>
-            <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
-              <img
-                src="/doctorBookletLogo.png"
-                alt="Doctor Booklet Logo"
-                style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
-              />
-            </Link>
-
-            <h2 className="info-panel-title">
-              পাসওয়ার্ড পুনরুদ্ধার,<br />সহজ ও সুরক্ষিত
-            </h2>
-            <p className="info-panel-subtitle">
-              Doctor Booklet প্ল্যাটফর্মে আপনার মোবাইল নম্বরে তাৎক্ষণিক ওটিপি ভেরিফিকেশন দিয়ে পাসওয়ার্ড রিসেট করুন।
-            </p>
-
-            <ul className="info-feature-list">
-              <li className="info-feature-item">
-                <span className="info-feature-icon"><Smartphone size={16} /></span>
-                <span>মোবাইল ওটিপি ভিত্তিক নিরাপদ রিকভারি</span>
-              </li>
-              <li className="info-feature-item">
-                <span className="info-feature-icon"><ShieldCheck size={16} /></span>
-                <span>তাৎক্ষণিক সিস্টেম ভ্যালিডেশন</span>
-              </li>
-              <li className="info-feature-item">
-                <span className="info-feature-icon"><Lock size={16} /></span>
-                <span>উচ্চমানের এনক্রিপশন ও গোপনীয়তা</span>
-              </li>
-              <li className="info-feature-item">
-                <span className="info-feature-icon"><Sparkles size={16} /></span>
-                <span>মাত্র ১ মিনিটে সম্পূর্ণ নিরাপদ রিসেট</span>
-              </li>
-            </ul>
+          {/* Top Illustration */}
+          <div className="fp-illustration-wrapper">
+            <img
+              src="/images/forgot-password-hero.png"
+              alt="পাসওয়ার্ড ভুলে গেছেন"
+              className="fp-illustration-img"
+              loading="eager"
+            />
           </div>
 
-          <div className="info-trust-badge">
-            <Shield size={14} />
-            <span>SSL সুরক্ষিত · বিশ্বস্ত অ্যাকাউন্ট ভেরিফিকেশন</span>
-          </div>
-        </div>
+          {/* Headline & Subtitle Dynamic per Step */}
+          {step === 1 && (
+            <>
+              <h1 className="fp-main-title">পাসওয়ার্ড ভুলে গেছেন?</h1>
+              <p className="fp-main-subtitle">
+                নিবন্ধিত মোবাইল নম্বরটি দিয়ে ওটিপি পাঠায়ে নতুন পাসওয়ার্ড সেট করুন।
+              </p>
+            </>
+          )}
 
-        {/* ===== RIGHT PANEL — INTERACTIVE MULTI-STEP CARD ===== */}
-        <div className="auth-form-panel fp-form-panel">
-          <div className="slide-in-right">
+          {step === 2 && (
+            <>
+              <h1 className="fp-main-title">ওটিপি কোড যাচাই করুন</h1>
+              <p className="fp-main-subtitle">
+                <strong>{mobile}</strong> নম্বরে পাঠানো ৬ সংখ্যার কোডটি নিচে লিখুন।
+              </p>
+            </>
+          )}
 
-            {/* Step Progress Bar */}
-            {step < 4 && (
-              <div className="fp-stepper-box">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    className="fp-step-circle"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: step >= 1 ? '#00B875' : '#E2E8F0',
-                      color: step >= 1 ? '#FFFFFF' : '#64748B',
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    ১
-                  </span>
-                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 1 ? 700 : 500, color: step === 1 ? '#0F172A' : '#64748B' }}>
-                    নম্বর
-                  </span>
-                </div>
+          {step === 3 && (
+            <>
+              <h1 className="fp-main-title">নতুন পাসওয়ার্ড সেট করুন</h1>
+              <p className="fp-main-subtitle">
+                আপনার অ্যাকাউন্টের সুরক্ষায় একটি শক্তিশালী নতুন পাসওয়ার্ড লিখুন।
+              </p>
+            </>
+          )}
 
-                <div style={{ flex: 1, height: 2, background: step >= 2 ? '#00B875' : '#E2E8F0', margin: '0 8px' }} />
+          {step === 4 && (
+            <>
+              <h1 className="fp-main-title">পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!</h1>
+              <p className="fp-main-subtitle">
+                কয়েক সেকেন্ডের মধ্যে লগইন পেজে নিয়ে যাওয়া হচ্ছে...
+              </p>
+            </>
+          )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    className="fp-step-circle"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: step >= 2 ? '#00B875' : '#E2E8F0',
-                      color: step >= 2 ? '#FFFFFF' : '#64748B',
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    ২
-                  </span>
-                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 2 ? 700 : 500, color: step === 2 ? '#0F172A' : '#64748B' }}>
-                    ওটিপি
-                  </span>
-                </div>
+          {/* Status / Alert Message */}
+          {statusMsg.text && (
+            <div className={`fp-alert-box ${statusMsg.type === 'success' ? 'fp-alert-success' : 'fp-alert-danger'}`}>
+              {statusMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              <span>{statusMsg.text}</span>
+            </div>
+          )}
 
-                <div style={{ flex: 1, height: 2, background: step >= 3 ? '#00B875' : '#E2E8F0', margin: '0 8px' }} />
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    className="fp-step-circle"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: step >= 3 ? '#00B875' : '#E2E8F0',
-                      color: step >= 3 ? '#FFFFFF' : '#64748B',
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    ৩
-                  </span>
-                  <span className="fp-step-label" style={{ fontSize: 12, fontWeight: step === 3 ? 700 : 500, color: step === 3 ? '#0F172A' : '#64748B' }}>
-                    পাসওয়ার্ড
-                  </span>
+          {/* ===== STEP 1 FORM: MOBILE NUMBER ===== */}
+          {step === 1 && (
+            <form onSubmit={handleSendOtp} className="fp-form">
+              <div className="fp-field-group">
+                <label className="fp-field-label">মোবাইল নম্বর</label>
+                <div className="fp-input-wrapper">
+                  <Smartphone size={18} className="fp-input-icon" />
+                  <input
+                    type="tel"
+                    className="fp-text-input"
+                    placeholder="01XXXXXXXXX"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    autoFocus
+                    maxLength={14}
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Error / Alert Message Banner */}
-            {statusMsg.text && statusMsg.type === 'danger' && (
-              <div
-                style={{
-                  background: '#FEF2F2',
-                  border: '1px solid #FCA5A5',
-                  color: '#991B1B',
-                  borderRadius: 12,
-                  padding: '12px 14px',
-                  fontSize: 13.5,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  marginBottom: 20
-                }}
+              <button
+                type="submit"
+                disabled={loading}
+                className="fp-submit-btn"
               >
-                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-                <div style={{ flex: 1 }}>
-                  <span>{statusMsg.text}</span>
-                  {isNotRegistered && (
-                    <div style={{ marginTop: 8 }}>
-                      <Link
-                        to="/register"
-                        className="btn btn-sm"
-                        style={{
-                          background: '#DC2626',
-                          color: '#FFFFFF',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: '5px 12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          textDecoration: 'none'
-                        }}
-                      >
-                        <UserPlus size={14} />
-                        <span>নতুন অ্যাকাউন্ট নিবন্ধন করুন</span>
-                      </Link>
-                    </div>
-                  )}
-                  {statusMsg.isSamePassword && (
-                    <div style={{ marginTop: 10 }}>
-                      <Link
-                        to={statusMsg.loginRole ? `/login/${statusMsg.loginRole}` : '/login'}
-                        state={{ identifier: mobile }}
-                        className="btn btn-sm"
-                        style={{
-                          background: '#00B875',
-                          color: '#FFFFFF',
-                          borderRadius: 8,
-                          fontSize: 12.5,
-                          fontWeight: 700,
-                          padding: '6px 14px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          textDecoration: 'none',
-                          boxShadow: '0 2px 8px rgba(0, 184, 117, 0.3)'
-                        }}
-                      >
-                        <ArrowRight size={14} />
-                        <span>সরাসরি এই পাসওয়ার্ড দিয়ে লগইন করুন</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+                {loading ? (
+                  <>
+                    <RefreshCw size={17} className="fp-spin-anim" />
+                    <span>পাঠানো হচ্ছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={17} />
+                    <span>ওটিপি পাঠান</span>
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
-            {/* ================= STEP 1: ENTER MOBILE ================= */}
-            {step === 1 && (
-              <div>
-                <div style={{ marginBottom: 20 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#00B875',
-                        border: '1px solid rgba(0, 184, 117, 0.25)',
-                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
-                        flexShrink: 0
-                      }}
-                    >
-                      <KeyRound size={20} />
-                    </span>
-                    <span>পাসওয়ার্ড ভুলে গেছেন?</span>
-                  </h2>
-                  <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
-                    আপনার অ্যাকাউন্টে নিবন্ধিত মোবাইল নম্বরটি লিখুন। নম্বরটি যাচাই করে আমরা আপনাকে ৬ সংখ্যার ওটিপি (OTP) পাঠাব।
-                  </p>
-                </div>
-
-                <Form onSubmit={handleSendOtp}>
-                  <Form.Group style={{ marginBottom: 20 }}>
-                    <Form.Label className="auth-label-premium" style={{ marginBottom: 8 }}>
-                      নিবন্ধিত মোবাইল নম্বর (Mobile Number)
-                    </Form.Label>
-                    <div className="input-group-premium" style={{ position: 'relative' }}>
-                      <span className="input-icon-premium" style={{ color: '#00B875' }}>
-                        <Smartphone size={18} />
-                      </span>
-                      <Form.Control
-                        type="tel"
-                        placeholder="যেমন: 017XXXXXXXX"
-                        value={mobile}
-                        maxLength={11}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^\d]/g, '')
-                          setMobile(val)
-                          if (statusMsg.text) setStatusMsg({ type: '', text: '' })
-                          if (isNotRegistered) setIsNotRegistered(false)
-                        }}
-                        required
-                        className="auth-input-premium"
-                        style={{ paddingLeft: 44, paddingRight: 118, fontSize: 15, letterSpacing: '0.5px' }}
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        disabled={loading || mobile.length < 11 || timer > 0}
-                        style={{
-                          position: 'absolute',
-                          right: 5,
-                          top: 5,
-                          bottom: 5,
-                          padding: '0 14px',
-                          background: (mobile.length === 11 && !loading && timer === 0)
-                            ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
-                            : '#E2E8F0',
-                          color: (mobile.length === 11 && !loading && timer === 0) ? '#FFFFFF' : '#94A3B8',
-                          border: 'none',
-                          borderRadius: 8,
-                          fontSize: 12.5,
-                          fontWeight: 700,
-                          cursor: (loading || mobile.length < 11 || timer > 0) ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          zIndex: 5,
-                          transition: 'all 0.2s',
-                          boxShadow: (mobile.length === 11 && !loading && timer === 0) ? '0 2px 8px rgba(0, 184, 117, 0.25)' : 'none'
-                        }}
-                      >
-                        {loading ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13 }} role="status" aria-hidden="true" />
-                            <span style={{ fontSize: 11 }}>যাচাই...</span>
-                          </>
-                        ) : timer > 0 ? (
-                          <span style={{ fontSize: 11 }}>অপেক্ষা ({formatCountdown(timer)})</span>
-                        ) : (
-                          'OTP পাঠান'
-                        )}
-                      </button>
-                    </div>
-
-                    {timer > 0 && (
-                      <div className="fade-in-up" style={{
-                        marginTop: 8,
-                        padding: '8px 12px',
-                        background: '#F0FDF4',
-                        border: '1px solid #BBF7D0',
-                        borderRadius: 8,
-                        color: '#166534',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Clock size={15} color="#16A34A" style={{ flexShrink: 0 }} />
-                          <span>নতুন ওটিপি পাঠাতে অপেক্ষা করুন:</span>
-                        </div>
-                        <span style={{
-                          padding: '1px 7px',
-                          background: '#DCFCE7',
-                          border: '1px solid #86EFAC',
-                          borderRadius: 5,
-                          color: '#15803D',
-                          fontFamily: "'Inter', monospace",
-                          fontWeight: 800,
-                          fontSize: 12.5
-                        }}>
-                          ⏳ {formatCountdown(timer)}
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 7, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Sparkles size={12} color="#00B875" />
-                      <span>অ্যাকাউন্ট তৈরির সময় ব্যবহৃত ১১ সংখ্যার মোবাইল নম্বরটি লিখুন</span>
-                    </div>
-                  </Form.Group>
-                </Form>
-              </div>
-            )}
-
-            {/* ================= STEP 2: VERIFY OTP ================= */}
-            {step === 2 && (
-              <div>
-                <div style={{ marginBottom: 18 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#00B875',
-                        border: '1px solid rgba(0, 184, 117, 0.25)',
-                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
-                        flexShrink: 0
-                      }}
-                    >
-                      <ShieldCheck size={20} />
-                    </span>
-                    <span>ওটিপি কোড যাচাই করুন</span>
-                  </h2>
-                  <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
-                    আপনার মোবাইল নম্বর <strong style={{ color: '#0F172A' }}>{mobile}</strong>-এ ৬ সংখ্যার কোড পাঠানো হয়েছে।{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStep(1)
-                        setStatusMsg({ type: '', text: '' })
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#00B875',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        padding: 0,
-                        cursor: 'pointer',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      নম্বর পরিবর্তন করুন
-                    </button>
-                  </p>
-                </div>
-
-                {/* 6-box OTP input */}
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+          {/* ===== STEP 2 FORM: OTP CODE ===== */}
+          {step === 2 && (
+            <form onSubmit={handleVerifyOtp} className="fp-form">
+              <div className="fp-field-group">
+                <label className="fp-field-label">৬ সংখ্যার ওটিপি কোড</label>
+                <div className="fp-otp-inputs-grid" onPaste={handleOtpPaste}>
                   {otp.map((digit, idx) => (
                     <input
                       key={idx}
                       ref={(el) => (otpRefs.current[idx] = el)}
                       type="text"
                       inputMode="numeric"
-                      maxLength={6}
+                      maxLength={1}
+                      className={`fp-otp-box ${digit ? 'fp-otp-filled' : ''}`}
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      onPaste={handleOtpPaste}
-                      className="fp-otp-box"
-                      style={{
-                        width: 44,
-                        height: 50,
-                        textAlign: 'center',
-                        fontSize: 22,
-                        fontWeight: 800,
-                        borderRadius: 10,
-                        border: digit ? '2px solid #00B875' : '1.5px solid #CBD5E1',
-                        background: digit ? '#F0FDF4' : '#FFFFFF',
-                        color: '#0F172A',
-                        outline: 'none',
-                        transition: 'all 0.2s ease',
-                        boxShadow: digit ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none'
-                      }}
                     />
                   ))}
                 </div>
+              </div>
 
-                {/* Verify Button */}
+              {/* Resend Timer / Action */}
+              <div className="fp-resend-row">
+                {timer > 0 ? (
+                  <span className="fp-timer-text">
+                    পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন: <strong>{formatCountdown(timer)}</strong>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="fp-resend-btn"
+                  >
+                    আবার ওটিপি পাঠান
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || otp.join('').length !== 6}
+                className="fp-submit-btn"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw size={17} className="fp-spin-anim" />
+                    <span>যাচাই হচ্ছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} strokeWidth={2.4} />
+                    <span>ওটিপি যাচাই করুন</span>
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+
+              <div className="fp-change-number-wrap">
                 <button
                   type="button"
-                  onClick={handleVerifyOtp}
-                  disabled={loading || otp.join('').length !== 6}
-                  className="w-100 auth-btn-premium"
-                  style={{
-                    width: '100%',
-                    height: 48,
-                    fontSize: 15,
-                    fontWeight: 800,
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    border: 'none',
-                    color: '#FFFFFF',
-                    background: (loading || otp.join('').length !== 6)
-                      ? '#E2E8F0'
-                      : 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)',
-                    boxShadow: (loading || otp.join('').length !== 6)
-                      ? 'none'
-                      : '0 4px 14px rgba(0, 184, 117, 0.32)',
-                    cursor: (loading || otp.join('').length !== 6) ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.25s ease',
-                    marginBottom: 14
+                  onClick={() => {
+                    setStep(1)
+                    setStatusMsg({ type: '', text: '' })
                   }}
+                  className="fp-change-number-btn"
                 >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                      <span>যাচাই করা হচ্ছে...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>ওটিপি যাচাই করুন</span>
-                      <ArrowRight size={17} />
-                    </>
-                  )}
+                  <ArrowLeft size={14} /> নম্বর পরিবর্তন করুন
                 </button>
-
-                {/* Resend Timer / Action */}
-                <div style={{ textAlign: 'center', fontSize: 13, color: '#64748B' }}>
-                  <span>কোড পাননি? </span>
-                  {timer > 0 ? (
-                    <span style={{
-                      color: '#94A3B8',
-                      fontWeight: 500,
-                      cursor: 'not-allowed',
-                      userSelect: 'none',
-                      opacity: 0.65
-                    }}>
-                      পুনরায় পাঠান ({formatCountdown(timer)})
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={loading}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#00B875',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        padding: 0,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      {loading ? 'পাঠানো হচ্ছে...' : 'পুনরায় পাঠান'}
-                    </button>
-                  )}
-                </div>
               </div>
-            )}
+            </form>
+          )}
 
-            {/* ================= STEP 3: SET NEW PASSWORD ================= */}
-            {step === 3 && (
-              <div>
-                <div style={{ marginBottom: 18 }}>
-                  <h2 style={{ fontWeight: 800, color: '#0F172A', fontSize: 21, marginBottom: 6, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.14) 0%, rgba(5, 150, 105, 0.2) 100%)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#00B875',
-                        border: '1px solid rgba(0, 184, 117, 0.25)',
-                        boxShadow: '0 2px 8px rgba(0, 184, 117, 0.12)',
-                        flexShrink: 0
-                      }}
-                    >
-                      <Lock size={20} />
-                    </span>
-                    <span>নতুন পাসওয়ার্ড দিন</span>
-                  </h2>
-                  <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0, lineHeight: 1.55 }}>
-                    আপনার অ্যাকাউন্টের জন্য একটি নতুন ও শক্তিশালী গোপন পাসওয়ার্ড তৈরি করুন।
-                  </p>
-                </div>
-
-                <Form onSubmit={handleResetPassword}>
-                  {/* New Password */}
-                  {/* New Password */}
-                  <Form.Group style={{ marginBottom: 16 }}>
-                    <Form.Label className="auth-label-premium" style={{ marginBottom: 6 }}>
-                      নতুন পাসওয়ার্ড (New Password)
-                    </Form.Label>
-                    <div className="input-group-premium" style={{ position: 'relative' }}>
-                      <span className="input-icon-premium" style={{ color: password.length >= 6 ? '#10B981' : '#00B875' }}>
-                        <Lock size={17} />
-                      </span>
-                      <Form.Control
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="কমপক্ষে ৬ অক্ষর"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="auth-input-premium"
-                        style={{
-                          paddingLeft: 44,
-                          paddingRight: 42,
-                          borderColor: password.length > 0
-                            ? (password.length >= 6 ? '#10B981' : '#EF4444')
-                            : undefined,
-                          transition: 'all 0.2s ease'
-                        }}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: 12,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: '#64748B',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
-                      >
-                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                      </button>
-                    </div>
-                    {/* Live Length Feedback */}
-                    {password.length > 0 && (
-                      password.length < 6 ? (
-                        <p style={{ color: '#EF4444', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span>⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে (বর্তমানে {password.length} অক্ষর)</span>
-                        </p>
-                      ) : (
-                        <p style={{ color: '#10B981', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span>✓ পাসওয়ার্ডের দৈর্ঘ্য সঠিক</span>
-                        </p>
-                      )
-                    )}
-                  </Form.Group>
-
-                  {/* Confirm Password */}
-                  <Form.Group style={{ marginBottom: 20 }}>
-                    <Form.Label className="auth-label-premium" style={{ marginBottom: 6 }}>
-                      পাসওয়ার্ড নিশ্চিত করুন (Confirm Password)
-                    </Form.Label>
-                    <div className="input-group-premium" style={{ position: 'relative' }}>
-                      <span className="input-icon-premium" style={{ color: passwordConfirmation.length > 0 && password === passwordConfirmation ? '#10B981' : '#00B875' }}>
-                        <Lock size={17} />
-                      </span>
-                      <Form.Control
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        placeholder="পুনরায় নতুন পাসওয়ার্ড দিন"
-                        value={passwordConfirmation}
-                        onChange={(e) => setPasswordConfirmation(e.target.value)}
-                        required
-                        className="auth-input-premium"
-                        style={{
-                          paddingLeft: 44,
-                          paddingRight: 42,
-                          borderColor: passwordConfirmation.length > 0
-                            ? (password === passwordConfirmation ? '#10B981' : '#EF4444')
-                            : undefined,
-                          transition: 'all 0.2s ease'
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: 12,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: '#64748B',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
-                      >
-                        {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                      </button>
-                    </div>
-                    {/* Live Match Feedback */}
-                    {passwordConfirmation.length > 0 && (
-                      password === passwordConfirmation ? (
-                        <p style={{ color: '#10B981', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span>✓ উভয় পাসওয়ার্ড হুবহু মিলেছে</span>
-                        </p>
-                      ) : (
-                        <p style={{ color: '#EF4444', fontSize: 12.5, fontWeight: 600, marginTop: 5, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span>✕ উভয় পাসওয়ার্ড মিলছে না, দয়া করে নিশ্চিত করুন</span>
-                        </p>
-                      )
-                    )}
-                  </Form.Group>
-
+          {/* ===== STEP 3 FORM: NEW PASSWORD ===== */}
+          {step === 3 && (
+            <form onSubmit={handleResetPassword} className="fp-form">
+              <div className="fp-field-group">
+                <label className="fp-field-label">নতুন পাসওয়ার্ড</label>
+                <div className="fp-input-wrapper">
+                  <Lock size={18} className="fp-input-icon" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="fp-text-input"
+                    placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoFocus
+                  />
                   <button
-                    type="submit"
-                    disabled={loading || password.length < 6 || password !== passwordConfirmation}
-                    className="w-100 auth-btn-premium"
-                    style={{
-                      width: '100%',
-                      height: 48,
-                      fontSize: 15,
-                      fontWeight: 800,
-                      borderRadius: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      border: 'none',
-                      color: '#FFFFFF',
-                      background: (loading || password.length < 6 || password !== passwordConfirmation)
-                        ? '#E2E8F0'
-                        : 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)',
-                      boxShadow: (loading || password.length < 6 || password !== passwordConfirmation)
-                        ? 'none'
-                        : '0 4px 14px rgba(0, 184, 117, 0.32)',
-                      cursor: (loading || password.length < 6 || password !== passwordConfirmation) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.25s ease',
-                      marginTop: 8
-                    }}
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="fp-eye-btn"
                   >
-                    {loading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                        <span>সংরক্ষণ করা হচ্ছে...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>পাসওয়ার্ড সংরক্ষণ করুন</span>
-                        <ArrowRight size={17} />
-                      </>
-                    )}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                </Form>
-              </div>
-            )}
-
-            {/* ================= STEP 4: SUCCESS SCREEN ================= */}
-            {step === 4 && (
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    background: '#DCFCE7',
-                    color: '#16A34A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 16px',
-                    boxShadow: '0 4px 16px rgba(22, 163, 74, 0.2)'
-                  }}
-                >
-                  <CheckCircle2 size={38} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>
-                  পাসওয়ার্ড পরিবর্তন সফল হয়েছে! 🎉
-                </h3>
-                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 22 }}>
-                  আপনার নতুন পাসওয়ার্ড সক্রিয় হয়েছে। এখন আপনি নতুন পাসওয়ার্ড ব্যবহার করে আপনার অ্যাকাউন্টে লগইন করতে পারবেন।
-                </p>
-                <Link
-                  to={resolvedRole ? `/login/${resolvedRole}` : '/login'}
-                  state={{ identifier: mobile }}
-                  className="btn btn-mc-primary"
-                  style={{
-                    borderRadius: 10,
-                    fontSize: 14.5,
-                    fontWeight: 700,
-                    padding: '11px 28px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)'
-                  }}
-                >
-                  <span>লগইন করুন</span>
-                  <ArrowRight size={16} />
-                </Link>
               </div>
-            )}
 
-            {/* Bottom Links */}
-            {step < 4 && (
-              <div
-                style={{
-                  marginTop: 24,
-                  paddingTop: 18,
-                  borderTop: '1px solid #F1F5F9',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 12
-                }}
+              <div className="fp-field-group">
+                <label className="fp-field-label">পাসওয়ার্ড নিশ্চিত করুন</label>
+                <div className="fp-input-wrapper">
+                  <Lock size={18} className="fp-input-icon" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="fp-text-input"
+                    placeholder="একই পাসওয়ার্ড আবার লিখুন"
+                    value={passwordConfirmation}
+                    onChange={(e) => setPasswordConfirmation(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="fp-eye-btn"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="fp-submit-btn"
               >
-                <Link
-                  to="/login"
-                  style={{
-                    color: '#00B875',
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'transform 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(-3px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
-                >
-                  <ArrowLeft size={16} />
-                  <span>পাসওয়ার্ড মনে পড়েছে? লগইন করুন</span>
-                </Link>
+                {loading ? (
+                  <>
+                    <RefreshCw size={17} className="fp-spin-anim" />
+                    <span>সংরক্ষণ হচ্ছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={17} />
+                    <span>পাসওয়ার্ড সেট করুন</span>
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
-                <div style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <HelpCircle size={13} style={{ opacity: 0.8 }} />
-                  <span>সহায়তা প্রয়োজন? হেল্পলাইন: </span>
-                  <a href="tel:09613868438" style={{ color: '#475569', fontWeight: 600, textDecoration: 'none' }}>
-                    09613868438
-                  </a>
-                </div>
+          {/* ===== STEP 4: SUCCESS ===== */}
+          {step === 4 && (
+            <div className="fp-success-state">
+              <div className="fp-success-icon-wrap">
+                <CheckCircle2 size={54} color="#00B875" />
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="fp-submit-btn"
+                style={{ marginTop: 20 }}
+              >
+                <span>এখনই লগইন করুন</span>
+                <ArrowRight size={17} />
+              </button>
+            </div>
+          )}
 
+          {/* Divider */}
+          <div className="fp-card-divider" />
+
+          {/* Bottom Links */}
+          <div className="fp-bottom-links-box">
+            <Link to="/login" className="fp-back-login-link">
+              <ArrowLeft size={16} />
+              <span>পাসওয়ার্ড মনে পড়েছে? <strong>লগইন করুন</strong></span>
+            </Link>
+
+            <a href="tel:09613868438" className="fp-helpline-link">
+              <Headset size={16} />
+              <span>সহায়তা প্রয়োজন? ফোন করুন: <strong>09613868438</strong></span>
+            </a>
           </div>
+
         </div>
 
       </div>
 
+      {/* ===== CSS STYLES ===== */}
       <style>{`
-        .fp-form-panel {
-          padding: 36px 34px;
+        .fp-page-container {
+          min-height: calc(100vh - 58px);
+          width: 100%;
+          background: #F0FDF4;
+          background: linear-gradient(180deg, #F0FDF4 0%, #E6F8EE 50%, #F0FDF4 100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 24px 16px 90px 16px;
+          box-sizing: border-box;
+          font-family: 'Inter', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
         }
 
-        .fp-stepper-box {
+        .fp-content-wrapper {
+          width: 100%;
+          max-width: 460px;
+        }
+
+        /* Main Card */
+        .fp-main-card {
+          background: #FFFFFF;
+          border-radius: 24px;
+          padding: 24px 20px;
+          box-shadow: 0 10px 30px rgba(0, 184, 117, 0.08), 0 2px 12px rgba(15, 23, 42, 0.04);
+          border: 1px solid rgba(226, 232, 240, 0.85);
+          box-sizing: border-box;
+        }
+
+
+        /* Illustration */
+        .fp-illustration-wrapper {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+
+        .fp-illustration-img {
+          width: 100%;
+          max-width: 290px;
+          height: auto;
+          max-height: 210px;
+          object-fit: contain;
+          display: block;
+        }
+
+        /* Titles */
+        .fp-main-title {
+          font-size: 20px;
+          font-weight: 800;
+          color: #0F2942;
+          text-align: center;
+          margin: 0 0 8px 0;
+          line-height: 1.35;
+          letter-spacing: -0.3px;
+        }
+
+        .fp-main-subtitle {
+          font-size: 13.5px;
+          color: #475569;
+          text-align: center;
+          margin: 0 0 22px 0;
+          line-height: 1.55;
+          font-weight: 500;
+        }
+
+        /* Alert Box */
+        .fp-alert-box {
+          border-radius: 12px;
+          padding: 10px 14px;
+          font-size: 12.5px;
+          font-weight: 600;
+          margin-bottom: 18px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 22px;
+          gap: 8px;
+          line-height: 1.4;
+        }
+
+        .fp-alert-success {
+          background: #DCFCE7;
+          color: #15803D;
+          border: 1px solid #BBF7D0;
+        }
+
+        .fp-alert-danger {
+          background: #FEE2E2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+
+        /* Form */
+        .fp-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .fp-field-group {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+
+        .fp-field-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0;
+        }
+
+        .fp-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+          background: #F8FAFC;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 0 14px;
+          height: 48px;
+          transition: all 0.2s;
+        }
+
+        .fp-input-wrapper:focus-within {
+          border-color: #00B875;
+          background: #FFFFFF;
+          box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
+        }
+
+        .fp-input-icon {
+          color: #64748B;
+          margin-right: 10px;
+          flex-shrink: 0;
+        }
+
+        .fp-text-input {
+          flex: 1;
+          border: none;
+          background: transparent;
+          font-size: 14.5px;
+          color: #0F172A;
+          outline: none;
+          height: 100%;
+          font-weight: 600;
+        }
+
+        .fp-text-input::placeholder {
+          color: #94A3B8;
+          font-weight: 500;
+        }
+
+        .fp-eye-btn {
           background: transparent;
           border: none;
-          padding: 0 2px;
+          color: #64748B;
+          cursor: pointer;
+          padding: 4px;
+          display: flex;
+          align-items: center;
         }
 
+        /* Submit Button */
+        .fp-submit-btn {
+          width: 100%;
+          height: 48px;
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          color: #FFFFFF;
+          border: none;
+          border-radius: 12px;
+          font-size: 14.5px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.28);
+          transition: all 0.2s;
+        }
+
+        .fp-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0, 184, 117, 0.35);
+        }
+
+        .fp-submit-btn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+        }
+
+        /* OTP Inputs Grid */
+        .fp-otp-inputs-grid {
+          display: flex;
+          gap: 8px;
+          justify-content: space-between;
+        }
+
+        .fp-otp-box {
+          width: 48px;
+          height: 52px;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          background: #F8FAFC;
+          font-size: 20px;
+          font-weight: 800;
+          text-align: center;
+          color: #0F172A;
+          outline: none;
+          transition: all 0.2s;
+        }
+
+        .fp-otp-box:focus {
+          border-color: #00B875;
+          background: #FFFFFF;
+          box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
+        }
+
+        .fp-otp-filled {
+          border-color: #00B875;
+          background: #F0FDF4;
+        }
+
+        .fp-resend-row {
+          display: flex;
+          justify-content: center;
+          font-size: 12.5px;
+        }
+
+        .fp-timer-text {
+          color: #64748B;
+        }
+
+        .fp-resend-btn {
+          background: transparent;
+          border: none;
+          color: #00B875;
+          font-weight: 700;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+
+        .fp-change-number-wrap {
+          display: flex;
+          justify-content: center;
+          margin-top: 4px;
+        }
+
+        .fp-change-number-btn {
+          background: transparent;
+          border: none;
+          color: #64748B;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .fp-change-number-btn:hover {
+          color: #0F172A;
+        }
+
+        /* Divider & Bottom Links */
+        .fp-card-divider {
+          height: 1px;
+          background: #E2E8F0;
+          margin: 22px 0 16px 0;
+        }
+
+        .fp-bottom-links-box {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          text-align: center;
+        }
+
+        .fp-back-login-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #475569;
+          font-size: 13px;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+
+        .fp-back-login-link strong {
+          color: #00B875;
+        }
+
+        .fp-back-login-link:hover {
+          color: #0F172A;
+        }
+
+        .fp-helpline-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #475569;
+          font-size: 12px;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+
+        .fp-helpline-link strong {
+          color: #00875A;
+        }
+
+        .fp-helpline-link:hover {
+          color: #00875A;
+          text-decoration: underline;
+        }
+
+        .fp-success-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 12px 0;
+        }
+
+        .fp-spin-anim {
+          animation: fpSpin 0.8s linear infinite;
+        }
+
+        @keyframes fpSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
         @media (max-width: 991px) {
-          .auth-split-container {
-            border-radius: 18px !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07) !important;
-            border: 1px solid #E2E8F0 !important;
-            overflow: hidden !important;
-          }
-
-          .fp-form-panel {
-            padding: 26px 20px !important;
-            border-radius: 18px !important;
+          .fp-page-container {
+            margin-top: 59px !important;
+            min-height: calc(100vh - 59px) !important;
+            padding: 20px 14px 85px 14px !important;
           }
         }
 
-        @media (max-width: 520px) {
-          .auth-premium-wrapper {
-            padding: 16px 12px 60px !important;
+        @media (max-width: 480px) {
+          .fp-page-container {
+            margin-top: 58px !important;
+            padding: 16px 12px 85px 12px !important;
           }
 
-          .auth-split-container {
-            border-radius: 16px !important;
-            margin-bottom: 16px;
+          .fp-main-card {
+            padding: 20px 14px;
+            border-radius: 20px;
           }
 
-          .fp-form-panel {
-            padding: 20px 16px !important;
-            border-radius: 16px !important;
+          .fp-main-title {
+            font-size: 18.5px;
           }
 
-          .fp-stepper-box {
-            padding: 0 2px;
+          .fp-main-subtitle {
+            font-size: 13px;
             margin-bottom: 18px;
-            background: transparent;
-            border: none;
-          }
-
-          .fp-step-label {
-            font-size: 11px !important;
-          }
-
-          .fp-step-circle {
-            width: 22px !important;
-            height: 22px !important;
-            font-size: 11px !important;
           }
 
           .fp-otp-box {
-            width: 38px !important;
-            height: 46px !important;
-            font-size: 18px !important;
+            width: 42px;
+            height: 48px;
+            font-size: 18px;
           }
         }
       `}</style>

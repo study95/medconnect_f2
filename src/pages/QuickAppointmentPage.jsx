@@ -552,8 +552,8 @@ export default function QuickAppointmentPage() {
             backgroundSize: 'cover',
             backgroundPosition: 'center right',
             backgroundRepeat: 'no-repeat',
-            padding: '26px 22px',
-            minHeight: 120,
+            padding: '22px 18px',
+            minHeight: 125,
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
@@ -561,18 +561,20 @@ export default function QuickAppointmentPage() {
           }}>
             <div style={{ maxWidth: '62%', zIndex: 2 }}>
               <h1 style={{
-                fontSize: 22,
+                fontSize: 'clamp(16px, 4.3vw, 21px)',
                 fontWeight: 800,
-                color: '#0F172A',
-                marginBottom: 6,
+                color: '#064E3B',
+                marginBottom: 5,
                 letterSpacing: '-0.3px',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.25,
                 fontFamily: "'Hind Siliguri', sans-serif"
               }}>
                 দ্রুত অ্যাপয়েন্টমেন্ট নিন
               </h1>
               <p style={{
-                fontSize: 13.5,
-                color: '#334155',
+                fontSize: 'clamp(11px, 3.1vw, 13px)',
+                color: '#1E3A2F',
                 margin: 0,
                 fontWeight: 600,
                 lineHeight: 1.4,
