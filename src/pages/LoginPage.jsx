@@ -274,12 +274,6 @@ function LoginPage() {
           </div>
         </div>
 
-        {/* ===== MOBILE UNIFIED HERO ONBOARDING SECTION ===== */}
-        <div className="mobile-onboarding-hero">
-          <div className="mobile-onboarding-bg-art" style={{ backgroundImage: "url('/images/login-mobile-hero.png')" }} />
-          <div className="mobile-onboarding-overlay-gradient" />
-        </div>
-
         {/* ===== RIGHT PANEL — CLEAN WHITE ACTIVE LOGIN FORM / 2FA ===== */}
         <div className="auth-form-panel">
           <div className="auth-form-inner-content">
