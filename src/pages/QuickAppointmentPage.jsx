@@ -548,22 +548,24 @@ export default function QuickAppointmentPage() {
         }}>
           {/* ── TOP HERO HEADER BANNER ── */}
           <div style={{
-            background: 'linear-gradient(135deg, #E6F4EA 0%, #D1F2D9 100%)',
-            padding: '24px 20px',
-            borderBottom: '1px solid #C6EAD0',
+            backgroundImage: "url('/images/quick-appointment-hero.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center right',
+            backgroundRepeat: 'no-repeat',
+            padding: '26px 22px',
+            minHeight: 120,
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16
+            overflow: 'hidden'
           }}>
-            <div>
+            <div style={{ maxWidth: '62%', zIndex: 2 }}>
               <h1 style={{
                 fontSize: 22,
                 fontWeight: 800,
                 color: '#0F172A',
                 marginBottom: 6,
-                letterSpacing: '-0.4px',
+                letterSpacing: '-0.3px',
                 fontFamily: "'Hind Siliguri', sans-serif"
               }}>
                 দ্রুত অ্যাপয়েন্টমেন্ট নিন
@@ -572,26 +574,12 @@ export default function QuickAppointmentPage() {
                 fontSize: 13.5,
                 color: '#334155',
                 margin: 0,
-                fontWeight: 500,
+                fontWeight: 600,
+                lineHeight: 1.4,
                 fontFamily: "'Hind Siliguri', sans-serif"
               }}>
                 আপনার পরিচিত ডাক্তারের সিরিয়াল সহজে বুক করুন
               </p>
-            </div>
-
-            {/* Graphic Illustration Badge */}
-            <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 20px rgba(0, 184, 117, 0.18)',
-              flexShrink: 0
-            }}>
-              <IconCalendarEvent size={36} color="#00B875" />
             </div>
           </div>
 
@@ -622,8 +610,8 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => setDateMode('today')}
                   style={{
-                    background: dateMode === 'today' ? '#E6F4EA' : 'white',
-                    border: dateMode === 'today' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
+                    background: dateMode === 'today' ? '#00B875' : 'white',
+                    border: dateMode === 'today' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
                     borderRadius: 30,
                     padding: '8px 18px',
                     display: 'flex',
@@ -632,12 +620,16 @@ export default function QuickAppointmentPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    boxShadow: dateMode === 'today' ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none',
+                    boxShadow: dateMode === 'today' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <IconCalendarEvent size={18} color={dateMode === 'today' ? '#00B875' : '#64748B'} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'today' ? '#00B875' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  {dateMode === 'today' ? (
+                    <IconCheck size={16} color="white" stroke={3} />
+                  ) : (
+                    <IconCalendarEvent size={18} color="#64748B" />
+                  )}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'today' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
                     আজ
                   </span>
                 </button>
@@ -647,8 +639,8 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => setDateMode('tomorrow')}
                   style={{
-                    background: dateMode === 'tomorrow' ? '#E6F4EA' : 'white',
-                    border: dateMode === 'tomorrow' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
+                    background: dateMode === 'tomorrow' ? '#00B875' : 'white',
+                    border: dateMode === 'tomorrow' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
                     borderRadius: 30,
                     padding: '8px 18px',
                     display: 'flex',
@@ -657,12 +649,16 @@ export default function QuickAppointmentPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    boxShadow: dateMode === 'tomorrow' ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none',
+                    boxShadow: dateMode === 'tomorrow' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <IconCalendarEvent size={18} color={dateMode === 'tomorrow' ? '#00B875' : '#64748B'} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'tomorrow' ? '#00B875' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  {dateMode === 'tomorrow' ? (
+                    <IconCheck size={16} color="white" stroke={3} />
+                  ) : (
+                    <IconCalendarEvent size={18} color="#64748B" />
+                  )}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'tomorrow' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
                     আগামীকাল
                   </span>
                 </button>
@@ -672,8 +668,8 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => setDateMode('next_7_days')}
                   style={{
-                    background: dateMode === 'next_7_days' ? '#E6F4EA' : 'white',
-                    border: dateMode === 'next_7_days' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
+                    background: dateMode === 'next_7_days' ? '#00B875' : 'white',
+                    border: dateMode === 'next_7_days' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
                     borderRadius: 30,
                     padding: '8px 18px',
                     display: 'flex',
@@ -682,12 +678,16 @@ export default function QuickAppointmentPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    boxShadow: dateMode === 'next_7_days' ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none',
+                    boxShadow: dateMode === 'next_7_days' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <IconCalendarEvent size={18} color={dateMode === 'next_7_days' ? '#00B875' : '#64748B'} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'next_7_days' ? '#00B875' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  {dateMode === 'next_7_days' ? (
+                    <IconCheck size={16} color="white" stroke={3} />
+                  ) : (
+                    <IconCalendarEvent size={18} color="#64748B" />
+                  )}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'next_7_days' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
                     পরবর্তী ৭ দিন
                   </span>
                 </button>
@@ -697,8 +697,8 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => setIsDatePickerOpen(true)}
                   style={{
-                    background: dateMode === 'custom' ? '#E6F4EA' : 'white',
-                    border: dateMode === 'custom' ? '1.5px solid #00B875' : '1px solid #CBD5E1',
+                    background: dateMode === 'custom' ? '#00B875' : 'white',
+                    border: dateMode === 'custom' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
                     borderRadius: 30,
                     padding: '8px 18px',
                     display: 'flex',
@@ -707,13 +707,17 @@ export default function QuickAppointmentPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    boxShadow: dateMode === 'custom' ? '0 2px 8px rgba(0, 184, 117, 0.15)' : 'none',
+                    boxShadow: dateMode === 'custom' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <IconCalendar size={18} color={dateMode === 'custom' ? '#00B875' : '#64748B'} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'custom' ? '#00B875' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {dateMode === 'custom' && customDate ? customDate : 'তারিখ নির্বাচন'}
+                  {dateMode === 'custom' ? (
+                    <IconCheck size={16} color="white" stroke={3} />
+                  ) : (
+                    <IconCalendarEvent size={18} color="#00B875" />
+                  )}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'custom' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    {dateMode === 'custom' && customDate ? customDate : 'তারিখ দিন'}
                   </span>
                 </button>
               </div>
@@ -813,28 +817,46 @@ export default function QuickAppointmentPage() {
                       কোনো স্পেশালিটি পাওয়া যায়নি।
                     </div>
                   ) : (
-                    filteredSpecialties.map(spec => (
-                      <div
-                        key={spec.id}
-                        onClick={() => {
-                          setSelectedSpecialtyId(String(spec.id))
-                          setSpecialtySearch(spec.name_bn || spec.name)
-                          setIsSpecialtyDropdownOpen(false)
-                        }}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontWeight: String(spec.id) === selectedSpecialtyId ? 700 : 600,
-                          color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#1E293B',
-                          background: String(spec.id) === selectedSpecialtyId ? '#F0FDF4' : 'transparent',
-                          cursor: 'pointer',
-                          fontFamily: "'Hind Siliguri', sans-serif"
-                        }}
-                      >
-                        {spec.name_bn || spec.name}
-                      </div>
-                    ))
+                    filteredSpecialties.map(spec => {
+                      const docCount = spec.doctors_count ?? spec.doctor_count ?? (Array.isArray(spec.doctors) ? spec.doctors.length : 0)
+                      return (
+                        <div
+                          key={spec.id}
+                          onClick={() => {
+                            setSelectedSpecialtyId(String(spec.id))
+                            setSpecialtySearch(spec.name_bn || spec.name)
+                            setIsSpecialtyDropdownOpen(false)
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                            fontSize: 14,
+                            fontWeight: String(spec.id) === selectedSpecialtyId ? 700 : 600,
+                            color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#1E293B',
+                            background: String(spec.id) === selectedSpecialtyId ? '#F0FDF4' : 'transparent',
+                            cursor: 'pointer',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          <span>{spec.name_bn || spec.name}</span>
+                          <span style={{
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#64748B',
+                            background: String(spec.id) === selectedSpecialtyId ? '#DCFCE7' : '#F1F5F9',
+                            padding: '2px 8px',
+                            borderRadius: 10,
+                            flexShrink: 0
+                          }}>
+                            {toBengaliNumber(docCount)} জন
+                          </span>
+                        </div>
+                      )
+                    })
                   )}
                 </div>
               )}
@@ -1142,31 +1164,52 @@ export default function QuickAppointmentPage() {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ padding: 20, maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-            {specialties.map(spec => (
-              <button
-                key={spec.id}
-                type="button"
-                onClick={() => {
-                  setSelectedSpecialtyId(String(spec.id))
-                  setIsAllSpecialtiesModalOpen(false)
-                }}
-                style={{
-                  background: String(spec.id) === selectedSpecialtyId ? '#F0FDF4' : 'white',
-                  border: String(spec.id) === selectedSpecialtyId ? '2px solid #00B875' : '1px solid #E2E8F0',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  textAlign: 'left',
-                  fontWeight: 700,
-                  fontSize: 13.5,
-                  color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#1E293B',
-                  cursor: 'pointer',
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}
-              >
-                {spec.name_bn || spec.name}
-              </button>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+            {specialties.map(spec => {
+              const docCount = spec.doctors_count ?? spec.doctor_count ?? (Array.isArray(spec.doctors) ? spec.doctors.length : 0)
+              return (
+                <button
+                  key={spec.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSpecialtyId(String(spec.id))
+                    setIsAllSpecialtiesModalOpen(false)
+                  }}
+                  style={{
+                    background: String(spec.id) === selectedSpecialtyId ? '#F0FDF4' : 'white',
+                    border: String(spec.id) === selectedSpecialtyId ? '2px solid #00B875' : '1px solid #E2E8F0',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    cursor: 'pointer',
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}
+                >
+                  <span style={{
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#1E293B',
+                    textAlign: 'left'
+                  }}>
+                    {spec.name_bn || spec.name}
+                  </span>
+                  <span style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#64748B',
+                    background: String(spec.id) === selectedSpecialtyId ? '#DCFCE7' : '#F1F5F9',
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    flexShrink: 0
+                  }}>
+                    {toBengaliNumber(docCount)} জন
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </Modal.Body>
       </Modal>
