@@ -18,7 +18,7 @@ import {
   IconCalendarPlus, IconNotes, IconLoader2, IconChevronLeft, IconChevronRight,
   IconChevronDown, IconInfoCircle, IconCircleCheck, IconPlus, IconMinus, IconBuildingHospital,
   IconEye, IconEyeOff, IconMail, IconAlertTriangle, IconRefresh,
-  IconPrinter, IconTicket, IconCopy, IconNavigation
+  IconPrinter, IconTicket, IconCopy, IconNavigation, IconUsers
 } from '@tabler/icons-react'
 
 const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
@@ -80,7 +80,9 @@ export default function BookAppointmentPage() {
     booking_for: 'myself', // 'myself', 'family', 'relative', 'friend', 'other'
     patient_name: '',
     patient_age: '',
-    patient_relation: '',
+    patient_relation: 'পিতা',
+    patient_gender: 'পুরুষ',
+    patient_phone: '',
     reason_type: '',
     notes: ''
   })
@@ -123,7 +125,6 @@ export default function BookAppointmentPage() {
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
-  const [bookingForDropdownOpen, setBookingForDropdownOpen] = useState(false)
   const [reasonDropdownOpen, setReasonDropdownOpen] = useState(false)
 
   // Professional Warning Modal State
@@ -451,7 +452,17 @@ export default function BookAppointmentPage() {
     if (slotMins < 0) return false
 
     if (Array.isArray(bookedSlots)) {
-      const isServerBooked = bookedSlots.some(bs => toMinutes(bs) === slotMins)
+      const chamber = chambers.find(c => c.id === selectedChamberId || c.public_id === selectedChamberId || String(c.id) === String(selectedChamberId))
+      const duration = Math.max(1, Number(chamber?.slot_duration_minutes) || 15)
+      const isServerBooked = bookedSlots.some(bs => {
+        const bsMins = toMinutes(bs)
+        if (bsMins < 0) return false
+        if (bsMins === slotMins) return true
+        // Overlap check: does this slot interval overlap with booked appointment?
+        const slotEnd = slotMins + duration
+        const bsEnd = bsMins + duration
+        return (slotMins < bsEnd && bsMins < slotEnd)
+      })
       if (isServerBooked) return true
     }
 
@@ -467,7 +478,7 @@ export default function BookAppointmentPage() {
   // Generate Time Slots based on chamber slot duration (default 15 mins)
   const getGroupedTimeSlots = () => {
     if (!form.appointment_date || !selectedChamberId) return {}
-    const chamber = chambers.find(c => c.id === selectedChamberId)
+    const chamber = chambers.find(c => c.id === selectedChamberId || c.public_id === selectedChamberId || String(c.id) === String(selectedChamberId))
     if (!chamber) return {}
 
     const slotDuration = Math.max(1, Number(chamber.slot_duration_minutes) || 15)
@@ -544,9 +555,21 @@ export default function BookAppointmentPage() {
         showWarning('রোগীর বয়স আবশ্যক', 'অনুগ্রহ করে রোগীর সঠিক বয়স লিখুন।')
         return
       }
+      const parsedAge = parseInt(form.patient_age.toString().trim(), 10)
+      if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+        showWarning('সঠিক বয়স লিখুন', 'অনুগ্রহ করে ১ থেকে ১২০ এর মধ্যে সঠিক বয়স লিখুন।')
+        return
+      }
       if (!form.patient_relation || !form.patient_relation.trim()) {
         showWarning('সম্পর্ক উল্লেখ করুন', 'অনুগ্রহ করে রোগীর সাথে আপনার সম্পর্ক লিখুন।')
         return
+      }
+      if (form.patient_phone && form.patient_phone.trim()) {
+        const cleanPhone = form.patient_phone.replace(/\D/g, '')
+        if (!/^01[3-9]\d{8}$/.test(cleanPhone)) {
+          showWarning('সঠিক মোবাইল নম্বর দিন', 'অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।')
+          return
+        }
       }
     }
     if (!isLoggedIn) {
@@ -560,13 +583,16 @@ export default function BookAppointmentPage() {
   const submitAppointment = async (guestMobile = null) => {
     setSubmitting(true)
     try {
+      const cleanPatientPhone = (form.patient_phone && form.patient_phone.trim()) ? form.patient_phone.replace(/\D/g, '') : null
       const payload = { 
         ...form, 
         chamber_id: selectedChamberId,
         booking_for: form.booking_for || 'myself',
         patient_name: form.booking_for !== 'myself' ? form.patient_name : null,
         patient_age: form.booking_for !== 'myself' ? form.patient_age : null,
-        patient_relation: form.booking_for !== 'myself' ? form.patient_relation : null
+        patient_relation: form.booking_for !== 'myself' ? form.patient_relation : null,
+        patient_gender: form.booking_for !== 'myself' ? (form.patient_gender || 'পুরুষ') : null,
+        patient_phone: form.booking_for !== 'myself' ? cleanPatientPhone : null
       }
       
       if (payload.appointment_time && (payload.appointment_time.includes('AM') || payload.appointment_time.includes('PM'))) {
@@ -2599,107 +2625,124 @@ export default function BookAppointmentPage() {
                 <div>
                   {/* কার জন্য অ্যাপয়েন্টমেন্ট */}
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 8, display: 'block' }}>
+                    <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 10, display: 'block' }}>
                       কার জন্য অ্যাপয়েন্টমেন্ট নিতে চাচ্ছেন? <span style={{ color: '#EF4444' }}>*</span>
                     </label>
-                    {/* Custom Dropdown */}
-                    {(() => {
-                      const bookingOptions = [
-                        { value: 'myself', label: 'নিজের জন্য' },
-                        { value: 'family', label: 'পরিবারের জন্য' },
-                        { value: 'relative', label: 'আত্মীয়-স্বজনের জন্য' },
-                        { value: 'friend', label: 'বন্ধু-বান্ধবের জন্য' },
-                        { value: 'other', label: 'অন্যান্য পরিচিতের জন্য' },
-                      ]
-                      const selectedOption = bookingOptions.find(o => o.value === (form.booking_for || 'myself'))
-                      return (
-                        <div style={{ position: 'relative', userSelect: 'none' }}>
-                          {/* Trigger */}
-                          <div
-                            onClick={() => setBookingForDropdownOpen(prev => !prev)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '13px 16px',
-                              borderRadius: 12,
-                              border: bookingForDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                              background: '#FFFFFF',
-                              cursor: 'pointer',
-                              boxShadow: bookingForDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.1)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <span style={{ fontSize: 14, fontWeight: 700, color: '#1E293B' }}>{selectedOption?.label}</span>
-                            <span style={{
-                              color: '#00B875',
-                              display: 'flex',
-                              alignItems: 'center',
-                              transition: 'transform 0.2s ease',
-                              transform: bookingForDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
-                            }}>
-                              <IconChevronDown size={18} stroke={2.5} />
-                            </span>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: 12
+                    }}>
+                      {/* Option 1: Myself */}
+                      <div
+                        onClick={() => setForm(prev => ({ ...prev, booking_for: 'myself' }))}
+                        style={{
+                          background: form.booking_for === 'myself' ? '#F0FDF4' : '#FFFFFF',
+                          border: form.booking_for === 'myself' ? '2px solid #00B875' : '1.5px solid #E2E8F0',
+                          borderRadius: 14,
+                          padding: '14px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: form.booking_for === 'myself' ? '0 4px 12px rgba(0, 184, 117, 0.12)' : 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: form.booking_for === 'myself' ? '#DCFCE7' : '#F1F5F9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <IconUser size={24} color={form.booking_for === 'myself' ? '#00B875' : '#64748B'} />
                           </div>
-
-                          {/* Options Panel */}
-                          {bookingForDropdownOpen && (
-                            <div style={{
-                              position: 'absolute',
-                              top: 'calc(100% + 6px)',
-                              left: 0,
-                              right: 0,
-                              background: '#FFFFFF',
-                              borderRadius: 14,
-                              border: '1.5px solid #E2E8F0',
-                              boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-                              zIndex: 200,
-                              overflow: 'hidden'
-                            }}>
-                              {bookingOptions.map((opt, i) => {
-                                const isSelected = (form.booking_for || 'myself') === opt.value
-                                return (
-                                  <div
-                                    key={opt.value}
-                                    onClick={() => {
-                                      setForm(prev => ({ ...prev, booking_for: opt.value }))
-                                      setBookingForDropdownOpen(false)
-                                    }}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      padding: '13px 16px',
-                                      fontSize: 14,
-                                      fontWeight: isSelected ? 800 : 600,
-                                      color: isSelected ? '#007A65' : '#374151',
-                                      background: isSelected ? '#E8F8F2' : '#FFFFFF',
-                                      cursor: 'pointer',
-                                      borderBottom: i < bookingOptions.length - 1 ? '1px solid #F1F5F9' : 'none',
-                                      transition: 'background 0.15s ease'
-                                    }}
-                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F8FAFC' }}
-                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#FFFFFF' }}
-                                  >
-                                    <span>{opt.label}</span>
-                                    {isSelected && (
-                                      <span style={{
-                                        width: 20, height: 20, borderRadius: '50%',
-                                        background: '#00B875', color: 'white',
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        flexShrink: 0
-                                      }}>
-                                        <IconCheck size={12} stroke={3} />
-                                      </span>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              নিজের জন্য
                             </div>
-                          )}
+                            <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              আমি নিজে ডাক্তার দেখাতে চাই
+                            </div>
+                          </div>
                         </div>
-                      )
-                    })()}
+                        {form.booking_for === 'myself' && (
+                          <div style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: '#00B875',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            flexShrink: 0
+                          }}>
+                            <IconCheck size={14} stroke={3} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Option 2: Relative / Family */}
+                      <div
+                        onClick={() => setForm(prev => ({ ...prev, booking_for: 'relative' }))}
+                        style={{
+                          background: form.booking_for !== 'myself' ? '#F0FDF4' : '#FFFFFF',
+                          border: form.booking_for !== 'myself' ? '2px solid #00B875' : '1.5px solid #E2E8F0',
+                          borderRadius: 14,
+                          padding: '14px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: form.booking_for !== 'myself' ? '0 4px 12px rgba(0, 184, 117, 0.12)' : 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: form.booking_for !== 'myself' ? '#DCFCE7' : '#F1F5F9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <IconUsers size={24} color={form.booking_for !== 'myself' ? '#00B875' : '#64748B'} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              আত্মীয়স্বজনের জন্য
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              পরিবারের সদস্য বা অন্য কারো জন্য
+                            </div>
+                          </div>
+                        </div>
+                        {form.booking_for !== 'myself' && (
+                          <div style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: '#00B875',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            flexShrink: 0
+                          }}>
+                            <IconCheck size={14} stroke={3} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* অন্যান্যদের জন্য রোগীর তথ্য */}
@@ -2737,18 +2780,43 @@ export default function BookAppointmentPage() {
                         <Col md={6}>
                           <div>
                             <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
-                              রোগীর বয়স (বছর) <span style={{ color: '#EF4444' }}>*</span>
+                              রোগীর বয়স (বছর) <span style={{ color: '#EF4444' }}>*</span>
                             </label>
                             <input 
-                              type="number" 
+                              type="tel" 
                               name="patient_age" 
-                              min="0"
-                              max="130"
+                              maxLength={3}
                               value={form.patient_age || ''} 
-                              onChange={handleChange} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 3)
+                                setForm(prev => ({ ...prev, patient_age: val }))
+                              }} 
                               placeholder="যেমন: ২৫" 
                               style={inputStyle}
                             />
+                          </div>
+                        </Col>
+
+                        {/* Gender */}
+                        <Col md={6}>
+                          <div>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
+                              লিঙ্গ <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <select
+                              name="patient_gender"
+                              value={form.patient_gender || 'পুরুষ'}
+                              onChange={handleChange}
+                              style={{
+                                ...inputStyle,
+                                appearance: 'auto',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <option value="পুরুষ">পুরুষ</option>
+                              <option value="মহিলা">মহিলা</option>
+                              <option value="অন্যান্য">অন্যান্য</option>
+                            </select>
                           </div>
                         </Col>
 
@@ -2756,14 +2824,46 @@ export default function BookAppointmentPage() {
                         <Col md={6}>
                           <div>
                             <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
-                              সম্পর্ক কি লিখুন <span style={{ color: '#EF4444' }}>*</span>
+                              রোগীর সাথে সম্পর্ক <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <select
+                              name="patient_relation"
+                              value={form.patient_relation || 'পিতা'}
+                              onChange={handleChange}
+                              style={{
+                                ...inputStyle,
+                                appearance: 'auto',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <option value="পিতা">পিতা</option>
+                              <option value="মাতা">মাতা</option>
+                              <option value="স্ত্রী">স্ত্রী</option>
+                              <option value="স্বামী">স্বামী</option>
+                              <option value="সন্তান">সন্তান</option>
+                              <option value="ভাই">ভাই</option>
+                              <option value="বোন">বোন</option>
+                              <option value="অন্যান্য">অন্যান্য</option>
+                            </select>
+                          </div>
+                        </Col>
+
+                        {/* Mobile Number (Optional) */}
+                        <Col md={6}>
+                          <div>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
+                              রোগীর মোবাইল নম্বর <span style={{ color: '#6B7280', fontWeight: 500 }}>(ঐচ্ছিক)</span>
                             </label>
                             <input 
-                              type="text" 
-                              name="patient_relation" 
-                              value={form.patient_relation || ''} 
-                              onChange={handleChange} 
-                              placeholder="যেমন: বাবা, মা, ভাই, সন্তান, বন্ধু" 
+                              type="tel" 
+                              name="patient_phone" 
+                              maxLength={11}
+                              value={form.patient_phone || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 11)
+                                setForm(prev => ({ ...prev, patient_phone: val }))
+                              }} 
+                              placeholder="যেমন: 017XXXXXXXX" 
                               style={inputStyle}
                             />
                           </div>
@@ -2910,15 +3010,45 @@ export default function BookAppointmentPage() {
                             </div>
                           </div>
                           
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <IconUser size={20} color="#00B875" />
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <IconUser size={20} color="#00B875" style={{ marginTop: 2, flexShrink: 0 }} />
                             <div>
-                              <small style={{ color: '#64748B', display: 'block', fontSize: 11 }}>রোগীর নাম</small>
-                              <strong style={{ color: '#1F2937', fontSize: 13.5 }}>
-                                {form.booking_for && form.booking_for !== 'myself' && form.patient_name
-                                  ? `${form.patient_name} ${form.patient_relation || form.patient_age ? `(${[form.patient_relation, form.patient_age ? `${toBnNum(form.patient_age)} বছর` : ''].filter(Boolean).join(', ')})` : ''}`
-                                  : (user?.name ? `${user.name} (নিজের জন্য)` : 'নিজের জন্য')}
-                              </strong>
+                              <small style={{ color: '#64748B', display: 'block', fontSize: 11 }}>
+                                {form.booking_for !== 'myself' ? 'রোগীর তথ্য (আত্মীয়স্বজন)' : 'রোগীর নাম'}
+                              </small>
+                              {form.booking_for !== 'myself' ? (
+                                <div>
+                                  <strong style={{ color: '#1F2937', fontSize: 13.5, display: 'block' }}>
+                                    {form.patient_name?.trim() ? form.patient_name : 'নাম লিখুন...'}
+                                  </strong>
+                                  <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: '4px 6px' }}>
+                                    {form.patient_relation && (
+                                      <span style={{ background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                        {form.patient_relation}
+                                      </span>
+                                    )}
+                                    {form.patient_age && (
+                                      <span style={{ background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>
+                                        {toBnNum(form.patient_age)} বছর
+                                      </span>
+                                    )}
+                                    {form.patient_gender && (
+                                      <span style={{ background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>
+                                        {form.patient_gender}
+                                      </span>
+                                    )}
+                                    {form.patient_phone && (
+                                      <span style={{ background: '#E0F2FE', color: '#0369A1', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                        মোবাইল: {toBnNum(form.patient_phone)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <strong style={{ color: '#1F2937', fontSize: 13.5 }}>
+                                  {user?.name ? `${user.name} (নিজের জন্য)` : 'নিজের জন্য'}
+                                </strong>
+                              )}
                             </div>
                           </div>
                         </div>

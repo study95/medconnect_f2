@@ -411,43 +411,6 @@ export default function DoctorSubscriptionExperiencePage() {
         </div>
       )}
 
-      {/* ─── 3. STAGED RENEWAL / EXPIRATION BANNER ─── */}
-      {staged && (
-        <div className={`doc-sub-banner ${
-          staged.level === 'critical' ? 'danger' :
-          staged.level === 'urgent'   ? 'warning' :
-          staged.level === 'warning'  ? 'warning' : 'info'
-        } doc-sub-fade-in`}>
-          <div className="d-flex align-items-center gap-3">
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: staged.level === 'critical' ? '#ef4444' : staged.level === 'urgent' ? '#ea580c' : '#f59e0b',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
-            >
-              <Clock size={20} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '14.5px' }}>{staged.title}</div>
-              <div style={{ fontSize: '12.5px', opacity: 0.95, marginTop: '2px' }}>{staged.message}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => document.getElementById('pricing-plans-section')?.scrollIntoView({ behavior: 'smooth' })}
-            className="doc-sub-btn-secondary"
-            style={{ fontWeight: 800 }}
-          >
-            প্ল্যান রিনিউ করুন
-          </button>
-        </div>
-      )}
 
       {/* ─── 4. CLINICAL HERO CARD ─── */}
       <div className={`doc-sub-hero ${isExpired ? 'expired' : ''}`}>

@@ -3,16 +3,17 @@ import { Container, Modal } from 'react-bootstrap'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import {
   IconCalendarEvent, IconClock, IconMapPin, IconUser,
-  IconStethoscope, IconSearch, IconChevronDown, IconX,
+  IconStethoscope, IconSearch, IconChevronDown, IconChevronUp, IconX,
   IconCheck, IconArrowRight, IconHeart, IconBrain, IconBone,
   IconBabyCarriage, IconDroplet, IconDental, IconActivity, IconCalendar,
   IconUsers, IconShieldCheck, IconLock, IconDeviceMobile, IconMail, IconLoader2,
-  IconTicket, IconPrinter, IconEdit, IconCircleCheck, IconAlertTriangle
+  IconTicket, IconPrinter, IconEdit, IconCircleCheck, IconAlertTriangle, IconAlertCircle,
+  IconChevronLeft, IconChevronRight, IconCopy
 } from '@tabler/icons-react'
 import useSpecialties from '../hooks/useSpecialties'
 import { getDoctors, getDoctorById } from '../api/doctorApi'
 import { getBookedSlots, createAppointment } from '../api/appointmentApi'
-import { sendOtp, verifyOtp } from '../api/authApi'
+import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
 import { useAuth } from '../context/AuthContext'
 import SeoHead from '../components/common/SeoHead'
 import { toast } from 'react-hot-toast'
@@ -21,6 +22,8 @@ const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪
 const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
 
 const bnMonths = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর']
+const bnMonthsShort = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে']
+const bnDaysShort = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি']
 
 export default function QuickAppointmentPage() {
   const navigate = useNavigate()
@@ -32,6 +35,7 @@ export default function QuickAppointmentPage() {
   const [dateMode, setDateMode] = useState('today') // 'today', 'tomorrow', 'next_7_days', 'custom'
   const [customDate, setCustomDate] = useState('')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [selectedAppointmentDate, setSelectedAppointmentDate] = useState('')
 
   // Specialty selection state
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState(searchParams.get('specialty_id') || '')
@@ -53,11 +57,13 @@ export default function QuickAppointmentPage() {
   const [availableSlots, setAvailableSlots] = useState([])
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [showAllSlots, setShowAllSlots] = useState(false)
 
   // Auth context
   const authContext = useAuth() || {}
   const user = authContext.user
   const isLoggedIn = authContext.isLoggedIn
+  const storeAuth = authContext.storeAuth
 
   // Booking Wizard Modal State
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
@@ -73,14 +79,56 @@ export default function QuickAppointmentPage() {
     relation: 'পিতা'
   })
 
+  // Patient name for 'myself' when unauthenticated
+  const [selfPatientName, setSelfPatientName] = useState('')
+
   // Auth & OTP state
   const [mobileNumber, setMobileNumber] = useState('')
+  const [isEditingCustomMobile, setIsEditingCustomMobile] = useState(false)
   const [otp, setOtp] = useState('')
-  const [otpTimer, setOtpTimer] = useState(180)
+  const [otpTimer, setOtpTimer] = useState(0)
   const [isOtpSending, setIsOtpSending] = useState(false)
   const [isOtpVerifying, setIsOtpVerifying] = useState(false)
   const [isOtpVerified, setIsOtpVerified] = useState(false)
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false)
+  const [bookingErrorModal, setBookingErrorModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  })
+
+  // Live OTP countdown timer (active whenever cooldown is remaining)
+  useEffect(() => {
+    if (otpTimer <= 0) return
+    const interval = setInterval(() => {
+      setOtpTimer(prev => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [otpTimer])
+
+  // Helper to format seconds to Bengali MM:SS
+  const formatOtpTimerBn = (seconds) => {
+    const s = Math.max(0, parseInt(seconds, 10) || 0)
+    const m = Math.floor(s / 60)
+    const remS = s % 60
+    const mStr = m < 10 ? `0${m}` : `${m}`
+    const sStr = remS < 10 ? `0${remS}` : `${remS}`
+    return `${toBengaliNumber(mStr)}:${toBengaliNumber(sStr)}`
+  }
+
+  // Auto-registered new account credentials state
+  const [newAccountCredentials, setNewAccountCredentials] = useState(null)
+
+  // Phone check in users table
+  const [phoneCheck, setPhoneCheck] = useState({
+    checking: false,
+    checked: false,
+    isRegistered: false,
+    message: ''
+  })
+  const [registeredPhoneNotice, setRegisteredPhoneNotice] = useState(null)
+  const [step2Error, setStep2Error] = useState('')
+  const [otpNotice, setOtpNotice] = useState('')
 
   // Confirmed appointment ticket result
   const [confirmedAppointmentData, setConfirmedAppointmentData] = useState(null)
@@ -89,7 +137,9 @@ export default function QuickAppointmentPage() {
   useEffect(() => {
     if (user?.mobile || user?.phone) {
       setMobileNumber(user.mobile || user.phone)
-      setIsOtpVerified(true)
+      if (user.name && !selfPatientName) {
+        setSelfPatientName(user.name)
+      }
     }
   }, [user])
 
@@ -104,29 +154,99 @@ export default function QuickAppointmentPage() {
       tomorrow.setDate(today.getDate() + 1)
       return tomorrow.toISOString().split('T')[0]
     }
-    if (dateMode === 'next_7_days') {
-      return today.toISOString().split('T')[0]
-    }
     if (dateMode === 'custom' && customDate) {
       return customDate
     }
     return today.toISOString().split('T')[0]
   }, [dateMode, customDate])
 
+  // Helper to format custom date string to Bengali (e.g. 2026-10-15 -> ১৫ অক্টোবর)
+  const formatCustomDateBn = (dateStr) => {
+    if (!dateStr) return 'তারিখ দিন'
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number)
+      return `${toBengaliNumber(d)} ${bnMonths[m - 1]}`
+    } catch {
+      return dateStr
+    }
+  }
+
+  // Helper to check if a chamber is open on a given date
+  const isChamberOpenOnDate = (chamber, dateObj) => {
+    if (!chamber) return false
+    const dayIdx = dateObj.getDay()
+    const dayEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayIdx]
+    const dayBn = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'][dayIdx]
+    const dayShortBn = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'][dayIdx]
+    const dayShortEn = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayIdx]
+
+    const rawDayStr = [
+      chamber.day,
+      chamber.day_bn,
+      Array.isArray(chamber.days) ? chamber.days.join(' ') : chamber.days
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    if (!rawDayStr) return true
+    if (
+      rawDayStr.includes('daily') ||
+      rawDayStr.includes('everyday') ||
+      rawDayStr.includes('every day') ||
+      rawDayStr.includes('প্রতিদিন') ||
+      rawDayStr.includes('সব দিন')
+    ) {
+      return true
+    }
+
+    return (
+      rawDayStr.includes(dayEn) ||
+      rawDayStr.includes(dayBn) ||
+      rawDayStr.includes(dayShortBn) ||
+      rawDayStr.includes(dayShortEn)
+    )
+  }
+
+  // All doctor chambers
+  const doctorChambers = useMemo(() => {
+    if (!selectedDoctor?.chambers) return []
+    return selectedDoctor.chambers
+  }, [selectedDoctor])
+
+  // Filter doctor chambers to ONLY show chambers open on selectedDateStr
+  const filteredChambers = useMemo(() => {
+    if (!doctorChambers || doctorChambers.length === 0) return []
+    if (!selectedDateStr) return doctorChambers
+
+    const [y, m, d] = selectedDateStr.split('-').map(Number)
+    const curDate = new Date(y, m - 1, d)
+    return doctorChambers.filter(ch => isChamberOpenOnDate(ch, curDate))
+  }, [doctorChambers, selectedDateStr])
+
+  // Auto-select chamber if doctor has only 1 matching open chamber on selected date
+  useEffect(() => {
+    if (selectedDoctor && filteredChambers.length > 0) {
+      if (filteredChambers.length === 1) {
+        setSelectedChamberId(String(filteredChambers[0].id))
+      } else {
+        if (!filteredChambers.some(c => String(c.id) === String(selectedChamberId))) {
+          setSelectedChamberId('')
+        }
+      }
+    } else {
+      setSelectedChamberId('')
+    }
+  }, [selectedDoctor, filteredChambers])
+
   // Compute Bengali labels for date chips
   const dateLabels = useMemo(() => {
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(today.getDate() + 1)
-    const nextWeek = new Date(today)
-    nextWeek.setDate(today.getDate() + 6)
 
     const formatBnDate = (d) => `${toBengaliNumber(d.getDate())} ${bnMonths[d.getMonth()]}`
 
     return {
       today: formatBnDate(today),
-      tomorrow: formatBnDate(tomorrow),
-      next_7_days: `${toBengaliNumber(today.getDate())} - ${formatBnDate(nextWeek)}`
+      tomorrow: formatBnDate(tomorrow)
     }
   }, [])
 
@@ -160,25 +280,6 @@ export default function QuickAppointmentPage() {
 
     return () => { isMounted = false }
   }, [selectedSpecialtyId, doctorSearch, dateMode, customDate])
-
-  // Show all doctor chambers day-wise
-  const doctorChambers = useMemo(() => {
-    if (!selectedDoctor?.chambers) return []
-    return selectedDoctor.chambers
-  }, [selectedDoctor])
-
-  // Auto-select chamber if doctor has only 1 matching chamber
-  useEffect(() => {
-    if (selectedDoctor && doctorChambers.length > 0) {
-      if (doctorChambers.length === 1) {
-        setSelectedChamberId(String(doctorChambers[0].id))
-      } else {
-        setSelectedChamberId('')
-      }
-    } else {
-      setSelectedChamberId('')
-    }
-  }, [selectedDoctor, doctorChambers])
 
   // Helper to format Chamber display label with Hospital Name (without address) and Day info
   const getChamberLabel = (ch) => {
@@ -238,7 +339,7 @@ export default function QuickAppointmentPage() {
     const endMin = parseTimeToMinutes(endTimeStr)
 
     const slots = []
-    const step = 15 // 15-minute slot intervals
+    const step = Math.max(5, Number(chamber?.slot_duration_minutes) || 15)
 
     for (let min = startMin; min < endMin; min += step) {
       const h = Math.floor(min / 60)
@@ -248,25 +349,38 @@ export default function QuickAppointmentPage() {
       const displayM = m < 10 ? `0${m}` : m
 
       const time12 = `${displayH}:${displayM} ${period}`
+      const time12Pad = `${displayH < 10 ? '0' + displayH : displayH}:${displayM} ${period}`
+      const time24 = `${h < 10 ? '0' + h : h}:${displayM}`
       const timeBnStr = formatTimeBn(time12)
 
-      // Check if slot is taken
-      const isBooked = bookedTimes.some(b => String(b).includes(time12) || String(b).includes(`${displayH}:${displayM}`))
+      // Check if slot is taken in any formatted representation
+      const isBooked = (bookedTimes || []).some(b => {
+        const s = String(b).trim().toLowerCase()
+        return (
+          s === time12.toLowerCase() ||
+          s === time12Pad.toLowerCase() ||
+          s === time24.toLowerCase() ||
+          s.startsWith(time24) ||
+          s.includes(time12.toLowerCase())
+        )
+      })
 
-      if (!isBooked) {
-        slots.push({
-          value: time12,
-          label: timeBnStr
-        })
-      }
+      slots.push({
+        value: time12,
+        label: timeBnStr,
+        isBooked: Boolean(isBooked)
+      })
     }
 
     // Fallback slot list if slots couldn't be computed from start/end times
     if (slots.length === 0) {
       for (let i = 1; i <= 15; i++) {
+        const fallbackVal = `Time-${i}`
+        const isBooked = (bookedTimes || []).some(b => String(b).includes(fallbackVal))
         slots.push({
-          value: `Time-${i}`,
-          label: `সময়সূচী ${toBengaliNumber(i)}`
+          value: fallbackVal,
+          label: `সময়সূচী ${toBengaliNumber(i)}`,
+          isBooked: Boolean(isBooked)
         })
       }
     }
@@ -290,21 +404,50 @@ export default function QuickAppointmentPage() {
         const booked = res.data?.booked_slots || res.data?.booked || []
         const generated = generateSlotsForChamber(currentChamber, booked)
         setAvailableSlots(generated)
-        if (generated.length > 0) {
-          setSelectedTimeSlot(generated[0].value)
+        const firstAvailable = generated.find(s => !s.isBooked)
+        if (firstAvailable) {
+          setSelectedTimeSlot(firstAvailable.value)
+        } else {
+          setSelectedTimeSlot('')
         }
       })
       .catch(() => {
         const generated = generateSlotsForChamber(currentChamber, [])
         setAvailableSlots(generated)
-        if (generated.length > 0) {
-          setSelectedTimeSlot(generated[0].value)
+        const firstAvailable = generated.find(s => !s.isBooked)
+        if (firstAvailable) {
+          setSelectedTimeSlot(firstAvailable.value)
+        } else {
+          setSelectedTimeSlot('')
         }
       })
       .finally(() => {
         setLoadingSlots(false)
       })
   }, [selectedDoctor, selectedDateStr, selectedChamberId, doctorChambers])
+
+  // Reset showAllSlots when doctor, date or chamber changes
+  useEffect(() => {
+    setShowAllSlots(false)
+  }, [selectedDoctor?.id, selectedDateStr, selectedChamberId])
+
+  // If the user's selected slot is beyond the first 6 slots, auto-expand so it remains visible
+  useEffect(() => {
+    if (selectedTimeSlot && availableSlots.length > 0) {
+      const idx = availableSlots.findIndex(s => (typeof s === 'object' ? s.value : s) === selectedTimeSlot)
+      if (idx >= 6) {
+        setShowAllSlots(true)
+      }
+    }
+  }, [selectedTimeSlot, availableSlots])
+
+  // Visible slots based on showAllSlots toggle (default: first 6 slots)
+  const visibleSlots = useMemo(() => {
+    if (showAllSlots || availableSlots.length <= 6) {
+      return availableSlots
+    }
+    return availableSlots.slice(0, 6)
+  }, [availableSlots, showAllSlots])
 
   // Click outside listener refs for dropdowns and auto-scroll refs for errors
   const specRef = useRef(null)
@@ -370,8 +513,12 @@ export default function QuickAppointmentPage() {
       errors.chamber = 'অনুগ্রহ করে ডাক্তারের একটি চেম্বার সিলেক্ট করুন।'
       hasErr = true
     }
+    const chosenSlotObj = availableSlots.find(s => (typeof s === 'object' ? s.value : s) === selectedTimeSlot)
     if (!selectedTimeSlot) {
       errors.slot = 'অনুগ্রহ করে সিরিয়াল বা সময় নির্বাচন করুন।'
+      hasErr = true
+    } else if (chosenSlotObj && chosenSlotObj.isBooked) {
+      errors.slot = 'নির্বাচিত সময়টি ইতিমধ্যে বুক করা হয়েছে। অনুগ্রহ করে অন্য সময় নির্বাচন করুন।'
       hasErr = true
     }
 
@@ -390,19 +537,30 @@ export default function QuickAppointmentPage() {
 
     setFormErrors({ doctor: '', chamber: '', slot: '' })
     setModalStep(1)
+    setOtp('')
+    setOtpNotice('')
+    setStep2Error('')
     setIsBookingModalOpen(true)
+  }
+
+  // Handle Close Booking Wizard
+  const handleCloseWizard = () => {
+    setIsBookingModalOpen(false)
+    setOtp('')
+    setOtpNotice('')
+    setStep2Error('')
+    setRegisteredPhoneNotice(null)
   }
 
   // Handle Step 1 Next
   const handleStep1Next = () => {
+    if (isLoggedIn && (user?.phone || user?.mobile) && !mobileNumber) {
+      setMobileNumber(user.phone || user.mobile)
+    }
     if (bookingFor === 'relative') {
       setModalStep(1.5)
     } else {
-      if (isLoggedIn && (user?.mobile || user?.phone)) {
-        setModalStep(4)
-      } else {
-        setModalStep(2)
-      }
+      setModalStep(2)
     }
   }
 
@@ -410,65 +568,209 @@ export default function QuickAppointmentPage() {
   const handleRelativeInfoSubmit = (e) => {
     if (e) e.preventDefault()
     if (!relativeForm.name.trim()) {
-      toast.error('রোগীর নাম লিখুন', { id: 'rel-err' })
+      toast.error('রোগীর পূর্ণ নাম লিখুন', { id: 'rel-err' })
       return
     }
-    if (!relativeForm.age.trim()) {
+    const cleanAge = relativeForm.age.trim()
+    if (!cleanAge) {
       toast.error('রোগীর বয়স লিখুন', { id: 'rel-err' })
       return
     }
-    if (isLoggedIn && (user?.mobile || user?.phone)) {
-      setModalStep(4)
-    } else {
-      setModalStep(2)
+    const parsedAge = parseInt(cleanAge, 10)
+    if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+      toast.error('সঠিক বয়স লিখুন (১ থেকে ১২০ এর মধ্যে)', { id: 'rel-err' })
+      return
     }
+    if (relativeForm.phone && relativeForm.phone.trim()) {
+      const cleanPhone = relativeForm.phone.replace(/\D/g, '')
+      if (!/^01[3-9]\d{8}$/.test(cleanPhone)) {
+        toast.error('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)', { id: 'rel-err' })
+        return
+      }
+    }
+    // For Booker's OTP step: If logged in, keep/restore booker's own phone. Do NOT overwrite with relative's phone.
+    if (isLoggedIn && (user?.phone || user?.mobile)) {
+      setMobileNumber(user.phone || user.mobile)
+    }
+    setModalStep(2)
   }
 
   // Handle Send OTP
   const handleSendOtpSubmit = async (e) => {
     if (e) e.preventDefault()
-    const cleanMobile = mobileNumber.replace(/\D/g, '')
-    if (!cleanMobile || cleanMobile.length < 10) {
-      toast.error('সঠিক ১১ সংখ্যার মোবাইল নম্বর লিখুন', { id: 'otp-err' })
+    if (isOtpSending) return
+    if (otpTimer > 0) {
+      toast.error(`অনুগ্রহ করে ${otpTimer} সেকেন্ড অপেক্ষা করুন`, { id: 'otp-wait' })
+      return
+    }
+
+    const cleanMobile = (mobileNumber || user?.phone || user?.mobile || '').replace(/\D/g, '')
+    if (mobileNumber !== cleanMobile) {
+      setMobileNumber(cleanMobile)
+    }
+
+    // 1. Strict Bangladeshi 11-digit mobile validation (013 - 019)
+    if (!cleanMobile || cleanMobile.length !== 11 || !/^01[3-9]\d{8}$/.test(cleanMobile)) {
+      toast.error('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX বা 019XXXXXXXX)', { id: 'otp-err' })
+      return
+    }
+
+    // 2. Full Name validation for unauthenticated myself booking
+    if (bookingFor === 'myself' && !isLoggedIn && !selfPatientName.trim()) {
+      toast.error('আপনার পূর্ণ নাম লিখুন', { id: 'name-err' })
       return
     }
 
     setIsOtpSending(true)
+    setStep2Error('')
+
+    // 3. Check if number is registered in users table ONLY for unauthenticated guest booking
     try {
-      await sendOtp({ mobile: cleanMobile, phone: cleanMobile })
+      if (!isLoggedIn) {
+        let isRegistered = false
+        try {
+          const checkRes = await patientCheckIdentifier({ identifier: cleanMobile })
+          isRegistered = Boolean(checkRes.data?.is_registered || checkRes.data?.success)
+        } catch {
+          isRegistered = false
+        }
+
+        // If registered: Strictly BLOCK OTP sending for unauthenticated guest and alert smartly
+        if (isRegistered) {
+          setRegisteredPhoneNotice({
+            phone: cleanMobile,
+            message: 'এই মোবাইল নম্বরটি ইতিমধ্যে আমাদের সিস্টেমে নিবন্ধিত আছে।'
+          })
+          setIsOtpSending(false)
+          return
+        }
+      }
+
+      // If NOT registered or already logged-in: proceed with OTP sending
+      setRegisteredPhoneNotice(null)
+      setOtpNotice('')
+      const res = await sendOtp({ mobile: cleanMobile, phone: cleanMobile, type: 'appointment' })
+      const cooldown = res.data?.cooldown_seconds || 60
+      setOtpTimer(cooldown)
+      setOtp('')
       toast.success('আপনার মোবাইলে ওটিপি কোড পাঠানো হয়েছে', { id: 'otp-ok' })
-    } catch {
-      toast.success('পরীক্ষামূলক ওটিপি কোড পাঠানো হয়েছে (১২৩৪৫৬)', { id: 'otp-demo' })
+      setModalStep(3)
+    } catch (err) {
+      if (err.response?.status === 429) {
+        const cooldown = err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds || 60
+        setOtpTimer(cooldown)
+        const friendlyMsg = err.response?.data?.message || 'অতিরিক্ত ওটিপি অনুরোধের কারণে সাময়িক অপেক্ষা করতে হবে।'
+        setStep2Error(friendlyMsg)
+        toast.error(friendlyMsg, { id: 'otp-limit' })
+        // Stays on Step 2 with live cooldown timer on the button
+      } else {
+        const friendlyMsg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+        setStep2Error(friendlyMsg)
+        toast.error(friendlyMsg, { id: 'otp-err-send' })
+      }
     } finally {
       setIsOtpSending(false)
-      setOtpTimer(180)
-      setModalStep(3)
+    }
+  }
+
+  // Handle Resend OTP in Step 3
+  const handleResendOtp = async () => {
+    if (otpTimer > 0 || isOtpSending) return
+    const cleanMobile = (mobileNumber || user?.phone || user?.mobile || '').replace(/\D/g, '')
+    if (!cleanMobile || cleanMobile.length !== 11) {
+      toast.error('মোবাইল নম্বর পাওয়া যায়নি', { id: 'resend-no-num' })
+      return
+    }
+    setIsOtpSending(true)
+    setOtpNotice('')
+    try {
+      const res = await sendOtp({ mobile: cleanMobile, phone: cleanMobile, type: 'appointment' })
+      const cooldown = res.data?.cooldown_seconds || 60
+      setOtpTimer(cooldown)
+      setOtp('')
+      toast.success('নতুন ওটিপি কোড পাঠানো হয়েছে', { id: 'resend-ok' })
+    } catch (err) {
+      const cooldown = err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds || 60
+      if (err.response?.status === 429) {
+        setOtpTimer(cooldown)
+        const friendlyMsg = err.response?.data?.message || 'অতিরিক্ত ওটিপি অনুরোধের কারণে সাময়িক অপেক্ষা করতে হবে।'
+        setOtpNotice(friendlyMsg)
+      } else {
+        const friendlyMsg = err.response?.data?.message || 'ওটিপি পুনরায় পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+        setOtpNotice(friendlyMsg)
+      }
+    } finally {
+      setIsOtpSending(false)
     }
   }
 
   // Handle Verify OTP
   const handleVerifyOtpSubmit = async (e) => {
     if (e) e.preventDefault()
-    if (!otp.trim() || otp.trim().length < 4) {
-      toast.error('সঠিক ওটিপি কোডটি লিখুন', { id: 'otp-v-err' })
+    if (isOtpVerifying) return
+
+    const trimmedOtp = (otp || '').trim()
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
+      setOtpNotice('সঠিক ৬ সংখ্যার ওটিপি কোডটি লিখুন')
+      return
+    }
+
+    const cleanMobile = (mobileNumber || user?.phone || user?.mobile || '').replace(/\D/g, '')
+    if (!cleanMobile || cleanMobile.length !== 11) {
+      setOtpNotice('মোবাইল নম্বর পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।')
       return
     }
 
     setIsOtpVerifying(true)
+    setOtpNotice('')
+    const targetPatientName = bookingFor === 'relative' 
+      ? relativeForm.name 
+      : (selfPatientName.trim() || user?.name || 'রোগী')
+
     try {
-      await verifyOtp({ mobile: mobileNumber, otp: otp.trim() })
+      const res = await verifyOtp({
+        mobile: cleanMobile,
+        otp: trimmedOtp,
+        auto_register: true,
+        type: 'quick_appointment',
+        patient_name: bookingFor === 'relative' ? (user?.name || 'বুকিংকারী') : targetPatientName
+      })
+
+      const resData = res.data || {}
+
+      // 1. Immediately advance to Step 4 and clear error notices
       setIsOtpVerified(true)
-      toast.success('ওটিপি সফলভাবে যাচাই করা হয়েছে', { id: 'otp-v-ok' })
+      setOtpNotice('')
       setModalStep(4)
-    } catch {
-      // Allow demo verify if test code 123456 or 4+ digits
-      if (otp.trim() === '123456' || otp.trim().length >= 4) {
-        setIsOtpVerified(true)
-        toast.success('ওটিপি যাচাই সফল হয়েছে', { id: 'otp-v-ok' })
-        setModalStep(4)
-      } else {
-        toast.error('ভুল ওটিপি কোড। পুনরায় চেষ্টা করুন।')
+
+      // 2. Safely perform session storage in try-catch so it NEVER blocks transition to Step 4
+      try {
+        if (!isLoggedIn) {
+          if (resData.token && typeof storeAuth === 'function') {
+            storeAuth(resData.token, resData.user || { mobile: cleanMobile, name: targetPatientName }, 'patient')
+          }
+
+          if (resData.is_new_account && resData.credentials) {
+            setNewAccountCredentials(resData.credentials)
+          } else {
+            setNewAccountCredentials(null)
+          }
+        } else {
+          setNewAccountCredentials(null)
+        }
+      } catch (authErr) {
+        console.warn('Session store warning:', authErr)
       }
+
+      // 3. Optional non-blocking toast
+      try {
+        toast.success('ওটিপি সফলভাবে যাচাই করা হয়েছে', { id: 'otp-v-ok' })
+      } catch {}
+    } catch (err) {
+      console.error('Verify OTP failed:', err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error
+      const errorMsg = rawMsg || (err.message && !err.message.includes('status code') ? err.message : 'ভুল ওটিপি কোড। অনুগ্রহ করে সঠিক কোডটি দিন।')
+      setOtpNotice(errorMsg)
     } finally {
       setIsOtpVerifying(false)
     }
@@ -480,52 +782,340 @@ export default function QuickAppointmentPage() {
     const currentChamber = (doctorChambers || []).find(c => String(c.id) === String(selectedChamberId))
     const rawTimeSlot = typeof selectedTimeSlot === 'object' ? selectedTimeSlot.value : selectedTimeSlot
 
+    const cleanRelPhone = relativeForm.phone ? relativeForm.phone.replace(/\D/g, '') : ''
+    const patientDisplayName = bookingFor === 'relative' 
+      ? relativeForm.name 
+      : (selfPatientName.trim() || user?.name || 'রোগী')
+
     const payload = {
       doctor_id: selectedDoctor.id,
       chamber_id: selectedChamberId,
       appointment_date: selectedDateStr,
       appointment_time: rawTimeSlot || '17:00:00',
       booking_for: bookingFor,
-      patient_name: bookingFor === 'relative' ? relativeForm.name : (user?.name || 'রোগী'),
+      patient_name: patientDisplayName,
       patient_age: bookingFor === 'relative' ? relativeForm.age : '',
       patient_relation: bookingFor === 'relative' ? relativeForm.relation : '',
+      patient_gender: bookingFor === 'relative' ? relativeForm.gender : '',
+      patient_phone: bookingFor === 'relative' 
+        ? (cleanRelPhone || (mobileNumber ? mobileNumber.replace(/\D/g, '') : ''))
+        : (mobileNumber ? mobileNumber.replace(/\D/g, '') : ''),
       payment_status: 'Unpaid',
-      notes: bookingFor === 'relative' ? `আত্মীয়স্বজনের জন্য বুকিং (${relativeForm.relation})` : 'সরাসরি দ্রুত বুকিং'
+      notes: bookingFor === 'relative' 
+        ? `আত্মীয়স্বজনের জন্য বুকিং (${relativeForm.relation || 'আত্মীয়'})${relativeForm.gender ? `, লিঙ্গ: ${relativeForm.gender}` : ''}${cleanRelPhone ? `, রোগীর ফোন: ${cleanRelPhone}` : ''}`
+        : 'সরাসরি দ্রুত বুকিং'
     }
 
     try {
       const res = await createAppointment(payload)
       const appt = res.data?.data || res.data || {}
       setConfirmedAppointmentData({
-        id: appt.public_id || appt.tracking_id || appt.id || `AP-${Math.floor(100000 + Math.random() * 900000)}`,
+        id: appt.public_id || appt.tracking_id || appt.id || 'AP-CONFIRMED',
         doctor_name: selectedDoctor.name || selectedDoctor.name_bn,
         specialty: selectedDoctor.specialty?.name || selectedDoctor.specialty?.name_bn || selectedDoctor.specialty_name || 'বিশেষজ্ঞ',
         hospital_name: getChamberLabel(currentChamber),
         appointment_date: selectedDateStr,
         appointment_time: rawTimeSlot,
-        patient_name: payload.patient_name,
+        patient_name: patientDisplayName,
+        patient_phone: bookingFor === 'relative' ? (cleanRelPhone || (mobileNumber ? mobileNumber.replace(/\D/g, '') : '')) : (mobileNumber ? mobileNumber.replace(/\D/g, '') : ''),
         booking_for: bookingFor,
-        payment_status: 'Unpaid (চেম্বারে দেয়ে)'
+        relation: bookingFor === 'relative' ? relativeForm.relation : '',
+        booker_phone: mobileNumber ? mobileNumber.replace(/\D/g, '') : '',
+        payment_status: 'Unpaid (চেম্বারে দিবেন)'
       })
       setModalStep(5)
       toast.success('অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!', { id: 'book-ok' })
-    } catch {
-      // Fallback demo ticket if API error or dev environment
-      setConfirmedAppointmentData({
-        id: `AP-${Math.floor(100000 + Math.random() * 900000)}`,
-        doctor_name: selectedDoctor.name || selectedDoctor.name_bn,
-        specialty: selectedDoctor.specialty?.name || selectedDoctor.specialty?.name_bn || selectedDoctor.specialty_name || 'বিশেষজ্ঞ',
-        hospital_name: getChamberLabel(currentChamber),
-        appointment_date: selectedDateStr,
-        appointment_time: rawTimeSlot,
-        patient_name: payload.patient_name,
-        booking_for: bookingFor,
-        payment_status: 'Unpaid (চেম্বারে দেয়ে)'
+    } catch (err) {
+      console.error('Appointment booking failed:', err)
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'অ্যাপয়েন্টমেন্ট বুকিং সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+      setIsBookingModalOpen(false)
+      setBookingErrorModal({
+        isOpen: true,
+        title: 'বুকিং সম্পন্ন করা সম্ভব হয়নি',
+        message: errorMsg
       })
-      setModalStep(5)
-      toast.success('অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!', { id: 'book-ok' })
     } finally {
       setIsSubmittingAppointment(false)
+    }
+  }
+
+  // Handle printing single clean one-page appointment slip
+  const handlePrintSlip = () => {
+    if (!confirmedAppointmentData) return
+
+    const trackingId = confirmedAppointmentData.id || ''
+    const doctorName = confirmedAppointmentData.doctor_name || ''
+    const specialty = confirmedAppointmentData.specialty || ''
+    const hospitalName = confirmedAppointmentData.hospital_name || ''
+    const appointmentDate = confirmedAppointmentData.appointment_date || ''
+    const appointmentTime = confirmedAppointmentData.appointment_time || ''
+    const patientName = confirmedAppointmentData.patient_name || ''
+    const patientPhone = confirmedAppointmentData.patient_phone || ''
+    const patientRelation = confirmedAppointmentData.relation || ''
+    const paymentStatus = confirmedAppointmentData.payment_status || 'Unpaid (চেম্বারে দিবেন)'
+    const cleanMobile = confirmedAppointmentData.booker_phone || mobileNumber || ''
+    const isRelative = confirmedAppointmentData.booking_for === 'relative'
+
+    const credentialsHtml = newAccountCredentials ? `
+      <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+        <div style="font-size: 13px; font-weight: 700; color: #065F46; margin-bottom: 8px;">
+          ✓ রোগী অ্যাকাউন্ট তৈরি সম্পন্ন হয়েছে (ভবিষ্যতে লগইনের জন্য সংরক্ষণ করুন):
+        </div>
+        <div style="display: flex; gap: 20px; font-size: 13px; color: #0F172A; flex-wrap: wrap;">
+          <div><span style="color: #64748B;">পাবলিক আইডি:</span> <strong>${newAccountCredentials.patient_public_id || 'N/A'}</strong></div>
+          <div><span style="color: #64748B;">লগইন মোবাইল:</span> <strong>${newAccountCredentials.login_phone || cleanMobile}</strong></div>
+          <div><span style="color: #64748B;">পাসওয়ার্ড:</span> <strong style="color: #059669; letter-spacing: 1px;">${newAccountCredentials.temp_password || 'N/A'}</strong></div>
+        </div>
+      </div>
+    ` : ''
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html lang="bn">
+      <head>
+        <meta charset="UTF-8">
+        <title>DoctorBooklet Appointment Slip - ${trackingId}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm 20mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            margin: 0;
+            padding: 10px;
+            background: #ffffff;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+          .ticket-card {
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+            border: 2px solid #00B875;
+            border-radius: 16px;
+            padding: 24px 28px;
+            background: #ffffff;
+            page-break-inside: avoid;
+          }
+          .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #E2E8F0;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+          }
+          .brand-logo {
+            font-size: 22px;
+            font-weight: 800;
+            color: #00B875;
+            letter-spacing: -0.5px;
+          }
+          .brand-sub {
+            font-size: 12px;
+            color: #64748B;
+            font-weight: 500;
+          }
+          .tracking-badge {
+            text-align: right;
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            padding: 6px 14px;
+            border-radius: 10px;
+          }
+          .tracking-label {
+            font-size: 11px;
+            color: #166534;
+            font-weight: 600;
+          }
+          .tracking-id {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0F172A;
+            font-family: monospace, sans-serif;
+            letter-spacing: 1px;
+          }
+          .title-banner {
+            background: #F8FAFC;
+            border-radius: 10px;
+            padding: 9px 14px;
+            margin-bottom: 16px;
+            text-align: center;
+          }
+          .title-banner h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: #0F172A;
+          }
+          .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+          }
+          .info-table td {
+            padding: 9px 12px;
+            font-size: 14px;
+            border-bottom: 1px solid #F1F5F9;
+            vertical-align: top;
+          }
+          .info-table td.label {
+            width: 32%;
+            font-weight: 700;
+            color: #475569;
+          }
+          .info-table td.value {
+            width: 68%;
+            font-weight: 600;
+            color: #0F172A;
+          }
+          .highlight-doc {
+            font-size: 16.5px;
+            font-weight: 800;
+            color: #0F172A;
+          }
+          .highlight-spec {
+            font-size: 13px;
+            color: #00B875;
+            font-weight: 700;
+            margin-top: 2px;
+          }
+          .payment-badge {
+            display: inline-block;
+            background: #FEF3C7;
+            color: #B45309;
+            border: 1px solid #FDE68A;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+          }
+          .instructions-box {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 16px;
+          }
+          .instructions-box strong {
+            color: #1E293B;
+          }
+          .ticket-footer {
+            text-align: center;
+            font-size: 11px;
+            color: #94A3B8;
+            border-top: 1px solid #E2E8F0;
+            padding-top: 10px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <div class="brand-logo">🩺 DoctorBooklet</div>
+              <div class="brand-sub">স্মার্ট অনলাইন ডাক্তার সিরিয়াল ও বুকিং প্ল্যাটফর্ম</div>
+            </div>
+            <div class="tracking-badge">
+              <div class="tracking-label">অ্যাপয়েন্টমেন্ট ট্র্যাকিং আইডি</div>
+              <div class="tracking-id">${trackingId}</div>
+            </div>
+          </div>
+
+          <div class="title-banner">
+            <h2>অ্যাপয়েন্টমেন্ট কনফার্মেশন ও রোগী প্রবেশপত্র (Confirmation Slip)</h2>
+          </div>
+
+          ${credentialsHtml}
+
+          <table class="info-table">
+            <tr>
+              <td class="label">ডাক্তারের নাম:</td>
+              <td class="value">
+                <span class="highlight-doc">${doctorName}</span>
+                <div class="highlight-spec">${specialty}</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="label">হাসপাতাল / চেম্বার:</td>
+              <td class="value"><strong>${hospitalName}</strong></td>
+            </tr>
+            <tr>
+              <td class="label">সাক্ষাতের তারিখ ও সময়:</td>
+              <td class="value"><strong>${appointmentDate}</strong> (${appointmentTime})</td>
+            </tr>
+            <tr>
+              <td class="label">রোগীর নাম:</td>
+              <td class="value"><strong>${patientName}</strong> ${patientRelation ? '(' + patientRelation + ')' : ''}</td>
+            </tr>
+            ${patientPhone ? `
+            <tr>
+              <td class="label">রোগীর ফোন নম্বর:</td>
+              <td class="value"><strong>+880 ${patientPhone.replace(/^\+?880?|^0/, '')}</strong></td>
+            </tr>
+            ` : ''}
+            ${isRelative && cleanMobile ? `
+            <tr>
+              <td class="label">বুকিংকারীর মোবাইল:</td>
+              <td class="value"><strong>+880 ${cleanMobile.replace(/^\+?880?|^0/, '')}</strong></td>
+            </tr>
+            ` : (!patientPhone && cleanMobile ? `
+            <tr>
+              <td class="label">মোবাইল নম্বর:</td>
+              <td class="value"><strong>+880 ${cleanMobile.replace(/^\+?880?|^0/, '')}</strong></td>
+            </tr>
+            ` : '')}
+            <tr>
+              <td class="label">পেমেন্ট স্ট্যাটাস:</td>
+              <td class="value">
+                <span class="payment-badge">${paymentStatus}</span>
+              </td>
+            </tr>
+          </table>
+
+          <div class="instructions-box">
+            <strong>জরুরি নির্দেশনা:</strong>
+            <br>• নির্ধারিত সময়ের অন্তত ১৫-২০ মিনিট পূর্বে চেম্বারে উপস্থিত থাকবেন।
+            <br>• চেম্বার রিসেপশনে এই ট্র্যাকিং স্লিপটি বা ট্র্যাকিং নম্বরটি প্রদর্শন করবেন।
+            <br>• পূর্বের কোনো চিকিৎসা রিপোর্ট বা প্রেসক্রিপশন থাকলে সাথে নিয়ে আসবেন।
+          </div>
+
+          <div class="ticket-footer">
+            কম্পিউটার দ্বারা তৈরি প্রমাণপত্র • DoctorBooklet ডিজিটাল হেলথকেয়ার নেটওয়ার্ক
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 250);
+          };
+        </script>
+      </body>
+      </html>
+    `
+
+    const printWin = window.open('', '_blank', 'width=780,height=900,menubar=no,toolbar=no,location=no,status=no')
+    if (printWin) {
+      printWin.document.open()
+      printWin.document.write(printHtml)
+      printWin.document.close()
+    } else {
+      window.print()
     }
   }
 
@@ -598,128 +1188,144 @@ export default function QuickAppointmentPage() {
               </div>
 
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                overflowX: 'auto',
-                paddingBottom: 6,
-                WebkitOverflowScrolling: 'touch',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none'
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10
               }}>
-                {/* Today Pill */}
+                {/* 1. Today Card */}
                 <button
                   type="button"
-                  onClick={() => setDateMode('today')}
+                  onClick={() => {
+                    setDateMode('today')
+                    const todayStr = new Date().toISOString().split('T')[0]
+                    setSelectedAppointmentDate(todayStr)
+                  }}
                   style={{
-                    background: dateMode === 'today' ? '#00B875' : 'white',
+                    background: dateMode === 'today' ? '#00B875' : '#FFFFFF',
                     border: dateMode === 'today' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 30,
-                    padding: '8px 18px',
+                    borderRadius: 14,
+                    padding: '10px 4px',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
                     boxShadow: dateMode === 'today' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.18s ease',
+                    outline: 'none',
+                    minHeight: 62
                   }}
                 >
-                  {dateMode === 'today' ? (
-                    <IconCheck size={16} color="white" stroke={3} />
-                  ) : (
-                    <IconCalendarEvent size={18} color="#64748B" />
-                  )}
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'today' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  <span style={{
+                    fontSize: 15,
+                    fontWeight: dateMode === 'today' ? 800 : 700,
+                    color: dateMode === 'today' ? '#FFFFFF' : '#0F172A',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2
+                  }}>
                     আজ
                   </span>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: dateMode === 'today' ? 700 : 500,
+                    color: dateMode === 'today' ? '#E6F9F0' : '#64748B',
+                    marginTop: 3,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2
+                  }}>
+                    {dateLabels.today}
+                  </span>
                 </button>
 
-                {/* Tomorrow Pill */}
+                {/* 2. Tomorrow Card */}
                 <button
                   type="button"
-                  onClick={() => setDateMode('tomorrow')}
+                  onClick={() => {
+                    setDateMode('tomorrow')
+                    const tomorrow = new Date()
+                    tomorrow.setDate(tomorrow.getDate() + 1)
+                    setSelectedAppointmentDate(tomorrow.toISOString().split('T')[0])
+                  }}
                   style={{
-                    background: dateMode === 'tomorrow' ? '#00B875' : 'white',
+                    background: dateMode === 'tomorrow' ? '#00B875' : '#FFFFFF',
                     border: dateMode === 'tomorrow' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 30,
-                    padding: '8px 18px',
+                    borderRadius: 14,
+                    padding: '10px 4px',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
                     boxShadow: dateMode === 'tomorrow' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.18s ease',
+                    outline: 'none',
+                    minHeight: 62
                   }}
                 >
-                  {dateMode === 'tomorrow' ? (
-                    <IconCheck size={16} color="white" stroke={3} />
-                  ) : (
-                    <IconCalendarEvent size={18} color="#64748B" />
-                  )}
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'tomorrow' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  <span style={{
+                    fontSize: 15,
+                    fontWeight: dateMode === 'tomorrow' ? 800 : 700,
+                    color: dateMode === 'tomorrow' ? '#FFFFFF' : '#0F172A',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2
+                  }}>
                     আগামীকাল
                   </span>
-                </button>
-
-                {/* Next 7 Days Pill */}
-                <button
-                  type="button"
-                  onClick={() => setDateMode('next_7_days')}
-                  style={{
-                    background: dateMode === 'next_7_days' ? '#00B875' : 'white',
-                    border: dateMode === 'next_7_days' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 30,
-                    padding: '8px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    boxShadow: dateMode === 'next_7_days' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {dateMode === 'next_7_days' ? (
-                    <IconCheck size={16} color="white" stroke={3} />
-                  ) : (
-                    <IconCalendarEvent size={18} color="#64748B" />
-                  )}
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'next_7_days' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    পরবর্তী ৭ দিন
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: dateMode === 'tomorrow' ? 700 : 500,
+                    color: dateMode === 'tomorrow' ? '#E6F9F0' : '#64748B',
+                    marginTop: 3,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2
+                  }}>
+                    {dateLabels.tomorrow}
                   </span>
                 </button>
 
-                {/* Custom Date Picker Trigger Pill */}
+                {/* 3. Custom Date Picker Card */}
                 <button
                   type="button"
                   onClick={() => setIsDatePickerOpen(true)}
                   style={{
-                    background: dateMode === 'custom' ? '#00B875' : 'white',
+                    background: dateMode === 'custom' ? '#00B875' : '#FFFFFF',
                     border: dateMode === 'custom' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 30,
-                    padding: '8px 18px',
+                    borderRadius: 14,
+                    padding: '10px 4px',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
                     boxShadow: dateMode === 'custom' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.18s ease',
+                    outline: 'none',
+                    minHeight: 62
                   }}
                 >
-                  {dateMode === 'custom' ? (
-                    <IconCheck size={16} color="white" stroke={3} />
-                  ) : (
-                    <IconCalendarEvent size={18} color="#00B875" />
-                  )}
-                  <span style={{ fontSize: 14, fontWeight: 700, color: dateMode === 'custom' ? 'white' : '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {dateMode === 'custom' && customDate ? customDate : 'তারিখ দিন'}
+                  <span style={{
+                    fontSize: 15,
+                    fontWeight: dateMode === 'custom' ? 800 : 700,
+                    color: dateMode === 'custom' ? '#FFFFFF' : '#0F172A',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2
+                  }}>
+                    অন্য তারিখ
+                  </span>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: dateMode === 'custom' ? 700 : 500,
+                    color: dateMode === 'custom' ? '#E6F9F0' : '#64748B',
+                    marginTop: 3,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '100%',
+                    padding: '0 4px'
+                  }}>
+                    {dateMode === 'custom' && customDate ? formatCustomDateBn(customDate) : 'পছন্দ করুন'}
                   </span>
                 </button>
               </div>
@@ -1043,13 +1649,26 @@ export default function QuickAppointmentPage() {
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}
               >
-                <option value="" disabled hidden style={{ color: '#94A3B8' }}>ডাক্তারের চেম্বার সিলেক্ট করুন...</option>
-                {doctorChambers.map(ch => (
+                <option value="" disabled hidden style={{ color: '#94A3B8' }}>
+                  {!selectedDoctor
+                    ? 'ডাক্তারের চেম্বার সিলেক্ট করুন...'
+                    : filteredChambers.length === 0
+                      ? 'এই তারিখে ডাক্তারের কোনো চেম্বার খোলা নেই'
+                      : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
+                </option>
+                {filteredChambers.map(ch => (
                   <option key={ch.id} value={ch.id} style={{ color: '#0F172A', fontWeight: 600 }}>
                     {getChamberLabel(ch)}
                   </option>
                 ))}
               </select>
+
+              {selectedDoctor && filteredChambers.length === 0 && (
+                <div style={{ color: '#E11D48', fontSize: 13, fontWeight: 600, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif", background: '#FFF1F2', padding: '10px 14px', borderRadius: 10, border: '1px solid #FFE4E6' }}>
+                  <IconAlertTriangle size={18} color="#E11D48" style={{ flexShrink: 0 }} />
+                  <span>নির্বাচিত তারিখে এই ডাক্তারের কোনো চেম্বার খোলা নেই। অনুগ্রহ করে উপরে অন্য দিন (আজ/আগামীকাল/অন্য তারিখ) নির্বাচন করুন।</span>
+                </div>
+              )}
 
               {formErrors.chamber && (
                 <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 500, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
@@ -1059,46 +1678,243 @@ export default function QuickAppointmentPage() {
               )}
             </div>
 
-            {/* ── STEP 5: SERIAL / TIME SLOT SELECTION ── */}
+            {/* ── STEP 5: SERIAL / TIME SLOT SELECTION (GRID) ── */}
             <div style={{ marginBottom: 28 }} ref={slotRef}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <IconClock size={20} color="#00B875" />
-                <span style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  সিরিয়াল নির্বাচন করুন
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                  <IconClock size={19} color="#00B875" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>
+                    সিরিয়াল / সময়
+                  </span>
+                </div>
+                {selectedChamberId && !loadingSlots && availableSlots.length > 0 && (() => {
+                  const freeCount = availableSlots.filter(s => !s.isBooked).length
+                  const bookedCount = availableSlots.filter(s => s.isBooked).length
+                  return (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      background: freeCount > 0 ? '#E8F8F2' : '#FEF2F2',
+                      border: freeCount > 0 ? '1px solid #A7F3D0' : '1px solid #FECACA',
+                      padding: '3px 9px',
+                      borderRadius: 20,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}>
+                      <span style={{ color: freeCount > 0 ? '#00B875' : '#EF4444' }}>
+                        {toBengaliNumber(freeCount)} টি খালি
+                      </span>
+                      {bookedCount > 0 && (
+                        <>
+                          <span style={{ color: '#94A3B8', fontSize: 10 }}>•</span>
+                          <span style={{ color: '#64748B', fontWeight: 600 }}>
+                            {toBengaliNumber(bookedCount)} টি বুকড
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
-              <select
-                value={selectedTimeSlot}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                disabled={!selectedChamberId || loadingSlots}
-                style={{
-                  width: '100%',
-                  height: 46,
+              <style dangerouslySetInnerHTML={{ __html: `
+                .quick-slots-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 8px;
+                }
+                @media (min-width: 640px) {
+                  .quick-slots-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+                    gap: 10px;
+                  }
+                }
+              `}} />
+
+              {!selectedChamberId ? (
+                <div style={{
+                  padding: '22px 16px',
                   borderRadius: 12,
-                  border: formErrors.slot ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
-                  padding: '0 14px',
-                  fontSize: 14,
-                  fontWeight: selectedTimeSlot ? 700 : 500,
-                  color: selectedTimeSlot ? '#0F172A' : '#94A3B8',
-                  background: (!selectedChamberId || loadingSlots) ? '#F8FAFC' : 'white',
-                  outline: 'none',
-                  cursor: (!selectedChamberId || loadingSlots) ? 'not-allowed' : 'pointer',
+                  background: '#F8FAFC',
+                  border: '1.5px dashed #CBD5E1',
+                  textAlign: 'center',
+                  color: '#64748B',
+                  fontSize: 13.5,
+                  fontWeight: 600,
                   fontFamily: "'Hind Siliguri', sans-serif"
-                }}
-              >
-                <option value="" disabled hidden style={{ color: '#94A3B8' }}>
-                  {loadingSlots ? 'সময়সূচী লোড হচ্ছে...' : 'সিরিয়াল/সময় নির্বাচন করুন...'}
-                </option>
-                {availableSlots.map((slot, idx) => (
-                  <option key={idx} value={typeof slot === 'object' ? slot.value : slot} style={{ color: '#0F172A', fontWeight: 600 }}>
-                    {typeof slot === 'object' ? slot.label : slot}
-                  </option>
-                ))}
-              </select>
+                }}>
+                  অনুগ্রহ করে প্রথমে ডাক্তারের চেম্বার সিলেক্ট করুন
+                </div>
+              ) : loadingSlots ? (
+                <div style={{
+                  padding: '28px 16px',
+                  borderRadius: 12,
+                  background: '#F8FAFC',
+                  border: '1.5px solid #E2E8F0',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  color: '#00B875',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  <IconLoader2 size={20} className="animate-spin" />
+                  <span>সময়সূচী লোড হচ্ছে...</span>
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <div style={{
+                  padding: '22px 16px',
+                  borderRadius: 12,
+                  background: '#FEF2F2',
+                  border: '1.5px solid #FECACA',
+                  textAlign: 'center',
+                  color: '#DC2626',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  এই তারিখে চেম্বারের কোনো সিরিয়াল বা সময়সূচী পাওয়া যায়নি। অনুগ্রহ করে অন্য দিন নির্বাচন করুন।
+                </div>
+              ) : (
+                <>
+                  <div className="quick-slots-grid">
+                    {visibleSlots.map((slot, idx) => {
+                      const slotVal = typeof slot === 'object' ? slot.value : slot
+                      const isBooked = Boolean(typeof slot === 'object' && slot.isBooked)
+                      const isSelected = selectedTimeSlot === slotVal && !isBooked
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={isBooked}
+                          onClick={() => {
+                            if (!isBooked) {
+                              setSelectedTimeSlot(slotVal)
+                            }
+                          }}
+                          title={isBooked ? 'এই সময় স্লটটি ইতিমধ্যে বুক করা হয়েছে' : `সময়সূচী: ${slotVal}`}
+                          style={{
+                            padding: '8px 4px',
+                            borderRadius: 10,
+                            border: isSelected 
+                              ? '2px solid #00B875' 
+                              : isBooked 
+                                ? '1.5px dashed #CBD5E1' 
+                                : '1.5px solid #E2E8F0',
+                            background: isSelected 
+                              ? '#00B875' 
+                              : isBooked 
+                                ? '#F8FAFC' 
+                                : '#FFFFFF',
+                            color: isSelected 
+                              ? '#FFFFFF' 
+                              : isBooked 
+                                ? '#94A3B8' 
+                                : '#0F172A',
+                            cursor: isBooked ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: isSelected 
+                              ? '0 4px 14px rgba(0, 184, 117, 0.3)' 
+                              : '0 1px 3px rgba(0,0,0,0.02)',
+                            transition: 'all 0.15s ease',
+                            outline: 'none',
+                            opacity: isBooked ? 0.75 : 1,
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          <span style={{
+                            fontSize: 12.5,
+                            fontWeight: 800,
+                            letterSpacing: '0.1px',
+                            textDecoration: isBooked ? 'line-through' : 'none',
+                            color: isSelected ? '#FFFFFF' : isBooked ? '#94A3B8' : '#0F172A',
+                            lineHeight: 1.2
+                          }}>
+                            {slotVal}
+                          </span>
+                          {isBooked ? (
+                            <span style={{
+                              fontSize: 9.5,
+                              fontWeight: 700,
+                              color: '#DC2626',
+                              background: '#FEE2E2',
+                              padding: '1px 5px',
+                              borderRadius: 4,
+                              marginTop: 3,
+                              lineHeight: 1.2
+                            }}>
+                              বুক করা
+                            </span>
+                          ) : (
+                            typeof slot === 'object' && slot.label && !slotVal.startsWith('Time-') && (
+                              <span style={{
+                                fontSize: 10,
+                                fontWeight: isSelected ? 600 : 500,
+                                color: isSelected ? '#E6F9F0' : '#64748B',
+                                marginTop: 2,
+                                lineHeight: 1.2
+                              }}>
+                                {slot.label}
+                              </span>
+                            )
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {availableSlots.length > 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllSlots(prev => !prev)}
+                      style={{
+                        width: '100%',
+                        marginTop: 10,
+                        padding: '8px 12px',
+                        borderRadius: 10,
+                        border: '1.5px dashed #CBD5E1',
+                        background: '#F8FAFC',
+                        color: '#00B875',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        cursor: 'pointer',
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      {showAllSlots ? (
+                        <>
+                          <IconChevronUp size={16} stroke={2.5} />
+                          <span>সংক্ষেপ করুন</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconChevronDown size={16} stroke={2.5} />
+                          <span>আরও {toBengaliNumber(availableSlots.length - 6)}টি সময় দেখুন</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
+              )}
 
               {formErrors.slot && (
-                <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 500, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 500, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
                   <IconAlertTriangle size={16} />
                   <span>{formErrors.slot}</span>
                 </div>
@@ -1151,6 +1967,7 @@ export default function QuickAppointmentPage() {
             onChange={(e) => {
               setCustomDate(e.target.value)
               setDateMode('custom')
+              setSelectedAppointmentDate(e.target.value)
               setIsDatePickerOpen(false)
             }}
             style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 15 }}
@@ -1218,14 +2035,14 @@ export default function QuickAppointmentPage() {
 
       {/* ── 5-STEP APPOINTMENT BOOKING WIZARD MODAL ── */}
       <Modal
-        show={isBookingModalOpen}
-        onHide={() => setIsBookingModalOpen(false)}
+        show={isBookingModalOpen && !bookingErrorModal.isOpen}
+        onHide={handleCloseWizard}
         centered
         size="md"
-        contentClassName="border-0 shadow-lg"
+        contentClassName="border-0 shadow-lg quick-wizard-modal-content"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
-        <Modal.Body style={{ padding: '24px 20px', borderRadius: 20 }}>
+        <Modal.Body className="quick-booking-modal-body" style={{ padding: '24px 20px', borderRadius: 20 }}>
           {/* Header Close Button & Step Indicator */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <span style={{
@@ -1246,7 +2063,7 @@ export default function QuickAppointmentPage() {
             </span>
             <button
               type="button"
-              onClick={() => setIsBookingModalOpen(false)}
+              onClick={handleCloseWizard}
               style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
             >
               <IconX size={20} />
@@ -1435,11 +2252,15 @@ export default function QuickAppointmentPage() {
                       বয়স <span style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       required
-                      placeholder="বয়স লিখুন"
+                      placeholder="যেমন: ২৫"
+                      maxLength={3}
                       value={relativeForm.age}
-                      onChange={(e) => setRelativeForm(prev => ({ ...prev, age: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 3)
+                        setRelativeForm(prev => ({ ...prev, age: val }))
+                      }}
                       style={{
                         width: '100%',
                         padding: '10px 14px',
@@ -1482,10 +2303,14 @@ export default function QuickAppointmentPage() {
                     মোবাইল নম্বর <span style={{ color: '#64748B', fontWeight: 500 }}>(ঐচ্ছিক)</span>
                   </label>
                   <input
-                    type="text"
-                    placeholder="01XXX-XXXXXX (ঐচ্ছিক)"
+                    type="tel"
+                    placeholder="যেমন: 017XXXXXXXX (ঐচ্ছিক)"
+                    maxLength={11}
                     value={relativeForm.phone}
-                    onChange={(e) => setRelativeForm(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 11)
+                      setRelativeForm(prev => ({ ...prev, phone: val }))
+                    }}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
@@ -1557,54 +2382,252 @@ export default function QuickAppointmentPage() {
           {modalStep === 2 && (
             <div>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 4, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                মোবাইল নম্বর দিন
+                {bookingFor === 'relative' ? 'বুকিংকারীর মোবাইল নম্বর' : 'মোবাইল নম্বর দিন'}
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                আপনার মোবাইল নম্বরে OTP পাঠানো হবে
+                {bookingFor === 'relative' 
+                  ? 'বুকিং নিশ্চিত করতে আপনার (বুকিংকারীর) মোবাইলে OTP পাঠানো হবে'
+                  : 'আপনার মোবাইল নম্বরে OTP পাঠানো হবে'}
               </p>
 
               <form onSubmit={handleSendOtpSubmit}>
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    border: '1.5px solid #CBD5E1',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    background: 'white'
-                  }}>
-                    <div style={{
-                      padding: '10px 12px',
-                      background: '#F8FAFC',
-                      borderRight: '1px solid #CBD5E1',
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: '#334155',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}>
-                      <span>🇧🇩</span>
-                      <span>+880</span>
-                    </div>
+                {/* Patient Name for unauthenticated myself */}
+                {bookingFor === 'myself' && !isLoggedIn && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      আপনার পূর্ণ নাম <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
                     <input
-                      type="tel"
+                      type="text"
                       required
-                      placeholder="01XXX-XXXXXX"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      placeholder="যেমন: মোঃ রহিম উদ্দিন"
+                      value={selfPatientName}
+                      onChange={(e) => setSelfPatientName(e.target.value)}
                       style={{
-                        flex: 1,
+                        width: '100%',
                         padding: '10px 14px',
-                        border: 'none',
-                        fontSize: 15,
+                        borderRadius: 10,
+                        border: '1.5px solid #CBD5E1',
+                        fontSize: 14,
                         outline: 'none',
-                        fontWeight: 600,
                         fontFamily: "'Hind Siliguri', sans-serif"
                       }}
                     />
                   </div>
-                </div>
+                )}
+
+                {/* If user logged in and not editing custom number: show profile card */}
+                {isLoggedIn && !isEditingCustomMobile && (mobileNumber || user?.mobile || user?.phone) ? (
+                  <div style={{
+                    background: '#F8FAFC',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: 12,
+                    padding: '14px 16px',
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 600 }}>
+                        নিবন্ধিত মোবাইল নম্বর
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginTop: 2, letterSpacing: '0.5px' }}>
+                        +880 {(mobileNumber || user?.phone || user?.mobile || '').replace(/^\+?880?|^0/, '')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingCustomMobile(true)
+                        setMobileNumber('')
+                      }}
+                      style={{
+                        background: '#EEF2FF',
+                        color: '#4F46E5',
+                        border: '1px solid #C7D2FE',
+                        borderRadius: 8,
+                        padding: '6px 12px',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}
+                    >
+                      নম্বর পরিবর্তন করুন
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 16 }}>
+                    {isLoggedIn && isEditingCustomMobile && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                          নতুন মোবাইল নম্বর দিন
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileNumber(user?.phone || user?.mobile || '')
+                            setIsEditingCustomMobile(false)
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#6366F1',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          প্রোফাইল নম্বর ব্যবহার করুন
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      border: registeredPhoneNotice ? '1.5px solid #F59E0B' : '1.5px solid #CBD5E1',
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      background: 'white'
+                    }}>
+                      <div style={{
+                        padding: '10px 12px',
+                        background: '#F8FAFC',
+                        borderRight: '1px solid #CBD5E1',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: '#334155',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}>
+                        <span>🇧🇩</span>
+                        <span>+880</span>
+                      </div>
+                      <input
+                        type="tel"
+                        required
+                        inputMode="numeric"
+                        maxLength={11}
+                        placeholder="01XXXXXXXXX"
+                        value={mobileNumber}
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11)
+                          setMobileNumber(digitsOnly)
+                          if (registeredPhoneNotice) {
+                            setRegisteredPhoneNotice(null)
+                          }
+                          if (step2Error) {
+                            setStep2Error('')
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          border: 'none',
+                          fontSize: 15,
+                          outline: 'none',
+                          fontWeight: 600,
+                          fontFamily: "'Hind Siliguri', sans-serif"
+                        }}
+                      />
+                    </div>
+
+                    {/* Inline smart alert when phone is already registered */}
+                    {registeredPhoneNotice && (
+                      <div style={{
+                        marginTop: 10,
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        background: '#FFFBEB',
+                        border: '1.5px solid #FDE68A',
+                        textAlign: 'left',
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 13.5,
+                          fontWeight: 800,
+                          color: '#B45309',
+                          marginBottom: 4
+                        }}>
+                          <IconAlertTriangle size={17} color="#D97706" style={{ flexShrink: 0 }} />
+                          <span>{registeredPhoneNotice.message}</span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: '#92400E', marginBottom: 10, lineHeight: 1.45 }}>
+                          এই নম্বরে নতুন অ্যাকাউন্ট তৈরি করা যাবে না। অনুগ্রহ করে আপনার নিজস্ব নতুন মোবাইল নম্বর দিন অথবা পূর্বে অ্যাকাউন্ট থাকলে লগইন করুন।
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMobileNumber('')
+                              setRegisteredPhoneNotice(null)
+                            }}
+                            style={{
+                              background: '#D97706',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 8,
+                              padding: '7px 14px',
+                              fontSize: 12.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontFamily: "'Hind Siliguri', sans-serif"
+                            }}
+                          >
+                            নম্বর পরিবর্তন করুন
+                          </button>
+                          <Link
+                            to="/login/patient"
+                            style={{
+                              background: 'white',
+                              color: '#B45309',
+                              border: '1px solid #FCD34D',
+                              borderRadius: 8,
+                              padding: '6px 14px',
+                              fontSize: 12.5,
+                              fontWeight: 700,
+                              textDecoration: 'none',
+                              fontFamily: "'Hind Siliguri', sans-serif"
+                            }}
+                          >
+                            লগইন করুন ➔
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 2 Error alert (Rate-limit or send error) */}
+                    {step2Error && (
+                      <div style={{
+                        marginTop: 10,
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        background: '#FEF2F2',
+                        border: '1.5px solid #FECACA',
+                        textAlign: 'left',
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        color: '#DC2626',
+                        fontWeight: 600
+                      }}>
+                        <IconAlertCircle size={18} color="#DC2626" style={{ flexShrink: 0 }} />
+                        <span>{step2Error}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748B', marginBottom: 20 }}>
                   <IconLock size={14} color="#00B875" />
@@ -1613,12 +2636,12 @@ export default function QuickAppointmentPage() {
 
                 <button
                   type="submit"
-                  disabled={isOtpSending}
+                  disabled={isOtpSending || Boolean(registeredPhoneNotice) || otpTimer > 0}
                   style={{
                     width: '100%',
                     height: 48,
                     borderRadius: 12,
-                    background: '#00B875',
+                    background: (registeredPhoneNotice || otpTimer > 0) ? '#94A3B8' : '#00B875',
                     color: 'white',
                     border: 'none',
                     fontWeight: 800,
@@ -1627,12 +2650,16 @@ export default function QuickAppointmentPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    cursor: isOtpSending ? 'not-allowed' : 'pointer',
+                    cursor: (isOtpSending || registeredPhoneNotice || otpTimer > 0) ? 'not-allowed' : 'pointer',
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
                 >
                   {isOtpSending ? (
                     <IconLoader2 className="spin" size={20} />
+                  ) : registeredPhoneNotice ? (
+                    <span>নতুন নম্বর দিন</span>
+                  ) : otpTimer > 0 ? (
+                    <span>পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন ({formatOtpTimerBn(otpTimer)})</span>
                   ) : (
                     <span>ওটিপি পাঠান</span>
                   )}
@@ -1647,19 +2674,72 @@ export default function QuickAppointmentPage() {
               <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 4, fontFamily: "'Hind Siliguri', sans-serif" }}>
                 ওটিপি যাচাই করুন
               </h2>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                আপনার মোবাইলে পাঠানো ৬ সংখ্যার ওটিপি লিখুন
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 6 }}>
+                <p style={{ fontSize: 13, color: '#64748B', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  মোবাইল নম্বর <strong>(+880 {mobileNumber})</strong>-এ পাঠানো ওটিপি কোড লিখুন
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalStep(2)
+                    setOtp('')
+                    setOtpNotice('')
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6366F1',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}
+                >
+                  নম্বর পরিবর্তন করুন
+                </button>
+              </div>
+
+              {/* Inline Standard Patient-Friendly Alert (No toast) */}
+              {otpNotice && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  borderRadius: 12,
+                  padding: '11px 14px',
+                  marginBottom: 16,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  textAlign: 'left'
+                }}>
+                  <IconAlertCircle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{
+                    fontSize: 13,
+                    color: '#991B1B',
+                    lineHeight: 1.5,
+                    fontWeight: 600,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>
+                    {otpNotice}
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleVerifyOtpSubmit}>
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 16 }}>
                   <input
                     type="text"
                     maxLength={6}
+                    inputMode="numeric"
                     required
                     placeholder="4 2 8 9 0 1"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => {
+                      setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                      if (otpNotice) setOtpNotice('')
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -1676,28 +2756,63 @@ export default function QuickAppointmentPage() {
                   />
                 </div>
 
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <div style={{ fontSize: 12.5, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    <IconClock size={14} style={{ marginRight: 4 }} />
-                    <span>০৩:০০ মিনিট পর আবার পাঠানো যাবে</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSendOtpSubmit}
-                    style={{ background: 'none', border: 'none', color: '#00B875', fontSize: 12.5, fontWeight: 700, marginTop: 4, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}
-                  >
-                    আবার ওটিপি পাঠান (00:50)
-                  </button>
+                {/* Single Clean Timer / Resend Action (Never double timer) */}
+                <div style={{ textAlign: 'center', marginBottom: 20, minHeight: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {otpTimer > 0 ? (
+                    <div style={{
+                      fontSize: 13,
+                      color: '#475569',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#F8FAFC',
+                      padding: '6px 14px',
+                      borderRadius: 20,
+                      border: '1px solid #E2E8F0',
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}>
+                      <IconClock size={15} color="#00B875" />
+                      <span>পুনরায় ওটিপি পাঠানোর বাকি: <strong style={{ color: '#0F172A', fontWeight: 800 }}>{formatOtpTimerBn(otpTimer)}</strong></span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={isOtpSending}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#00B875',
+                        fontSize: 13.5,
+                        fontWeight: 800,
+                        cursor: isOtpSending ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        padding: '4px 8px'
+                      }}
+                    >
+                      {isOtpSending ? (
+                        <>
+                          <IconLoader2 className="spin" size={14} />
+                          <span>পাঠানো হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <span>আবার ওটিপি পাঠান ↻</span>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isOtpVerifying}
+                  disabled={isOtpVerifying || !otp.trim() || otp.trim().length !== 6}
                   style={{
                     width: '100%',
                     height: 48,
                     borderRadius: 12,
-                    background: '#00B875',
+                    background: (isOtpVerifying || !otp.trim() || otp.trim().length !== 6) ? '#94A3B8' : '#00B875',
                     color: 'white',
                     border: 'none',
                     fontWeight: 800,
@@ -1706,7 +2821,7 @@ export default function QuickAppointmentPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    cursor: isOtpVerifying ? 'not-allowed' : 'pointer',
+                    cursor: (isOtpVerifying || !otp.trim() || otp.trim().length !== 6) ? 'not-allowed' : 'pointer',
                     fontFamily: "'Hind Siliguri', sans-serif"
                   }}
                 >
@@ -1742,17 +2857,31 @@ export default function QuickAppointmentPage() {
                   <div>
                     <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>রোগীর নাম</div>
                     <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                      {bookingFor === 'relative' ? relativeForm.name : (user?.name || 'রোগী')}
+                      {bookingFor === 'relative' ? `${relativeForm.name} (${relativeForm.relation || 'আত্মীয়'})` : (selfPatientName || user?.name || 'রোগী')}
                     </div>
                   </div>
                 </div>
 
+                {bookingFor === 'relative' && relativeForm.phone && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #E2E8F0' }}>
+                    <IconDeviceMobile size={18} color="#00B875" />
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>রোগীর যোগাযোগের নম্বর</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                        +880 {relativeForm.phone.replace(/^\+?880?|^0/, '')}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #E2E8F0' }}>
-                  <IconDeviceMobile size={18} color="#00B875" />
+                  <IconDeviceMobile size={18} color="#6366F1" />
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>মোবাইল নম্বর</div>
+                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      {bookingFor === 'relative' ? 'বুকিংকারীর মোবাইল নম্বর' : 'মোবাইল নম্বর'}
+                    </div>
                     <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
-                      +880 {mobileNumber || '1712-345678'}
+                      +880 {(mobileNumber || user?.phone || user?.mobile || '').replace(/^\+?880?|^0/, '')}
                     </div>
                   </div>
                 </div>
@@ -1802,78 +2931,440 @@ export default function QuickAppointmentPage() {
           {/* STEP 5: SUCCESS BOOKING TICKET */}
           {modalStep === 5 && confirmedAppointmentData && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: '#DCFCE7',
-                color: '#00B875',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px'
-              }}>
-                <IconCircleCheck size={40} />
+              {/* Responsive & Print styles */}
+              <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                  @page {
+                    size: A4 portrait;
+                    margin: 12mm 15mm;
+                  }
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  #printable-quick-appointment-slip, #printable-quick-appointment-slip * {
+                    visibility: visible !important;
+                  }
+                  #printable-quick-appointment-slip {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    max-width: 650px !important;
+                    margin: 0 auto !important;
+                    padding: 20px !important;
+                    background: #ffffff !important;
+                    border: 2px solid #00B875 !important;
+                    border-radius: 14px !important;
+                    box-shadow: none !important;
+                    page-break-inside: avoid !important;
+                  }
+                  .quick-modal-no-print {
+                    display: none !important;
+                  }
+                }
+
+                @media (max-width: 520px) {
+                  .quick-booking-modal-body {
+                    padding: 18px 14px !important;
+                  }
+                }
+
+                .quick-cred-box {
+                  background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+                  border: 1.5px solid #86EFAC;
+                  border-radius: 14px;
+                  padding: 13px 14px;
+                  margin-bottom: 16px;
+                  text-align: left;
+                  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+                }
+                @media (max-width: 480px) {
+                  .quick-cred-box {
+                    padding: 11px 12px;
+                    border-radius: 12px;
+                  }
+                }
+
+                .quick-cred-head {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 8px;
+                  margin-bottom: 10px;
+                }
+                .quick-cred-title {
+                  font-size: 13px;
+                  font-weight: 800;
+                  color: #065F46;
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  line-height: 1.35;
+                  flex: 1;
+                  min-width: 0;
+                }
+                @media (max-width: 400px) {
+                  .quick-cred-title {
+                    font-size: 12px;
+                  }
+                }
+                .quick-cred-copy-btn {
+                  background: #10B981;
+                  color: white;
+                  border: none;
+                  border-radius: 8px;
+                  padding: 5px 12px;
+                  font-size: 11.5px;
+                  font-weight: 700;
+                  cursor: pointer;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  white-space: nowrap !important;
+                  flex-shrink: 0 !important;
+                  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+                  transition: all 0.15s ease;
+                }
+                .quick-cred-copy-btn:hover {
+                  background: #059669;
+                }
+
+                .quick-cred-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 8px;
+                  background: #ffffff;
+                  padding: 10px 12px;
+                  border-radius: 10px;
+                  border: 1px solid #D1FAE5;
+                }
+                @media (max-width: 480px) {
+                  .quick-cred-grid {
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    padding: 9px;
+                  }
+                  .quick-cred-full-col {
+                    grid-column: span 2;
+                  }
+                }
+
+                .quick-cred-cell {
+                  background: #F8FAFC;
+                  border: 1px solid #E2E8F0;
+                  border-radius: 8px;
+                  padding: 8px 10px;
+                }
+                .quick-cred-lbl {
+                  font-size: 10.5px;
+                  color: #64748B;
+                  font-weight: 600;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  margin-bottom: 2px;
+                }
+                .quick-cred-val {
+                  font-size: 13px;
+                  font-weight: 800;
+                  word-break: break-word;
+                }
+                .quick-cred-full-inner {
+                  display: flex;
+                  flex-direction: column;
+                }
+                @media (max-width: 480px) {
+                  .quick-cred-full-inner {
+                    flex-direction: row;
+                    justify-content: space-between;
+                    align-items: center;
+                  }
+                  .quick-cred-full-inner .quick-cred-lbl {
+                    margin-bottom: 0;
+                  }
+                }
+
+                .quick-summary-box {
+                  background: #F8FAFC;
+                  border-radius: 14px;
+                  padding: 14px 16px;
+                  border: 1px solid #E2E8F0;
+                  text-align: left;
+                  margin-bottom: 18px;
+                }
+                @media (max-width: 480px) {
+                  .quick-summary-box {
+                    padding: 12px 14px;
+                    margin-bottom: 16px;
+                  }
+                }
+                .quick-summary-top {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: flex-start;
+                  gap: 8px;
+                  padding-bottom: 10px;
+                  margin-bottom: 10px;
+                  border-bottom: 1px dashed #E2E8F0;
+                }
+                .quick-summary-doc {
+                  font-size: 15px;
+                  font-weight: 800;
+                  color: #0F172A;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  line-height: 1.3;
+                }
+                .quick-summary-spec {
+                  font-size: 12.5px;
+                  color: #00B875;
+                  font-weight: 700;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  margin-top: 2px;
+                }
+                .quick-badge-status {
+                  font-size: 11.5px;
+                  font-weight: 700;
+                  padding: 3px 10px;
+                  border-radius: 20px;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  white-space: nowrap;
+                  flex-shrink: 0;
+                }
+                .quick-badge-paid {
+                  background: #DCFCE7;
+                  color: #15803D;
+                }
+                .quick-badge-unpaid {
+                  background: #FEF3C7;
+                  color: #B45309;
+                }
+                .quick-summary-rows {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                }
+                .quick-row-item {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: flex-start;
+                  gap: 10px;
+                  font-size: 12.5px;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  line-height: 1.4;
+                }
+                @media (max-width: 420px) {
+                  .quick-row-item {
+                    flex-direction: column;
+                    gap: 1px;
+                    margin-bottom: 4px;
+                  }
+                  .quick-row-item:last-child {
+                    margin-bottom: 0;
+                  }
+                }
+                .quick-row-lbl {
+                  color: #64748B;
+                  font-weight: 600;
+                  flex-shrink: 0;
+                }
+                .quick-row-val {
+                  color: #1E293B;
+                  font-weight: 700;
+                  text-align: right;
+                  word-break: break-word;
+                }
+                @media (max-width: 420px) {
+                  .quick-row-val {
+                    text-align: left;
+                  }
+                }
+
+                .quick-footer-actions {
+                  display: flex;
+                  gap: 10px;
+                }
+                .quick-btn-print {
+                  flex: 1;
+                  height: 44px;
+                  border-radius: 12px;
+                  background: #F1F5F9;
+                  color: #334155;
+                  border: none;
+                  font-weight: 700;
+                  font-size: 13.5px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 7px;
+                  cursor: pointer;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  transition: background 0.15s;
+                  white-space: nowrap;
+                }
+                .quick-btn-print:hover {
+                  background: #E2E8F0;
+                }
+                .quick-btn-finish {
+                  flex: 1;
+                  height: 44px;
+                  border-radius: 12px;
+                  background: #00B875;
+                  color: white;
+                  border: none;
+                  font-weight: 800;
+                  font-size: 14px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 7px;
+                  cursor: pointer;
+                  font-family: 'Hind Siliguri', sans-serif;
+                  box-shadow: 0 4px 12px rgba(0, 184, 117, 0.25);
+                  transition: background 0.15s;
+                  white-space: nowrap;
+                }
+                .quick-btn-finish:hover {
+                  background: #009E64;
+                }
+              `}} />
+
+              <div id="printable-quick-appointment-slip">
+                <div style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: '50%',
+                  background: '#DCFCE7',
+                  color: '#00B875',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px'
+                }}>
+                  <IconCircleCheck size={36} />
+                </div>
+
+                <h2 style={{ fontSize: 19, fontWeight: 800, color: '#0F172A', marginBottom: 5, fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.3 }}>
+                  অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!
+                </h2>
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: newAccountCredentials ? 14 : 18, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  আপনার ট্র্যাকিং আইডি: <strong style={{ color: '#00B875', fontWeight: 800 }}>{confirmedAppointmentData.id}</strong>
+                </p>
+
+                {/* NEW AUTO-REGISTERED ACCOUNT CREDENTIALS */}
+                {newAccountCredentials && (
+                  <div className="quick-cred-box">
+                    <div className="quick-cred-head">
+                      <div className="quick-cred-title">
+                        <span style={{ fontSize: 15 }}>🎉</span>
+                        <span>আপনার রোগী অ্যাকাউন্ট তৈরি সম্পন্ন হয়েছে!</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="quick-modal-no-print quick-cred-copy-btn"
+                        onClick={() => {
+                          const copyText = `পাবলিক আইডি: ${newAccountCredentials.patient_public_id}\nমোবাইল নম্বর: ${newAccountCredentials.login_phone}\nপাসওয়ার্ড: ${newAccountCredentials.temp_password}`
+                          navigator.clipboard?.writeText(copyText)
+                          toast.success('লগইন তথ্য কপি করা হয়েছে!')
+                        }}
+                      >
+                        <IconCopy size={13} />
+                        <span>কপি করুন</span>
+                      </button>
+                    </div>
+
+                    <div className="quick-cred-grid">
+                      <div className="quick-cred-cell">
+                        <div className="quick-cred-lbl">লগইন মোবাইল</div>
+                        <div className="quick-cred-val" style={{ color: '#0F172A' }}>
+                          {newAccountCredentials.login_phone}
+                        </div>
+                      </div>
+
+                      <div className="quick-cred-cell">
+                        <div className="quick-cred-lbl">পাসওয়ার্ড</div>
+                        <div className="quick-cred-val" style={{ color: '#059669', letterSpacing: '0.5px' }}>
+                          {newAccountCredentials.temp_password}
+                        </div>
+                      </div>
+
+                      <div className="quick-cred-cell quick-cred-full-col">
+                        <div className="quick-cred-full-inner">
+                          <div className="quick-cred-lbl">পাবলিক আইডি:</div>
+                          <div className="quick-cred-val" style={{ color: '#0F172A' }}>
+                            {newAccountCredentials.patient_public_id}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      fontSize: 11.5,
+                      color: '#047857',
+                      marginTop: 9,
+                      lineHeight: 1.45,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 5
+                    }}>
+                      <span style={{ flexShrink: 0, marginTop: 1, fontSize: 13 }}>ℹ️</span>
+                      <span>পরবর্তীতে অ্যাপয়েন্টমেন্ট ও প্রেসক্রিপশন দেখতে এই তথ্য দিয়ে লগইন করুন। প্রোফাইল থেকে যেকোনো সময় পাসওয়ার্ড পরিবর্তন করতে পারবেন।</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* APPOINTMENT SUMMARY CARD */}
+                <div className="quick-summary-box">
+                  <div className="quick-summary-top">
+                    <div>
+                      <div className="quick-summary-doc">
+                        {confirmedAppointmentData.doctor_name}
+                      </div>
+                      <div className="quick-summary-spec">
+                        {confirmedAppointmentData.specialty}
+                      </div>
+                    </div>
+                    <span className={`quick-badge-status ${confirmedAppointmentData.payment_status === 'পরিশোধিত' ? 'quick-badge-paid' : 'quick-badge-unpaid'}`}>
+                      {confirmedAppointmentData.payment_status}
+                    </span>
+                  </div>
+
+                  <div className="quick-summary-rows">
+                    <div className="quick-row-item">
+                      <span className="quick-row-lbl">হাসপাতাল/চেম্বার:</span>
+                      <span className="quick-row-val">{confirmedAppointmentData.hospital_name}</span>
+                    </div>
+                    <div className="quick-row-item">
+                      <span className="quick-row-lbl">তারিখ ও সময়:</span>
+                      <span className="quick-row-val">{confirmedAppointmentData.appointment_date} ({confirmedAppointmentData.appointment_time})</span>
+                    </div>
+                    <div className="quick-row-item">
+                      <span className="quick-row-lbl">রোগীর নাম:</span>
+                      <span className="quick-row-val">{confirmedAppointmentData.patient_name} {confirmedAppointmentData.relation ? `(${confirmedAppointmentData.relation})` : ''}</span>
+                    </div>
+                    {confirmedAppointmentData.patient_phone && (
+                      <div className="quick-row-item">
+                        <span className="quick-row-lbl">রোগীর ফোন নম্বর:</span>
+                        <span className="quick-row-val">+880 {confirmedAppointmentData.patient_phone.replace(/^\+?880?|^0/, '')}</span>
+                      </div>
+                    )}
+                    {confirmedAppointmentData.booking_for === 'relative' && confirmedAppointmentData.booker_phone && (
+                      <div className="quick-row-item">
+                        <span className="quick-row-lbl">বুকিংকারীর মোবাইল:</span>
+                        <span className="quick-row-val">+880 {confirmedAppointmentData.booker_phone.replace(/^\+?880?|^0/, '')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!
-              </h2>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                আপনার ট্র্যাকিং আইডি: <strong style={{ color: '#00B875' }}>{confirmedAppointmentData.id}</strong>
-              </p>
-
-              <div style={{
-                background: '#F8FAFC',
-                borderRadius: 16,
-                padding: 16,
-                border: '1px solid #E2E8F0',
-                textAlign: 'left',
-                marginBottom: 20
-              }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', marginBottom: 4, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  {confirmedAppointmentData.doctor_name}
-                </div>
-                <div style={{ fontSize: 13, color: '#00B875', fontWeight: 700, marginBottom: 12, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  {confirmedAppointmentData.specialty}
-                </div>
-
-                <div style={{ fontSize: 13, color: '#334155', marginBottom: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  <strong>হাসপাতাল/চেম্বার:</strong> {confirmedAppointmentData.hospital_name}
-                </div>
-                <div style={{ fontSize: 13, color: '#334155', marginBottom: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  <strong>তারিখ ও সময়:</strong> {confirmedAppointmentData.appointment_date} ({confirmedAppointmentData.appointment_time})
-                </div>
-                <div style={{ fontSize: 13, color: '#334155', marginBottom: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  <strong>রোগীর নাম:</strong> {confirmedAppointmentData.patient_name}
-                </div>
-                <div style={{ fontSize: 13, color: '#334155', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  <strong>পেমেন্ট স্ট্যাটাস:</strong> <span style={{ color: '#D97706', fontWeight: 700 }}>{confirmedAppointmentData.payment_status}</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div className="quick-modal-no-print quick-footer-actions">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  style={{
-                    flex: 1,
-                    height: 46,
-                    borderRadius: 12,
-                    background: '#F1F5F9',
-                    color: '#334155',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
+                  onClick={handlePrintSlip}
+                  className="quick-btn-print"
                 >
-                  <IconPrinter size={18} />
+                  <IconPrinter size={17} />
                   <span>প্রিন্ট/ডাউনলোড</span>
                 </button>
 
@@ -1883,28 +3374,98 @@ export default function QuickAppointmentPage() {
                     setIsBookingModalOpen(false)
                     setModalStep(1)
                   }}
-                  style={{
-                    flex: 1,
-                    height: 46,
-                    borderRadius: 12,
-                    background: '#00B875',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 800,
-                    fontSize: 14,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
+                  className="quick-btn-finish"
                 >
                   <span>সম্পন্ন ➔</span>
                 </button>
               </div>
             </div>
           )}
+        </Modal.Body>
+      </Modal>
+
+      {/* ── BOOKING REJECTION / ERROR ALERT POPUP MODAL ── */}
+      <Modal
+        show={bookingErrorModal.isOpen}
+        onHide={() => {
+          setBookingErrorModal({ isOpen: false, title: '', message: '' })
+          setIsBookingModalOpen(false)
+          setModalStep(1)
+          setOtp('')
+          setOtpNotice('')
+          setStep2Error('')
+          setIsOtpVerified(false)
+        }}
+        centered
+        backdrop="static"
+        keyboard={false}
+        contentClassName="rounded-4 border-0 shadow-lg"
+      >
+        <Modal.Body style={{ padding: '32px 24px 26px', textAlign: 'center' }}>
+          <div style={{
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
+            background: '#FEF2F2',
+            border: '2px solid #FEE2E2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            color: '#DC2626'
+          }}>
+            <IconAlertCircle size={32} stroke={2.2} />
+          </div>
+
+          <h4 style={{
+            fontSize: 18,
+            fontWeight: 800,
+            color: '#0F172A',
+            marginBottom: 12,
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            {bookingErrorModal.title || 'বুকিং সম্পন্ন করা সম্ভব হয়নি'}
+          </h4>
+
+          <p style={{
+            fontSize: 14.5,
+            color: '#475569',
+            lineHeight: 1.6,
+            marginBottom: 24,
+            fontFamily: "'Hind Siliguri', sans-serif",
+            padding: '0 6px'
+          }}>
+            {bookingErrorModal.message}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setBookingErrorModal({ isOpen: false, title: '', message: '' })
+              setIsBookingModalOpen(false)
+              setModalStep(1)
+              setOtp('')
+              setOtpNotice('')
+              setStep2Error('')
+              setIsOtpVerified(false)
+            }}
+            style={{
+              width: '100%',
+              height: 46,
+              borderRadius: 12,
+              background: '#00B875',
+              color: 'white',
+              border: 'none',
+              fontSize: 15,
+              fontWeight: 800,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.28)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            ঠিক আছে
+          </button>
         </Modal.Body>
       </Modal>
     </div>

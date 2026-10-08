@@ -62,7 +62,7 @@ export default function AdminSmsSettingsPage() {
 
   // Settings State
   const [form, setForm] = useState({
-    default_provider: 'alphasms',
+    default_provider: '',
     failover_enabled: false,
     failover_provider: 'mimsms',
     alphasms: { api_key: '', sender_id: '', url: 'https://api.sms.net.bd/sendsms', rate_per_sms: 0.35 },
@@ -112,16 +112,18 @@ export default function AdminSmsSettingsPage() {
     try {
       const res = await getAdminSmsSettings()
       if (res.data?.success && res.data?.data) {
+        const activeProvider = res.data.data.default_provider || 'log'
         setForm(prev => ({
           ...prev,
           ...res.data.data,
+          default_provider: activeProvider,
           alphasms: { ...prev.alphasms, ...(res.data.data.alphasms || {}) },
           maestrosms: { ...prev.maestrosms, ...(res.data.data.maestrosms || {}) },
           mimsms: { ...prev.mimsms, ...(res.data.data.mimsms || {}) },
           throttle: { ...prev.throttle, ...(res.data.data.throttle || {}) },
           templates: { ...prev.templates, ...(res.data.data.templates || {}) }
         }))
-        setTestProvider(res.data.data.default_provider || 'alphasms')
+        setTestProvider(activeProvider)
       }
     } catch {
       setStatusMsg({ type: 'danger', text: 'সেটিংস লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' })
@@ -513,12 +515,21 @@ export default function AdminSmsSettingsPage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>সক্রিয় প্রোভাইডার:</span>
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                background: '#f1f5f9', color: '#1e293b'
-              }}>
-                {balanceData?.report?.provider_name || form.default_provider.toUpperCase()}
-              </span>
+              {loading || (!balanceData?.report?.provider_name && !form.default_provider) ? (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
+                  background: '#f1f5f9', color: '#94a3b8', fontStyle: 'italic'
+                }}>
+                  লোড হচ্ছে...
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                  background: '#f1f5f9', color: '#1e293b'
+                }}>
+                  {balanceData?.report?.provider_name || form.default_provider.toUpperCase()}
+                </span>
+              )}
               {balanceData?.report?.is_low_balance && (
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
@@ -544,7 +555,7 @@ export default function AdminSmsSettingsPage() {
           <div>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>প্রতি এসএমএস খরচ</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#334155' }}>
-              ৳ {balanceData?.report?.rate_per_sms || (form[form.default_provider]?.rate_per_sms ?? 0.35)}
+              {loading && !form.default_provider ? '...' : `৳ ${balanceData?.report?.rate_per_sms || (form[form.default_provider]?.rate_per_sms ?? 0.35)}`}
             </div>
           </div>
 
