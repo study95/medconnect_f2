@@ -56,6 +56,8 @@ axiosInstance.interceptors.response.use(
       url.includes('/reset-password') ||
       url.includes('/send-otp') ||
       url.includes('/verify-otp') ||
+      url.includes('/cancel-send-otp') ||
+      url.includes('/cancel-verify') ||
       url.includes('/check-identifier')
 
     const skipGlobalToast = error.config?.skipGlobalToast || isPublicAuthRoute

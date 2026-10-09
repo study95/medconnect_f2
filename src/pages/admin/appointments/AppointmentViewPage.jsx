@@ -152,26 +152,85 @@ export default function AppointmentViewPage() {
           <div className="admin-card" style={{ overflow: 'hidden' }}>
             <div style={{ height: 60, background: 'linear-gradient(135deg, var(--admin-primary), #00C9A7)' }} />
             <div className="admin-card-body" style={{ marginTop: -40, textAlign: 'center' }}>
-              <Link to={`/admin/patients/view/${appt.patient_public_id || appt.patient?.public_id || appt.user_id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                <div style={{ width: 80, height: 80, borderRadius: 24, background: 'var(--admin-card-bg)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, color: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)', border: '4px solid var(--admin-card-bg)' }}>
-                  {appt.user_name?.charAt(0)?.toUpperCase() || 'P'}
-                </div>
-                <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 18, marginTop: 16, marginBottom: 4 }}>{appt.user_name}</h4>
-              </Link>
-              <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginBottom: 20 }}>Patient Identity Profile</p>
-              
-              <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
-                  <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Email</span>
-                  <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.user_email || '—'}</span>
-                </div>
-                {(appt.patient_public_id || appt.patient?.public_id) && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
-                    <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Patient ID</span>
-                    <CompactUlid value={appt.patient_public_id || appt.patient?.public_id} />
-                  </div>
-                )}
-              </div>
+              {(() => {
+                const isRelative = appt.booking_for && appt.booking_for !== 'myself';
+                const displayName = isRelative ? (appt.patient_name || appt.patient?.name || 'Relative Patient') : (appt.patient?.name || appt.user_name || 'Patient');
+                const bookerId = appt.booker_patient_public_id || appt.booker?.patient_public_id || appt.user?.patient_public_id || appt.user_id;
+
+                return (
+                  <>
+                    <div style={{ width: 80, height: 80, borderRadius: 24, background: 'var(--admin-card-bg)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, color: 'var(--admin-primary)', boxShadow: 'var(--admin-shadow-lg)', border: '4px solid var(--admin-card-bg)' }}>
+                      {displayName.charAt(0)?.toUpperCase() || 'P'}
+                    </div>
+                    <h4 style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 18, marginTop: 16, marginBottom: 4 }}>{displayName}</h4>
+                    
+                    {isRelative ? (
+                      <div style={{ display: 'inline-block', marginBottom: 16 }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '3px 10px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: '#FEF3C7',
+                          color: '#92400E',
+                          border: '1px solid #FDE68A',
+                          fontFamily: "'Hind Siliguri', sans-serif"
+                        }}>
+                          আত্মীয় ({appt.patient_relation || appt.patient?.patient_relation || 'Relative'})
+                        </span>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginBottom: 20 }}>Patient Identity Profile</p>
+                    )}
+                    
+                    <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {isRelative ? (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                            <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>বুকিংকারী</span>
+                            {bookerId ? (
+                              <Link to={`/admin/patients/view/${bookerId}`} style={{ fontWeight: 700, color: 'var(--admin-primary)', textDecoration: 'none' }}>
+                                {appt.user_name || appt.booker?.name || 'Account Holder'}
+                              </Link>
+                            ) : (
+                              <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.user_name || 'Account Holder'}</span>
+                            )}
+                          </div>
+                          {(appt.patient_phone || appt.patient?.phone) && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                              <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>রোগীর ফোন</span>
+                              <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient_phone || appt.patient?.phone}</span>
+                            </div>
+                          )}
+                          {(appt.patient_age || appt.patient?.patient_age) && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                              <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>বয়স / লিঙ্গ</span>
+                              <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
+                                {appt.patient_age || appt.patient?.patient_age} বছর {appt.patient_gender ? `• ${appt.patient_gender}` : ''}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                            <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Email</span>
+                            <span style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.user_email || '—'}</span>
+                          </div>
+                          {(appt.patient_public_id || appt.patient?.public_id) && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--admin-border)' }}>
+                              <span style={{ color: 'var(--admin-text-muted)', fontWeight: 600 }}>Patient ID</span>
+                              <CompactUlid value={appt.patient_public_id || appt.patient?.public_id} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

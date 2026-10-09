@@ -62,7 +62,18 @@ export default function PatientLiveQueueTracker({
   // Clean date string comparison (YYYY-MM-DD)
   const apptDateStr = useMemo(() => {
     if (!rawDate) return ''
-    return String(rawDate).split('T')[0].trim()
+    const str = String(rawDate).trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      return str
+    }
+    const d = new Date(str)
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    return str.split('T')[0].trim()
   }, [rawDate])
 
   const todayStr = useMemo(() => getLocalDateString(), [])

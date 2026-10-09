@@ -11,6 +11,7 @@ import { translateMetadata } from '../utils/translationUtils'
 import useDoctorDetail from '../hooks/useDoctorDetail'
 import useUserLocation from '../hooks/useUserLocation'
 import { calculateDistance, formatDistance } from '../utils/geoUtils'
+import { getBangladeshTodayStr } from '../utils/dateUtils'
 import {
   IconCalendarEvent, IconClock, IconMapPin, IconPhone,
   IconShieldCheck, IconUser, IconLock, IconDeviceMobile,
@@ -37,7 +38,17 @@ export default function BookAppointmentPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const chamberIdParam = searchParams.get('chamberId')
-  const { user, isLoggedIn, storeAuth, registerPatient, loginAsPatient, login } = useAuth()
+  const { user, isLoggedIn, storeAuth, registerPatient, loginAsPatient, login, isAdmin, isDoctor, isManager, isStaff } = useAuth()
+
+  // Check if current logged-in user is doctor, hospital/manager, or admin (privileged staff bypass OTP)
+  const isPrivilegedStaff = Boolean(
+    isAdmin || isDoctor || isManager || isStaff ||
+    user?.role === 'admin' || user?.role === 'doctor' || user?.role === 'hospital' || user?.role === 'manager' ||
+    user?.roles?.some(r => {
+      const name = typeof r === 'string' ? r : r.name
+      return ['admin', 'doctor', 'hospital', 'manager', 'super-admin'].includes(String(name).toLowerCase())
+    })
+  )
   const { t, i18n } = useTranslation()
   const language = i18n.language
 
@@ -83,6 +94,7 @@ export default function BookAppointmentPage() {
     patient_relation: 'পিতা',
     patient_gender: 'পুরুষ',
     patient_phone: '',
+    booker_name: '',
     reason_type: '',
     notes: ''
   })
@@ -113,6 +125,7 @@ export default function BookAppointmentPage() {
         serial_number: 8,
         booking_for: 'myself',
         patient_name: 'রাকিব হাসান',
+        patient_phone: '01712345678',
         fee: 1000,
         payment_status: 'Unpaid',
         status: 'pending',
@@ -122,10 +135,12 @@ export default function BookAppointmentPage() {
     return null
   })
   const [copiedId, setCopiedId] = useState(false)
+  const [copiedCreds, setCopiedCreds] = useState(false)
+  const [newAccountCredentials, setNewAccountCredentials] = useState(null)
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
-  const [reasonDropdownOpen, setReasonDropdownOpen] = useState(false)
+
 
   // Professional Warning Modal State
   const [warningModal, setWarningModal] = useState({
@@ -260,7 +275,7 @@ export default function BookAppointmentPage() {
   const translateApiError = (msg) => {
     if (!msg) return null
     const lower = msg.toLowerCase()
-    if (lower.includes('invalid otp') || lower.includes('wrong otp') || lower.includes('incorrect otp') || lower.includes('ভুল') || lower.includes('সঠিক নয়') || lower.includes('সঠিক নয়')) {
+    if (lower.includes('invalid otp') || lower.includes('wrong otp') || lower.includes('incorrect otp') || lower.includes('ভুল ওটিপি') || lower.includes('সঠিক নয়') || lower.includes('সঠিক নয়')) {
       return 'ভুল OTP কোড! সঠিক OTP কোডটি লিখুন।'
     }
     if (lower.includes('otp expired')) {
@@ -272,17 +287,17 @@ export default function BookAppointmentPage() {
     if (lower.includes('network') || lower.includes('connection') || lower.includes('timeout')) {
       return 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
     }
-    if (lower.includes('too many') || lower.includes('slow down') || lower.includes('rate limit') || lower.includes('throttl') || lower.includes('attempts')) {
-      return 'ভুল OTP কোড! সঠিক OTP কোডটি লিখুন।'
+    if (lower.includes('too many') || lower.includes('slow down') || lower.includes('rate limit') || lower.includes('throttl')) {
+      return 'অতিরিক্ত ওটিপি অনুরোধ করা হয়েছে। অনুগ্রহ করে অপেক্ষা করুন।'
     }
     return msg
   }
 
 
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+  const todayISO = getBangladeshTodayStr()
+  const [bYear, bMonth, bDay] = todayISO.split('-').map(Number)
+  const today = new Date(bYear, bMonth - 1, bDay, 0, 0, 0)
 
   useEffect(() => {
     if (chambers.length > 0 && chamberIdParam) {
@@ -409,7 +424,7 @@ export default function BookAppointmentPage() {
     setForm(prev => ({ ...prev, appointment_date: dateString, appointment_time: '' }))
   }
 
-  // Fetch booked slots for selected doctor, date, and chamber
+  // Fetch booked slots for selected doctor, date, and chamber with 15s live poll
   useEffect(() => {
     const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
     if (!activeDoctorId || !form.appointment_date) {
@@ -417,16 +432,26 @@ export default function BookAppointmentPage() {
       return
     }
     let active = true
-    getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
-      .then(res => {
-        if (active && res.data?.booked_slots) {
-          setBookedSlots(res.data.booked_slots)
-        }
-      })
-      .catch(() => {
-        if (active) setBookedSlots([])
-      })
-    return () => { active = false }
+
+    const fetchSlots = () => {
+      getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
+        .then(res => {
+          if (active && res.data?.booked_slots) {
+            setBookedSlots(res.data.booked_slots)
+          }
+        })
+        .catch(() => {
+          if (active) setBookedSlots([])
+        })
+    }
+
+    fetchSlots()
+    const interval = setInterval(fetchSlots, 15000)
+
+    return () => { 
+      active = false
+      clearInterval(interval)
+    }
   }, [doctorId, form.doctor_id, doctor?.public_id, doctor?.id, form.appointment_date, selectedChamberId])
 
   const toMinutes = (timeStr) => {
@@ -516,9 +541,42 @@ export default function BookAppointmentPage() {
 
   const groupedSlots = getGroupedTimeSlots()
 
-  const [expandedGroups, setExpandedGroups] = useState({
-    morning: true, noon: false, afternoon: false, evening: false
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    const order = ['morning', 'noon', 'afternoon', 'evening']
+    const firstGroup = order.find(grp => groupedSlots[grp]?.length > 0)
+    if (firstGroup) {
+      return {
+        morning: firstGroup === 'morning',
+        noon: firstGroup === 'noon',
+        afternoon: firstGroup === 'afternoon',
+        evening: firstGroup === 'evening'
+      }
+    }
+    return { morning: true, noon: false, afternoon: false, evening: false }
   })
+
+  // Auto-expand the first available slot group (or the group with the selected slot) by default
+  useEffect(() => {
+    const order = ['morning', 'noon', 'afternoon', 'evening']
+    let targetGroup = null
+
+    if (form.appointment_time) {
+      targetGroup = order.find(grp => groupedSlots[grp]?.includes(form.appointment_time))
+    }
+
+    if (!targetGroup) {
+      targetGroup = order.find(grp => groupedSlots[grp]?.length > 0)
+    }
+
+    if (targetGroup) {
+      setExpandedGroups({
+        morning: targetGroup === 'morning',
+        noon: targetGroup === 'noon',
+        afternoon: targetGroup === 'afternoon',
+        evening: targetGroup === 'evening'
+      })
+    }
+  }, [form.appointment_date, selectedChamberId, chambers])
 
   const toggleGroup = (grp) => {
     setExpandedGroups(prev => ({ ...prev, [grp]: !prev[grp] }))
@@ -546,52 +604,121 @@ export default function BookAppointmentPage() {
       })
       return
     }
-    if (form.booking_for && form.booking_for !== 'myself') {
+    if (form.booking_for === 'myself') {
+      if (!isLoggedIn && (!form.patient_name || !form.patient_name.trim())) {
+        showWarning('আপনার নাম আবশ্যক', 'অনুগ্রহ করে আপনার পূর্ণ নাম লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
+        return
+      }
+    } else {
+      if (!isLoggedIn && (!form.booker_name || !form.booker_name.trim())) {
+        showWarning('আপনার নাম আবশ্যক', 'অনুগ্রহ করে আপনার (বুকিংকারীর) পূর্ণ নাম লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
+        return
+      }
       if (!form.patient_name || !form.patient_name.trim()) {
-        showWarning('রোগীর নাম আবশ্যক', 'অনুগ্রহ করে রোগীর পূর্ণ নাম লিখুন।')
+        showWarning('রোগীর নাম আবশ্যক', 'অনুগ্রহ করে রোগীর পূর্ণ নাম লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
         return
       }
       if (!form.patient_age || !form.patient_age.toString().trim()) {
-        showWarning('রোগীর বয়স আবশ্যক', 'অনুগ্রহ করে রোগীর সঠিক বয়স লিখুন।')
+        showWarning('রোগীর বয়স আবশ্যক', 'অনুগ্রহ করে রোগীর সঠিক বয়স লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
         return
       }
       const parsedAge = parseInt(form.patient_age.toString().trim(), 10)
       if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
-        showWarning('সঠিক বয়স লিখুন', 'অনুগ্রহ করে ১ থেকে ১২০ এর মধ্যে সঠিক বয়স লিখুন।')
+        showWarning('সঠিক বয়স লিখুন', 'অনুগ্রহ করে ১ থেকে ১২০ এর মধ্যে সঠিক বয়স লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
         return
       }
       if (!form.patient_relation || !form.patient_relation.trim()) {
-        showWarning('সম্পর্ক উল্লেখ করুন', 'অনুগ্রহ করে রোগীর সাথে আপনার সম্পর্ক লিখুন।')
+        showWarning('সম্পর্ক উল্লেখ করুন', 'অনুগ্রহ করে রোগীর সাথে আপনার সম্পর্ক লিখুন।', {
+          onClose: () => setCurrentStep(3)
+        })
         return
       }
       if (form.patient_phone && form.patient_phone.trim()) {
         const cleanPhone = form.patient_phone.replace(/\D/g, '')
         if (!/^01[3-9]\d{8}$/.test(cleanPhone)) {
-          showWarning('সঠিক মোবাইল নম্বর দিন', 'অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।')
+          showWarning('সঠিক মোবাইল নম্বর দিন', 'অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।', {
+            onClose: () => setCurrentStep(3)
+          })
           return
         }
       }
     }
-    if (!isLoggedIn) {
-      setShowAuthModal(true)
-      setAuthMode('choose')
+    // 1. Privileged Staff (Doctor, Hospital, Admin): Direct booking, NO OTP required!
+    if (isPrivilegedStaff) {
+      submitAppointment()
       return
     }
-    submitAppointment()
+
+    // 2. Regular User / Patient / Guest: Require OTP verification on EVERY booking!
+    const targetMobile = (user?.phone || user?.mobile || form.patient_phone || mobileNumber || '').replace(/\D/g, '')
+
+    if (targetMobile && /^01[3-9]\d{8}$/.test(targetMobile)) {
+      setMobileNumber(targetMobile)
+      setShowAuthModal(true)
+      handleSendBookingOtp(targetMobile)
+      return
+    }
+
+    // If mobile number not yet available, show modal to input mobile number
+    setShowAuthModal(true)
+    if (!isLoggedIn) {
+      setAuthMode('choose')
+    } else {
+      setAuthMode('otp-send')
+    }
   }
 
   const submitAppointment = async (guestMobile = null) => {
+    const activeDocId = form.doctor_id || doctor?.id || doctor?.public_id || doctorId
+    if (!activeDocId) {
+      showWarning(
+        'ডাক্তার নির্বাচন করুন',
+        'ডাক্তারের তথ্য সঠিকভাবে পাওয়া যায়নি। অনুগ্রহ করে পেজটি রিফ্রেশ করুন।',
+        { type: 'error' }
+      )
+      return
+    }
+
+    if (!form.appointment_date) {
+      showWarning(
+        'তারিখ নির্বাচন করুন',
+        'অনুগ্রহ করে অ্যাপয়েন্টমেন্টের তারিখ নির্বাচন করুন।',
+        { onClose: () => setCurrentStep(2) }
+      )
+      return
+    }
+
+    if (!form.appointment_time) {
+      showWarning(
+        'সময় স্লট নির্বাচন করুন',
+        'অনুগ্রহ করে অ্যাপয়েন্টমেন্টের জন্য একটি উপযুক্ত সময় স্লট নির্বাচন করুন।',
+        { onClose: () => setCurrentStep(2) }
+      )
+      return
+    }
+
     setSubmitting(true)
     try {
       const cleanPatientPhone = (form.patient_phone && form.patient_phone.trim()) ? form.patient_phone.replace(/\D/g, '') : null
       const payload = { 
         ...form, 
+        doctor_id: activeDocId,
         chamber_id: selectedChamberId,
         booking_for: form.booking_for || 'myself',
-        patient_name: form.booking_for !== 'myself' ? form.patient_name : null,
-        patient_age: form.booking_for !== 'myself' ? form.patient_age : null,
+        patient_name: form.patient_name || null,
+        patient_age: form.patient_age || null,
         patient_relation: form.booking_for !== 'myself' ? form.patient_relation : null,
-        patient_gender: form.booking_for !== 'myself' ? (form.patient_gender || 'পুরুষ') : null,
+        patient_gender: form.patient_gender || 'পুরুষ',
         patient_phone: form.booking_for !== 'myself' ? cleanPatientPhone : null
       }
       
@@ -612,7 +739,7 @@ export default function BookAppointmentPage() {
       const res = await createAppointment(payload)
       const resData = res?.data?.data || res?.data || {}
       const isOther = (payload.booking_for && payload.booking_for !== 'myself' && payload.patient_name)
-      const patientDisplayName = isOther ? payload.patient_name : (user?.name || 'রোগী')
+      const patientDisplayName = isOther ? payload.patient_name : (form.patient_name || user?.name || 'রোগী')
 
       const newAppt = {
         id: resData.id || resData.public_id || Date.now(),
@@ -629,6 +756,7 @@ export default function BookAppointmentPage() {
         serial_number: resData.serial_number ?? null,
         booking_for: payload.booking_for || 'myself',
         patient_name: resData.patient_name || patientDisplayName,
+        patient_phone: resData.patient_phone || payload.patient_phone || form.patient_phone || user?.mobile || null,
         patient_age: payload.patient_age,
         patient_relation: payload.patient_relation,
         for_patient_name: payload.patient_name,
@@ -646,20 +774,56 @@ export default function BookAppointmentPage() {
       setShowAuthModal(false)
       window.scrollTo(0, 0)
     } catch (err) {
-      const rawMsg = err.response?.data?.message || err.response?.data?.error || ''
+      let rawMsg = err.response?.data?.message || err.response?.data?.error || ''
+      const validationErrors = err.response?.data?.errors
+
+      if (validationErrors && typeof validationErrors === 'object') {
+        const errorEntries = Object.entries(validationErrors)
+        if (errorEntries.length > 0) {
+          const [firstField, fieldMsgs] = errorEntries[0]
+          const firstMsg = Array.isArray(fieldMsgs) ? fieldMsgs[0] : fieldMsgs
+
+          if (firstField === 'appointment_time') {
+            rawMsg = 'অনুগ্রহ করে অ্যাপয়েন্টমেন্টের জন্য একটি বৈধ সময় স্লট নির্বাচন করুন।'
+          } else if (firstField === 'appointment_date') {
+            rawMsg = 'অনুগ্রহ করে সঠিক অ্যাপয়েন্টমেন্টের তারিখ নির্বাচন করুন।'
+          } else if (firstField === 'doctor_id' || firstField === 'chamber_id') {
+            rawMsg = 'ডাক্তার বা চেম্বার সঠিকভাবে নির্বাচন করা হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+          } else if (firstField === 'payment_status') {
+            rawMsg = 'পেমেন্ট পদ্ধতি সঠিকভাবে নির্বাচন করা হয়নি।'
+          } else if (firstMsg) {
+            rawMsg = firstMsg
+          }
+        }
+      }
+
+      if (!rawMsg || rawMsg.toLowerCase().includes('validation failed')) {
+        rawMsg = 'প্রদত্ত তথ্যে কিছু অসম্পূর্ণতা রয়েছে। অনুগ্রহ করে তারিখ, সময় স্লট ও রোগীর তথ্য পুনরায় যাচাই করুন।'
+      }
+
       const lower = rawMsg.toLowerCase()
       console.error('Booking submission error:', rawMsg, err)
 
-      if (lower.includes('already booked this doctor') || lower.includes('you already booked')) {
+      if (
+        lower.includes('already booked this doctor') ||
+        lower.includes('you already booked') ||
+        rawMsg.includes('ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করেছেন') ||
+        rawMsg.includes('ইতিমধ্যে বুক করেছেন')
+      ) {
         showWarning(
           'ইতিমধ্যে বুক করা হয়েছে',
           'আপনি এই ডাক্তারের জন্য এই তারিখে ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করেছেন। আপনার পূর্ববর্তী অ্যাপয়েন্টমেন্টের তালিকা দেখতে নিচের বোতামে চাপুন।',
-          { viewAppointments: true, confirmText: 'বন্ধ করুন' }
+          { viewAppointments: true, confirmText: 'ঠিক আছে' }
         )
-      } else if (lower.includes('time slot is already booked') || lower.includes('slot is already booked')) {
+      } else if (
+        lower.includes('time slot is already booked') || 
+        lower.includes('slot is already booked') ||
+        (validationErrors && validationErrors.appointment_time) ||
+        rawMsg.includes('সময় স্লট')
+      ) {
         showWarning(
           'সময় স্লট বুক করা হয়েছে',
-          'এই সময় স্লটটি ইতিমধ্যে অন্য একজন রোগী বুক করে ফেলেছেন। অনুগ্রহ করে অন্য একটি সময় স্লট নির্বাচন করুন।',
+          'এই সময় স্লটটি ইতিমধ্যে অন্য একজন রোগী বুক করে ফেলেছেন অথবা খালি নেই। অনুগ্রহ করে অন্য একটি সময় স্লট নির্বাচন করুন।',
           {
             onClose: () => setCurrentStep(2)
           }
@@ -691,9 +855,107 @@ export default function BookAppointmentPage() {
   }
 
   // Auth Functions
-  const handleSendOtp = async () => {
-    const trimmed = (mobileNumber || '').trim()
+  const handleSendBookingOtp = async (phone) => {
+    const trimmed = (phone || mobileNumber || '').trim().replace(/\D/g, '')
+    if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
+      setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
+      setAuthMode('otp-send')
+      return
+    }
+    setOtpSending(true)
+    setOtpError('')
     setMobileWarning('')
+
+    const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
+
+    // 1. Instant live check of slot before sending OTP SMS to completely eliminate OTP loss
+    if (activeDoctorId && form.appointment_date && form.appointment_time && selectedChamberId) {
+      try {
+        const slotCheckRes = await getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
+        const booked = slotCheckRes.data?.booked_slots || []
+        setBookedSlots(booked)
+        if (booked.includes(form.appointment_time)) {
+          setOtpSending(false)
+          setShowAuthModal(false)
+          showWarning('সময় স্লট ইতোমধ্যে বুক করা হয়েছে', 'এইমাত্র অন্য একজন রোগী এই সময় স্লটটি বুক করে ফেলেছেন। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।', {
+            onClose: () => setCurrentStep(2)
+          })
+          return
+        }
+      } catch (checkErr) {
+        console.warn('Pre-OTP slot check warning:', checkErr)
+      }
+    }
+
+    setAuthMode('otp-verify')
+    try {
+      await sendOtp({ 
+        mobile: trimmed, 
+        phone: trimmed, 
+        type: 'appointment',
+        doctor_id: activeDoctorId,
+        chamber_id: selectedChamberId,
+        appointment_date: form.appointment_date,
+        appointment_time: form.appointment_time,
+        booking_for: form.booking_for || 'myself',
+        patient_name: (form.patient_name || '').trim(),
+        patient_phone: (form.patient_phone || '').trim() || trimmed
+      })
+      setOtpTimer(60)
+      setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+    } catch (err) {
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
+          { type: 'warning' }
+        )
+        return
+      }
+      if (err.response?.data?.slot_booked) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning('সময় স্লট ইতোমধ্যে বুক করা হয়েছে', err.response?.data?.message || 'এই সময় স্লটটি ইতোমধ্যে বুক হয়ে গেছে। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।', {
+          onClose: () => setCurrentStep(2)
+        })
+        return
+      }
+      console.error('Send booking OTP error:', err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+
+      if (cooldown > 0) {
+        setOtpTimer(cooldown)
+        setAuthMode('otp-verify')
+        setOtpError(errorMsg)
+      } else {
+        setMobileWarning(errorMsg)
+        setAuthMode('otp-send')
+      }
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  const handleSendOtp = async () => {
+    const trimmed = (mobileNumber || '').trim().replace(/\D/g, '')
+    setMobileWarning('')
+
+    if (!isLoggedIn) {
+      if (form.booking_for === 'myself' && (!form.patient_name || !form.patient_name.trim())) {
+        setMobileWarning('অনুগ্রহ করে আপনার পূর্ণ নাম লিখুন।')
+        return
+      }
+      if (form.booking_for !== 'myself' && (!form.booker_name || !form.booker_name.trim())) {
+        setMobileWarning('অনুগ্রহ করে আপনার (বুকিংকারীর) নাম লিখুন।')
+        return
+      }
+    }
+
     if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
       setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
       return
@@ -701,48 +963,107 @@ export default function BookAppointmentPage() {
     setOtpSending(true)
     setOtpError('')
     
-    // Check if number is registered as patient BEFORE sending OTP
-    let isRegistered = false
-    try {
-      const checkRes = await patientCheckIdentifier({ identifier: trimmed, role: 'patient' })
-      if (checkRes.data?.is_registered || checkRes.data?.success) {
-        isRegistered = true
+    // Check if number is registered as patient ONLY for unauthenticated guests
+    if (!isLoggedIn) {
+      let isRegistered = false
+      try {
+        const checkRes = await patientCheckIdentifier({ identifier: trimmed, role: 'patient' })
+        if (checkRes.data?.is_registered || checkRes.data?.success) {
+          isRegistered = true
+        }
+      } catch (e) {
+        isRegistered = false
       }
-    } catch (e) {
-      // 404 means not registered yet
-      isRegistered = false
+
+      if (isRegistered) {
+        setIsExistingPatient(true)
+        setMobileWarning('এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে পাসওয়ার্ড দিয়ে সরাসরি লগইন করুন অথবা OTP দিয়ে লগইন করুন।')
+        setOtpSending(false)
+        return
+      }
+
+      setIsExistingPatient(false)
     }
 
-    if (isRegistered) {
-      setIsExistingPatient(true)
-      setMobileWarning('এই মোবাইল নম্বরটি ইতিমধ্যে নিবন্ধিত! অনুগ্রহ করে পাসওয়ার্ড দিয়ে সরাসরি লগইন করুন অথবা OTP দিয়ে লগইন করুন।')
-      setOtpSending(false)
-      return
-    }
+    const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
 
-    setIsExistingPatient(false)
+    // 1. Instant live check of slot before sending OTP SMS
+    if (activeDoctorId && form.appointment_date && form.appointment_time && selectedChamberId) {
+      try {
+        const slotCheckRes = await getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
+        const booked = slotCheckRes.data?.booked_slots || []
+        setBookedSlots(booked)
+        if (booked.includes(form.appointment_time)) {
+          setOtpSending(false)
+          setShowAuthModal(false)
+          showWarning('সময় স্লট ইতোমধ্যে বুক করা হয়েছে', 'এইমাত্র অন্য একজন রোগী এই সময় স্লটটি বুক করে ফেলেছেন। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।', {
+            onClose: () => setCurrentStep(2)
+          })
+          return
+        }
+      } catch (checkErr) {
+        console.warn('Pre-OTP slot check warning:', checkErr)
+      }
+    }
 
     try {
-      await sendOtp({ mobile: trimmed, type: 'registration' })
+      await sendOtp({ 
+        mobile: trimmed, 
+        phone: trimmed, 
+        type: 'appointment',
+        doctor_id: activeDoctorId,
+        chamber_id: selectedChamberId,
+        appointment_date: form.appointment_date,
+        appointment_time: form.appointment_time,
+        booking_for: form.booking_for || 'myself',
+        patient_name: (form.patient_name || '').trim(),
+        patient_phone: (form.patient_phone || '').trim() || trimmed
+      })
       setAuthMode('otp-verify')
       setOtpTimer(60)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
+          { type: 'warning' }
+        )
+        return
+      }
+      if (err.response?.data?.slot_booked) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning('সময় স্লট ইতোমধ্যে বুক করা হয়েছে', err.response?.data?.message || 'এই সময় স্লটটি ইতোমধ্যে বুক হয়ে গেছে। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।', {
+          onClose: () => setCurrentStep(2)
+        })
+        return
+      }
       console.error('sendOtp error:', err)
       const rawMsg = err.response?.data?.message || err.response?.data?.error
-      setMobileWarning(translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+      if (cooldown > 0) {
+        setOtpTimer(cooldown)
+        setAuthMode('otp-verify')
+        setOtpError(errorMsg)
+      } else {
+        setMobileWarning(errorMsg)
+      }
     } finally {
       setOtpSending(false)
     }
   }
 
   const handleSendLoginOtp = async () => {
-    const trimmed = (mobileNumber || '').trim()
+    const trimmed = (mobileNumber || '').trim().replace(/\D/g, '')
     setOtpSending(true)
     setOtpError('')
     try {
-      await sendOtp({ mobile: trimmed, type: 'appointment' })
+      await sendOtp({ mobile: trimmed, phone: trimmed, type: 'appointment' })
       setIsExistingPatient(true)
       setAuthMode('otp-verify')
       setOtpTimer(60)
@@ -751,7 +1072,15 @@ export default function BookAppointmentPage() {
     } catch (err) {
       console.error('Login OTP error:', err)
       const rawMsg = err.response?.data?.message || err.response?.data?.error
-      setMobileWarning(translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+      if (cooldown > 0) {
+        setOtpTimer(cooldown)
+        setAuthMode('otp-verify')
+        setOtpError(errorMsg)
+      } else {
+        setMobileWarning(errorMsg)
+      }
     } finally {
       setOtpSending(false)
     }
@@ -759,21 +1088,47 @@ export default function BookAppointmentPage() {
 
   const handleResendOtp = async () => {
     if (otpTimer > 0 || otpSending) return
-    const trimmed = (mobileNumber || '').trim()
+    const trimmed = (mobileNumber || user?.phone || user?.mobile || '').trim().replace(/\D/g, '')
     if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
       setOtpError('অনুগ্রহ করে সঠিক মোবাইল নম্বর দিন।')
       return
     }
     setOtpSending(true)
     setOtpError('')
+    const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
     try {
-      await sendOtp({ mobile: trimmed, type: 'appointment' })
+      await sendOtp({ 
+        mobile: trimmed, 
+        phone: trimmed, 
+        type: 'appointment',
+        doctor_id: activeDoctorId,
+        chamber_id: selectedChamberId,
+        appointment_date: form.appointment_date,
+        appointment_time: form.appointment_time,
+        booking_for: form.booking_for || 'myself',
+        patient_name: (form.patient_name || '').trim(),
+        patient_phone: (form.patient_phone || '').trim() || trimmed
+      })
       setOtpTimer(60)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
+          { type: 'warning' }
+        )
+        return
+      }
       console.error(err)
       const rawMsg = err.response?.data?.message || err.response?.data?.error
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      if (cooldown > 0) {
+        setOtpTimer(cooldown)
+      }
       const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
       setOtpError(errorMsg)
     } finally {
@@ -783,36 +1138,49 @@ export default function BookAppointmentPage() {
 
   const handleVerifyOtp = async () => {
     setOtpError('')
-    const otp = otpDigits.join('')
+    const otp = otpDigits.join('').trim()
     if (otp.length < 6) {
       setOtpError('অনুগ্রহ করে ৬ সংখ্যার সঠিক OTP কোড দিন।')
       return
     }
     setOtpVerifying(true)
+    const cleanMobile = (mobileNumber || user?.phone || user?.mobile || '').trim().replace(/\D/g, '')
+    const authUserName = form.booking_for === 'myself'
+      ? (form.patient_name || 'রোগী')
+      : (isLoggedIn ? (user?.name || 'বুকিংকারী') : (form.booker_name?.trim() || 'বুকিংকারী'))
+
     try {
-      const res = await verifyOtp({ mobile: mobileNumber, otp })
-      if (res.data?.token) {
-        storeAuth(res.data.token, res.data.user || { mobile: mobileNumber }, 'patient')
+      const res = await verifyOtp({ 
+        mobile: cleanMobile, 
+        otp, 
+        auto_register: !isLoggedIn, 
+        type: 'quick_appointment',
+        patient_name: authUserName
+      })
+
+      const resData = res?.data || {}
+
+      if (resData.success || resData.token) {
+        if (!isLoggedIn && resData.token) {
+          storeAuth(resData.token, resData.user || { mobile: cleanMobile, name: authUserName }, 'patient')
+
+          if (resData.is_new_account && resData.credentials) {
+            setNewAccountCredentials(resData.credentials)
+          } else {
+            setNewAccountCredentials(null)
+          }
+        }
+
         setShowAuthModal(false)
         await submitAppointment()
       } else {
-        // Unregistered patient -> Show Account Details Step
-        setRegForm(prev => ({
-          ...prev,
-          name: prev.name || (form.booking_for === 'myself' ? form.patient_name : '')
-        }))
-        setAuthMode('account-details')
+        setOtpError('OTP যাচাইকরণ সম্পন্ন করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।')
       }
     } catch (err) {
-      console.error(err)
-      // Check demo OTP fallback if backend network issue
-      if (otp === '123456') {
-        setAuthMode('account-details')
-      } else {
-        const rawMsg = err.response?.data?.message || ''
-        const errorMsg = translateApiError(rawMsg) || 'ভুল OTP কোড! সঠিক OTP কোডটি লিখুন।'
-        setOtpError(errorMsg)
-      }
+      console.error('Verify OTP error:', err)
+      const rawMsg = err.response?.data?.message || err.response?.data?.error || ''
+      const errorMsg = translateApiError(rawMsg) || rawMsg || 'ভুল OTP কোড! সঠিক OTP কোডটি লিখুন।'
+      setOtpError(errorMsg)
     } finally {
       setOtpVerifying(false)
     }
@@ -983,6 +1351,9 @@ export default function BookAppointmentPage() {
     const serialNo = appt.serial_number ? toBnNum(appt.serial_number) : null
     const formattedDate = getFormatDateBn(appt.appointment_date) || appt.appointment_date || 'তারিখ নির্ধারিত'
     const formattedTime = formatTimeBn(appt.appointment_time) || appt.appointment_time || 'সময় নির্ধারিত'
+    const patientName = appt.patient_name || form?.patient_name || user?.name || 'রোগী'
+    const patientPhone = appt.patient_phone || form?.patient_phone || user?.mobile || ''
+    const feeVal = appt.fee || form?.fee || selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee || null
 
     const handleCopyTrackingId = () => {
       if (!trackingId) return
@@ -996,226 +1367,501 @@ export default function BookAppointmentPage() {
     }
 
     return (
-      <div className="page-wrapper d-flex align-items-center justify-content-center py-5 px-3" style={{ minHeight: '85vh', background: '#F8FAFC' }}>
-        {/* Print Styles */}
+      <div className="page-wrapper d-flex align-items-center justify-content-center py-5 px-3" style={{ minHeight: '85vh', background: '#F8FAFC', fontFamily: "'Inter', sans-serif" }}>
+        {/* Print & Animation Styles */}
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             body * { visibility: hidden !important; }
             #printable-booking-slip, #printable-booking-slip * { visibility: visible !important; }
             #printable-booking-slip {
-              position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important;
-              box-shadow: none !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 20px !important;
+              position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 650px !important;
+              box-shadow: none !important; border: 2px solid #00B875 !important; border-radius: 14px !important; margin: 0 auto !important; padding: 20px !important;
+              background: #ffffff !important;
             }
             .no-print { display: none !important; }
           }
+
+          @keyframes bookLivePulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+          }
+
+          .quick-cred-box {
+            background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+            border: 1.5px solid #86EFAC;
+            border-radius: 14px;
+            padding: 13px 14px;
+            margin-bottom: 16px;
+            text-align: left;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+          }
+          .quick-cred-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+          .quick-cred-title {
+            font-size: 13px;
+            fontWeight: 800;
+            color: #065F46;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Hind Siliguri', sans-serif;
+            line-height: 1.35;
+            flex: 1;
+            min-width: 0;
+          }
+          .quick-cred-copy-btn {
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'Hind Siliguri', sans-serif;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+            transition: all 0.15s ease;
+          }
+          .quick-cred-copy-btn:hover {
+            background: #059669;
+          }
+          .quick-cred-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            background: #ffffff;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #D1FAE5;
+          }
+          @media (max-width: 480px) {
+            .quick-cred-grid {
+              grid-template-columns: 1fr 1fr;
+              gap: 8px;
+              padding: 9px;
+            }
+            .quick-cred-full-col {
+              grid-column: span 2;
+            }
+          }
+          .quick-cred-cell {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 8px 10px;
+          }
+          .quick-cred-lbl {
+            font-size: 10.5px;
+            color: #64748B;
+            font-weight: 600;
+            font-family: 'Hind Siliguri', sans-serif;
+            margin-bottom: 2px;
+          }
+          .quick-cred-val {
+            font-size: 13px;
+            font-weight: 800;
+            word-break: break-word;
+          }
+          .quick-cred-full-inner {
+            display: flex;
+            flex-direction: column;
+          }
+          @media (max-width: 480px) {
+            .quick-cred-full-inner {
+              flex-direction: row;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .quick-cred-full-inner .quick-cred-lbl {
+              margin-bottom: 0;
+            }
+          }
+
+          .quick-summary-box {
+            background: #F8FAFC;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid #E2E8F0;
+            text-align: left;
+            margin-bottom: 16px;
+          }
+          .quick-summary-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #E2E8F0;
+          }
+          .quick-summary-doc {
+            font-size: 15px;
+            font-weight: 800;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', sans-serif;
+            line-height: 1.3;
+          }
+          .quick-summary-spec {
+            font-size: 12.5px;
+            color: #00B875;
+            font-weight: 700;
+            font-family: 'Hind Siliguri', sans-serif;
+            margin-top: 2px;
+          }
+          .quick-badge-status {
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: 'Hind Siliguri', sans-serif;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          .quick-badge-paid {
+            background: #DCFCE7;
+            color: #15803D;
+          }
+          .quick-badge-unpaid {
+            background: #FEF3C7;
+            color: #B45309;
+          }
+          .quick-summary-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          .quick-row-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12.5px;
+            font-family: 'Hind Siliguri', sans-serif;
+            line-height: 1.4;
+          }
+          @media (max-width: 420px) {
+            .quick-row-item {
+              flex-direction: column;
+              gap: 1px;
+              margin-bottom: 4px;
+            }
+            .quick-row-item:last-child {
+              margin-bottom: 0;
+            }
+          }
+          .quick-row-lbl {
+            color: #64748B;
+            font-weight: 600;
+            flex-shrink: 0;
+          }
+          .quick-row-val {
+            color: #1E293B;
+            font-weight: 700;
+            text-align: right;
+            word-break: break-word;
+          }
+          @media (max-width: 420px) {
+            .quick-row-val {
+              text-align: left;
+            }
+          }
         `}} />
 
-        <div style={{ width: '100%', maxWidth: 560 }}>
+        <div style={{ width: '100%', maxWidth: 580 }}>
           {/* Main Booking Slip Card */}
           <div
             id="printable-booking-slip"
             style={{
               background: '#ffffff',
-              borderRadius: 24,
+              borderRadius: 20,
               border: '1px solid #E2E8F0',
-              boxShadow: '0 20px 45px -10px rgba(0, 184, 117, 0.12), 0 8px 20px -6px rgba(15, 23, 42, 0.06)',
+              boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
               overflow: 'hidden',
-              position: 'relative'
+              position: 'relative',
+              padding: '24px 20px'
             }}
           >
-            {/* Top Green Accent Bar */}
-            <div style={{ height: 6, background: 'linear-gradient(90deg, #00B875 0%, #10B981 50%, #059669 100%)' }} />
-
-            {/* Header Section */}
-            <div style={{ padding: '32px 28px 20px', textAlign: 'center', background: 'radial-gradient(ellipse at top, rgba(0, 184, 117, 0.08) 0%, rgba(255, 255, 255, 0) 70%)' }}>
-              <div style={{
-                width: 68, height: 68, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
-                boxShadow: '0 10px 22px rgba(0, 184, 117, 0.32)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px', color: 'white'
-              }}>
-                <IconCheck size={36} stroke={3} />
-              </div>
-              <h3 style={{
-                fontWeight: 900, color: '#0F172A', margin: '0 0 8px',
-                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
-                fontSize: 23, letterSpacing: '-0.01em'
-              }}>
-                বুকিং সফলভাবে নিশ্চিত হয়েছে! 🎉
-              </h3>
-              <p style={{
-                color: '#64748B', fontSize: 14.5, margin: 0,
-                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
-                lineHeight: 1.5
-              }}>
-                আপনার অ্যাপয়েন্টমেন্ট কনফার্ম করা হয়েছে। নিচে বুকিং স্লিপের বিস্তারিত দেওয়া হলো।
-              </p>
+            {/* Success Icon */}
+            <div style={{
+              width: 58,
+              height: 58,
+              borderRadius: '50%',
+              background: '#DCFCE7',
+              color: '#00B875',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <IconCircleCheck size={36} />
             </div>
 
-            {/* Ticket / Slip Card Body */}
-            <div style={{ padding: '0 22px 22px' }}>
-              <div style={{
-                background: '#F8FAFC',
-                borderRadius: 18,
-                border: '1.5px dashed #CBD5E1',
-                padding: '20px 20px',
-                position: 'relative'
-              }}>
-                {/* Badge Top Row: Serial & Tracking */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: 10, paddingBottom: 14,
-                  borderBottom: '1px solid #E2E8F0', marginBottom: 16
-                }}>
-                  {/* Serial Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>সিরিয়াল নং:</span>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      background: '#E8F8F2', color: '#00B875',
-                      padding: '4px 12px', borderRadius: 999,
-                      fontWeight: 900, fontSize: 15,
-                      border: '1px solid #A7F3D0',
-                      boxShadow: '0 2px 4px rgba(0, 184, 117, 0.1)'
-                    }}>
-                      #{serialNo || 'নিশ্চিতকরণাধীন'}
-                    </span>
-                  </div>
+            {/* Title & Subtitle */}
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 5, fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.3 }}>
+                অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে! 🎉
+              </h2>
 
-                  {/* Tracking / Public ID */}
-                  {trackingId && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>অ্যাপয়েন্টমেন্ট আইডি:</span>
-                      <button
-                        onClick={handleCopyTrackingId}
-                        type="button"
-                        style={{
-                          background: '#EEF2FF', color: '#4F46E5',
-                          border: '1px solid #C7D2FE', borderRadius: 6,
-                          padding: '3px 8px', fontSize: 12.5, fontWeight: 700,
-                          fontFamily: 'monospace', cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          transition: 'all 0.15s ease'
-                        }}
-                        title="কপি করতে ক্লিক করুন"
-                      >
-                        <span>{trackingId}</span>
-                        {copiedId ? <IconCheck size={13} color="#16a34a" /> : <IconCopy size={13} />}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Doctor Details Row */}
-                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: '#E8F8F2', border: '1px solid #A7F3D0',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, color: '#00B875'
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                {trackingId && (
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    আপনার ট্র্যাকিং আইডি: <strong style={{ color: '#00B875', fontWeight: 800 }}>{trackingId}</strong>
+                    <button
+                      onClick={handleCopyTrackingId}
+                      type="button"
+                      className="no-print"
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: copiedId ? '#16a34a' : '#64748B', marginLeft: 6,
+                        padding: 0, verticalAlign: 'middle'
+                      }}
+                      title="আইডি কপি করুন"
+                    >
+                      {copiedId ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                    </button>
+                  </p>
+                )}
+                {serialNo && (
+                  <span style={{
+                    background: '#DCFCE7',
+                    color: '#047857',
+                    padding: '2px 10px',
+                    borderRadius: 999,
+                    fontWeight: 800,
+                    fontSize: 12.5,
+                    border: '1px solid #86EFAC',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    display: 'inline-flex',
+                    alignItems: 'center'
                   }}>
-                    <IconStethoscope size={23} />
+                    সিরিয়াল নং: {serialNo}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* AUTO-REGISTERED ACCOUNT CREDENTIALS */}
+            {newAccountCredentials && (
+              <div className="quick-cred-box">
+                <div className="quick-cred-head">
+                  <div className="quick-cred-title">
+                    <span style={{ fontSize: 15 }}>🎉</span>
+                    <span>আপনার রোগী অ্যাকাউন্ট তৈরি সম্পন্ন হয়েছে!</span>
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ডাক্তার</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '2px 0 2px' }}>
-                      {appt.doctor_name || doctor?.name || 'ডাক্তার'}
+                  <button
+                    type="button"
+                    className="no-print quick-cred-copy-btn"
+                    onClick={() => {
+                      const copyText = `পাবলিক আইডি: ${newAccountCredentials.patient_public_id}\nমোবাইল নম্বর: ${newAccountCredentials.login_phone}\nপাসওয়ার্ড: ${newAccountCredentials.temp_password}`
+                      navigator.clipboard?.writeText(copyText)
+                      setCopiedCreds(true)
+                      setTimeout(() => setCopiedCreds(false), 2000)
+                    }}
+                  >
+                    <IconCopy size={13} />
+                    <span>{copiedCreds ? 'কপি হয়েছে!' : 'কপি করুন'}</span>
+                  </button>
+                </div>
+
+                <div className="quick-cred-grid">
+                  <div className="quick-cred-cell">
+                    <div className="quick-cred-lbl">লগইন মোবাইল</div>
+                    <div className="quick-cred-val" style={{ color: '#0F172A' }}>
+                      {newAccountCredentials.login_phone}
                     </div>
-                    <div style={{ fontSize: 13, color: '#00B875', fontWeight: 600 }}>
-                      {appt.specialty || doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}
-                      {appt.degree ? ` • ${appt.degree}` : ''}
+                  </div>
+
+                  <div className="quick-cred-cell">
+                    <div className="quick-cred-lbl">পাসওয়ার্ড</div>
+                    <div className="quick-cred-val" style={{ color: '#059669', letterSpacing: '0.5px' }}>
+                      {newAccountCredentials.temp_password}
+                    </div>
+                  </div>
+
+                  <div className="quick-cred-cell quick-cred-full-col">
+                    <div className="quick-cred-full-inner">
+                      <div className="quick-cred-lbl">পাবলিক আইডি:</div>
+                      <div className="quick-cred-val" style={{ color: '#0F172A' }}>
+                        {newAccountCredentials.patient_public_id}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Location / Chamber Row */}
-                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: '#FEF3C7', border: '1px solid #FDE68A',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, color: '#D97706'
-                  }}>
-                    <IconBuildingHospital size={23} />
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>চেম্বার / হাসপাতাল ও ঠিকানা</div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#1E293B', margin: '2px 0 2px' }}>
-                      {appt.hospital_name || 'চেম্বার'}
-                    </div>
-                    <div style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <IconMapPin size={13} style={{ flexShrink: 0 }} />
-                      <span>{appt.chamber_address || 'ঢাকা, বাংলাদেশ'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Date & Time Grid */}
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12,
-                  background: '#ffffff', borderRadius: 12, padding: '12px 14px',
-                  border: '1px solid #E2E8F0', marginBottom: 14
+                  fontSize: 11.5,
+                  color: '#047857',
+                  marginTop: 9,
+                  lineHeight: 1.45,
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 5
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconCalendarEvent size={18} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>অ্যাপয়েন্টমেন্টের তারিখ</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{formattedDate}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#FFF7ED', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconClock size={18} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>সময় / শিফট</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{formattedTime}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Patient & Fee Row */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: 10, fontSize: 12.5, color: '#475569',
-                  paddingTop: 4
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <IconUser size={15} color="#64748B" />
-                    <span>রোগীর নাম: <strong style={{ color: '#0F172A' }}>{appt.patient_name || 'রোগী'}</strong></span>
-                  </div>
-
-                  {appt.fee && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span>পরামর্শ ফি:</span>
-                      <strong style={{ color: '#00B875', fontSize: 13.5 }}>৳ {toBnNum(appt.fee)}</strong>
-                    </div>
-                  )}
+                  <span style={{ flexShrink: 0, marginTop: 1, fontSize: 13 }}>ℹ️</span>
+                  <span>আপনার অ্যাকাউন্টে স্বয়ংক্রিয়ভাবে লগইন হয়ে গেছে। পরবর্তীতে লগইন করার জন্য উপরের তথ্যটি সংরক্ষণ করুন।</span>
                 </div>
               </div>
+            )}
 
-              {/* Instructions Callout */}
-              <div style={{
-                background: '#F0FDF4', border: '1px solid #BBF7D0',
-                borderRadius: 12, padding: '12px 14px', marginTop: 14,
-                display: 'flex', gap: 10, alignItems: 'flex-start'
-              }}>
-                <IconInfoCircle size={18} color="#16A34A" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.5 }}>
-                  <strong>জরুরি পরামর্শ:</strong> নির্ধারিত সময়ের অন্তত <strong>১৫ মিনিট পূর্বে</strong> চেম্বারে উপস্থিত থাকুন। রিসেপশনে আপনার সিরিয়াল নম্বর ও আইডি প্রদর্শন করুন।
+            {/* APPOINTMENT SUMMARY CARD (Quick Appointment style) */}
+            <div className="quick-summary-box">
+              <div className="quick-summary-top">
+                <div>
+                  <div className="quick-summary-doc">
+                    {appt.doctor_name || doctor?.name || 'ডাক্তার'}
+                  </div>
+                  <div className="quick-summary-spec">
+                    {appt.specialty || doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}
+                    {appt.degree ? ` • ${appt.degree}` : ''}
+                  </div>
                 </div>
+                <span className={`quick-badge-status ${appt.payment_status === 'Paid' ? 'quick-badge-paid' : 'quick-badge-unpaid'}`}>
+                  {appt.payment_status === 'Paid' ? 'পরিশোধিত' : 'পরিশোধ বাকি (চেম্বারে দিবেন)'}
+                </span>
+              </div>
+
+              <div className="quick-summary-rows">
+                {serialNo && (
+                  <div className="quick-row-item">
+                    <span className="quick-row-lbl">সিরিয়াল নম্বর:</span>
+                    <span className="quick-row-val" style={{ color: '#00B875', fontWeight: 800, fontSize: 13.5 }}>
+                      {serialNo}
+                    </span>
+                  </div>
+                )}
+                <div className="quick-row-item">
+                  <span className="quick-row-lbl">হাসপাতাল/চেম্বার:</span>
+                  <span className="quick-row-val">
+                    {appt.hospital_name || doctor?.hospital_name || 'চেম্বার'}
+                    {appt.chamber_address ? ` (${appt.chamber_address})` : ''}
+                  </span>
+                </div>
+                <div className="quick-row-item">
+                  <span className="quick-row-lbl">তারিখ ও সময়:</span>
+                  <span className="quick-row-val">{formattedDate} ({formattedTime})</span>
+                </div>
+                <div className="quick-row-item">
+                  <span className="quick-row-lbl">রোগীর নাম:</span>
+                  <span className="quick-row-val">{patientName}</span>
+                </div>
+                {patientPhone && (
+                  <div className="quick-row-item">
+                    <span className="quick-row-lbl">রোগীর ফোন নম্বর:</span>
+                    <span className="quick-row-val">+880 {String(patientPhone).replace(/^\+?880?|^0/, '')}</span>
+                  </div>
+                )}
+                {feeVal && (
+                  <div className="quick-row-item">
+                    <span className="quick-row-lbl">পরামর্শ ফি:</span>
+                    <span className="quick-row-val" style={{ color: '#00B875', fontWeight: 800 }}>
+                      ৳ {toBnNum(feeVal)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 📡 INTERACTIVE LIVE SERIAL TRACKER BANNER */}
+            <div className="no-print" style={{
+              background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 50%, #EFF6FF 100%)',
+              border: '1.5px solid #6EE7B7',
+              borderRadius: 14,
+              padding: '13px 15px',
+              marginBottom: 16,
+              textAlign: 'left',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: 9,
+                    height: 9,
+                    borderRadius: '50%',
+                    background: '#EF4444',
+                    boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.7)',
+                    animation: 'bookLivePulse 1.8s infinite'
+                  }} />
+                  <strong style={{ fontSize: 13, color: '#065F46', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    লাইভ সিরিয়াল ট্র্যাকিং সুবিধা
+                  </strong>
+                </div>
+                <span style={{
+                  background: '#D1FAE5',
+                  color: '#047857',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  নতুন ফিচার
+                </span>
+              </div>
+
+              <p style={{
+                fontSize: 12,
+                color: '#334155',
+                lineHeight: 1.5,
+                margin: '0 0 10px',
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}>
+                📢 <strong>চেম্বারে গিয়ে ভিড়ের মাঝে দীর্ঘক্ষণ অপেক্ষা করার দিন শেষ!</strong> আমাদের প্ল্যাটফর্মে ঘরে বসেই রিয়েল-টাইমে দেখতে পারবেন ডাক্তার বর্তমানে <strong>কত নম্বর সিরিয়ালের রোগী</strong> দেখছেন।
+              </p>
+
+              {trackingId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/appointment-ticket/${trackingId}`)}
+                  style={{
+                    background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '7px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)',
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}
+                >
+                  <span>📡 লাইভ সিরিয়াল ট্র্যাক করুন</span>
+                  <span>➔</span>
+                </button>
+              )}
+            </div>
+
+            {/* Helpful Instruction Box */}
+            <div style={{
+              background: '#F0FDF4', border: '1px solid #BBF7D0',
+              borderRadius: 12, padding: '12px 14px', marginBottom: 18,
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+              textAlign: 'left'
+            }}>
+              <IconInfoCircle size={18} color="#16A34A" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <strong>জরুরি পরামর্শ:</strong> নির্ধারিত সময়ের অন্তত <strong>১৫ মিনিট পূর্বে</strong> চেম্বারে উপস্থিত থাকুন। রিসেপশনে আপনার সিরিয়াল নম্বর ও আইডি প্রদর্শন করুন।
               </div>
             </div>
 
             {/* Actions Footer */}
             <div className="no-print" style={{
-              padding: '16px 22px 24px',
-              borderTop: '1px solid #F1F5F9',
-              background: '#FAFAFA',
               display: 'flex',
               flexDirection: 'column',
               gap: 10
@@ -1227,15 +1873,16 @@ export default function BookAppointmentPage() {
                     onClick={() => navigate(`/appointment-ticket/${trackingId}`)}
                     type="button"
                     style={{
-                      padding: '12px 16px', borderRadius: 10,
-                      background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                      height: 44, borderRadius: 12,
+                      background: '#00B875',
                       color: 'white', border: 'none', cursor: 'pointer',
-                      fontWeight: 700, fontSize: 13.5,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)'
+                      fontWeight: 800, fontSize: 14,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
+                      fontFamily: "'Hind Siliguri', sans-serif"
                     }}
                   >
-                    <IconTicket size={18} />
+                    <IconTicket size={17} />
                     <span>টিকিট ও লাইভ সিরিয়াল</span>
                   </button>
                 ) : (
@@ -1243,9 +1890,10 @@ export default function BookAppointmentPage() {
                     onClick={() => navigate('/my-appointments')}
                     type="button"
                     style={{
-                      padding: '12px 16px', borderRadius: 10,
+                      height: 44, borderRadius: 12,
                       background: '#00B875', color: 'white', border: 'none',
-                      cursor: 'pointer', fontWeight: 700, fontSize: 13.5
+                      cursor: 'pointer', fontWeight: 800, fontSize: 14,
+                      fontFamily: "'Hind Siliguri', sans-serif"
                     }}
                   >
                     আমার অ্যাপয়েন্টমেন্ট
@@ -1256,15 +1904,16 @@ export default function BookAppointmentPage() {
                   onClick={handlePrint}
                   type="button"
                   style={{
-                    padding: '12px 16px', borderRadius: 10,
-                    background: '#ffffff', color: '#334155',
-                    border: '1.5px solid #CBD5E1', cursor: 'pointer',
+                    height: 44, borderRadius: 12,
+                    background: '#F1F5F9', color: '#334155',
+                    border: 'none', cursor: 'pointer',
                     fontWeight: 700, fontSize: 13.5,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    fontFamily: "'Hind Siliguri', sans-serif"
                   }}
                 >
-                  <IconPrinter size={18} color="#64748B" />
-                  <span>স্লিপ প্রিন্ট / সেভ</span>
+                  <IconPrinter size={17} />
+                  <span>প্রিন্ট / ডাউনলোড</span>
                 </button>
               </div>
 
@@ -1274,12 +1923,12 @@ export default function BookAppointmentPage() {
                   onClick={() => navigate('/my-appointments')}
                   type="button"
                   style={{
-                    background: 'none', border: 'none', color: '#4F46E5',
+                    background: 'none', border: 'none', color: '#00B875',
                     fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    textDecoration: 'underline'
+                    fontFamily: "'Hind Siliguri', sans-serif"
                   }}
                 >
-                  সকল অ্যাপয়েন্টমেন্ট দেখুন
+                  আমার সকল অ্যাপয়েন্টমেন্ট
                 </button>
                 <span style={{ color: '#CBD5E1' }}>•</span>
                 <button
@@ -1287,7 +1936,8 @@ export default function BookAppointmentPage() {
                   type="button"
                   style={{
                     background: 'none', border: 'none', color: '#64748B',
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    fontFamily: "'Hind Siliguri', sans-serif"
                   }}
                 >
                   হোমপেজে যান
@@ -1307,7 +1957,7 @@ export default function BookAppointmentPage() {
         <div className="auth-modal-content" style={{ boxSizing: 'border-box', background: 'white', borderRadius: 24, padding: '28px 24px', maxWidth: authMode === 'account-details' ? 460 : 420, width: '100%', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
           <button onClick={() => { setShowAuthModal(false); setOtpError(''); }} style={{ position: 'absolute', top: 16, right: 16, border: 'none', background: '#F1F5F9', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B', transition: 'all 0.2s', zIndex: 2 }}><IconX size={20} /></button>
           
-          {authMode !== 'choose' && (
+          {authMode !== 'choose' && !isLoggedIn && (
             <button onClick={() => { setAuthMode(authMode === 'account-details' ? 'otp-verify' : 'choose'); setOtpError(''); setLoginError(''); setMobileWarning(''); }} style={{ position: 'absolute', top: 16, left: 16, border: 'none', background: '#F1F5F9', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B', transition: 'all 0.2s', zIndex: 2 }}><IconChevronLeft size={20} /></button>
           )}
           
@@ -1316,8 +1966,12 @@ export default function BookAppointmentPage() {
               <div style={{ width: 48, height: 48, background: '#E8F8F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                 <IconShieldCheck size={28} color="#00B875" />
               </div>
-              <h4 style={{ fontWeight: 800, color: '#1E293B', margin: 0 }}>যাচাইকরণ প্রয়োজন</h4>
-              <p style={{ color: '#64748B', fontSize: 14, marginTop: 6, marginBottom: 0 }}>অ্যাপয়েন্টমেন্ট নিশ্চিত করতে যাচাই করুন</p>
+              <h4 style={{ fontWeight: 800, color: '#1E293B', margin: 0 }}>
+                {isLoggedIn ? 'বুকিং নিশ্চিতকরণ (OTP)' : 'যাচাইকরণ প্রয়োজন'}
+              </h4>
+              <p style={{ color: '#64748B', fontSize: 14, marginTop: 6, marginBottom: 0 }}>
+                {isLoggedIn ? 'নিরাপদ বুকিং নিশ্চিত করতে মোবাইলে পাঠানো কোডটি দিন' : 'অ্যাপয়েন্টমেন্ট নিশ্চিত করতে যাচাই করুন'}
+              </p>
             </div>
           )}
           
@@ -1330,7 +1984,14 @@ export default function BookAppointmentPage() {
                    <span style={{ color: '#64748B', fontSize: 13 }}>ইমেইল বা মোবাইল দিয়ে লগইন করুন</span>
                  </div>
                </button>
-               <button onClick={() => { setAuthMode('otp-send'); setOtpError(''); setLoginError(''); }} style={{ padding: '16px', borderRadius: 16, border: '1px solid #E2E8F0', background: 'white', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+               <button onClick={() => {
+                 if (!mobileNumber && form.patient_phone) {
+                   setMobileNumber(form.patient_phone.replace(/\D/g, ''))
+                 }
+                 setAuthMode('otp-send')
+                 setOtpError('')
+                 setLoginError('')
+               }} style={{ padding: '16px', borderRadius: 16, border: '1px solid #E2E8F0', background: 'white', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                  <div style={{ padding: 10, background: '#F0FDF4', borderRadius: 12 }}><IconDeviceMobile color="#00B875" size={24} /></div>
                  <div>
                    <strong style={{ color: '#1E293B', fontSize: 15, display: 'block' }}>মোবাইল যাচাই (OTP)</strong>
@@ -1440,7 +2101,63 @@ export default function BookAppointmentPage() {
           )}
           {authMode === 'otp-send' && (
             <div>
-              <label style={{ fontSize: 14, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 8 }}>আপনার মোবাইল নম্বর দিন</label>
+              {!isLoggedIn && form.booking_for === 'myself' && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                    আপনার পূর্ণ নাম <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.patient_name || ''}
+                    onChange={e => {
+                      setForm(prev => ({ ...prev, patient_name: e.target.value }))
+                      setMobileWarning('')
+                    }}
+                    placeholder="যেমন: মোঃ আরিফ হোসেন"
+                    style={{
+                      boxSizing: 'border-box',
+                      width: '100%',
+                      padding: '13px 16px',
+                      borderRadius: 12,
+                      border: '1.5px solid #CBD5E1',
+                      background: '#FFFFFF',
+                      fontSize: 14.5,
+                      outline: 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  />
+                </div>
+              )}
+              {!isLoggedIn && form.booking_for !== 'myself' && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                    আপনার (বুকিংকারীর) নাম <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.booker_name || ''}
+                    onChange={e => {
+                      setForm(prev => ({ ...prev, booker_name: e.target.value }))
+                      setMobileWarning('')
+                    }}
+                    placeholder="আপনার পূর্ণ নাম লিখুন"
+                    style={{
+                      boxSizing: 'border-box',
+                      width: '100%',
+                      padding: '13px 16px',
+                      borderRadius: 12,
+                      border: '1.5px solid #CBD5E1',
+                      background: '#FFFFFF',
+                      fontSize: 14.5,
+                      outline: 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  />
+                </div>
+              )}
+              <label style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                আপনার মোবাইল নম্বর দিন <span style={{ color: '#EF4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={mobileNumber}
@@ -1454,12 +2171,12 @@ export default function BookAppointmentPage() {
                 style={{
                   boxSizing: 'border-box',
                   width: '100%',
-                  padding: '14px 16px',
+                  padding: '13px 16px',
                   marginBottom: mobileWarning ? 12 : 20,
                   borderRadius: 12,
                   border: mobileWarning ? '1.5px solid #F59E0B' : '1.5px solid #CBD5E1',
                   background: mobileWarning ? '#FFFBEB' : '#FFFFFF',
-                  fontSize: 15,
+                  fontSize: 14.5,
                   outline: 'none',
                   transition: 'all 0.2s'
                 }}
@@ -1560,10 +2277,19 @@ export default function BookAppointmentPage() {
           {authMode === 'otp-verify' && (
             <div>
               <label style={{ fontSize: 14, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4, textAlign: 'center' }}>
-                {isExistingPatient ? 'অ্যাকাউন্টে লগইন করতে OTP কোড দিন' : 'যাচাই করতে OTP কোড দিন'}
+                {isLoggedIn ? 'বুকিং নিশ্চিত করতে OTP কোড দিন' : isExistingPatient ? 'অ্যাকাউন্টে লগইন করতে OTP কোড দিন' : 'যাচাই করতে OTP কোড দিন'}
               </label>
               <div style={{ textAlign: 'center', fontSize: 12.5, color: '#64748B', marginBottom: 14 }}>
-                <span style={{ color: '#00B875', fontWeight: 700 }}>{mobileNumber}</span> নম্বরে পাঠানো ৬ সংখ্যার কোডটি লিখুন
+                <span style={{ color: '#00B875', fontWeight: 700 }}>+880 {(mobileNumber || user?.phone || user?.mobile || '').replace(/^\+?880?|^0/, '')}</span> নম্বরে পাঠানো ৬ সংখ্যার কোডটি লিখুন
+                {!isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode('otp-send'); setOtpError(''); setMobileWarning(''); }}
+                    style={{ background: 'none', border: 'none', color: '#0284C7', fontSize: 12, cursor: 'pointer', padding: 0, marginLeft: 6, textDecoration: 'underline' }}
+                  >
+                    (পরিবর্তন)
+                  </button>
+                )}
               </div>
               <div style={{display: 'flex', gap: 8, justifyContent: 'center', marginBottom: otpError ? 12 : 24, flexWrap: 'nowrap'}} onPaste={handleOtpPaste}>
                  {otpDigits.map((d, i) => (
@@ -1866,7 +2592,7 @@ export default function BookAppointmentPage() {
             {warningModal.message}
           </p>
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
             {warningModal.viewAppointments && (
               <button
                 type="button"
@@ -1876,24 +2602,27 @@ export default function BookAppointmentPage() {
                 }}
                 style={{
                   flex: 1,
-                  minWidth: 160,
-                  padding: '12px 18px',
+                  minHeight: 46,
+                  padding: '10px 16px',
                   borderRadius: 12,
                   background: '#00B875',
                   color: 'white',
                   border: 'none',
-                  fontWeight: 700,
-                  fontSize: 14.5,
+                  fontWeight: 800,
+                  fontSize: 14,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 7,
                   boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <IconCalendarEvent size={18} /> আমার অ্যাপয়েন্টমেন্ট
+                <IconCalendarEvent size={18} />
+                <span>অ্যাপয়েন্টমেন্ট তালিকা</span>
               </button>
             )}
 
@@ -1905,16 +2634,19 @@ export default function BookAppointmentPage() {
                 if (onClose) onClose()
               }}
               style={{
-                flex: warningModal.viewAppointments ? '0 0 auto' : 1,
-                padding: '12px 24px',
+                flex: warningModal.viewAppointments ? 1 : 1,
+                minHeight: 46,
+                padding: '10px 18px',
                 borderRadius: 12,
                 background: warningModal.viewAppointments ? '#F1F5F9' : '#00B875',
-                color: warningModal.viewAppointments ? '#475569' : 'white',
-                border: 'none',
+                color: warningModal.viewAppointments ? '#334155' : 'white',
+                border: warningModal.viewAppointments ? '1.5px solid #E2E8F0' : 'none',
                 fontWeight: 700,
                 fontSize: 14.5,
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                fontFamily: "'Hind Siliguri', sans-serif",
+                whiteSpace: 'nowrap'
               }}
             >
               {warningModal.confirmText || 'ঠিক আছে'}
@@ -2745,6 +3477,38 @@ export default function BookAppointmentPage() {
                     </div>
                   </div>
 
+                  {/* নিজের জন্য রোগীর তথ্য (যদি লগইন না থাকে) */}
+                  {form.booking_for === 'myself' && !isLoggedIn && (
+                    <div style={{
+                      background: '#F8FAFC',
+                      border: '1.5px dashed #CBD5E1',
+                      borderRadius: 14,
+                      padding: '18px 20px',
+                      marginBottom: 20
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, color: '#00B875', fontWeight: 800, fontSize: 14 }}>
+                        <IconUser size={18} /> আপনার তথ্য দিন
+                      </div>
+                      <Row className="g-3">
+                        <Col md={12}>
+                          <div>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
+                              আপনার পূর্ণ নাম <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <input 
+                              type="text" 
+                              name="patient_name" 
+                              value={form.patient_name || ''} 
+                              onChange={handleChange} 
+                              placeholder="আপনার পূর্ণ নাম লিখুন (যেমন: মোঃ আরিফ হোসেন)" 
+                              style={inputStyle}
+                            />
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  )}
+
                   {/* অন্যান্যদের জন্য রোগীর তথ্য */}
                   {form.booking_for && form.booking_for !== 'myself' && (
                     <div style={{
@@ -2759,6 +3523,25 @@ export default function BookAppointmentPage() {
                       </div>
                       
                       <Row className="g-3">
+                        {/* Booker Name for unauthenticated user */}
+                        {!isLoggedIn && (
+                          <Col md={12}>
+                            <div>
+                              <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6, display: 'block' }}>
+                                আপনার (বুকিংকারীর) নাম <span style={{ color: '#EF4444' }}>*</span>
+                              </label>
+                              <input 
+                                type="text" 
+                                name="booker_name" 
+                                value={form.booker_name || ''} 
+                                onChange={handleChange} 
+                                placeholder="আপনার পূর্ণ নাম লিখুন (যেমন: মোঃ আরিফ হোসেন)" 
+                                style={inputStyle}
+                              />
+                            </div>
+                          </Col>
+                        )}
+
                         {/* Patient Name */}
                         <Col md={12}>
                           <div>
@@ -2872,123 +3655,7 @@ export default function BookAppointmentPage() {
                     </div>
                   )}
                   
-                  <div style={{ marginBottom: 20 }}>
-                    <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 8, display: 'block' }}>পরামর্শের কারণ</label>
-                    {(() => {
-                      const reasonOptions = [
-                        { value: 'new_consult', label: 'নতুন পরামর্শ' },
-                        { value: 'follow_up', label: 'ফলো-আপ' },
-                        { value: 'report_show', label: 'রিপোর্ট দেখানো' },
-                      ]
-                      const selectedReason = reasonOptions.find(o => o.value === form.reason_type)
-                      return (
-                        <div style={{ position: 'relative', userSelect: 'none' }}>
-                          {/* Trigger */}
-                          <div
-                            onClick={() => setReasonDropdownOpen(prev => !prev)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '13px 16px',
-                              borderRadius: 12,
-                              border: reasonDropdownOpen ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                              background: '#FFFFFF',
-                              cursor: 'pointer',
-                              boxShadow: reasonDropdownOpen ? '0 0 0 3px rgba(0,184,117,0.1)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <span style={{ fontSize: 14, fontWeight: selectedReason ? 700 : 500, color: selectedReason ? '#1E293B' : '#94A3B8' }}>
-                              {selectedReason ? selectedReason.label : 'পরামর্শের কারণ নির্বাচন করুন'}
-                            </span>
-                            <span style={{
-                              color: '#00B875',
-                              display: 'flex',
-                              alignItems: 'center',
-                              transition: 'transform 0.2s ease',
-                              transform: reasonDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
-                            }}>
-                              <IconChevronDown size={18} stroke={2.5} />
-                            </span>
-                          </div>
 
-                          {/* Options Panel */}
-                          {reasonDropdownOpen && (
-                            <div style={{
-                              position: 'absolute',
-                              top: 'calc(100% + 6px)',
-                              left: 0,
-                              right: 0,
-                              background: '#FFFFFF',
-                              borderRadius: 14,
-                              border: '1.5px solid #E2E8F0',
-                              boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-                              zIndex: 200,
-                              overflow: 'hidden'
-                            }}>
-                              {reasonOptions.map((opt, i) => {
-                                const isSelected = form.reason_type === opt.value
-                                return (
-                                  <div
-                                    key={opt.value}
-                                    onClick={() => {
-                                      setForm(prev => ({ ...prev, reason_type: opt.value }))
-                                      setReasonDropdownOpen(false)
-                                    }}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      padding: '13px 16px',
-                                      fontSize: 14,
-                                      fontWeight: isSelected ? 800 : 600,
-                                      color: isSelected ? '#007A65' : '#374151',
-                                      background: isSelected ? '#E8F8F2' : '#FFFFFF',
-                                      cursor: 'pointer',
-                                      borderBottom: i < reasonOptions.length - 1 ? '1px solid #F1F5F9' : 'none',
-                                      transition: 'background 0.15s ease'
-                                    }}
-                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F8FAFC' }}
-                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#FFFFFF' }}
-                                  >
-                                    <span>{opt.label}</span>
-                                    {isSelected && (
-                                      <span style={{
-                                        width: 20, height: 20, borderRadius: '50%',
-                                        background: '#00B875', color: 'white',
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        flexShrink: 0
-                                      }}>
-                                        <IconCheck size={12} stroke={3} />
-                                      </span>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  
-                  <div style={{ marginBottom: 24 }}>
-                    <label style={{ fontSize: 13, fontWeight: 800, color: '#374151', marginBottom: 8, display: 'block' }}>সমস্যা / পরামর্শের কারণ</label>
-                    <div style={{ position: 'relative' }}>
-                      <textarea 
-                        name="notes" 
-                        value={form.notes} 
-                        onChange={e => { if (e.target.value.length <= 300) handleChange(e) }} 
-                        placeholder="আপনার সমস্যাটি সংক্ষেপে লিখুন..."
-                        rows={4}
-                        style={{ ...inputStyle, resize: 'none' }}
-                      />
-                      <div style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 12, color: '#9CA3AF', fontWeight: 600 }}>
-                        {form.notes.length}/300
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Summary of Selected Chamber & Details (Strict 3-Column Aligned Grid) */}
                   <div style={{ 
@@ -3046,7 +3713,9 @@ export default function BookAppointmentPage() {
                                 </div>
                               ) : (
                                 <strong style={{ color: '#1F2937', fontSize: 13.5 }}>
-                                  {user?.name ? `${user.name} (নিজের জন্য)` : 'নিজের জন্য'}
+                                  {isLoggedIn 
+                                    ? (user?.name ? `${user.name} (নিজের জন্য)` : 'নিজের জন্য')
+                                    : (form.patient_name?.trim() ? `${form.patient_name} (নিজের জন্য)` : 'নিজের জন্য')}
                                 </strong>
                               )}
                             </div>
@@ -3054,7 +3723,7 @@ export default function BookAppointmentPage() {
                         </div>
                       </Col>
 
-                      {/* Column 2: Date (Top) & Reason/Type (Bottom) */}
+                      {/* Column 2: Date (Top) & Time (Bottom) */}
                       <Col xs={12} md={4}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -3066,32 +3735,24 @@ export default function BookAppointmentPage() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <IconNotes size={20} color="#00B875" />
-                            <div>
-                              <small style={{ color: '#64748B', display: 'block', fontSize: 11 }}>পরামর্শের ধরন</small>
-                              <strong style={{ color: '#1F2937', fontSize: 13.5 }}>
-                                {reasonTypeBn[form.reason_type] || (form.reason_type ? form.reason_type : 'নতুন পরামর্শ')}
-                              </strong>
-                            </div>
-                          </div>
-                        </div>
-                      </Col>
-
-                      {/* Column 3: Time (Top) & Fee (Bottom) */}
-                      <Col xs={12} md={3}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <IconClock size={20} color="#00B875" />
                             <div>
                               <small style={{ color: '#64748B', display: 'block', fontSize: 11 }}>সময়</small>
                               <strong style={{ color: '#1F2937', fontSize: 13.5 }}>{formatTimeBn(form.appointment_time) || 'নির্বাচন করা হয়নি'}</strong>
                             </div>
                           </div>
+                        </div>
+                      </Col>
 
+                      {/* Column 3: Consultation Fee */}
+                      <Col xs={12} md={3}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
                           {(selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee) && (
-                            <div style={{ background: '#E8F8F2', padding: '4px 12px', borderRadius: 8, border: '1px solid #A7F3D0', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <small style={{ color: '#00B875', fontSize: 11, fontWeight: 700 }}>পরামর্শ ফি:</small>
-                              <strong style={{ color: '#00B875', fontSize: 13.5 }}>৳ {toBnNum(selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee)}</strong>
+                            <div>
+                              <small style={{ color: '#64748B', display: 'block', fontSize: 11, marginBottom: 4 }}>পরামর্শ ফি</small>
+                              <div style={{ background: '#E8F8F2', padding: '6px 14px', borderRadius: 10, border: '1px solid #A7F3D0', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <strong style={{ color: '#00B875', fontSize: 14, fontWeight: 800 }}>৳ {toBnNum(selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee)}</strong>
+                              </div>
                             </div>
                           )}
                         </div>

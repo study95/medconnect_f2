@@ -16,6 +16,14 @@ export const getAppointmentById = (id) =>
 export const cancelAppointment = (id) =>
   axiosInstance.put(`/appointments/${id}`, { status: 'cancelled' })
 
+// POST /api/appointments/:id/cancel-send-otp
+export const sendAppointmentCancelOtp = (id) =>
+  axiosInstance.post(`/appointments/${id}/cancel-send-otp`, {}, { skipGlobalToast: true })
+
+// POST /api/appointments/:id/cancel-verify
+export const verifyAppointmentCancelOtp = (id, data) =>
+  axiosInstance.post(`/appointments/${id}/cancel-verify`, data, { skipGlobalToast: true })
+
 // GET /api/doctors/:id/booked-slots
 export const getBookedSlots = (doctorId, params) =>
   axiosInstance.get(`/doctors/${doctorId}/booked-slots`, { params })

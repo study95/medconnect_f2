@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Container } from 'react-bootstrap'
-import { getAppointmentById, cancelAppointment } from '../api/appointmentApi'
+import { Container, Modal } from 'react-bootstrap'
+import { getAppointmentById, cancelAppointment, sendAppointmentCancelOtp, verifyAppointmentCancelOtp } from '../api/appointmentApi'
 import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { getPrescription } from '../api/adminApi'
 import { useTranslation } from 'react-i18next'
@@ -144,32 +144,102 @@ export default function AppointmentTicketPage() {
     return () => { isMounted = false }
   }, [id, refreshCount])
 
-  const handleCancelAppointment = async () => {
-    if (cancelling) return
-    const isConfirmed = await confirm({
-      title: DIALOG_MESSAGES.APPOINTMENT_CANCEL_CONFIRM.title,
-      message: DIALOG_MESSAGES.APPOINTMENT_CANCEL_CONFIRM.message,
-      confirmText: 'হ্যাঁ, বাতিল করুন',
-      cancelText: 'না, ফিরে যাই',
-      variant: 'danger',
-    })
-    if (!isConfirmed) return
+  const [cancelModal, setCancelModal] = useState({
+    isOpen: false,
+    step: 'reason',
+    reason: 'জরুরি ব্যক্তিগত কাজ',
+    customReason: '',
+    maskedMobile: '',
+    otp: '',
+    otpTimer: 0,
+    loading: false,
+    error: ''
+  })
 
-    setCancelling(true)
+  useEffect(() => {
+    if (cancelModal.otpTimer <= 0) return
+    const timer = setInterval(() => {
+      setCancelModal(prev => ({
+        ...prev,
+        otpTimer: prev.otpTimer > 0 ? prev.otpTimer - 1 : 0
+      }))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cancelModal.otpTimer])
+
+  const handleOpenCancelModal = () => {
+    setCancelModal({
+      isOpen: true,
+      step: 'reason',
+      reason: 'জরুরি ব্যক্তিগত কাজ',
+      customReason: '',
+      maskedMobile: '',
+      otp: '',
+      otpTimer: 0,
+      loading: false,
+      error: ''
+    })
+  }
+
+  const handleSendCancelOtp = async () => {
+    setCancelModal(prev => ({ ...prev, loading: true, error: '' }))
     try {
-      await cancelAppointment(id)
+      const res = await sendAppointmentCancelOtp(id)
+      const data = res.data || {}
+      setCancelModal(prev => ({
+        ...prev,
+        step: 'otp',
+        maskedMobile: data.masked_mobile || '',
+        otpTimer: data.cooldown_seconds || 60,
+        loading: false,
+        error: ''
+      }))
+    } catch (err) {
+      const msg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+      setCancelModal(prev => ({ ...prev, loading: false, error: msg }))
+    }
+  }
+
+  const handleResendCancelOtp = async () => {
+    if (cancelModal.otpTimer > 0 || cancelModal.loading) return
+    setCancelModal(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const res = await sendAppointmentCancelOtp(id)
+      const data = res.data || {}
+      setCancelModal(prev => ({
+        ...prev,
+        otpTimer: data.cooldown_seconds || 60,
+        loading: false,
+        error: ''
+      }))
+      toast.success('নতুন ওটিপি কোড পাঠানো হয়েছে')
+    } catch (err) {
+      const msg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।'
+      setCancelModal(prev => ({ ...prev, loading: false, error: msg }))
+    }
+  }
+
+  const handleVerifyCancelOtp = async () => {
+    if (!cancelModal.otp || cancelModal.otp.trim().length !== 6) {
+      setCancelModal(prev => ({ ...prev, error: 'অনুগ্রহ করে সঠিক ৬ সংখ্যার ওটিপি কোড দিন।' }))
+      return
+    }
+    setCancelModal(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const finalReason = cancelModal.reason === 'অন্যান্য' ? (cancelModal.customReason || 'অন্যান্য কারণ') : cancelModal.reason
+      const res = await verifyAppointmentCancelOtp(id, {
+        otp: cancelModal.otp.trim(),
+        cancellation_reason: finalReason
+      })
+      setCancelModal(prev => ({ ...prev, isOpen: false, loading: false }))
       showSuccess({
-        title: DIALOG_MESSAGES.APPOINTMENT_CANCEL_SUCCESS.title,
-        message: DIALOG_MESSAGES.APPOINTMENT_CANCEL_SUCCESS.message,
+        title: 'অ্যাপয়েন্টমেন্ট বাতিল সম্পন্ন',
+        message: res.data?.message || 'আপনার অ্যাপয়েন্টমেন্টটি সফলভাবে বাতিল করা হয়েছে।'
       })
       setRefreshCount(p => p + 1)
     } catch (err) {
-      showError({
-        title: DIALOG_MESSAGES.ERROR.title,
-        message: 'অ্যাপয়েন্টমেন্ট বাতিল করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
-      })
-    } finally {
-      setCancelling(false)
+      const msg = err.response?.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+      setCancelModal(prev => ({ ...prev, loading: false, error: msg }))
     }
   }
 
@@ -841,7 +911,7 @@ export default function AppointmentTicketPage() {
               </>
             ) : status !== 'cancelled' ? (
               <button
-                onClick={handleCancelAppointment}
+                onClick={handleOpenCancelModal}
                 disabled={cancelling}
                 style={{
                   flex: 1,
@@ -862,7 +932,7 @@ export default function AppointmentTicketPage() {
                 }}
               >
                 <X size={16} />
-                {cancelling ? 'বাতিল হচ্ছে...' : 'বাতিল করুন'}
+                <span>অ্যাপয়েন্টমেন্ট বাতিল</span>
               </button>
             ) : null}
           </div>
@@ -929,6 +999,327 @@ export default function AppointmentTicketPage() {
           }
         }}
       />
+
+      {/* ── Appointment Cancellation OTP Modal ── */}
+      <Modal
+        show={cancelModal.isOpen}
+        onHide={() => !cancelModal.loading && setCancelModal(prev => ({ ...prev, isOpen: false }))}
+        centered
+        backdrop="static"
+        contentClassName="rounded-4 border-0 shadow-lg"
+      >
+        <Modal.Body style={{ padding: '28px 24px 22px', fontFamily: "'Hind Siliguri', sans-serif" }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 42,
+                height: 42,
+                borderRadius: '50%',
+                background: '#FEF2F2',
+                border: '1.5px solid #FEE2E2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#DC2626'
+              }}>
+                <AlertCircle size={22} strokeWidth={2.3} />
+              </div>
+              <div>
+                <h5 style={{ margin: 0, fontWeight: 800, fontSize: 17, color: '#0F172A' }}>
+                  {cancelModal.step === 'reason' ? 'অ্যাপয়েন্টমেন্ট বাতিল' : 'বাতিল নিশ্চিতকরণ (OTP)'}
+                </h5>
+                <span style={{ fontSize: 12, color: '#64748B' }}>
+                  সিরিয়াল #{appointment?.serial_number || appointment?.registration_id || id}
+                </span>
+              </div>
+            </div>
+            {!cancelModal.loading && (
+              <button
+                type="button"
+                onClick={() => setCancelModal(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748B',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {cancelModal.error && (
+            <div style={{
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: 10,
+              padding: '10px 14px',
+              color: '#DC2626',
+              fontSize: 13,
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span>{cancelModal.error}</span>
+            </div>
+          )}
+
+          {cancelModal.step === 'reason' ? (
+            <div>
+              {/* Warning note */}
+              <div style={{
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 16,
+                fontSize: 13,
+                color: '#92400E',
+                lineHeight: 1.5
+              }}>
+                ⚠️ <strong>সতর্কতা:</strong> অ্যাপয়েন্টমেন্ট বাতিল করার সাথে সাথেই সময় স্লটটি মুক্ত হয়ে যাবে এবং অন্য রোগীরা এটি বুক করতে পারবেন।
+              </div>
+
+              {/* Schedule info */}
+              <div style={{
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 16,
+                fontSize: 13,
+                color: '#334155'
+              }}>
+                <div style={{ fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
+                  {docName || 'ডাক্তার'}
+                </div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: '#64748B' }}>
+                  <span>📅 {formatDateBn(apptDate)}</span>
+                  <span>⏰ {formatTimeBn(apptTime)}</span>
+                </div>
+              </div>
+
+              {/* Cancellation Reason Dropdown */}
+              <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 8, display: 'block' }}>
+                বাতিলের কারণ উল্লেখ করুন:
+              </label>
+              <select
+                value={cancelModal.reason}
+                onChange={(e) => setCancelModal(prev => ({ ...prev, reason: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1.5px solid #CBD5E1',
+                  fontSize: 13.5,
+                  outline: 'none',
+                  marginBottom: 12,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}
+              >
+                <option value="জরুরি ব্যক্তিগত কাজ">জরুরি ব্যক্তিগত কাজ</option>
+                <option value="অসুস্থতার উন্নতি হয়েছে">অসুস্থতার উন্নতি হয়েছে</option>
+                <option value="ভুল তারিখ বা সময়ে বুক করা হয়েছিল">ভুল তারিখ বা সময়ে বুক করা হয়েছিল</option>
+                <option value="অন্য ডাক্তারের পরামর্শ নিয়েছি">অন্য ডাক্তারের পরামর্শ নিয়েছি</option>
+                <option value="অর্থনৈতিক সমস্যা">অর্থনৈতিক সমস্যা</option>
+                <option value="অন্যান্য">অন্যান্য কারণ</option>
+              </select>
+
+              {cancelModal.reason === 'অন্যান্য' && (
+                <textarea
+                  rows={2}
+                  placeholder="অন্যান্য কারণ লিখুন..."
+                  value={cancelModal.customReason}
+                  onChange={(e) => setCancelModal(prev => ({ ...prev, customReason: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: 13,
+                    outline: 'none',
+                    marginBottom: 16,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}
+                />
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+                <button
+                  type="button"
+                  onClick={() => setCancelModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={cancelModal.loading}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ফিরে যাই
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendCancelOtp}
+                  disabled={cancelModal.loading}
+                  style={{
+                    flex: 1.5,
+                    height: 44,
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: cancelModal.loading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                  }}
+                >
+                  {cancelModal.loading ? (
+                    <><Loader2 size={16} className="animate-spin" /> <span>OTP পাঠানো হচ্ছে...</span></>
+                  ) : (
+                    <span>OTP কোড পাঠান ➔</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* Step 2: OTP Entry */}
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.6 }}>
+                  নিবন্ধিত মোবাইল নম্বর <strong>{cancelModal.maskedMobile || 'মোবাইলে'}</strong> একটি ৬ সংখ্যার ওটিপি (OTP) পাঠানো হয়েছে।
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', textAlign: 'center' }}>
+                  ৬ সংখ্যার ওটিপি কোড দিন:
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="------"
+                  value={cancelModal.otp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setCancelModal(prev => ({ ...prev, otp: val, error: '' }))
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 48,
+                    fontSize: 22,
+                    letterSpacing: '8px',
+                    textAlign: 'center',
+                    borderRadius: 10,
+                    border: '2px solid #CBD5E1',
+                    outline: 'none',
+                    fontWeight: 800,
+                    color: '#0F172A',
+                    fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Resend Timer */}
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                {cancelModal.otpTimer > 0 ? (
+                  <span style={{ fontSize: 12.5, color: '#64748B' }}>
+                    পুনরায় ওটিপি পাঠান ({cancelModal.otpTimer} সেকেন্ড)
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendCancelOtp}
+                    disabled={cancelModal.loading}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#0EA5E9',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    পুনরায় ওটিপি পাঠান
+                  </button>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setCancelModal(prev => ({ ...prev, step: 'reason', error: '' }))}
+                  disabled={cancelModal.loading}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  পেছনে
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyCancelOtp}
+                  disabled={cancelModal.loading || cancelModal.otp.length !== 6}
+                  style={{
+                    flex: 1.5,
+                    height: 44,
+                    borderRadius: 10,
+                    border: 'none',
+                    background: cancelModal.otp.length === 6 ? '#DC2626' : '#94A3B8',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: cancelModal.otp.length === 6 && !cancelModal.loading ? 'pointer' : 'not-allowed',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: cancelModal.otp.length === 6 ? '0 4px 12px rgba(220, 38, 38, 0.25)' : 'none'
+                  }}
+                >
+                  {cancelModal.loading ? (
+                    <><Loader2 size={16} className="animate-spin" /> <span>বাতিল করা হচ্ছে...</span></>
+                  ) : (
+                    <span>বাতিল নিশ্চিত করুন</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   )
 }

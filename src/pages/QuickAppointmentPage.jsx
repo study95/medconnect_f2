@@ -17,6 +17,13 @@ import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
 import { useAuth } from '../context/AuthContext'
 import SeoHead from '../components/common/SeoHead'
 import { toast } from 'react-hot-toast'
+import {
+  getBangladeshDateStr,
+  getBangladeshTodayStr,
+  getBangladeshTomorrowStr,
+  getDayNameFromDateStr,
+  dayNameToBn
+} from '../utils/dateUtils'
 
 const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
@@ -60,10 +67,18 @@ export default function QuickAppointmentPage() {
   const [showAllSlots, setShowAllSlots] = useState(false)
 
   // Auth context
-  const authContext = useAuth() || {}
-  const user = authContext.user
-  const isLoggedIn = authContext.isLoggedIn
-  const storeAuth = authContext.storeAuth
+  const {
+    user,
+    token,
+    isLoggedIn,
+    storeAuth,
+    isAdmin,
+    isDoctor,
+    isManager,
+    isStaff
+  } = useAuth() || {}
+
+  const isPrivilegedStaff = Boolean(isAdmin || isDoctor || isManager || isStaff)
 
   // Booking Wizard Modal State
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
@@ -78,12 +93,23 @@ export default function QuickAppointmentPage() {
     phone: '',
     relation: 'পিতা'
   })
+  const [relativeErrors, setRelativeErrors] = useState({
+    name: '',
+    age: '',
+    phone: ''
+  })
 
   // Patient name for 'myself' when unauthenticated
   const [selfPatientName, setSelfPatientName] = useState('')
+  const [selfNameError, setSelfNameError] = useState('')
+
+  // Booker name when unauthenticated and booking for relative
+  const [bookerName, setBookerName] = useState('')
+  const [bookerNameError, setBookerNameError] = useState('')
 
   // Auth & OTP state
   const [mobileNumber, setMobileNumber] = useState('')
+  const [phoneInputError, setPhoneInputError] = useState('')
   const [isEditingCustomMobile, setIsEditingCustomMobile] = useState(false)
   const [otp, setOtp] = useState('')
   const [otpTimer, setOtpTimer] = useState(0)
@@ -94,7 +120,10 @@ export default function QuickAppointmentPage() {
   const [bookingErrorModal, setBookingErrorModal] = useState({
     isOpen: false,
     title: '',
-    message: ''
+    message: '',
+    viewAppointments: false,
+    confirmText: 'ঠিক আছে',
+    onConfirm: null
   })
 
   // Live OTP countdown timer (active whenever cooldown is remaining)
@@ -143,21 +172,18 @@ export default function QuickAppointmentPage() {
     }
   }, [user])
 
-  // Compute dynamic formatted date string (YYYY-MM-DD)
+  // Compute dynamic formatted date string (YYYY-MM-DD) strictly in Asia/Dhaka
   const selectedDateStr = useMemo(() => {
-    const today = new Date()
     if (dateMode === 'today') {
-      return today.toISOString().split('T')[0]
+      return getBangladeshTodayStr()
     }
     if (dateMode === 'tomorrow') {
-      const tomorrow = new Date(today)
-      tomorrow.setDate(today.getDate() + 1)
-      return tomorrow.toISOString().split('T')[0]
+      return getBangladeshTomorrowStr()
     }
     if (dateMode === 'custom' && customDate) {
       return customDate
     }
-    return today.toISOString().split('T')[0]
+    return getBangladeshTodayStr()
   }, [dateMode, customDate])
 
   // Helper to format custom date string to Bengali (e.g. 2026-10-15 -> ১৫ অক্টোবর)
@@ -171,14 +197,14 @@ export default function QuickAppointmentPage() {
     }
   }
 
-  // Helper to check if a chamber is open on a given date
-  const isChamberOpenOnDate = (chamber, dateObj) => {
+  // Helper to check if a chamber is open on a given date (strictly in Asia/Dhaka)
+  const isChamberOpenOnDate = (chamber, dateStrOrObj) => {
     if (!chamber) return false
-    const dayIdx = dateObj.getDay()
-    const dayEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayIdx]
-    const dayBn = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'][dayIdx]
-    const dayShortBn = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'][dayIdx]
-    const dayShortEn = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayIdx]
+    const dateStr = typeof dateStrOrObj === 'string' ? dateStrOrObj : getBangladeshDateStr(dateStrOrObj)
+    const dayEn = getDayNameFromDateStr(dateStr).toLowerCase()
+    const dayBn = (dayNameToBn[dayEn.charAt(0).toUpperCase() + dayEn.slice(1)] || '').toLowerCase()
+    const dayShortBn = dayBn.slice(0, 3)
+    const dayShortEn = dayEn.slice(0, 3)
 
     const rawDayStr = [
       chamber.day,
@@ -205,21 +231,63 @@ export default function QuickAppointmentPage() {
     )
   }
 
-  // All doctor chambers
+  // All doctor chambers (active ones)
   const doctorChambers = useMemo(() => {
     if (!selectedDoctor?.chambers) return []
-    return selectedDoctor.chambers
+    return selectedDoctor.chambers.filter(c => c.is_active !== 0 && c.is_active !== false)
   }, [selectedDoctor])
 
   // Filter doctor chambers to ONLY show chambers open on selectedDateStr
   const filteredChambers = useMemo(() => {
     if (!doctorChambers || doctorChambers.length === 0) return []
     if (!selectedDateStr) return doctorChambers
-
-    const [y, m, d] = selectedDateStr.split('-').map(Number)
-    const curDate = new Date(y, m - 1, d)
-    return doctorChambers.filter(ch => isChamberOpenOnDate(ch, curDate))
+    return doctorChambers.filter(ch => isChamberOpenOnDate(ch, selectedDateStr))
   }, [doctorChambers, selectedDateStr])
+
+  // Compute doctor's next available date if no chamber open on current selectedDateStr
+  const nextAvailableInfo = useMemo(() => {
+    if (!selectedDoctor || !doctorChambers || doctorChambers.length === 0) return null
+    if (filteredChambers.length > 0) return null
+
+    // Search upcoming 14 days in Asia/Dhaka
+    const todayStr = getBangladeshTodayStr()
+    const [y, m, d] = todayStr.split('-').map(Number)
+    const baseDate = new Date(y, m - 1, d, 12, 0, 0)
+
+    for (let i = 1; i <= 14; i++) {
+      const nextDate = new Date(baseDate.getTime() + i * 24 * 60 * 60 * 1000)
+      const nextDateStr = getBangladeshDateStr(nextDate)
+      const matches = doctorChambers.filter(ch => isChamberOpenOnDate(ch, nextDateStr))
+      if (matches.length > 0) {
+        const dayEn = getDayNameFromDateStr(nextDateStr)
+        const dayBn = dayNameToBn[dayEn] || dayEn
+        const [ny, nm, nd] = nextDateStr.split('-').map(Number)
+        const dateBn = `${toBengaliNumber(nd)} ${bnMonths[nm - 1]}`
+        return {
+          dateStr: nextDateStr,
+          dayLabel: i === 1 ? 'আগামীকাল' : `${dayBn} (${dateBn})`,
+          chamber: matches[0],
+          isTomorrow: i === 1
+        }
+      }
+    }
+    return null
+  }, [selectedDoctor, doctorChambers, filteredChambers, selectedDateStr])
+
+  // Handle 1-click jump to doctor's next available chamber schedule
+  const handleJumpToNextAvailable = () => {
+    if (!nextAvailableInfo) return
+    if (nextAvailableInfo.isTomorrow) {
+      setDateMode('tomorrow')
+    } else {
+      setDateMode('custom')
+      setCustomDate(nextAvailableInfo.dateStr)
+    }
+    setSelectedAppointmentDate(nextAvailableInfo.dateStr)
+    if (nextAvailableInfo.chamber) {
+      setSelectedChamberId(String(nextAvailableInfo.chamber.id))
+    }
+  }
 
   // Auto-select chamber if doctor has only 1 matching open chamber on selected date
   useEffect(() => {
@@ -236,17 +304,19 @@ export default function QuickAppointmentPage() {
     }
   }, [selectedDoctor, filteredChambers])
 
-  // Compute Bengali labels for date chips
+  // Compute Bengali labels for date chips (strictly in Asia/Dhaka)
   const dateLabels = useMemo(() => {
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(today.getDate() + 1)
+    const todayStr = getBangladeshTodayStr()
+    const tomorrowStr = getBangladeshTomorrowStr()
 
-    const formatBnDate = (d) => `${toBengaliNumber(d.getDate())} ${bnMonths[d.getMonth()]}`
+    const formatBnFromStr = (str) => {
+      const [y, m, d] = str.split('-').map(Number)
+      return `${toBengaliNumber(d)} ${bnMonths[m - 1]}`
+    }
 
     return {
-      today: formatBnDate(today),
-      tomorrow: formatBnDate(tomorrow)
+      today: formatBnFromStr(todayStr),
+      tomorrow: formatBnFromStr(tomorrowStr)
     }
   }, [])
 
@@ -396,35 +466,55 @@ export default function QuickAppointmentPage() {
       return
     }
 
-    setLoadingSlots(true)
     const currentChamber = (doctorChambers || []).find(c => String(c.id) === String(selectedChamberId))
 
-    getBookedSlots(selectedDoctor.id, { date: selectedDateStr, chamber_id: selectedChamberId })
-      .then((res) => {
-        const booked = res.data?.booked_slots || res.data?.booked || []
-        const generated = generateSlotsForChamber(currentChamber, booked)
-        setAvailableSlots(generated)
-        const firstAvailable = generated.find(s => !s.isBooked)
-        if (firstAvailable) {
-          setSelectedTimeSlot(firstAvailable.value)
-        } else {
-          setSelectedTimeSlot('')
-        }
-      })
-      .catch(() => {
-        const generated = generateSlotsForChamber(currentChamber, [])
-        setAvailableSlots(generated)
-        const firstAvailable = generated.find(s => !s.isBooked)
-        if (firstAvailable) {
-          setSelectedTimeSlot(firstAvailable.value)
-        } else {
-          setSelectedTimeSlot('')
-        }
-      })
-      .finally(() => {
-        setLoadingSlots(false)
-      })
-  }, [selectedDoctor, selectedDateStr, selectedChamberId, doctorChambers])
+    const refreshSlots = (isInitial = false) => {
+      if (isInitial) setLoadingSlots(true)
+      getBookedSlots(selectedDoctor.id, { date: selectedDateStr, chamber_id: selectedChamberId })
+        .then((res) => {
+          const booked = res.data?.booked_slots || res.data?.booked || []
+          const generated = generateSlotsForChamber(currentChamber, booked)
+          setAvailableSlots(generated)
+          if (isInitial) {
+            const firstAvailable = generated.find(s => !s.isBooked)
+            if (firstAvailable) {
+              setSelectedTimeSlot(firstAvailable.value)
+            } else {
+              setSelectedTimeSlot('')
+            }
+          } else {
+            // If currently selected slot became booked in background, deselect and inform
+            setSelectedTimeSlot(prev => {
+              if (prev && booked.includes(prev)) {
+                toast.error('আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অন্য স্লট বেছে নিন।', { id: 'slot-poll-alert' })
+                return ''
+              }
+              return prev
+            })
+          }
+        })
+        .catch(() => {
+          if (isInitial) {
+            const generated = generateSlotsForChamber(currentChamber, [])
+            setAvailableSlots(generated)
+            const firstAvailable = generated.find(s => !s.isBooked)
+            setSelectedTimeSlot(firstAvailable ? firstAvailable.value : '')
+          }
+        })
+        .finally(() => {
+          if (isInitial) setLoadingSlots(false)
+        })
+    }
+
+    refreshSlots(true)
+    const interval = setInterval(() => {
+      if (isBookingModalOpen && modalStep === 1) {
+        refreshSlots(false)
+      }
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [selectedDoctor, selectedDateStr, selectedChamberId, doctorChambers, isBookingModalOpen, modalStep])
 
   // Reset showAllSlots when doctor, date or chamber changes
   useEffect(() => {
@@ -550,6 +640,10 @@ export default function QuickAppointmentPage() {
     setOtpNotice('')
     setStep2Error('')
     setRegisteredPhoneNotice(null)
+    setRelativeErrors({ name: '', age: '', phone: '' })
+    setPhoneInputError('')
+    setSelfNameError('')
+    setBookerNameError('')
   }
 
   // Handle Step 1 Next
@@ -559,39 +653,67 @@ export default function QuickAppointmentPage() {
     }
     if (bookingFor === 'relative') {
       setModalStep(1.5)
-    } else {
-      setModalStep(2)
+      return
     }
+    // Privileged Staff (Doctor, Hospital, Admin): Direct to Step 4, NO OTP!
+    if (isPrivilegedStaff) {
+      setModalStep(4)
+      return
+    }
+    setModalStep(2)
   }
 
   // Handle Step 1.5 Relative Info Submit
   const handleRelativeInfoSubmit = (e) => {
     if (e) e.preventDefault()
+    const newErrors = { name: '', age: '', phone: '' }
+    let hasError = false
+
     if (!relativeForm.name.trim()) {
-      toast.error('রোগীর পূর্ণ নাম লিখুন', { id: 'rel-err' })
-      return
+      newErrors.name = 'রোগীর পূর্ণ নাম লিখুন'
+      hasError = true
     }
+
     const cleanAge = relativeForm.age.trim()
     if (!cleanAge) {
-      toast.error('রোগীর বয়স লিখুন', { id: 'rel-err' })
-      return
+      newErrors.age = 'রোগীর বয়স লিখুন'
+      hasError = true
+    } else {
+      const parsedAge = parseInt(cleanAge, 10)
+      if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+        newErrors.age = 'সঠিক বয়স লিখুন (১ থেকে ১২০ এর মধ্যে)'
+        hasError = true
+      }
     }
-    const parsedAge = parseInt(cleanAge, 10)
-    if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
-      toast.error('সঠিক বয়স লিখুন (১ থেকে ১২০ এর মধ্যে)', { id: 'rel-err' })
-      return
-    }
+
     if (relativeForm.phone && relativeForm.phone.trim()) {
       const cleanPhone = relativeForm.phone.replace(/\D/g, '')
       if (!/^01[3-9]\d{8}$/.test(cleanPhone)) {
-        toast.error('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)', { id: 'rel-err' })
-        return
+        newErrors.phone = 'সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)'
+        hasError = true
       }
     }
+
+    setRelativeErrors(newErrors)
+    if (hasError) return
+
+    // Privileged Staff (Doctor, Hospital, Admin): Direct to Step 4, NO OTP!
+    if (isPrivilegedStaff) {
+      if (relativeForm.phone) {
+        setMobileNumber(relativeForm.phone.replace(/\D/g, ''))
+      } else if (user?.phone || user?.mobile) {
+        setMobileNumber(user.phone || user.mobile)
+      }
+      setPhoneInputError('')
+      setModalStep(4)
+      return
+    }
+
     // For Booker's OTP step: If logged in, keep/restore booker's own phone. Do NOT overwrite with relative's phone.
     if (isLoggedIn && (user?.phone || user?.mobile)) {
       setMobileNumber(user.phone || user.mobile)
     }
+    setPhoneInputError('')
     setModalStep(2)
   }
 
@@ -609,15 +731,23 @@ export default function QuickAppointmentPage() {
       setMobileNumber(cleanMobile)
     }
 
+    setPhoneInputError('')
+    setSelfNameError('')
+    setBookerNameError('')
+
     // 1. Strict Bangladeshi 11-digit mobile validation (013 - 019)
     if (!cleanMobile || cleanMobile.length !== 11 || !/^01[3-9]\d{8}$/.test(cleanMobile)) {
-      toast.error('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX বা 019XXXXXXXX)', { id: 'otp-err' })
+      setPhoneInputError('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX বা 019XXXXXXXX)')
       return
     }
 
-    // 2. Full Name validation for unauthenticated myself booking
+    // 2. Full Name validation for unauthenticated booking
     if (bookingFor === 'myself' && !isLoggedIn && !selfPatientName.trim()) {
-      toast.error('আপনার পূর্ণ নাম লিখুন', { id: 'name-err' })
+      setSelfNameError('আপনার পূর্ণ নাম লিখুন')
+      return
+    }
+    if (bookingFor === 'relative' && !isLoggedIn && !bookerName.trim()) {
+      setBookerNameError('আপনার (বুকিংকারীর) পূর্ণ নাম লিখুন')
       return
     }
 
@@ -649,24 +779,116 @@ export default function QuickAppointmentPage() {
       // If NOT registered or already logged-in: proceed with OTP sending
       setRegisteredPhoneNotice(null)
       setOtpNotice('')
-      const res = await sendOtp({ mobile: cleanMobile, phone: cleanMobile, type: 'appointment' })
+
+      const rawTimeSlot = typeof selectedTimeSlot === 'object' ? selectedTimeSlot.value : selectedTimeSlot
+
+      // 1. Instant live slot check right before sending OTP SMS to completely prevent SMS loss
+      if (selectedDoctor?.id && selectedChamberId && selectedDateStr && rawTimeSlot) {
+        try {
+          const slotCheckRes = await getBookedSlots(selectedDoctor.id, { date: selectedDateStr, chamber_id: selectedChamberId })
+          const booked = slotCheckRes.data?.booked_slots || slotCheckRes.data?.booked || []
+          const currentChamber = (doctorChambers || []).find(c => String(c.id) === String(selectedChamberId))
+          const generated = generateSlotsForChamber(currentChamber, booked)
+          setAvailableSlots(generated)
+
+          if (booked.includes(rawTimeSlot)) {
+            setIsOtpSending(false)
+            setSelectedTimeSlot('')
+            setBookingErrorModal({
+              isOpen: true,
+              title: 'সময় স্লট বুক করা হয়েছে',
+              message: 'এই সময় স্লটটি এইমাত্র অন্য একজন রোগী বুক করে ফেলেছেন। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।',
+              confirmText: 'সময় স্লট পরিবর্তন করুন',
+              onConfirm: () => {
+                setBookingErrorModal({ isOpen: false, title: '', message: '' })
+                setModalStep(1)
+              }
+            })
+            return
+          }
+        } catch (e) {
+          console.warn('Pre-OTP slot check warning:', e)
+        }
+      }
+
+      const res = await sendOtp({ 
+        mobile: cleanMobile, 
+        phone: cleanMobile, 
+        type: 'appointment',
+        doctor_id: selectedDoctor?.id,
+        chamber_id: selectedChamberId,
+        appointment_date: selectedDateStr,
+        appointment_time: rawTimeSlot,
+        booking_for: bookingFor,
+        patient_name: bookingFor === 'relative' ? (relativeForm.name || '').trim() : (selfPatientName || user?.name || '').trim(),
+        patient_phone: bookingFor === 'relative' ? (relativeForm.phone || '').trim() : cleanMobile
+      })
       const cooldown = res.data?.cooldown_seconds || 60
       setOtpTimer(cooldown)
       setOtp('')
       toast.success('আপনার মোবাইলে ওটিপি কোড পাঠানো হয়েছে', { id: 'otp-ok' })
       setModalStep(3)
     } catch (err) {
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        setIsOtpSending(false)
+        const msg = err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করা রয়েছে।'
+        setStep2Error(msg)
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'ইতিমধ্যে বুক করা হয়েছে',
+          message: msg,
+          viewAppointments: true,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+          }
+        })
+        return
+      }
+      if (err.response?.data?.slot_booked) {
+        setIsOtpSending(false)
+        setSelectedTimeSlot('')
+        const msg = err.response?.data?.message || 'এই সময় স্লটটি ইতোমধ্যে অন্য একজন রোগী বুক করে ফেলেছেন। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।'
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'সময় স্লট বুক করা হয়েছে',
+          message: msg,
+          confirmText: 'সময় স্লট পরিবর্তন করুন',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setModalStep(1)
+          }
+        })
+        return
+      }
       if (err.response?.status === 429) {
         const cooldown = err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds || 60
         setOtpTimer(cooldown)
         const friendlyMsg = err.response?.data?.message || 'অতিরিক্ত ওটিপি অনুরোধের কারণে সাময়িক অপেক্ষা করতে হবে।'
         setStep2Error(friendlyMsg)
-        toast.error(friendlyMsg, { id: 'otp-limit' })
-        // Stays on Step 2 with live cooldown timer on the button
+        setOtpNotice(friendlyMsg)
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'অতিরিক্ত অনুরোধ',
+          message: friendlyMsg,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setModalStep(3)
+          }
+        })
       } else {
         const friendlyMsg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
         setStep2Error(friendlyMsg)
-        toast.error(friendlyMsg, { id: 'otp-err-send' })
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'ওটিপি পাঠানো যায়নি',
+          message: friendlyMsg,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+          }
+        })
       }
     } finally {
       setIsOtpSending(false)
@@ -678,26 +900,73 @@ export default function QuickAppointmentPage() {
     if (otpTimer > 0 || isOtpSending) return
     const cleanMobile = (mobileNumber || user?.phone || user?.mobile || '').replace(/\D/g, '')
     if (!cleanMobile || cleanMobile.length !== 11) {
-      toast.error('মোবাইল নম্বর পাওয়া যায়নি', { id: 'resend-no-num' })
+      setBookingErrorModal({
+        isOpen: true,
+        title: 'মোবাইল নম্বর পাওয়া যায়নি',
+        message: 'অনুগ্রহ করে সঠিক মোবাইল নম্বর প্রদান করুন।',
+        confirmText: 'ঠিক আছে',
+        onConfirm: () => setBookingErrorModal({ isOpen: false, title: '', message: '' })
+      })
       return
     }
     setIsOtpSending(true)
     setOtpNotice('')
     try {
-      const res = await sendOtp({ mobile: cleanMobile, phone: cleanMobile, type: 'appointment' })
+      const rawTimeSlot = typeof selectedTimeSlot === 'object' ? selectedTimeSlot.value : selectedTimeSlot
+      const res = await sendOtp({ 
+        mobile: cleanMobile, 
+        phone: cleanMobile, 
+        type: 'appointment',
+        doctor_id: selectedDoctor?.id,
+        chamber_id: selectedChamberId,
+        appointment_date: selectedDateStr,
+        appointment_time: rawTimeSlot,
+        booking_for: bookingFor,
+        patient_name: bookingFor === 'relative' ? (relativeForm.name || '').trim() : (selfPatientName || user?.name || '').trim(),
+        patient_phone: bookingFor === 'relative' ? (relativeForm.phone || '').trim() : cleanMobile
+      })
       const cooldown = res.data?.cooldown_seconds || 60
       setOtpTimer(cooldown)
       setOtp('')
       toast.success('নতুন ওটিপি কোড পাঠানো হয়েছে', { id: 'resend-ok' })
     } catch (err) {
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        const msg = err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করা রয়েছে।'
+        setOtpNotice(msg)
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'ইতিমধ্যে বুক করা হয়েছে',
+          message: msg,
+          viewAppointments: true,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+          }
+        })
+        return
+      }
       const cooldown = err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds || 60
       if (err.response?.status === 429) {
         setOtpTimer(cooldown)
         const friendlyMsg = err.response?.data?.message || 'অতিরিক্ত ওটিপি অনুরোধের কারণে সাময়িক অপেক্ষা করতে হবে।'
         setOtpNotice(friendlyMsg)
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'অতিরিক্ত অনুরোধ',
+          message: friendlyMsg,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => setBookingErrorModal({ isOpen: false, title: '', message: '' })
+        })
       } else {
         const friendlyMsg = err.response?.data?.message || 'ওটিপি পুনরায় পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
         setOtpNotice(friendlyMsg)
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'ওটিপি পাঠানো যায়নি',
+          message: friendlyMsg,
+          confirmText: 'ঠিক আছে',
+          onConfirm: () => setBookingErrorModal({ isOpen: false, title: '', message: '' })
+        })
       }
     } finally {
       setIsOtpSending(false)
@@ -727,13 +996,17 @@ export default function QuickAppointmentPage() {
       ? relativeForm.name 
       : (selfPatientName.trim() || user?.name || 'রোগী')
 
+    const authUserName = bookingFor === 'relative'
+      ? (isLoggedIn ? (user?.name || 'বুকিংকারী') : (bookerName.trim() || 'বুকিংকারী'))
+      : targetPatientName
+
     try {
       const res = await verifyOtp({
         mobile: cleanMobile,
         otp: trimmedOtp,
-        auto_register: true,
+        auto_register: !isLoggedIn,
         type: 'quick_appointment',
-        patient_name: bookingFor === 'relative' ? (user?.name || 'বুকিংকারী') : targetPatientName
+        patient_name: authUserName
       })
 
       const resData = res.data || {}
@@ -811,6 +1084,7 @@ export default function QuickAppointmentPage() {
       const appt = res.data?.data || res.data || {}
       setConfirmedAppointmentData({
         id: appt.public_id || appt.tracking_id || appt.id || 'AP-CONFIRMED',
+        serial_number: appt.serial_number || res.data?.serial_number || '',
         doctor_name: selectedDoctor.name || selectedDoctor.name_bn,
         specialty: selectedDoctor.specialty?.name || selectedDoctor.specialty?.name_bn || selectedDoctor.specialty_name || 'বিশেষজ্ঞ',
         hospital_name: getChamberLabel(currentChamber),
@@ -827,7 +1101,33 @@ export default function QuickAppointmentPage() {
       toast.success('অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!', { id: 'book-ok' })
     } catch (err) {
       console.error('Appointment booking failed:', err)
-      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'অ্যাপয়েন্টমেন্ট বুকিং সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'অ্যাপয়েন্টমেন্ট বুকিং সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+      const validationErrors = err.response?.data?.errors
+
+      if (validationErrors && typeof validationErrors === 'object') {
+        const errorEntries = Object.entries(validationErrors)
+        if (errorEntries.length > 0) {
+          const [firstField, fieldMsgs] = errorEntries[0]
+          const firstMsg = Array.isArray(fieldMsgs) ? fieldMsgs[0] : fieldMsgs
+
+          if (firstField === 'appointment_time') {
+            errorMsg = 'অনুগ্রহ করে অ্যাপয়েন্টমেন্টের জন্য একটি বৈধ সময় স্লট নির্বাচন করুন।'
+          } else if (firstField === 'appointment_date') {
+            errorMsg = 'অনুগ্রহ করে সঠিক অ্যাপয়েন্টমেন্টের তারিখ নির্বাচন করুন।'
+          } else if (firstField === 'doctor_id' || firstField === 'chamber_id') {
+            errorMsg = 'ডাক্তার বা চেম্বার সঠিকভাবে নির্বাচন করা হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+          } else if (firstField === 'payment_status') {
+            errorMsg = 'পেমেন্ট পদ্ধতি সঠিকভাবে নির্বাচন করা হয়নি।'
+          } else if (firstMsg) {
+            errorMsg = firstMsg
+          }
+        }
+      }
+
+      if (!errorMsg || errorMsg.toLowerCase().includes('validation failed')) {
+        errorMsg = 'প্রদত্ত তথ্যে কিছু অসম্পূর্ণতা রয়েছে। অনুগ্রহ করে তারিখ, সময় স্লট ও রোগীর তথ্য পুনরায় যাচাই করুন।'
+      }
+
       setIsBookingModalOpen(false)
       setBookingErrorModal({
         isOpen: true,
@@ -844,6 +1144,7 @@ export default function QuickAppointmentPage() {
     if (!confirmedAppointmentData) return
 
     const trackingId = confirmedAppointmentData.id || ''
+    const serialNumber = confirmedAppointmentData.serial_number ? toBengaliNumber(confirmedAppointmentData.serial_number) : ''
     const doctorName = confirmedAppointmentData.doctor_name || ''
     const specialty = confirmedAppointmentData.specialty || ''
     const hospitalName = confirmedAppointmentData.hospital_name || ''
@@ -1032,6 +1333,7 @@ export default function QuickAppointmentPage() {
             <div class="tracking-badge">
               <div class="tracking-label">অ্যাপয়েন্টমেন্ট ট্র্যাকিং আইডি</div>
               <div class="tracking-id">${trackingId}</div>
+              ${serialNumber ? `<div style="font-size: 13.5px; font-weight: 800; color: #00B875; margin-top: 4px;">সিরিয়াল নং: ${serialNumber}</div>` : ''}
             </div>
           </div>
 
@@ -1042,6 +1344,14 @@ export default function QuickAppointmentPage() {
           ${credentialsHtml}
 
           <table class="info-table">
+            ${serialNumber ? `
+            <tr>
+              <td class="label">সিরিয়াল নম্বর:</td>
+              <td class="value">
+                <strong style="color: #00B875; font-size: 16px;">${serialNumber}</strong>
+              </td>
+            </tr>
+            ` : ''}
             <tr>
               <td class="label">ডাক্তারের নাম:</td>
               <td class="value">
@@ -1197,7 +1507,7 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => {
                     setDateMode('today')
-                    const todayStr = new Date().toISOString().split('T')[0]
+                    const todayStr = getBangladeshTodayStr()
                     setSelectedAppointmentDate(todayStr)
                   }}
                   style={{
@@ -1242,9 +1552,8 @@ export default function QuickAppointmentPage() {
                   type="button"
                   onClick={() => {
                     setDateMode('tomorrow')
-                    const tomorrow = new Date()
-                    tomorrow.setDate(tomorrow.getDate() + 1)
-                    setSelectedAppointmentDate(tomorrow.toISOString().split('T')[0])
+                    const tomorrowStr = getBangladeshTomorrowStr()
+                    setSelectedAppointmentDate(tomorrowStr)
                   }}
                   style={{
                     background: dateMode === 'tomorrow' ? '#00B875' : '#FFFFFF',
@@ -1653,20 +1962,79 @@ export default function QuickAppointmentPage() {
                   {!selectedDoctor
                     ? 'ডাক্তারের চেম্বার সিলেক্ট করুন...'
                     : filteredChambers.length === 0
-                      ? 'এই তারিখে ডাক্তারের কোনো চেম্বার খোলা নেই'
+                      ? 'এই তারিখে চেম্বার খোলা নেই (তালিকা নিচে দেখুন)'
                       : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
                 </option>
-                {filteredChambers.map(ch => (
-                  <option key={ch.id} value={ch.id} style={{ color: '#0F172A', fontWeight: 600 }}>
-                    {getChamberLabel(ch)}
-                  </option>
-                ))}
+                {filteredChambers.length > 0 ? (
+                  filteredChambers.map(ch => (
+                    <option key={ch.id} value={ch.id} style={{ color: '#0F172A', fontWeight: 600 }}>
+                      {getChamberLabel(ch)}
+                    </option>
+                  ))
+                ) : (
+                  doctorChambers.map(ch => {
+                    const dayNameBn = dayNameToBn[ch.day] || ch.day || ''
+                    return (
+                      <option key={ch.id} value="" disabled style={{ color: '#64748B' }}>
+                        {getChamberLabel(ch)} {dayNameBn ? `(${dayNameBn}বার খোলা)` : ''}
+                      </option>
+                    )
+                  })
+                )}
               </select>
 
               {selectedDoctor && filteredChambers.length === 0 && (
-                <div style={{ color: '#E11D48', fontSize: 13, fontWeight: 600, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Hind Siliguri', sans-serif", background: '#FFF1F2', padding: '10px 14px', borderRadius: 10, border: '1px solid #FFE4E6' }}>
-                  <IconAlertTriangle size={18} color="#E11D48" style={{ flexShrink: 0 }} />
-                  <span>নির্বাচিত তারিখে এই ডাক্তারের কোনো চেম্বার খোলা নেই। অনুগ্রহ করে উপরে অন্য দিন (আজ/আগামীকাল/অন্য তারিখ) নির্বাচন করুন।</span>
+                <div style={{
+                  marginTop: 10,
+                  background: '#F8FAFC',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                    <IconAlertTriangle size={19} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.45 }}>
+                      <strong style={{ color: '#0F172A' }}>
+                        {selectedDateStr ? `${formatCustomDateBn(selectedDateStr)} তারিখে এই ডাক্তারের কোনো চেম্বার খোলা নেই।` : 'নির্বাচিত তারিখে চেম্বার খোলা নেই।'}
+                      </strong>
+                      {doctorChambers.length > 0 && (
+                        <div style={{ marginTop: 3, color: '#64748B', fontSize: 12.5 }}>
+                          ডাক্তার সাহেবের চেম্বার বসার দিনসমূহ: <span style={{ fontWeight: 700, color: '#0F172A' }}>{[...new Set(doctorChambers.map(c => dayNameToBn[c.day] || c.day).filter(Boolean))].join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {nextAvailableInfo && (
+                    <button
+                      type="button"
+                      onClick={handleJumpToNextAvailable}
+                      style={{
+                        background: '#00B875',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 10,
+                        padding: '9px 14px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        boxShadow: '0 3px 10px rgba(0, 184, 117, 0.28)',
+                        transition: 'all 0.15s ease',
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}
+                    >
+                      <IconCalendarEvent size={16} />
+                      <span>পরবর্তী উপলব্ধ দিন ({nextAvailableInfo.dayLabel})-এ অ্যাপয়েন্টমেন্ট নিন ➔</span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -1962,7 +2330,7 @@ export default function QuickAppointmentPage() {
         <Modal.Body style={{ padding: 20 }}>
           <input
             type="date"
-            min={new Date().toISOString().split('T')[0]}
+            min={getBangladeshTodayStr()}
             value={customDate}
             onChange={(e) => {
               setCustomDate(e.target.value)
@@ -2045,22 +2413,51 @@ export default function QuickAppointmentPage() {
         <Modal.Body className="quick-booking-modal-body" style={{ padding: '24px 20px', borderRadius: 20 }}>
           {/* Header Close Button & Step Indicator */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{
-              background: '#F1F5F9',
-              color: '#475569',
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: '4px 12px',
-              borderRadius: 20,
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}>
-              {modalStep === 1 && '১. কার জন্য অ্যাপয়েন্টমেন্ট'}
-              {modalStep === 1.5 && 'রোগীর তথ্য প্রদান'}
-              {modalStep === 2 && '২. মোবাইল নম্বর'}
-              {modalStep === 3 && '৩. ওটিপি ভেরিফিকেশন'}
-              {modalStep === 4 && '৪. নিজের তথ্য (নতুন ব্যবহারকারী)'}
-              {modalStep === 5 && 'বুকিং টিকেট'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {modalStep > 1 && modalStep < 5 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (modalStep === 1.5) setModalStep(1)
+                    else if (modalStep === 2) setModalStep(bookingFor === 'relative' ? 1.5 : 1)
+                    else if (modalStep === 3) setModalStep(2)
+                    else if (modalStep === 4) setModalStep(isPrivilegedStaff ? (bookingFor === 'relative' ? 1.5 : 1) : 3)
+                  }}
+                  style={{
+                    background: '#F1F5F9',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#64748B',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="আগের ধাপ"
+                >
+                  <IconChevronLeft size={18} />
+                </button>
+              )}
+              <span style={{
+                background: '#F1F5F9',
+                color: '#475569',
+                fontSize: 12.5,
+                fontWeight: 700,
+                padding: '4px 12px',
+                borderRadius: 20,
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}>
+                {modalStep === 1 && '১. কার জন্য অ্যাপয়েন্টমেন্ট'}
+                {modalStep === 1.5 && 'রোগীর তথ্য প্রদান'}
+                {modalStep === 2 && '২. মোবাইল নম্বর'}
+                {modalStep === 3 && '৩. ওটিপি ভেরিফিকেশন'}
+                {modalStep === 4 && (isPrivilegedStaff ? 'তথ্য নিশ্চিতকরণ' : (isLoggedIn ? 'তথ্য নিশ্চিতকরণ' : '৪. নিজের তথ্য'))}
+                {modalStep === 5 && 'বুকিং টিকেট'}
+              </span>
+            </div>
             <button
               type="button"
               onClick={handleCloseWizard}
@@ -2113,7 +2510,7 @@ export default function QuickAppointmentPage() {
                         নিজের জন্য
                       </div>
                       <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        আমি নিজে ডাক্তার দেখাতে চাই
+                        {isPrivilegedStaff ? 'আমার নিজের অ্যাপয়েন্টমেন্টের জন্য' : 'আমি নিজে ডাক্তার দেখাতে চাই'}
                       </div>
                     </div>
                   </div>
@@ -2162,10 +2559,10 @@ export default function QuickAppointmentPage() {
                     </div>
                     <div>
                       <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        আত্মীয়স্বজনের জন্য
+                        {isPrivilegedStaff ? 'রোগী বা অন্য কারো জন্য' : 'আত্মীয়স্বজনের জন্য'}
                       </div>
                       <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        পরিবারের সদস্য বা অন্য কারো জন্য
+                        {isPrivilegedStaff ? 'রোগী বা পরিবারের সদস্যের জন্য' : 'পরিবারের সদস্য বা অন্য কারো জন্য'}
                       </div>
                     </div>
                   </div>
@@ -2232,17 +2629,28 @@ export default function QuickAppointmentPage() {
                     required
                     placeholder="নাম লিখুন"
                     value={relativeForm.name}
-                    onChange={(e) => setRelativeForm(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setRelativeForm(prev => ({ ...prev, name: e.target.value }))
+                      if (relativeErrors.name) setRelativeErrors(prev => ({ ...prev, name: '' }))
+                    }}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
                       borderRadius: 10,
-                      border: '1.5px solid #CBD5E1',
+                      border: relativeErrors.name ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
                       fontSize: 14,
                       outline: 'none',
-                      fontFamily: "'Hind Siliguri', sans-serif"
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      background: relativeErrors.name ? '#FEF2F2' : 'white',
+                      transition: 'border-color 0.15s, background-color 0.15s'
                     }}
                   />
+                  {relativeErrors.name && (
+                    <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                      <span>{relativeErrors.name}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Grid: Age & Gender */}
@@ -2260,17 +2668,26 @@ export default function QuickAppointmentPage() {
                       onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 3)
                         setRelativeForm(prev => ({ ...prev, age: val }))
+                        if (relativeErrors.age) setRelativeErrors(prev => ({ ...prev, age: '' }))
                       }}
                       style={{
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: 10,
-                        border: '1.5px solid #CBD5E1',
+                        border: relativeErrors.age ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
                         fontSize: 14,
                         outline: 'none',
-                        fontFamily: "'Hind Siliguri', sans-serif"
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        background: relativeErrors.age ? '#FEF2F2' : 'white',
+                        transition: 'border-color 0.15s, background-color 0.15s'
                       }}
                     />
+                    {relativeErrors.age && (
+                      <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>{relativeErrors.age}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>
@@ -2310,17 +2727,26 @@ export default function QuickAppointmentPage() {
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 11)
                       setRelativeForm(prev => ({ ...prev, phone: val }))
+                      if (relativeErrors.phone) setRelativeErrors(prev => ({ ...prev, phone: '' }))
                     }}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
                       borderRadius: 10,
-                      border: '1.5px solid #CBD5E1',
+                      border: relativeErrors.phone ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
                       fontSize: 14,
                       outline: 'none',
-                      fontFamily: "'Hind Siliguri', sans-serif"
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      background: relativeErrors.phone ? '#FEF2F2' : 'white',
+                      transition: 'border-color 0.15s, background-color 0.15s'
                     }}
                   />
+                  {relativeErrors.phone && (
+                    <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                      <span>{relativeErrors.phone}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Relationship with Patient */}
@@ -2349,6 +2775,7 @@ export default function QuickAppointmentPage() {
                     <option value="সন্তান">সন্তান</option>
                     <option value="ভাই">ভাই</option>
                     <option value="বোন">বোন</option>
+                    <option value="রোগী">রোগী</option>
                     <option value="অন্যান্য">অন্যান্য</option>
                   </select>
                 </div>
@@ -2402,17 +2829,64 @@ export default function QuickAppointmentPage() {
                       required
                       placeholder="যেমন: মোঃ রহিম উদ্দিন"
                       value={selfPatientName}
-                      onChange={(e) => setSelfPatientName(e.target.value)}
+                      onChange={(e) => {
+                        setSelfPatientName(e.target.value)
+                        if (selfNameError) setSelfNameError('')
+                      }}
                       style={{
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: 10,
-                        border: '1.5px solid #CBD5E1',
+                        border: selfNameError ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
                         fontSize: 14,
                         outline: 'none',
-                        fontFamily: "'Hind Siliguri', sans-serif"
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        background: selfNameError ? '#FEF2F2' : 'white',
+                        transition: 'border-color 0.15s, background-color 0.15s'
                       }}
                     />
+                    {selfNameError && (
+                      <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>{selfNameError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Booker Name for unauthenticated relative booking */}
+                {bookingFor === 'relative' && !isLoggedIn && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      আপনার (বুকিংকারীর) পূর্ণ নাম <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="যেমন: মোঃ আরিফ হোসেন"
+                      value={bookerName}
+                      onChange={(e) => {
+                        setBookerName(e.target.value)
+                        if (bookerNameError) setBookerNameError('')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: bookerNameError ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
+                        fontSize: 14,
+                        outline: 'none',
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        background: bookerNameError ? '#FEF2F2' : 'white',
+                        transition: 'border-color 0.15s, background-color 0.15s'
+                      }}
+                    />
+                    {bookerNameError && (
+                      <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>{bookerNameError}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2490,10 +2964,11 @@ export default function QuickAppointmentPage() {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      border: registeredPhoneNotice ? '1.5px solid #F59E0B' : '1.5px solid #CBD5E1',
+                      border: phoneInputError ? '1.5px solid #EF4444' : (registeredPhoneNotice ? '1.5px solid #F59E0B' : '1.5px solid #CBD5E1'),
                       borderRadius: 12,
                       overflow: 'hidden',
-                      background: 'white'
+                      background: phoneInputError ? '#FEF2F2' : 'white',
+                      transition: 'border-color 0.15s, background-color 0.15s'
                     }}>
                       <div style={{
                         padding: '10px 12px',
@@ -2519,6 +2994,9 @@ export default function QuickAppointmentPage() {
                         onChange={(e) => {
                           const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11)
                           setMobileNumber(digitsOnly)
+                          if (phoneInputError) {
+                            setPhoneInputError('')
+                          }
                           if (registeredPhoneNotice) {
                             setRegisteredPhoneNotice(null)
                           }
@@ -2533,10 +3011,18 @@ export default function QuickAppointmentPage() {
                           fontSize: 15,
                           outline: 'none',
                           fontWeight: 600,
-                          fontFamily: "'Hind Siliguri', sans-serif"
+                          fontFamily: "'Hind Siliguri', sans-serif",
+                          background: 'transparent'
                         }}
                       />
                     </div>
+
+                    {phoneInputError && (
+                      <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <IconAlertCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>{phoneInputError}</span>
+                      </div>
+                    )}
 
                     {/* Inline smart alert when phone is already registered */}
                     {registeredPhoneNotice && (
@@ -2839,10 +3325,10 @@ export default function QuickAppointmentPage() {
           {modalStep === 4 && (
             <div>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', marginBottom: 4, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                নিজের তথ্য নিশ্চিত করুন
+                {isPrivilegedStaff ? 'অ্যাপয়েন্টমেন্টের তথ্য নিশ্চিত করুন' : 'নিজের তথ্য নিশ্চিত করুন'}
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                অ্যাপয়েন্টমেন্টের জন্য আপনার তথ্য ব্যবহার করা হবে
+                {isPrivilegedStaff ? 'তথ্য যাচাই করে অ্যাপয়েন্টমেন্ট নিশ্চিত করুন' : 'অ্যাপয়েন্টমেন্টের জন্য আপনার তথ্য ব্যবহার করা হবে'}
               </p>
 
               <div style={{
@@ -3226,6 +3712,12 @@ export default function QuickAppointmentPage() {
                 .quick-btn-finish:hover {
                   background: #009E64;
                 }
+
+                @keyframes quickLivePulse {
+                  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
               `}} />
 
               <div id="printable-quick-appointment-slip">
@@ -3246,9 +3738,27 @@ export default function QuickAppointmentPage() {
                 <h2 style={{ fontSize: 19, fontWeight: 800, color: '#0F172A', marginBottom: 5, fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.3 }}>
                   অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!
                 </h2>
-                <p style={{ fontSize: 13, color: '#64748B', marginBottom: newAccountCredentials ? 14 : 18, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  আপনার ট্র্যাকিং আইডি: <strong style={{ color: '#00B875', fontWeight: 800 }}>{confirmedAppointmentData.id}</strong>
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: newAccountCredentials ? 14 : 18 }}>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    আপনার ট্র্যাকিং আইডি: <strong style={{ color: '#00B875', fontWeight: 800 }}>{confirmedAppointmentData.id}</strong>
+                  </p>
+                  {confirmedAppointmentData.serial_number && (
+                    <span style={{
+                      background: '#DCFCE7',
+                      color: '#047857',
+                      padding: '2px 10px',
+                      borderRadius: 999,
+                      fontWeight: 800,
+                      fontSize: 12.5,
+                      border: '1px solid #86EFAC',
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}>
+                      সিরিয়াল নং: {toBengaliNumber(confirmedAppointmentData.serial_number)}
+                    </span>
+                  )}
+                </div>
 
                 {/* NEW AUTO-REGISTERED ACCOUNT CREDENTIALS */}
                 {newAccountCredentials && (
@@ -3330,6 +3840,14 @@ export default function QuickAppointmentPage() {
                   </div>
 
                   <div className="quick-summary-rows">
+                    {confirmedAppointmentData.serial_number && (
+                      <div className="quick-row-item">
+                        <span className="quick-row-lbl">সিরিয়াল নম্বর:</span>
+                        <span className="quick-row-val" style={{ color: '#00B875', fontWeight: 800, fontSize: 13.5 }}>
+                          {toBengaliNumber(confirmedAppointmentData.serial_number)}
+                        </span>
+                      </div>
+                    )}
                     <div className="quick-row-item">
                       <span className="quick-row-lbl">হাসপাতাল/চেম্বার:</span>
                       <span className="quick-row-val">{confirmedAppointmentData.hospital_name}</span>
@@ -3355,6 +3873,81 @@ export default function QuickAppointmentPage() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* 📡 INTERACTIVE LIVE SERIAL TRACKER BANNER */}
+                <div className="quick-modal-no-print" style={{
+                  background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 50%, #EFF6FF 100%)',
+                  border: '1.5px solid #6EE7B7',
+                  borderRadius: 14,
+                  padding: '13px 15px',
+                  marginBottom: 16,
+                  textAlign: 'left',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 7 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{
+                        display: 'inline-block',
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: '#EF4444',
+                        boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.7)',
+                        animation: 'quickLivePulse 1.8s infinite'
+                      }} />
+                      <strong style={{ fontSize: 13, color: '#065F46', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        লাইভ সিরিয়াল ট্র্যাকিং সুবিধা
+                      </strong>
+                    </div>
+                    <span style={{
+                      background: '#D1FAE5',
+                      color: '#047857',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}>
+                      নতুন ফিচার
+                    </span>
+                  </div>
+
+                  <p style={{
+                    fontSize: 12,
+                    color: '#334155',
+                    lineHeight: 1.5,
+                    margin: '0 0 10px',
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>
+                    📢 <strong>চেম্বারে গিয়ে ভিড়ের মাঝে দীর্ঘক্ষণ অপেক্ষা করার দিন শেষ!</strong> আমাদের প্ল্যাটফর্মে ঘরে বসেই রিয়েল-টাইমে দেখতে পারবেন ডাক্তার বর্তমানে <strong>কত নম্বর সিরিয়ালের রোগী</strong> দেখছেন।
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBookingModalOpen(false)
+                      navigate(`/appointment-ticket/${confirmedAppointmentData.id}`)
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '7px 14px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)',
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                  >
+                    <span>📡 লাইভ সিরিয়াল ট্র্যাক করুন</span>
+                    <span>➔</span>
+                  </button>
                 </div>
               </div>
 
@@ -3388,13 +3981,17 @@ export default function QuickAppointmentPage() {
       <Modal
         show={bookingErrorModal.isOpen}
         onHide={() => {
-          setBookingErrorModal({ isOpen: false, title: '', message: '' })
-          setIsBookingModalOpen(false)
-          setModalStep(1)
-          setOtp('')
-          setOtpNotice('')
-          setStep2Error('')
-          setIsOtpVerified(false)
+          if (bookingErrorModal.onConfirm) {
+            bookingErrorModal.onConfirm()
+          } else {
+            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setIsBookingModalOpen(false)
+            setModalStep(1)
+            setOtp('')
+            setOtpNotice('')
+            setStep2Error('')
+            setIsOtpVerified(false)
+          }
         }}
         centered
         backdrop="static"
@@ -3438,34 +4035,73 @@ export default function QuickAppointmentPage() {
             {bookingErrorModal.message}
           </p>
 
-          <button
-            type="button"
-            onClick={() => {
-              setBookingErrorModal({ isOpen: false, title: '', message: '' })
-              setIsBookingModalOpen(false)
-              setModalStep(1)
-              setOtp('')
-              setOtpNotice('')
-              setStep2Error('')
-              setIsOtpVerified(false)
-            }}
-            style={{
-              width: '100%',
-              height: 46,
-              borderRadius: 12,
-              background: '#00B875',
-              color: 'white',
-              border: 'none',
-              fontSize: 15,
-              fontWeight: 800,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.28)',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            ঠিক আছে
-          </button>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+            {bookingErrorModal.viewAppointments && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingErrorModal({ isOpen: false, title: '', message: '' })
+                  setIsBookingModalOpen(false)
+                  navigate('/my-appointments')
+                }}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 12,
+                  background: '#0EA5E9',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <IconTicket size={18} />
+                <span>অ্যাপয়েন্টমেন্ট তালিকা</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (bookingErrorModal.onConfirm) {
+                  bookingErrorModal.onConfirm()
+                } else {
+                  setBookingErrorModal({ isOpen: false, title: '', message: '' })
+                  setIsBookingModalOpen(false)
+                  setModalStep(1)
+                  setOtp('')
+                  setOtpNotice('')
+                  setStep2Error('')
+                  setIsOtpVerified(false)
+                }
+              }}
+              style={{
+                flex: bookingErrorModal.viewAppointments ? 1 : 'none',
+                width: bookingErrorModal.viewAppointments ? 'auto' : '100%',
+                height: 46,
+                borderRadius: 12,
+                background: '#00B875',
+                color: 'white',
+                border: 'none',
+                fontSize: 15,
+                fontWeight: 800,
+                fontFamily: "'Hind Siliguri', sans-serif",
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 184, 117, 0.28)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {bookingErrorModal.confirmText || 'ঠিক আছে'}
+            </button>
+          </div>
         </Modal.Body>
       </Modal>
     </div>

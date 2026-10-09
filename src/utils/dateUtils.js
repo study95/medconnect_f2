@@ -58,3 +58,65 @@ export const GENDERS = [
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
 ]
+
+/**
+ * Always format any Date into Bangladesh Standard Time (Asia/Dhaka) YYYY-MM-DD
+ * Prevents UTC midnight boundary bugs across all browsers and devices.
+ */
+export function getBangladeshDateStr(date = new Date()) {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    return formatter.format(date)
+  } catch {
+    // Safe fallback if Intl is not supported
+    const offsetMs = 6 * 60 * 60 * 1000 // UTC+6
+    const bdDate = new Date(date.getTime() + offsetMs)
+    return bdDate.toISOString().split('T')[0]
+  }
+}
+
+/**
+ * Get Today's date in Bangladesh timezone (YYYY-MM-DD)
+ */
+export function getBangladeshTodayStr() {
+  return getBangladeshDateStr(new Date())
+}
+
+/**
+ * Get Tomorrow's date in Bangladesh timezone (YYYY-MM-DD)
+ */
+export function getBangladeshTomorrowStr() {
+  const now = new Date()
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  return getBangladeshDateStr(tomorrow)
+}
+
+/**
+ * Get Day Name in English (Sunday..Saturday) from a YYYY-MM-DD date string
+ * Safely sets hours to 12 (noon) to prevent timezone day-shift
+ */
+export function getDayNameFromDateStr(dateStr) {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dateObj = new Date(y, m - 1, d, 12, 0, 0)
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return days[dateObj.getDay()] || ''
+}
+
+/**
+ * Convert Day Name in English to Bengali
+ */
+export const dayNameToBn = {
+  'Saturday': 'শনিবার',
+  'Sunday': 'রবিবার',
+  'Monday': 'সোমবার',
+  'Tuesday': 'মঙ্গলবার',
+  'Wednesday': 'বুধবার',
+  'Thursday': 'বৃহস্পতিবার',
+  'Friday': 'শুক্রবার'
+}

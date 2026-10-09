@@ -553,8 +553,30 @@ export default function AppointmentListPage() {
                             {(appt.patient?.name || appt.user_name || 'P').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || appt.user_name || 'Unknown Patient'}</div>
-                            {(appt.patient_public_id || appt.patient?.public_id || appt.patient?.patient_id) ? (
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || appt.patient_name || appt.user_name || 'Unknown Patient'}</div>
+                            {(appt.booking_for && appt.booking_for !== 'myself') ? (
+                              <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '1px 7px',
+                                  borderRadius: 6,
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                  background: '#FEF3C7',
+                                  color: '#92400E',
+                                  border: '1px solid #FDE68A',
+                                  fontFamily: "'Hind Siliguri', sans-serif"
+                                }}>
+                                  আত্মীয় ({appt.patient_relation || appt.patient?.patient_relation || 'Relative'})
+                                </span>
+                                {(appt.user_name || appt.booker?.name) && (
+                                  <span style={{ fontSize: 10.5, color: 'var(--admin-text-muted)' }} title="বুকিংকারী">
+                                    দ্বারা: {appt.user_name || appt.booker?.name}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (appt.patient_public_id || appt.patient?.public_id || appt.patient?.patient_id) ? (
                               <div style={{ marginTop: 4 }}>
                                 <CompactUlid value={appt.patient_public_id || appt.patient?.public_id || appt.patient?.patient_id} />
                               </div>
@@ -594,9 +616,18 @@ export default function AppointmentListPage() {
                             <span style={{ fontSize: 16 }}>{appt.created_by_role === 'patient' ? '👤' : '👨‍⚕️'}</span>
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--admin-text)' }}>{appt.created_by_name || 'Unknown'}</div>
-                            <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: appt.created_by_role === 'patient' ? '#6366F1' : '#0D9488' }}>
-                              {appt.created_by_role || 'System'}
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--admin-text)' }}>
+                              {appt.created_by_name || appt.user_name || appt.booker?.name || 'Unknown'}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: appt.created_by_role === 'patient' ? '#6366F1' : '#0D9488' }}>
+                                {appt.created_by_role || 'PATIENT'}
+                              </span>
+                              {(appt.created_by_phone || appt.booker?.phone || appt.user?.phone) && (
+                                <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>
+                                  • {appt.created_by_phone || appt.booker?.phone || appt.user?.phone}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

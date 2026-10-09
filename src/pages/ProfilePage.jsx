@@ -63,10 +63,20 @@ function ProfilePage() {
   const activeTodayAppt = useMemo(() => {
     if (!isPatient && userType !== 'patient') return null
     if (!appointments || !Array.isArray(appointments)) return null
-    const today = new Date().toISOString().split('T')[0]
+    const dNow = new Date()
+    const today = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, '0')}-${String(dNow.getDate()).padStart(2, '0')}`
     return appointments.find(appt => {
       const rawDate = appt.appointment_date || appt.date || ''
-      const apptDate = String(rawDate).split('T')[0].trim()
+      const str = String(rawDate).trim()
+      let apptDate = str
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const d = new Date(str)
+        if (!isNaN(d.getTime())) {
+          apptDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        } else {
+          apptDate = str.split('T')[0].trim()
+        }
+      }
       const status = (appt.status || appt.queue_status || '').toLowerCase()
       const isCancelled = status === 'cancelled' || status === 'canceled'
       const isCompleted = status === 'completed'

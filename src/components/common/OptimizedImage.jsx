@@ -70,8 +70,8 @@ const OptimizedImage = memo(function OptimizedImage({
           loading={eager ? 'eager' : 'lazy'}
           // decoding=async: never blocks rendering thread
           decoding="async"
-          // fetchpriority: browser hint for resource priority
-          fetchPriority={fetchpriority}
+          // fetchpriority: browser hint for resource priority (lowercase for React 18 DOM recognition)
+          fetchpriority={fetchpriority}
           onLoad={() => setLoaded(true)}
           onError={() => {
             if (!errored && fallback) {
