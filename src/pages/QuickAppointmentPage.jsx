@@ -841,6 +841,12 @@ export default function QuickAppointmentPage() {
           confirmText: 'ঠিক আছে',
           onConfirm: () => {
             setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setIsBookingModalOpen(false)
+            setModalStep(1)
+            setStep2Error('')
+            setOtpNotice('')
+            setOtp('')
+            setIsOtpVerified(false)
           }
         })
         return
@@ -941,6 +947,12 @@ export default function QuickAppointmentPage() {
           confirmText: 'ঠিক আছে',
           onConfirm: () => {
             setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setIsBookingModalOpen(false)
+            setModalStep(1)
+            setStep2Error('')
+            setOtpNotice('')
+            setOtp('')
+            setIsOtpVerified(false)
           }
         })
         return

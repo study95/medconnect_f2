@@ -71,7 +71,8 @@ export default function AdminSmsSettingsPage() {
     throttle: { cooldown_seconds: 60, max_hourly: 3, max_daily: 5 },
     templates: {
       otp: 'আপনার DoctorBooklet ভেরিফিকেশন কোড: :code। কোডটির মেয়াদ ৫ মিনিট।',
-      password_reset: 'আপনার DoctorBooklet পাসওয়ার্ড রিসেট ওটিপি: :code। কোডটির মেয়াদ ৫ মিনিট।'
+      password_reset: 'আপনার DoctorBooklet পাসওয়ার্ড রিসেট ওটিপি: :code। কোডটির মেয়াদ ৫ মিনিট।',
+      appointment_confirmation: 'Booking Successful! Dr: :doctor_name, Serial: :serial, Chamber: :chamber, Date: :date, Time: :time. Details: doctorbooklet.com'
     }
   })
 
@@ -1579,6 +1580,36 @@ export default function AdminSmsSettingsPage() {
                   />
                   <small style={{ color: '#64748b' }}>ওটিপি কোডের স্থানে <code>:code</code> লিখে রাখুন।</small>
                 </div>
+
+                <div className="mb-2" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>🩺 অ্যাপয়েন্টমেন্ট কনফার্মেশন এসএমএস টেমপ্লেট</span>
+                      <span style={{ fontSize: 11, background: '#ECFDF5', color: '#059669', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>নতুন</span>
+                    </label>
+                    <span style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: (form.templates?.appointment_confirmation?.length || 0) <= 160 ? '#059669' : '#DC2626',
+                      background: (form.templates?.appointment_confirmation?.length || 0) <= 160 ? '#F0FDF4' : '#FEF2F2',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      border: `1px solid ${(form.templates?.appointment_confirmation?.length || 0) <= 160 ? '#BBF7D0' : '#FECACA'}`
+                    }}>
+                      {form.templates?.appointment_confirmation?.length || 0} / 160 অক্ষর {(form.templates?.appointment_confirmation?.length || 0) <= 160 ? '(১টি এসএমএস)' : '(২টি এসএমএস)'}
+                    </span>
+                  </div>
+                  <textarea
+                    rows="3"
+                    value={form.templates?.appointment_confirmation || ''}
+                    onChange={e => setForm(prev => ({ ...prev, templates: { ...prev.templates, appointment_confirmation: e.target.value } }))}
+                    className="form-control"
+                    style={{ borderRadius: 8, fontSize: 13, fontFamily: 'monospace' }}
+                  />
+                  <div style={{ marginTop: 6, fontSize: 11.5, color: '#64748b', lineHeight: 1.5 }}>
+                    ব্যবহারযোগ্য ভ্যারিয়েবল: <code>:doctor_name</code>, <code>:serial</code>, <code>:chamber</code>, <code>:date</code>, <code>:time</code>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1661,6 +1692,32 @@ export default function AdminSmsSettingsPage() {
                     </div>
 
                     <div
+                      onClick={() => setTestMode('appointment')}
+                      style={{
+                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                        border: testMode === 'appointment' ? '2px solid #00A88C' : '1px solid #e2e8f0',
+                        background: testMode === 'appointment' ? '#f0fdf9' : '#f8fafc',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <input
+                          type="radio"
+                          name="testMode"
+                          checked={testMode === 'appointment'}
+                          onChange={() => setTestMode('appointment')}
+                          style={{ accentColor: '#00A88C' }}
+                        />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'appointment' ? '#00A88C' : '#334155' }}>
+                          বুকিং কনফার্মেশন টেস্ট
+                        </span>
+                      </div>
+                      <small style={{ fontSize: 11, color: '#64748b', display: 'block' }}>
+                        বুকিং কনফার্মেশন টেমপ্লেটে ডেমো তথ্য বসিয়ে পাঠাবে
+                      </small>
+                    </div>
+
+                    <div
                       onClick={() => setTestMode('custom')}
                       style={{
                         padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
@@ -1728,6 +1785,28 @@ export default function AdminSmsSettingsPage() {
                     </div>
                     <small style={{ fontSize: 11, color: '#00A88C', display: 'block', marginTop: 4 }}>
                       ✓ এই বার্তাটিই ব্যবহারকারীর মোবাইলে যাবে এবং ডেলিভারি লগে হুবহু রেকর্ড হবে।
+                    </small>
+                  </div>
+                )}
+
+                {testMode === 'appointment' && (
+                  <div style={{
+                    marginBottom: 16, padding: '12px 16px', background: '#f8fafc',
+                    borderRadius: 10, border: '1px dashed #cbd5e1'
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
+                      পাঠানো বার্তার প্রিভিউ (লাইভ বুকিং কনফার্মেশন টেমপ্লেট):
+                    </div>
+                    <div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600, background: '#fff', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                      {(form.templates?.appointment_confirmation || 'Booking Successful! Dr: :doctor_name, Serial: :serial, Chamber: :chamber, Date: :date, Time: :time. Details: doctorbooklet.com')
+                        .replace(/:doctor_name/g, 'Dr. Ariful Islam')
+                        .replace(/:serial/g, '5')
+                        .replace(/:chamber/g, 'Popular Diagnostic')
+                        .replace(/:date/g, '10-Jun-2026')
+                        .replace(/:time/g, '06:30 PM')}
+                    </div>
+                    <small style={{ fontSize: 11, color: '#00A88C', display: 'block', marginTop: 4 }}>
+                      ✓ ডেমো ডাক্তার ও সিরিয়াল দিয়ে তৈরি করা এই বার্তাটি টেস্ট নম্বরে পাঠানো হবে।
                     </small>
                   </div>
                 )}
