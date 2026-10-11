@@ -14,12 +14,13 @@ import {
   ShieldCheck
 } from 'lucide-react'
 import { subscribeToAppointment, subscribeToChamber, onConnectionStateChange } from '../../utils/echoService'
+import { calculateDynamicWaitTime } from '../../utils/queueWaitHelper'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBn = (str) => (str !== null && str !== undefined ? String(str).replace(/\d/g, (d) => enToBn[d] || d) : '—')
 
 const formatSerial = (num) => {
-  if (num === null || num === undefined) return '—'
+  if (num === null || num === undefined || Number(num) === 0) return '—'
   const str = String(num).padStart(2, '0')
   return toBn(str)
 }
@@ -310,18 +311,39 @@ export default function PatientLiveQueueTracker({
   // =========================================================================
 
   // Calculate position metrics
-  const isServingNow = queueStatus === 'serving' || (currentServingSerial !== null && currentServingSerial === mySerial)
+  const isServingNow = queueStatus === 'serving' || (currentServingSerial !== null && currentServingSerial > 0 && currentServingSerial === mySerial)
   const isCompleted = queueStatus === 'completed' || (currentServingSerial !== null && mySerial > 0 && currentServingSerial > mySerial)
   const isNoShow = queueStatus === 'no_show'
   const isCancelled = queueStatus === 'cancelled'
-  const isNextInLine = !isServingNow && !isCompleted && currentServingSerial !== null && mySerial === currentServingSerial + 1
+  const isNextInLine = !isServingNow && !isCompleted && currentServingSerial !== null && currentServingSerial > 0 && mySerial === currentServingSerial + 1
 
   let patientsAhead = 0
-  if (mySerial > 0 && currentServingSerial !== null) {
-    patientsAhead = Math.max(0, mySerial - currentServingSerial - (isServingNow ? 0 : 1))
-  } else if (waitingCount !== null && mySerial > 0) {
-    patientsAhead = Math.max(0, mySerial - 1)
+  if (mySerial > 0) {
+    if (isServingNow) {
+      patientsAhead = 0
+    } else if (currentServingSerial !== null && currentServingSerial > 0) {
+      patientsAhead = Math.max(0, mySerial - currentServingSerial - 1)
+    } else {
+      // Chamber has not started serving yet: all serials prior to mySerial are waiting ahead
+      patientsAhead = Math.max(0, mySerial - 1)
+    }
   }
+
+  const slotDuration = Number(appointment?.slot_duration_minutes || appointment?.chamber?.slot_duration_minutes || 10)
+  const bookingTimeRaw = appointment?.appointment_time || appointment?.time || appointment?.time_slot || null
+  const chamberStartTimeRaw = appointment?.chamber_start_time || appointment?.chamber?.start_time || null
+
+  const dynamicWait = calculateDynamicWaitTime({
+    patientsAhead,
+    slotDurationMinutes: slotDuration,
+    isOnBreak,
+    breakResumeTime,
+    isServingNow,
+    isNextInLine,
+    currentServing: currentServingSerial,
+    bookingTimeRaw,
+    chamberStartTimeRaw,
+  })
 
   // Visual Theme Configuration
   let theme = {
@@ -333,6 +355,20 @@ export default function PatientLiveQueueTracker({
     statusDesc: patientsAhead === 0 ? 'আপনার সিরিয়াল শীঘ্রই শুরু হবে।' : `আপনার পূর্বে আরও ${toBn(patientsAhead)} জন রোগী অপেক্ষমাণ আছেন।`,
     icon: Users,
     iconColor: '#16A34A',
+  }
+
+  // Pre-chamber theme (When doctor has not started calling patients yet)
+  if (!dynamicWait.isChamberActive) {
+    theme = {
+      bg: '#F8FAFC',
+      border: '#E2E8F0',
+      badgeBg: '#F1F5F9',
+      badgeText: '#475569',
+      statusText: 'চেম্বার শুরুর অপেক্ষায়',
+      statusDesc: dynamicWait.preChamberNotice || `চেম্বার শুরু হলে লাইভ সিরিয়াল আপডেট প্রদর্শিত হবে। আপনার পূর্বে ${toBn(patientsAhead)} জন রোগী আছেন।`,
+      icon: Clock,
+      iconColor: '#64748B',
+    }
   }
 
   if (isServingNow) {
@@ -452,38 +488,57 @@ export default function PatientLiveQueueTracker({
         marginBottom: 14,
         paddingTop: isReconnecting ? 18 : 0,
       }}>
-        {/* Live Indicator Badge */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          background: theme.badgeBg,
-          color: theme.badgeText,
-          padding: '4px 10px',
-          borderRadius: 20,
-          fontSize: 12,
-          fontWeight: 800,
-          letterSpacing: '0.2px',
-        }}>
-          <span style={{ position: 'relative', display: 'flex', width: 7, height: 7 }}>
-            <span style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              background: 'currentColor',
-              opacity: 0.75,
-              animation: 'pingDot 1.4s cubic-bezier(0, 0, 0.2, 1) infinite',
-            }} />
-            <span style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'currentColor' }} />
-          </span>
-          <span>লাইভ কিউ ট্র্যাকার</span>
-        </div>
+        {/* Live Indicator Badge vs Pre-Chamber Badge */}
+        {dynamicWait.isChamberActive ? (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#FEE2E2',
+            color: '#DC2626',
+            padding: '4px 10px',
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '0.2px',
+          }}>
+            <span style={{ position: 'relative', display: 'flex', width: 7, height: 7 }}>
+              <span style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: '#DC2626',
+                opacity: 0.75,
+                animation: 'pingDot 1.4s cubic-bezier(0, 0, 0.2, 1) infinite',
+              }} />
+              <span style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#DC2626' }} />
+            </span>
+            <span>লাইভ কিউ ট্র্যাকার</span>
+          </div>
+        ) : (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#F1F5F9',
+            color: '#475569',
+            padding: '4px 10px',
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '0.2px',
+            border: '1px solid #E2E8F0',
+          }}>
+            <Clock size={12} color="#64748B" />
+            <span>শুরুর অপেক্ষায়</span>
+          </div>
+        )}
 
         {/* Security / Verification Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748B', fontSize: 11, fontWeight: 600 }}>
-          <ShieldCheck size={13} color="#00966D" />
-          <span>রিয়েল-টাইম লাইভ</span>
+          <ShieldCheck size={13} color={dynamicWait.isChamberActive ? "#00966D" : "#64748B"} />
+          <span>{dynamicWait.isChamberActive ? 'রিয়েল-টাইম লাইভ' : 'নির্ধারিত শিডিউল'}</span>
         </div>
       </div>
 
@@ -558,6 +613,39 @@ export default function PatientLiveQueueTracker({
           </div>
         </div>
       </div>
+
+      {/* Dynamic Estimated Wait Time Strip */}
+      {!isCompleted && !isNoShow && (
+        <div style={{
+          background: isOnBreak ? '#FFFBEB' : (!dynamicWait.isChamberActive ? '#F8FAFC' : (isServingNow ? '#ECFDF5' : '#FFFFFF')),
+          borderRadius: 12,
+          padding: '10px 14px',
+          border: isOnBreak ? '1.5px solid #FCD34D' : (!dynamicWait.isChamberActive ? '1px solid #E2E8F0' : (isServingNow ? '1.5px solid #6EE7B7' : '1px solid #E2E8F0')),
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 6,
+          fontSize: 12,
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 800,
+            color: isOnBreak ? '#92400E' : (isServingNow ? '#065F46' : '#334155'),
+          }}>
+            <Clock size={14} color={isOnBreak ? '#D97706' : (isServingNow ? '#059669' : '#0D9488')} />
+            <span>{!dynamicWait.isChamberActive ? 'চেম্বার শুরু:' : (isServingNow ? 'বর্তমান অবস্থা:' : 'আনুমানিক অপেক্ষা:')} <strong style={{ color: isOnBreak ? '#B45309' : (isServingNow ? '#047857' : '#0F172A') }}>{dynamicWait.waitRangeText}</strong></span>
+          </div>
+          {!isServingNow && (
+            <div style={{ color: '#64748B', fontWeight: 600 }}>
+              {!dynamicWait.isChamberActive ? 'নির্ধারিত স্লট:' : 'সম্ভাব্য সময়:'} <strong style={{ color: '#0F172A' }}>{dynamicWait.estTimeWindowText}</strong>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Dynamic Status Banner */}
       <div style={{

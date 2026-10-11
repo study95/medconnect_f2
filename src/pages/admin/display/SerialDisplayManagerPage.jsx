@@ -101,10 +101,18 @@ const formatDateBn = (dateStr) => {
   }
 }
 
+const getLocalDateString = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getNextDateForDay = (targetDayName) => {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const targetIndex = days.findIndex(d => d.toLowerCase() === (targetDayName || '').toLowerCase())
-  if (targetIndex === -1) return new Date().toISOString().split('T')[0]
+  if (targetIndex === -1) return getLocalDateString()
   
   const now = new Date()
   const currentDayIndex = now.getDay()
@@ -112,7 +120,162 @@ const getNextDateForDay = (targetDayName) => {
   if (diff < 0) diff += 7
   const nextDate = new Date(now)
   nextDate.setDate(now.getDate() + diff)
-  return nextDate.toISOString().split('T')[0]
+  const year = nextDate.getFullYear()
+  const month = String(nextDate.getMonth() + 1).padStart(2, '0')
+  const day = String(nextDate.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const parseTimeToTodayDate = (timeStr) => {
+  if (!timeStr) return null
+  try {
+    const clean = String(timeStr).trim()
+    const isPm = /pm/i.test(clean)
+    const isAm = /am/i.test(clean)
+    const timeOnly = clean.replace(/\s*(am|pm)/i, '')
+    const parts = timeOnly.split(':')
+    if (parts.length < 2) return null
+    let hour = parseInt(parts[0], 10)
+    const minute = parseInt(parts[1], 10)
+    if (isPm && hour < 12) hour += 12
+    if (isAm && hour === 12) hour = 0
+    const d = new Date()
+    d.setHours(hour, minute, 0, 0)
+    return d
+  } catch (e) {
+    return null
+  }
+}
+
+const formatMinutesToBnDuration = (mins) => {
+  if (mins < 60) {
+    return `${toBn(mins)} মিনিট`
+  }
+  const hrs = Math.floor(mins / 60)
+  const remMins = mins % 60
+  if (remMins === 0) {
+    return `${toBn(hrs)} ঘণ্টা`
+  }
+  return `${toBn(hrs)} ঘণ্টা ${toBn(remMins)} মিনিট`
+}
+
+const getPatientActualWaitBadge = (p, chamberStartTime) => {
+  const now = new Date()
+  let referenceDate = null
+
+  if (p?.check_in_time) {
+    try {
+      const parsed = new Date(p.check_in_time)
+      if (!isNaN(parsed.getTime())) {
+        referenceDate = parsed
+      }
+    } catch (e) {}
+  }
+
+  if (!referenceDate && p?.appointment_time) {
+    referenceDate = parseTimeToTodayDate(p.appointment_time)
+  }
+
+  if (!referenceDate && chamberStartTime) {
+    referenceDate = parseTimeToTodayDate(chamberStartTime)
+  }
+
+  if (!referenceDate) return null
+
+  const elapsedMinutes = Math.floor((now - referenceDate) / (1000 * 60))
+  if (elapsedMinutes <= 0) {
+    return {
+      text: 'সময়মতো উপস্থিত',
+      elapsedMinutes: 0,
+      color: '#10B981',
+      bg: 'rgba(16, 185, 129, 0.12)',
+      border: 'rgba(16, 185, 129, 0.25)',
+      isLate: false,
+      severity: 'on_time'
+    }
+  }
+
+  const durationStr = formatMinutesToBnDuration(elapsedMinutes)
+
+  if (elapsedMinutes >= 60) {
+    return {
+      text: `${durationStr} ধরে অপেক্ষমাণ`,
+      elapsedMinutes,
+      color: '#EF4444',
+      bg: 'rgba(239, 68, 68, 0.12)',
+      border: 'rgba(239, 68, 68, 0.3)',
+      isLate: true,
+      severity: 'high'
+    }
+  } else if (elapsedMinutes >= 20) {
+    return {
+      text: `${durationStr} অপেক্ষমাণ`,
+      elapsedMinutes,
+      color: '#F59E0B',
+      bg: 'rgba(245, 158, 11, 0.12)',
+      border: 'rgba(245, 158, 11, 0.3)',
+      isLate: true,
+      severity: 'medium'
+    }
+  } else {
+    return {
+      text: `${durationStr} অপেক্ষা`,
+      elapsedMinutes,
+      color: '#64748B',
+      bg: 'rgba(100, 116, 139, 0.1)',
+      border: 'rgba(100, 116, 139, 0.2)',
+      isLate: false,
+      severity: 'low'
+    }
+  }
+}
+
+const getChamberScheduleDelay = (currentlyServing, waitingPatients, chamber) => {
+  const now = new Date()
+  let scheduledTimeStr = null
+
+  if (currentlyServing?.appointment_time) {
+    scheduledTimeStr = currentlyServing.appointment_time
+  } else if (waitingPatients && waitingPatients.length > 0 && waitingPatients[0]?.appointment_time) {
+    scheduledTimeStr = waitingPatients[0].appointment_time
+  } else if (chamber?.start_time) {
+    scheduledTimeStr = chamber.start_time
+  }
+
+  if (!scheduledTimeStr) return null
+
+  const scheduledDate = parseTimeToTodayDate(scheduledTimeStr)
+  if (!scheduledDate) return null
+
+  const delayMins = Math.floor((now - scheduledDate) / (1000 * 60))
+  if (delayMins > 10) {
+    return {
+      isDelayed: true,
+      minutes: delayMins,
+      badgeText: `সেশন ${formatMinutesToBnDuration(delayMins)} বিলম্বে চলছে`,
+      color: delayMins >= 45 ? '#F87171' : '#FBBF24',
+      bg: delayMins >= 45 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+      border: delayMins >= 45 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'
+    }
+  } else if (delayMins < -10) {
+    return {
+      isDelayed: false,
+      minutes: delayMins,
+      badgeText: 'শিডিউলের চেয়ে এগিয়ে চলছে',
+      color: '#34D399',
+      bg: 'rgba(16, 185, 129, 0.2)',
+      border: 'rgba(16, 185, 129, 0.4)'
+    }
+  } else {
+    return {
+      isDelayed: false,
+      minutes: 0,
+      badgeText: 'শিডিউল অন-টাইম',
+      color: '#34D399',
+      bg: 'rgba(16, 185, 129, 0.2)',
+      border: 'rgba(16, 185, 129, 0.4)'
+    }
+  }
 }
 
 export default function SerialDisplayManagerPage() {
@@ -126,7 +289,8 @@ export default function SerialDisplayManagerPage() {
   const [doctorChambersList, setDoctorChambersList] = useState([])
   const [selectedHospitalId, setSelectedHospitalId] = useState('')
   const [selectedChamberId, setSelectedChamberId] = useState('')
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
+  const [chamberFilterMode, setChamberFilterMode] = useState('today_only') // 'today_only' | 'all'
   const [viewMode, setViewMode] = useState('controller') // 'controller' | 'overview'
 
   // Data states
@@ -174,6 +338,9 @@ export default function SerialDisplayManagerPage() {
               hospMap.set(ch.hospital.id.toString(), ch.hospital)
             } else if (ch.hospital_id) {
               hospMap.set(ch.hospital_id.toString(), { id: ch.hospital_id, name: ch.hospital_name || 'হাসপাতাল চেম্বার' })
+            } else {
+              const pName = ch.chamber_name || ch.name || 'নিজস্ব চেম্বার'
+              hospMap.set('personal', { id: 'personal', name: `${pName} (Personal Clinic)`, name_bn: pName })
             }
           })
           const doctorHospitals = Array.from(hospMap.values())
@@ -183,14 +350,13 @@ export default function SerialDisplayManagerPage() {
           const currentDayOfWeek = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
           const todayChamber = chambers.find(ch => (ch.day || '').toLowerCase() === currentDayOfWeek.toLowerCase() && ch.is_active)
 
-          if (todayChamber && todayChamber.hospital_id) {
-            setSelectedHospitalId(todayChamber.hospital_id.toString())
+          // For Doctor: Default to 'all' locations so that ALL active chambers across all hospitals are visible right away!
+          setSelectedHospitalId('all')
+
+          if (todayChamber) {
             setSelectedChamberId(todayChamber.id.toString())
-          } else if (doctorHospitals.length > 0) {
-            setSelectedHospitalId(doctorHospitals[0].id.toString())
-            if (chambers[0]) {
-              setSelectedChamberId(chambers[0].id.toString())
-            }
+          } else if (chambers[0]) {
+            setSelectedChamberId(chambers[0].id.toString())
           }
         } else {
           // Admin / Manager: fetch all hospitals
@@ -225,18 +391,18 @@ export default function SerialDisplayManagerPage() {
 
       let data = null
       if (selectedHospitalId === 'all') {
-        const targetHospitals = hospitals.filter(h => h.id && h.id !== 'all')
+        const targetHospitals = hospitals.filter(h => h.id && h.id !== 'all' && h.id !== 'personal')
+        let allDoctorQueues = []
+        let totalChambers = 0
+        let activeSessions = 0
+        let totalWaiting = 0
+        let totalCompleted = 0
+        let totalBooked = 0
+
         if (targetHospitals.length > 0) {
           const results = await Promise.all(
             targetHospitals.map(h => getHospitalLiveQueue(h.id, selectedDate).catch(() => null))
           )
-
-          let allDoctorQueues = []
-          let totalChambers = 0
-          let activeSessions = 0
-          let totalWaiting = 0
-          let totalCompleted = 0
-          let totalBooked = 0
 
           results.forEach(res => {
             if (res && res.data) {
@@ -251,22 +417,77 @@ export default function SerialDisplayManagerPage() {
               totalBooked += summ.total_booked || 0
             }
           })
+        }
 
-          data = {
-            hospital: {
-              id: 'all',
-              name: 'All Hospitals & Locations',
-              name_bn: isDoctorOnly ? 'সকল চেম্বার ও হাসপাতাল' : 'সকল হাসপাতাল'
-            },
-            summary: {
-              total_chambers: totalChambers,
-              active_sessions: activeSessions,
-              total_waiting: totalWaiting,
-              total_completed: totalCompleted,
-              total_booked: totalBooked,
-            },
-            doctor_queues: allDoctorQueues
+        // Also fetch personal chambers without a hospital if doctorOnly
+        if (isDoctorOnly) {
+          const personalChambers = doctorChambersList.filter(ch => !ch.hospital_id && ch.is_active)
+          const docId = user?.doctor?.id || (doctorChambersList[0]?.doctor_id)
+          if (docId && personalChambers.length > 0) {
+            const pResults = await Promise.all(
+              personalChambers.map(ch => getLiveQueue(docId, ch.id, selectedDate).catch(() => null))
+            )
+            pResults.forEach(res => {
+              if (res && res.data) {
+                const qData = res.data?.data || res.data
+                if (qData) {
+                  allDoctorQueues.push(qData)
+                  totalChambers += 1
+                  if (qData.currently_serving) activeSessions += 1
+                  totalWaiting += (qData.statistics?.total_waiting || 0)
+                  totalCompleted += (qData.statistics?.total_completed || 0)
+                  totalBooked += (qData.statistics?.total_booked || 0)
+                }
+              }
+            })
           }
+        }
+
+        data = {
+          hospital: {
+            id: 'all',
+            name: 'All Hospitals & Locations',
+            name_bn: isDoctorOnly ? 'সকল চেম্বার ও হাসপাতাল' : 'সকল হাসপাতাল'
+          },
+          summary: {
+            total_chambers: totalChambers,
+            active_sessions: activeSessions,
+            total_waiting: totalWaiting,
+            totalCompleted: totalCompleted,
+            total_booked: totalBooked,
+          },
+          doctor_queues: allDoctorQueues
+        }
+      } else if (selectedHospitalId === 'personal') {
+        const personalChambers = doctorChambersList.filter(ch => !ch.hospital_id && ch.is_active)
+        const docId = user?.doctor?.id || (doctorChambersList[0]?.doctor_id)
+        let allDoctorQueues = []
+        if (docId && personalChambers.length > 0) {
+          const pResults = await Promise.all(
+            personalChambers.map(ch => getLiveQueue(docId, ch.id, selectedDate).catch(() => null))
+          )
+          pResults.forEach(res => {
+            if (res && res.data) {
+              const qData = res.data?.data || res.data
+              if (qData) allDoctorQueues.push(qData)
+            }
+          })
+        }
+        const personalName = personalChambers[0]?.chamber_name || personalChambers[0]?.name || 'নিজস্ব চেম্বার'
+        data = {
+          hospital: {
+            id: 'personal',
+            name: `${personalName} (Personal Clinic)`,
+            name_bn: personalName
+          },
+          summary: {
+            total_chambers: personalChambers.length,
+            active_sessions: allDoctorQueues.filter(q => q.currently_serving).length,
+            total_waiting: allDoctorQueues.reduce((acc, q) => acc + (q.statistics?.total_waiting || 0), 0),
+            total_completed: allDoctorQueues.reduce((acc, q) => acc + (q.statistics?.total_completed || 0), 0),
+            total_booked: allDoctorQueues.reduce((acc, q) => acc + (q.statistics?.total_booked || 0), 0),
+          },
+          doctor_queues: allDoctorQueues
         }
       } else {
         const res = await getHospitalLiveQueue(selectedHospitalId, selectedDate)
@@ -297,8 +518,13 @@ export default function SerialDisplayManagerPage() {
             dq.currently_serving
           )
 
+          const currentMatchesDay = doctorQueues.some(
+            dq => dq.chamber?.id?.toString() === selectedChamberId &&
+                  (dq.chamber?.day || '').toLowerCase() === currentDayOfWeek.toLowerCase()
+          )
+
           const currentExists = doctorQueues.some(dq => dq.chamber?.id?.toString() === selectedChamberId)
-          if (!selectedChamberId || !currentExists) {
+          if (!selectedChamberId || !currentExists || (!currentMatchesDay && activeScheduled)) {
             setSelectedChamberId(activeScheduled ? activeScheduled.chamber?.id?.toString() : doctorQueues[0].chamber?.id?.toString())
           }
         }
@@ -339,12 +565,87 @@ export default function SerialDisplayManagerPage() {
       (user?.name && dq.doctor?.name?.toLowerCase().includes(user.name.toLowerCase()))
     )
   }
-  const activeDoctorsList = rawDoctorsList
+
+  // Deduplicate by chamber id
+  const seenChamberIds = new Set()
+  const dedupedList = []
+  rawDoctorsList.forEach(dq => {
+    const chId = dq.chamber?.id?.toString()
+    if (chId && !seenChamberIds.has(chId)) {
+      seenChamberIds.add(chId)
+      dedupedList.push(dq)
+    } else if (!chId) {
+      dedupedList.push(dq)
+    }
+  })
+
+  // Sort so today's scheduled chambers appear first, followed by others
+  const currentSelectedDayOfWeek = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
+  const activeDoctorsList = dedupedList.sort((a, b) => {
+    const aIsToday = (a.chamber?.day || '').toLowerCase() === currentSelectedDayOfWeek.toLowerCase() || a.is_scheduled_today ? 1 : 0
+    const bIsToday = (b.chamber?.day || '').toLowerCase() === currentSelectedDayOfWeek.toLowerCase() || b.is_scheduled_today ? 1 : 0
+    return bIsToday - aIsToday
+  })
+
+  // Filter chambers: today only vs all
+  const todayOnlyChambers = activeDoctorsList.filter(dq => 
+    (dq.chamber?.day || '').toLowerCase() === currentSelectedDayOfWeek.toLowerCase() ||
+    dq.is_scheduled_today ||
+    dq.currently_serving
+  )
+
+  const displayedDoctorsList = (isDoctorOnly && chamberFilterMode === 'today_only')
+    ? todayOnlyChambers
+    : activeDoctorsList
 
   // Current active doctor chamber queue from the aggregated data
   const currentChamberQueue = activeDoctorsList.find(
     dq => dq.chamber?.id?.toString() === selectedChamberId
-  ) || activeDoctorsList[0]
+  ) || todayOnlyChambers[0] || activeDoctorsList[0]
+
+  // Robust Chamber Name Resolver
+  const getChamberDisplayName = (dq) => {
+    if (!dq) return ''
+    if (dq.chamber?.chamber_name) return dq.chamber.chamber_name
+    const matched = doctorChambersList.find(c => String(c.id) === String(dq.chamber?.id))
+    if (matched?.chamber_name) return matched.chamber_name
+    if (matched?.name) return matched.name
+    if (dq.hospital?.name_bn || dq.hospital?.name) return dq.hospital?.name_bn || dq.hospital?.name
+    if (dq.chamber?.hospital_name) return dq.chamber.hospital_name
+    if (matched?.hospital_name) return matched.hospital_name
+    if (matched?.hospital?.name) return matched.hospital.name
+    return dq.chamber?.hospital_id ? 'হাসপাতাল চেম্বার' : 'ব্যক্তিগত চেম্বার'
+  }
+
+  const getChamberSubtitle = (dq) => {
+    if (!dq) return ''
+    if (!isDoctorOnly) {
+      return dq.doctor?.specialty?.name_bn || dq.doctor?.specialty?.name || 'বিশেষজ্ঞ'
+    }
+    const matched = doctorChambersList.find(c => String(c.id) === String(dq.chamber?.id))
+    const isHospital = dq.chamber?.hospital_id || matched?.hospital_id
+    if (isHospital) {
+      return dq.hospital?.name_bn || dq.hospital?.name || dq.chamber?.hospital_name || matched?.hospital_name || 'হাসপাতাল চেম্বার'
+    }
+    return 'ব্যক্তিগত ক্লিনিক'
+  }
+
+  // Date Action Handler
+  const handleSelectToday = () => {
+    const today = getLocalDateString()
+    setSelectedDate(today)
+
+    const todayDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+    const todayChamber = activeDoctorsList.find(dq => 
+      (dq.chamber?.day || '').toLowerCase() === todayDayName.toLowerCase() ||
+      dq.is_scheduled_today
+    )
+    if (todayChamber?.chamber?.id) {
+      setSelectedChamberId(todayChamber.chamber.id.toString())
+    }
+    setChamberFilterMode('today_only')
+    fetchHospitalData(false)
+  }
 
   // Queue Action Handlers
   const handleCallNext = async (targetAppointmentId = null) => {
@@ -527,6 +828,11 @@ export default function SerialDisplayManagerPage() {
   const isCurrentChamberScheduledToday = currentChamberQueue 
     ? ((currentChamberQueue.chamber?.day || '').toLowerCase() === selectedDayOfWeek.toLowerCase() || currentChamberQueue.is_scheduled_today)
     : false
+
+  const isSelectedDateToday = selectedDate === getLocalDateString()
+  const chamberDelayStatus = isSelectedDateToday 
+    ? getChamberScheduleDelay(currentlyServing, waitingPatients, currentChamberQueue?.chamber)
+    : null
 
   return (
     <div className="admin-container" style={{ maxWidth: 1400, margin: '0 auto', paddingBottom: 60 }}>
@@ -712,12 +1018,12 @@ export default function SerialDisplayManagerPage() {
 
         {/* Date Selector */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
               তারিখ (Date)
             </label>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#00B875' }}>
-              {selectedDayBn}
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#00B875', background: 'rgba(0, 184, 117, 0.1)', padding: '1px 8px', borderRadius: 6 }}>
+              • {selectedDayBn}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -733,11 +1039,27 @@ export default function SerialDisplayManagerPage() {
             />
             <button
               type="button"
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className="admin-btn admin-btn-outline"
-              style={{ height: 42, padding: '0 14px', borderRadius: 10, fontSize: 12, fontWeight: 700 }}
+              onClick={handleSelectToday}
+              style={{
+                height: 42,
+                padding: '0 16px',
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: selectedDate === getLocalDateString() ? '#00B875' : 'var(--admin-bg)',
+                color: selectedDate === getLocalDateString() ? '#FFFFFF' : 'var(--admin-text)',
+                border: selectedDate === getLocalDateString() ? '1.5px solid #009661' : '1px solid var(--admin-border)',
+                boxShadow: selectedDate === getLocalDateString() ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
+              }}
+              title="আজকের তারিখে যান"
             >
-              আজ
+              <CalendarCheck size={14} />
+              <span>আজ</span>
             </button>
           </div>
         </div>
@@ -747,30 +1069,73 @@ export default function SerialDisplayManagerPage() {
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
             ভিউ মোড (Display Mode)
           </label>
-          <div style={{ display: 'flex', background: 'var(--admin-bg)', padding: 3, borderRadius: 10, border: '1px solid var(--admin-border)' }}>
+          <div style={{
+            display: 'flex',
+            height: 42,
+            background: 'var(--admin-bg)',
+            padding: 4,
+            borderRadius: 12,
+            border: '1px solid var(--admin-border)',
+            gap: 6,
+            boxSizing: 'border-box'
+          }}>
             <button
               type="button"
               onClick={() => setViewMode('controller')}
               style={{
-                flex: 1, height: 34, border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', transition: '0.2s',
-                background: viewMode === 'controller' ? '#00B875' : 'transparent',
-                color: viewMode === 'controller' ? '#fff' : 'var(--admin-text)'
+                flex: 1,
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap',
+                padding: '0 12px',
+                background: viewMode === 'controller'
+                  ? 'linear-gradient(135deg, #00B875 0%, #009661 100%)'
+                  : 'transparent',
+                color: viewMode === 'controller' ? '#FFFFFF' : 'var(--admin-text-muted)',
+                boxShadow: viewMode === 'controller'
+                  ? '0 3px 10px rgba(0, 184, 117, 0.35)'
+                  : 'none',
               }}
             >
-              👨‍⚕️ {isDoctorOnly ? 'আমার কিউ কন্ট্রোলার' : 'ডাক্তার কন্ট্রোলার'}
+              <Stethoscope size={15} />
+              <span>{isDoctorOnly ? 'কিউ কন্ট্রোলার' : 'ডাক্তার কন্ট্রোলার'}</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('overview')}
               style={{
-                flex: 1, height: 34, border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', transition: '0.2s',
-                background: viewMode === 'overview' ? '#00B875' : 'transparent',
-                color: viewMode === 'overview' ? '#fff' : 'var(--admin-text)'
+                flex: 1,
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap',
+                padding: '0 12px',
+                background: viewMode === 'overview'
+                  ? 'linear-gradient(135deg, #00B875 0%, #009661 100%)'
+                  : 'transparent',
+                color: viewMode === 'overview' ? '#FFFFFF' : 'var(--admin-text-muted)',
+                boxShadow: viewMode === 'overview'
+                  ? '0 3px 10px rgba(0, 184, 117, 0.35)'
+                  : 'none',
               }}
             >
-              🏥 {isDoctorOnly ? 'চেম্বার ওভারভিউ' : 'হাসপাতাল মাস্টার বোর্ড'}
+              <Building2 size={15} />
+              <span>{isDoctorOnly ? 'চেম্বার ওভারভিউ' : 'হাসপাতাল মাস্টার বোর্ড'}</span>
             </button>
           </div>
         </div>
@@ -864,14 +1229,62 @@ export default function SerialDisplayManagerPage() {
         <div>
           {/* Doctor Chamber / Session Selection Cards */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {isDoctorOnly ? `আপনার চেম্বার ও সেশন সমূহ (${activeDoctorsList.length} টি)` : `ডাক্তার চেম্বার নির্বাচন করুন (${activeDoctorsList.length} জন)`}
+                  {isDoctorOnly ? 'আপনার চেম্বার ও সেশন সমূহ' : `ডাক্তার চেম্বার নির্বাচন করুন (${toBn(displayedDoctorsList.length)} জন)`}
                 </span>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(0, 184, 117, 0.1)', color: '#00B875' }}>
                   তারিখ: {formatDateBn(selectedDate)} ({selectedDayBn})
                 </span>
+
+                {isDoctorOnly && (
+                  <div style={{
+                    display: 'inline-flex',
+                    background: 'var(--admin-bg)',
+                    borderRadius: 8,
+                    padding: 2,
+                    border: '1px solid var(--admin-border)',
+                    gap: 3
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setChamberFilterMode('today_only')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: chamberFilterMode === 'today_only' ? '#00B875' : 'transparent',
+                        color: chamberFilterMode === 'today_only' ? '#FFFFFF' : 'var(--admin-text)',
+                        boxShadow: chamberFilterMode === 'today_only' ? '0 1px 4px rgba(0, 184, 117, 0.25)' : 'none',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      আজকের সেশন ({toBn(todayOnlyChambers.length)} টি)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChamberFilterMode('all')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: chamberFilterMode === 'all' ? '#00B875' : 'transparent',
+                        color: chamberFilterMode === 'all' ? '#FFFFFF' : 'var(--admin-text)',
+                        boxShadow: chamberFilterMode === 'all' ? '0 1px 4px rgba(0, 184, 117, 0.25)' : 'none',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      সব দিনের শিডিউল ({toBn(dedupedList.length)} টি)
+                    </button>
+                  </div>
+                )}
               </div>
               {currentChamberQueue && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -901,12 +1314,37 @@ export default function SerialDisplayManagerPage() {
               paddingBottom: 8,
               scrollbarWidth: 'thin'
             }}>
-              {activeDoctorsList.length === 0 ? (
+              {displayedDoctorsList.length === 0 ? (
                 <div style={{ padding: '24px', background: 'var(--admin-card-bg)', borderRadius: 12, border: '1px dashed var(--admin-border)', width: '100%', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
-                  এই হাসপাতালে নির্বাচিত তারিখে কোনো সক্রিয় চেম্বার শিডিউল পাওয়া যায়নি।
+                  {isDoctorOnly ? (
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>
+                        নির্বাচিত তারিখে ({formatDateBn(selectedDate)} - {selectedDayBn}) আপনার কোনো সক্রিয় চেম্বার শিডিউল নেই।
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setChamberFilterMode('all')}
+                        style={{
+                          marginTop: 10,
+                          background: '#00B875',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '6px 14px',
+                          fontWeight: 800,
+                          fontSize: 12,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        সকল দিনের শিডিউল দেখুন ({toBn(dedupedList.length)} টি)
+                      </button>
+                    </div>
+                  ) : (
+                    'এই হাসপাতালে নির্বাচিত তারিখে কোনো সক্রিয় চেম্বার শিডিউল পাওয়া যায়নি।'
+                  )}
                 </div>
               ) : (
-                activeDoctorsList.map((dq) => {
+                displayedDoctorsList.map((dq) => {
                   const isSelected = dq.chamber?.id?.toString() === selectedChamberId
                   const isServing = !!dq.currently_serving
                   const chamberDay = dq.chamber?.day || ''
@@ -939,10 +1377,12 @@ export default function SerialDisplayManagerPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
                         <div>
                           <div style={{ fontWeight: 800, fontSize: 14, color: isSelected ? '#00B875' : 'var(--admin-text)' }}>
-                            {isDoctorOnly ? (dq.chamber?.hospital_name || currentHospital?.name || 'চেম্বার') : (dq.doctor?.name_bn || dq.doctor?.name)}
+                            {isDoctorOnly 
+                              ? getChamberDisplayName(dq) 
+                              : (dq.doctor?.name_bn || dq.doctor?.name)}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
-                            {isDoctorOnly ? (dq.doctor?.name_bn || dq.doctor?.name) : (dq.doctor?.specialty?.name_bn || dq.doctor?.specialty?.name || 'বিশেষজ্ঞ')}
+                            {getChamberSubtitle(dq)}
                           </div>
                         </div>
 
@@ -1063,6 +1503,10 @@ export default function SerialDisplayManagerPage() {
                         {currentChamberQueue.doctor?.degree_bn || currentChamberQueue.doctor?.degree || currentChamberQueue.doctor?.specialty?.name || 'বিশেষজ্ঞ'}
                         {currentChamberQueue.doctor?.bmdc ? ` • BMDC: ${currentChamberQueue.doctor.bmdc}` : ''}
                       </div>
+                      <div style={{ fontSize: 11, color: '#00B875', fontWeight: 700, marginTop: 3 }}>
+                        📍 {getChamberDisplayName(currentChamberQueue)}
+                        {currentChamberQueue.chamber?.room_number ? ` • রুম ${toBn(currentChamberQueue.chamber.room_number)}` : ''}
+                      </div>
                     </div>
                   </div>
 
@@ -1154,7 +1598,7 @@ export default function SerialDisplayManagerPage() {
                   position: 'relative',
                   overflow: 'hidden'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', gap: 7,
                       background: 'rgba(0, 184, 117, 0.15)', color: '#34D399', padding: '5px 14px',
@@ -1164,15 +1608,32 @@ export default function SerialDisplayManagerPage() {
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399', display: 'inline-block' }} className="pulse-anim" />
                       বর্তমান সেবাধীন রোগী (NOW SERVING)
                     </div>
-                    {currentChamberQueue.chamber?.room_number && (
-                      <div style={{
-                        fontSize: 12, fontWeight: 800, color: '#38BDF8',
-                        background: 'rgba(56, 189, 248, 0.12)', padding: '4px 10px',
-                        borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)'
-                      }}>
-                        🚪 রুম {toBn(currentChamberQueue.chamber.room_number)}
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {chamberDelayStatus && (
+                        <div style={{
+                          fontSize: 11.5, fontWeight: 700,
+                          color: chamberDelayStatus.color,
+                          background: chamberDelayStatus.bg,
+                          padding: '4px 10px',
+                          borderRadius: 8,
+                          border: `1px solid ${chamberDelayStatus.border}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
+                        }}>
+                          {chamberDelayStatus.isDelayed ? '⚠️' : '🟢'} {chamberDelayStatus.badgeText}
+                        </div>
+                      )}
+                      {currentChamberQueue.chamber?.room_number && (
+                        <div style={{
+                          fontSize: 12, fontWeight: 800, color: '#38BDF8',
+                          background: 'rgba(56, 189, 248, 0.12)', padding: '4px 10px',
+                          borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)'
+                        }}>
+                          🚪 রুম {toBn(currentChamberQueue.chamber.room_number)}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {currentlyServing ? (
@@ -1449,20 +1910,41 @@ export default function SerialDisplayManagerPage() {
                               <td>
                                 <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{p.patient_name}</div>
                                 {p.estimated_wait_minutes > 0 && (
-                                  <div style={{ fontSize: 11, color: '#94A3B8' }}>
-                                    আনুমানিক অপেক্ষা: ~{toBn(p.estimated_wait_minutes)} মিনিট
+                                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                    আনুমানিক ডাক: ~{toBn(Math.max(5, p.estimated_wait_minutes - 5))}–{toBn(p.estimated_wait_minutes)} মি. পর
                                   </div>
                                 )}
                               </td>
                               <td>
-                                <div style={{ fontSize: 12, color: 'var(--admin-text)' }}>
-                                  {p.appointment_time ? formatTime12h(p.appointment_time) : '—'}
+                                <div style={{ fontSize: 12, color: 'var(--admin-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span>{p.appointment_time ? formatTime12h(p.appointment_time) : '—'}</span>
+                                  {p.patient_age && (
+                                    <span style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                                      • {toBn(p.patient_age)} বছর
+                                    </span>
+                                  )}
                                 </div>
-                                {p.patient_age && (
-                                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                                    {toBn(p.patient_age)} বছর
-                                  </div>
-                                )}
+                                {(() => {
+                                  const waitBadge = isSelectedDateToday ? getPatientActualWaitBadge(p, currentChamberQueue.chamber?.start_time) : null
+                                  if (!waitBadge) return null
+                                  return (
+                                    <div style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      marginTop: 4,
+                                      padding: '2px 8px',
+                                      borderRadius: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      color: waitBadge.color,
+                                      background: waitBadge.bg,
+                                      border: `1px solid ${waitBadge.border}`
+                                    }}>
+                                      {waitBadge.severity === 'high' ? '🔴' : waitBadge.severity === 'medium' ? '⚠️' : waitBadge.severity === 'low' ? '⌛' : '🟢'} {waitBadge.text}
+                                    </div>
+                                  )
+                                })()}
                               </td>
                               <td style={{ textAlign: 'right' }}>
                                 <button
@@ -1580,10 +2062,57 @@ export default function SerialDisplayManagerPage() {
       {/* ── View Mode 2: Chamber Overview Live Grid ── */}
       {viewMode === 'overview' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--admin-text)' }}>
-              {isDoctorOnly ? 'আপনার চেম্বার সেশন ওভারভিউ' : 'হাসপাতাল ওভারভিউ ও টিভি ডিসপ্লে প্রিভিউ'}
-            </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--admin-text)' }}>
+                {isDoctorOnly ? 'আপনার চেম্বার সেশন ওভারভিউ' : 'হাসপাতাল ওভারভিউ ও টিভি ডিসপ্লে প্রিভিউ'}
+              </h3>
+              {isDoctorOnly && (
+                <div style={{
+                  display: 'inline-flex',
+                  background: 'var(--admin-bg)',
+                  borderRadius: 8,
+                  padding: 2,
+                  border: '1px solid var(--admin-border)',
+                  gap: 3
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setChamberFilterMode('today_only')}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: chamberFilterMode === 'today_only' ? '#00B875' : 'transparent',
+                      color: chamberFilterMode === 'today_only' ? '#FFFFFF' : 'var(--admin-text)',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    আজকের সেশন ({toBn(todayOnlyChambers.length)} টি)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChamberFilterMode('all')}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: chamberFilterMode === 'all' ? '#00B875' : 'transparent',
+                      color: chamberFilterMode === 'all' ? '#FFFFFF' : 'var(--admin-text)',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    সব দিনের শিডিউল ({toBn(dedupedList.length)} টি)
+                  </button>
+                </div>
+              )}
+            </div>
             <a
               href={isDoctorOnly && singleTvUrl ? singleTvUrl : hospitalTvUrl}
               target="_blank"
@@ -1595,12 +2124,42 @@ export default function SerialDisplayManagerPage() {
             </a>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: 20
-          }}>
-            {activeDoctorsList.map((dq) => {
+          {displayedDoctorsList.length === 0 ? (
+            <div style={{ padding: '32px', background: 'var(--admin-card-bg)', borderRadius: 12, border: '1px dashed var(--admin-border)', width: '100%', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
+              {isDoctorOnly ? (
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>
+                    নির্বাচিত তারিখে ({formatDateBn(selectedDate)} - {selectedDayBn}) আপনার কোনো সক্রিয় চেম্বার শিডিউল নেই।
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setChamberFilterMode('all')}
+                    style={{
+                      marginTop: 10,
+                      background: '#00B875',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '6px 14px',
+                      fontWeight: 800,
+                      fontSize: 12,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    সকল দিনের শিডিউল দেখুন ({toBn(dedupedList.length)} টি)
+                  </button>
+                </div>
+              ) : (
+                'এই হাসপাতালে নির্বাচিত তারিখে কোনো সক্রিয় চেম্বার শিডিউল পাওয়া যায়নি।'
+              )}
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 20
+            }}>
+            {displayedDoctorsList.map((dq) => {
               const serving = dq.currently_serving
               const waitingCount = dq.statistics?.total_waiting || 0
               const isServing = !!serving
@@ -1625,7 +2184,9 @@ export default function SerialDisplayManagerPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
                         <h4 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--admin-text)' }}>
-                          {isDoctorOnly ? (dq.chamber?.hospital_name || 'চেম্বার') : (dq.doctor?.name_bn || dq.doctor?.name)}
+                          {isDoctorOnly 
+                            ? getChamberDisplayName(dq) 
+                            : (dq.doctor?.name_bn || dq.doctor?.name)}
                         </h4>
                         <div style={{ fontSize: 12, color: '#00B875', fontWeight: 700, marginTop: 2 }}>
                           {isDoctorOnly ? `${chamberDayBn} • ${formatTime12h(dq.chamber?.start_time)} - ${formatTime12h(dq.chamber?.end_time)}` : (dq.doctor?.specialty?.name_bn || dq.doctor?.specialty?.name || 'বিশেষজ্ঞ')}
@@ -1734,7 +2295,8 @@ export default function SerialDisplayManagerPage() {
                 </div>
               )
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

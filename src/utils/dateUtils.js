@@ -120,3 +120,106 @@ export const dayNameToBn = {
   'Thursday': 'বৃহস্পতিবার',
   'Friday': 'শুক্রবার'
 }
+
+/**
+ * Clean and normalize appointment date string to YYYY-MM-DD
+ */
+export function getCleanDateStr(dateVal) {
+  if (!dateVal) return ''
+  const str = String(dateVal).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str
+  }
+  const d = new Date(str)
+  if (!isNaN(d.getTime())) {
+    return getBangladeshDateStr(d)
+  }
+  return str.split('T')[0].trim()
+}
+
+/**
+ * Calculate dynamic status info for appointments based on DB status and Bangladesh calendar date.
+ * Resolves past-due appointments that were left in pending/confirmed state.
+ */
+export function getAppointmentStatusInfo(appt) {
+  const rawStatus = (appt?.status || appt?.appointment_status || 'pending').toLowerCase()
+  const rawDate = appt?.appointment_date || appt?.date || appt?.created_at
+  const apptDateStr = getCleanDateStr(rawDate)
+  const todayStr = getBangladeshTodayStr()
+
+  const isPast = Boolean(apptDateStr && apptDateStr < todayStr)
+  const isToday = Boolean(apptDateStr && apptDateStr === todayStr)
+
+  // 1. Explicitly Completed
+  if (rawStatus === 'completed') {
+    return {
+      key: 'completed',
+      label: 'সম্পন্ন',
+      bg: '#F5F3FF',
+      color: '#6D28D9',
+      dot: '#8B5CF6',
+      border: '#DDD6FE',
+      isLive: false,
+      isPast: true,
+      category: 'past',
+    }
+  }
+
+  // 2. Explicitly Cancelled or Rejected
+  if (rawStatus === 'cancelled' || rawStatus === 'rejected') {
+    return {
+      key: 'cancelled',
+      label: 'বাতিল',
+      bg: '#FEF2F2',
+      color: '#DC2626',
+      dot: '#EF4444',
+      border: '#FECACA',
+      isLive: false,
+      isPast: isPast,
+      category: 'past',
+    }
+  }
+
+  // 3. Past Date: If appointment date has passed but was not completed/cancelled
+  if (isPast) {
+    return {
+      key: 'expired',
+      label: 'সময় অতিক্রান্ত',
+      bg: '#F1F5F9',
+      color: '#475569',
+      dot: '#94A3B8',
+      border: '#CBD5E1',
+      isLive: false,
+      isPast: true,
+      category: 'past',
+    }
+  }
+
+  // 4. Confirmed (Today or Future)
+  if (rawStatus === 'confirmed') {
+    return {
+      key: 'confirmed',
+      label: isToday ? 'আজকের সিরিয়াল' : 'আসন্ন',
+      bg: '#ECFDF5',
+      color: '#047857',
+      dot: '#10B981',
+      border: '#A7F3D0',
+      isLive: isToday,
+      isPast: false,
+      category: 'upcoming',
+    }
+  }
+
+  // 5. Pending (Today or Future)
+  return {
+    key: 'pending',
+    label: isToday ? 'আজকের (অপেক্ষমাণ)' : 'অপেক্ষমাণ',
+    bg: '#FFFBEB',
+    color: '#B45309',
+    dot: '#F59E0B',
+    border: '#FDE68A',
+    isLive: false,
+    isPast: false,
+    category: 'upcoming',
+  }
+}

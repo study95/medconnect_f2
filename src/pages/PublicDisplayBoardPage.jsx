@@ -803,14 +803,15 @@ export default function PublicDisplayBoardPage() {
                       <User size={22} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>
-                        চেম্বারে রয়েছেন
+                      <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        বর্তমান রোগী
                       </div>
                       <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>
                         {currentlyServing.patient_name || 'রোগীর নাম'}
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: '#A7F3D0', fontWeight: 600, marginTop: 2 }}>
-                        দয়া করে চেম্বারের সামনে প্রস্তুত থাকুন
+                      <div style={{ fontSize: '0.8rem', color: '#6EE7B7', fontWeight: 600, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
+                        ডাক্তারের পরামর্শ চলছে
                       </div>
                     </div>
                   </div>
@@ -876,6 +877,11 @@ export default function PublicDisplayBoardPage() {
                     {nextInLine ? nextInLine.patient_name : 'পরবর্তী কোনো রোগী নেই'}
                   </span>
                 </div>
+                {nextInLine && (
+                  <div style={{ fontSize: '0.76rem', color: '#FDE68A', fontWeight: 600, marginTop: 2 }}>
+                    দয়া করে চেম্বারের সামনে প্রস্তুত থাকুন
+                  </div>
+                )}
               </div>
             </div>
 

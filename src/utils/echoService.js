@@ -1,4 +1,4 @@
-﻿import Echo from 'laravel-echo'
+import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 import axiosInstance from '../api/axiosInstance'
 
@@ -116,6 +116,9 @@ export const onConnectionStateChange = (callback) => {
     connectionListeners.delete(callback)
   }
 }
+
+export const getConnectionState = () => connectionState
+export const isWebSocketConnected = () => connectionState === 'connected'
 
 /**
  * Internal helper to manage reference-counted channel subscriptions.

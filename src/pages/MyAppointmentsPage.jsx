@@ -13,21 +13,8 @@ import PrescriptionPaper from '../components/common/PrescriptionPaper'
 import ReviewFormModal from '../components/reviews/ReviewFormModal'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import { getAppointmentStatusInfo } from '../utils/dateUtils'
 import '../styles/prescription.css'
-
-const STATUS_MAP = {
-  pending:   'আসন্ন',
-  confirmed: 'নিশ্চিত',
-  cancelled: 'বাতিল',
-  completed: 'সম্পন্ন',
-}
-
-const STATUS_STYLES = {
-  pending:   { bg: '#ECFDF5', color: '#047857', dot: '#10B981', bar: '#10B981' },
-  confirmed: { bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6', bar: '#3B82F6' },
-  cancelled: { bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444', bar: '#EF4444' },
-  completed: { bg: '#F5F3FF', color: '#6D28D9', dot: '#8B5CF6', bar: '#8B5CF6' },
-}
 
 const AVATAR_COLORS = [
   { bg: '#E0F2FE', text: '#0369A1' },
@@ -137,7 +124,18 @@ function MyAppointmentsPage() {
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
   const [reviewAppt, setReviewAppt] = useState(null)
   const [existingReviewToEdit, setExistingReviewToEdit] = useState(null)
+  const [activeTab, setActiveTab] = useState('all') // 'all' | 'upcoming' | 'past'
   const rxPaperRef = useRef(null)
+
+  const upcomingCount = appointments.filter(a => getAppointmentStatusInfo(a).category === 'upcoming').length
+  const pastCount = appointments.filter(a => getAppointmentStatusInfo(a).category === 'past').length
+  const allCount = appointments.length
+
+  const filteredAppointments = appointments.filter(a => {
+    if (activeTab === 'upcoming') return getAppointmentStatusInfo(a).category === 'upcoming'
+    if (activeTab === 'past') return getAppointmentStatusInfo(a).category === 'past'
+    return true
+  })
 
   const handleDirectDownloadPrescription = async (appt) => {
     const apptId = appt.id || appt._id || appt.appointment_id
@@ -289,6 +287,62 @@ function MyAppointmentsPage() {
         </div>
       </Container>
 
+      {/* ── Filter Tabs ── */}
+      {!loading && appointments.length > 0 && (
+        <Container style={{ marginBottom: 14 }}>
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 4,
+            scrollbarWidth: 'none',
+          }}>
+            {[
+              { id: 'all', label: 'সকল', count: allCount },
+              { id: 'upcoming', label: 'আসন্ন', count: upcomingCount },
+              { id: 'past', label: 'অতীত / সম্পন্ন', count: pastCount },
+            ].map(tab => {
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '7px 16px',
+                    borderRadius: 999,
+                    border: active ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+                    background: active ? '#00966D' : '#FFFFFF',
+                    color: active ? '#FFFFFF' : '#475569',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: active ? '0 2px 8px rgba(0,150,109,0.2)' : '0 1px 3px rgba(0,0,0,0.03)',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    background: active ? 'rgba(255,255,255,0.25)' : '#F1F5F9',
+                    color: active ? '#FFFFFF' : '#64748B',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '1px 7px',
+                    borderRadius: 999,
+                  }}>
+                    {toBnNum(tab.count)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </Container>
+      )}
+
       {/* ── List ── */}
       <Container>
         {loading && <AppointmentListSkeleton count={4} />}
@@ -323,11 +377,29 @@ function MyAppointmentsPage() {
           </div>
         )}
 
-        {!loading && appointments.length > 0 && (
+        {!loading && appointments.length > 0 && filteredAppointments.length === 0 && (
+          <div style={{
+            textAlign: 'center', padding: '40px 20px',
+            background: '#fff', borderRadius: 16,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+            fontFamily: "'Hind Siliguri', sans-serif",
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
+            <h6 style={{ fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+              {activeTab === 'upcoming' ? 'কোনো আসন্ন অ্যাপয়েন্টমেন্ট নেই' : 'কোনো অতীত অ্যাপয়েন্টমেন্ট নেই'}
+            </h6>
+            <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
+              {activeTab === 'upcoming' ? 'আপনার বর্তমান কোনো সক্রিয় বা আসন্ন বুকিং নেই।' : 'আপনার কোনো পূর্ববর্তী রেকর্ড নেই।'}
+            </p>
+          </div>
+        )}
+
+        {!loading && filteredAppointments.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {appointments.map((appt, idx) => {
+            {filteredAppointments.map((appt, idx) => {
+              const statusInfo = getAppointmentStatusInfo(appt)
               const status = appt.status || appt.appointment_status || 'pending'
-              const ss = STATUS_STYLES[status] || STATUS_STYLES.pending
 
               const doctorName = appt.doctor_name || appt.doctor?.name || appt.doctor?.name_bn || 'ডা. অজানা'
               const specialty  = appt.specialty || appt.doctor?.specialty?.name_bn || appt.doctor?.specialty?.name || appt.doctor?.specialty || 'সাধারণ চিকিৎসক'
@@ -421,7 +493,7 @@ function MyAppointmentsPage() {
                         position: 'absolute', bottom: -2, right: -2,
                         width: 12, height: 12,
                         borderRadius: '50%',
-                        background: ss.dot,
+                        background: statusInfo.dot,
                         border: '2px solid #fff',
                       }} />
                     </div>
@@ -442,21 +514,21 @@ function MyAppointmentsPage() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          background: (status === 'pending' || status === 'confirmed') ? '#ECFDF5' : ss.bg,
+                          background: statusInfo.bg,
                           padding: '4px 10px',
                           borderRadius: 999,
-                          border: `1px solid ${(status === 'pending' || status === 'confirmed') ? '#A7F3D0' : ss.dot + '33'}`,
+                          border: `1px solid ${statusInfo.border}`,
                           flexShrink: 0,
-                          boxShadow: (status === 'pending' || status === 'confirmed') ? '0 1px 4px rgba(16,185,129,0.15)' : 'none',
+                          boxShadow: statusInfo.isLive ? '0 1px 4px rgba(16,185,129,0.15)' : 'none',
                         }}>
                           <div style={{ position: 'relative', width: 7, height: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {(status === 'pending' || status === 'confirmed') && (
+                            {statusInfo.isLive && (
                               <div style={{
                                 position: 'absolute',
                                 width: 14,
                                 height: 14,
                                 borderRadius: '50%',
-                                background: '#10B981',
+                                background: statusInfo.dot,
                                 animation: 'pingDot 1.6s cubic-bezier(0, 0, 0.2, 1) infinite',
                                 pointerEvents: 'none',
                               }} />
@@ -465,18 +537,18 @@ function MyAppointmentsPage() {
                               width: 7,
                               height: 7,
                               borderRadius: '50%',
-                              background: ss.dot,
-                              boxShadow: (status === 'pending' || status === 'confirmed') ? '0 0 6px rgba(16,185,129,0.8)' : 'none',
+                              background: statusInfo.dot,
+                              boxShadow: statusInfo.isLive ? '0 0 6px rgba(16,185,129,0.8)' : 'none',
                             }} />
                           </div>
                           <span style={{
                             fontSize: '0.72rem',
                             fontWeight: 700,
-                            color: ss.color,
+                            color: statusInfo.color,
                             letterSpacing: 0.2,
                             fontFamily: "'Hind Siliguri', sans-serif"
                           }}>
-                            {STATUS_MAP[status] || 'আসন্ন'}
+                            {statusInfo.label}
                           </span>
                         </div>
                       </div>
@@ -555,9 +627,9 @@ function MyAppointmentsPage() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        background: '#FEF2F2',
-                        border: '1px solid #FECACA',
-                        color: '#EF4444',
+                        background: statusInfo.isPast ? '#F1F5F9' : '#FEF2F2',
+                        border: statusInfo.isPast ? '1px solid #CBD5E1' : '1px solid #FECACA',
+                        color: statusInfo.isPast ? '#64748B' : '#EF4444',
                         padding: '3px 10px',
                         borderRadius: 6,
                         fontSize: '0.78rem',
@@ -573,11 +645,11 @@ function MyAppointmentsPage() {
                         gap: 3,
                         fontSize: '0.76rem',
                         fontWeight: 700,
-                        color: '#00966D',
+                        color: statusInfo.isPast ? '#64748B' : '#00966D',
                         fontFamily: "'Hind Siliguri', sans-serif",
                       }}>
                         <span>বিস্তারিত দেখুন</span>
-                        <ChevronRight size={14} color="#00966D" />
+                        <ChevronRight size={14} color={statusInfo.isPast ? '#64748B' : '#00966D'} />
                       </div>
                     </div>
 
@@ -595,12 +667,12 @@ function MyAppointmentsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6,
-                        color: '#334155',
+                        color: statusInfo.isPast ? '#64748B' : '#334155',
                         fontSize: '0.78rem',
                         fontWeight: 600,
                         fontFamily: "'Hind Siliguri', sans-serif",
                       }}>
-                        <Calendar size={14} color="#00B875" />
+                        <Calendar size={14} color={statusInfo.isPast ? '#94A3B8' : '#00B875'} />
                         <span>{dateDisplay}</span>
                       </div>
 
@@ -608,19 +680,19 @@ function MyAppointmentsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6,
-                        color: '#047857',
+                        color: statusInfo.isPast ? '#64748B' : '#047857',
                         fontSize: '0.78rem',
                         fontWeight: 700,
                         fontFamily: "'Hind Siliguri', sans-serif",
                       }}>
-                        <Clock size={14} color="#00B875" />
+                        <Clock size={14} color={statusInfo.isPast ? '#94A3B8' : '#00B875'} />
                         <span>{timeDisplay}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* ── Prominent Dedicated Actions for Completed Visits (Prescription & Review) ── */}
-                  {status === 'completed' && (
+                  {statusInfo.key === 'completed' && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #E2E8F0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <button
                         onClick={(e) => {

@@ -13,6 +13,7 @@ import PatientLiveQueueTracker from '../components/queue/PatientLiveQueueTracker
 import ReviewFormModal from '../components/reviews/ReviewFormModal'
 import { useDialog } from '../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../utils/dialogMessages'
+import { getAppointmentStatusInfo } from '../utils/dateUtils'
 import toast from 'react-hot-toast'
 import '../styles/prescription.css'
 
@@ -448,26 +449,20 @@ export default function AppointmentTicketPage() {
   const serialNum = apptData.serial_number || apptData.serial_no || apptData.serial || apptData.id || 1
   const serialDisplay = language === 'bn' ? `সিরিয়াল নম্বর-${toBnNum(serialNum)}` : `Serial No-${serialNum}`
 
+  const statusInfo = getAppointmentStatusInfo(apptData)
   const status = (apptData.status || 'pending').toLowerCase()
-  let statusText = 'আসন্ন অ্যাপয়েন্টমেন্ট'
-  let statusColor = '#047857'
-  let statusBg = '#ECFDF5'
-  let statusDot = '#10B981'
-  let isUpcoming = true
-
-  if (status === 'cancelled') {
-    statusText = 'বাতিল অ্যাপয়েন্টমেন্ট'
-    statusColor = '#DC2626'
-    statusBg = '#FEF2F2'
-    statusDot = '#EF4444'
-    isUpcoming = false
-  } else if (status === 'completed') {
-    statusText = 'সম্পন্ন অ্যাপয়েন্টমেন্ট'
-    statusColor = '#2563EB'
-    statusBg = '#EFF6FF'
-    statusDot = '#3B82F6'
-    isUpcoming = false
+  let statusText = `${statusInfo.label} অ্যাপয়েন্টমেন্ট`
+  if (statusInfo.key === 'expired') {
+    statusText = 'সময় অতিক্রান্ত (মেয়াদ শেষ)'
+  } else if (statusInfo.key === 'pending') {
+    statusText = 'অপেক্ষমাণ অ্যাপয়েন্টমেন্ট'
+  } else if (statusInfo.key === 'confirmed') {
+    statusText = statusInfo.label === 'আজকের সিরিয়াল' ? 'আজকের অ্যাপয়েন্টমেন্ট' : 'আসন্ন অ্যাপয়েন্টমেন্ট'
   }
+  const statusColor = statusInfo.color
+  const statusBg = statusInfo.bg
+  const statusDot = statusInfo.dot
+  const isUpcoming = statusInfo.isLive || (!statusInfo.isPast && status === 'confirmed')
 
   const degreeString = extendedDoctor?.degree || apptData.doctor?.degree || apptData.degree || 'MBBS'
   const specialtyString = extendedDoctor?.specialty?.name_bn || extendedDoctor?.specialty?.name || apptData.doctor?.specialty?.name_bn || apptData.doctor?.specialty?.name || apptData.specialty || 'সাধারণ চিকিৎসক'
@@ -824,6 +819,27 @@ export default function AppointmentTicketPage() {
             </ul>
           </div>
 
+          {/* Expired / Overdue Notice Banner */}
+          {statusInfo.key === 'expired' && (
+            <div style={{
+              background: '#F8FAFC',
+              border: '1px solid #CBD5E1',
+              borderRadius: 12,
+              padding: '12px 14px',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              color: '#475569',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}>
+              <AlertCircle size={18} color="#64748B" style={{ flexShrink: 0 }} />
+              <span>এই অ্যাপয়েন্টমেন্টের নির্ধারিত তারিখ অতিক্রান্ত হয়েছে। পুনরায় ডাক্তারের পরামর্শ নিতে নিচের "পুনরায় বুক করুন" বোতামে চাপুন।</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
             <button
@@ -909,7 +925,7 @@ export default function AppointmentTicketPage() {
                   {appointment?.review || appointment?.has_review ? 'রিভিউ সম্পাদনা' : 'রিভিউ দিন'}
                 </button>
               </>
-            ) : status !== 'cancelled' ? (
+            ) : (!statusInfo.isPast && status !== 'cancelled' && status !== 'rejected') ? (
               <button
                 onClick={handleOpenCancelModal}
                 disabled={cancelling}

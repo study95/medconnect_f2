@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Stethoscope, Clock, CalendarClock, Radio, Coffee, Users, Sparkles, MapPin, Activity } from 'lucide-react'
-import { subscribeToPublicChamber, subscribeToAppointment } from '../../utils/echoService'
+import { ArrowRight, Stethoscope, Clock, CalendarClock, Radio, Coffee, Users, Sparkles, MapPin, Activity, Hourglass } from 'lucide-react'
+import { subscribeToPublicChamber, subscribeToAppointment, onConnectionStateChange, isWebSocketConnected } from '../../utils/echoService'
+import { getPublicDisplayBoard } from '../../api/appointmentApi'
 import { getMediaUrl } from '../../utils/mediaUtils'
-
-const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
-const toBn = (str) => (str !== null && str !== undefined ? String(str).replace(/\d/g, (d) => enToBn[d] || d) : '—')
+import { calculateDynamicWaitTime, toBn } from '../../utils/queueWaitHelper'
 
 /**
  * Format any time string (e.g. "17:40:00", "17:40", "05:40 PM") to 12-hour Bangla time string.
@@ -71,6 +70,10 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
     return (appointment?.queue_status || appointment?.status || 'waiting').toLowerCase()
   })
 
+  const [slotDuration, setSlotDuration] = useState(() => {
+    return Number(appointment?.slot_duration_minutes || appointment?.chamber?.slot_duration_minutes || 10)
+  })
+
   const [isOnBreak, setIsOnBreak] = useState(() => {
     return Boolean(appointment?.is_on_break || appointment?.chamber?.is_on_break)
   })
@@ -82,6 +85,15 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
   const [breakResumeTime, setBreakResumeTime] = useState(() => {
     return appointment?.break_resume_time || appointment?.chamber?.break_resume_time || null
   })
+
+  // Periodic minute-tick to update dynamic time range naturally without reload
+  const [, setMinuteTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMinuteTick(t => t + 1)
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Sync state if appointment prop changes (e.g. from async HTTP fetch)
   useEffect(() => {
@@ -96,20 +108,27 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
       setQueueStatus((appointment.queue_status || appointment.status).toLowerCase())
     }
 
+    if (appointment.slot_duration_minutes || appointment.chamber?.slot_duration_minutes) {
+      setSlotDuration(Number(appointment.slot_duration_minutes || appointment.chamber?.slot_duration_minutes))
+    }
+
     setIsOnBreak(Boolean(appointment.is_on_break || appointment.chamber?.is_on_break))
     setBreakReason(appointment.break_reason || appointment.chamber?.break_reason || null)
     setBreakResumeTime(appointment.break_resume_time || appointment.chamber?.break_resume_time || null)
     setImgError(false)
   }, [appointment])
 
-  // Live WebSocket Subscription (Chamber & Appointment Channels)
+  // Live WebSocket Subscription + Smart Dual-Fallback Polling Engine
   useEffect(() => {
     const displayToken = appointment?.chamber?.display_token || appointment?.display_token
     const regId = appointment?.registration_id
     if (!displayToken && !regId) return
 
+    let isSubscribed = true
+    let isWsConnected = isWebSocketConnected ? isWebSocketConnected() : false
+
     const handleUpdate = (payload) => {
-      if (!payload) return
+      if (!payload || !isSubscribed) return
 
       if (payload.current_serial !== undefined) {
         setCurrentServing(payload.current_serial !== null ? Number(payload.current_serial) : null)
@@ -117,6 +136,10 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
 
       if (payload.waiting_count !== undefined) {
         setWaitingCount(Number(payload.waiting_count))
+      }
+
+      if (payload.slot_duration_minutes !== undefined) {
+        setSlotDuration(Number(payload.slot_duration_minutes))
       }
 
       if (payload.event_type === 'BREAK') {
@@ -146,19 +169,99 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
       }
     }
 
+    // Robust HTTP Polling fallback function
+    const fetchLatestQueueState = async () => {
+      if (!displayToken || !isSubscribed) return
+      try {
+        const res = await getPublicDisplayBoard(displayToken)
+        if (!isSubscribed) return
+        const qData = res.data?.data || res.data
+        if (!qData) return
+
+        const serving = qData.currently_serving
+        if (serving && serving.serial_number !== undefined) {
+          setCurrentServing(Number(serving.serial_number))
+        }
+
+        const stats = qData.statistics
+        if (stats?.total_waiting !== undefined) {
+          setWaitingCount(Number(stats.total_waiting))
+        }
+
+        const ch = qData.chamber
+        if (ch?.slot_duration_minutes) {
+          setSlotDuration(Number(ch.slot_duration_minutes))
+        }
+
+        const brk = qData.break
+        if (brk) {
+          setIsOnBreak(Boolean(brk.is_on_break))
+          setBreakReason(brk.reason || null)
+          setBreakResumeTime(brk.resume_time || null)
+        }
+
+        if (regId) {
+          if (serving?.registration_id === regId) {
+            setQueueStatus('serving')
+          } else {
+            const inWaiting = (qData.waiting_patients || []).some(p => p.registration_id === regId)
+            const inCompleted = (qData.completed_patients || []).some(p => p.registration_id === regId)
+            const inNoShow = (qData.no_show_patients || []).some(p => p.registration_id === regId)
+            if (inCompleted) setQueueStatus('completed')
+            else if (inNoShow) setQueueStatus('no_show')
+            else if (inWaiting) setQueueStatus('waiting')
+          }
+        }
+      } catch (err) {
+        // Silent background polling
+      }
+    }
+
+    // 1. Initial immediate fetch to guarantee latest queue state
+    fetchLatestQueueState()
+
+    // 2. Setup WebSocket channel subscriptions
     let unsubChamber = null
     let unsubAppt = null
+    try {
+      if (displayToken) {
+        unsubChamber = subscribeToPublicChamber(displayToken, handleUpdate)
+      }
+      if (regId) {
+        unsubAppt = subscribeToAppointment(regId, handleUpdate)
+      }
+    } catch (e) {
+      console.warn('WebSocket subscription init failed, relying on polling fallback:', e)
+    }
 
-    if (displayToken) {
-      unsubChamber = subscribeToPublicChamber(displayToken, handleUpdate)
+    // 3. Listen to WebSocket connection state transitions
+    const unsubConn = onConnectionStateChange ? onConnectionStateChange((state) => {
+      isWsConnected = state === 'connected'
+      if (!isWsConnected) {
+        fetchLatestQueueState()
+      }
+    }) : null
+
+    // 4. Polling timer: 5 seconds interval
+    const intervalTimer = setInterval(() => {
+      fetchLatestQueueState()
+    }, 5000)
+
+    // 5. Visibility / Window focus listener (for mobile phone unlock or tab switch)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestQueueState()
+      }
     }
-    if (regId) {
-      unsubAppt = subscribeToAppointment(regId, handleUpdate)
-    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
+      isSubscribed = false
       if (unsubChamber) unsubChamber()
       if (unsubAppt) unsubAppt()
+      if (unsubConn) unsubConn()
+      clearInterval(intervalTimer)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [appointment?.chamber?.display_token, appointment?.display_token, appointment?.registration_id])
 
@@ -198,12 +301,26 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
     if (isServingNow) {
       patientsAhead = 0
     } else if (currentServing !== null && currentServing > 0) {
-      patientsAhead = Math.max(0, mySerial - currentServing - 1)
+      // Total consultations before this patient: active patient in room + all preceding waiting patients
+      patientsAhead = Math.max(0, mySerial - currentServing)
     } else {
       // Chamber has not started serving yet: all serials prior to mySerial are waiting ahead
       patientsAhead = Math.max(0, mySerial - 1)
     }
   }
+
+  // Dynamic Intelligent Wait Time Calculation (Aware of pre-chamber vs active chamber)
+  const dynamicWait = calculateDynamicWaitTime({
+    patientsAhead,
+    slotDurationMinutes: slotDuration,
+    isOnBreak,
+    breakResumeTime,
+    isServingNow,
+    isNextInLine,
+    currentServing,
+    bookingTimeRaw,
+    chamberStartTimeRaw: appointment.chamber?.start_time,
+  })
 
   let statusText = 'অপেক্ষমাণ'
   let statusBadgeBg = '#EFF6FF'
@@ -257,7 +374,7 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         }
       `}</style>
 
-      {/* Top Header Row: Card Title & Broadcast Live Beacon */}
+      {/* Top Header Row: Card Title & Real Status Beacon */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -280,81 +397,80 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           <span>ডাক্তারের লাইভ সিরিয়াল বোর্ড</span>
         </div>
 
-        {/* Real Broadcast Red LIVE Beacon */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          background: '#FEF2F2',
-          border: '1.5px solid #FCA5A5',
-          padding: '3px 10px',
-          borderRadius: 999,
-          boxShadow: '0 1px 4px rgba(239, 68, 68, 0.12)',
-          flexShrink: 0,
-        }}>
-          <span style={{
-            position: 'relative',
-            display: 'flex',
+        {/* Dynamic Beacon: Real Red LIVE if chamber active, or Scheduled Badge if waiting to start */}
+        {dynamicWait.isChamberActive ? (
+          <div style={{
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            height: 8,
-            width: 8,
+            gap: 6,
+            background: '#FEF2F2',
+            border: '1.5px solid #FCA5A5',
+            padding: '3px 10px',
+            borderRadius: 999,
+            boxShadow: '0 1px 4px rgba(239, 68, 68, 0.12)',
+            flexShrink: 0,
           }}>
-            <span style={{
-              position: 'absolute',
-              display: 'inline-flex',
-              height: 14,
-              width: 14,
-              borderRadius: '50%',
-              backgroundColor: '#EF4444',
-              animation: 'livePulseRadar 1.8s ease-out infinite',
-            }} />
             <span style={{
               position: 'relative',
-              display: 'inline-flex',
-              borderRadius: '50%',
-              height: 7,
-              width: 7,
-              backgroundColor: '#DC2626',
-            }} />
-          </span>
-          <span style={{
-            fontSize: '0.74rem',
-            fontWeight: 900,
-            color: '#DC2626',
-            letterSpacing: '0.6px',
-            lineHeight: 1,
-          }}>
-            লাইভ
-          </span>
-        </div>
-      </div>
-
-      {/* Break Alert Banner (Shown during Doctor Breaks) */}
-      {isOnBreak && (
-        <div style={{
-          background: '#FFFBEB',
-          border: '1.5px solid #FDE68A',
-          borderRadius: 12,
-          padding: '10px 12px',
-          marginBottom: 12,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          color: '#92400E',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-        }}>
-          <Coffee size={18} color="#D97706" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.84rem', fontWeight: 800, lineHeight: 1.35 }}>
-            <span>{breakReason || 'চা বিরতি'} চলছে</span>
-            {breakResumeTime && (
-              <span style={{ marginLeft: 6, color: '#B45309', fontWeight: 700 }}>
-                • চেম্বার ফেরার সময়: {toBn(breakResumeTime)}
-              </span>
-            )}
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 8,
+              width: 8,
+            }}>
+              <span style={{
+                position: 'absolute',
+                display: 'inline-flex',
+                height: 14,
+                width: 14,
+                borderRadius: '50%',
+                backgroundColor: '#EF4444',
+                animation: 'livePulseRadar 1.8s ease-out infinite',
+              }} />
+              <span style={{
+                position: 'relative',
+                display: 'inline-flex',
+                borderRadius: '50%',
+                height: 7,
+                width: 7,
+                backgroundColor: '#DC2626',
+              }} />
+            </span>
+            <span style={{
+              fontSize: '0.74rem',
+              fontWeight: 900,
+              color: '#DC2626',
+              letterSpacing: '0.6px',
+              lineHeight: 1,
+            }}>
+              লাইভ
+            </span>
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            background: '#F1F5F9',
+            border: '1.5px solid #CBD5E1',
+            padding: '3px 10px',
+            borderRadius: 999,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            flexShrink: 0,
+          }}>
+            <Clock size={12} color="#64748B" />
+            <span style={{
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              color: '#475569',
+              letterSpacing: '0.2px',
+              lineHeight: 1,
+            }}>
+              শুরুর অপেক্ষায়
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Doctor & Schedule Profile Strip */}
       <div style={{
@@ -430,7 +546,7 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           </div>
         </div>
 
-        {/* Schedule & Booking Time Strip (Perfect Vertical & Horizontal Alignment) */}
+        {/* Schedule & Booking Time Strip */}
         <div style={{
           background: '#FFFFFF',
           borderRadius: 10,
@@ -486,6 +602,109 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Dynamic Wait & Status Banner (Aware of pre-chamber vs live) */}
+      <div style={{
+        background: !dynamicWait.isChamberActive
+          ? '#F8FAFC'
+          : (isOnBreak ? '#FFFBEB' : (isServingNow ? '#ECFDF5' : '#F0FDF4')),
+        borderRadius: 14,
+        padding: '11px 13px',
+        marginBottom: 12,
+        border: !dynamicWait.isChamberActive
+          ? '1.5px solid #E2E8F0'
+          : (isOnBreak ? '1.5px solid #FCD34D' : (isServingNow ? '1.5px solid #6EE7B7' : '1px solid #BBF7D0')),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+      }}>
+        {/* Row 1: Wait / Chamber Status */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.84rem',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 800,
+            color: !dynamicWait.isChamberActive
+              ? '#475569'
+              : (isOnBreak ? '#92400E' : (isServingNow ? '#065F46' : '#166534')),
+          }}>
+            <Hourglass size={15} color={!dynamicWait.isChamberActive ? '#64748B' : (isOnBreak ? '#D97706' : (isServingNow ? '#059669' : '#16A34A'))} style={{ flexShrink: 0 }} />
+            <span>{!dynamicWait.isChamberActive ? 'চেম্বার অবস্থা:' : (isServingNow ? 'বর্তমান অবস্থা:' : 'আনুমানিক অপেক্ষা:')}</span>
+          </div>
+          <div style={{
+            fontWeight: 900,
+            fontSize: '0.86rem',
+            color: !dynamicWait.isChamberActive
+              ? '#0F172A'
+              : (isOnBreak ? '#B45309' : (isServingNow ? '#047857' : '#15803D')),
+            background: '#FFFFFF',
+            padding: '2px 9px',
+            borderRadius: 6,
+            border: '1px solid ' + (!dynamicWait.isChamberActive ? '#E2E8F0' : (isOnBreak ? '#FDE68A' : (isServingNow ? '#A7F3D0' : '#DCFCE7'))),
+          }}>
+            {dynamicWait.waitRangeText}
+          </div>
+        </div>
+
+        {/* Row 2: Estimated Serial Time Window */}
+        {!isServingNow && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.78rem',
+            color: '#475569',
+            borderTop: '1px dashed ' + (!dynamicWait.isChamberActive ? '#E2E8F0' : (isOnBreak ? '#FDE68A' : '#DCFCE7')),
+            paddingTop: 6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
+              <Sparkles size={13} color="#0D9488" style={{ flexShrink: 0 }} />
+              <span>{!dynamicWait.isChamberActive ? 'নির্ধারিত পরামর্শ সময়:' : 'সম্ভাব্য সিরিয়াল সময়:'}</span>
+            </div>
+            <div style={{ fontWeight: 800, color: '#0F172A' }}>
+              {dynamicWait.estTimeWindowText}
+            </div>
+          </div>
+        )}
+
+        {/* Status Notice (e.g. chamber starts at 5:00 PM notice, or break notice) */}
+        {dynamicWait.statusNotice && (
+          <div style={{
+            fontSize: '0.73rem',
+            fontWeight: 600,
+            color: !dynamicWait.isChamberActive ? '#64748B' : '#047857',
+            borderTop: '1px solid #F1F5F9',
+            paddingTop: 5,
+            marginTop: 1,
+            lineHeight: 1.35,
+          }}>
+            ℹ️ {dynamicWait.statusNotice}
+          </div>
+        )}
+
+        {/* Doctor Break Notice with Dynamic Minutes Badge */}
+        {isOnBreak && (
+          <div style={{
+            fontSize: '0.74rem',
+            fontWeight: 700,
+            color: '#B45309',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            marginTop: 2,
+          }}>
+            <Coffee size={13} color="#D97706" style={{ flexShrink: 0 }} />
+            <span>{breakReason || 'চা বিরতি'} চলছে (+{toBn(dynamicWait.remainingBreakMinutes)} মিনিট যুক্ত হয়েছে)</span>
+          </div>
+        )}
       </div>
 
       {/* 2x2 Clean Minimal Stat Grid - Centered Numbers, Zero Clutter */}
@@ -612,12 +831,16 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           </div>
         </div>
 
-        {/* Card 4: Status */}
+        {/* Card 4: Dynamic Wait Time / Countdown + Serial Status */}
         <div style={{
-          background: '#F8FAFC',
+          background: isServingNow
+            ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)'
+            : (isNextInLine ? '#FFFBEB' : '#F8FAFC'),
           borderRadius: 12,
-          padding: '12px 8px',
-          border: '1px solid #E2E8F0',
+          padding: '10px 6px',
+          border: isServingNow
+            ? '1.5px solid #10B981'
+            : (isNextInLine ? '1.5px solid #FCD34D' : '1px solid #E2E8F0'),
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -628,30 +851,49 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         }}>
           <div style={{
             fontSize: '0.78rem',
-            color: '#64748B',
+            color: isServingNow ? '#047857' : (isNextInLine ? '#B45309' : '#64748B'),
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
+            gap: 4,
           }}>
-            <Activity size={13} color="#6366F1" />
-            <span>সিরিয়াল অবস্থা</span>
+            {isServingNow ? (
+              <Sparkles size={13} color="#059669" />
+            ) : isNextInLine ? (
+              <ArrowRight size={13} color="#D97706" />
+            ) : (
+              <Clock size={13} color="#6366F1" />
+            )}
+            <span>{isServingNow ? 'সিরিয়াল অবস্থা' : 'আনুমানিক বাকি'}</span>
           </div>
-          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center' }}>
+
+          <div style={{
+            fontSize: isServingNow ? '1.15rem' : '1.3rem',
+            fontWeight: 900,
+            color: isServingNow ? '#065F46' : (isNextInLine ? '#B45309' : '#0F172A'),
+            marginTop: 3,
+            lineHeight: 1.15,
+            textAlign: 'center',
+            letterSpacing: '-0.3px',
+          }}>
+            {isServingNow ? 'প্রবেশ করুন' : (isNextInLine ? 'প্রস্তুত থাকুন' : dynamicWait.highWaitText)}
+          </div>
+
+          <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
             <span style={{
               display: 'inline-block',
-              fontSize: '0.82rem',
+              fontSize: '0.72rem',
               fontWeight: 800,
-              background: statusBadgeBg,
-              color: statusBadgeColor,
-              border: '1px solid ' + statusBadgeBorder,
-              padding: '3px 10px',
+              background: isServingNow ? '#ECFDF5' : statusBadgeBg,
+              color: isServingNow ? '#047857' : statusBadgeColor,
+              border: '1px solid ' + (isServingNow ? '#A7F3D0' : statusBadgeBorder),
+              padding: '2px 8px',
               borderRadius: 6,
               lineHeight: 1.2,
               textAlign: 'center',
             }}>
-              {statusText}
+              {isServingNow ? 'ডাকা হয়েছে' : (!dynamicWait.isChamberActive ? 'শুরুর অপেক্ষায়' : statusText)}
             </span>
           </div>
         </div>
