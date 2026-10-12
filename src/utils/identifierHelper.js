@@ -102,7 +102,7 @@ export function getArticleUrl(article) {
 /**
  * Generates canonical booking URL for a doctor
  */
-export function getBookingUrl(doctor, chamberId = null) {
+export function getBookingUrl(doctor, chamberId = null, date = null) {
   if (!doctor) return '/book-appointment'
   let basePath = '/book-appointment'
   if (typeof doctor === 'string' || typeof doctor === 'number') {
@@ -111,8 +111,16 @@ export function getBookingUrl(doctor, chamberId = null) {
     const slug = doctor.slug || doctor.seo_slug || doctor.public_id || doctor.id
     basePath = `/book-appointment/${slug}`
   }
+  const params = new URLSearchParams()
   if (chamberId !== null && chamberId !== undefined && chamberId !== '') {
-    basePath += `?chamberId=${chamberId}`
+    params.set('chamberId', chamberId)
+  }
+  if (date !== null && date !== undefined && date !== '') {
+    params.set('date', date)
+  }
+  const queryStr = params.toString()
+  if (queryStr) {
+    basePath += `?${queryStr}`
   }
   return basePath
 }

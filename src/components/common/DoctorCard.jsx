@@ -1,7 +1,7 @@
-import { memo, useState } from 'react'
+import { memo, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase, IconNavigation
+  IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase, IconNavigation, IconClock
 } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -136,6 +136,30 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const matchedChamber = doctor?.matched_chamber || null
   const fee = toBnNum(matchedChamber?.fee ?? doctor?.fee ?? doctor?.fees?.consultation ?? doctor?.fees?.min ?? '৫০০')
 
+  // Check if doctor is available today (from backend flag or matched chamber day)
+  const isAvailableToday = Boolean(
+    matchedChamber?.is_today ||
+    doctor?.is_available_today ||
+    (doctor?.available_today === true || doctor?.available_today === 'true' || doctor?.available_today === 'yes')
+  )
+
+  const chamberTime = matchedChamber?.formatted_time ||
+    (matchedChamber?.start_time_formatted && matchedChamber?.end_time_formatted ? `${matchedChamber.start_time_formatted} - ${matchedChamber.end_time_formatted}` : null) ||
+    (matchedChamber?.start_time && matchedChamber?.end_time ? `${matchedChamber.start_time} - ${matchedChamber.end_time}` : null) ||
+    null
+
+  const otherChambersTodayCount = useMemo(() => {
+    if (!Array.isArray(doctor?.chambers) || doctor.chambers.length <= 1) return 0
+    const targetDay = (matchedChamber?.day || '').trim().toLowerCase()
+    if (!targetDay) return 0
+    return doctor.chambers.filter(c =>
+      c.is_active !== false &&
+      (c.day || '').trim().toLowerCase() === targetDay &&
+      c.id !== matchedChamber?.id &&
+      c.public_id !== matchedChamber?.public_id
+    ).length
+  }, [doctor?.chambers, matchedChamber])
+
   // Find the currently-working experience entry
   const currentExp = (() => {
     const exps = Array.isArray(doctor?.experiences) ? doctor.experiences : []
@@ -253,7 +277,9 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
   const handleBook = (e) => {
     if (e) e.stopPropagation()
-    navigate(getBookingUrl(doctor))
+    const targetChamberId = activeChamber?.id || activeChamber?.public_id || null
+    const targetDate = matchedChamber?.matched_date || (isAvailableToday ? new Date().toISOString().split('T')[0] : null)
+    navigate(getBookingUrl(doctor, targetChamberId, targetDate))
   }
 
   const handleShare = async (e) => {
@@ -525,6 +551,24 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     }}>
                       {specialtyName}
                     </span>
+                    {isAvailableToday && (
+                      <span style={{
+                        background: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                        আজ চেম্বার খোলা
+                      </span>
+                    )}
                   </div>
 
                   {/* Degree */}
@@ -532,7 +576,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     {degrees}
                   </div>
 
-                  {/* Hospital Name */}
+                  {/* Hospital / Chamber Name */}
                   <div style={{
                     fontSize: 12.5,
                     color: '#334155',
@@ -543,8 +587,23 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     fontFamily: "'Hind Siliguri', sans-serif",
                     marginTop: 2
                   }}>
-                    <IconBuildingHospital size={15} color="#64748B" />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>{primaryHospital}</span>
+                    <IconBuildingHospital size={15} color={isAvailableToday ? '#00B875' : '#64748B'} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>
+                      {isAvailableToday ? `আজকের চেম্বার: ${primaryHospital}` : primaryHospital}
+                    </span>
+                    {otherChambersTodayCount > 0 && (
+                      <span style={{
+                        fontSize: 11,
+                        color: '#059669',
+                        background: '#F0FDF4',
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        fontWeight: 600,
+                        flexShrink: 0
+                      }}>
+                        +{toBnNum(otherChambersTodayCount)}টি চেম্বার আজ
+                      </span>
+                    )}
                   </div>
 
                   {/* Location */}
@@ -563,6 +622,23 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                       {locationText || 'ঢাকা'}
                     </span>
                   </div>
+
+                  {/* Chamber Time Row */}
+                  {chamberTime && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      color: isAvailableToday ? '#059669' : '#475569',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      marginTop: 3
+                    }}>
+                      <IconClock size={14} color={isAvailableToday ? '#059669' : '#64748B'} />
+                      <span>{isAvailableToday ? `আজকের সময়: ${chamberTime}` : `সময়: ${chamberTime}`}</span>
+                    </div>
+                  )}
 
                   {nearestChamberInfo?.formattedDistance && (
                     <div style={{
@@ -778,7 +854,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             {doctor.name}
           </h4>
 
-          <div style={{ marginTop: 2, marginBottom: 2 }}>
+          <div style={{ marginTop: 2, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
             <span style={{
               display: 'inline-block',
               background: '#00B875',
@@ -796,6 +872,24 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             }}>
               {specialtyName}
             </span>
+            {isAvailableToday && (
+              <span style={{
+                background: '#ECFDF5',
+                color: '#059669',
+                border: '1px solid #A7F3D0',
+                fontSize: 10.5,
+                fontWeight: 700,
+                padding: '1px 6px',
+                borderRadius: 4,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                আজ চেম্বার
+              </span>
+            )}
           </div>
 
           <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -803,10 +897,23 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 12, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconBuildingHospital size={14} color="#64748B" style={{ flexShrink: 0 }} />
+            <IconBuildingHospital size={14} color={isAvailableToday ? '#00B875' : '#64748B'} style={{ flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>
-              {primaryHospital}
+              {isAvailableToday ? `আজকের চেম্বার: ${primaryHospital}` : primaryHospital}
             </span>
+            {otherChambersTodayCount > 0 && (
+              <span style={{
+                fontSize: 10.5,
+                color: '#059669',
+                background: '#F0FDF4',
+                padding: '0 4px',
+                borderRadius: 3,
+                fontWeight: 600,
+                flexShrink: 0
+              }}>
+                +{toBnNum(otherChambersTodayCount)}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 12, fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
@@ -815,6 +922,24 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               {locationText || 'ঢাকা'}
             </span>
           </div>
+
+          {chamberTime && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              color: isAvailableToday ? '#059669' : '#475569',
+              fontSize: 11.5,
+              fontWeight: 700,
+              fontFamily: "'Hind Siliguri', sans-serif",
+              marginTop: 1
+            }}>
+              <IconClock size={13} color={isAvailableToday ? '#059669' : '#64748B'} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isAvailableToday ? `আজ: ${chamberTime}` : `সময়: ${chamberTime}`}
+              </span>
+            </div>
+          )}
 
           {nearestChamberInfo?.formattedDistance && (
             <div style={{

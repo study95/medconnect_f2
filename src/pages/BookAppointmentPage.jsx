@@ -38,6 +38,7 @@ export default function BookAppointmentPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const chamberIdParam = searchParams.get('chamberId')
+  const dateParam = searchParams.get('date')
   const { user, isLoggedIn, storeAuth, registerPatient, loginAsPatient, login, isAdmin, isDoctor, isManager, isStaff } = useAuth()
 
   // Check if current logged-in user is doctor, hospital/manager, or admin (privileged staff bypass OTP)
@@ -310,9 +311,16 @@ export default function BookAppointmentPage() {
       )
       if (targetChamber) {
         handleChamberSelect(targetChamber.id)
+        if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+          setForm(prev => ({ ...prev, appointment_date: dateParam }))
+          try {
+            const [pY, pM] = dateParam.split('-').map(Number)
+            setCurrentMonth(new Date(pY, pM - 1, 1))
+          } catch {}
+        }
       }
     }
-  }, [chambers, chamberIdParam])
+  }, [chambers, chamberIdParam, dateParam])
 
   // Helper functions for time parsing
   const parseTime = (str) => {

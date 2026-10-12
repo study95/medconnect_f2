@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import HeroSection from '../components/home/HeroSection'
 import ImageBannerSlider from '../components/home/ImageBannerSlider'
 import MostViewedDoctors from '../components/home/MostViewedDoctors'
+import TodayDoctorsSection from '../components/home/TodayDoctorsSection'
 import TopSpecialtiesSlider from '../components/home/TopSpecialtiesSlider'
 import TopHospitals from '../components/home/TopHospitals'
 import DoctorCard from '../components/common/DoctorCard'
@@ -2338,6 +2339,10 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <DoctorBookingPromoBanner />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
+        <TodayDoctorsSection />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>

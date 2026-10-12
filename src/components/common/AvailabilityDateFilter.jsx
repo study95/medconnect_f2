@@ -17,6 +17,11 @@ const bnMonths = [
   'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
 ]
 
+const bnMonthsShort = [
+  'জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'
+]
+
 const toBnNum = (str) => {
   if (str === null || str === undefined || str === '') return ''
   return String(str).replace(/\d/g, d => enToBn[d] || d)
@@ -48,6 +53,29 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
   const isCustomDate = Boolean(value && !isPreset && /^\d{4}-\d{2}-\d{2}$/.test(value))
 
   const todayIso = new Date().toISOString().split('T')[0]
+
+  const todayDateLabel = (() => {
+    try {
+      const d = new Date()
+      const day = toBnNum(d.getDate())
+      const month = bnMonthsShort[d.getMonth()] || bnMonths[d.getMonth()]
+      return `${day} ${month}`
+    } catch {
+      return ''
+    }
+  })()
+
+  const tomorrowDateLabel = (() => {
+    try {
+      const d = new Date()
+      d.setDate(d.getDate() + 1)
+      const day = toBnNum(d.getDate())
+      const month = bnMonthsShort[d.getMonth()] || bnMonths[d.getMonth()]
+      return `${day} ${month}`
+    } catch {
+      return ''
+    }
+  })()
 
   const handlePillClick = (presetKey) => {
     if (value === presetKey) {
@@ -222,7 +250,7 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           }}
         >
           {value === 'today' ? <IconCheck size={15} /> : <IconCalendarEvent size={15} color="#64748B" />}
-          <span>আজ</span>
+          <span>আজ {todayDateLabel ? `(${todayDateLabel})` : ''}</span>
         </button>
 
         {/* 2. আগামীকাল (Tomorrow) */}
@@ -240,7 +268,7 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
           }}
         >
           {value === 'tomorrow' ? <IconCheck size={15} /> : <IconCalendarStats size={15} color="#64748B" />}
-          <span>আগামীকাল</span>
+          <span>আগামীকাল {tomorrowDateLabel ? `(${tomorrowDateLabel})` : ''}</span>
         </button>
 
         {/* 3. পরবর্তী ৭ দিন (Next 7 Days) */}
