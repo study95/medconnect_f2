@@ -458,11 +458,13 @@ export default function AppointmentTicketPage() {
     statusText = 'অপেক্ষমাণ অ্যাপয়েন্টমেন্ট'
   } else if (statusInfo.key === 'confirmed') {
     statusText = statusInfo.label === 'আজকের সিরিয়াল' ? 'আজকের অ্যাপয়েন্টমেন্ট' : 'আসন্ন অ্যাপয়েন্টমেন্ট'
+  } else if (statusInfo.key === 'no_show') {
+    statusText = 'অনুপস্থিত চিহ্নিত (No-Show)'
   }
   const statusColor = statusInfo.color
   const statusBg = statusInfo.bg
   const statusDot = statusInfo.dot
-  const isUpcoming = statusInfo.isLive || (!statusInfo.isPast && status === 'confirmed')
+  const isUpcoming = statusInfo.key !== 'no_show' && (statusInfo.isLive || (!statusInfo.isPast && status === 'confirmed'))
 
   const degreeString = extendedDoctor?.degree || apptData.doctor?.degree || apptData.degree || 'MBBS'
   const specialtyString = extendedDoctor?.specialty?.name_bn || extendedDoctor?.specialty?.name || apptData.doctor?.specialty?.name_bn || apptData.doctor?.specialty?.name || apptData.specialty || 'সাধারণ চিকিৎসক'
@@ -605,10 +607,16 @@ export default function AppointmentTicketPage() {
           {/* Real-time Patient Live Queue Tracker */}
           <PatientLiveQueueTracker
             appointment={apptData}
+            public_id={apptData.public_id || apptData.id}
             registration_id={apptData.registration_id || apptNumber}
             display_token={apptData.chamber?.display_token || apptData.display_token}
             appointment_date={apptDate}
             serial_number={serialNum}
+            onStatusChange={(newQueueStatus) => {
+              if (newQueueStatus && newQueueStatus !== apptData.queue_status) {
+                setAppointment(prev => prev ? ({ ...prev, queue_status: newQueueStatus }) : prev)
+              }
+            }}
           />
 
           {/* Doctor Info Card */}

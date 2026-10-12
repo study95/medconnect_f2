@@ -16,6 +16,7 @@ import {
   setChamberBreak
 } from '../../../api/appointmentApi'
 import { soundService } from '../../../utils/soundUtils'
+import { subscribeToPublicChamber, onConnectionStateChange, isWebSocketConnected } from '../../../utils/echoService'
 import { 
   Tv, 
   Volume2, 
@@ -311,12 +312,27 @@ export default function SerialDisplayManagerPage() {
   const [breakResumeTime, setBreakResumeTime] = useState('১৫ মিনিট পর')
   const [breakCustomMessage, setBreakCustomMessage] = useState('')
   const [breakLoading, setBreakLoading] = useState(false)
+  const [wsConnected, setWsConnected] = useState(() => isWebSocketConnected())
 
   const isMountedRef = useRef(true)
+  const selectedChamberIdRef = useRef(selectedChamberId)
+  selectedChamberIdRef.current = selectedChamberId
+  const viewModeRef = useRef(viewMode)
+  viewModeRef.current = viewMode
+  const hospitalQueueDataRef = useRef(hospitalQueueData)
+  hospitalQueueDataRef.current = hospitalQueueData
 
   useEffect(() => {
     isMountedRef.current = true
-    return () => { isMountedRef.current = false }
+    const unsub = onConnectionStateChange((state) => {
+      if (isMountedRef.current) {
+        setWsConnected(state === 'connected')
+      }
+    })
+    return () => {
+      isMountedRef.current = false
+      if (unsub) unsub()
+    }
   }, [])
 
   // 1. Initial Data Fetch: Load Hospitals & Chambers scoped to Role
@@ -538,22 +554,79 @@ export default function SerialDisplayManagerPage() {
     }
   }
 
+  // 2b. Ultra-Fast Single Chamber Refresh (Scales to 10,000+ doctors, zero N+1 database pressure)
+  const fetchSingleChamber = async (chamberId, silent = true) => {
+    if (!chamberId) return
+    try {
+      const currentQueues = hospitalQueueDataRef.current?.doctor_queues || []
+      const targetQueue = currentQueues.find(
+        dq => String(dq.chamber?.id) === String(chamberId)
+      )
+      const docId = targetQueue?.doctor?.id || user?.doctor?.id || doctorChambersList.find(c => String(c.id) === String(chamberId))?.doctor_id
+      
+      if (!docId) {
+        await fetchHospitalData(silent)
+        return
+      }
+
+      const res = await getLiveQueue(docId, chamberId, selectedDate)
+      const freshChamberData = res.data?.data || res.data
+
+      if (isMountedRef.current && freshChamberData) {
+        setHospitalQueueData(prev => {
+          if (!prev) return prev
+          const prevQueues = prev.doctor_queues || []
+          const exists = prevQueues.some(dq => String(dq.chamber?.id) === String(chamberId))
+          const updatedQueues = exists
+            ? prevQueues.map(dq => String(dq.chamber?.id) === String(chamberId) ? { ...dq, ...freshChamberData } : dq)
+            : [...prevQueues, freshChamberData]
+
+          const totalWaiting = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_waiting || (q.waiting_patients?.length || 0)), 0)
+          const totalCompleted = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_completed || (q.completed_patients?.length || 0)), 0)
+          const activeSessions = updatedQueues.filter(q => q.currently_serving).length
+
+          return {
+            ...prev,
+            summary: {
+              ...prev.summary,
+              total_waiting: totalWaiting,
+              total_completed: totalCompleted,
+              active_sessions: activeSessions
+            },
+            doctor_queues: updatedQueues
+          }
+        })
+      }
+    } catch (err) {
+      console.warn('Single chamber fetch failed, falling back to hospital fetch', err)
+      await fetchHospitalData(silent)
+    }
+  }
+
   useEffect(() => {
     if (selectedHospitalId) {
       fetchHospitalData(false)
     }
   }, [selectedHospitalId, selectedDate])
 
-  // 3. Auto Refresh Interval (Every 5 seconds)
+  // 3. Fallback Auto Refresh / Heartbeat (Adaptive: 30s when WebSocket connected, 8s when disconnected)
   useEffect(() => {
     if (!autoRefresh || !selectedHospitalId) return
 
+    const pollIntervalMs = wsConnected ? 30000 : 8000
+
     const interval = setInterval(() => {
-      fetchHospitalData(true)
-    }, 5000)
+      const activeChamberId = selectedChamberIdRef.current
+      const currentMode = viewModeRef.current
+      if (currentMode === 'controller' && activeChamberId) {
+        fetchSingleChamber(activeChamberId, true)
+      } else {
+        fetchHospitalData(true)
+      }
+    }, pollIntervalMs)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, selectedHospitalId, selectedDate, selectedChamberId])
+  }, [autoRefresh, selectedHospitalId, selectedDate, wsConnected])
 
   // Process and filter active doctor list
   let rawDoctorsList = hospitalQueueData?.doctor_queues || []
@@ -603,6 +676,48 @@ export default function SerialDisplayManagerPage() {
     dq => dq.chamber?.id?.toString() === selectedChamberId
   ) || todayOnlyChambers[0] || activeDoctorsList[0]
 
+  // Realtime WebSocket Subscription (Instant push updates on queue changes from reception/patient booking)
+  useEffect(() => {
+    const cleanupFns = []
+
+    const handleRealtimeUpdate = (event) => {
+      if (!event || !isMountedRef.current) return
+
+      const queues = hospitalQueueDataRef.current?.doctor_queues || []
+      const matchedQueue = queues.find(dq => dq.chamber?.display_token === event.display_token)
+      const matchedChamberId = matchedQueue?.chamber?.id || selectedChamberIdRef.current
+
+      if (matchedChamberId) {
+        fetchSingleChamber(matchedChamberId, true)
+      } else {
+        fetchHospitalData(true)
+      }
+    }
+
+    // Subscribe to active chamber display token
+    const activeToken = currentChamberQueue?.chamber?.display_token
+    if (activeToken) {
+      const unsub = subscribeToPublicChamber(activeToken, handleRealtimeUpdate)
+      cleanupFns.push(unsub)
+    }
+
+    // Also subscribe to all active doctor chambers in the loaded dataset
+    const doctorQueues = hospitalQueueData?.doctor_queues || []
+    doctorQueues.forEach(dq => {
+      const token = dq.chamber?.display_token
+      if (token && token !== activeToken) {
+        const unsub = subscribeToPublicChamber(token, handleRealtimeUpdate)
+        cleanupFns.push(unsub)
+      }
+    })
+
+    return () => {
+      cleanupFns.forEach(fn => {
+        try { fn() } catch (e) {}
+      })
+    }
+  }, [currentChamberQueue?.chamber?.display_token, hospitalQueueData?.doctor_queues?.length])
+
   // Robust Chamber Name Resolver
   const getChamberDisplayName = (dq) => {
     if (!dq) return ''
@@ -647,70 +762,243 @@ export default function SerialDisplayManagerPage() {
     fetchHospitalData(false)
   }
 
+  // Optimistic state updater for instant 0ms UI reactions
+  const mutateChamberQueueOptimistically = (chamberId, mutatorFn) => {
+    let previousState = null
+    setHospitalQueueData(prev => {
+      if (!prev) return prev
+      previousState = prev
+      const currentQueues = prev.doctor_queues || []
+      const updatedQueues = currentQueues.map(dq => {
+        if (String(dq.chamber?.id) !== String(chamberId)) return dq
+        return mutatorFn(dq)
+      })
+
+      const totalWaiting = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_waiting || (q.waiting_patients?.length || 0)), 0)
+      const totalCompleted = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_completed || (q.completed_patients?.length || 0)), 0)
+      const activeSessions = updatedQueues.filter(q => q.currently_serving).length
+
+      return {
+        ...prev,
+        summary: {
+          ...prev.summary,
+          total_waiting: totalWaiting,
+          total_completed: totalCompleted,
+          active_sessions: activeSessions
+        },
+        doctor_queues: updatedQueues
+      }
+    })
+    return previousState
+  }
+
   // Queue Action Handlers
   const handleCallNext = async (targetAppointmentId = null) => {
     if (!currentChamberQueue) return
     const docId = currentChamberQueue.doctor?.id
     const chamberId = currentChamberQueue.chamber?.id
+    if (!chamberId || !docId) return
+
+    // Find target patient in waiting list
+    let nextPatient = null
+    const waiting = currentChamberQueue.waiting_patients || []
+    if (targetAppointmentId) {
+      nextPatient = waiting.find(p => String(p.id) === String(targetAppointmentId) || String(p.appointment_id) === String(targetAppointmentId))
+    } else {
+      nextPatient = waiting[0]
+    }
+
+    if (!nextPatient && !currentChamberQueue.currently_serving) {
+      toast.info('কিউ-তে কোনো অপেক্ষমাণ রোগী নেই')
+      return
+    }
+
+    const prevSnapshot = hospitalQueueData
+
+    // 0ms Optimistic UI update!
+    if (nextPatient) {
+      mutateChamberQueueOptimistically(chamberId, (dq) => {
+        const prevServing = dq.currently_serving
+        const newCompleted = prevServing ? [...(dq.completed_patients || []), { ...prevServing, queue_status: 'completed', status: 'completed' }] : (dq.completed_patients || [])
+        const newWaiting = (dq.waiting_patients || []).filter(p => String(p.id) !== String(nextPatient.id) && String(p.appointment_id) !== String(nextPatient.id))
+        const newServing = { ...nextPatient, queue_status: 'serving', status: 'confirmed' }
+
+        return {
+          ...dq,
+          currently_serving: newServing,
+          waiting_patients: newWaiting,
+          completed_patients: newCompleted,
+          next_in_line: newWaiting[0] || null,
+          statistics: {
+            ...(dq.statistics || {}),
+            total_waiting: newWaiting.length,
+            total_completed: newCompleted.length
+          }
+        }
+      })
+
+      toast.success(`সিরিয়াল ${formatSerial3(nextPatient.serial_number)} (${nextPatient.patient_name || 'রোগী'}) কে ডাকা হয়েছে`)
+      if (soundEnabled) {
+        soundService.announceSerial({
+          serialNumber: nextPatient.serial_number,
+          roomNumber: currentChamberQueue.chamber?.room_number,
+          doctorName: currentChamberQueue.doctor?.name_bn || currentChamberQueue.doctor?.name,
+          lang: 'bn'
+        })
+      }
+    }
 
     try {
       setActionLoading(true)
       const res = await callNextPatient(docId, chamberId, selectedDate, targetAppointmentId)
       const patient = res.data?.data
-
-      if (patient) {
+      if (!nextPatient && patient) {
         toast.success(`সিরিয়াল ${formatSerial3(patient.serial_number)} (${patient.patient_name || 'রোগী'}) কে ডাকা হয়েছে`)
-        if (soundEnabled) {
-          soundService.announceSerial({
-            serialNumber: patient.serial_number,
-            roomNumber: currentChamberQueue.chamber?.room_number,
-            doctorName: currentChamberQueue.doctor?.name_bn || currentChamberQueue.doctor?.name,
-            lang: 'bn'
-          })
-        }
-      } else {
-        toast.info('কিউ-তে কোনো অপেক্ষমাণ রোগী নেই')
       }
-
-      await fetchHospitalData(true)
+      await fetchSingleChamber(chamberId, true)
     } catch (err) {
       console.error(err)
+      toast.error('রোগীকে ডাকতে সমস্যা হয়েছে, পূর্বের অবস্থায় ফিরিয়ে নেওয়া হচ্ছে')
+      if (prevSnapshot) setHospitalQueueData(prevSnapshot)
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleComplete = async (appointmentId) => {
+    const chamberId = currentChamberQueue?.chamber?.id
+    if (!chamberId) return
+
+    const prevSnapshot = hospitalQueueData
+
+    // 0ms Optimistic UI update
+    mutateChamberQueueOptimistically(chamberId, (dq) => {
+      const prevServing = dq.currently_serving
+      const targetItem = (prevServing && (String(prevServing.id) === String(appointmentId) || String(prevServing.appointment_id) === String(appointmentId)))
+        ? prevServing
+        : (dq.waiting_patients || []).find(p => String(p.id) === String(appointmentId) || String(p.appointment_id) === String(appointmentId))
+
+      const itemToComplete = targetItem || prevServing
+      const newServing = (prevServing && itemToComplete && String(prevServing.id) === String(itemToComplete.id)) ? null : prevServing
+      const newWaiting = (dq.waiting_patients || []).filter(p => String(p.id) !== String(appointmentId) && String(p.appointment_id) !== String(appointmentId))
+      const newCompleted = itemToComplete 
+        ? [...(dq.completed_patients || []), { ...itemToComplete, queue_status: 'completed', status: 'completed' }]
+        : (dq.completed_patients || [])
+
+      return {
+        ...dq,
+        currently_serving: newServing,
+        waiting_patients: newWaiting,
+        completed_patients: newCompleted,
+        next_in_line: newWaiting[0] || null,
+        statistics: {
+          ...(dq.statistics || {}),
+          total_waiting: newWaiting.length,
+          total_completed: newCompleted.length
+        }
+      }
+    })
+
+    toast.success('পরামর্শ সম্পন্ন হয়েছে')
+
     try {
       setActionLoading(true)
       await completeConsultation(appointmentId)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(chamberId, true)
     } catch (err) {
       console.error(err)
+      toast.error('সম্পন্ন করতে সমস্যা হয়েছে')
+      if (prevSnapshot) setHospitalQueueData(prevSnapshot)
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleNoShow = async (appointmentId) => {
+    const chamberId = currentChamberQueue?.chamber?.id
+    if (!chamberId) return
+
+    const prevSnapshot = hospitalQueueData
+
+    // 0ms Optimistic UI update
+    mutateChamberQueueOptimistically(chamberId, (dq) => {
+      const prevServing = dq.currently_serving
+      const isServingTarget = prevServing && (String(prevServing.id) === String(appointmentId) || String(prevServing.appointment_id) === String(appointmentId))
+      const targetWaiting = (dq.waiting_patients || []).find(p => String(p.id) === String(appointmentId) || String(p.appointment_id) === String(appointmentId))
+
+      const itemToNoShow = isServingTarget ? prevServing : targetWaiting
+      const newServing = isServingTarget ? null : prevServing
+      const newWaiting = (dq.waiting_patients || []).filter(p => String(p.id) !== String(appointmentId) && String(p.appointment_id) !== String(appointmentId))
+      const newNoShow = itemToNoShow
+        ? [...(dq.no_show_patients || []), { ...itemToNoShow, queue_status: 'no_show' }]
+        : (dq.no_show_patients || [])
+
+      return {
+        ...dq,
+        currently_serving: newServing,
+        waiting_patients: newWaiting,
+        no_show_patients: newNoShow,
+        next_in_line: newWaiting[0] || null,
+        statistics: {
+          ...(dq.statistics || {}),
+          total_waiting: newWaiting.length,
+          total_no_show: newNoShow.length
+        }
+      }
+    })
+
+    toast.info('রোগীকে অনুপস্থিত মার্ক করা হয়েছে')
+
     try {
       setActionLoading(true)
       await markNoShow(appointmentId)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(chamberId, true)
     } catch (err) {
       console.error(err)
+      toast.error('অনুপস্থিত মার্ক করতে সমস্যা হয়েছে')
+      if (prevSnapshot) setHospitalQueueData(prevSnapshot)
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleRecall = async (appointmentId) => {
+    const chamberId = currentChamberQueue?.chamber?.id
+    if (!chamberId) return
+
+    const prevSnapshot = hospitalQueueData
+
+    // 0ms Optimistic UI update
+    mutateChamberQueueOptimistically(chamberId, (dq) => {
+      const targetNoShow = (dq.no_show_patients || []).find(p => String(p.id) === String(appointmentId) || String(p.appointment_id) === String(appointmentId))
+      const newNoShow = (dq.no_show_patients || []).filter(p => String(p.id) !== String(appointmentId) && String(p.appointment_id) !== String(appointmentId))
+      const newWaiting = targetNoShow 
+        ? [...(dq.waiting_patients || []), { ...targetNoShow, queue_status: 'waiting' }].sort((a, b) => (a.serial_number || 0) - (b.serial_number || 0))
+        : (dq.waiting_patients || [])
+
+      return {
+        ...dq,
+        waiting_patients: newWaiting,
+        no_show_patients: newNoShow,
+        next_in_line: newWaiting[0] || null,
+        statistics: {
+          ...(dq.statistics || {}),
+          total_waiting: newWaiting.length,
+          total_no_show: newNoShow.length
+        }
+      }
+    })
+
+    toast.success('রোগীকে পুনরায় কিউ-তে যুক্ত করা হয়েছে')
+
     try {
       setActionLoading(true)
       await recallNoShow(appointmentId)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(chamberId, true)
     } catch (err) {
       console.error(err)
+      toast.error('পুনরায় ডাকতে সমস্যা হয়েছে')
+      if (prevSnapshot) setHospitalQueueData(prevSnapshot)
     } finally {
       setActionLoading(false)
     }
@@ -728,7 +1016,7 @@ export default function SerialDisplayManagerPage() {
     try {
       setActionLoading(true)
       await regenerateChamberToken(chamberId)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(chamberId, true)
     } catch (err) {
       console.error(err)
     } finally {
@@ -767,7 +1055,7 @@ export default function SerialDisplayManagerPage() {
         break_message: breakCustomMessage
       })
       setShowBreakModal(false)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(targetChamberId, true)
     } catch (err) {
       console.error(err)
     } finally {
@@ -775,7 +1063,7 @@ export default function SerialDisplayManagerPage() {
     }
   }
 
-    const handleEndBreak = async (chamberId = null) => {
+  const handleEndBreak = async (chamberId = null) => {
     const targetChamberId = chamberId || breakTargetChamber?.chamber?.id || currentChamberQueue?.chamber?.id
     if (!targetChamberId) return
 
@@ -785,7 +1073,7 @@ export default function SerialDisplayManagerPage() {
         is_on_break: false
       })
       setShowBreakModal(false)
-      await fetchHospitalData(true)
+      await fetchSingleChamber(targetChamberId, true)
     } catch (err) {
       console.error(err)
     } finally {
@@ -866,6 +1154,19 @@ export default function SerialDisplayManagerPage() {
               padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.5px' 
             }}>
               {isDoctorOnly ? 'Doctor Control Panel' : 'Live Monitor'}
+            </span>
+            <span style={{ 
+              fontSize: 11, fontWeight: 700, 
+              color: wsConnected ? '#10B981' : '#F59E0B', 
+              background: wsConnected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)', 
+              padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 5 
+            }}>
+              <span style={{ 
+                width: 6, height: 6, borderRadius: '50%', 
+                background: wsConnected ? '#10B981' : '#F59E0B',
+                boxShadow: wsConnected ? '0 0 6px #10B981' : 'none'
+              }} />
+              {wsConnected ? 'রিয়েল-টাইম লাইভ' : 'পোলিং সক্রিয়'}
             </span>
           </div>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>

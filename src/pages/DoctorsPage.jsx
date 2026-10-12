@@ -900,16 +900,18 @@ function DoctorsPage() {
             <span>ফিল্টার</span>
             {activeCount > 0 && (
               <span style={{
-                background: '#EF4444',
-                color: 'white',
+                background: '#FFFFFF',
+                color: '#00B875',
                 borderRadius: '50%',
                 width: 18,
                 height: 18,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                lineHeight: 1,
+                fontFamily: 'Inter, system-ui, sans-serif'
               }}>
                 {activeCount}
               </span>

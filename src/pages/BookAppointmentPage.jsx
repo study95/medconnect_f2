@@ -140,6 +140,7 @@ export default function BookAppointmentPage() {
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
+  const isDoctorServiceDisabled = Boolean(doctor && doctor.has_service_access === false)
 
 
   // Professional Warning Modal State
@@ -586,6 +587,12 @@ export default function BookAppointmentPage() {
 
   const handleConfirmClick = (e) => {
     e.preventDefault()
+    if (doctor && doctor.has_service_access === false) {
+      showWarning('অনলাইন বুকিং বন্ধ', 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।', {
+        type: 'warning'
+      })
+      return
+    }
     if (!selectedChamberId) {
       showWarning('চেম্বার নির্বাচন করুন', 'অনুগ্রহ করে প্রথমে একটি চেম্বার নির্বাচন করুন।', {
         onClose: () => setCurrentStep(1)
@@ -812,7 +819,7 @@ export default function BookAppointmentPage() {
       ) {
         showWarning(
           'ইতিমধ্যে বুক করা হয়েছে',
-          'আপনি এই ডাক্তারের জন্য এই তারিখে ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করেছেন। আপনার পূর্ববর্তী অ্যাপয়েন্টমেন্টের তালিকা দেখতে নিচের বোতামে চাপুন।',
+          rawMsg || 'আপনি এই ডাক্তারের জন্য এই তারিখে ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করেছেন। আপনার পূর্ববর্তী অ্যাপয়েন্টমেন্টের তালিকা দেখতে নিচের বোতামে চাপুন।',
           { viewAppointments: true, confirmText: 'ঠিক আছে' }
         )
       } else if (
@@ -905,6 +912,16 @@ export default function BookAppointmentPage() {
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
+      if (err.response?.data?.service_disabled) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          'অনলাইন বুকিং বন্ধ',
+          err.response?.data?.message || 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।',
+          { type: 'warning' }
+        )
+        return
+      }
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         setOtpSending(false)
         setShowAuthModal(false)
@@ -1024,6 +1041,16 @@ export default function BookAppointmentPage() {
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
+      if (err.response?.data?.service_disabled) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          'অনলাইন বুকিং বন্ধ',
+          err.response?.data?.message || 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।',
+          { type: 'warning' }
+        )
+        return
+      }
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         setOtpSending(false)
         setShowAuthModal(false)
@@ -2796,6 +2823,33 @@ export default function BookAppointmentPage() {
             {/* RIGHT MAIN AREA - BOOKING FORM WITH INTERACTIVE STEPPER */}
             <Col lg={8} xs={12}>
               <div className="booking-card-main">
+                {/* Service Disabled Alert Banner */}
+                {isDoctorServiceDisabled && (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1.5px solid #FCA5A5',
+                    borderRadius: 14,
+                    padding: '14px 18px',
+                    marginBottom: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    color: '#991B1B'
+                  }}>
+                    <div style={{ background: '#FEE2E2', padding: 8, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconAlertTriangle size={24} color="#DC2626" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2, color: '#991B1B' }}>
+                        অনলাইন বুকিং সেবা সাময়িকভাবে বন্ধ
+                      </div>
+                      <div style={{ fontSize: 13, color: '#B91C1C', lineHeight: 1.4 }}>
+                        এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে সরাসরি চেম্বার বা হাসপাতালের হেল্পলাইনে যোগাযোগ করুন।
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Modern Interactive Step Wizard Progress Bar */}
                 <div className="wizard-stepper-container">
                   {/* Progress track line */}
@@ -3111,10 +3165,21 @@ export default function BookAppointmentPage() {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
                     <button 
                       type="button" 
-                      onClick={() => setCurrentStep(2)} 
-                      disabled={!selectedChamberId}
+                      onClick={() => {
+                        if (isDoctorServiceDisabled) {
+                          showWarning('অনলাইন বুকিং বন্ধ', 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।', { type: 'warning' })
+                          return
+                        }
+                        setCurrentStep(2)
+                      }} 
+                      disabled={!selectedChamberId || isDoctorServiceDisabled}
                       className="btn-confirm"
-                      style={{ padding: '12px 24px', fontSize: 14 }}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: 14,
+                        opacity: (!selectedChamberId || isDoctorServiceDisabled) ? 0.6 : 1,
+                        cursor: (!selectedChamberId || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer'
+                      }}
                     >
                       পরবর্তী ধাপ <IconArrowRight size={18} />
                     </button>
@@ -3341,10 +3406,21 @@ export default function BookAppointmentPage() {
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => setCurrentStep(3)} 
-                      disabled={!form.appointment_date || !form.appointment_time || isSlotBooked(form.appointment_time)}
+                      onClick={() => {
+                        if (isDoctorServiceDisabled) {
+                          showWarning('অনলাইন বুকিং বন্ধ', 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।', { type: 'warning' })
+                          return
+                        }
+                        setCurrentStep(3)
+                      }} 
+                      disabled={!form.appointment_date || !form.appointment_time || isSlotBooked(form.appointment_time) || isDoctorServiceDisabled}
                       className="btn-confirm"
-                      style={{ padding: '12px 24px', fontSize: 14 }}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: 14,
+                        opacity: (!form.appointment_date || !form.appointment_time || isSlotBooked(form.appointment_time) || isDoctorServiceDisabled) ? 0.6 : 1,
+                        cursor: (!form.appointment_date || !form.appointment_time || isSlotBooked(form.appointment_time) || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer'
+                      }}
                     >
                       পরবর্তী ধাপ <IconArrowRight size={18} />
                     </button>
@@ -3764,7 +3840,15 @@ export default function BookAppointmentPage() {
                      <button type="button" onClick={() => setCurrentStep(2)} className="btn-cancel">
                        <IconChevronLeft size={18} /> আগের ধাপ
                      </button>
-                     <button onClick={handleConfirmClick} disabled={submitting} className="btn-confirm">
+                     <button 
+                       onClick={handleConfirmClick} 
+                       disabled={submitting || isDoctorServiceDisabled} 
+                       className="btn-confirm"
+                       style={{
+                         opacity: (submitting || isDoctorServiceDisabled) ? 0.6 : 1,
+                         cursor: (submitting || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer'
+                       }}
+                     >
                        {submitting ? <IconLoader2 className="spin-icon" size={18} /> : <IconCalendarEvent size={18} />}
                        অ্যাপয়েন্টমেন্ট নিশ্চিত করুন
                      </button>

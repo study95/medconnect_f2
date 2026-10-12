@@ -60,6 +60,9 @@ export const getPublicHospitalDisplayBoard = (hospitalId) =>
 export const regenerateChamberToken = (chamberId) =>
   axiosInstance.post(`/doctor-queue/chambers/${chamberId}/regenerate-token`)
 
+export const regenerateHospitalToken = (hospitalId) =>
+  axiosInstance.post(`/doctor-queue/hospitals/${hospitalId}/regenerate-token`)
+
 export const setChamberBreak = (chamberId, data) =>
   axiosInstance.post(`/doctor-queue/chambers/${chamberId}/break`, data)
 

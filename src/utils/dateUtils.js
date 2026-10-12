@@ -180,6 +180,22 @@ export function getAppointmentStatusInfo(appt) {
     }
   }
 
+  // 2b. Explicitly Marked Absent / No-Show in Live Queue
+  const queueStatus = (appt?.queue_status || '').toLowerCase()
+  if (queueStatus === 'no_show') {
+    return {
+      key: 'no_show',
+      label: 'অনুপস্থিত চিহ্নিত',
+      bg: '#FEF2F2',
+      color: '#DC2626',
+      dot: '#EF4444',
+      border: '#FCA5A5',
+      isLive: false,
+      isPast: isPast,
+      category: isPast ? 'past' : 'upcoming',
+    }
+  }
+
   // 3. Past Date: If appointment date has passed but was not completed/cancelled
   if (isPast) {
     return {

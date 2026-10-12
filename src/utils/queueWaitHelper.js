@@ -88,10 +88,25 @@ export const calculateDynamicWaitTime = ({
   breakResumeTime = null,
   isServingNow = false,
   isNextInLine = false,
+  isNoShow = false,
   currentServing = null,
   bookingTimeRaw = null,
   chamberStartTimeRaw = null,
 }) => {
+  if (isNoShow) {
+    return {
+      isChamberActive: Boolean(currentServing !== null && Number(currentServing) > 0),
+      waitRangeText: 'অনুপস্থিত চিহ্নিত',
+      estTimeWindowText: 'সিরিয়াল স্থগিত রয়েছে',
+      highWaitMinutes: 0,
+      highWaitText: 'অনুপস্থিত',
+      isImmediate: false,
+      remainingBreakMinutes: 0,
+      badgeType: 'no_show',
+      statusNotice: 'আপনার সিরিয়াল ডাকা হয়েছিল, কিন্তু সময়মতো উপস্থিত না থাকায় ডাক্তার আপনাকে অনুপস্থিত করেছেন। অনুগ্রহ করে রিসেপশনে যোগাযোগ করুন।',
+    }
+  }
+
   const slotMinutes = Math.max(5, Number(slotDurationMinutes) || 10)
   const isChamberActive = currentServing !== null && Number(currentServing) > 0
 

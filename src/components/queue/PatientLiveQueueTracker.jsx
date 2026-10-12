@@ -13,8 +13,9 @@ import {
   ArrowRight,
   ShieldCheck
 } from 'lucide-react'
-import { subscribeToAppointment, subscribeToChamber, onConnectionStateChange } from '../../utils/echoService'
+import { subscribeToAppointment, subscribeToPublicChamber, onConnectionStateChange } from '../../utils/echoService'
 import { calculateDynamicWaitTime } from '../../utils/queueWaitHelper'
+import { getPublicDisplayBoard } from '../../api/appointmentApi'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBn = (str) => (str !== null && str !== undefined ? String(str).replace(/\d/g, (d) => enToBn[d] || d) : '—')
@@ -50,11 +51,14 @@ const getLocalDateString = () => {
 export default function PatientLiveQueueTracker({
   appointment = null,
   registration_id = null,
+  public_id = null,
   display_token = null,
   appointment_date = null,
   serial_number = null,
+  onStatusChange = null,
 }) {
   // Resolve props with fallback to appointment object
+  const apptPublicId = public_id || appointment?.public_id || appointment?.id || ''
   const regId = registration_id || appointment?.registration_id || ''
   const chamberToken = display_token || appointment?.chamber?.display_token || appointment?.display_token || ''
   const rawDate = appointment_date || appointment?.appointment_date || appointment?.date || ''
@@ -142,11 +146,20 @@ export default function PatientLiveQueueTracker({
     }
   }, [appointment])
 
-  // WebSocket lifecycle listener (Active ONLY for today's appointments)
+  // Notify parent component (e.g. AppointmentTicketPage) whenever queueStatus changes
+  useEffect(() => {
+    if (onStatusChange && queueStatus) {
+      onStatusChange(queueStatus)
+    }
+  }, [queueStatus, onStatusChange])
+
+  // WebSocket lifecycle listener & Dual Fallback Polling (Active ONLY for today's appointments)
   useEffect(() => {
     if (dateCategory !== 'today') {
       return
     }
+
+    let isSubscribed = true
 
     // Monitor connectivity state (Only show banner if active connection was lost)
     const unsubscribeConn = onConnectionStateChange((state, previousState) => {
@@ -157,9 +170,63 @@ export default function PatientLiveQueueTracker({
       }
     })
 
+    // Public display board polling fallback (uses public_id & serial_number)
+    const fetchLatestState = async () => {
+      if (!chamberToken || !isSubscribed) return
+      try {
+        const res = await getPublicDisplayBoard(chamberToken)
+        if (!isSubscribed) return
+        const qData = res.data?.data || res.data
+        if (!qData) return
+
+        const serving = qData.currently_serving
+        if (serving && serving.serial_number !== undefined) {
+          setCurrentServingSerial(Number(serving.serial_number))
+        } else {
+          setCurrentServingSerial(null)
+        }
+
+        const stats = qData.statistics
+        if (stats?.total_waiting !== undefined) {
+          setWaitingCount(Number(stats.total_waiting))
+        }
+
+        const brk = qData.break
+        if (brk) {
+          setIsOnBreak(Boolean(brk.is_on_break))
+          setBreakReason(brk.reason || null)
+          setBreakResumeTime(brk.resume_time || null)
+        }
+
+        const isMyPatient = (p) => {
+          if (!p) return false
+          if (apptPublicId && (p.id === apptPublicId || p.public_id === apptPublicId)) return true
+          if (mySerial > 0 && p.serial_number !== undefined && Number(p.serial_number) === mySerial) return true
+          if (regId && p.registration_id && p.registration_id === regId) return true
+          return false
+        }
+
+        if (isMyPatient(serving)) {
+          setQueueStatus('serving')
+        } else {
+          const inWaiting = (qData.waiting_patients || []).some(isMyPatient)
+          const inCompleted = (qData.completed_patients || []).some(isMyPatient)
+          const inNoShow = (qData.no_show_patients || []).some(isMyPatient)
+          if (inCompleted) setQueueStatus('completed')
+          else if (inNoShow) setQueueStatus('no_show')
+          else if (inWaiting) setQueueStatus('waiting')
+        }
+      } catch (e) {
+        // Silent fallback
+      }
+    }
+
+    fetchLatestState()
+    const pollInterval = setInterval(fetchLatestState, 5000)
+
     // Handler for real-time queue payload
     const handleQueueUpdate = (payload) => {
-      if (!payload) return
+      if (!payload || !isSubscribed) return
 
       // Drop out-of-order or duplicate packets
       if (typeof payload.sequence_number === 'number') {
@@ -193,36 +260,45 @@ export default function PatientLiveQueueTracker({
         setBreakResumeTime(null)
       }
 
-      // If update is targeted to this appointment or changes global status
-      if (payload.registration_id === regId && payload.queue_status) {
-        setQueueStatus(payload.queue_status.toLowerCase())
+      // Check if update is specifically targeted to this appointment (via public_id, serial, or regId)
+      const isTargetedToMe = (payload.appointment_public_id && (payload.appointment_public_id === apptPublicId || payload.appointment_public_id === appointment?.id)) ||
+                            (payload.registration_id && payload.registration_id === regId) ||
+                            (payload.serial_number && Number(payload.serial_number) === mySerial)
+
+      if (isTargetedToMe) {
+        if (payload.queue_status) {
+          setQueueStatus(payload.queue_status.toLowerCase())
+        }
       } else if (payload.event_type === 'CALL_NEXT' && payload.current_serial !== undefined) {
         if (Number(payload.current_serial) === mySerial) {
           setQueueStatus('serving')
         } else if (Number(payload.current_serial) > mySerial) {
-          setQueueStatus('completed')
+          setQueueStatus(prev => prev === 'no_show' ? 'no_show' : 'completed')
         }
       }
     }
 
     // Subscribe to appointment private channel
     let unsubscribeAppt = () => {}
-    if (regId) {
-      unsubscribeAppt = subscribeToAppointment(regId, handleQueueUpdate)
+    const apptChannelKey = apptPublicId || regId
+    if (apptChannelKey) {
+      unsubscribeAppt = subscribeToAppointment(apptChannelKey, handleQueueUpdate)
     }
 
-    // Subscribe to chamber private channel for general line movement & breaks
+    // Subscribe to public chamber channel
     let unsubscribeChamber = () => {}
     if (chamberToken) {
-      unsubscribeChamber = subscribeToChamber(chamberToken, handleQueueUpdate)
+      unsubscribeChamber = subscribeToPublicChamber(chamberToken, handleQueueUpdate)
     }
 
     return () => {
+      isSubscribed = false
+      clearInterval(pollInterval)
       unsubscribeConn()
       unsubscribeAppt()
       unsubscribeChamber()
     }
-  }, [dateCategory, regId, chamberToken, mySerial, lastSequenceNumber])
+  }, [dateCategory, apptPublicId, regId, chamberToken, mySerial, lastSequenceNumber])
 
   // =========================================================================
   // STATE 1: FUTURE APPOINTMENT
@@ -311,11 +387,11 @@ export default function PatientLiveQueueTracker({
   // =========================================================================
 
   // Calculate position metrics
-  const isServingNow = queueStatus === 'serving' || (currentServingSerial !== null && currentServingSerial > 0 && currentServingSerial === mySerial)
-  const isCompleted = queueStatus === 'completed' || (currentServingSerial !== null && mySerial > 0 && currentServingSerial > mySerial)
   const isNoShow = queueStatus === 'no_show'
   const isCancelled = queueStatus === 'cancelled'
-  const isNextInLine = !isServingNow && !isCompleted && currentServingSerial !== null && currentServingSerial > 0 && mySerial === currentServingSerial + 1
+  const isServingNow = !isNoShow && !isCancelled && (queueStatus === 'serving' || (currentServingSerial !== null && currentServingSerial > 0 && currentServingSerial === mySerial))
+  const isCompleted = !isNoShow && !isCancelled && (queueStatus === 'completed' || (currentServingSerial !== null && mySerial > 0 && currentServingSerial > mySerial))
+  const isNextInLine = !isNoShow && !isCancelled && !isServingNow && !isCompleted && currentServingSerial !== null && currentServingSerial > 0 && mySerial === currentServingSerial + 1
 
   let patientsAhead = 0
   if (mySerial > 0) {
@@ -340,6 +416,7 @@ export default function PatientLiveQueueTracker({
     breakResumeTime,
     isServingNow,
     isNextInLine,
+    isNoShow,
     currentServing: currentServingSerial,
     bookingTimeRaw,
     chamberStartTimeRaw,
@@ -371,7 +448,18 @@ export default function PatientLiveQueueTracker({
     }
   }
 
-  if (isServingNow) {
+  if (isNoShow) {
+    theme = {
+      bg: '#FEF2F2',
+      border: '#FCA5A5',
+      badgeBg: '#FEE2E2',
+      badgeText: '#B91C1C',
+      statusText: 'অনুপস্থিত চিহ্নিত (No-Show)',
+      statusDesc: 'সিরিয়াল সাময়িকভাবে স্থগিত। চেম্বারে উপস্থিত থাকলে সহকারী বা রিসেপশনে যোগাযোগ করে সিরিয়ালটি পুনরায় সচল করুন।',
+      icon: AlertCircle,
+      iconColor: '#DC2626',
+    }
+  } else if (isServingNow) {
     theme = {
       bg: '#ECFDF5',
       border: '#10B981',
@@ -419,17 +507,6 @@ export default function PatientLiveQueueTracker({
       statusDesc: 'আপনার আজকের অ্যাপয়েন্টমেন্ট সফলভাবে সম্পন্ন হয়েছে।',
       icon: CheckCircle2,
       iconColor: '#64748B',
-    }
-  } else if (isNoShow) {
-    theme = {
-      bg: '#FEF2F2',
-      border: '#FCA5A5',
-      badgeBg: '#FEE2E2',
-      badgeText: '#B91C1C',
-      statusText: 'অনুপস্থিত চিহ্নিত (No-Show)',
-      statusDesc: 'চেম্বারে উপস্থিত হয়ে পুনরায় সিরিয়ালে যুক্ত হওয়ার জন্য অনুরোধ করুন।',
-      icon: AlertCircle,
-      iconColor: '#DC2626',
     }
   } else if (isCancelled) {
     theme = {
@@ -577,18 +654,18 @@ export default function PatientLiveQueueTracker({
 
         {/* Your Serial Card */}
         <div style={{
-          background: isServingNow ? '#10B981' : '#FFFFFF',
+          background: isServingNow ? '#10B981' : (isNoShow ? '#FEF2F2' : '#FFFFFF'),
           borderRadius: 12,
           padding: '12px 14px',
-          border: `1.5px solid ${isServingNow ? '#059669' : '#00966D'}`,
+          border: `1.5px solid ${isServingNow ? '#059669' : (isNoShow ? '#FCA5A5' : '#00966D')}`,
           textAlign: 'center',
           boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
-          color: isServingNow ? '#FFFFFF' : '#0F172A',
+          color: isServingNow ? '#FFFFFF' : (isNoShow ? '#991B1B' : '#0F172A'),
         }}>
           <div style={{
             fontSize: 11,
             fontWeight: 700,
-            color: isServingNow ? '#E6FFFA' : '#00966D',
+            color: isServingNow ? '#E6FFFA' : (isNoShow ? '#DC2626' : '#00966D'),
             marginBottom: 4,
             textTransform: 'uppercase',
           }}>
@@ -599,20 +676,45 @@ export default function PatientLiveQueueTracker({
             fontWeight: 900,
             fontFamily: 'monospace',
             lineHeight: 1,
-            color: isServingNow ? '#FFFFFF' : '#00966D',
+            color: isServingNow ? '#FFFFFF' : (isNoShow ? '#DC2626' : '#00966D'),
           }}>
             {formatSerial(mySerial)}
           </div>
           <div style={{
             fontSize: 10.5,
-            color: isServingNow ? '#E6FFFA' : '#64748B',
+            color: isServingNow ? '#E6FFFA' : (isNoShow ? '#B91C1C' : '#64748B'),
             marginTop: 4,
             fontWeight: 600,
           }}>
-            {isServingNow ? 'প্রবেশ করুন' : `${toBn(patientsAhead)} জন পূর্বে`}
+            {isServingNow ? 'প্রবেশ করুন' : (isNoShow ? 'অনুপস্থিত' : `${toBn(patientsAhead)} জন পূর্বে`)}
           </div>
         </div>
       </div>
+
+      {/* Absent / No-Show Notice Banner */}
+      {isNoShow && (
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: 12,
+          padding: '12px 14px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          fontSize: 12,
+          color: '#991B1B',
+          lineHeight: 1.5,
+        }}>
+          <AlertCircle size={17} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <strong style={{ display: 'block', fontWeight: 800, color: '#7F1D1D', marginBottom: 2 }}>
+              সিরিয়াল সাময়িক স্থগিত (অনুপস্থিত)
+            </strong>
+            আপনাকে চেম্বারে ডাকা হয়েছিল কিন্তু উপস্থিত না থাকায় সিরিয়ালটি স্থগিত করা হয়েছে। আপনি উপস্থিত হয়ে থাকলে অনুগ্রহ করে অবিলম্বে <strong>সহকারী / রিসেপশনে যোগাযোগ করুন</strong>—তারা সিরিয়ালটি পুনরায় সচল করে দেবেন।
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Estimated Wait Time Strip */}
       {!isCompleted && !isNoShow && (

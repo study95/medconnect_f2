@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Stethoscope, Clock, CalendarClock, Radio, Coffee, Users, Sparkles, MapPin, Activity, Hourglass } from 'lucide-react'
+import { ArrowRight, Stethoscope, Clock, CalendarClock, Radio, Coffee, Users, Sparkles, MapPin, Activity, Hourglass, AlertCircle } from 'lucide-react'
 import { subscribeToPublicChamber, subscribeToAppointment, onConnectionStateChange, isWebSocketConnected } from '../../utils/echoService'
 import { getPublicDisplayBoard } from '../../api/appointmentApi'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -122,7 +122,9 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
   useEffect(() => {
     const displayToken = appointment?.chamber?.display_token || appointment?.display_token
     const regId = appointment?.registration_id
-    if (!displayToken && !regId) return
+    const myApptPublicId = appointment?.public_id || appointment?.id
+    const mySerial = Number(appointment?.serial_number || appointment?.serial_no || 0)
+    if (!displayToken && !regId && !myApptPublicId) return
 
     let isSubscribed = true
     let isWsConnected = isWebSocketConnected ? isWebSocketConnected() : false
@@ -164,12 +166,25 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         setBreakResumeTime(payload.break_resume_time)
       }
 
-      if (payload.queue_status) {
-        setQueueStatus(payload.queue_status.toLowerCase())
+      // Check if update is specifically targeted to this appointment
+      const isTargetedToMe = (payload.appointment_public_id && (payload.appointment_public_id === myApptPublicId || payload.appointment_public_id === appointment?.id)) ||
+                            (payload.registration_id && payload.registration_id === regId) ||
+                            (payload.serial_number && Number(payload.serial_number) === mySerial)
+
+      if (isTargetedToMe) {
+        if (payload.queue_status) {
+          setQueueStatus(payload.queue_status.toLowerCase())
+        }
+      } else if (payload.event_type === 'CALL_NEXT' && payload.current_serial !== undefined) {
+        if (Number(payload.current_serial) === mySerial) {
+          setQueueStatus('serving')
+        } else if (Number(payload.current_serial) > mySerial) {
+          setQueueStatus(prev => prev === 'no_show' ? 'no_show' : 'completed')
+        }
       }
     }
 
-    // Robust HTTP Polling fallback function
+    // Robust HTTP Polling fallback function (using public_id & serial_number)
     const fetchLatestQueueState = async () => {
       if (!displayToken || !isSubscribed) return
       try {
@@ -181,6 +196,8 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         const serving = qData.currently_serving
         if (serving && serving.serial_number !== undefined) {
           setCurrentServing(Number(serving.serial_number))
+        } else {
+          setCurrentServing(null)
         }
 
         const stats = qData.statistics
@@ -200,17 +217,24 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           setBreakResumeTime(brk.resume_time || null)
         }
 
-        if (regId) {
-          if (serving?.registration_id === regId) {
-            setQueueStatus('serving')
-          } else {
-            const inWaiting = (qData.waiting_patients || []).some(p => p.registration_id === regId)
-            const inCompleted = (qData.completed_patients || []).some(p => p.registration_id === regId)
-            const inNoShow = (qData.no_show_patients || []).some(p => p.registration_id === regId)
-            if (inCompleted) setQueueStatus('completed')
-            else if (inNoShow) setQueueStatus('no_show')
-            else if (inWaiting) setQueueStatus('waiting')
-          }
+        // Match patient by public_id, serial_number, or registration_id
+        const isMyPatient = (p) => {
+          if (!p) return false
+          if (myApptPublicId && (p.id === myApptPublicId || p.public_id === myApptPublicId)) return true
+          if (mySerial > 0 && p.serial_number !== undefined && Number(p.serial_number) === mySerial) return true
+          if (regId && p.registration_id && p.registration_id === regId) return true
+          return false
+        }
+
+        if (isMyPatient(serving)) {
+          setQueueStatus('serving')
+        } else {
+          const inWaiting = (qData.waiting_patients || []).some(isMyPatient)
+          const inCompleted = (qData.completed_patients || []).some(isMyPatient)
+          const inNoShow = (qData.no_show_patients || []).some(isMyPatient)
+          if (inCompleted) setQueueStatus('completed')
+          else if (inNoShow) setQueueStatus('no_show')
+          else if (inWaiting) setQueueStatus('waiting')
         }
       } catch (err) {
         // Silent background polling
@@ -227,8 +251,9 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
       if (displayToken) {
         unsubChamber = subscribeToPublicChamber(displayToken, handleUpdate)
       }
-      if (regId) {
-        unsubAppt = subscribeToAppointment(regId, handleUpdate)
+      const apptChannelKey = myApptPublicId || regId
+      if (apptChannelKey) {
+        unsubAppt = subscribeToAppointment(apptChannelKey, handleUpdate)
       }
     } catch (e) {
       console.warn('WebSocket subscription init failed, relying on polling fallback:', e)
@@ -263,7 +288,7 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
       clearInterval(intervalTimer)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [appointment?.chamber?.display_token, appointment?.display_token, appointment?.registration_id])
+  }, [appointment?.chamber?.display_token, appointment?.display_token, appointment?.public_id, appointment?.id, appointment?.registration_id, appointment?.serial_number, appointment?.serial_no])
 
   if (!appointment) return null
 
@@ -292,13 +317,16 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
 
   const mySerial = Number(appointment.serial_number || appointment.serial_no || 0)
 
-  const isServingNow = queueStatus === 'serving' || (currentServing !== null && currentServing === mySerial)
-  const isNextInLine = currentServing !== null && mySerial === currentServing + 1
+  const isNoShow = queueStatus === 'no_show'
+  const isCompleted = queueStatus === 'completed'
+  const isCancelled = queueStatus === 'cancelled'
+  const isServingNow = !isNoShow && !isCompleted && !isCancelled && (queueStatus === 'serving' || (currentServing !== null && currentServing === mySerial))
+  const isNextInLine = !isNoShow && !isCompleted && !isCancelled && !isServingNow && currentServing !== null && mySerial === currentServing + 1
 
   // Synchronized math with PatientLiveQueueTracker
   let patientsAhead = 0
   if (mySerial > 0) {
-    if (isServingNow) {
+    if (isServingNow || isNoShow) {
       patientsAhead = 0
     } else if (currentServing !== null && currentServing > 0) {
       // Total consultations before this patient: active patient in room + all preceding waiting patients
@@ -317,6 +345,7 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
     breakResumeTime,
     isServingNow,
     isNextInLine,
+    isNoShow,
     currentServing,
     bookingTimeRaw,
     chamberStartTimeRaw: appointment.chamber?.start_time,
@@ -327,7 +356,12 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
   let statusBadgeColor = '#1D4ED8'
   let statusBadgeBorder = '#BFDBFE'
 
-  if (isOnBreak) {
+  if (isNoShow) {
+    statusText = 'অনুপস্থিত চিহ্নিত'
+    statusBadgeBg = '#FEF2F2'
+    statusBadgeColor = '#DC2626'
+    statusBadgeBorder = '#FCA5A5'
+  } else if (isOnBreak) {
     statusText = breakReason ? breakReason : 'বিরতিতে আছেন'
     statusBadgeBg = '#FEF2F2'
     statusBadgeColor = '#B91C1C'
@@ -606,15 +640,19 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
 
       {/* Dynamic Wait & Status Banner (Aware of pre-chamber vs live) */}
       <div style={{
-        background: !dynamicWait.isChamberActive
-          ? '#F8FAFC'
-          : (isOnBreak ? '#FFFBEB' : (isServingNow ? '#ECFDF5' : '#F0FDF4')),
+        background: isNoShow
+          ? '#FEF2F2'
+          : (!dynamicWait.isChamberActive
+            ? '#F8FAFC'
+            : (isOnBreak ? '#FFFBEB' : (isServingNow ? '#ECFDF5' : '#F0FDF4'))),
         borderRadius: 14,
         padding: '11px 13px',
         marginBottom: 12,
-        border: !dynamicWait.isChamberActive
-          ? '1.5px solid #E2E8F0'
-          : (isOnBreak ? '1.5px solid #FCD34D' : (isServingNow ? '1.5px solid #6EE7B7' : '1px solid #BBF7D0')),
+        border: isNoShow
+          ? '1.5px solid #FCA5A5'
+          : (!dynamicWait.isChamberActive
+            ? '1.5px solid #E2E8F0'
+            : (isOnBreak ? '1.5px solid #FCD34D' : (isServingNow ? '1.5px solid #6EE7B7' : '1px solid #BBF7D0'))),
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
@@ -632,30 +670,38 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
             alignItems: 'center',
             gap: 6,
             fontWeight: 800,
-            color: !dynamicWait.isChamberActive
-              ? '#475569'
-              : (isOnBreak ? '#92400E' : (isServingNow ? '#065F46' : '#166534')),
+            color: isNoShow
+              ? '#991B1B'
+              : (!dynamicWait.isChamberActive
+                ? '#475569'
+                : (isOnBreak ? '#92400E' : (isServingNow ? '#065F46' : '#166534'))),
           }}>
-            <Hourglass size={15} color={!dynamicWait.isChamberActive ? '#64748B' : (isOnBreak ? '#D97706' : (isServingNow ? '#059669' : '#16A34A'))} style={{ flexShrink: 0 }} />
-            <span>{!dynamicWait.isChamberActive ? 'চেম্বার অবস্থা:' : (isServingNow ? 'বর্তমান অবস্থা:' : 'আনুমানিক অপেক্ষা:')}</span>
+            {isNoShow ? (
+              <AlertCircle size={15} color="#DC2626" style={{ flexShrink: 0 }} />
+            ) : (
+              <Hourglass size={15} color={!dynamicWait.isChamberActive ? '#64748B' : (isOnBreak ? '#D97706' : (isServingNow ? '#059669' : '#16A34A'))} style={{ flexShrink: 0 }} />
+            )}
+            <span>{isNoShow ? 'বর্তমান অবস্থা:' : (!dynamicWait.isChamberActive ? 'চেম্বার অবস্থা:' : (isServingNow ? 'বর্তমান অবস্থা:' : 'আনুমানিক অপেক্ষা:'))}</span>
           </div>
           <div style={{
             fontWeight: 900,
             fontSize: '0.86rem',
-            color: !dynamicWait.isChamberActive
-              ? '#0F172A'
-              : (isOnBreak ? '#B45309' : (isServingNow ? '#047857' : '#15803D')),
+            color: isNoShow
+              ? '#DC2626'
+              : (!dynamicWait.isChamberActive
+                ? '#0F172A'
+                : (isOnBreak ? '#B45309' : (isServingNow ? '#047857' : '#15803D'))),
             background: '#FFFFFF',
             padding: '2px 9px',
             borderRadius: 6,
-            border: '1px solid ' + (!dynamicWait.isChamberActive ? '#E2E8F0' : (isOnBreak ? '#FDE68A' : (isServingNow ? '#A7F3D0' : '#DCFCE7'))),
+            border: '1px solid ' + (isNoShow ? '#FECACA' : (!dynamicWait.isChamberActive ? '#E2E8F0' : (isOnBreak ? '#FDE68A' : (isServingNow ? '#A7F3D0' : '#DCFCE7')))),
           }}>
-            {dynamicWait.waitRangeText}
+            {isNoShow ? 'অনুপস্থিত (No-Show)' : dynamicWait.waitRangeText}
           </div>
         </div>
 
         {/* Row 2: Estimated Serial Time Window */}
-        {!isServingNow && (
+        {!isServingNow && !isNoShow && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -680,13 +726,13 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           <div style={{
             fontSize: '0.73rem',
             fontWeight: 600,
-            color: !dynamicWait.isChamberActive ? '#64748B' : '#047857',
+            color: isNoShow ? '#B91C1C' : (!dynamicWait.isChamberActive ? '#64748B' : '#047857'),
             borderTop: '1px solid #F1F5F9',
             paddingTop: 5,
             marginTop: 1,
             lineHeight: 1.35,
           }}>
-            ℹ️ {dynamicWait.statusNotice}
+            {isNoShow ? '⚠️ ' : 'ℹ️ '} {dynamicWait.statusNotice}
           </div>
         )}
 
@@ -754,13 +800,15 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
           </div>
         </div>
 
-        {/* Card 2: Your Serial (Highlighted Emerald Hero) */}
+        {/* Card 2: Your Serial (Highlighted Emerald Hero / Muted Red if No-Show) */}
         <div style={{
-          background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+          background: isNoShow
+            ? '#FEF2F2'
+            : 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
           borderRadius: 12,
           padding: '12px 8px',
-          boxShadow: '0 2px 10px rgba(16,185,129,0.15)',
-          border: '1.5px solid #10B981',
+          boxShadow: isNoShow ? '0 2px 10px rgba(239,68,68,0.1)' : '0 2px 10px rgba(16,185,129,0.15)',
+          border: isNoShow ? '1.5px solid #FCA5A5' : '1.5px solid #10B981',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -771,20 +819,24 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         }}>
           <div style={{
             fontSize: '0.78rem',
-            color: '#047857',
+            color: isNoShow ? '#DC2626' : '#047857',
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 5,
           }}>
-            <Sparkles size={13} color="#059669" />
+            {isNoShow ? (
+              <AlertCircle size={13} color="#DC2626" />
+            ) : (
+              <Sparkles size={13} color="#059669" />
+            )}
             <span>আপনার সিরিয়াল</span>
           </div>
           <div style={{
             fontSize: '1.55rem',
             fontWeight: 900,
-            color: '#065F46',
+            color: isNoShow ? '#991B1B' : '#065F46',
             marginTop: 4,
             lineHeight: 1.1,
             textAlign: 'center',
@@ -827,18 +879,22 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
             lineHeight: 1.1,
             textAlign: 'center',
           }}>
-            {isServingNow ? '০' : toBn(patientsAhead)} জন
+            {(isServingNow || isNoShow) ? '০' : toBn(patientsAhead)} জন
           </div>
         </div>
 
         {/* Card 4: Dynamic Wait Time / Countdown + Serial Status */}
         <div style={{
-          background: isServingNow
+          background: isNoShow
+            ? '#FEF2F2'
+            : isServingNow
             ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)'
             : (isNextInLine ? '#FFFBEB' : '#F8FAFC'),
           borderRadius: 12,
           padding: '10px 6px',
-          border: isServingNow
+          border: isNoShow
+            ? '1.5px solid #FCA5A5'
+            : isServingNow
             ? '1.5px solid #10B981'
             : (isNextInLine ? '1.5px solid #FCD34D' : '1px solid #E2E8F0'),
           display: 'flex',
@@ -851,33 +907,41 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
         }}>
           <div style={{
             fontSize: '0.78rem',
-            color: isServingNow ? '#047857' : (isNextInLine ? '#B45309' : '#64748B'),
+            color: isNoShow
+              ? '#DC2626'
+              : (isServingNow ? '#047857' : (isNextInLine ? '#B45309' : '#64748B')),
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 4,
           }}>
-            {isServingNow ? (
+            {isNoShow ? (
+              <AlertCircle size={13} color="#DC2626" />
+            ) : isServingNow ? (
               <Sparkles size={13} color="#059669" />
             ) : isNextInLine ? (
               <ArrowRight size={13} color="#D97706" />
             ) : (
               <Clock size={13} color="#6366F1" />
             )}
-            <span>{isServingNow ? 'সিরিয়াল অবস্থা' : 'আনুমানিক বাকি'}</span>
+            <span>{isNoShow ? 'সিরিয়াল অবস্থা' : (isServingNow ? 'সিরিয়াল অবস্থা' : 'আনুমানিক বাকি')}</span>
           </div>
 
           <div style={{
-            fontSize: isServingNow ? '1.15rem' : '1.3rem',
+            fontSize: (isServingNow || isNoShow) ? '1.15rem' : '1.3rem',
             fontWeight: 900,
-            color: isServingNow ? '#065F46' : (isNextInLine ? '#B45309' : '#0F172A'),
+            color: isNoShow
+              ? '#991B1B'
+              : (isServingNow ? '#065F46' : (isNextInLine ? '#B45309' : '#0F172A')),
             marginTop: 3,
             lineHeight: 1.15,
             textAlign: 'center',
             letterSpacing: '-0.3px',
           }}>
-            {isServingNow ? 'প্রবেশ করুন' : (isNextInLine ? 'প্রস্তুত থাকুন' : dynamicWait.highWaitText)}
+            {isNoShow
+              ? 'অনুপস্থিত'
+              : (isServingNow ? 'প্রবেশ করুন' : (isNextInLine ? 'প্রস্তুত থাকুন' : dynamicWait.highWaitText))}
           </div>
 
           <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
@@ -885,19 +949,42 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
               display: 'inline-block',
               fontSize: '0.72rem',
               fontWeight: 800,
-              background: isServingNow ? '#ECFDF5' : statusBadgeBg,
-              color: isServingNow ? '#047857' : statusBadgeColor,
-              border: '1px solid ' + (isServingNow ? '#A7F3D0' : statusBadgeBorder),
+              background: isNoShow ? '#FEE2E2' : (isServingNow ? '#ECFDF5' : statusBadgeBg),
+              color: isNoShow ? '#DC2626' : (isServingNow ? '#047857' : statusBadgeColor),
+              border: '1px solid ' + (isNoShow ? '#FECACA' : (isServingNow ? '#A7F3D0' : statusBadgeBorder)),
               padding: '2px 8px',
               borderRadius: 6,
               lineHeight: 1.2,
               textAlign: 'center',
             }}>
-              {isServingNow ? 'ডাকা হয়েছে' : (!dynamicWait.isChamberActive ? 'শুরুর অপেক্ষায়' : statusText)}
+              {isNoShow
+                ? 'স্থগিত রয়েছে'
+                : (isServingNow ? 'ডাকা হয়েছে' : (!dynamicWait.isChamberActive ? 'শুরুর অপেক্ষায়' : statusText))}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Actionable Notice for No-Show / Absent Patient */}
+      {isNoShow && (
+        <div style={{
+          background: '#FFF5F5',
+          border: '1.5px solid #FECACA',
+          borderRadius: 12,
+          padding: '12px 14px',
+          marginBottom: 14,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          boxShadow: '0 1px 3px rgba(220, 38, 38, 0.06)',
+        }}>
+          <AlertCircle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: '0.82rem', color: '#991B1B', lineHeight: 1.45 }}>
+            <strong style={{ display: 'block', marginBottom: 2 }}>সিরিয়াল স্থগিত (অনুপস্থিত চিহ্নিত)</strong>
+            আপনার সিরিয়াল পূর্বে ডাকা হয়েছিল, কিন্তু নির্ধারিত সময়ে উপস্থিত না থাকায় ডাক্তার আপনাকে সাময়িকভাবে অনুপস্থিত করেছেন। আপনি চেম্বারে এসে থাকলে অবিলম্বে <strong>রিসেপশন বা চেম্বার সহকারীকে</strong> বলুন আপনাকে সিরিয়ালে পুনরায় যুক্ত (Recall) করতে।
+          </div>
+        </div>
+      )}
 
       {/* Full-Width Mobile-Optimized Emerald CTA Button */}
       <button

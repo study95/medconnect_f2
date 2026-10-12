@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { getPublicDisplayBoard, getPublicHospitalDisplayBoard } from '../api/appointmentApi'
 import { getDoctorUrl } from '../utils/identifierHelper'
 import { soundService } from '../utils/soundUtils'
+import { subscribeToPublicChamber, onConnectionStateChange, isWebSocketConnected } from '../utils/echoService'
+import { QRCodeSVG } from 'qrcode.react'
 import { 
   Clock, 
   User, 
@@ -65,6 +67,78 @@ const formatTime12h = (timeStr) => {
   }
 }
 
+/**
+ * Isolated Real-time Clock Component.
+ * Self-contained 1-second interval prevents entire display page from re-rendering every second.
+ */
+const LiveDisplayClock = React.memo(function LiveDisplayClock() {
+  const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const dayNameBn = bnDays[time.getDay()]
+  const dateBn = `${toBn(time.getDate())} ${bnMonths[time.getMonth()]} ${toBn(time.getFullYear())}`
+
+  const hourRaw = time.getHours()
+  const minRaw = time.getMinutes()
+  const secRaw = time.getSeconds()
+  const ampm = hourRaw >= 12 ? 'PM' : 'AM'
+  const hour12 = hourRaw % 12 || 12
+
+  const hourStr = String(hour12).padStart(2, '0')
+  const minStr = String(minRaw).padStart(2, '0')
+  const secStr = String(secRaw).padStart(2, '0')
+  const timeBnDigits = `${toBn(hourStr)}:${toBn(minStr)}:${toBn(secStr)} ${ampm}`
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      {/* Date Widget */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: 'rgba(30, 41, 59, 0.45)',
+        padding: '8px 16px',
+        borderRadius: 12,
+        border: '1px solid rgba(255, 255, 255, 0.06)'
+      }}>
+        <div style={{ color: '#00B875', display: 'flex', alignItems: 'center' }}>
+          <Calendar size={22} />
+        </div>
+        <div>
+          <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#F1F5F9', lineHeight: 1.2 }}>
+            {dateBn}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>
+            {dayNameBn}
+          </div>
+        </div>
+      </div>
+
+      {/* Clock Widget */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: 'rgba(30, 41, 59, 0.45)',
+        padding: '8px 18px',
+        borderRadius: 12,
+        border: '1px solid rgba(255, 255, 255, 0.06)'
+      }}>
+        <div style={{ color: '#00B875', display: 'flex', alignItems: 'center' }}>
+          <Clock size={22} />
+        </div>
+        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#F1F5F9', fontFamily: 'monospace', letterSpacing: '1px', lineHeight: 1 }}>
+          {timeBnDigits}
+        </div>
+      </div>
+    </div>
+  )
+})
+
 export default function PublicDisplayBoardPage() {
   const { token, hospitalId } = useParams()
   const isHospitalMaster = Boolean(hospitalId)
@@ -72,18 +146,11 @@ export default function PublicDisplayBoardPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [currentTime, setCurrentTime] = useState(new Date())
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
 
   // Track previous serving serial to detect new calls and trigger chime audio
   const prevServingRef = useRef(null)
-
-  // Live clock
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   // Fullscreen state listener
   useEffect(() => {
@@ -102,71 +169,121 @@ export default function PublicDisplayBoardPage() {
     }
   }
 
-  // Fetch live queue data every 3.5 seconds
+  const [isWsConnected, setIsWsConnected] = useState(false)
+
+  // Track active WebSocket connection state
   useEffect(() => {
-    let isMounted = true
+    setIsWsConnected(isWebSocketConnected())
+    const unsubConn = onConnectionStateChange((state) => {
+      setIsWsConnected(state === 'connected')
+    })
+    return () => unsubConn()
+  }, [])
 
-    const fetchQueue = () => {
-      const apiCall = isHospitalMaster 
-        ? getPublicHospitalDisplayBoard(hospitalId)
-        : getPublicDisplayBoard(token)
+  // Ref to hold latest data for real-time sound announcement without stale closures
+  const dataRef = useRef(data)
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
-      apiCall
-        .then(res => {
-          if (!isMounted) return
-          const payload = res.data?.data || res.data
-          setData(payload)
-          setError('')
-          setLoading(false)
+  // Centralized fetchQueue function (initial load & instant push reload from fast Redis cache)
+  const fetchQueue = useRef(() => {})
+  fetchQueue.current = (silent = false) => {
+    const apiCall = isHospitalMaster 
+      ? getPublicHospitalDisplayBoard(hospitalId)
+      : getPublicDisplayBoard(token)
 
-          // Audio notification check on serial call
-          if (!isHospitalMaster && payload?.currently_serving) {
-            const currentSerial = payload.currently_serving.serial_number
-            if (prevServingRef.current !== null && prevServingRef.current !== currentSerial) {
-              if (soundEnabled) {
-                soundService.announceSerial({
-                  serialNumber: currentSerial,
-                  roomNumber: payload.chamber?.room_number,
-                  doctorName: payload.doctor?.name_bn || payload.doctor?.name,
-                  lang: 'bn'
-                })
-              }
+    apiCall
+      .then(res => {
+        const payload = res.data?.data || res.data
+        setData(payload)
+        setError('')
+        setLoading(false)
+
+        // Audio notification check on serial call
+        if (!isHospitalMaster && payload?.currently_serving) {
+          const currentSerial = payload.currently_serving.serial_number
+          if (prevServingRef.current !== null && prevServingRef.current !== currentSerial) {
+            if (soundEnabled) {
+              soundService.announceSerial({
+                serialNumber: currentSerial,
+                roomNumber: payload.chamber?.room_number,
+                doctorName: payload.doctor?.name_bn || payload.doctor?.name,
+                lang: 'bn'
+              })
             }
-            prevServingRef.current = currentSerial
           }
-        })
-        .catch(err => {
-          if (isMounted) {
-            setError(err.response?.data?.message || 'ডিসপ্লে লোড করা সম্ভব হয়নি')
-            setLoading(false)
+          prevServingRef.current = currentSerial
+        }
+      })
+      .catch(err => {
+        if (!silent) {
+          setError(err.response?.data?.message || 'ডিসপ্লে লোড করা সম্ভব হয়নি')
+          setLoading(false)
+        }
+      })
+  }
+
+  // 1. Initial snapshot load
+  useEffect(() => {
+    fetchQueue.current(false)
+  }, [token, hospitalId, isHospitalMaster])
+
+  // 2. Real-time Laravel Reverb WebSocket subscription (Zero Polling) + 45s Resilient Safety Heartbeat
+  useEffect(() => {
+    const cleanupFns = []
+
+    const handleRealtimeUpdate = (event) => {
+      // Audio chime announcement on new serial call
+      if (!isHospitalMaster && event?.current_serial) {
+        if (prevServingRef.current !== null && prevServingRef.current !== event.current_serial) {
+          if (soundEnabled) {
+            const currentData = dataRef.current
+            soundService.announceSerial({
+              serialNumber: event.current_serial,
+              roomNumber: currentData?.chamber?.room_number,
+              doctorName: currentData?.doctor?.name_bn || currentData?.doctor?.name,
+              lang: 'bn'
+            })
           }
-        })
+        }
+        prevServingRef.current = event.current_serial
+      }
+
+      // Immediately pull fresh snapshot from ultra-fast Redis cache (< 15ms)
+      fetchQueue.current(true)
     }
 
-    fetchQueue()
-    const interval = setInterval(fetchQueue, 3500)
+    // Subscribe to chamber's public websocket channel
+    if (token) {
+      const unsub = subscribeToPublicChamber(token, handleRealtimeUpdate)
+      cleanupFns.push(unsub)
+    }
+
+    // If hospital master board, subscribe to all active chambers
+    if (isHospitalMaster && data?.doctor_queues?.length > 0) {
+      data.doctor_queues.forEach(dq => {
+        const chToken = dq.chamber?.display_token
+        if (chToken) {
+          const unsub = subscribeToPublicChamber(chToken, handleRealtimeUpdate)
+          cleanupFns.push(unsub)
+        }
+      })
+    }
+
+    // Resilient safety heartbeat (every 45 seconds instead of aggressive 3.5s) to guarantee zero desync on network blinks
+    const heartbeatInterval = setInterval(() => {
+      fetchQueue.current(true)
+    }, 45000)
+    cleanupFns.push(() => clearInterval(heartbeatInterval))
+
     return () => {
-      isMounted = false
-      clearInterval(interval)
+      cleanupFns.forEach(fn => {
+        try { fn() } catch (e) {}
+      })
     }
-  }, [token, hospitalId, isHospitalMaster, soundEnabled])
+  }, [token, hospitalId, isHospitalMaster, soundEnabled, data?.doctor_queues?.length])
 
-  // Date formatting helpers
-  const dayNameBn = bnDays[currentTime.getDay()]
-  const dateBn = `${toBn(currentTime.getDate())} ${bnMonths[currentTime.getMonth()]} ${toBn(currentTime.getFullYear())}`
-
-  // Real-time live digital clock with hours, minutes, and seconds
-  const hourRaw = currentTime.getHours()
-  const minRaw = currentTime.getMinutes()
-  const secRaw = currentTime.getSeconds()
-  const ampm = hourRaw >= 12 ? 'PM' : 'AM'
-  const hour12 = hourRaw % 12 || 12
-
-  const hourStr = String(hour12).padStart(2, '0')
-  const minStr = String(minRaw).padStart(2, '0')
-  const secStr = String(secRaw).padStart(2, '0')
-
-  const timeBnDigits = `${toBn(hourStr)}:${toBn(minStr)}:${toBn(secStr)} ${ampm}`
 
   if (loading && !data) {
     return (
@@ -241,7 +358,6 @@ export default function PublicDisplayBoardPage() {
   const rawDocPhoto = doctor.photo || doctor.photo_url || doctor.image || doctor.avatar
   const doctorPhoto = rawDocPhoto ? (rawDocPhoto.startsWith('http') ? rawDocPhoto : `${BASE}/storage/${rawDocPhoto}`) : null
   const doctorUrl = doctor ? `${window.location.origin}${getDoctorUrl(doctor)}` : `${window.location.origin}/doctors`
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(doctorUrl)}&margin=0`
 
   const totalPatientsCount = stats.total_patients || (waitingPatients.length + (stats.total_completed || 0) + (currentlyServing ? 1 : 0)) || 0
   const completedCount = stats.total_completed || 0
@@ -268,8 +384,6 @@ export default function PublicDisplayBoardPage() {
     }}>
       {/* ── Keyframe Animations & Styles ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800;900&display=swap');
-        
         @keyframes pulseGlow {
           0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 15px rgba(74,222,128,0.4)); }
           50% { opacity: 0.85; transform: scale(1.02); filter: drop-shadow(0 0 35px rgba(74,222,128,0.75)); }
@@ -360,52 +474,37 @@ export default function PublicDisplayBoardPage() {
           </div>
         </div>
 
-        {/* Center: Live Calendar & Digital Clock Widgets */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          {/* Date Widget */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'rgba(30, 41, 59, 0.45)',
-            padding: '8px 16px',
-            borderRadius: 12,
-            border: '1px solid rgba(255, 255, 255, 0.06)'
-          }}>
-            <div style={{ color: '#00B875', display: 'flex', alignItems: 'center' }}>
-              <Calendar size={22} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#F1F5F9', lineHeight: 1.2 }}>
-                {dateBn}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>
-                {dayNameBn}
-              </div>
-            </div>
-          </div>
-
-          {/* Clock Widget */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'rgba(30, 41, 59, 0.45)',
-            padding: '8px 18px',
-            borderRadius: 12,
-            border: '1px solid rgba(255, 255, 255, 0.06)'
-          }}>
-            <div style={{ color: '#00B875', display: 'flex', alignItems: 'center' }}>
-              <Clock size={22} />
-            </div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#F1F5F9', fontFamily: 'monospace', letterSpacing: '1px', lineHeight: 1 }}>
-              {timeBnDigits}
-            </div>
-          </div>
-        </div>
+        {/* Center: Live Calendar & Digital Clock (Isolated from full page re-renders) */}
+        <LiveDisplayClock />
 
         {/* Right: Sound Alert Status & Fullscreen Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Real-time WebSocket connection state pill */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 7,
+            padding: '7px 14px',
+            borderRadius: 999,
+            background: isWsConnected ? 'rgba(5, 150, 105, 0.2)' : 'rgba(217, 119, 6, 0.2)',
+            border: `1px solid ${isWsConnected ? '#059669' : '#D97706'}`,
+            fontSize: '0.82rem',
+            fontWeight: 800,
+            color: isWsConnected ? '#34D399' : '#FBBF24'
+          }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: isWsConnected ? '#10B981' : '#F59E0B',
+                display: 'inline-block'
+              }}
+              className={isWsConnected ? "pulse-live-dot" : ""}
+            />
+            <span>{isWsConnected ? 'লাইভ ইঞ্জিন সংযুক্ত' : 'সংযোগ হচ্ছে...'}</span>
+          </div>
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             style={{
@@ -660,10 +759,11 @@ export default function PublicDisplayBoardPage() {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <img 
-                src={qrCodeUrl} 
-                alt="Doctor Profile QR Code"
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              <QRCodeSVG 
+                value={doctorUrl} 
+                size={58}
+                level="M"
+                includeMargin={false}
               />
             </div>
 
