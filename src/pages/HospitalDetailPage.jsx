@@ -133,8 +133,37 @@ function HospitalDetailPage() {
     return 0
   }, [ratingSummary, hospital?.rating_count, hospital?.review_count, hospital?.reviews_count])
 
-  // Pure presentation data derived directly from backend contract
-  const departments = hospital?.departments || []
+  // Pure presentation data derived directly from backend contract + client-side doctor specialties fallback
+  const rawDepartments = hospital?.departments || []
+  
+  // Dynamic departments synthesized from all available doctors if backend list is empty
+  const departments = useMemo(() => {
+    if (Array.isArray(rawDepartments) && rawDepartments.length > 0) {
+      return rawDepartments
+    }
+    if (Array.isArray(displayDoctors) && displayDoctors.length > 0) {
+      const specMap = new Map()
+      displayDoctors.forEach(doc => {
+        const specName = doc.specialty?.name_bn || doc.specialty?.bangla_name || doc.specialty_name || doc.specialty?.name
+        const specId = doc.specialty?.id || doc.specialty_id || specName
+        if (specName && !specMap.has(specId)) {
+          specMap.set(specId, {
+            id: specId,
+            name: specName,
+            name_en: doc.specialty?.name || specName,
+            sub: 'বিশেষায়িত চিকিৎসা বিভাগ',
+            doctors_count: 1
+          })
+        } else if (specName && specMap.has(specId)) {
+          const item = specMap.get(specId)
+          item.doctors_count = (item.doctors_count || 1) + 1
+        }
+      })
+      return Array.from(specMap.values())
+    }
+    return []
+  }, [rawDepartments, displayDoctors])
+
   const facilities = hospital?.facilities || []
   const photos = hospital?.photos || []
   const badges = hospital?.badges || []

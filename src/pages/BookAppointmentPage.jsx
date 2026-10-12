@@ -242,6 +242,55 @@ export default function BookAppointmentPage() {
 
     return list
   }, [filteredChambers, userLocation])
+
+  // Dynamic Sidebar StatsSSOT
+  const dynamicExperienceLabel = useMemo(() => {
+    return doctor?.total_experience?.label_bn ||
+      doctor?.stats?.experience?.label_bn ||
+      (doctor?.experience ? `${toBnNum(doctor.experience)}+ বছর` : 'অভিজ্ঞ')
+  }, [doctor?.total_experience, doctor?.stats, doctor?.experience])
+
+  const dynamicRatingLabel = useMemo(() => {
+    const avg = Number(doctor?.rating_avg || doctor?.rating || doctor?.stats?.rating?.average || 5.0)
+    if (avg > 0) {
+      return `${toBnNum(avg.toFixed(1))} ★`
+    }
+    return '৫.০ ★'
+  }, [doctor?.rating_avg, doctor?.rating, doctor?.stats])
+
+  const dynamicPatientsLabel = useMemo(() => {
+    const count = doctor?.total_patients || doctor?.appointment_count || doctor?.patients_served_count || doctor?.reviews_count || doctor?.rating_count
+    if (count && Number(count) > 0) {
+      return `${toBnNum(count)}+ রোগী`
+    }
+    return 'নিয়মিত রোগী'
+  }, [doctor?.total_patients, doctor?.appointment_count, doctor?.patients_served_count, doctor?.reviews_count, doctor?.rating_count])
+
+  const dynamicLocationLabel = useMemo(() => {
+    if (selectedChamber) {
+      const upa = selectedChamber.upazila?.name_bn || selectedChamber.upazila?.name || ''
+      const dist = selectedChamber.district?.name_bn || selectedChamber.district?.name || ''
+      if (upa && dist && upa !== dist) return `${upa}, ${dist}`
+      if (dist || upa) return dist || upa
+      if (selectedChamber.address) return selectedChamber.address
+    }
+    const docUpa = doctor?.upazila?.name_bn || doctor?.upazila?.name || ''
+    const docDist = doctor?.district?.name_bn || doctor?.district?.name || ''
+    if (docUpa && docDist && docUpa !== docDist) return `${docUpa}, ${docDist}`
+    if (docDist || docUpa) return docDist || docUpa
+    return 'বাংলাদেশ'
+  }, [selectedChamber, doctor?.upazila, doctor?.district])
+
+  const dynamicDesignationLabel = useMemo(() => {
+    return doctor?.designation_bn ||
+      doctor?.designation ||
+      doctor?.title_bn ||
+      doctor?.title ||
+      doctor?.specialty_name ||
+      doctor?.specialty?.name_bn ||
+      doctor?.specialty?.name ||
+      'বিশেষজ্ঞ চিকিৎসক'
+  }, [doctor?.designation_bn, doctor?.designation, doctor?.title_bn, doctor?.title, doctor?.specialty_name, doctor?.specialty])
   
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -2800,9 +2849,8 @@ export default function BookAppointmentPage() {
                    <img src={getMediaUrl(doctor?.photo) || DEMO_AVATAR} alt={doctor?.name} style={{ width: 110, height: 110, borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', marginBottom: 14 }} />
                    <h4 style={{ color: '#00B875', fontWeight: 800, marginBottom: 4, fontSize: 19 }}>{doctor?.name}</h4>
                    <p style={{ color: '#00B875', fontWeight: 600, fontSize: 13.5, marginBottom: 4 }}>{translateMetadata(doctor?.degree, language, t)}</p>
-                   <p style={{ color: '#1F2937', fontWeight: 700, fontSize: 12.5, marginBottom: 0 }}>কনসালটেন্ট কার্ডিওলজিস্ট</p>
-                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '5px 12px', background: '#E8F8F2', color: '#00B875', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-                     <IconCircleCheck size={14} /> {doctor?.specialty_name || doctor?.specialty?.name_bn || doctor?.specialty?.name || 'কার্ডিওলজি বিভাগ'}
+                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '5px 12px', background: '#E8F8F2', color: '#00B875', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                     <IconCircleCheck size={14} /> {doctor?.specialty_name || doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}
                    </div>
                 </div>
 
@@ -2810,19 +2858,19 @@ export default function BookAppointmentPage() {
                 <div style={{ padding: '18px 20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconCalendarEvent size={15} color="#00B875" /> অভিজ্ঞতা</span>
-                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>১০+ বছর</span>
+                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>{dynamicExperienceLabel}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconUser size={15} color="#00B875" /> চিকিৎসা প্রদান</span>
-                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>১৫০০+ রোগী</span>
+                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>{dynamicPatientsLabel}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconCheck size={15} color="#00B875" /> সাফল্য রেটিং</span>
-                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>৯৮%</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconCheck size={15} color="#00B875" /> রেটিং স্কোর</span>
+                    <span style={{ fontWeight: 700, fontSize: 12.5, color: '#059669' }}>{dynamicRatingLabel}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconMapPin size={15} color="#00B875" /> চেম্বার</span>
-                    <span style={{ fontWeight: 700, fontSize: 12.5 }}>ঢাকা, বাংলাদেশ</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 12.5 }}><IconMapPin size={15} color="#00B875" /> চেম্বার এলাকা</span>
+                    <span style={{ fontWeight: 700, fontSize: 12.5, maxWidth: '60%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dynamicLocationLabel}>{dynamicLocationLabel}</span>
                   </div>
                 </div>
               </div>

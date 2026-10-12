@@ -225,6 +225,15 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
   const locationText = chamberLocation || currentExp?.address || doctorGeneralLocation
 
+  // Clean combined display: Hospital Name, Area (e.g. Apollo Hospital, Madhabpur)
+  const hospitalDisplay = useMemo(() => {
+    if (!primaryHospital) return locationText || 'ঢাকা'
+    if (locationText && !primaryHospital.includes(locationText)) {
+      return `${primaryHospital}, ${locationText}`
+    }
+    return primaryHospital
+  }, [primaryHospital, locationText])
+
   // Nearest chamber distance calculation
   const nearestChamberInfo = (() => {
     // 1. If backend matched_chamber already has distance_km
@@ -576,7 +585,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     {degrees}
                   </div>
 
-                  {/* Hospital / Chamber Name */}
+                  {/* Hospital / Chamber & Location Name */}
                   <div style={{
                     fontSize: 12.5,
                     color: '#334155',
@@ -587,9 +596,9 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     fontFamily: "'Hind Siliguri', sans-serif",
                     marginTop: 2
                   }}>
-                    <IconBuildingHospital size={15} color={isAvailableToday ? '#00B875' : '#64748B'} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>
-                      {isAvailableToday ? `আজকের চেম্বার: ${primaryHospital}` : primaryHospital}
+                    <IconBuildingHospital size={15} color={isAvailableToday ? '#00B875' : '#64748B'} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={hospitalDisplay}>
+                      {hospitalDisplay}
                     </span>
                     {otherChambersTodayCount > 0 && (
                       <span style={{
@@ -605,62 +614,6 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                       </span>
                     )}
                   </div>
-
-                  {/* Location */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    color: '#64748B',
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    marginTop: 3
-                  }}>
-                    <IconMapPin size={14} color="#00B875" />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {locationText || 'ঢাকা'}
-                    </span>
-                  </div>
-
-                  {/* Chamber Time Row */}
-                  {chamberTime && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      color: isAvailableToday ? '#059669' : '#475569',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      marginTop: 3
-                    }}>
-                      <IconClock size={14} color={isAvailableToday ? '#059669' : '#64748B'} />
-                      <span>{isAvailableToday ? `আজকের সময়: ${chamberTime}` : `সময়: ${chamberTime}`}</span>
-                    </div>
-                  )}
-
-                  {nearestChamberInfo?.formattedDistance && (
-                    <div style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      alignSelf: 'flex-start',
-                      width: 'fit-content',
-                      gap: 4,
-                      background: '#ECFDF5',
-                      color: '#059669',
-                      border: '1px solid #A7F3D0',
-                      borderRadius: 6,
-                      padding: '3px 8px',
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      fontFamily: "'Hind Siliguri', sans-serif",
-                      marginTop: 6
-                    }}>
-                      <IconNavigation size={12} color="#059669" />
-                      <span>{nearestChamberInfo.formattedDistance} দূরে</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Share & Heart Action Icons */}
@@ -703,32 +656,6 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                     <IconHeart size={18} fill={isFavorite ? '#EF4444' : 'none'} />
                   </button>
                 </div>
-              </div>
-
-              {/* Badges Strip */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                <span style={{
-                  background: '#F1F5F9',
-                  color: '#475569',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}>
-                  {experience} বছর অভিজ্ঞতা
-                </span>
-                <span style={{
-                  background: '#F1F5F9',
-                  color: '#475569',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}>
-                  ফি: ৳ {fee}
-                </span>
               </div>
             </div>
 
@@ -898,8 +825,8 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#334155', fontSize: 12, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
             <IconBuildingHospital size={14} color={isAvailableToday ? '#00B875' : '#64748B'} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={primaryHospital}>
-              {isAvailableToday ? `আজকের চেম্বার: ${primaryHospital}` : primaryHospital}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={hospitalDisplay}>
+              {hospitalDisplay}
             </span>
             {otherChambersTodayCount > 0 && (
               <span style={{
@@ -914,60 +841,6 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
                 +{toBnNum(otherChambersTodayCount)}
               </span>
             )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 12, fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <IconMapPin size={14} color="#00B875" style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {locationText || 'ঢাকা'}
-            </span>
-          </div>
-
-          {chamberTime && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              color: isAvailableToday ? '#059669' : '#475569',
-              fontSize: 11.5,
-              fontWeight: 700,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              marginTop: 1
-            }}>
-              <IconClock size={13} color={isAvailableToday ? '#059669' : '#64748B'} style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isAvailableToday ? `আজ: ${chamberTime}` : `সময়: ${chamberTime}`}
-              </span>
-            </div>
-          )}
-
-          {nearestChamberInfo?.formattedDistance && (
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              alignSelf: 'flex-start',
-              width: 'fit-content',
-              gap: 4,
-              background: '#ECFDF5',
-              color: '#059669',
-              border: '1px solid #A7F3D0',
-              borderRadius: 6,
-              padding: '2px 8px',
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: "'Hind Siliguri', sans-serif",
-              marginTop: 3,
-              marginBottom: 2
-            }}>
-              <IconNavigation size={11} color="#059669" style={{ flexShrink: 0 }} />
-              <span>
-                {nearestChamberInfo.formattedDistance} দূরে
-              </span>
-            </div>
-          )}
-
-          <div style={{ fontSize: 12, color: '#334155', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", marginTop: 1 }}>
-            {experience} বছর অভিজ্ঞতা • ৳ {fee} ফি
           </div>
         </div>
       </div>
