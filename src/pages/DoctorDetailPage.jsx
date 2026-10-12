@@ -1194,15 +1194,65 @@ function DoctorDetailPageContent() {
                               const feeBn = sch?.fee_formatted_bn || (sch?.fee ? toBnNum(sch.fee) : (doctor?.fee ? toBnNum(doctor.fee) : ''))
                               const dayBn = sch?.day_bn || sch?.day || (sch?.day ? translateMetadata(sch.day, language, t) : 'সাপ্তাহিক দিন')
                               const timeDisplay = sch?.formatted_time || (sch?.start_time ? `${sch.start_time} - ${sch.end_time}` : '')
+                              
+                              // Check if this schedule is for today
+                              const todayDayEn = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date()).toLowerCase()
+                              const dayEnFromBnMap = {
+                                'শনিবার': 'saturday', 'রবিবার': 'sunday', 'রবি': 'sunday', 'সোমবার': 'monday', 'সোম': 'monday',
+                                'মঙ্গলবার': 'tuesday', 'মঙ্গল': 'tuesday', 'বুধবার': 'wednesday', 'বুধ': 'wednesday',
+                                'বৃহস্পতিবার': 'thursday', 'বৃহস্পতি': 'thursday', 'শুক্রবার': 'friday', 'শুক্র': 'friday'
+                              }
+                              const schDayRaw = (sch?.day || '').trim().toLowerCase()
+                              const schDayBnClean = (sch?.day_bn || '').trim()
+                              const isToday = sch?.is_today === true ||
+                                schDayRaw === todayDayEn ||
+                                dayEnFromBnMap[schDayBnClean] === todayDayEn ||
+                                dayEnFromBnMap[schDayRaw] === todayDayEn
+
                               return (
                                 <div
                                   key={sch?.id || sIdx}
-                                  className="doc-schedule-card"
+                                  className={`doc-schedule-card ${isToday ? 'is-today-card' : ''}`}
+                                  style={{
+                                    position: 'relative',
+                                    ...(isToday ? {
+                                      background: '#F0FDF4',
+                                      borderColor: '#86EFAC',
+                                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+                                    } : {})
+                                  }}
                                 >
+                                  {/* Responsive Today Badge: Left-top on desktop, Right-top on mobile */}
+                                  {isToday && (
+                                    <div
+                                      className="doc-today-badge"
+                                      style={{
+                                        position: 'absolute',
+                                        top: '-9px',
+                                        background: '#00B875',
+                                        color: '#FFFFFF',
+                                        fontSize: '10.5px',
+                                        fontWeight: 800,
+                                        padding: '2px 9px',
+                                        borderRadius: '99px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        boxShadow: '0 2px 6px rgba(0, 184, 117, 0.3)',
+                                        fontFamily: "'Hind Siliguri', sans-serif",
+                                        letterSpacing: '0.2px',
+                                        zIndex: 2
+                                      }}
+                                    >
+                                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
+                                      আজ চেম্বার খোলা
+                                    </div>
+                                  )}
+
                                   {/* Top / Left Group: Day + Time + Desktop Fee */}
                                   <div className="doc-schedule-left">
                                     {/* Day Badge */}
-                                    <span className="doc-schedule-day">
+                                    <span className="doc-schedule-day" style={isToday ? { borderColor: '#86EFAC', color: '#047857' } : {}}>
                                       <IconCalendarEvent size={14} color={primaryGreen} />
                                       <span>{dayBn}</span>
                                     </span>
@@ -1654,7 +1704,16 @@ function DoctorDetailPageContent() {
           transform: translateY(-1px);
         }
 
+        .doc-today-badge {
+          left: 16px;
+          right: auto;
+        }
+
         @media (max-width: 576px) {
+          .doc-today-badge {
+            left: auto;
+            right: 14px;
+          }
           .doc-schedule-card {
             flex-direction: column;
             align-items: stretch;
