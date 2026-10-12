@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useDialog } from '../hooks/useDialog'
 
 const FavoritesContext = createContext(null)
 
 export function FavoritesProvider({ children }) {
   const { user, isLoggedIn } = useAuth()
+  const { showDialog } = useDialog()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -75,14 +77,24 @@ export function FavoritesProvider({ children }) {
     return favoriteHospitals.some(h => String(h.id) === String(hospitalId))
   }, [favoriteHospitals])
 
-  const toggleFavoriteDoctor = useCallback((doctor) => {
+  const toggleFavoriteDoctor = useCallback(async (doctor) => {
     if (!doctor || !doctor.id) return
 
     if (!isLoggedIn) {
-      // Not logged in -> save pending action & redirect to login
-      localStorage.setItem('pending_favorite', JSON.stringify({ type: 'doctor', data: doctor }))
-      
-      navigate('/login', { state: { from: location } })
+      const confirmed = await showDialog({
+        type: 'info',
+        title: 'লগইন প্রয়োজন',
+        message: 'পছন্দের তালিকায় যুক্ত করতে অনুগ্রহ করে প্রথমে লগইন করুন।',
+        confirmText: 'লগইন করুন',
+        cancelText: 'বাতিল করুন',
+        variant: 'primary',
+        preventBackdropClose: false
+      })
+
+      if (confirmed) {
+        localStorage.setItem('pending_favorite', JSON.stringify({ type: 'doctor', data: doctor }))
+        navigate('/login', { state: { from: location } })
+      }
       return
     }
 
@@ -94,24 +106,32 @@ export function FavoritesProvider({ children }) {
     let updated
     if (exists) {
       updated = favoriteDoctors.filter(d => String(d.id) !== String(doctor.id))
-      
     } else {
       updated = [...favoriteDoctors, doctor]
-      
     }
 
     setFavoriteDoctors(updated)
     localStorage.setItem(key, JSON.stringify(updated))
-  }, [isLoggedIn, user?.id, favoriteDoctors, navigate, location])
+  }, [isLoggedIn, user?.id, favoriteDoctors, navigate, location, showDialog])
 
-  const toggleFavoriteHospital = useCallback((hospital) => {
+  const toggleFavoriteHospital = useCallback(async (hospital) => {
     if (!hospital || !hospital.id) return
 
     if (!isLoggedIn) {
-      // Not logged in -> save pending action & redirect to login
-      localStorage.setItem('pending_favorite', JSON.stringify({ type: 'hospital', data: hospital }))
-      
-      navigate('/login', { state: { from: location } })
+      const confirmed = await showDialog({
+        type: 'info',
+        title: 'লগইন প্রয়োজন',
+        message: 'পছন্দের তালিকায় যুক্ত করতে অনুগ্রহ করে প্রথমে লগইন করুন।',
+        confirmText: 'লগইন করুন',
+        cancelText: 'বাতিল করুন',
+        variant: 'primary',
+        preventBackdropClose: false
+      })
+
+      if (confirmed) {
+        localStorage.setItem('pending_favorite', JSON.stringify({ type: 'hospital', data: hospital }))
+        navigate('/login', { state: { from: location } })
+      }
       return
     }
 
@@ -123,15 +143,13 @@ export function FavoritesProvider({ children }) {
     let updated
     if (exists) {
       updated = favoriteHospitals.filter(h => String(h.id) !== String(hospital.id))
-      
     } else {
       updated = [...favoriteHospitals, hospital]
-      
     }
 
     setFavoriteHospitals(updated)
     localStorage.setItem(key, JSON.stringify(updated))
-  }, [isLoggedIn, user?.id, favoriteHospitals, navigate, location])
+  }, [isLoggedIn, user?.id, favoriteHospitals, navigate, location, showDialog])
 
   const removeFavoriteDoctor = useCallback((doctorId) => {
     if (!isLoggedIn || !user?.id) return

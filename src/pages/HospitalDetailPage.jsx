@@ -32,7 +32,7 @@ import {
   IconChevronRight, IconPhoto,
   IconCalendarEvent, IconCheck, IconDiscountCheckFilled,
   IconScissors, IconEye, IconBuildingHospital, IconSend, IconLayoutGrid, IconActivity, IconPlus, IconX, IconSearch, IconMail, IconCompass, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconBrandFacebook,
-  IconNavigation
+  IconNavigation, IconArrowLeft
 } from '@tabler/icons-react'
 
 const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003f?q=80&w=2070&auto=format&fit=crop'
@@ -46,6 +46,14 @@ function HospitalDetailPage() {
   const { t, i18n } = useTranslation()
   const language = i18n.language
   const { theme } = useTheme()
+
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/hospitals')
+    }
+  }
 
   const [deptModalOpen, setDeptModalOpen] = useState(false)
 
@@ -237,8 +245,10 @@ function HospitalDetailPage() {
   }
 
   const [activeTab, setActiveTab] = useState('summary')
+  const [showStickyAppHeader, setShowStickyAppHeader] = useState(false)
   const activeTabRef = useRef('summary')
   const tabContainerRef = useRef(null)
+  const stickyTabContainerRef = useRef(null)
   const isProgrammaticScroll = useRef(false)
   const scrollTimeout = useRef(null)
 
@@ -256,9 +266,9 @@ function HospitalDetailPage() {
       handleSetActiveTab(sectionId);
 
       const isMobile = window.innerWidth < 992;
-      // Mobile: header (54px) + sticky tab bar (48px) + offset = 108px
+      // Mobile: sticky app header (~94px) + breathing room = 104px
       // Desktop: fixed top header (116px) + comfortable breathing room (24px) = 140px
-      const offset = isMobile ? 108 : 140;
+      const offset = isMobile ? 104 : 140;
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       const offsetPosition = elementPosition - offset;
 
@@ -278,7 +288,10 @@ function HospitalDetailPage() {
   };
 
   useEffect(() => {
-    const updateActiveTabOnScroll = () => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 180;
+      setShowStickyAppHeader(prev => prev !== isScrolled ? isScrolled : prev);
+
       if (isProgrammaticScroll.current) return;
 
       const sections = ['summary', 'department', 'facilities', 'doctors', 'gallery', 'reviews'];
@@ -300,9 +313,10 @@ function HospitalDetailPage() {
       handleSetActiveTab(currentActive);
     };
 
-    window.addEventListener('scroll', updateActiveTabOnScroll, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => {
-      window.removeEventListener('scroll', updateActiveTabOnScroll);
+      window.removeEventListener('scroll', handleScroll);
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
     };
   }, []);
@@ -316,22 +330,25 @@ function HospitalDetailPage() {
 
   useEffect(() => {
     if (!activeTab) return;
-    const container = tabContainerRef.current;
-    if (!container) return;
+    [tabContainerRef.current, stickyTabContainerRef.current].forEach(container => {
+      if (!container) return;
 
-    const activeEl = container.querySelector('.nav-link.active') || container.querySelector(`[data-rb-event-key="${activeTab}"]`);
-    if (!activeEl) return;
+      const activeEl = container.querySelector('.nav-link.active') ||
+                       container.querySelector(`[data-rb-event-key="${activeTab}"]`) ||
+                       container.querySelector(`[data-key="${activeTab}"]`);
+      if (!activeEl) return;
 
-    const parentItem = activeEl.closest('.nav-item') || activeEl;
-    const containerWidth = container.offsetWidth;
-    const activeWidth = parentItem.offsetWidth;
-    const activeLeft = parentItem.offsetLeft;
+      const parentItem = activeEl.closest('.nav-item') || activeEl;
+      const containerWidth = container.offsetWidth;
+      const activeWidth = parentItem.offsetWidth;
+      const activeLeft = parentItem.offsetLeft;
 
-    const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
+      const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
 
-    container.scrollTo({
-      left: Math.max(0, targetScrollLeft),
-      behavior: 'smooth'
+      container.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: 'smooth'
+      });
     });
   }, [activeTab]);
 
@@ -379,7 +396,7 @@ function HospitalDetailPage() {
   const borderColor = '#E2E8F0'
 
   return (
-    <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh', paddingBottom: 60, fontFamily: "'Hind Siliguri', sans-serif" }}>
+    <div className="page-wrapper hospital-detail-page" style={{ background: '#F8FAFB', minHeight: '100vh', paddingBottom: 60, fontFamily: "'Hind Siliguri', sans-serif" }}>
       <SeoHead
         title={`${hospital?.name || 'হাসপাতাল'} — বিস্তারিত ও ডাক্তার তালিকা | MedConnect`}
         description={`${hospital?.name} - ${hospital?.address || 'বাংলাদেশ'}। বিশেষজ্ঞ ডাক্তারদের তালিকা, ওপিডি সিরিয়াল ও ইমার্জেন্সি সেবা।`}
@@ -389,8 +406,8 @@ function HospitalDetailPage() {
         schemaData={structuredSchema}
       />
       
-      {/* 1. Breadcrumbs */}
-      <div style={{ padding: '12px 0' }}>
+      {/* 1. Breadcrumbs (Desktop Only) */}
+      <div className="d-none d-lg-block" style={{ padding: '12px 0' }}>
         <Container>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/')}>হোম</span>
@@ -414,8 +431,8 @@ function HospitalDetailPage() {
         </Container>
       </div>
 
-      {/* 2. Hero Section — Matching Target Design (Image 1) */}
-      <section className="hospital-hero-banner" style={{ position: 'relative', marginBottom: 28, overflow: 'hidden' }}>
+      {/* 2. Desktop Hero Banner (Desktop Only — Untouched Original Layout) */}
+      <section className="hospital-hero-banner d-none d-lg-block" style={{ position: 'relative', marginBottom: 28, overflow: 'hidden' }}>
 
         {/* Cover Photo Container */}
         <div
@@ -863,6 +880,739 @@ function HospitalDetailPage() {
         </div>
       </section>
 
+      {/* 2. Mobile Hero Banner (App Style Curved Sheet — Matching Image 2) */}
+      <section className="hospital-hero-mobile d-block d-lg-none" style={{ position: 'relative', marginBottom: 12 }}>
+        {/* Cover Photo Container */}
+        <div
+          role="img"
+          aria-label={`${hospital?.name} — কভার ফটো`}
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 230,
+            background: '#0F172A',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Background Image */}
+          <img
+            src={hospital?.banner_url || hospital?.photo_url || DEMO_BANNER}
+            alt={`${hospital?.name || 'হাসপাতাল'} Cover`}
+            loading="eager"
+            decoding="async"
+            onError={(e) => { e.target.src = DEMO_BANNER }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 30%'
+            }}
+          />
+
+          {/* Contrast Gradient Overlay */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.5) 100%)',
+              pointerEvents: 'none'
+            }}
+          />
+
+          {/* Photo Count Pill Badge (Bottom-Right over Cover) */}
+          <div
+            onClick={() => scrollToSection('gallery')}
+            style={{
+              position: 'absolute',
+              bottom: 30,
+              right: 14,
+              zIndex: 10,
+              background: 'rgba(15, 23, 42, 0.72)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              color: '#FFFFFF',
+              borderRadius: 20,
+              padding: '4px 10px',
+              fontSize: 11.5,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              cursor: 'pointer'
+            }}
+          >
+            <IconPhoto size={14} />
+            <span>১/{photos.length > 0 ? photos.length : 1}</span>
+          </div>
+        </div>
+
+        {/* White Curved Sheet Card */}
+        <div
+          style={{
+            position: 'relative',
+            marginTop: -20,
+            borderTopLeftRadius: 26,
+            borderTopRightRadius: 26,
+            background: '#FFFFFF',
+            zIndex: 15,
+            padding: '0 16px 20px 16px',
+            boxShadow: '0 -4px 16px rgba(0,0,0,0.04)'
+          }}
+        >
+          {/* Header row inside sheet: Overlapping Logo (Left) */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: 10
+            }}
+          >
+            {/* Overlapping Logo */}
+            <div style={{ position: 'relative', marginTop: -36 }}>
+              <div
+                style={{
+                  width: 74,
+                  height: 74,
+                  borderRadius: 16,
+                  background: '#FFFFFF',
+                  border: '2.5px solid #FFFFFF',
+                  boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: (hospital?.logo_url || hospital?.photo_url) ? 4 : 8
+                }}
+              >
+                {(hospital?.logo_url || hospital?.photo_url) ? (
+                  <img
+                    src={hospital.logo_url || hospital.photo_url}
+                    alt={hospital.name || 'Hospital Logo'}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.style.display = 'none';
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <IconBuildingHospital size={36} color={primaryGreen} />
+                )}
+              </div>
+
+              {/* Verified Badge Icon on Logo Corner */}
+              {(hospital?.is_active || hospital?.license_number || hospital?.top_10_hospital === 'yes') && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    background: '#FFFFFF',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <IconDiscountCheckFilled size={20} color="#00A88C" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Hospital Title & Subtitle */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <h1
+                style={{
+                  fontSize: 21,
+                  fontWeight: 900,
+                  color: '#1E293B',
+                  margin: 0,
+                  lineHeight: 1.25
+                }}
+              >
+                {hospital?.name || 'হাসপাতাল'}
+              </h1>
+              {(hospital?.is_active || hospital?.license_number || hospital?.top_10_hospital === 'yes') && (
+                <IconDiscountCheckFilled size={20} color="#00A88C" style={{ flexShrink: 0 }} />
+              )}
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#64748B', margin: '3px 0 0 0' }}>
+              {hospital?.hospital_type || hospital?.type || (hospital?.district?.name ? `${hospital.district.name}-এর চিকিৎসা প্রতিষ্ঠান` : 'আধুনিক হাসপাতাল ও ডায়াগনস্টিক')}
+            </p>
+          </div>
+
+          {/* Rating & Dynamic Badges */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <IconStar size={15} color="#F59E0B" fill="#F59E0B" />
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#1E293B' }}>{averageRating}</span>
+              <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>({totalReviewsCount}টি রিভিউ)</span>
+            </div>
+            {badges.length > 0 && badges.map((badge, bIdx) => (
+              <div
+                key={bIdx}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: badge.type === 'top_10' ? '#FEF3C7' : '#E6F8F3',
+                  color: badge.type === 'top_10' ? '#B45309' : '#008A74',
+                  borderRadius: 20,
+                  padding: '3px 10px',
+                  fontSize: 11,
+                  fontWeight: 800
+                }}
+              >
+                {badge.type === 'top_10' ? (
+                  <IconStar size={12} color="#D97706" />
+                ) : (
+                  <IconCircleCheckFilled size={12} color="#00A88C" />
+                )}
+                {badge.label}
+              </div>
+            ))}
+          </div>
+
+          {/* Address Line with Map Button */}
+          {hospital?.address && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '8px 0',
+                borderTop: '1px solid #F1F5F9',
+                borderBottom: '1px solid #F1F5F9',
+                margin: '10px 0 14px 0'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                <IconMapPin size={17} color="#00A88C" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {hospital.address}
+                </span>
+              </div>
+              <a
+                href={getGoogleMapsDirectionsUrl(hospital?.latitude, hospital?.longitude, hospital?.address || hospital?.name || '', userLocation?.latitude, userLocation?.longitude)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: '#E6F8F3',
+                  color: '#008A74',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: 20,
+                  padding: '3px 10px',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <IconMapPin size={13} color="#008A74" />
+                <span>ম্যাপ দেখুন</span>
+              </a>
+            </div>
+          )}
+
+          {/* 4 Circular Action Buttons (Matching Image 1) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: '14px 0 16px 0' }}>
+            {/* 1. কল করুন */}
+            <a
+              href={`tel:${hospital?.phone || ''}`}
+              aria-label="কল করুন"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                textDecoration: 'none',
+                color: '#1E293B'
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: '#E6F8F3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#00A88C',
+                  boxShadow: '0 2px 6px rgba(0, 168, 140, 0.12)'
+                }}
+              >
+                <IconPhone size={22} stroke={2} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                কল করুন
+              </span>
+            </a>
+
+            {/* 2. দিক নির্দেশনা */}
+            <a
+              href={getGoogleMapsDirectionsUrl(hospital?.latitude, hospital?.longitude, hospital?.address || hospital?.name || '', userLocation?.latitude, userLocation?.longitude)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="দিক নির্দেশনা"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                textDecoration: 'none',
+                color: '#1E293B'
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: '#EFF6FF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#3B82F6',
+                  boxShadow: '0 2px 6px rgba(59, 130, 246, 0.12)'
+                }}
+              >
+                <IconSend size={22} stroke={2} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                দিক নির্দেশনা
+              </span>
+            </a>
+
+            {/* 3. সংরক্ষণ করুন */}
+            <button
+              type="button"
+              aria-label="সংরক্ষণ করুন"
+              onClick={() => hospital && toggleFavoriteHospital(hospital)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                color: '#1E293B',
+                fontFamily: 'inherit'
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: hospital && isHospitalFavorite(hospital.id) ? '#FEE2E2' : '#FEF2F2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#EF4444',
+                  boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)'
+                }}
+              >
+                <IconHeart
+                  size={22}
+                  fill={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : 'none'}
+                  color="#EF4444"
+                  stroke={2}
+                />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                সংরক্ষণ করুন
+              </span>
+            </button>
+
+            {/* 4. শেয়ার করুন */}
+            <button
+              type="button"
+              aria-label="শেয়ার করুন"
+              onClick={() => hospital && triggerShare({
+                title: hospital.name,
+                text: (hospital.address || 'হাসপাতাল') + ' | Doctor Booklet',
+                url: window.location.href,
+                image: hospital.photo_url || hospital.banner_url || DEMO_BANNER
+              })}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                color: '#1E293B',
+                fontFamily: 'inherit'
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: '#EEF2FF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6366F1',
+                  boxShadow: '0 2px 6px rgba(99, 102, 241, 0.12)'
+                }}
+              >
+                <IconShare size={21} stroke={2} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                শেয়ার করুন
+              </span>
+            </button>
+          </div>
+
+          {/* 2x2 Key Highlights Grid (Matching Image 1) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '14px 0 6px 0' }}>
+            {/* Box 1: Doctors */}
+            <div
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #F1F5F9',
+                borderRadius: 14,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#E0F2FE',
+                  color: '#0284C7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <IconUsers size={18} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 900, color: '#1E293B', lineHeight: 1.1 }}>
+                  {stats?.doctors?.available ? `${stats.doctors.count}+` : (displayDoctors?.length > 0 ? `${displayDoctors.length}+` : '২+')}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  বিশেষজ্ঞ ডাক্তার
+                </div>
+              </div>
+            </div>
+
+            {/* Box 2: 24/7 Emergency */}
+            <div
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #F1F5F9',
+                borderRadius: 14,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#EDE9FE',
+                  color: '#7C3AED',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <IconClock size={18} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 900, color: '#1E293B', lineHeight: 1.1 }}>
+                  ২৪/৭
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  জরুরি সেবা
+                </div>
+              </div>
+            </div>
+
+            {/* Box 3: Hospital Type */}
+            <div
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #F1F5F9',
+                borderRadius: 14,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#E6F8F3',
+                  color: '#008A74',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <IconBuildingHospital size={18} />
+              </div>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#1E293B', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {hospital?.hospital_type || hospital?.type || 'Private Hospital'}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginTop: 2 }}>
+                  হাসপাতাল
+                </div>
+              </div>
+            </div>
+
+            {/* Box 4: Rating */}
+            <div
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #F1F5F9',
+                borderRadius: 14,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#FEF3C7',
+                  color: '#D97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <IconStar size={18} fill="#D97706" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 900, color: '#1E293B', lineHeight: 1.1 }}>
+                  {averageRating}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  রেটিং ({totalReviewsCount})
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2.5 MOBILE PERSISTENT APP HEADER (ALWAYS VISIBLE AT TOP: 0 WITH SAFE BACK, TITLE & ACTIONS) */}
+      <div
+        className="d-block d-lg-none"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1060,
+          background: '#FFFFFF',
+          boxShadow: showStickyAppHeader ? '0 4px 18px rgba(0, 0, 0, 0.09)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+          borderBottom: '1px solid #E2E8F0',
+          transition: 'box-shadow 0.2s ease'
+        }}
+      >
+        {/* Top Row: Back (Left) | Hospital Name (Center) | Favorite & Share (Right) */}
+        <div
+          style={{
+            height: 48,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 12px',
+            borderBottom: showStickyAppHeader ? '1px solid #F1F5F9' : 'none'
+          }}
+        >
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="ফিরে যান"
+            style={{
+              width: 36,
+              height: 36,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#0F172A',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <IconArrowLeft size={22} stroke={2.5} />
+          </button>
+
+          {/* Hospital Name (Center) */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: 'center',
+              padding: '0 8px'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 900,
+                color: '#0F172A',
+                margin: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.2
+              }}
+            >
+              {hospital?.name || 'হাসপাতাল'}
+            </h2>
+          </div>
+
+          {/* Right Action Icons: Favorite + Share */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {/* Favorite */}
+            <button
+              type="button"
+              onClick={() => hospital && toggleFavoriteHospital(hospital)}
+              aria-label="পছন্দ তালিকা"
+              style={{
+                width: 36,
+                height: 36,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A',
+                cursor: 'pointer'
+              }}
+            >
+              <IconHeart
+                size={20}
+                fill={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : 'none'}
+                color={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A'}
+              />
+            </button>
+
+            {/* Share */}
+            <button
+              type="button"
+              onClick={() => hospital && triggerShare({
+                title: hospital.name,
+                text: (hospital.address || 'হাসপাতাল') + ' | Doctor Booklet',
+                url: window.location.href,
+                image: hospital.photo_url || hospital.banner_url || DEMO_BANNER
+              })}
+              aria-label="শেয়ার করুন"
+              style={{
+                width: 36,
+                height: 36,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0F172A',
+                cursor: 'pointer'
+              }}
+            >
+              <IconShare size={19} />
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Row: Tab Navigation (Visible on scroll) */}
+        {showStickyAppHeader && (
+          <div
+            ref={stickyTabContainerRef}
+            className="sticky-mobile-tabs"
+            style={{
+              display: 'flex',
+              overflowX: 'auto',
+              whiteSpace: 'nowrap',
+              padding: '0 8px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          >
+            {[
+              { key: 'summary',    label: 'সংক্ষিপ্ত' },
+              { key: 'doctors',    label: 'ডাক্তার' },
+              { key: 'department', label: 'বিভাগ সমূহ' },
+              { key: 'facilities', label: 'সুবিধা সমূহ' },
+              { key: 'gallery',    label: 'গ্যালারি' },
+              { key: 'reviews',    label: 'রিভিউ' }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                data-key={tab.key}
+                type="button"
+                onClick={() => scrollToSection(tab.key)}
+                style={{
+                  flex: '0 0 auto',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: `2.5px solid ${activeTab === tab.key ? '#00B875' : 'transparent'}`,
+                  color: activeTab === tab.key ? '#00B875' : '#64748B',
+                  fontWeight: activeTab === tab.key ? 900 : 700,
+                  fontSize: 13.5,
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 3. Navigation Tabs */}
       <div className="sticky-tab-bar" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}` }}>
         <Container>
@@ -916,8 +1666,8 @@ function HospitalDetailPage() {
           <Col lg={8}>
             <div className="d-flex flex-column" style={{ gap: '24px' }}>
               
-              {/* 1. Top Key Stats Bar (Doctors, Beds, Departments, Emergency) */}
-              <Row className="g-3">
+              {/* 1. Top Key Stats Bar (Desktop Only - Doctors, Beds, Departments, Emergency) */}
+              <Row className="g-3 d-none d-lg-flex">
                 <Col xs={6} md={3}>
                   <div style={{
                     background: '#FFFFFF',
@@ -1883,12 +2633,16 @@ function HospitalDetailPage() {
 
         @media (max-width: 991px) {
           .sticky-tab-bar {
-            position: sticky !important;
-            top: 54px !important;
-            z-index: 1040 !important;
+            position: relative !important;
             background: #FFFFFF !important;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
             border-bottom: 1.5px solid #E2E8F0 !important;
+          }
+          .sticky-mobile-tabs::-webkit-scrollbar {
+            display: none !important;
+          }
+          .sticky-mobile-tabs {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
           }
           .sticky-tab-bar .container {
             padding-left: 0 !important;
@@ -1917,25 +2671,10 @@ function HospitalDetailPage() {
             align-items: center !important;
             gap: 6px !important;
           }
-          .hero-bottom-row {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 12px !important;
-          }
-          .hero-info-card {
-            max-width: 100% !important;
-          }
-          .hero-action-btns {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            width: 100% !important;
-            gap: 8px !important;
-          }
-          .hero-action-btns > button,
-          .hero-action-btns > a {
-            width: 100% !important;
-            justify-content: center !important;
-            margin: 0 !important;
+          .hospital-detail-page,
+          .page-wrapper {
+            padding-top: 48px !important;
+            padding-bottom: 90px !important;
           }
         }
 
@@ -2102,6 +2841,85 @@ function HospitalDetailPage() {
       />
 
       <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />
+
+      {/* STICKY MOBILE BOTTOM BAR (HOTLINE ON LEFT, APPOINTMENT BUTTON ON RIGHT) */}
+      <div className="d-block d-lg-none" style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1050,
+        background: '#FFFFFF',
+        borderTop: '1px solid #E2E8F0',
+        padding: '10px 16px',
+        boxShadow: '0 -6px 25px rgba(0, 0, 0, 0.12)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          {/* Left: Hotline Number */}
+          <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', display: 'block', marginBottom: 2 }}>
+              জরুরি হটলাইন
+            </span>
+            {hospital?.phone ? (
+              <a
+                href={`tel:${hospital.phone}`}
+                style={{
+                  fontSize: 15,
+                  fontWeight: 950,
+                  color: '#1E293B',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E6F8F3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <IconPhone size={14} color={primaryGreen} />
+                </div>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {hospital.phone}
+                </span>
+              </a>
+            ) : (
+              <span style={{ fontSize: 13.5, fontWeight: 800, color: '#94A3B8' }}>
+                ফোন উপলব্ধ নেই
+              </span>
+            )}
+          </div>
+
+          {/* Right: Appointment Button */}
+          <button
+            type="button"
+            aria-label="অ্যাপয়েন্টমেন্ট নিন"
+            onClick={() => {
+              const hId = hospital?.id || hospital?.public_id || id;
+              const hName = hospital?.name || hospital?.name_bn || '';
+              navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`);
+            }}
+            style={{
+              flex: '0 0 auto',
+              background: primaryGreen,
+              color: 'white',
+              border: 'none',
+              borderRadius: 12,
+              padding: '11px 18px',
+              fontSize: 14.5,
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <IconCalendarEvent size={18} color="white" />
+            <span>অ্যাপয়েন্টমেন্ট নিন</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

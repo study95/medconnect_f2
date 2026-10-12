@@ -17,7 +17,9 @@ function AppNavbar() {
   const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const cms = getContent()
+  const isHospitalDetailPage = location.pathname.startsWith('/hospitals/') && location.pathname !== '/hospitals'
+  const isDoctorDetailPage = location.pathname.startsWith('/doctors/') && location.pathname !== '/doctors' && !location.pathname.startsWith('/doctors/view')
+  const isAppViewDetailPage = isHospitalDetailPage || isDoctorDetailPage
   const isAuthPage = location.pathname.startsWith('/login') ||
                      location.pathname.startsWith('/register') ||
                      location.pathname.startsWith('/pending-verification') ||
@@ -103,7 +105,7 @@ function AppNavbar() {
         }
         @media (max-width: 991px) {
           :root {
-            --header-height: 68px !important;
+            --header-height: ${isAppViewDetailPage ? '0px !important' : '68px !important'};
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;
@@ -355,7 +357,7 @@ function AppNavbar() {
         }
       `}</style>
 
-      <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
+      <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isAppViewDetailPage ? 'd-none d-lg-block' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
         
         {/* DESKTOP TOP HEADER (DARK GREEN BAR) */}
         <div className="db-topbar d-none d-lg-flex">

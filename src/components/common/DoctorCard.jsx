@@ -425,10 +425,18 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               display: flex !important;
               gap: 8px !important;
             }
-            .doc-btn-detail,
-            .doc-btn-book {
+            .doc-btn-detail {
               flex: 1 1 0% !important;
-              width: 50% !important;
+              width: 42% !important;
+              padding: 0 4px !important;
+              font-size: 12.5px !important;
+              height: 40px !important;
+              min-width: 0 !important;
+              white-space: nowrap !important;
+            }
+            .doc-btn-book {
+              flex: 1.35 1 0% !important;
+              width: 58% !important;
               padding: 0 4px !important;
               font-size: 12.5px !important;
               height: 40px !important;
@@ -846,12 +854,12 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
       </div>
 
       {/* Bottom Action Buttons */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', width: '100%', minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 'auto', width: '100%', minWidth: 0 }}>
         <button
           type="button"
           onClick={handleDetails}
           style={{
-            flex: 1,
+            flex: '1 1 42%',
             minWidth: 0,
             boxSizing: 'border-box',
             height: 38,
@@ -860,28 +868,28 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             background: 'white',
             color: '#0F172A',
             fontWeight: 700,
-            fontSize: 13,
-            padding: '0 6px',
+            fontSize: 12.5,
+            padding: '0 4px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
+            gap: 4,
             fontFamily: "'Hind Siliguri', sans-serif",
             transition: 'all 0.15s ease'
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
         >
-          <IconEye size={15} style={{ flexShrink: 0 }} />
+          <IconEye size={14} style={{ flexShrink: 0 }} />
           <span>বিস্তারিত দেখুন</span>
         </button>
         <button
           type="button"
           onClick={handleBook}
           style={{
-            flex: 1,
+            flex: '1.35 1 58%',
             minWidth: 0,
             boxSizing: 'border-box',
             height: 38,
@@ -890,14 +898,14 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             background: '#00B875',
             color: 'white',
             fontWeight: 800,
-            fontSize: 13,
+            fontSize: 12.5,
             padding: '0 6px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
+            gap: 4,
             boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
             fontFamily: "'Hind Siliguri', sans-serif",
             transition: 'background 0.15s ease'
@@ -905,7 +913,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           onMouseEnter={e => e.currentTarget.style.background = '#009E64'}
           onMouseLeave={e => e.currentTarget.style.background = '#00B875'}
         >
-          <IconCalendarEvent size={15} color="#FFFFFF" style={{ flexShrink: 0 }} />
+          <IconCalendarEvent size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
           <span>অ্যাপয়েন্টমেন্ট নিন</span>
         </button>
       </div>

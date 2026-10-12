@@ -14,8 +14,11 @@ export default function FloatingBottomNav() {
   const location = useLocation();
   const { isLoggedIn } = useAuth();
 
-  // Hide floating bottom nav on doctor detail pages (/doctors/:id)
-  if (location.pathname.startsWith('/doctors/') && location.pathname !== '/doctors') {
+  // Hide floating bottom nav on doctor and hospital detail pages
+  if (
+    (location.pathname.startsWith('/doctors/') && location.pathname !== '/doctors') ||
+    (location.pathname.startsWith('/hospitals/') && location.pathname !== '/hospitals')
+  ) {
     return null;
   }
 

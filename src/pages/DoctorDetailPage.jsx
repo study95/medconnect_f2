@@ -51,6 +51,13 @@ const toBnNum = (str) => (str !== null && str !== undefined && str !== '') ? Str
 function DoctorDetailPageContent() {
   const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/doctors')
+    }
+  }
   const { t, i18n } = useTranslation()
   const language = i18n?.language || 'bn'
   const { user, isLoggedIn } = useAuth() || {}
@@ -190,6 +197,21 @@ function DoctorDetailPageContent() {
   // Total experience label from backend SSOT
   const totalExpLabel = doctor?.total_experience?.label_bn || doctor?.stats?.experience?.label_bn || (doctor?.experience ? `${toBnNum(doctor.experience)}+ বছর` : 'অভিজ্ঞ')
 
+  // Short format for highlight stats box (e.g. "2 Years +")
+  const formattedExperience = useMemo(() => {
+    const rawYears = doctor?.total_experience?.years ?? doctor?.experience
+    if (rawYears !== undefined && rawYears !== null && rawYears !== '') {
+      return `${rawYears} Years +`
+    }
+    if (typeof doctor?.total_experience?.label === 'string') {
+      const match = doctor.total_experience.label.match(/(\d+)/)
+      if (match) {
+        return `${match[1]} Years +`
+      }
+    }
+    return 'Experienced'
+  }, [doctor?.total_experience, doctor?.experience])
+
   const handleTabChange = (tabKey) => {
     setActiveTab(tabKey)
     // Smoothly focus/align the top of right card when menu item is clicked
@@ -311,29 +333,79 @@ function DoctorDetailPageContent() {
       />
       
       {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
-      <div className="d-flex d-lg-none align-items-center justify-content-between px-3 py-3 bg-white border-bottom sticky-top" style={{ zIndex: 1020 }}>
+      <div 
+        className="d-flex d-lg-none align-items-center justify-content-between px-3 bg-white border-bottom sticky-top" 
+        style={{ 
+          zIndex: 1060, 
+          top: 0, 
+          height: 50,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        }}
+      >
         <button 
           type="button"
-          onClick={() => navigate(-1)} 
-          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: '#0F172A', display: 'flex', alignItems: 'center' }}
+          onClick={handleBack} 
+          aria-label="ফিরে যান"
+          style={{ width: 36, height: 36, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <IconArrowLeft size={22} />
+          <IconArrowLeft size={22} stroke={2.5} />
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0, fontFamily: 'inherit' }}>
+        <h1 style={{ fontSize: 17, fontWeight: 900, color: '#0F172A', margin: 0, fontFamily: 'inherit' }}>
           Profile
         </h1>
-        <button 
-          type="button"
-          onClick={() => doctor && triggerShare({
-            title: doctor.name,
-            text: `${specialtyName} | Doctor Booklet`,
-            url: window.location.href,
-            image: doctor.photo || DEMO_AVATAR
-          })}
-          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: '#0F172A', display: 'flex', alignItems: 'center' }}
-        >
-          <IconShare size={20} />
-        </button>
+        {/* Right Actions: Favorite (Left) + Share (Right) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Favorite Button */}
+          <button 
+            type="button"
+            onClick={() => doctor && toggleFavoriteDoctor(doctor)}
+            aria-label={isFav ? "পছন্দ তালিকা থেকে সরান" : "পছন্দ তালিকায় যুক্ত করুন"}
+            style={{ 
+              width: 36, 
+              height: 36, 
+              background: 'none', 
+              border: 'none', 
+              padding: 0, 
+              cursor: 'pointer', 
+              color: isFav ? '#EF4444' : '#0F172A', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}
+          >
+            <IconHeart 
+              size={20} 
+              fill={isFav ? '#EF4444' : 'none'} 
+              color={isFav ? '#EF4444' : '#0F172A'} 
+            />
+          </button>
+
+          {/* Share Button */}
+          <button 
+            type="button"
+            onClick={() => doctor && triggerShare({
+              title: doctor.name,
+              text: `${specialtyName} | Doctor Booklet`,
+              url: window.location.href,
+              image: doctor.photo || DEMO_AVATAR
+            })}
+            aria-label="শেয়ার করুন"
+            style={{ 
+              width: 36, 
+              height: 36, 
+              background: 'none', 
+              border: 'none', 
+              padding: 0, 
+              cursor: 'pointer', 
+              color: '#0F172A', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}
+          >
+            <IconShare size={20} />
+          </button>
+        </div>
       </div>
 
       {/* 1. Top Breadcrumb Line (Desktop Only) */}
@@ -440,7 +512,7 @@ function DoctorDetailPageContent() {
             <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: mutedTextColor, display: 'block', marginBottom: 2 }}>Total Experience</span>
               <span style={{ fontSize: 14.5, fontWeight: 900, color: darkTextColor }}>
-                {doctor?.total_experience?.label || (doctor?.experience ? `${doctor.experience}+ Years` : 'Experienced')}
+                {formattedExperience}
               </span>
             </div>
             <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid #E2E8F0', padding: '0 4px' }}>
@@ -1765,6 +1837,9 @@ function DoctorDetailPageContent() {
         @media (max-width: 991px) {
           .db-topbar, .db-main-header, .navbar, .doc-detail-breadcrumb, footer {
             display: none !important;
+          }
+          .page-wrapper {
+            padding-top: 0 !important;
           }
           .doc-detail-container {
             padding-top: 0 !important;

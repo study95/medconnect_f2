@@ -72,13 +72,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <FavoritesProvider>
-              <SubscriptionProvider>
-                <DialogProvider>
+            <DialogProvider>
+              <FavoritesProvider>
+                <SubscriptionProvider>
                   <App />
-                </DialogProvider>
-              </SubscriptionProvider>
-            </FavoritesProvider>
+                </SubscriptionProvider>
+              </FavoritesProvider>
+            </DialogProvider>
           </AuthProvider>
         </ThemeProvider>
         {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />}
