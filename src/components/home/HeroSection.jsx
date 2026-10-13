@@ -310,6 +310,376 @@ function SearchablePopup({ title, placeholder, items, getLabel, onClose, onSelec
   )
 }
 
+// ── Unified Location Tab ─────────────────────────────────────────────
+function UnifiedLocationTab({ locationParams, setLocationParams, locationLabel, setLocationLabel }) {
+  const {
+    divisions, districts, upazilas,
+    selectedDivision, setSelectedDivision,
+    selectedDistrict, setSelectedDistrict,
+    selectedUpazila, setSelectedUpazila,
+    loadingDistricts, loadingUpazilas
+  } = useLocations()
+
+  const [step, setStep] = useState(() => {
+    if (locationParams.district_id) return 'upazila'
+    if (locationParams.division_id) return 'district'
+    return 'division'
+  })
+
+  const [divName, setDivName] = useState(() => {
+    if (!locationLabel) return ''
+    return locationLabel.split('>')[0]?.trim() || ''
+  })
+  const [distName, setDistName] = useState(() => {
+    if (!locationLabel) return ''
+    return locationLabel.split('>')[1]?.trim() || ''
+  })
+
+  useEffect(() => {
+    if (locationParams.division_id && !selectedDivision) {
+      setSelectedDivision(locationParams.division_id)
+    }
+    if (locationParams.district_id && !selectedDistrict) {
+      setSelectedDistrict(locationParams.district_id)
+    }
+  }, [locationParams])
+
+  const handleDivSelect = (div) => {
+    setSelectedDivision(div.id)
+    const name = div.bangla_name || div.name
+    setDivName(name)
+    setLocationParams(prev => ({ ...prev, division_id: div.id, district_id: '', upazila_id: '' }))
+    setLocationLabel(name)
+    setStep('district')
+  }
+
+  const handleDistSelect = (dist) => {
+    setSelectedDistrict(dist.id)
+    const name = dist.bangla_name || dist.name
+    setDistName(name)
+    setLocationParams(prev => ({
+      ...prev,
+      division_id: selectedDivision || prev?.division_id,
+      district_id: dist.id,
+      upazila_id: ''
+    }))
+    setLocationLabel(`${divName} > ${name}`)
+    setStep('upazila')
+  }
+
+  const handleUpzSelect = (upz) => {
+    setSelectedUpazila(upz.id)
+    const name = upz.bangla_name || upz.name
+    setLocationParams(prev => ({
+      ...prev,
+      division_id: selectedDivision || prev?.division_id,
+      district_id: selectedDistrict || prev?.district_id,
+      upazila_id: upz.id
+    }))
+    setLocationLabel(`${divName} > ${distName} > ${name}`)
+  }
+
+  const handleClearLocation = () => {
+    setSelectedDivision('')
+    setSelectedDistrict('')
+    setSelectedUpazila('')
+    setDivName('')
+    setDistName('')
+    setLocationLabel('')
+    setLocationParams({})
+    setStep('division')
+  }
+
+  return (
+    <div className="unified-loc-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0 }}>
+      {locationLabel && (
+        <div className="unified-loc-selected-bar">
+          <div className="d-flex align-items-center gap-2">
+            <IconMapPin size={16} color="#00803D" />
+            <span className="unified-loc-selected-text">
+              <strong>নির্বাচিত:</strong> {locationLabel}
+            </span>
+          </div>
+          <button type="button" onClick={handleClearLocation} className="unified-loc-clear-btn" title="মুছে ফেলুন">
+            <IconX size={16} />
+          </button>
+        </div>
+      )}
+
+      <div className="unified-loc-nav-bar">
+        {step !== 'division' && (
+          <button
+            type="button"
+            className="unified-loc-back-btn"
+            onClick={() => {
+              if (step === 'upazila') setStep('district')
+              else if (step === 'district') setStep('division')
+            }}
+          >
+            <IconChevronLeft size={16} /> পূর্ববর্তী
+          </button>
+        )}
+        <span className="unified-loc-step-title">
+          {step === 'division' && 'বিভাগ নির্বাচন করুন:'}
+          {step === 'district' && `${divName} এর জেলা নির্বাচন করুন:`}
+          {step === 'upazila' && `${distName} এর উপজেলা নির্বাচন করুন:`}
+        </span>
+      </div>
+
+      <div className="unified-loc-grid">
+        {step === 'division' && (
+          divisions?.map((div) => {
+            const isSel = locationParams.division_id === div.id
+            return (
+              <button
+                key={div.id}
+                type="button"
+                className={`unified-loc-card ${isSel ? 'active' : ''}`}
+                onClick={() => handleDivSelect(div)}
+              >
+                <IconMapPin size={16} color={isSel ? '#00803D' : '#64748B'} />
+                <span>{div.bangla_name || div.name}</span>
+                {isSel && <IconCheck size={14} color="#00803D" style={{ marginLeft: 'auto' }} />}
+              </button>
+            )
+          })
+        )}
+
+        {step === 'district' && (
+          loadingDistricts ? (
+            <div style={{ gridColumn: '1 / -1', padding: '24px 0', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+              জেলা লোড হচ্ছে...
+            </div>
+          ) : (
+            districts?.map((dist) => {
+              const isSel = locationParams.district_id === dist.id
+              return (
+                <button
+                  key={dist.id}
+                  type="button"
+                  className={`unified-loc-card ${isSel ? 'active' : ''}`}
+                  onClick={() => handleDistSelect(dist)}
+                >
+                  <IconMapPin size={16} color={isSel ? '#00803D' : '#64748B'} />
+                  <span>{dist.bangla_name || dist.name}</span>
+                  {isSel && <IconCheck size={14} color="#00803D" style={{ marginLeft: 'auto' }} />}
+                </button>
+              )
+            })
+          )
+        )}
+
+        {step === 'upazila' && (
+          loadingUpazilas ? (
+            <div style={{ gridColumn: '1 / -1', padding: '24px 0', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+              উপজেলা লোড হচ্ছে...
+            </div>
+          ) : (
+            upazilas?.map((upz) => {
+              const isSel = locationParams.upazila_id === upz.id
+              return (
+                <button
+                  key={upz.id}
+                  type="button"
+                  className={`unified-loc-card ${isSel ? 'active' : ''}`}
+                  onClick={() => handleUpzSelect(upz)}
+                >
+                  <IconMapPin size={16} color={isSel ? '#00803D' : '#64748B'} />
+                  <span>{upz.bangla_name || upz.name}</span>
+                  {isSel && <IconCheck size={14} color="#00803D" style={{ marginLeft: 'auto' }} />}
+                </button>
+              )
+            })
+          )
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Unified Specialty Tab ──────────────────────────────────────────
+function UnifiedSpecialtyTab({
+  activeSpecialtiesList,
+  selectedSpecialty,
+  setSelectedSpecialty,
+  specialtyLabel,
+  setSpecialtyLabel,
+  getMobileSpecialtyMeta
+}) {
+  const [specQuery, setSpecQuery] = useState('')
+
+  const filtered = activeSpecialtiesList.filter(s => {
+    if (!specQuery.trim()) return true
+    const q = specQuery.trim().toLowerCase()
+    const bn = (s.name_bn || s.title_bn || s.name || '').toLowerCase()
+    const en = (s.name_en || s.title_en || s.name || '').toLowerCase()
+    return bn.includes(q) || en.includes(q)
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0 }}>
+      <div className="hero-mobile-specialties-popup-search" style={{ padding: '0 0 12px 0', background: 'transparent', flexShrink: 0 }}>
+        <div className="hero-mobile-specialties-search-box">
+          <IconSearch size={18} color="#00803D" />
+          <input
+            type="text"
+            placeholder="বিভাগের নাম লিখে খুঁজুন (মেডিসিন, হৃদরোগ...)"
+            value={specQuery}
+            onChange={(e) => setSpecQuery(e.target.value)}
+            className="hero-mobile-specialties-search-input"
+          />
+          {specQuery && (
+            <button
+              type="button"
+              onClick={() => setSpecQuery('')}
+              className="hero-mobile-specialties-search-clear"
+            >
+              <IconX size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="hero-mobile-specialties-popup-grid" style={{ padding: '0', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        {filtered.map(spec => {
+          const meta = getMobileSpecialtyMeta(spec)
+          const isSel = String(selectedSpecialty) === String(spec.id) || specialtyLabel === (spec.name_bn || meta.name)
+          return (
+            <div
+              key={spec.id || meta.name}
+              className={`hero-mobile-specialties-popup-card unified-spec-card ${isSel ? 'active' : ''}`}
+              style={{
+                backgroundColor: isSel ? '#E8F8F2' : meta.bg,
+                borderColor: isSel ? '#00803D' : meta.border,
+                borderWidth: isSel ? '2px' : '1px',
+                position: 'relative',
+                boxShadow: isSel ? '0 4px 12px rgba(0, 128, 61, 0.18)' : 'none'
+              }}
+              onClick={() => {
+                if (isSel) {
+                  setSelectedSpecialty('')
+                  setSpecialtyLabel('')
+                } else {
+                  setSelectedSpecialty(spec.id)
+                  setSpecialtyLabel(spec.name_bn || spec.name || meta.name)
+                }
+              }}
+            >
+              {isSel && (
+                <div className="unified-card-badge">
+                  <IconCheck size={11} color="#FFFFFF" stroke={3} />
+                </div>
+              )}
+              <div className="hero-mobile-specialty-icon">
+                {meta.icon}
+              </div>
+              <div className="hero-mobile-specialty-name" style={{ fontWeight: isSel ? 800 : 700, color: isSel ? '#006630' : '#1E293B' }}>
+                {meta.name}
+              </div>
+            </div>
+          )
+        })}
+        {filtered.length === 0 && (
+          <div className="hero-mobile-specialties-empty">
+            <IconSearch size={32} color="#94A3B8" />
+            <div>কোনো বিশেষজ্ঞ বিভাগ পাওয়া যায়নি</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Unified Hospital Tab ───────────────────────────────────────────
+function UnifiedHospitalTab({
+  hospitals,
+  selectedHospital,
+  setSelectedHospital,
+  hospitalLabel,
+  setHospitalLabel
+}) {
+  const [hospQuery, setHospQuery] = useState('')
+
+  const filteredHospitals = (hospitals || []).filter(h => {
+    if (!hospQuery.trim()) return true
+    const q = hospQuery.trim().toLowerCase()
+    const bn = (h.name_bn || h.name || '').toLowerCase()
+    const en = (h.name || '').toLowerCase()
+    const loc = (h.address || h.city || '').toLowerCase()
+    return bn.includes(q) || en.includes(q) || loc.includes(q)
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0 }}>
+      <div className="hero-mobile-specialties-popup-search" style={{ padding: '0 0 12px 0', background: 'transparent', flexShrink: 0 }}>
+        <div className="hero-mobile-specialties-search-box">
+          <IconSearch size={18} color="#00803D" />
+          <input
+            type="text"
+            placeholder="হাসপাতালের নাম লিখে খুঁজুন..."
+            value={hospQuery}
+            onChange={(e) => setHospQuery(e.target.value)}
+            className="hero-mobile-specialties-search-input"
+          />
+          {hospQuery && (
+            <button
+              type="button"
+              onClick={() => setHospQuery('')}
+              className="hero-mobile-specialties-search-clear"
+            >
+              <IconX size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="unified-hospital-list">
+        {filteredHospitals.map(h => {
+          const isSel = String(selectedHospital) === String(h.id) || hospitalLabel === (h.name_bn || h.name)
+          return (
+            <div
+              key={h.id}
+              className={`unified-hospital-card ${isSel ? 'active' : ''}`}
+              onClick={() => {
+                if (isSel) {
+                  setSelectedHospital('')
+                  setHospitalLabel('')
+                } else {
+                  setSelectedHospital(h.id)
+                  setHospitalLabel(h.name_bn || h.name)
+                }
+              }}
+            >
+              <div className="unified-hospital-icon-box">
+                <IconBuildingHospital size={20} color={isSel ? '#00803D' : '#00B875'} />
+              </div>
+              <div className="unified-hospital-info">
+                <div className="unified-hospital-name">{h.name_bn || h.name}</div>
+                {(h.address || h.city) && (
+                  <div className="unified-hospital-sub">{h.address || h.city}</div>
+                )}
+              </div>
+              {isSel ? (
+                <div className="unified-check-circle active">
+                  <IconCheck size={14} color="#FFFFFF" stroke={3} />
+                </div>
+              ) : (
+                <div className="unified-check-circle" />
+              )}
+            </div>
+          )
+        })}
+        {filteredHospitals.length === 0 && (
+          <div className="hero-mobile-specialties-empty">
+            <IconBuildingHospital size={32} color="#94A3B8" />
+            <div>কোনো হাসপাতাল পাওয়া যায়নি</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Hero Section ───────────────────────────────────────────────
 const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const navigate = useNavigate()
@@ -376,6 +746,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
   const [searchText, setSearchText] = useState('')
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false)
+  const [showUnifiedModal, setShowUnifiedModal] = useState(false)
+  const [unifiedTab, setUnifiedTab] = useState('specialty')
   const [showAllSpecialtiesPopup, setShowAllSpecialtiesPopup] = useState(false)
   const [specialtySearchQuery, setSpecialtySearchQuery] = useState('')
   const [activeSlide, setActiveSlide] = useState(0)
@@ -484,6 +856,34 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     staleTime: 30 * 60 * 1000
   })
   const specialties = specialtiesQuery.data || []
+
+  // Fetch hospitals for filter popup
+  const hospitalsQuery = useQuery({
+    queryKey: ['hospitals-hero-list'],
+    queryFn: async () => {
+      const res = await getHospitals({ per_page: 50 })
+      return res.data?.data || res.data || []
+    },
+    staleTime: 30 * 60 * 1000
+  })
+  const hospitals = hospitalsQuery.data || []
+
+  const activeFiltersCount = [
+    locationLabel ? 1 : 0,
+    specialtyLabel ? 1 : 0,
+    hospitalLabel ? 1 : 0,
+    selectedDate ? 1 : 0
+  ].reduce((a, b) => a + b, 0)
+
+  const handleResetAllFilters = () => {
+    setLocationLabel('')
+    setLocationParams({})
+    setSpecialtyLabel('')
+    setSelectedSpecialty('')
+    setHospitalLabel('')
+    setSelectedHospital('')
+    setSelectedDate('')
+  }
 
   const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
 
@@ -962,22 +1362,24 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   }
 
   const handleSearch = (e) => {
-    e.preventDefault()
-    const params = {}
-    if (locationParams.division_id) params.division_id = locationParams.division_id
-    if (locationParams.district_id) params.district_id = locationParams.district_id
-    if (locationParams.upazila_id) params.upazila_id = locationParams.upazila_id
-    if (locationParams.union_id) params.union_id = locationParams.union_id
-    if (selectedSpecialty) params.specialty_id = selectedSpecialty
-    if (selectedHospital) params.hospital_id = selectedHospital
-    if (selectedDate) params.date = selectedDate
-    if (searchText.trim()) params.search = searchText.trim()
-
-    if (selectedHospital) {
-      navigate(`/hospitals?${new URLSearchParams(params).toString()}`)
-    } else {
-      navigate(`/doctors?${new URLSearchParams(params).toString()}`)
+    if (e && e.preventDefault) e.preventDefault()
+    const params = new URLSearchParams()
+    if (locationParams.division_id) params.set('division_id', locationParams.division_id)
+    if (locationParams.district_id) params.set('district_id', locationParams.district_id)
+    if (locationParams.upazila_id) params.set('upazila_id', locationParams.upazila_id)
+    if (locationParams.union_id) params.set('union_id', locationParams.union_id)
+    if (selectedSpecialty) {
+      params.set('specialty_id', selectedSpecialty)
+      if (specialtyLabel) params.set('specialty_name', specialtyLabel)
     }
+    if (selectedHospital) {
+      params.set('hospital_id', selectedHospital)
+      if (hospitalLabel) params.set('hospital_name', hospitalLabel)
+    }
+    if (selectedDate) params.set('date', selectedDate)
+    if (searchText.trim()) params.set('search', searchText.trim())
+
+    navigate(`/doctors?${params.toString()}`)
   }
 
   const handleScrollDown = () => {
@@ -1344,9 +1746,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
             <button
               type="button"
-              onClick={() => setShowMobileFilterModal(true)}
+              onClick={() => {
+                setUnifiedTab('specialty')
+                setShowUnifiedModal(true)
+              }}
               className={`hero-mobile-filter-btn ${locationLabel || specialtyLabel || hospitalLabel ? 'active' : ''}`}
-              title="ফিল্টার অপশন"
+              title="ফিল্টার ও অনুসন্ধান"
             >
               <IconAdjustmentsHorizontal size={22} />
               {(locationLabel || specialtyLabel || hospitalLabel) && (
@@ -1360,7 +1765,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             {/* Pill 1: অবস্থান */}
             <button
               type="button"
-              onClick={() => setShowLocationPopup(true)}
+              onClick={() => {
+                setUnifiedTab('location')
+                setShowUnifiedModal(true)
+              }}
               className={`hero-mobile-filter-pill ${locationLabel ? 'active' : ''}`}
             >
               <IconMapPin size={15} color="#00803D" stroke={2.2} />
@@ -1384,7 +1792,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             {/* Pill 2: বিশেষজ্ঞতা */}
             <button
               type="button"
-              onClick={() => setShowSpecialtyPopup(true)}
+              onClick={() => {
+                setUnifiedTab('specialty')
+                setShowUnifiedModal(true)
+              }}
               className={`hero-mobile-filter-pill ${specialtyLabel ? 'active' : ''}`}
             >
               <IconStethoscope size={15} color="#00803D" stroke={2.2} />
@@ -1408,7 +1819,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             {/* Pill 3: হাসপাতাল */}
             <button
               type="button"
-              onClick={() => setShowHospitalPopup(true)}
+              onClick={() => {
+                setUnifiedTab('hospital')
+                setShowUnifiedModal(true)
+              }}
               className={`hero-mobile-filter-pill ${hospitalLabel ? 'active' : ''}`}
             >
               <IconBuildingHospital size={15} color="#00803D" stroke={2.2} />
@@ -1724,123 +2138,126 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         </div>
       </div>
 
-      {/* 4. Mobile Filter Bottom Sheet Modal */}
-      {showMobileFilterModal && (
-        <div className="loc-popup-overlay" onClick={() => setShowMobileFilterModal(false)}>
-          <div className="hero-mobile-filter-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="hero-mobile-filter-header">
-              <div className="hero-mobile-filter-title">অনুসন্ধান ফিল্টার</div>
+      {/* 4. Smart Unified Search Bottom Sheet Modal (Portal to body for top z-index) */}
+      {showUnifiedModal && typeof document !== 'undefined' && createPortal(
+        <div className="hero-mobile-unified-overlay" onClick={() => setShowUnifiedModal(false)}>
+          <div className="hero-mobile-unified-popup" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="hero-mobile-unified-header">
+              <div>
+                <div className="hero-mobile-unified-title">
+                  ডাক্তার ও সেবা অনুসন্ধান
+                  {activeFiltersCount > 0 && (
+                    <span className="hero-mobile-unified-badge">
+                      {toBnNumber(activeFiltersCount)}টি ফিল্টার সক্রিয়
+                    </span>
+                  )}
+                </div>
+                <div className="hero-mobile-unified-sub">
+                  পছন্দের বিভাগ, অবস্থান বা হাসপাতাল বেছে নিন
+                </div>
+              </div>
               <button
                 type="button"
                 className="loc-close-btn"
-                onClick={() => setShowMobileFilterModal(false)}
+                onClick={() => setShowUnifiedModal(false)}
+                title="বন্ধ করুন"
               >
                 <IconX size={20} />
               </button>
             </div>
 
-            <div className="hero-mobile-filter-body">
-              {/* Location Selector */}
-              <div
-                className="hero-mobile-filter-item"
-                onClick={() => { setShowMobileFilterModal(false); setShowLocationPopup(true) }}
-              >
-                <div className="hero-mobile-filter-icon-box">
-                  <IconMapPin size={18} color="#00B875" />
-                </div>
-                <div className="hero-mobile-filter-item-info">
-                  <span className="hero-mobile-filter-item-label">লোকেশন</span>
-                  <span className="hero-mobile-filter-item-val">
-                    {locationLabel || 'লোকেশন নির্বাচন করুন'}
-                  </span>
-                </div>
-                <IconChevronRight size={18} color="#94A3B8" />
-              </div>
-
-              {/* Specialty Selector */}
-              <div
-                className="hero-mobile-filter-item"
-                onClick={() => { setShowMobileFilterModal(false); setShowSpecialtyPopup(true) }}
-              >
-                <div className="hero-mobile-filter-icon-box">
-                  <IconStethoscope size={18} color="#00B875" />
-                </div>
-                <div className="hero-mobile-filter-item-info">
-                  <span className="hero-mobile-filter-item-label">বিশেষজ্ঞতা</span>
-                  <span className="hero-mobile-filter-item-val">
-                    {specialtyLabel || 'বিশেষজ্ঞতা নির্বাচন করুন'}
-                  </span>
-                </div>
-                <IconChevronRight size={18} color="#94A3B8" />
-              </div>
-
-              {/* Hospital Selector */}
-              <div
-                className="hero-mobile-filter-item"
-                onClick={() => { setShowMobileFilterModal(false); setShowHospitalPopup(true) }}
-              >
-                <div className="hero-mobile-filter-icon-box">
-                  <IconBuildingHospital size={18} color="#00B875" />
-                </div>
-                <div className="hero-mobile-filter-item-info">
-                  <span className="hero-mobile-filter-item-label">হাসপাতাল</span>
-                  <span className="hero-mobile-filter-item-val">
-                    {hospitalLabel || 'হাসপাতাল নির্বাচন করুন'}
-                  </span>
-                </div>
-                <IconChevronRight size={18} color="#94A3B8" />
-              </div>
-
-              {/* Date Selector */}
-              <div
-                className="hero-mobile-filter-item"
-                onClick={(e) => {
-                  setShowMobileFilterModal(false)
-                  setTimeout(() => openDatePicker(e), 150)
-                }}
-              >
-                <div className="hero-mobile-filter-icon-box">
-                  <IconCalendarEvent size={18} color="#00B875" />
-                </div>
-                <div className="hero-mobile-filter-item-info">
-                  <span className="hero-mobile-filter-item-label">তারিখ</span>
-                  <span className="hero-mobile-filter-item-val">
-                    {getDateLabel()}
-                  </span>
-                </div>
-                <IconChevronRight size={18} color="#94A3B8" />
-              </div>
-            </div>
-
-            <div className="hero-mobile-filter-footer">
+            {/* Segmented Tab Bar */}
+            <div className="hero-mobile-unified-tabs">
               <button
                 type="button"
-                className="hero-mobile-filter-reset-btn"
-                onClick={() => {
-                  setLocationLabel('')
-                  setLocationParams({})
-                  setSpecialtyLabel('')
-                  setSelectedSpecialty('')
-                  setHospitalLabel('')
-                  setSelectedHospital('')
-                  setSelectedDate('')
-                }}
+                className={`hero-mobile-unified-tab ${unifiedTab === 'specialty' ? 'active' : ''}`}
+                onClick={() => setUnifiedTab('specialty')}
+              >
+                <IconStethoscope size={16} stroke={2.2} />
+                <span>বিশেষজ্ঞতা</span>
+                {specialtyLabel && <span className="unified-tab-dot" />}
+              </button>
+
+              <button
+                type="button"
+                className={`hero-mobile-unified-tab ${unifiedTab === 'location' ? 'active' : ''}`}
+                onClick={() => setUnifiedTab('location')}
+              >
+                <IconMapPin size={16} stroke={2.2} />
+                <span>অবস্থান</span>
+                {locationLabel && <span className="unified-tab-dot" />}
+              </button>
+
+              <button
+                type="button"
+                className={`hero-mobile-unified-tab ${unifiedTab === 'hospital' ? 'active' : ''}`}
+                onClick={() => setUnifiedTab('hospital')}
+              >
+                <IconBuildingHospital size={16} stroke={2.2} />
+                <span>হাসপাতাল</span>
+                {hospitalLabel && <span className="unified-tab-dot" />}
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="hero-mobile-unified-content">
+              {unifiedTab === 'specialty' && (
+                <UnifiedSpecialtyTab
+                  activeSpecialtiesList={activeSpecialtiesList}
+                  selectedSpecialty={selectedSpecialty}
+                  setSelectedSpecialty={setSelectedSpecialty}
+                  specialtyLabel={specialtyLabel}
+                  setSpecialtyLabel={setSpecialtyLabel}
+                  getMobileSpecialtyMeta={getMobileSpecialtyMeta}
+                />
+              )}
+
+              {unifiedTab === 'location' && (
+                <UnifiedLocationTab
+                  locationParams={locationParams}
+                  setLocationParams={setLocationParams}
+                  locationLabel={locationLabel}
+                  setLocationLabel={setLocationLabel}
+                />
+              )}
+
+              {unifiedTab === 'hospital' && (
+                <UnifiedHospitalTab
+                  hospitals={hospitals}
+                  selectedHospital={selectedHospital}
+                  setSelectedHospital={setSelectedHospital}
+                  hospitalLabel={hospitalLabel}
+                  setHospitalLabel={setHospitalLabel}
+                />
+              )}
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="hero-mobile-unified-footer">
+              <button
+                type="button"
+                className="hero-mobile-unified-reset-btn"
+                onClick={handleResetAllFilters}
               >
                 রিসেট
               </button>
               <button
                 type="button"
-                className="hero-mobile-filter-apply-btn"
+                className="hero-mobile-unified-search-btn"
                 onClick={(e) => {
-                  setShowMobileFilterModal(false)
+                  setShowUnifiedModal(false)
                   handleSearch(e)
                 }}
               >
-                খুঁজুন
+                <IconSearch size={18} stroke={2.5} />
+                <span>ডাক্তার অনুসন্ধান করুন</span>
+                <IconArrowRight size={18} />
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 5. All Specialties Mobile Popup / Modal (Rendered into document.body to ensure top z-index over bottom nav) */}
@@ -3742,6 +4159,345 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             font-size: 15px;
             box-shadow: 0 4px 14px rgba(0, 184, 117, 0.3);
             cursor: pointer;
+          }
+
+          /* ── 8. Smart Unified Search Bottom Sheet Modal ── */
+          .hero-mobile-unified-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            animation: locFadeIn 0.2s ease;
+          }
+
+          .hero-mobile-unified-popup {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 480px;
+            height: 82vh;
+            height: 82dvh;
+            max-height: 85vh;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+            animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+          }
+
+          .hero-mobile-unified-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 16px 18px 12px 18px;
+            border-bottom: 1px solid #F1F5F9;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-unified-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-unified-badge {
+            background: #E8F8F0;
+            color: #00803D;
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 184, 117, 0.2);
+          }
+
+          .hero-mobile-unified-sub {
+            font-size: 12px;
+            color: #64748B;
+            margin-top: 3px;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-unified-tabs {
+            display: flex;
+            background: #F8FAFC;
+            padding: 8px 16px;
+            gap: 8px;
+            border-bottom: 1px solid #E2E8F0;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-unified-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            color: #64748B;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Hind Siliguri', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+          }
+
+          .hero-mobile-unified-tab.active {
+            background: #00803D;
+            border-color: #00803D;
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(0, 128, 61, 0.25);
+          }
+
+          .unified-tab-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #FF5252;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+          }
+          .hero-mobile-unified-tab.active .unified-tab-dot {
+            background: #FFD54F;
+          }
+
+          .hero-mobile-unified-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 16px;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+
+          .hero-mobile-unified-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)) 16px;
+            background: #FFFFFF;
+            border-top: 1px solid #F1F5F9;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-unified-reset-btn {
+            flex: 1;
+            height: 48px;
+            border-radius: 12px;
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            color: #475569;
+            font-weight: 700;
+            font-size: 13.5px;
+            cursor: pointer;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-unified-search-btn {
+            flex: 2.2;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00B875 0%, #00803D 100%);
+            border: none;
+            color: #FFFFFF;
+            font-weight: 800;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(0, 184, 117, 0.35);
+            cursor: pointer;
+            font-family: 'Hind Siliguri', sans-serif;
+            transition: transform 0.15s ease;
+          }
+
+          .hero-mobile-unified-search-btn:active {
+            transform: scale(0.98);
+          }
+
+          /* Location styles inside unified sheet */
+          .unified-loc-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .unified-loc-selected-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #E8F8F2;
+            border: 1px solid #A7F3D0;
+            border-radius: 10px;
+            font-size: 12.5px;
+            color: #065F46;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .unified-loc-clear-btn {
+            background: none;
+            border: none;
+            color: #EF4444;
+            padding: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+          }
+          .unified-loc-nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 2px;
+          }
+          .unified-loc-back-btn {
+            background: #F1F5F9;
+            border: 1px solid #CBD5E1;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .unified-loc-step-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .unified-loc-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 4px;
+          }
+          .unified-loc-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1E293B;
+            font-family: 'Hind Siliguri', sans-serif;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s ease;
+          }
+          .unified-loc-card:active {
+            background: #F8FAFC;
+          }
+          .unified-loc-card.active {
+            background: #E8F8F2;
+            border-color: #00B875;
+            color: #00803D;
+          }
+
+          /* Hospital styles inside unified sheet */
+          .unified-hospital-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+          }
+          .unified-hospital-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          .unified-hospital-card.active {
+            background: #F0FDF4;
+            border-color: #00B875;
+          }
+          .unified-hospital-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #E8F8F2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .unified-hospital-info {
+            flex: 1;
+            overflow: hidden;
+          }
+          .unified-hospital-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', sans-serif;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .unified-hospital-sub {
+            font-size: 11.5px;
+            color: #64748B;
+            font-family: 'Hind Siliguri', sans-serif;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+          }
+          .unified-check-circle {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1.5px solid #CBD5E1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .unified-check-circle.active {
+            background: #00B875;
+            border-color: #00B875;
+          }
+          .unified-card-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00803D;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .loc-popup-box { max-width: 96vw; margin: 0 8px; }

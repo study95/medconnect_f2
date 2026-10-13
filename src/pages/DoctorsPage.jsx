@@ -127,7 +127,13 @@ function DoctorsPage() {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
-  } = useLocations()
+    setAllLocations,
+  } = useLocations({
+    division_id: searchParams.get('division_id') || '',
+    district_id: searchParams.get('district_id') || '',
+    upazila_id: searchParams.get('upazila_id') || '',
+    union_id: searchParams.get('union_id') || ''
+  })
 
   const { specialties } = useSpecialties()
   const { hospitals } = useHospitals({ per_page: 100 })
@@ -363,17 +369,14 @@ function DoctorsPage() {
     const exp     = searchParams.get('exp_range') || ''
     const qDate   = searchParams.get('date') || ''
 
-    setSelectedDivision(divId)
-    setSelectedDistrict(distId)
-    setSelectedUpazila(upaId)
-    setSelectedUnion(uniId)
+    setAllLocations({ division_id: divId, district_id: distId, upazila_id: upaId, union_id: uniId })
     setSearchText(qSearch)
     setSelectedSpecialty(specId)
     setSelectedHospital(hospId)
     setSelectedFee(fee)
     setSelectedExp(exp)
     setSelectedDate(qDate)
-  }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
+  }, [searchParams, setAllLocations])
 
   // Effective search keyword: immediately empty when searchText is cleared
   const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
@@ -477,12 +480,13 @@ function DoctorsPage() {
     const list = []
     if (selectedSpecialty) {
       const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
+      const passedName = searchParams.get('specialty_name') || searchParams.get('specialty')
       list.push({
         key: 'specialty',
-        label: item ? item.name || item.name_bn : 'Specialty',
+        label: item ? (item.name_bn || item.name) : (passedName || 'বিশেষজ্ঞতা'),
         clear: () => {
           setSelectedSpecialty('')
-          updateUrlParams({ specialty_id: '' })
+          updateUrlParams({ specialty_id: '', specialty_name: '' })
         }
       })
     }

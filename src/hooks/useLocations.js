@@ -15,11 +15,11 @@ import { useQuery } from '@tanstack/react-query'
 import { getDivisions, getDistricts, getUpazilas, getUnions } from '../api/locationApi'
 import { queryKeys } from '../lib/queryKeys'
 
-function useLocations() {
-  const [selectedDivision, setSelectedDivision] = useState('')
-  const [selectedDistrict, setSelectedDistrict] = useState('')
-  const [selectedUpazila, setSelectedUpazila]   = useState('')
-  const [selectedUnion, setSelectedUnion]       = useState('')
+function useLocations(initialState = {}) {
+  const [selectedDivision, setSelectedDivision] = useState(initialState.division_id || '')
+  const [selectedDistrict, setSelectedDistrict] = useState(initialState.district_id || '')
+  const [selectedUpazila, setSelectedUpazila]   = useState(initialState.upazila_id || '')
+  const [selectedUnion, setSelectedUnion]       = useState(initialState.union_id || '')
 
   // Divisions — cached 30min, fetched once
   const divisionsQuery = useQuery({
@@ -87,6 +87,13 @@ function useLocations() {
     setSelectedUnion('')
   }
 
+  const setAllLocations = ({ division_id = '', district_id = '', upazila_id = '', union_id = '' } = {}) => {
+    setSelectedDivision(division_id)
+    setSelectedDistrict(district_id)
+    setSelectedUpazila(upazila_id)
+    setSelectedUnion(union_id)
+  }
+
   return {
     divisions: divisionsQuery.data || [],
     districts: districtsQuery.data || [],
@@ -97,6 +104,7 @@ function useLocations() {
     setSelectedDistrict: handleSetDistrict,
     setSelectedUpazila: handleSetUpazila,
     setSelectedUnion,
+    setAllLocations,
     loadingDivisions: divisionsQuery.isLoading,
     loadingDistricts: districtsQuery.isLoading,
     loadingUpazilas: upazilasQuery.isLoading,
