@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { useQuery } from '@tanstack/react-query'
 import useLocations from '../../hooks/useLocations'
-import { getSpecialties } from '../../api/doctorApi'
+import { getSpecialties, getDoctors } from '../../api/doctorApi'
 import { getHospitals } from '../../api/hospitalApi'
 import {
   IconSearch,
@@ -25,9 +26,14 @@ import {
   IconAdjustmentsHorizontal,
   IconUsers,
   IconReportMedical,
-  IconArrowRight
+  IconArrowRight,
+  IconHeart,
+  IconStarFilled
 } from '@tabler/icons-react'
 import { getContent } from '../../utils/contentService'
+import { getMediaUrl } from '../../utils/mediaUtils'
+import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
+import { useFavorites } from '../../context/FavoritesContext'
 import ScrollReveal from '../common/ScrollReveal'
 
 // ── Location Popup Picker ───────────────────────────────────────────────────
@@ -370,6 +376,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
   const [searchText, setSearchText] = useState('')
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false)
+  const [showAllSpecialtiesPopup, setShowAllSpecialtiesPopup] = useState(false)
+  const [specialtySearchQuery, setSpecialtySearchQuery] = useState('')
   const [activeSlide, setActiveSlide] = useState(0)
   const [selectedDate, setSelectedDate] = useState('')
   const dateInputRef = useRef(null)
@@ -477,17 +485,466 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   })
   const specialties = specialtiesQuery.data || []
 
-  // Fetch hospitals — uses same cache key as useHospitals({ per_page: 100 })
-  // → If another component fetched hospitals with same params, this is instant (cache hit)
-  const hospitalsQuery = useQuery({
-    queryKey: ['hospitals', { per_page: 100 }],
+  const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
+
+  // Fetch today's doctors — uses same cache key as TodayDoctorsSection
+  const todayDoctorsQuery = useQuery({
+    queryKey: ['home-today-doctors'],
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 100 })
-      return res.data?.data || res.data?.data?.data || res.data || []
+      const res = await getDoctors({ date: 'today', per_page: 8 })
+      const raw = res.data?.data || res.data || []
+      return Array.isArray(raw) ? raw : []
     },
-    staleTime: 30 * 60 * 1000
+    staleTime: 5 * 60 * 1000
   })
-  const hospitals = hospitalsQuery.data || []
+  const todayDoctors = todayDoctorsQuery.data || []
+  const loadingTodayDoctors = todayDoctorsQuery.isLoading
+
+  // Helper converters for doctor card
+  const enToBn = { '0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯' }
+  const toBnNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
+
+  const getDoctorSpecialtyTitle = (doc) => {
+    if (doc.specialty_name) return doc.specialty_name
+    if (doc.speciality_name) return doc.speciality_name
+    if (doc.specialty?.name_bn || doc.specialty?.name) return doc.specialty.name_bn || doc.specialty.name
+    if (Array.isArray(doc.specialties) && doc.specialties[0]) {
+      const s = doc.specialties[0]
+      return typeof s === 'object' ? (s.name_bn || s.name || s.title_bn || s.title) : s
+    }
+    if (doc.department?.name_bn || doc.department?.name) return doc.department.name_bn || doc.department.name
+    if (doc.designation_bn || doc.designation) return doc.designation_bn || doc.designation
+    return 'বিশেষজ্ঞ চিকিৎসক'
+  }
+
+  const getDoctorHospitalTitle = (doc) => {
+    const matchedChamber = doc.matched_chamber || null
+    const activeChamber = matchedChamber || doc.primary_chamber || (Array.isArray(doc.chambers) ? doc.chambers.find(c => c.is_primary && c.is_active !== false) || doc.chambers[0] : null)
+    const name = activeChamber?.chamber_name_bn || activeChamber?.chamber_name || activeChamber?.hospital?.name_bn || activeChamber?.hospital?.name || doc.workplace_bn || doc.workplace || doc.hospital?.name
+    const loc = activeChamber?.city || activeChamber?.district_name || activeChamber?.district?.name_bn || activeChamber?.district?.name || doc.district?.name_bn || doc.district?.name || ''
+    if (name && loc) return `${name}, ${loc}`
+    return name || loc || 'বিশেষজ্ঞ চেম্বার'
+  }
+
+  const getDoctorRating = (doc) => {
+    const r = doc?.rating_avg ?? doc?.rating ?? doc?.average_rating ?? doc?.total_rating
+    if (r !== undefined && r !== null && r !== '') {
+      const num = Number(r)
+      if (!isNaN(num) && num > 0) return num.toFixed(1)
+    }
+    return '5.0'
+  }
+
+  const getDoctorReviewsCount = (doc) => {
+    const c = doc?.total_reviews ?? doc?.reviews_count ?? doc?.review_count ?? doc?.ratings_count ?? (Array.isArray(doc?.reviews) ? doc.reviews.length : null)
+    if (c !== undefined && c !== null && c !== '') {
+      const num = Number(c)
+      if (!isNaN(num) && num > 0) return num
+    }
+    return 120
+  }
+
+  // Helper to get concise, clean specialty titles for mobile chips
+  const cleanSpecialtyName = (rawName = '') => {
+    const n = (rawName || '').trim()
+    if (!n) return 'চিকিৎসা'
+    const lower = n.toLowerCase()
+    if (n.includes('হৃদরোগ') || n.includes('হার্ট') || lower.includes('cardio') || lower.includes('heart')) return 'হৃদরোগ'
+    if (n.includes('অর্থোপেডিক') || n.includes('হাড়') || lower.includes('ortho') || lower.includes('bone')) return 'অর্থোপেডিক'
+    if (n.includes('শিশু') || lower.includes('pediatric') || lower.includes('child')) return 'শিশু'
+    if (n.includes('স্ত্রী') || n.includes('প্রসূতি') || n.includes('নারী') || n.includes('গাইনি') || lower.includes('gyne') || lower.includes('obs')) return 'নারী ও প্রসূতি'
+    if (n.includes('ডেন্টাল') || n.includes('দাঁত') || n.includes('দন্ত') || lower.includes('dent') || lower.includes('tooth')) return 'ডেন্টাল'
+    if (n.includes('চোখ') || n.includes('চক্ষু') || lower.includes('eye') || lower.includes('ophthal')) return 'চোখ'
+    if (n.includes('কিডনি') || n.includes('নেফ্রোলজি') || lower.includes('nephro') || lower.includes('kidney')) return 'কিডনি'
+    if (n.includes('ক্যান্সার') || n.includes('অনকোলজি') || lower.includes('cancer') || lower.includes('oncol')) return 'ক্যান্সার'
+    if (n.includes('নিউরোলজি') || n.includes('স্নায়ু') || n.includes('নিউরো') || lower.includes('neuro') || lower.includes('brain')) return 'নিউরোলজি'
+    if (n.includes('মেডিসিন') || lower.includes('med') || n.includes('শ্বাস') || lower.includes('pulmon') || lower.includes('lung')) return 'মেডিসিন'
+    if (n.includes('লিভার') || lower.includes('hepat') || lower.includes('liver')) return 'লিভার'
+    if (n.includes('পরিপাক') || n.includes('গ্যাস্ট্রো') || n.includes('পাকস্থলী') || n.includes('পেট') || lower.includes('gastro') || lower.includes('stomach')) return 'গ্যাস্ট্রো'
+    if (n.includes('মানসিক') || n.includes('মনোরোগ') || lower.includes('psychiat') || lower.includes('mental')) return 'মানসিক'
+    if (n.includes('চর্ম') || n.includes('ডার্মা') || n.includes('যৌন') || n.includes('ত্বক') || lower.includes('dermat') || lower.includes('skin')) return 'চর্মরোগ'
+    if (n.includes('নাক') || n.includes('কান') || n.includes('গলা') || lower.includes('ent')) return 'ইএনটি'
+    if (n.includes('সার্জারি') || lower.includes('surgery')) return 'সার্জারি'
+    if (n.includes('ডায়াবেটিস') || n.includes('হরমোন') || lower.includes('diabet') || lower.includes('endocrin')) return 'ডায়াবেটিস'
+    if (n.includes('ইউরোলজি') || n.includes('মূত্র') || lower.includes('urol')) return 'ইউরোলজি'
+    
+    // Clean trailing redundant words
+    return n.replace(/বিশেষজ্ঞ/g, '').replace(/বিভাগ/g, '').replace(/ডাক্তার/g, '').trim() || n
+  }
+
+  // Helper function to resolve icon & pastel colors for dynamic specialties
+  const getMobileSpecialtyMeta = (spec) => {
+    const rawBn = spec.name_bn || spec.title_bn || ''
+    const rawEn = (spec.name_en || spec.title_en || spec.name || '').toLowerCase()
+    const combined = (rawBn + ' ' + rawEn).toLowerCase()
+    const displayName = cleanSpecialtyName(rawBn || spec.name)
+
+    // 1. Cardiology (হৃদরোগ)
+    if (combined.includes('হৃদরোগ') || combined.includes('হার্ট') || combined.includes('cardio') || combined.includes('heart')) {
+      return {
+        name: displayName,
+        bg: '#FFF1F2',
+        border: '#FFE4E6',
+        color: '#EF4444',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#EF4444" />
+            <path d="M7 6.5L7.5 5.5L8 6.5L9 7L8 7.5L7.5 8.5L7 7.5L6 7Z" fill="#FFFFFF" />
+            <circle cx="8" cy="7.2" r="0.7" fill="#FFFFFF" opacity="0.9" />
+          </svg>
+        )
+      }
+    }
+
+    // 2. Orthopedics (অর্থোপেডিক)
+    if (combined.includes('অর্থোপেডিক') || combined.includes('হাড়') || combined.includes('ortho') || combined.includes('bone')) {
+      return {
+        name: displayName,
+        bg: '#EFF6FF',
+        border: '#DBEAFE',
+        color: '#38BDF8',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M19.4 6.8c.8-.8.8-2 0-2.8s-2-.8-2.8 0l-.6.6c-.4.4-1 .4-1.4 0l-.2-.2c-.8-.8-2-.8-2.8 0s-.8 2 0 2.8l.6.6c.4.4.4 1 0 1.4L7.4 14c-.4.4-1 .4-1.4 0l-.6-.6c-.8-.8-2-.8-2.8 0s-.8 2 0 2.8l.2.2c.4.4.4 1 0 1.4l-.6.6c-.8.8-.8 2 0 2.8s2 .8 2.8 0l.6-.6c.4-.4 1-.4 1.4 0l.2.2c.8.8 2 .8 2.8 0s.8-2 0-2.8l-.6-.6c-.4-.4-.4-1 0-1.4l4.8-4.8c.4-.4 1-.4 1.4 0l.6.6c.8.8 2 .8 2.8 0s.8-2 0-2.8l-.2-.2c-.4-.4-.4-1 0-1.4l.6-.6z" fill="#38BDF8" />
+          </svg>
+        )
+      }
+    }
+
+    // 3. Pediatrics (শিশু)
+    if (combined.includes('শিশু') || combined.includes('pediatric') || combined.includes('child')) {
+      return {
+        name: displayName,
+        bg: '#FFF7ED',
+        border: '#FFEDD5',
+        color: '#F97316',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="13" r="7.5" fill="#FFF7ED" stroke="#F97316" strokeWidth="2.2" />
+            <path d="M12 5.5c-.8-1.5.8-2.2 1.4-.8" stroke="#F97316" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+            <circle cx="9.5" cy="12.5" r="1.1" fill="#F97316" />
+            <circle cx="14.5" cy="12.5" r="1.1" fill="#F97316" />
+            <path d="M10 15.2c.8.8 2.2.8 3 0" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="7.8" cy="14" r="0.8" fill="#FDBA74" />
+            <circle cx="16.2" cy="14" r="0.8" fill="#FDBA74" />
+            <path d="M4.5 11.5c-1 0-1.5 1-1.5 1.5s.5 1.5 1.5 1.5" stroke="#F97316" strokeWidth="2" strokeLinecap="round" />
+            <path d="M19.5 11.5c1 0 1.5 1 1.5 1.5s-.5 1.5-1.5 1.5" stroke="#F97316" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        )
+      }
+    }
+
+    // 4. Gynecology & Obs (নারী ও প্রসূতি)
+    if (combined.includes('স্ত্রী') || combined.includes('প্রসূতি') || combined.includes('নারী') || combined.includes('গাইনি') || combined.includes('gyne') || combined.includes('obs')) {
+      return {
+        name: displayName,
+        bg: '#FAF5FF',
+        border: '#F3E8FF',
+        color: '#9333EA',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="8.5" r="5" stroke="#9333EA" strokeWidth="2.8" fill="none" />
+            <path d="M12 13.5V21" stroke="#9333EA" strokeWidth="2.8" strokeLinecap="round" />
+            <path d="M8.5 17.5H15.5" stroke="#9333EA" strokeWidth="2.8" strokeLinecap="round" />
+          </svg>
+        )
+      }
+    }
+
+    // 5. Dental / দন্ত / দাঁত (ডেন্টাল)
+    if (combined.includes('ডেন্টাল') || combined.includes('দাঁত') || combined.includes('দন্ত') || combined.includes('dent') || combined.includes('tooth')) {
+      return {
+        name: displayName,
+        bg: '#F0FDF9',
+        border: '#CCFBF1',
+        color: '#06B6D4',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M7 3C4.5 3 3 5.2 3 8.2c0 3 1.5 5.2 2.5 8.2s1.5 5.1 2.5 5.1c1 0 1.5-2.1 2-4.1.5-2 1-2 2-2s1.5 0 2 2c.5 2 1 4.1 2 4.1s1.5-2.1 2.5-5.1c1-3 2.5-5.2 2.5-8.2C21 5.2 19.5 3 17 3c-2 0-3 1.5-4 1.5S10 3 7 3z" fill="#38BDF8" />
+            <path d="M9 6.5c-1.5.5-2.5 2-2.5 3.5" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" opacity="0.8" />
+          </svg>
+        )
+      }
+    }
+
+    // 6. Kidney / Nephrology (কিডনি)
+    if (combined.includes('কিডনি') || combined.includes('নেফ্রোলজি') || combined.includes('nephro') || combined.includes('kidney')) {
+      return {
+        name: displayName,
+        bg: '#F0FDFA',
+        border: '#CCFBF1',
+        color: '#0D9488',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M7 6c-2 0-3.5 1.8-3.5 4.5s1.5 5.5 3.5 5.5c2 0 2.5-2 2.5-3.5s-.5-2.5-1-3.5c.5-1.5 0-3-1.5-3z" fill="#0D9488" />
+            <path d="M17 6c2 0 3.5 1.8 3.5 4.5s-1.5 5.5-3.5 5.5c-2 0-2.5-2-2.5-3.5s.5-2.5 1-3.5c-.5-1.5 0-3 1.5-3z" fill="#14B8A6" />
+            <path d="M8.5 12.5h7" stroke="#5EEAD4" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        )
+      }
+    }
+
+    // 7. Oncology / Cancer (ক্যান্সার)
+    if (combined.includes('ক্যান্সার') || combined.includes('অনকোলজি') || combined.includes('cancer') || combined.includes('oncol')) {
+      return {
+        name: displayName,
+        bg: '#FAF5FF',
+        border: '#F3E8FF',
+        color: '#A855F7',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M7 20l5.5-10.5a3.5 3.5 0 1 1 5 3.5l-4.5 7" stroke="#A855F7" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M17 20l-5.5-10.5a3.5 3.5 0 1 0-5 3.5l4.5 7" stroke="#A855F7" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )
+      }
+    }
+
+    // 8. Gastroenterology / Digestive / Hepatology (গ্যাস্ট্রো / পরিপাকতন্ত্র)
+    if (combined.includes('পরিপাক') || combined.includes('গ্যাস্ট্রো') || combined.includes('পাকস্থলী') || combined.includes('পেট') || combined.includes('লিভার') || combined.includes('gastro') || combined.includes('stomach') || combined.includes('hepat')) {
+      return {
+        name: displayName,
+        bg: '#ECFDF5',
+        border: '#A7F3D0',
+        color: '#059669',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M13 3v3.5c0 1.2-.6 2.3-1.6 3.1-2 1.5-2.6 3.2-2.6 5.2 0 3 2.2 5.5 5.2 5.5 3.2 0 5.5-2.3 5.5-5.5 0-3.2-2-5.5-4-7l-1-1" fill="#10B981" />
+            <path d="M11 2v4M13.5 17.5c1.2.6 2.2 1.6 2.5 2.5" stroke="#047857" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        )
+      }
+    }
+
+    // 9. Psychiatry / Mental Health (মানসিক রোগ)
+    if (combined.includes('মানসিক') || combined.includes('মনোরোগ') || combined.includes('psychiat') || combined.includes('mental')) {
+      return {
+        name: displayName,
+        bg: '#F5F3FF',
+        border: '#DDD6FE',
+        color: '#7C3AED',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M6 19v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2" fill="#DDD6FE" />
+            <circle cx="12" cy="9" r="5.5" fill="#8B5CF6" />
+            <path d="M10 8.5c.5-.8 1.5-1 2-1s1.5.2 2 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="10" cy="10" r="0.8" fill="#FFFFFF" />
+            <circle cx="14" cy="10" r="0.8" fill="#FFFFFF" />
+          </svg>
+        )
+      }
+    }
+
+    // 10. Neurology (নিউরোলজি)
+    if (combined.includes('নিউরোলজি') || combined.includes('স্নায়ু') || combined.includes('নিউরো') || combined.includes('neuro') || combined.includes('brain')) {
+      return {
+        name: displayName,
+        bg: '#FFF1F5',
+        border: '#FFE4E8',
+        color: '#F43F5E',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 4C9.5 4 7.5 5.5 7.5 7.5c-1.8 0-3.5 1.4-3.5 3.5 0 .8.3 1.6.8 2.2C4.3 13.8 4 14.6 4 15.5 4 17.4 5.6 19 7.5 19h4.5V4z" fill="#FB7185" />
+            <path d="M12 4c2.5 0 4.5 1.5 4.5 3.5 1.8 0 3.5 1.4 3.5 3.5 0 .8-.3 1.6-.8 2.2.5.6.8 1.4.8 2.3 0 1.9-1.6 3.5-3.5 3.5H12V4z" fill="#F43F5E" />
+            <path d="M9 8.5c.5.8 1.5 1 2 1M8 13c1 0 1.5.8 1.5 1.5M15 8.5c-.5.8-1.5 1-2 1M16 13c-1 0-1.5.8-1.5 1.5" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+          </svg>
+        )
+      }
+    }
+
+    // 11. Ophthalmology (চোখ)
+    if (combined.includes('চোখ') || combined.includes('চক্ষু') || combined.includes('eye') || combined.includes('ophthal')) {
+      return {
+        name: displayName,
+        bg: '#F0F9FF',
+        border: '#E0F2FE',
+        color: '#0284C7',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 4.5C6.5 4.5 2 12 2 12s4.5 7.5 10 7.5 10-7.5 10-7.5-4.5-7.5-10-7.5z" fill="#0284C7" />
+            <circle cx="12" cy="12" r="4.2" fill="#FFFFFF" />
+            <circle cx="12" cy="12" r="2.2" fill="#0369A1" />
+            <circle cx="13" cy="11" r="0.7" fill="#FFFFFF" />
+          </svg>
+        )
+      }
+    }
+
+    // 12. Medicine / Pulmonology (মেডিসিন)
+    if (combined.includes('মেডিসিন') || combined.includes('med') || combined.includes('শ্বাস') || combined.includes('pulmon') || combined.includes('lung')) {
+      return {
+        name: displayName,
+        bg: '#FFF1F2',
+        border: '#FFE4E6',
+        color: '#E11D48',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v7M10 8l2 2 2-2" stroke="#E11D48" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M10.5 10.5c-2.8-.5-5.5 1.5-6 4.5-.5 3.5 1.2 6.5 4.5 6.5 1.5 0 2-1 2-2.5v-8.5z" fill="#FB7185" />
+            <path d="M13.5 10.5c2.8-.5 5.5 1.5 6 4.5.5 3.5-1.2 6.5-4.5 6.5-1.5 0-2-1-2-2.5v-8.5z" fill="#F43F5E" />
+          </svg>
+        )
+      }
+    }
+
+    // 13. ENT (ইএনটি)
+    if (combined.includes('নাক') || combined.includes('কান') || combined.includes('গলা') || combined.includes('ent')) {
+      return {
+        name: displayName,
+        bg: '#EEF2FF',
+        border: '#C7D2FE',
+        color: '#6366F1',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M14 3.5c3 1.5 4 4.5 4 7.5c0 4.5-2.5 7.5-6 8.5c-2.5.7-4 .2-5-1.5" stroke="#6366F1" strokeWidth="2.4" strokeLinecap="round" />
+            <path d="M10 7.5a3.5 3.5 0 0 0-3.5 3.5c0 2.5 1.5 4.5 3.5 5.5" stroke="#818CF8" strokeWidth="2.2" strokeLinecap="round" />
+            <circle cx="10" cy="11" r="1.5" fill="#6366F1" />
+          </svg>
+        )
+      }
+    }
+
+    // 14. Dermatology (চর্মরোগ)
+    if (combined.includes('চর্ম') || combined.includes('ডার্মা') || combined.includes('যৌন') || combined.includes('ত্বক') || combined.includes('dermat') || combined.includes('skin')) {
+      return {
+        name: displayName,
+        bg: '#FFF7ED',
+        border: '#FED7AA',
+        color: '#EA580C',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EA580C" strokeWidth="2.2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="9" fill="#FFF7ED" stroke="#EA580C" strokeWidth="2" />
+            <path d="M12 7v5l3 2" stroke="#EA580C" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="8" cy="9" r="1.5" fill="#EA580C" />
+            <circle cx="15" cy="8" r="1" fill="#EA580C" />
+          </svg>
+        )
+      }
+    }
+
+    // 15. Diabetes / Endocrinology (ডায়াবেটিস)
+    if (combined.includes('ডায়াবেটিস') || combined.includes('হরমোন') || combined.includes('diabet') || combined.includes('endocrin')) {
+      return {
+        name: displayName,
+        bg: '#FEF2F2',
+        border: '#FECDD3',
+        color: '#E11D48',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3l4.5 7.5C18 13 18 15 16.5 17.5A6 6 0 0 1 12 20a6 6 0 0 1-4.5-2.5C6 15 6 13 7.5 10.5L12 3z" fill="#F43F5E" />
+            <circle cx="12" cy="14" r="2" fill="#FFFFFF" />
+          </svg>
+        )
+      }
+    }
+
+    // 16. Surgery (সার্জারি)
+    if (combined.includes('সার্জারি') || combined.includes('surgery')) {
+      return {
+        name: displayName,
+        bg: '#F0FDFA',
+        border: '#99F6E4',
+        color: '#0D9488',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="6" cy="7" r="3" />
+            <circle cx="6" cy="17" r="3" />
+            <line x1="8.6" y1="8.6" x2="19" y2="19" />
+            <line x1="8.6" y1="15.4" x2="19" y2="5" />
+          </svg>
+        )
+      }
+    }
+
+    // 17. Urology (ইউরোলজি)
+    if (combined.includes('ইউরোলজি') || combined.includes('মূত্র') || combined.includes('urol')) {
+      return {
+        name: displayName,
+        bg: '#EFF6FF',
+        border: '#BFDBFE',
+        color: '#2563EB',
+        icon: (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="7" r="3" fill="#3B82F6" />
+            <path d="M12 10v3c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5" fill="#60A5FA" />
+          </svg>
+        )
+      }
+    }
+
+    // Default Clean Medical Fallback (Stethoscope badge)
+    return {
+      name: displayName,
+      bg: '#F0FDF4',
+      border: '#DCFCE7',
+      color: '#16A34A',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9.5" fill="#DCFCE7" />
+          <path d="M8 8a2 2 0 1 1 4 0v4a2 2 0 1 0 4 0V8" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="16" cy="8" r="1.5" fill="#16A34A" />
+        </svg>
+      )
+    }
+  }
+
+  // Fallback Specialties (10 top departments) in case backend data is loading
+  const fallbackSpecialties = [
+    { id: '1', name_bn: 'হৃদরোগ', name_en: 'Cardiology' },
+    { id: '2', name_bn: 'অর্থোপেডিক', name_en: 'Orthopedics' },
+    { id: '3', name_bn: 'শিশু', name_en: 'Pediatrics' },
+    { id: '4', name_bn: 'নারী ও প্রসূতি', name_en: 'Gynecology' },
+    { id: '5', name_bn: 'নিউরোলজি', name_en: 'Neurology' },
+    { id: '6', name_bn: 'চোখ', name_en: 'Ophthalmology' },
+    { id: '7', name_bn: 'ডেন্টাল', name_en: 'Dental' },
+    { id: '8', name_bn: 'মেডিসিন', name_en: 'Medicine' },
+    { id: '9', name_bn: 'চর্ম ও যৌন', name_en: 'Dermatology' },
+    { id: '10', name_bn: 'ইএনটি', name_en: 'ENT' }
+  ]
+
+  // Dynamic specialties list from database with fallback
+  const activeSpecialtiesList = (specialties && specialties.length > 0) ? specialties : fallbackSpecialties
+  // 10 items shown horizontally
+  const top10Specialties = activeSpecialtiesList.slice(0, 10)
+
+  // Filtered list for the All Specialties popup
+  const filteredPopupSpecialties = activeSpecialtiesList.filter(s => {
+    if (!specialtySearchQuery.trim()) return true
+    const q = specialtySearchQuery.trim().toLowerCase()
+    const bn = (s.name_bn || s.title_bn || s.name || '').toLowerCase()
+    const en = (s.name_en || s.title_en || s.name || '').toLowerCase()
+    return bn.includes(q) || en.includes(q)
+  })
+
+  // Handle specialty click: filter doctors and close popup
+  const handleSpecialtyClick = (spec) => {
+    setShowAllSpecialtiesPopup(false)
+    if (spec.id && !isNaN(spec.id)) {
+      navigate(`/doctors?specialty_id=${spec.id}`)
+      return
+    }
+
+    const nameBn = spec.name_bn || spec.title_bn || spec.name || ''
+    const nameEn = (spec.name_en || spec.title_en || spec.name || '').toLowerCase()
+
+    const matched = specialties?.find(s => {
+      const sBn = s.name_bn || s.title_bn || ''
+      const sEn = (s.name_en || s.title_en || s.name || '').toLowerCase()
+      return (
+        (nameBn && sBn.includes(nameBn)) ||
+        (sBn && nameBn.includes(sBn)) ||
+        (nameEn && sEn.includes(nameEn))
+      )
+    })
+
+    if (matched?.id) {
+      navigate(`/doctors?specialty_id=${matched.id}`)
+    } else if (nameBn) {
+      navigate(`/doctors?search=${encodeURIComponent(nameBn)}`)
+    } else {
+      navigate('/doctors')
+    }
+  }
 
   const handleLocationSelect = (data) => {
     setLocationLabel(data.label)
@@ -762,17 +1219,81 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       {/* MOBILE APP HERO VIEW (< 992px) - Matching Image 1 Reference */}
       <div className="hero-mobile-wrapper">
         <div className="hero-mobile-container">
-          {/* 1. Mint Green Promo Card */}
-          <div className="hero-mobile-promo-card">
+          {/* 1. Mint Green / Modern Promo Card */}
+          <div
+            className={`hero-mobile-promo-card ${
+              activeSlide === 0
+                ? 'hero-mobile-promo-card-banner-1'
+                : activeSlide === 1
+                ? 'hero-mobile-promo-card-banner-2'
+                : activeSlide === 2
+                ? 'hero-mobile-promo-card-banner-3'
+                : 'hero-mobile-promo-card-banner-4'
+            }`}
+          >
+            {/* Banner Background Image for Slides 1, 2, 3, and 4 */}
+            {activeSlide === 0 && (
+              <div className="hero-mobile-promo-bg-img hero-mobile-promo-bg-1" />
+            )}
+            {activeSlide === 1 && (
+              <div className="hero-mobile-promo-bg-img hero-mobile-promo-bg-2" />
+            )}
+            {activeSlide === 2 && (
+              <div className="hero-mobile-promo-bg-img hero-mobile-promo-bg-3" />
+            )}
+            {activeSlide === 3 && (
+              <div className="hero-mobile-promo-bg-img hero-mobile-promo-bg-4" />
+            )}
+
             {/* Left Column: Text & Slider Dots */}
-            <div className="hero-mobile-card-left">
-              <h2 className="hero-mobile-promo-title-1">
+            <div
+              className={`hero-mobile-card-left ${
+                activeSlide === 1
+                  ? 'hero-mobile-card-left-slide2'
+                  : activeSlide === 2
+                  ? 'hero-mobile-card-left-slide3'
+                  : activeSlide === 3
+                  ? 'hero-mobile-card-left-slide4'
+                  : ''
+              }`}
+            >
+              <h2
+                className={`hero-mobile-promo-title-1 ${
+                  activeSlide === 1
+                    ? 'slide2-title-1'
+                    : activeSlide === 2
+                    ? 'slide3-title-1'
+                    : activeSlide === 3
+                    ? 'slide4-title-1'
+                    : ''
+                }`}
+              >
                 {promoSlides[activeSlide]?.title1 || 'বিশ্বস্ত ডাক্তারের'}
               </h2>
-              <h3 className="hero-mobile-promo-title-2">
+              <h3
+                className={`hero-mobile-promo-title-2 ${
+                  activeSlide === 1
+                    ? 'slide2-title-2'
+                    : activeSlide === 2
+                    ? 'slide3-title-2'
+                    : activeSlide === 3
+                    ? 'slide4-title-2'
+                    : ''
+                }`}
+              >
                 {promoSlides[activeSlide]?.title2 || 'সহজ অ্যাপয়েন্টমেন্ট'}
               </h3>
-              <p className="hero-mobile-promo-sub">
+              <p
+                className={`hero-mobile-promo-sub ${
+                  activeSlide === 1
+                    ? 'slide2-sub'
+                    : activeSlide === 2
+                    ? 'slide3-sub'
+                    : activeSlide === 3
+                    ? 'slide4-sub'
+                    : ''
+                }`}
+              >
                 {promoSlides[activeSlide]?.subtitle || 'আপনার ও পরিবারের স্বাস্থ্যসেবায় আমরা আছি আপনার পাশে'}
               </p>
               
@@ -781,35 +1302,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 {promoSlides.map((_, idx) => (
                   <span
                     key={idx}
-                    className={`hero-mobile-dot ${activeSlide === idx ? 'active' : ''}`}
+                    className={`hero-mobile-dot ${activeSlide === idx ? 'active' : ''} ${
+                      activeSlide === 1
+                        ? 'slide2-dot'
+                        : activeSlide === 2
+                        ? 'slide3-dot'
+                        : activeSlide === 3
+                        ? 'slide4-dot'
+                        : ''
+                    }`}
                     onClick={() => setActiveSlide(idx)}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Right Column: Doctor Image & Floating Badge */}
-            <div className="hero-mobile-card-right">
-              <div className="hero-mobile-doctor-glow" />
-              <img
-                src="/doctor-hero.png"
-                alt="Doctor"
-                className="hero-mobile-doctor-img"
-              />
-              <div className="hero-mobile-floating-badge">
-                <div className="hero-mobile-badge-icon">
-                  <IconUsers size={15} stroke={2.5} />
-                </div>
-                <div>
-                  <div className="hero-mobile-badge-num">
-                    {promoSlides[activeSlide]?.badgeNum || '10,000+'}
-                  </div>
-                  <div className="hero-mobile-badge-label">
-                    {promoSlides[activeSlide]?.badgeLabel || 'বিশ্বস্ত ডাক্তার'}
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Spacer to give room for the right side hero illustration */}
+            <div className="hero-mobile-card-banner-spacer" />
           </div>
 
           {/* 2. Search & Filter Bar */}
@@ -1046,6 +1555,172 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               <IconArrowRight size={16} stroke={2.8} />
             </div>
           </div>
+
+          {/* 6. Popular Specialties Section (জনপ্রিয় বিশেষজ্ঞতা - 10 Dynamic + সব দেখুন) */}
+          <div className="hero-mobile-specialties-section">
+            <div className="hero-mobile-section-header">
+              <h3 className="hero-mobile-section-title">জনপ্রিয় বিশেষজ্ঞতা</h3>
+              <button
+                type="button"
+                className="hero-mobile-section-all-link"
+                onClick={() => setShowAllSpecialtiesPopup(true)}
+              >
+                <span>সব দেখুন</span>
+                <span className="hero-mobile-section-all-arrow">→</span>
+              </button>
+            </div>
+
+            <div className="hero-mobile-specialties-scroll">
+              {top10Specialties.map((spec) => {
+                const meta = getMobileSpecialtyMeta(spec)
+                return (
+                  <div
+                    key={spec.id || meta.name}
+                    className="hero-mobile-specialty-card"
+                    style={{ backgroundColor: meta.bg, borderColor: meta.border }}
+                    onClick={() => handleSpecialtyClick(spec)}
+                  >
+                    <div className="hero-mobile-specialty-icon">
+                      {meta.icon}
+                    </div>
+                    <div className="hero-mobile-specialty-name">
+                      {meta.name}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* 11th Card: সব দেখুন (Opens All Specialties Popup) */}
+              <div
+                className="hero-mobile-specialty-card hero-mobile-specialty-all-card"
+                onClick={() => setShowAllSpecialtiesPopup(true)}
+              >
+                <div className="hero-mobile-specialty-icon hero-mobile-all-icon-box">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00803D" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="4" width="6" height="6" rx="2" fill="rgba(0, 128, 61, 0.15)" />
+                    <rect x="14" y="4" width="6" height="6" rx="2" fill="rgba(0, 128, 61, 0.15)" />
+                    <rect x="4" y="14" width="6" height="6" rx="2" fill="rgba(0, 128, 61, 0.15)" />
+                    <rect x="14" y="14" width="6" height="6" rx="2" fill="rgba(0, 128, 61, 0.15)" />
+                  </svg>
+                </div>
+                <div className="hero-mobile-specialty-name" style={{ color: '#00803D', fontWeight: 800 }}>
+                  সব দেখুন
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. Today Doctors Section (আজ যেসব ডাক্তার বসবেন - Matching Reference Design) */}
+          {(loadingTodayDoctors || todayDoctors.length > 0) && (
+            <div className="hero-mobile-today-doctors-section">
+              <div className="hero-mobile-section-header">
+                <h3 className="hero-mobile-section-title">আজ যেসব ডাক্তার বসবেন</h3>
+                <button
+                  type="button"
+                  className="hero-mobile-section-all-link"
+                  onClick={() => navigate('/doctors?date=today')}
+                >
+                  <span>সব দেখুন</span>
+                  <span className="hero-mobile-section-all-arrow">→</span>
+                </button>
+              </div>
+
+              {loadingTodayDoctors ? (
+                <div className="hero-mobile-today-scroll">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="hero-mobile-today-card hero-mobile-today-skeleton">
+                      <div className="hero-mobile-today-skeleton-img" />
+                      <div className="hero-mobile-today-skeleton-line short" />
+                      <div className="hero-mobile-today-skeleton-line" />
+                      <div className="hero-mobile-today-skeleton-line shorter" />
+                      <div className="hero-mobile-today-skeleton-btn" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="hero-mobile-today-scroll">
+                  {todayDoctors.map((doc) => {
+                    const isFav = isDoctorFavorite(doc.id)
+                    const photo = doc.photo || doc.photo_url || doc.image || doc.avatar || doc.profile_image
+                    const docImg = photo ? getMediaUrl(photo) : 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+                    const docName = doc.name_bn || doc.name || doc.doctor_name || 'ডা. বিশেষজ্ঞ'
+                    const specialty = getDoctorSpecialtyTitle(doc)
+                    const hospital = getDoctorHospitalTitle(doc)
+                    const rating = getDoctorRating(doc)
+                    const reviewsCount = getDoctorReviewsCount(doc)
+
+                    return (
+                      <div
+                        key={doc.id}
+                        className="hero-mobile-today-card"
+                        onClick={() => navigate(getDoctorUrl(doc))}
+                      >
+                        {/* Wishlist Heart Button */}
+                        <button
+                          type="button"
+                          className={`hero-mobile-today-fav-btn ${isFav ? 'active' : ''}`}
+                          aria-label="Wishlist"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleFavoriteDoctor(doc)
+                          }}
+                        >
+                          <IconHeart size={18} fill={isFav ? '#EF4444' : 'none'} color={isFav ? '#EF4444' : '#94A3B8'} stroke={1.8} />
+                        </button>
+
+                        {/* Doctor Avatar Circle */}
+                        <div className="hero-mobile-today-avatar-wrap">
+                          <img
+                            src={docImg}
+                            alt={docName}
+                            className="hero-mobile-today-avatar-img"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null
+                              e.currentTarget.src = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+                            }}
+                          />
+                        </div>
+
+                        {/* Doctor Name */}
+                        <h4 className="hero-mobile-today-name" title={docName}>
+                          {docName}
+                        </h4>
+
+                        {/* Specialty */}
+                        <div className="hero-mobile-today-specialty" title={specialty}>
+                          {specialty}
+                        </div>
+
+                        {/* Hospital & Location */}
+                        <div className="hero-mobile-today-hospital" title={hospital}>
+                          {hospital}
+                        </div>
+
+                        {/* Star Rating & Review Count */}
+                        <div className="hero-mobile-today-rating">
+                          <IconStarFilled size={15} color="#F59E0B" />
+                          <span className="hero-mobile-today-rating-val">{toBnNumber(rating)}</span>
+                          <span className="hero-mobile-today-rating-count">({toBnNumber(reviewsCount)})</span>
+                        </div>
+
+                        {/* Action Button: অ্যাপয়েন্টমেন্ট নিন */}
+                        <button
+                          type="button"
+                          className="hero-mobile-today-book-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(getBookingUrl(doc, doc.matched_chamber?.id || null, 'today'))
+                          }}
+                        >
+                          অ্যাপয়েন্টমেন্ট নিন
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1166,6 +1841,88 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 5. All Specialties Mobile Popup / Modal (Rendered into document.body to ensure top z-index over bottom nav) */}
+      {showAllSpecialtiesPopup && typeof document !== 'undefined' && createPortal(
+        <div className="hero-mobile-specialties-overlay" onClick={() => setShowAllSpecialtiesPopup(false)}>
+          <div className="hero-mobile-specialties-popup" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="hero-mobile-specialties-popup-header">
+              <div>
+                <div className="hero-mobile-specialties-popup-title">
+                  সকল বিশেষজ্ঞতা
+                  <span className="hero-mobile-specialties-count-badge">
+                    {activeSpecialtiesList.length} টি বিভাগ
+                  </span>
+                </div>
+                <div className="hero-mobile-specialties-popup-sub">
+                  যেকোনো বিভাগ নির্বাচন করে সরাসরি ডাক্তারের তালিকা দেখুন
+                </div>
+              </div>
+              <button
+                type="button"
+                className="loc-close-btn"
+                onClick={() => setShowAllSpecialtiesPopup(false)}
+              >
+                <IconX size={20} />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="hero-mobile-specialties-popup-search">
+              <div className="hero-mobile-specialties-search-box">
+                <IconSearch size={18} color="#00803D" />
+                <input
+                  type="text"
+                  placeholder="বিভাগের নাম লিখে খুঁজুন (মেডিসিন, হৃদরোগ...)"
+                  value={specialtySearchQuery}
+                  onChange={(e) => setSpecialtySearchQuery(e.target.value)}
+                  className="hero-mobile-specialties-search-input"
+                  autoFocus
+                />
+                {specialtySearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSpecialtySearchQuery('')}
+                    className="hero-mobile-specialties-search-clear"
+                  >
+                    <IconX size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Grid of Specialties */}
+            <div className="hero-mobile-specialties-popup-grid">
+              {filteredPopupSpecialties.map((spec) => {
+                const meta = getMobileSpecialtyMeta(spec)
+                return (
+                  <div
+                    key={spec.id || meta.name}
+                    className="hero-mobile-specialties-popup-card"
+                    style={{ backgroundColor: meta.bg, borderColor: meta.border }}
+                    onClick={() => handleSpecialtyClick(spec)}
+                  >
+                    <div className="hero-mobile-specialty-icon">
+                      {meta.icon}
+                    </div>
+                    <div className="hero-mobile-specialty-name">
+                      {meta.name}
+                    </div>
+                  </div>
+                )
+              })}
+              {filteredPopupSpecialties.length === 0 && (
+                <div className="hero-mobile-specialties-empty">
+                  <IconSearch size={32} color="#94A3B8" />
+                  <div>কোনো বিশেষজ্ঞ বিভাগ পাওয়া যায়নি</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
@@ -1631,7 +2388,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           /* ── 1. Mint Green Promo Card ── */
           .hero-mobile-promo-card {
             background: linear-gradient(135deg, #E6F7F0 0%, #D8F5E5 50%, #E8F8F2 100%);
-            border-radius: 20px;
+            border-radius: 10px;
             padding: 18px 14px 14px 18px;
             display: flex;
             align-items: stretch;
@@ -1640,6 +2397,129 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             overflow: hidden;
             border: 1px solid rgba(16, 185, 129, 0.18);
             box-shadow: 0 6px 20px rgba(0, 184, 117, 0.08);
+            min-height: 156px;
+          }
+
+          /* Banner 1: Green Doctor Graphic */
+          .hero-mobile-promo-card-banner-1 {
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            background: #E8F8F2;
+          }
+
+          .hero-mobile-promo-bg-1 {
+            background-image: url('/mobile-hero-banner.png');
+            background-size: cover;
+            background-position: right center;
+            background-repeat: no-repeat;
+          }
+
+          .hero-mobile-promo-card-banner-1::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              90deg,
+              rgba(235, 252, 244, 0.98) 0%,
+              rgba(235, 252, 244, 0.92) 48%,
+              rgba(235, 252, 244, 0.65) 65%,
+              rgba(235, 252, 244, 0.0) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          /* Banner 2: Modern Clinical Blue Doctor Graphic */
+          .hero-mobile-promo-card-banner-2 {
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: #EFF6FF;
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.12);
+          }
+
+          .hero-mobile-promo-bg-2 {
+            background-image: url('/mobile-hero-banner-02.png');
+            background-size: cover;
+            background-position: right 18%;
+            background-repeat: no-repeat;
+          }
+
+          .hero-mobile-promo-card-banner-2::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              90deg,
+              rgba(240, 249, 255, 0.98) 0%,
+              rgba(240, 249, 255, 0.94) 50%,
+              rgba(240, 249, 255, 0.68) 66%,
+              rgba(240, 249, 255, 0.0) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          /* Banner 3: Friendly Pediatric / Verified Healthcare Cartoon Graphic */
+          .hero-mobile-promo-card-banner-3 {
+            border: 1px solid rgba(16, 185, 129, 0.28);
+            background: #ECFDF5;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.1);
+          }
+
+          .hero-mobile-promo-bg-3 {
+            background-image: url('/mobile-hero-banner-03.png');
+            background-size: cover;
+            background-position: right 15%;
+            background-repeat: no-repeat;
+          }
+
+          .hero-mobile-promo-card-banner-3::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              90deg,
+              rgba(236, 253, 245, 0.98) 0%,
+              rgba(236, 253, 245, 0.93) 48%,
+              rgba(236, 253, 245, 0.65) 65%,
+              rgba(236, 253, 245, 0.0) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          /* Banner 4: 24/7 Dedicated Support Center Graphic */
+          .hero-mobile-promo-card-banner-4 {
+            border: 1px solid rgba(20, 184, 166, 0.32);
+            background: #F0FDFA;
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.12);
+          }
+
+          .hero-mobile-promo-bg-4 {
+            background-image: url('/mobile-hero-banner-04.png');
+            background-size: cover;
+            background-position: right 14%;
+            background-repeat: no-repeat;
+          }
+
+          .hero-mobile-promo-card-banner-4::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              90deg,
+              rgba(240, 253, 250, 0.98) 0%,
+              rgba(240, 253, 250, 0.93) 50%,
+              rgba(240, 253, 250, 0.68) 66%,
+              rgba(240, 253, 250, 0.0) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          .hero-mobile-promo-bg-img {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
           }
 
           .hero-mobile-card-left {
@@ -1649,6 +2529,25 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             justify-content: center;
             z-index: 2;
             padding-right: 4px;
+            max-width: 65%;
+          }
+
+          .hero-mobile-card-left-slide2 {
+            max-width: 63%;
+          }
+
+          .hero-mobile-card-left-slide3 {
+            max-width: 60%;
+          }
+
+          .hero-mobile-card-left-slide4 {
+            max-width: 62%;
+          }
+
+          .hero-mobile-card-banner-spacer {
+            width: 35%;
+            flex-shrink: 0;
+            z-index: 2;
           }
 
           .hero-mobile-promo-title-1 {
@@ -1659,39 +2558,82 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             margin: 0;
             font-family: 'Hind Siliguri', sans-serif;
             letter-spacing: -0.01em;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
           }
 
           .hero-mobile-promo-title-2 {
             font-size: 21px;
             font-weight: 900;
-            color: #00B875;
+            color: #00803D;
             line-height: 1.25;
             margin: 2px 0 6px 0;
             font-family: 'Hind Siliguri', sans-serif;
             letter-spacing: -0.01em;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+          }
+
+          /* Slide 2 Specific Accent Styling */
+          .slide2-title-1 {
+            color: #0F172A;
+          }
+
+          .slide2-title-2 {
+            color: #0284C7; /* High-trust medical sky blue */
+          }
+
+          /* Slide 3 Specific Accent Styling */
+          .slide3-title-1 {
+            color: #064E3B; /* Deep emerald */
+          }
+
+          .slide3-title-2 {
+            color: #059669; /* Warm green */
+          }
+
+          /* Slide 4 Specific Accent Styling */
+          .slide4-title-1 {
+            color: #0F172A;
+          }
+
+          .slide4-title-2 {
+            color: #0D9488; /* Fresh teal cyan */
           }
 
           .hero-mobile-promo-sub {
             font-size: 11.5px;
-            font-weight: 500;
-            color: #475569;
+            font-weight: 600;
+            color: #334155;
             line-height: 1.45;
             margin: 0 0 14px 0;
-            max-width: 175px;
+            max-width: 200px;
             font-family: 'Hind Siliguri', sans-serif;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+          }
+
+          .slide2-sub {
+            color: #1E293B;
+          }
+
+          .slide3-sub {
+            color: #065F46;
+          }
+
+          .slide4-sub {
+            color: #134E4A;
           }
 
           .hero-mobile-dots {
             display: flex;
             align-items: center;
             gap: 5px;
+            z-index: 2;
           }
 
           .hero-mobile-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: rgba(0, 184, 117, 0.28);
+            background: rgba(0, 128, 61, 0.28);
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
           }
@@ -1699,7 +2641,31 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           .hero-mobile-dot.active {
             width: 20px;
             border-radius: 99px;
-            background: #00B875;
+            background: #00803D;
+          }
+
+          .hero-mobile-dot.slide2-dot {
+            background: rgba(2, 132, 199, 0.25);
+          }
+
+          .hero-mobile-dot.slide2-dot.active {
+            background: #0284C7;
+          }
+
+          .hero-mobile-dot.slide3-dot {
+            background: rgba(5, 150, 105, 0.25);
+          }
+
+          .hero-mobile-dot.slide3-dot.active {
+            background: #059669;
+          }
+
+          .hero-mobile-dot.slide4-dot {
+            background: rgba(13, 148, 136, 0.25);
+          }
+
+          .hero-mobile-dot.slide4-dot.active {
+            background: #0D9488;
           }
 
           .hero-mobile-card-right {
@@ -2017,27 +2983,41 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             letter-spacing: -0.01em;
           }
 
-          /* ── 5. Emergency Banner ── */
+          /* ── 5. Emergency Banner (Option 2: Modern Vibrant Coral-Red Look) ── */
           .hero-mobile-emergency-banner {
-            margin-top: 11px;
-            background: linear-gradient(90deg, #F04438 0%, #E02424 100%);
-            border-radius: 14px;
-            padding: 9px 12px 9px 10px;
+            margin-top: 12px;
+            background: linear-gradient(135deg, #FF5252 0%, #E53935 55%, #D32F2F 100%);
+            border-radius: 16px;
+            padding: 10px 13px 10px 11px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
             cursor: pointer;
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.25);
-            transition: all 0.25s ease;
+            box-shadow: 0 6px 18px rgba(229, 57, 53, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
             position: relative;
             overflow: hidden;
           }
 
+          /* Ambient shine effect on the top-right corner */
+          .hero-mobile-emergency-banner::after {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+            pointer-events: none;
+          }
+
           .hero-mobile-emergency-banner:active {
             transform: scale(0.98);
-            box-shadow: 0 3px 12px rgba(239, 68, 68, 0.2);
+            box-shadow: 0 2px 8px rgba(229, 57, 53, 0.18);
           }
 
           .hero-mobile-emergency-img-box {
@@ -2045,58 +3025,607 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 2;
           }
 
           .hero-mobile-ambulance-svg {
-            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.18));
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
             display: block;
           }
 
           .hero-mobile-emergency-info {
             flex: 1;
             min-width: 0;
+            z-index: 2;
           }
 
           .hero-mobile-emergency-title {
             font-size: 15px;
             font-weight: 900;
             color: #FFFFFF;
-            line-height: 1.2;
+            line-height: 1.25;
             font-family: 'Hind Siliguri', sans-serif;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+            letter-spacing: -0.01em;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
           }
 
           .hero-mobile-emergency-desc {
-            font-size: 10.5px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
-            line-height: 1.25;
+            line-height: 1.3;
             margin-top: 2px;
             font-family: 'Hind Siliguri', sans-serif;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
           }
 
           .hero-mobile-emergency-arrow {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: #FFFFFF;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-            color: #EF4444;
-            transition: transform 0.2s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+            color: #E53935;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            z-index: 2;
           }
 
-          .hero-mobile-emergency-banner:hover .hero-mobile-emergency-arrow {
+          .hero-mobile-emergency-banner:hover .hero-mobile-emergency-arrow,
+          .hero-mobile-emergency-banner:active .hero-mobile-emergency-arrow {
             transform: translateX(2px);
           }
 
-          /* ── 6. Mobile Filter Bottom Sheet ── */
+          /* ── 6. Popular Specialties Section (Matching Reference Design) ── */
+          .hero-mobile-specialties-section {
+            margin-top: 18px;
+            width: 100%;
+          }
+
+          .hero-mobile-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 0 3px;
+          }
+
+          .hero-mobile-section-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0F172A;
+            margin: 0;
+            line-height: 1.2;
+            font-family: 'Hind Siliguri', sans-serif;
+            letter-spacing: -0.01em;
+          }
+
+          .hero-mobile-section-all-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #00803D;
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            cursor: pointer;
+            font-family: 'Hind Siliguri', sans-serif;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            border-radius: 6px;
+          }
+
+          .hero-mobile-section-all-link:hover,
+          .hero-mobile-section-all-link:active {
+            color: #00602D;
+            background: rgba(0, 128, 61, 0.08);
+          }
+
+          .hero-mobile-section-all-arrow {
+            font-size: 15px;
+            line-height: 1;
+            font-weight: 800;
+            transition: transform 0.2s ease;
+          }
+
+          .hero-mobile-section-all-link:hover .hero-mobile-section-all-arrow {
+            transform: translateX(3px);
+          }
+
+          .hero-mobile-specialties-scroll {
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            padding: 8px 3px 10px 3px;
+            scrollbar-width: none;
+          }
+
+          .hero-mobile-specialties-scroll::-webkit-scrollbar {
+            display: none;
+          }
+
+          .hero-mobile-specialty-card {
+            flex: 0 0 76px;
+            width: 76px;
+            min-width: 76px;
+            max-width: 76px;
+            min-height: 84px;
+            border-radius: 16px;
+            border: 1px solid transparent;
+            padding: 9px 3px 7px 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.18s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+            text-align: center;
+            overflow: hidden;
+            box-sizing: border-box;
+          }
+
+          .hero-mobile-specialty-card:active {
+            transform: scale(0.93);
+          }
+
+          .hero-mobile-specialty-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+            margin-bottom: 5px;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-specialty-card:hover .hero-mobile-specialty-icon {
+            transform: translateY(-2px);
+          }
+
+          .hero-mobile-specialty-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0F172A;
+            line-height: 1.2;
+            font-family: 'Hind Siliguri', sans-serif;
+            text-align: center;
+            width: 100%;
+            max-width: 100%;
+            padding: 0 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            letter-spacing: -0.01em;
+            box-sizing: border-box;
+          }
+
+          /* 11th "সব দেখুন" card special styling */
+          .hero-mobile-specialty-all-card {
+            background: #E8F8F0 !important;
+            border: 1px dashed #00B875 !important;
+            box-shadow: 0 2px 8px rgba(0, 184, 117, 0.08) !important;
+          }
+
+          .hero-mobile-specialty-all-card:active {
+            background: #D4F4E4 !important;
+          }
+
+          .hero-mobile-all-icon-box {
+            background: #FFFFFF;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0, 184, 117, 0.12);
+          }
+
+          /* ── 6.2 Today Doctors Section (Matching Reference Design) ── */
+          .hero-mobile-today-doctors-section {
+            margin-top: 20px;
+            width: 100%;
+          }
+
+          .hero-mobile-today-scroll {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            padding: 4px 2px 14px 2px;
+            scrollbar-width: none;
+          }
+
+          .hero-mobile-today-scroll::-webkit-scrollbar {
+            display: none;
+          }
+
+          .hero-mobile-today-card {
+            flex: 0 0 178px;
+            width: 178px;
+            min-width: 178px;
+            max-width: 178px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 18px;
+            padding: 16px 12px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            box-sizing: border-box;
+            user-select: none;
+          }
+
+          .hero-mobile-today-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+          }
+
+          .hero-mobile-today-fav-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #94A3B8;
+            transition: transform 0.2s ease;
+            z-index: 2;
+          }
+
+          .hero-mobile-today-fav-btn:active {
+            transform: scale(1.2);
+          }
+
+          .hero-mobile-today-fav-btn.active {
+            color: #EF4444;
+          }
+
+          .hero-mobile-today-avatar-wrap {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-bottom: 12px;
+            background: #F1F5F9;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .hero-mobile-today-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            display: block;
+          }
+
+          .hero-mobile-today-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.25;
+            margin: 0 0 4px 0;
+            font-family: 'Hind Siliguri', sans-serif;
+            letter-spacing: -0.01em;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            width: 100%;
+          }
+
+          .hero-mobile-today-specialty {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #64748B;
+            line-height: 1.25;
+            margin-bottom: 2px;
+            font-family: 'Hind Siliguri', sans-serif;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            width: 100%;
+          }
+
+          .hero-mobile-today-hospital {
+            font-size: 11px;
+            font-weight: 500;
+            color: #94A3B8;
+            line-height: 1.25;
+            margin-bottom: 8px;
+            font-family: 'Hind Siliguri', sans-serif;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            width: 100%;
+          }
+
+          .hero-mobile-today-rating {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 12px;
+            line-height: 1;
+          }
+
+          .hero-mobile-today-rating-val {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-today-rating-count {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #64748B;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-today-book-btn {
+            width: 100%;
+            height: 38px;
+            border-radius: 999px;
+            background: #00803D;
+            color: #FFFFFF;
+            border: none;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Hind Siliguri', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0, 128, 61, 0.22);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: auto;
+          }
+
+          .hero-mobile-today-book-btn:active {
+            transform: scale(0.96);
+            background: #006832;
+            box-shadow: 0 1px 4px rgba(0, 128, 61, 0.15);
+          }
+
+          /* Skeleton Loading for Today Doctors */
+          .hero-mobile-today-skeleton {
+            background: #FFFFFF;
+            pointer-events: none;
+          }
+
+          .hero-mobile-today-skeleton-img {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+            background-size: 200% 100%;
+            animation: heroShimmer 1.5s infinite;
+            margin-bottom: 12px;
+          }
+
+          .hero-mobile-today-skeleton-line {
+            height: 12px;
+            width: 80%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+            background-size: 200% 100%;
+            animation: heroShimmer 1.5s infinite;
+            margin-bottom: 6px;
+          }
+
+          .hero-mobile-today-skeleton-line.short { width: 65%; }
+          .hero-mobile-today-skeleton-line.shorter { width: 45%; margin-bottom: 12px; }
+
+          .hero-mobile-today-skeleton-btn {
+            height: 36px;
+            width: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+            background-size: 200% 100%;
+            animation: heroShimmer 1.5s infinite;
+            margin-top: auto;
+          }
+
+          @keyframes heroShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+
+          /* ── 6.1 All Specialties Mobile Popup / Bottom Sheet ── */
+          .hero-mobile-specialties-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            z-index: 999999;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            animation: locFadeIn 0.2s ease;
+          }
+
+          .hero-mobile-specialties-popup {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+            animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+          }
+
+          .hero-mobile-specialties-popup-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 18px 20px 12px 20px;
+            border-bottom: 1px solid #F1F5F9;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-specialties-popup-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-specialties-count-badge {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #00803D;
+            background: #E8F8F0;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 184, 117, 0.2);
+          }
+
+          .hero-mobile-specialties-popup-sub {
+            font-size: 12px;
+            color: #64748B;
+            margin-top: 3px;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-specialties-popup-search {
+            padding: 12px 18px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #F1F5F9;
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-specialties-search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            border-radius: 12px;
+            padding: 8px 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            transition: border-color 0.15s ease;
+          }
+
+          .hero-mobile-specialties-search-box:focus-within {
+            border-color: #00B875;
+            box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.12);
+          }
+
+          .hero-mobile-specialties-search-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 13.5px;
+            color: #0F172A;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .hero-mobile-specialties-search-input::placeholder {
+            color: #94A3B8;
+          }
+
+          .hero-mobile-specialties-search-clear {
+            background: none;
+            border: none;
+            padding: 0;
+            color: #94A3B8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+          }
+
+          .hero-mobile-specialties-popup-grid {
+            padding: 16px 16px calc(36px + env(safe-area-inset-bottom, 0px)) 16px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+            max-height: calc(85vh - 160px);
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          @media (max-width: 360px) {
+            .hero-mobile-specialties-popup-grid {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          }
+
+          .hero-mobile-specialties-popup-card {
+            border-radius: 14px;
+            border: 1px solid transparent;
+            padding: 9px 3px 7px 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            text-align: center;
+            min-height: 80px;
+            overflow: hidden;
+            box-sizing: border-box;
+          }
+
+          .hero-mobile-specialties-popup-card:active {
+            transform: scale(0.93);
+          }
+
+          .hero-mobile-specialties-empty {
+            grid-column: 1 / -1;
+            padding: 40px 10px;
+            text-align: center;
+            color: #94A3B8;
+            font-size: 13px;
+            font-family: 'Hind Siliguri', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+          }
+
+          /* ── 7. Mobile Filter Bottom Sheet ── */
           .hero-mobile-filter-sheet {
             background: #FFFFFF;
             width: 100%;
