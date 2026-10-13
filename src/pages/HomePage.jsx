@@ -1105,9 +1105,9 @@ function DigitalDashboardBanner() {
 // ─── EXPLORE DIVISIONS / CITIES SECTION (REFERENCE IMAGE 2 DESIGN) ───────────
 function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [], popularUpazilas = [], stats = {} }) {
   const navigate = useNavigate()
-  const [showAllDivModal, setShowAllDivModal] = useState(false)
-  const [showAllDistModal, setShowAllDistModal] = useState(false)
-  const [distSearch, setDistSearch] = useState('')
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [modalTab, setModalTab] = useState('divisions') // 'divisions' | 'districts'
+  const [locationSearch, setLocationSearch] = useState('')
 
   const toBnNum = (n) => {
     if (n === null || n === undefined) return ''
@@ -1212,59 +1212,212 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     return DISTRICT_THUMBNAILS[slugKey] || DISTRICT_THUMBNAILS[nameKey] || dist.img || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70'
   }
 
-  // All 8 divisions of Bangladesh for modal
+  // All 8 divisions of Bangladesh with rich metadata
   const allEightDivisions = [
-    { name: 'ঢাকা বিভাগ', slug: 'dhaka', count: '৮৫০+ হাসপাতাল' },
-    { name: 'চট্টগ্রাম বিভাগ', slug: 'chattogram', count: '২৫০+ হাসপাতাল' },
-    { name: 'সিলেট বিভাগ', slug: 'sylhet', count: '১৮০+ হাসপাতাল' },
-    { name: 'রাজশাহী বিভাগ', slug: 'rajshahi', count: '১৬০+ হাসপাতাল' },
-    { name: 'খুলনা বিভাগ', slug: 'khulna', count: '১৪০+ হাসপাতাল' },
-    { name: 'বরিশাল বিভাগ', slug: 'barishal', count: '১১০+ হাসপাতাল' },
-    { name: 'রংপুর বিভাগ', slug: 'rangpur', count: '১৩০+ হাসপাতাল' },
-    { name: 'ময়মনসিংহ বিভাগ', slug: 'mymensingh', count: '১২০+ হাসপাতাল' },
+    {
+      id: 1,
+      name: 'ঢাকা বিভাগ',
+      enName: 'Dhaka Division',
+      slug: 'dhaka',
+      hospitals: '৮৫০+ হাসপাতাল',
+      doctors: '৫,২০০+ ডাক্তার',
+      districtsCount: '১৩টি জেলা',
+      img: '/images/dhaka_division_parliament.jpg'
+    },
+    {
+      id: 2,
+      name: 'চট্টগ্রাম বিভাগ',
+      enName: 'Chattogram Division',
+      slug: 'chattogram',
+      hospitals: '২৫০+ হাসপাতাল',
+      doctors: '২,৪০০+ ডাক্তার',
+      districtsCount: '১১টি জেলা',
+      img: '/images/chattogram_division_sunset.jpg'
+    },
+    {
+      id: 3,
+      name: 'সিলেট বিভাগ',
+      enName: 'Sylhet Division',
+      slug: 'sylhet',
+      hospitals: '১৮০+ হাসপাতাল',
+      doctors: '১,৮০০+ ডাক্তার',
+      districtsCount: '৪টি জেলা',
+      img: '/images/sylhet_division_teagarden.jpg'
+    },
+    {
+      id: 4,
+      name: 'রাজশাহী বিভাগ',
+      enName: 'Rajshahi Division',
+      slug: 'rajshahi',
+      hospitals: '১৬০+ হাসপাতাল',
+      doctors: '১,৫০০+ ডাক্তার',
+      districtsCount: '৮টি জেলা',
+      img: 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70'
+    },
+    {
+      id: 5,
+      name: 'খুলনা বিভাগ',
+      enName: 'Khulna Division',
+      slug: 'khulna',
+      hospitals: '১৪০+ হাসপাতাল',
+      doctors: '১,২০০+ ডাক্তার',
+      districtsCount: '১০টি জেলা',
+      img: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70'
+    },
+    {
+      id: 6,
+      name: 'বরিশাল বিভাগ',
+      enName: 'Barishal Division',
+      slug: 'barishal',
+      hospitals: '১১০+ হাসপাতাল',
+      doctors: '৯৫০+ ডাক্তার',
+      districtsCount: '৬টি জেলা',
+      img: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70'
+    },
+    {
+      id: 7,
+      name: 'রংপুর বিভাগ',
+      enName: 'Rangpur Division',
+      slug: 'rangpur',
+      hospitals: '১৩০+ হাসপাতাল',
+      doctors: '১,১০০+ ডাক্তার',
+      districtsCount: '৮টি জেলা',
+      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=100&auto=format&fit=crop&q=70'
+    },
+    {
+      id: 8,
+      name: 'ময়মনসিংহ বিভাগ',
+      enName: 'Mymensingh Division',
+      slug: 'mymensingh',
+      hospitals: '১২০+ হাসপাতাল',
+      doctors: '৮৫০+ ডাক্তার',
+      districtsCount: '৪টি জেলা',
+      img: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70'
+    },
   ]
 
-  const filteredDistrictsForModal = activeDistricts.filter(d => {
-    const q = distSearch.toLowerCase()
-    const bName = (d.bangla_name || d.name || '').toLowerCase()
-    const sName = (d.slug || '').toLowerCase()
-    return bName.includes(q) || sName.includes(q)
+  // All 64 Districts of Bangladesh
+  const all64Districts = [
+    // ঢাকা বিভাগ
+    { name: 'ঢাকা', enName: 'Dhaka', slug: 'dhaka', division: 'ঢাকা বিভাগ', count: '৫,২০০+ ডাক্তার' },
+    { name: 'গাজীপুর', enName: 'Gazipur', slug: 'gazipur', division: 'ঢাকা বিভাগ', count: '৩৫০+ ডাক্তার' },
+    { name: 'নারায়ণগঞ্জ', enName: 'Narayanganj', slug: 'narayanganj', division: 'ঢাকা বিভাগ', count: '২৮০+ ডাক্তার' },
+    { name: 'মুন্সীগঞ্জ', enName: 'Munshiganj', slug: 'munshiganj', division: 'ঢাকা বিভাগ', count: '১১০+ ডাক্তার' },
+    { name: 'নরসিংদী', enName: 'Narsingdi', slug: 'narsingdi', division: 'ঢাকা বিভাগ', count: '১২০+ ডাক্তার' },
+    { name: 'টাঙ্গাইল', enName: 'Tangail', slug: 'tangail', division: 'ঢাকা বিভাগ', count: '১৮০+ ডাক্তার' },
+    { name: 'মানিকগঞ্জ', enName: 'Manikganj', slug: 'manikganj', division: 'ঢাকা বিভাগ', count: '৮৫+ ডাক্তার' },
+    { name: 'ফরিদপুর', enName: 'Faridpur', slug: 'faridpur', division: 'ঢাকা বিভাগ', count: '১৪০+ ডাক্তার' },
+    { name: 'মাদারীপুর', enName: 'Madaripur', slug: 'madaripur', division: 'ঢাকা বিভাগ', count: '৭৫+ ডাক্তার' },
+    { name: 'গোপালগঞ্জ', enName: 'Gopalganj', slug: 'gopalganj', division: 'ঢাকা বিভাগ', count: '৯০+ ডাক্তার' },
+    { name: 'রাজবাড়ী', enName: 'Rajbari', slug: 'rajbari', division: 'ঢাকা বিভাগ', count: '৬৫+ ডাক্তার' },
+    { name: 'শরীয়তপুর', enName: 'Shariatpur', slug: 'shariatpur', division: 'ঢাকা বিভাগ', count: '৬০+ ডাক্তার' },
+    { name: 'কিশোরগঞ্জ', enName: 'Kishoreganj', slug: 'kishoreganj', division: 'ঢাকা বিভাগ', count: '১৩০+ ডাক্তার' },
+
+    // চট্টগ্রাম বিভাগ
+    { name: 'চট্টগ্রাম', enName: 'Chattogram', slug: 'chittagong', division: 'চট্টগ্রাম বিভাগ', count: '২,৪০০+ ডাক্তার' },
+    { name: 'কক্সবাজার', enName: 'Cox\'s Bazar', slug: 'coxsbazar', division: 'চট্টগ্রাম বিভাগ', count: '১৯০+ ডাক্তার' },
+    { name: 'কুমিল্লা', enName: 'Cumilla', slug: 'cumilla', division: 'চট্টগ্রাম বিভাগ', count: '৩৮০+ ডাক্তার' },
+    { name: 'নোয়াখালী', enName: 'Noakhali', slug: 'noakhali', division: 'চট্টগ্রাম বিভাগ', count: '২২০+ ডাক্তার' },
+    { name: 'ফেনী', enName: 'Feni', slug: 'feni', division: 'চট্টগ্রাম বিভাগ', count: '১৪০+ ডাক্তার' },
+    { name: 'ব্রাহ্মণবাড়িয়া', enName: 'Brahmanbaria', slug: 'brahmanbaria', division: 'চট্টগ্রাম বিভাগ', count: '১৩০+ ডাক্তার' },
+    { name: 'চাঁদপুর', enName: 'Chandpur', slug: 'chandpur', division: 'চট্টগ্রাম বিভাগ', count: '১২৫+ ডাক্তার' },
+    { name: 'লক্ষ্মীপুর', enName: 'Lakshmipur', slug: 'lakshmipur', division: 'চট্টগ্রাম বিভাগ', count: '৮৫+ ডাক্তার' },
+    { name: 'রাঙ্গামাটি', enName: 'Rangamati', slug: 'rangamati', division: 'চট্টগ্রাম বিভাগ', count: '৪৫+ ডাক্তার' },
+    { name: 'খাগড়াছড়ি', enName: 'Khagrachhari', slug: 'khagrachhari', division: 'চট্টগ্রাম বিভাগ', count: '৪০+ ডাক্তার' },
+    { name: 'বান্দরবান', enName: 'Bandarban', slug: 'bandarban', division: 'চট্টগ্রাম বিভাগ', count: '৩৫+ ডাক্তার' },
+
+    // সিলেট বিভাগ
+    { name: 'সিলেট', enName: 'Sylhet', slug: 'sylhet', division: 'সিলেট বিভাগ', count: '১,৮০০+ ডাক্তার' },
+    { name: 'মৌলভীবাজার', enName: 'Moulvibazar', slug: 'moulvibazar', division: 'সিলেট বিভাগ', count: '১৪০+ ডাক্তার' },
+    { name: 'হবিগঞ্জ', enName: 'Habiganj', slug: 'habiganj', division: 'সিলেট বিভাগ', count: '১১০+ ডাক্তার' },
+    { name: 'সুনামগঞ্জ', enName: 'Sunamganj', slug: 'sunamganj', division: 'সিলেট বিভাগ', count: '৮০+ ডাক্তার' },
+
+    // রাজশাহী বিভাগ
+    { name: 'রাজশাহী', enName: 'Rajshahi', slug: 'rajshahi', division: 'রাজশাহী বিভাগ', count: '১,৫০০+ ডাক্তার' },
+    { name: 'বগুড়া', enName: 'Bogura', slug: 'bogura', division: 'রাজশাহী বিভাগ', count: '৩২০+ ডাক্তার' },
+    { name: 'পাবনা', enName: 'Pabna', slug: 'pabna', division: 'রাজশাহী বিভাগ', count: '১৭০+ ডাক্তার' },
+    { name: 'সিরাজগঞ্জ', enName: 'Sirajganj', slug: 'sirajganj', division: 'রাজশাহী বিভাগ', count: '১৪৫+ ডাক্তার' },
+    { name: 'নওগাঁ', enName: 'Naogaon', slug: 'naogaon', division: 'রাজশাহী বিভাগ', count: '১১০+ ডাক্তার' },
+    { name: 'নাটোর', enName: 'Natore', slug: 'natore', division: 'রাজশাহী বিভাগ', count: '৯৫+ ডাক্তার' },
+    { name: 'চাঁপাইনবাবগঞ্জ', enName: 'Chapainawabganj', slug: 'chapainawabganj', division: 'রাজশাহী বিভাগ', count: '৮০+ ডাক্তার' },
+    { name: 'জয়পুরহাট', enName: 'Joypurhat', slug: 'joypurhat', division: 'রাজশাহী বিভাগ', count: '৬৫+ ডাক্তার' },
+
+    // খুলনা বিভাগ
+    { name: 'খুলনা', enName: 'Khulna', slug: 'khulna', division: 'খুলনা বিভাগ', count: '১,২০০+ ডাক্তার' },
+    { name: 'যশোর', enName: 'Jashore', slug: 'jashore', division: 'খুলনা বিভাগ', count: '২৫০+ ডাক্তার' },
+    { name: 'কুষ্টিয়া', enName: 'Kushtia', slug: 'kushtia', division: 'খুলনা বিভাগ', count: '১৯০+ ডাক্তার' },
+    { name: 'ঝিনাইদহ', enName: 'Jhenaidah', slug: 'jhenaidah', division: 'খুলনা বিভাগ', count: '১০০+ ডাক্তার' },
+    { name: 'সাতক্ষীরা', enName: 'Satkhira', slug: 'satkhira', division: 'খুলনা বিভাগ', count: '৯৫+ ডাক্তার' },
+    { name: 'বাগেরহাট', enName: 'Bagerhat', slug: 'bagerhat', division: 'খুলনা বিভাগ', count: '৮৫+ ডাক্তার' },
+    { name: 'চুয়াডাঙ্গা', enName: 'Chuadanga', slug: 'chuadanga', division: 'খুলনা বিভাগ', count: '৭৫+ ডাক্তার' },
+    { name: 'মেহেরপুর', enName: 'Meherpur', slug: 'meherpur', division: 'খুলনা বিভাগ', count: '৫০+ ডাক্তার' },
+    { name: 'নড়াইল', enName: 'Narail', slug: 'narail', division: 'খুলনা বিভাগ', count: '৫৫+ ডাক্তার' },
+    { name: 'মাগুরা', enName: 'Magura', slug: 'magura', division: 'খুলনা বিভাগ', count: '৬০+ ডাক্তার' },
+
+    // বরিশাল বিভাগ
+    { name: 'বরিশাল', enName: 'Barishal', slug: 'barishal', division: 'বরিশাল বিভাগ', count: '৯৫০+ ডাক্তার' },
+    { name: 'পটুয়াখালী', enName: 'Patuakhali', slug: 'patuakhali', division: 'বরিশাল বিভাগ', count: '১১০+ ডাক্তার' },
+    { name: 'ভোলা', enName: 'Bhola', slug: 'bhola', division: 'বরিশাল বিভাগ', count: '৯০+ ডাক্তার' },
+    { name: 'পিরোজপুর', enName: 'Pirojpur', slug: 'pirojpur', division: 'বরিশাল বিভাগ', count: '৭৫+ ডাক্তার' },
+    { name: 'বরগুনা', enName: 'Barguna', slug: 'barguna', division: 'বরিশাল বিভাগ', count: '৫৫+ ডাক্তার' },
+    { name: 'ঝালকাঠি', enName: 'Jhalokati', slug: 'jhalokati', division: 'বরিশাল বিভাগ', count: '৫০+ ডাক্তার' },
+
+    // রংপুর বিভাগ
+    { name: 'রংপুর', enName: 'Rangpur', slug: 'rangpur', division: 'রংপুর বিভাগ', count: '১,১০০+ ডাক্তার' },
+    { name: 'দিনাজপুর', enName: 'Dinajpur', slug: 'dinajpur', division: 'রংপুর বিভাগ', count: '২১০+ ডাক্তার' },
+    { name: 'কুড়িগ্রাম', enName: 'Kurigram', slug: 'kurigram', division: 'রংপুর বিভাগ', count: '৯০+ ডাক্তার' },
+    { name: 'গাইবান্ধা', enName: 'Gaibandha', slug: 'gaibandha', division: 'রংপুর বিভাগ', count: '৮৫+ ডাক্তার' },
+    { name: 'নীলফামারী', enName: 'Nilphamari', slug: 'nilphamari', division: 'রংপুর বিভাগ', count: '৮০+ ডাক্তার' },
+    { name: 'লালমনিরহাট', enName: 'Lalmonirhat', slug: 'lalmonirhat', division: 'রংপুর বিভাগ', count: '৬০+ ডাক্তার' },
+    { name: 'ঠাকুরগাঁও', enName: 'Thakurgaon', slug: 'thakurgaon', division: 'রংপুর বিভাগ', count: '৭০+ ডাক্তার' },
+    { name: 'পঞ্চগড়', enName: 'Panchagarh', slug: 'panchagarh', division: 'রংপুর বিভাগ', count: '৫৫+ ডাক্তার' },
+
+    // ময়মনসিংহ বিভাগ
+    { name: 'ময়মনসিংহ', enName: 'Mymensingh', slug: 'mymensingh', division: 'ময়মনসিংহ বিভাগ', count: '৮৫০+ ডাক্তার' },
+    { name: 'জামালপুর', enName: 'Jamalpur', slug: 'jamalpur', division: 'ময়মনসিংহ বিভাগ', count: '১৩০+ ডাক্তার' },
+    { name: 'নেত্রকোণা', enName: 'Netrokona', slug: 'netrokona', division: 'ময়মনসিংহ বিভাগ', count: '৮৫+ ডাক্তার' },
+    { name: 'শেরপুর', enName: 'Sherpur', slug: 'sherpur', division: 'ময়মনসিংহ বিভাগ', count: '৬৫+ ডাক্তার' },
+  ]
+
+  const filteredDivisions = allEightDivisions.filter(d => {
+    const q = locationSearch.trim().toLowerCase()
+    if (!q) return true
+    return (
+      d.name.toLowerCase().includes(q) ||
+      d.enName.toLowerCase().includes(q) ||
+      d.slug.toLowerCase().includes(q)
+    )
+  })
+
+  const filteredDistricts = all64Districts.filter(d => {
+    const q = locationSearch.trim().toLowerCase()
+    if (!q) return true
+    return (
+      d.name.toLowerCase().includes(q) ||
+      d.enName.toLowerCase().includes(q) ||
+      d.slug.toLowerCase().includes(q) ||
+      d.division.toLowerCase().includes(q)
+    )
   })
 
   return (
     <section style={{ background: '#FAFBFD', padding: '56px 0 52px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
       <Container>
-        {/* ── Title Header (Image 2 Design) ── */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <span style={{ width: 3.5, height: 16, background: '#059669', borderRadius: 2 }} />
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>
-                BANGLADESH
-              </span>
-            </div>
-            <h2 style={{
-              fontSize: 'clamp(22px, 3.2vw, 32px)',
-              fontWeight: 900,
-              color: '#0F172A',
-              margin: 0,
-              fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
-              lineHeight: 1.3
-            }}>
-              বিভাগ ও জেলা অনুযায়ী <span style={{ color: '#059669' }}>ডাক্তার ও হাসপাতাল খুঁজুন</span>
-            </h2>
-            <p style={{ fontSize: 'clamp(13px, 1.6vw, 15px)', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-              বাংলাদেশের সকল বিভাগ, জেলা ও উপজেলার ডাক্তার ও হাসপাতাল এক জায়গায়
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowAllDivModal(true)}
-            className="bbl-header-btn"
-          >
-            <span>সব বিভাগ দেখুন</span>
-            <IconChevronRight size={17} stroke={2.5} />
-          </button>
+        {/* ── Title Header ── */}
+        <div className="mb-4">
+          <h2 style={{
+            fontSize: 'clamp(20px, 3.2vw, 30px)',
+            fontWeight: 900,
+            color: '#0F172A',
+            margin: 0,
+            fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
+            lineHeight: 1.3
+          }}>
+            আপনার এলাকায় <span style={{ color: '#059669' }}>ডাক্তার খুঁজুন</span>
+          </h2>
+          <p style={{ fontSize: 'clamp(13px, 1.6vw, 14.5px)', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+            বিভাগ বা জেলা নির্বাচন করে সহজেই সেবা নিন
+          </p>
         </div>
 
         {/* ── 4 Cards Grid: 3 Landmark Cards + 1 Green Feature Card ── */}
@@ -1311,7 +1464,9 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                         onClick={(e) => {
                           e.stopPropagation()
                           if (tag.isMore) {
-                            setShowAllDivModal(true)
+                            setModalTab('districts')
+                            setLocationSearch('')
+                            setShowLocationModal(true)
                           } else {
                             navigate(`/doctors/${tag.slug}`)
                           }
@@ -1330,7 +1485,11 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           {/* 4th Card: Special Card ("সব বিভাগ দেখুন") with User Uploaded Map Graphic */}
           <Col xs={12} sm={6} lg={3}>
             <div
-              onClick={() => setShowAllDivModal(true)}
+              onClick={() => {
+                setModalTab('divisions')
+                setLocationSearch('')
+                setShowLocationModal(true)
+              }}
               className="bbl-division-card bbl-more-card"
               style={{ position: 'relative', overflow: 'hidden' }}
             >
@@ -1407,22 +1566,29 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         </Row>
 
         {/* ── Popular Districts Row with Round Photos (Image 2 Design) ── */}
-        <div className="mt-4 pt-2">
-          <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="mt-4 pt-1">
+          <div className="d-flex justify-content-between align-items-center mb-2">
             <div className="d-flex align-items-center gap-2">
-              <IconMapPin size={20} stroke={2.5} color="#059669" />
+              <IconMapPin size={19} stroke={2.5} color="#059669" />
               <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                জনপ্রিয় জেলায় ডাক্তার ও হাসপাতাল:
+                জনপ্রিয় জেলা
               </h5>
             </div>
-            <button onClick={() => setShowAllDistModal(true)} className="bbl-link-btn">
-              <span>সব জেলা দেখুন</span>
-              <IconChevronRight size={15} stroke={2.5} />
+            <button
+              onClick={() => {
+                setModalTab('districts')
+                setLocationSearch('')
+                setShowLocationModal(true)
+              }}
+              className="bbl-link-btn"
+            >
+              <span>সব দেখুন</span>
+              <IconChevronRight size={14} stroke={2.5} />
             </button>
           </div>
 
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {activeDistricts.slice(0, 7).map((dist, idx) => (
+          <div className="d-flex flex-wrap align-items-center gap-2 bbl-pills-scroll">
+            {activeDistricts.slice(0, 8).map((dist, idx) => (
               <div
                 key={dist.id || idx}
                 onClick={() => navigate(`/doctors/${dist.slug}`)}
@@ -1444,7 +1610,11 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             ))}
 
             <div
-              onClick={() => setShowAllDistModal(true)}
+              onClick={() => {
+                setModalTab('districts')
+                setLocationSearch('')
+                setShowLocationModal(true)
+              }}
               className="bbl-pill-btn bbl-pill-more"
             >
               <IconPlus size={14} stroke={3} />
@@ -1455,15 +1625,21 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         {/* ── Popular Thanas / Areas Row (Image 2 Design) ── */}
         <div className="mt-3 pt-1">
-          <div className="d-flex align-items-center gap-2 mb-3">
-            <IconBuildingHospital size={20} stroke={2.5} color="#059669" />
-            <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
-              জনপ্রিয় থানা / এলাকা:
-            </h5>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <div className="d-flex align-items-center gap-2">
+              <IconBuildingHospital size={19} stroke={2.5} color="#059669" />
+              <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                জনপ্রিয় এলাকা ও থানা
+              </h5>
+            </div>
+            <button onClick={() => navigate('/doctors')} className="bbl-link-btn">
+              <span>সব দেখুন</span>
+              <IconChevronRight size={14} stroke={2.5} />
+            </button>
           </div>
 
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {activeUpazilas.slice(0, 7).map((upz, idx) => (
+          <div className="d-flex flex-wrap align-items-center gap-2 bbl-pills-scroll">
+            {activeUpazilas.slice(0, 8).map((upz, idx) => (
               <div
                 key={upz.id || idx}
                 onClick={() => navigate(`/doctors/${upz.district?.slug || upz.district_slug || 'dhaka'}/${upz.slug}`)}
@@ -1540,7 +1716,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           <div className="bbl-stat-divider" />
 
           {/* 12,000+ Doctors */}
-          <div className="bbl-stat-item">
+          <div className="bbl-stat-item bbl-stat-wide">
             <div className="bbl-stat-icon-wrap">
               <IconUsers size={24} stroke={2} color="#059669" />
             </div>
@@ -1555,7 +1731,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           <div className="bbl-stat-divider" />
 
           {/* 1,800+ Hospitals */}
-          <div className="bbl-stat-item">
+          <div className="bbl-stat-item bbl-stat-wide">
             <div className="bbl-stat-icon-wrap">
               <IconBuildingHospital size={24} stroke={2} color="#059669" />
             </div>
@@ -1569,111 +1745,160 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         </div>
       </Container>
 
-      {/* ── Modal 1: All 8 Divisions Modal ── */}
-      <Modal show={showAllDivModal} onHide={() => setShowAllDivModal(false)} size="lg" centered>
-        <Modal.Header style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0' }}>
-          <Modal.Title style={{ fontWeight: 800, fontSize: 20, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            বাংলাদেশের সকল বিভাগ (৮টি)
-          </Modal.Title>
-          <button onClick={() => setShowAllDivModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}>
-            <IconX size={24} />
+      {/* ── Unified All Divisions & Districts Searchable Modal (Specialties Style) ── */}
+      <Modal show={showLocationModal} onHide={() => setShowLocationModal(false)} size="xl" centered scrollable>
+        <Modal.Header style={{ borderBottom: '1px solid #E2E8F0', padding: '20px 28px', background: '#FFFFFF' }}>
+          <div>
+            <Modal.Title style={{ fontWeight: 800, fontSize: 21, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              বাংলাদেশের সকল বিভাগ ও জেলা
+              <span style={{ fontSize: 13.5, color: '#059669', marginLeft: 10, fontWeight: 700, background: '#E8F8F2', padding: '3px 10px', borderRadius: 20 }}>
+                ৮টি বিভাগ • ৬৪টি জেলা
+              </span>
+            </Modal.Title>
+            <p style={{ margin: '4px 0 0', fontSize: 13.5, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+              পছন্দের বিভাগ বা জেলা নির্বাচন করে সরাসরি ডাক্তারের তালিকা দেখুন
+            </p>
+          </div>
+          <button
+            onClick={() => setShowLocationModal(false)}
+            style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+          >
+            <IconX size={26} />
           </button>
         </Modal.Header>
-        <Modal.Body style={{ padding: '24px', background: '#F8FAFC' }}>
-          <Row className="g-3">
-            {allEightDivisions.map((div, i) => (
-              <Col key={i} xs={12} sm={6}>
-                <div
-                  onClick={() => {
-                    setShowAllDivModal(false)
-                    navigate(`/doctors/${div.slug}`)
-                  }}
-                  style={{
-                    background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 14,
-                    padding: '16px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    transition: 'all 0.25s ease'
-                  }}
-                  className="bbl-modal-item"
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#E8F8F2', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconMapPin size={22} />
-                    </div>
-                    <div>
-                      <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        {div.name}
-                      </h5>
-                      <span style={{ fontSize: 12.5, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                        {div.count}
-                      </span>
-                    </div>
-                  </div>
-                  <IconChevronRight size={18} color="#059669" />
-                </div>
-              </Col>
-            ))}
-          </Row>
-        </Modal.Body>
-      </Modal>
 
-      {/* ── Modal 2: All Districts Search Modal ── */}
-      <Modal show={showAllDistModal} onHide={() => setShowAllDistModal(false)} size="lg" centered scrollable>
-        <Modal.Header style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0' }}>
-          <Modal.Title style={{ fontWeight: 800, fontSize: 20, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            বাংলাদেশের জেলাসমূহ ({activeDistricts.length})
-          </Modal.Title>
-          <button onClick={() => setShowAllDistModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}>
-            <IconX size={24} />
-          </button>
-        </Modal.Header>
-        <Modal.Body style={{ padding: '0', background: '#F8FAFC' }}>
-          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F8FAFC', padding: '16px 24px', borderBottom: '1px solid #E2E8F0' }}>
-            <InputGroup style={{ borderRadius: 12, overflow: 'hidden' }}>
-              <InputGroup.Text style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRight: 'none' }}>
-                <IconSearch size={18} color="#059669" />
+        <Modal.Body style={{ padding: 0, background: '#F8FAFC' }}>
+          {/* Sticky Search & Tab Filter Bar */}
+          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F8FAFC', padding: '18px 24px 14px', borderBottom: '1px solid rgba(226,232,240,0.8)' }}>
+            <InputGroup style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.04)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}>
+              <InputGroup.Text style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRight: 'none', paddingLeft: 18 }}>
+                <IconSearch size={20} color="#059669" />
               </InputGroup.Text>
               <Form.Control
-                placeholder="জেলার নাম লিখে খুঁজুন (যেমন: ঢাকা, সিলেট, কুমিল্লা)..."
-                value={distSearch}
-                onChange={(e) => setDistSearch(e.target.value)}
-                style={{ border: '1px solid #E2E8F0', borderLeft: 'none', boxShadow: 'none', padding: '12px 14px', fontFamily: "'Hind Siliguri', sans-serif" }}
+                placeholder="বিভাগ বা জেলার নাম লিখে খুঁজুন (যেমন: ঢাকা, সিলেট, কুমিল্লা)..."
+                value={locationSearch}
+                onChange={(e) => setLocationSearch(e.target.value)}
+                style={{ border: '1px solid #E2E8F0', borderLeft: 'none', boxShadow: 'none', padding: '12px 16px', fontSize: 15, fontFamily: "'Hind Siliguri', sans-serif" }}
               />
+              {locationSearch && (
+                <button
+                  onClick={() => setLocationSearch('')}
+                  style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: 'none', padding: '0 16px', color: '#94A3B8', cursor: 'pointer' }}
+                >
+                  <IconX size={18} />
+                </button>
+              )}
             </InputGroup>
+
+            {/* Segmented Tab Filter */}
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalTab('divisions')}
+                className={`bbl-modal-tab-btn ${modalTab === 'divisions' ? 'active' : ''}`}
+              >
+                <IconMapPin size={16} />
+                <span>বিভাগসমূহ</span>
+                <span className="bbl-tab-badge">{filteredDivisions.length}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('districts')}
+                className={`bbl-modal-tab-btn ${modalTab === 'districts' ? 'active' : ''}`}
+              >
+                <IconBuildingHospital size={16} />
+                <span>সকল জেলা</span>
+                <span className="bbl-tab-badge">{filteredDistricts.length}</span>
+              </button>
+            </div>
           </div>
 
-          <div style={{ padding: '20px 24px' }}>
-            <div className="d-flex flex-wrap gap-2">
-              {filteredDistrictsForModal.map((dist, idx) => (
-                <div
-                  key={dist.id || idx}
-                  onClick={() => {
-                    setShowAllDistModal(false)
-                    navigate(`/doctors/${dist.slug}`)
-                  }}
-                  className="bbl-pill-btn"
-                  style={{ padding: '6px 16px 6px 6px' }}
-                >
-                  <img
-                    src={getDistrictImg(dist)}
-                    alt={dist.bangla_name || dist.name}
-                    className="bbl-pill-thumb"
-                    onError={(e) => { e.currentTarget.style.display = 'none' }}
-                  />
-                  <span className="bbl-pill-text">
-                    {dist.bangla_name || dist.name}
-                    {dist.doctors_count > 0 && (
-                      <span className="bbl-pill-count">({toBnNum(dist.doctors_count)})</span>
-                    )}
-                  </span>
+          {/* Cards Grid */}
+          <div style={{ padding: '20px 24px 36px 24px' }}>
+            {modalTab === 'divisions' ? (
+              filteredDivisions.length > 0 ? (
+                <Row className="row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3">
+                  {filteredDivisions.map(div => (
+                    <Col key={div.id}>
+                      <div
+                        onClick={() => {
+                          setShowLocationModal(false)
+                          navigate(`/doctors/${div.slug}`)
+                        }}
+                        className="bbl-modal-card"
+                      >
+                        <div className="bbl-modal-icon-badge">
+                          {div.img ? (
+                            <img
+                              src={div.img}
+                              alt={div.name}
+                              className="bbl-modal-img"
+                              onError={(e) => { e.currentTarget.style.display = 'none' }}
+                            />
+                          ) : (
+                            <IconMapPin size={22} color="#059669" />
+                          )}
+                        </div>
+                        <div className="bbl-modal-info">
+                          <h6 className="bbl-modal-card-title">{div.name}</h6>
+                          <span className="bbl-modal-card-sub">
+                            {div.hospitals} • {div.districtsCount}
+                          </span>
+                        </div>
+                        <div className="bbl-modal-arrow">
+                          <IconChevronRight size={18} color="#059669" />
+                        </div>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
+                  <IconSearch size={36} color="#CBD5E1" style={{ marginBottom: 10 }} />
+                  <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>কোনো বিভাগ পাওয়া যায়নি</p>
                 </div>
-              ))}
-            </div>
+              )
+            ) : (
+              filteredDistricts.length > 0 ? (
+                <Row className="row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3">
+                  {filteredDistricts.map((dist, idx) => (
+                    <Col key={dist.slug || idx}>
+                      <div
+                        onClick={() => {
+                          setShowLocationModal(false)
+                          navigate(`/doctors/${dist.slug}`)
+                        }}
+                        className="bbl-modal-card"
+                      >
+                        <div className="bbl-modal-icon-badge">
+                          <img
+                            src={getDistrictImg(dist)}
+                            alt={dist.name}
+                            className="bbl-modal-img"
+                            onError={(e) => { e.currentTarget.style.display = 'none' }}
+                          />
+                        </div>
+                        <div className="bbl-modal-info">
+                          <h6 className="bbl-modal-card-title">{dist.name}</h6>
+                          <span className="bbl-modal-card-sub">
+                            {dist.division} • {dist.count}
+                          </span>
+                        </div>
+                        <div className="bbl-modal-arrow">
+                          <IconChevronRight size={18} color="#059669" />
+                        </div>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
+                  <IconSearch size={36} color="#CBD5E1" style={{ marginBottom: 10 }} />
+                  <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>কোনো জেলা পাওয়া যায়নি</p>
+                </div>
+              )
+            )}
           </div>
         </Modal.Body>
       </Modal>
@@ -1993,10 +2218,140 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           background: #E2E8F0;
         }
 
-        .bbl-modal-item:hover {
-          border-color: #059669 !important;
-          box-shadow: 0 4px 14px rgba(5, 150, 105, 0.12);
-          transform: translateY(-2px);
+        /* Unified Modal Tabs */
+        .bbl-modal-tab-btn {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          color: #64748B;
+          border-radius: 999px;
+          padding: 6px 16px;
+          font-weight: 700;
+          font-size: 13.5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .bbl-modal-tab-btn:hover {
+          border-color: #059669;
+          color: #059669;
+        }
+        .bbl-modal-tab-btn.active {
+          background: #059669;
+          border-color: #059669;
+          color: #FFFFFF;
+          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+        }
+        .bbl-tab-badge {
+          background: rgba(0, 0, 0, 0.08);
+          font-size: 11.5px;
+          padding: 1px 7px;
+          border-radius: 12px;
+          font-weight: 800;
+        }
+        .bbl-modal-tab-btn.active .bbl-tab-badge {
+          background: rgba(255, 255, 255, 0.25);
+          color: #FFFFFF;
+        }
+
+        /* Modal Cards matching Specialties design */
+        .bbl-modal-card {
+          background: #FFFFFF;
+          border: 1.2px solid #EDF2F7;
+          border-radius: 18px;
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          cursor: pointer;
+          transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+          user-select: none;
+          height: 100%;
+          min-height: 78px;
+          position: relative;
+          overflow: hidden;
+        }
+        .bbl-modal-card:hover {
+          transform: translateY(-3px);
+          border-color: #059669;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+        }
+        .bbl-modal-icon-badge {
+          width: 48px;
+          height: 48px;
+          min-width: 48px;
+          border-radius: 14px;
+          background: #E8F8F2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          transition: transform 0.25s ease;
+        }
+        .bbl-modal-card:hover .bbl-modal-icon-badge {
+          transform: scale(1.06);
+        }
+        .bbl-modal-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .bbl-modal-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 3px;
+        }
+        .bbl-modal-card-title {
+          font-size: 15.5px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          line-height: 1.3;
+          font-family: 'Hind Siliguri', 'Inter', sans-serif;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transition: color 0.2s ease;
+        }
+        .bbl-modal-card:hover .bbl-modal-card-title {
+          color: #059669;
+        }
+        .bbl-modal-card-sub {
+          font-size: 12px;
+          font-weight: 500;
+          color: #64748B;
+          margin: 0;
+          line-height: 1.35;
+          font-family: 'Hind Siliguri', 'Inter', sans-serif;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .bbl-modal-arrow {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          border-radius: 50%;
+          background: #F8FAFC;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.25s ease;
+        }
+        .bbl-modal-card:hover .bbl-modal-arrow {
+          transform: translateX(3px);
+          background: #059669;
+        }
+        .bbl-modal-card:hover .bbl-modal-arrow svg {
+          color: #FFFFFF !important;
+          stroke: #FFFFFF !important;
         }
 
         @media (max-width: 992px) {
@@ -2012,9 +2367,65 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             flex: 1 1 45%;
           }
         }
-        @media (max-width: 576px) {
+
+        @media (max-width: 768px) {
+          .bbl-pills-scroll {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 6px;
+            padding-top: 2px;
+            scrollbar-width: none;
+          }
+          .bbl-pills-scroll::-webkit-scrollbar {
+            display: none;
+          }
+          .bbl-pill-btn {
+            flex-shrink: 0;
+            white-space: nowrap;
+          }
+
+          .bbl-stats-bar {
+            display: grid !important;
+            grid-template-columns: repeat(6, 1fr) !important;
+            gap: 14px 6px !important;
+            padding: 16px 10px !important;
+            border-radius: 16px !important;
+          }
+          .bbl-stat-divider {
+            display: none !important;
+          }
           .bbl-stat-item {
-            flex: 1 1 100%;
+            grid-column: span 2 !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 6px !important;
+          }
+          .bbl-stat-item.bbl-stat-wide {
+            grid-column: span 3 !important;
+          }
+          .bbl-stat-icon-wrap {
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 10px !important;
+          }
+          .bbl-stat-icon-wrap svg {
+            width: 20px !important;
+            height: 20px !important;
+          }
+          .bbl-stat-text {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0 !important;
+            line-height: 1.25 !important;
+          }
+          .bbl-stat-val {
+            font-size: 16px !important;
+          }
+          .bbl-stat-lbl {
+            font-size: 11.5px !important;
           }
         }
       `}</style>
@@ -2815,17 +3226,26 @@ function HospitalPartnersSection({ hospitals = [] }) {
 function DoctorBookingPromoBanner() {
   const navigate = useNavigate()
   return (
-    <section style={{
-      width: '100%',
-      position: 'relative',
-      overflow: 'hidden',
-      padding: '70px 20px',
-      margin: '24px 0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
-    }}>
+    <section
+      className="doctor-booking-promo-banner d-none d-md-flex"
+      style={{
+        width: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '70px 20px',
+        margin: '24px 0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+      }}
+    >
+      <style>{`
+        @media (max-width: 768px) {
+          .doctor-booking-promo-banner {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* Background Image Container (Crystal Clear & Sharp) */}
       <div style={{
         position: 'absolute',
@@ -2969,7 +3389,7 @@ function HomePage() {
         <ImageBannerSlider />
       </ScrollReveal>
 
-      <ScrollReveal direction="up" distance={28} duration={600}>
+      <ScrollReveal direction="up" distance={28} duration={600} className="d-none d-md-block">
         <DoctorBookingPromoBanner />
       </ScrollReveal>
 
