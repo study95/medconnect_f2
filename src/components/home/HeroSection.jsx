@@ -1879,7 +1879,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                   value={specialtySearchQuery}
                   onChange={(e) => setSpecialtySearchQuery(e.target.value)}
                   className="hero-mobile-specialties-search-input"
-                  autoFocus
                 />
                 {specialtySearchQuery && (
                   <button
