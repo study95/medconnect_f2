@@ -8,7 +8,7 @@ import {
   IconBabyCarriage, IconDroplet, IconDental, IconActivity, IconCalendar,
   IconUsers, IconShieldCheck, IconLock, IconDeviceMobile, IconMail, IconLoader2,
   IconTicket, IconPrinter, IconEdit, IconCircleCheck, IconAlertTriangle, IconAlertCircle,
-  IconChevronLeft, IconChevronRight, IconCopy
+  IconChevronLeft, IconChevronRight, IconCopy, IconPhone
 } from '@tabler/icons-react'
 import useSpecialties from '../hooks/useSpecialties'
 import { getDoctors, getDoctorById } from '../api/doctorApi'
@@ -121,6 +121,7 @@ export default function QuickAppointmentPage() {
     isOpen: false,
     title: '',
     message: '',
+    callPhone: '',
     viewAppointments: false,
     confirmText: 'ঠিক আছে',
     onConfirm: null
@@ -867,6 +868,29 @@ export default function QuickAppointmentPage() {
         })
         return
       }
+      if (err.response?.data?.service_disabled || (err.response?.data?.message && (err.response.data.message.includes('অনলাইন বুকিং') || err.response.data.message.includes('বুকিং সেবাটি')))) {
+        setIsOtpSending(false)
+        const friendlyMsg = err.response?.data?.message || 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।'
+        const currentChamber = (doctorChambers || []).find(c => String(c.id) === String(selectedChamberId))
+        const chamberPhone = currentChamber?.phone || currentChamber?.hospital?.phone || currentChamber?.contact_number || selectedDoctor?.phone || selectedDoctor?.mobile || ''
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'অনলাইন বুকিং বন্ধ',
+          message: friendlyMsg,
+          callPhone: chamberPhone,
+          confirmText: chamberPhone ? 'বন্ধ করুন' : 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
+            setIsBookingModalOpen(false)
+            setModalStep(1)
+            setStep2Error('')
+            setOtpNotice('')
+            setOtp('')
+            setIsOtpVerified(false)
+          }
+        })
+        return
+      }
       if (err.response?.status === 429) {
         const cooldown = err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds || 60
         setOtpTimer(cooldown)
@@ -947,6 +971,28 @@ export default function QuickAppointmentPage() {
           confirmText: 'ঠিক আছে',
           onConfirm: () => {
             setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setIsBookingModalOpen(false)
+            setModalStep(1)
+            setStep2Error('')
+            setOtpNotice('')
+            setOtp('')
+            setIsOtpVerified(false)
+          }
+        })
+        return
+      }
+      if (err.response?.data?.service_disabled || (err.response?.data?.message && (err.response.data.message.includes('অনলাইন বুকিং') || err.response.data.message.includes('বুকিং সেবাটি')))) {
+        const friendlyMsg = err.response?.data?.message || 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।'
+        const currentChamber = (doctorChambers || []).find(c => String(c.id) === String(selectedChamberId))
+        const chamberPhone = currentChamber?.phone || currentChamber?.hospital?.phone || currentChamber?.contact_number || selectedDoctor?.phone || selectedDoctor?.mobile || ''
+        setBookingErrorModal({
+          isOpen: true,
+          title: 'অনলাইন বুকিং বন্ধ',
+          message: friendlyMsg,
+          callPhone: chamberPhone,
+          confirmText: chamberPhone ? 'বন্ধ করুন' : 'ঠিক আছে',
+          onConfirm: () => {
+            setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
             setIsBookingModalOpen(false)
             setModalStep(1)
             setStep2Error('')
@@ -3996,7 +4042,7 @@ export default function QuickAppointmentPage() {
           if (bookingErrorModal.onConfirm) {
             bookingErrorModal.onConfirm()
           } else {
-            setBookingErrorModal({ isOpen: false, title: '', message: '' })
+            setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
             setIsBookingModalOpen(false)
             setModalStep(1)
             setOtp('')
@@ -4047,17 +4093,55 @@ export default function QuickAppointmentPage() {
             {bookingErrorModal.message}
           </p>
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            {bookingErrorModal.callPhone && (
+              <a
+                href={`tel:${bookingErrorModal.callPhone}`}
+                onClick={() => {
+                  setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
+                  setIsBookingModalOpen(false)
+                  setModalStep(1)
+                  setOtp('')
+                  setOtpNotice('')
+                  setStep2Error('')
+                  setIsOtpVerified(false)
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  height: 46,
+                  borderRadius: 12,
+                  background: '#00B875',
+                  color: 'white',
+                  fontSize: 14.5,
+                  fontWeight: 800,
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7,
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 14px rgba(0, 184, 117, 0.28)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <IconPhone size={18} />
+                <span>চেম্বারে কল করুন</span>
+              </a>
+            )}
+
             {bookingErrorModal.viewAppointments && (
               <button
                 type="button"
                 onClick={() => {
-                  setBookingErrorModal({ isOpen: false, title: '', message: '' })
+                  setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
                   setIsBookingModalOpen(false)
                   navigate('/my-appointments')
                 }}
                 style={{
                   flex: 1,
+                  minWidth: 140,
                   height: 46,
                   borderRadius: 12,
                   background: '#0EA5E9',
@@ -4086,7 +4170,7 @@ export default function QuickAppointmentPage() {
                 if (bookingErrorModal.onConfirm) {
                   bookingErrorModal.onConfirm()
                 } else {
-                  setBookingErrorModal({ isOpen: false, title: '', message: '' })
+                  setBookingErrorModal({ isOpen: false, title: '', message: '', callPhone: '' })
                   setIsBookingModalOpen(false)
                   setModalStep(1)
                   setOtp('')
@@ -4096,18 +4180,19 @@ export default function QuickAppointmentPage() {
                 }
               }}
               style={{
-                flex: bookingErrorModal.viewAppointments ? 1 : 'none',
-                width: bookingErrorModal.viewAppointments ? 'auto' : '100%',
+                flex: (bookingErrorModal.viewAppointments || bookingErrorModal.callPhone) ? 1 : 'none',
+                minWidth: (bookingErrorModal.viewAppointments || bookingErrorModal.callPhone) ? 120 : '100%',
+                width: (bookingErrorModal.viewAppointments || bookingErrorModal.callPhone) ? 'auto' : '100%',
                 height: 46,
                 borderRadius: 12,
-                background: '#00B875',
-                color: 'white',
-                border: 'none',
+                background: bookingErrorModal.callPhone ? '#F1F5F9' : '#00B875',
+                color: bookingErrorModal.callPhone ? '#475569' : 'white',
+                border: bookingErrorModal.callPhone ? '1px solid #CBD5E1' : 'none',
                 fontSize: 15,
                 fontWeight: 800,
                 fontFamily: "'Hind Siliguri', sans-serif",
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 184, 117, 0.28)',
+                boxShadow: bookingErrorModal.callPhone ? 'none' : '0 4px 14px rgba(0, 184, 117, 0.28)',
                 transition: 'all 0.15s ease'
               }}
             >

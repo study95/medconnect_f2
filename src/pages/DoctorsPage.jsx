@@ -1195,11 +1195,13 @@ function DoctorsPage() {
           </div>
         </div>
 
-        {/* ── AVAILABILITY DATE FILTER (PLACED ABOVE DOCTORS LISTING) ── */}
-        <AvailabilityDateFilter
-          value={selectedDate}
-          onChange={handleDateChange}
-        />
+        {/* ── AVAILABILITY DATE FILTER (DESKTOP ONLY - MOVED INSIDE FILTER DRAWER ON MOBILE) ── */}
+        <div className="d-none d-lg-block">
+          <AvailabilityDateFilter
+            value={selectedDate}
+            onChange={handleDateChange}
+          />
+        </div>
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div className="doc-results-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
@@ -1616,6 +1618,14 @@ function DoctorsPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Availability Date Filter (Mobile Drawer) */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <AvailabilityDateFilter
+              value={selectedDate}
+              onChange={handleDateChange}
+            />
           </div>
 
           {/* Specialty */}
