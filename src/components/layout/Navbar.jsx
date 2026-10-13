@@ -6,7 +6,8 @@ import { getColor, getInitials } from '../../utils/avatar'
 import { 
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
-  ShieldCheck, FileText, HelpCircle, Home, Menu, X 
+  ShieldCheck, FileText, HelpCircle, Home, Menu, X,
+  MapPin, Bell
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent } from '../../utils/contentService'
@@ -25,6 +26,20 @@ function AppNavbar() {
                      location.pathname.startsWith('/pending-verification') ||
                      location.pathname.startsWith('/forgot-password') ||
                      location.pathname.startsWith('/reset-password')
+
+  const [selectedMobileLocation, setSelectedMobileLocation] = useState(() => {
+    return localStorage.getItem('user_location_name') || 'ঢাকা'
+  })
+
+  useEffect(() => {
+    const handleLocationUpdate = (e) => {
+      if (e.detail?.name) {
+        setSelectedMobileLocation(e.detail.name)
+      }
+    }
+    window.addEventListener('location-selected', handleLocationUpdate)
+    return () => window.removeEventListener('location-selected', handleLocationUpdate)
+  }, [])
 
   useEffect(() => {
     if (expanded) {
@@ -513,6 +528,67 @@ function AppNavbar() {
 
             {/* Mobile Actions & Menu Toggle */}
             <div className="d-flex align-items-center gap-2">
+              {location.pathname === '/' && (
+                <>
+                  <button 
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-hero-location-popup'))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#FFFFFF',
+                      border: '1.5px solid #E2E8F0',
+                      borderRadius: '999px',
+                      padding: '4px 10px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      color: '#1E293B',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      cursor: 'pointer',
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                    title="লোকেশন নির্বাচন করুন"
+                  >
+                    <MapPin size={13} color="#00B875" />
+                    <span style={{ maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedMobileLocation || 'ঢাকা'}
+                    </span>
+                    <ChevronDown size={13} color="#64748B" />
+                  </button>
+
+                  <Link
+                    to={isLoggedIn ? "/my-appointments" : "/login"}
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '50%',
+                      background: '#FFFFFF',
+                      border: '1.5px solid #E2E8F0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      color: '#1E293B',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      textDecoration: 'none'
+                    }}
+                    title="নোটিফিকেশন"
+                  >
+                    <Bell size={16} />
+                    <span style={{
+                      position: 'absolute',
+                      top: '5px',
+                      right: '5px',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#EF4444'
+                    }} />
+                  </Link>
+                </>
+              )}
+
               <button 
                 type="button"
                 onClick={() => setExpanded(!expanded)}
