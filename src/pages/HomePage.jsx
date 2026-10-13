@@ -1,5 +1,5 @@
 import { useNavigate, Link } from 'react-router-dom'
-import { Container, Row, Col } from 'react-bootstrap'
+import { Container, Row, Col, Modal, InputGroup, Form } from 'react-bootstrap'
 import HeroSection from '../components/home/HeroSection'
 import ImageBannerSlider from '../components/home/ImageBannerSlider'
 import MostViewedDoctors from '../components/home/MostViewedDoctors'
@@ -16,7 +16,8 @@ import {
   IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
-  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus
+  IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus,
+  IconSearch, IconX
 } from '@tabler/icons-react'
 import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -1101,289 +1102,920 @@ function DigitalDashboardBanner() {
   )
 }
 
-// ─── EXPLORE DIVISIONS / CITIES SECTION (IMAGE 1 REFERENCE DESIGN) ───────────
-function BrowseByLocationSection({ popularDistricts = [], popularUpazilas = [] }) {
+// ─── EXPLORE DIVISIONS / CITIES SECTION (REFERENCE IMAGE 2 DESIGN) ───────────
+function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [], popularUpazilas = [], stats = {} }) {
   const navigate = useNavigate()
+  const [showAllDivModal, setShowAllDivModal] = useState(false)
+  const [showAllDistModal, setShowAllDistModal] = useState(false)
+  const [distSearch, setDistSearch] = useState('')
 
+  const toBnNum = (n) => {
+    if (n === null || n === undefined) return ''
+    const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯', '+': '+', ',': ',' }
+    return String(n).replace(/[0-9]/g, d => enToBn[d] || d)
+  }
+
+  // Preset divisions with curated Bangladesh landmark photos & sub-districts
   const mainDivisions = [
     {
+      id: 1,
       bnName: 'ঢাকা বিভাগ',
       enName: 'Dhaka Division',
-      count: '৪৫+ হাসপাতাল',
+      count: '৮৫০+ হাসপাতাল',
       searchKey: 'dhaka',
-      img: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600&auto=format&fit=crop&q=70'
+      img: '/images/dhaka_division_parliament.jpg',
+      districts: [
+        { name: 'গাজীপুর', slug: 'gazipur' },
+        { name: 'নারায়ণগঞ্জ', slug: 'narayanganj' },
+        { name: 'মুন্সীগঞ্জ', slug: 'munshiganj' },
+        { name: '+ ১৫ জেলা', isMore: true }
+      ]
     },
     {
+      id: 2,
       bnName: 'সিলেট বিভাগ',
       enName: 'Sylhet Division',
-      count: '১৮+ হাসপাতাল',
+      count: '১৮০+ হাসপাতাল',
       searchKey: 'sylhet',
-      img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=70'
+      img: '/images/sylhet_division_teagarden.jpg',
+      districts: [
+        { name: 'সিলেট', slug: 'sylhet' },
+        { name: 'হবিগঞ্জ', slug: 'habiganj' },
+        { name: 'মৌলভীবাজার', slug: 'moulvibazar' },
+        { name: '+ ৪ জেলা', isMore: true }
+      ]
     },
     {
+      id: 3,
       bnName: 'চট্টগ্রাম বিভাগ',
       enName: 'Chattogram Division',
-      count: '২৫+ হাসপাতাল',
+      count: '২৫০+ হাসপাতাল',
       searchKey: 'chattogram',
-      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600&auto=format&fit=crop&q=70'
+      img: '/images/chattogram_division_sunset.jpg',
+      districts: [
+        { name: 'চট্টগ্রাম', slug: 'chittagong' },
+        { name: 'কক্সবাজার', slug: 'coxsbazar' },
+        { name: 'রাঙ্গামাটি', slug: 'rangamati' },
+        { name: '+ ৭ জেলা', isMore: true }
+      ]
     }
   ]
 
+  // Curated district thumbnail images matching Reference Image 2
+  const DISTRICT_THUMBNAILS = {
+    'sylhet': '/images/sylhet_division_teagarden.jpg',
+    'সিলেট': '/images/sylhet_division_teagarden.jpg',
+    'habiganj': 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70',
+    'হবিগঞ্জ': 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70',
+    'gazipur': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70',
+    'গাজীপুর': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70',
+    'chittagong': '/images/chattogram_division_sunset.jpg',
+    'চট্টগ্রাম': '/images/chattogram_division_sunset.jpg',
+    'narayanganj': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70',
+    'নারায়ণগঞ্জ': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70',
+    'mymensingh': 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70',
+    'ময়মনসিংহ': 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70',
+    'rajshahi': 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70',
+    'রাজশাহী': 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70',
+    'dhaka': '/images/dhaka_division_parliament.jpg',
+    'ঢাকা': '/images/dhaka_division_parliament.jpg',
+  }
+
+  // Fallback preset popular districts
+  const defaultDistricts = [
+    { id: 'd1', bangla_name: 'সিলেট', slug: 'sylhet', doctors_count: 56, img: DISTRICT_THUMBNAILS['সিলেট'] },
+    { id: 'd2', bangla_name: 'হবিগঞ্জ', slug: 'habiganj', doctors_count: 22, img: DISTRICT_THUMBNAILS['হবিগঞ্জ'] },
+    { id: 'd3', bangla_name: 'গাজীপুর', slug: 'gazipur', doctors_count: 43, img: DISTRICT_THUMBNAILS['গাজীপুর'] },
+    { id: 'd4', bangla_name: 'চট্টগ্রাম', slug: 'chittagong', doctors_count: 32, img: DISTRICT_THUMBNAILS['চট্টগ্রাম'] },
+    { id: 'd5', bangla_name: 'নারায়ণগঞ্জ', slug: 'narayanganj', doctors_count: 27, img: DISTRICT_THUMBNAILS['নারায়ণগঞ্জ'] },
+    { id: 'd6', bangla_name: 'ময়মনসিংহ', slug: 'mymensingh', doctors_count: 19, img: DISTRICT_THUMBNAILS['ময়মনসিংহ'] },
+    { id: 'd7', bangla_name: 'রাজশাহী', slug: 'rajshahi', doctors_count: 25, img: DISTRICT_THUMBNAILS['রাজশাহী'] },
+  ]
+
+  // Fallback preset popular upazilas/areas
+  const defaultUpazilas = [
+    { id: 'u1', bangla_name: 'ধানমন্ডি', slug: 'dhanmondi', district_slug: 'dhaka', doctors_count: 120, img: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u2', bangla_name: 'উত্তরা', slug: 'uttara', district_slug: 'dhaka', doctors_count: 98, img: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u3', bangla_name: 'চট্টগ্রাম সদর', slug: 'chattogram-sadar', district_slug: 'chittagong', doctors_count: 85, img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u4', bangla_name: 'শাহজালাল উপশহর', slug: 'shahjalal-uposhahar', district_slug: 'sylhet', doctors_count: 72, img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u5', bangla_name: 'জিন্দাবাজার', slug: 'zindabazar', district_slug: 'sylhet', doctors_count: 65, img: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u6', bangla_name: 'আগানগর', slug: 'aganagar', district_slug: 'dhaka', doctors_count: 56, img: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70' },
+    { id: 'u7', bangla_name: 'কুমিল্লা সদর', slug: 'cumilla-sadar', district_slug: 'cumilla', doctors_count: 51, img: 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70' },
+  ]
+
+  const activeDistricts = popularDistricts && popularDistricts.length > 0 ? popularDistricts : defaultDistricts
+  const activeUpazilas = popularUpazilas && popularUpazilas.length > 0 ? popularUpazilas : defaultUpazilas
+
+  const getDistrictImg = (dist) => {
+    const slugKey = (dist.slug || '').toLowerCase()
+    const nameKey = (dist.bangla_name || dist.name || '').toLowerCase()
+    return DISTRICT_THUMBNAILS[slugKey] || DISTRICT_THUMBNAILS[nameKey] || dist.img || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70'
+  }
+
+  // All 8 divisions of Bangladesh for modal
+  const allEightDivisions = [
+    { name: 'ঢাকা বিভাগ', slug: 'dhaka', count: '৮৫০+ হাসপাতাল' },
+    { name: 'চট্টগ্রাম বিভাগ', slug: 'chattogram', count: '২৫০+ হাসপাতাল' },
+    { name: 'সিলেট বিভাগ', slug: 'sylhet', count: '১৮০+ হাসপাতাল' },
+    { name: 'রাজশাহী বিভাগ', slug: 'rajshahi', count: '১৬০+ হাসপাতাল' },
+    { name: 'খুলনা বিভাগ', slug: 'khulna', count: '১৪০+ হাসপাতাল' },
+    { name: 'বরিশাল বিভাগ', slug: 'barishal', count: '১১০+ হাসপাতাল' },
+    { name: 'রংপুর বিভাগ', slug: 'rangpur', count: '১৩০+ হাসপাতাল' },
+    { name: 'ময়মনসিংহ বিভাগ', slug: 'mymensingh', count: '১২০+ হাসপাতাল' },
+  ]
+
+  const filteredDistrictsForModal = activeDistricts.filter(d => {
+    const q = distSearch.toLowerCase()
+    const bName = (d.bangla_name || d.name || '').toLowerCase()
+    const sName = (d.slug || '').toLowerCase()
+    return bName.includes(q) || sName.includes(q)
+  })
+
   return (
-    <section style={{ background: '#F8FAFC', padding: '56px 0 52px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+    <section style={{ background: '#FAFBFD', padding: '56px 0 52px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
       <Container>
-        {/* Title Header */}
-        <div style={{ marginBottom: 28 }}>
-          <h2 style={{
-            fontSize: 'clamp(22px, 3.5vw, 32px)',
-            fontWeight: 900,
-            color: '#0F172A',
-            margin: 0,
-            fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
-          }}>
-            বিভাগ ও জেলা অনুযায়ী ডাক্তার ও হাসপাতাল খুঁজুন
-          </h2>
-          <p style={{ fontSize: 13.5, color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            বাংলাদেশের জনপ্রিয় বিভাগ, জেলা ও থানা ভিত্তিক যাচাইকৃত বিশেষজ্ঞ ডাক্তার এবং হাসপাতাল
-          </p>
+        {/* ── Title Header (Image 2 Design) ── */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+          <div>
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <span style={{ width: 3.5, height: 16, background: '#059669', borderRadius: 2 }} />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>
+                BANGLADESH
+              </span>
+            </div>
+            <h2 style={{
+              fontSize: 'clamp(22px, 3.2vw, 32px)',
+              fontWeight: 900,
+              color: '#0F172A',
+              margin: 0,
+              fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
+              lineHeight: 1.3
+            }}>
+              বিভাগ ও জেলা অনুযায়ী <span style={{ color: '#059669' }}>ডাক্তার ও হাসপাতাল খুঁজুন</span>
+            </h2>
+            <p style={{ fontSize: 'clamp(13px, 1.6vw, 15px)', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+              বাংলাদেশের সকল বিভাগ, জেলা ও উপজেলার ডাক্তার ও হাসপাতাল এক জায়গায়
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowAllDivModal(true)}
+            className="bbl-header-btn"
+          >
+            <span>সব বিভাগ দেখুন</span>
+            <IconChevronRight size={17} stroke={2.5} />
+          </button>
         </div>
 
-        {/* 4 Cards Grid: 3 Division Cards + 1 Center Plus More-View Card */}
+        {/* ── 4 Cards Grid: 3 Landmark Cards + 1 Green Feature Card ── */}
         <Row className="g-3">
-          {mainDivisions.map((div, i) => (
-            <Col key={i} xs={12} sm={6} lg={3}>
+          {mainDivisions.map((div) => (
+            <Col key={div.id} xs={12} sm={6} lg={3}>
               <div
                 onClick={() => navigate(`/doctors/${div.searchKey}`)}
-                style={{
-                  position: 'relative',
-                  height: 230,
-                  borderRadius: 0,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)'
-                }}
-                className="division-image-card"
+                className="bbl-division-card"
               >
                 {/* Background Image */}
                 <img
                   src={div.img}
                   alt={div.enName}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.5s ease'
-                  }}
-                  className="division-card-img"
+                  className="bbl-card-img"
                 />
 
-                {/* Dark Overlay */}
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.45) 55%, rgba(15,23,42,0.15) 100%)'
-                }} />
-
-                {/* Content at Bottom Left */}
-                <div style={{ position: 'absolute', bottom: 18, left: 18, right: 65, zIndex: 2 }}>
-                  <h4 style={{
-                    fontSize: 18,
-                    fontWeight: 900,
-                    color: '#FFFFFF',
-                    margin: '0 0 3px 0',
-                    lineHeight: 1.25,
-                    fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
-                  }}>
-                    {div.bnName}
-                  </h4>
-                  <span style={{
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}>
-                    {div.count}
-                  </span>
+                {/* Floating Top Badge */}
+                <div className="bbl-card-top-badge">
+                  <IconBuildingHospital size={16} color="#0284C7" stroke={2} />
+                  <span>{div.count}</span>
                 </div>
 
-                {/* Bottom Right Glassmorphic Arrow Button (↗) */}
-                <div
-                  className="division-card-arrow"
-                  style={{
-                    position: 'absolute',
-                    bottom: 18,
-                    right: 18,
-                    width: 38,
-                    height: 38,
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.28)',
-                    backdropFilter: 'blur(8px)',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.3s ease',
-                    zIndex: 2,
-                    border: '1px solid rgba(255, 255, 255, 0.4)'
-                  }}
-                >
-                  <IconArrowUpRight size={20} stroke={2.5} />
+                {/* Dark Gradient Overlay */}
+                <div className="bbl-card-overlay" />
+
+                {/* Bottom Content Container */}
+                <div className="bbl-card-bottom">
+                  {/* Title & Arrow Row */}
+                  <div className="bbl-card-title-row">
+                    <h4 className="bbl-card-title">
+                      {div.bnName} 📍
+                    </h4>
+                    <div className="bbl-card-arrow-btn">
+                      <IconArrowRight size={18} stroke={2.5} />
+                    </div>
+                  </div>
+
+                  {/* District Sub-tags */}
+                  <div className="bbl-tag-list">
+                    {div.districts.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (tag.isMore) {
+                            setShowAllDivModal(true)
+                          } else {
+                            navigate(`/doctors/${tag.slug}`)
+                          }
+                        }}
+                        className="bbl-mini-tag"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </Col>
           ))}
 
-          {/* 4th (Last) Card: Center "+" More View Button */}
+          {/* 4th Card: Special Card ("সব বিভাগ দেখুন") with User Uploaded Map Graphic */}
           <Col xs={12} sm={6} lg={3}>
             <div
-              onClick={() => navigate('/doctors')}
-              style={{
-                position: 'relative',
-                height: 230,
-                borderRadius: 0,
-                overflow: 'hidden',
-                cursor: 'pointer',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center'
-              }}
-              className="division-image-card division-more-card"
+              onClick={() => setShowAllDivModal(true)}
+              className="bbl-division-card bbl-more-card"
+              style={{ position: 'relative', overflow: 'hidden' }}
             >
-              {/* Background Image */}
+              {/* Background Image: User Uploaded Bangladesh Map Graphic */}
               <img
-                src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=70"
-                alt="সকল এলাকা"
+                src="/images/bangladesh_map_all_divisions.png"
+                alt="সব বিভাগ দেখুন"
                 style={{
-                  width: '100%',
-                  height: '100%',
                   position: 'absolute',
                   inset: 0,
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'cover',
-                  transition: 'transform 0.5s ease'
+                  transition: 'transform 0.6s ease'
                 }}
-                className="division-card-img"
+                className="bbl-card-img"
               />
 
-              {/* Dark Gradient Overlay */}
+              {/* Gentle Overlay for contrast */}
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(11, 25, 44, 0.94) 100%)',
-                backdropFilter: 'blur(2px)'
+                background: 'linear-gradient(135deg, rgba(6, 78, 59, 0.52) 0%, rgba(2, 44, 34, 0.68) 100%)',
+                zIndex: 1
               }} />
 
-              {/* Center Content: "+" Button & Text */}
-              <div style={{
-                position: 'relative',
-                zIndex: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px'
-              }}>
-                <div
-                  className="division-center-plus-btn"
-                  style={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: '50%',
-                    background: '#00B875',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 6px 20px rgba(0, 184, 117, 0.45)',
-                    transition: 'all 0.35s ease',
-                    marginBottom: 12
-                  }}
-                >
+              {/* Card Content */}
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                {/* Big White Circular "+" Button */}
+                <div className="bbl-more-plus-btn">
                   <IconPlus size={28} stroke={3} />
                 </div>
 
+                {/* Title & Subtitles */}
                 <h4 style={{
-                  fontSize: 18,
+                  fontSize: 21,
                   fontWeight: 900,
                   color: '#FFFFFF',
-                  margin: '0 0 4px 0',
+                  margin: '0 0 6px 0',
                   fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
-                  lineHeight: 1.3
+                  lineHeight: 1.2
                 }}>
-                  সব এলাকা দেখুন
+                  সব বিভাগ দেখুন
                 </h4>
+
                 <span style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.75)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  marginBottom: 2
+                }}>
+                  ৮ বিভাগ • ৬৪ জেলা
+                </span>
+
+                <span style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'rgba(255, 255, 255, 0.85)',
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}>
-                  সকল বিভাগ ও জেলা
+                  ৪৯৫ উপজেলা
                 </span>
+              </div>
+
+              {/* Bottom Right White Arrow Button */}
+              <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 2 }}>
+                <div className="bbl-card-arrow-btn">
+                  <IconArrowRight size={18} stroke={2.5} />
+                </div>
               </div>
             </div>
           </Col>
         </Row>
 
-        {/* Popular Districts Internal Linking Discovery Hub */}
-        {popularDistricts && popularDistricts.length > 0 && (
-          <div className="mt-4 pt-3">
-            <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
-              জনপ্রিয় জেলাভিত্তিক ডাক্তার ও হাসপাতাল:
-            </h5>
-            <div className="d-flex flex-wrap gap-2">
-              {popularDistricts.map(dist => (
-                <Link
-                  key={dist.id}
-                  to={`/doctors/${dist.slug}`}
-                  className="btn btn-sm btn-white border rounded-pill px-3 py-1 text-decoration-none text-dark shadow-sm bg-white"
-                  style={{ fontSize: '0.85rem' }}
-                >
-                  📍 {dist.bangla_name || dist.name}
-                  {dist.doctors_count > 0 && <span className="badge bg-light text-muted rounded-pill ms-1">{dist.doctors_count}</span>}
-                </Link>
-              ))}
+        {/* ── Popular Districts Row with Round Photos (Image 2 Design) ── */}
+        <div className="mt-4 pt-2">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex align-items-center gap-2">
+              <IconMapPin size={20} stroke={2.5} color="#059669" />
+              <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                জনপ্রিয় জেলায় ডাক্তার ও হাসপাতাল:
+              </h5>
+            </div>
+            <button onClick={() => setShowAllDistModal(true)} className="bbl-link-btn">
+              <span>সব জেলা দেখুন</span>
+              <IconChevronRight size={15} stroke={2.5} />
+            </button>
+          </div>
+
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {activeDistricts.slice(0, 7).map((dist, idx) => (
+              <div
+                key={dist.id || idx}
+                onClick={() => navigate(`/doctors/${dist.slug}`)}
+                className="bbl-pill-btn"
+              >
+                <img
+                  src={getDistrictImg(dist)}
+                  alt={dist.bangla_name || dist.name}
+                  className="bbl-pill-thumb"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+                <span className="bbl-pill-text">
+                  {dist.bangla_name || dist.name}
+                  {dist.doctors_count > 0 && (
+                    <span className="bbl-pill-count">({toBnNum(dist.doctors_count)})</span>
+                  )}
+                </span>
+              </div>
+            ))}
+
+            <div
+              onClick={() => setShowAllDistModal(true)}
+              className="bbl-pill-btn bbl-pill-more"
+            >
+              <IconPlus size={14} stroke={3} />
+              <span>আরও জেলা</span>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Popular Upazilas / Cities Internal Linking */}
-        {popularUpazilas && popularUpazilas.length > 0 && (
-          <div className="mt-3">
-            <h5 className="fw-bold mb-3 text-dark" style={{ fontSize: 16 }}>
+        {/* ── Popular Thanas / Areas Row (Image 2 Design) ── */}
+        <div className="mt-3 pt-1">
+          <div className="d-flex align-items-center gap-2 mb-3">
+            <IconBuildingHospital size={20} stroke={2.5} color="#059669" />
+            <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
               জনপ্রিয় থানা / এলাকা:
             </h5>
-            <div className="d-flex flex-wrap gap-2">
-              {popularUpazilas.map(upz => (
-                <Link
-                  key={upz.id}
-                  to={`/doctors/${upz.district?.slug || 'dhaka'}/${upz.slug}`}
-                  className="btn btn-sm btn-light border rounded-pill px-3 py-1 text-decoration-none text-dark"
-                  style={{ fontSize: '0.85rem' }}
+          </div>
+
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {activeUpazilas.slice(0, 7).map((upz, idx) => (
+              <div
+                key={upz.id || idx}
+                onClick={() => navigate(`/doctors/${upz.district?.slug || upz.district_slug || 'dhaka'}/${upz.slug}`)}
+                className="bbl-pill-btn"
+              >
+                <img
+                  src={upz.img || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70'}
+                  alt={upz.bangla_name || upz.name}
+                  className="bbl-pill-thumb"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+                <span className="bbl-pill-text">
+                  {upz.bangla_name || upz.name}
+                  {upz.doctors_count > 0 && (
+                    <span className="bbl-pill-count">({toBnNum(upz.doctors_count)})</span>
+                  )}
+                </span>
+              </div>
+            ))}
+
+            <div
+              onClick={() => navigate('/doctors')}
+              className="bbl-pill-btn bbl-pill-more"
+            >
+              <IconPlus size={14} stroke={3} />
+              <span>আরও এলাকা</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bottom Summary Stats Banner (Image 2 Design) ── */}
+        <div className="bbl-stats-bar mt-4 pt-2">
+          {/* 8 Divisions */}
+          <div className="bbl-stat-item">
+            <div className="bbl-stat-icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7l6 -3l6 3l6 -3v13l-6 3l-6 -3l-6 3v-13" />
+                <path d="M9 4v13" />
+                <path d="M15 7v13" />
+              </svg>
+            </div>
+            <div className="bbl-stat-text">
+              <span className="bbl-stat-val">৮</span>
+              <span className="bbl-stat-lbl">বিভাগ</span>
+            </div>
+          </div>
+
+          <div className="bbl-stat-divider" />
+
+          {/* 64 Districts */}
+          <div className="bbl-stat-item">
+            <div className="bbl-stat-icon-wrap">
+              <IconMapPin size={24} stroke={2} color="#059669" />
+            </div>
+            <div className="bbl-stat-text">
+              <span className="bbl-stat-val">৬৪</span>
+              <span className="bbl-stat-lbl">জেলা</span>
+            </div>
+          </div>
+
+          <div className="bbl-stat-divider" />
+
+          {/* 495 Upazilas */}
+          <div className="bbl-stat-item">
+            <div className="bbl-stat-icon-wrap">
+              <IconBuildingHospital size={24} stroke={2} color="#059669" />
+            </div>
+            <div className="bbl-stat-text">
+              <span className="bbl-stat-val">৪৯৫</span>
+              <span className="bbl-stat-lbl">উপজেলা</span>
+            </div>
+          </div>
+
+          <div className="bbl-stat-divider" />
+
+          {/* 12,000+ Doctors */}
+          <div className="bbl-stat-item">
+            <div className="bbl-stat-icon-wrap">
+              <IconUsers size={24} stroke={2} color="#059669" />
+            </div>
+            <div className="bbl-stat-text">
+              <span className="bbl-stat-val">
+                {stats?.total_doctors ? `${toBnNum(stats.total_doctors)}+` : '১২,০০০+'}
+              </span>
+              <span className="bbl-stat-lbl">ডাক্তার</span>
+            </div>
+          </div>
+
+          <div className="bbl-stat-divider" />
+
+          {/* 1,800+ Hospitals */}
+          <div className="bbl-stat-item">
+            <div className="bbl-stat-icon-wrap">
+              <IconBuildingHospital size={24} stroke={2} color="#059669" />
+            </div>
+            <div className="bbl-stat-text">
+              <span className="bbl-stat-val">
+                {stats?.total_hospitals ? `${toBnNum(stats.total_hospitals)}+` : '১,৮০০+'}
+              </span>
+              <span className="bbl-stat-lbl">হাসপাতাল</span>
+            </div>
+          </div>
+        </div>
+      </Container>
+
+      {/* ── Modal 1: All 8 Divisions Modal ── */}
+      <Modal show={showAllDivModal} onHide={() => setShowAllDivModal(false)} size="lg" centered>
+        <Modal.Header style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0' }}>
+          <Modal.Title style={{ fontWeight: 800, fontSize: 20, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            বাংলাদেশের সকল বিভাগ (৮টি)
+          </Modal.Title>
+          <button onClick={() => setShowAllDivModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}>
+            <IconX size={24} />
+          </button>
+        </Modal.Header>
+        <Modal.Body style={{ padding: '24px', background: '#F8FAFC' }}>
+          <Row className="g-3">
+            {allEightDivisions.map((div, i) => (
+              <Col key={i} xs={12} sm={6}>
+                <div
+                  onClick={() => {
+                    setShowAllDivModal(false)
+                    navigate(`/doctors/${div.slug}`)
+                  }}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 14,
+                    padding: '16px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s ease'
+                  }}
+                  className="bbl-modal-item"
                 >
-                  🏥 {upz.bangla_name || upz.name}
-                  {upz.doctors_count > 0 && <span className="badge bg-white text-muted rounded-pill ms-1">{upz.doctors_count}</span>}
-                </Link>
+                  <div className="d-flex align-items-center gap-3">
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#E8F8F2', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconMapPin size={22} />
+                    </div>
+                    <div>
+                      <h5 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        {div.name}
+                      </h5>
+                      <span style={{ fontSize: 12.5, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        {div.count}
+                      </span>
+                    </div>
+                  </div>
+                  <IconChevronRight size={18} color="#059669" />
+                </div>
+              </Col>
+            ))}
+          </Row>
+        </Modal.Body>
+      </Modal>
+
+      {/* ── Modal 2: All Districts Search Modal ── */}
+      <Modal show={showAllDistModal} onHide={() => setShowAllDistModal(false)} size="lg" centered scrollable>
+        <Modal.Header style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0' }}>
+          <Modal.Title style={{ fontWeight: 800, fontSize: 20, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+            বাংলাদেশের জেলাসমূহ ({activeDistricts.length})
+          </Modal.Title>
+          <button onClick={() => setShowAllDistModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}>
+            <IconX size={24} />
+          </button>
+        </Modal.Header>
+        <Modal.Body style={{ padding: '0', background: '#F8FAFC' }}>
+          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F8FAFC', padding: '16px 24px', borderBottom: '1px solid #E2E8F0' }}>
+            <InputGroup style={{ borderRadius: 12, overflow: 'hidden' }}>
+              <InputGroup.Text style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRight: 'none' }}>
+                <IconSearch size={18} color="#059669" />
+              </InputGroup.Text>
+              <Form.Control
+                placeholder="জেলার নাম লিখে খুঁজুন (যেমন: ঢাকা, সিলেট, কুমিল্লা)..."
+                value={distSearch}
+                onChange={(e) => setDistSearch(e.target.value)}
+                style={{ border: '1px solid #E2E8F0', borderLeft: 'none', boxShadow: 'none', padding: '12px 14px', fontFamily: "'Hind Siliguri', sans-serif" }}
+              />
+            </InputGroup>
+          </div>
+
+          <div style={{ padding: '20px 24px' }}>
+            <div className="d-flex flex-wrap gap-2">
+              {filteredDistrictsForModal.map((dist, idx) => (
+                <div
+                  key={dist.id || idx}
+                  onClick={() => {
+                    setShowAllDistModal(false)
+                    navigate(`/doctors/${dist.slug}`)
+                  }}
+                  className="bbl-pill-btn"
+                  style={{ padding: '6px 16px 6px 6px' }}
+                >
+                  <img
+                    src={getDistrictImg(dist)}
+                    alt={dist.bangla_name || dist.name}
+                    className="bbl-pill-thumb"
+                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                  />
+                  <span className="bbl-pill-text">
+                    {dist.bangla_name || dist.name}
+                    {dist.doctors_count > 0 && (
+                      <span className="bbl-pill-count">({toBnNum(dist.doctors_count)})</span>
+                    )}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
-        )}
-      </Container>
+        </Modal.Body>
+      </Modal>
 
+      {/* ── Scoped Styles ── */}
       <style>{`
-        .division-image-card:hover .division-card-img {
+        /* Card Container */
+        .bbl-division-card {
+          position: relative;
+          height: 250px;
+          border-radius: 20px;
+          overflow: hidden;
+          cursor: pointer;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bbl-division-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+        }
+
+        .bbl-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bbl-division-card:hover .bbl-card-img {
           transform: scale(1.08);
         }
-        .division-image-card:hover .division-card-arrow {
-          background: #FFFFFF !important;
-          color: #0F172A !important;
-          transform: scale(1.1) rotate(45deg);
+
+        /* Floating Top-Left Hospital Badge */
+        .bbl-card-top-badge {
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          background: rgba(255, 255, 255, 0.94);
+          backdrop-filter: blur(8px);
+          border-radius: 999px;
+          padding: 4px 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #0F172A;
+          font-size: 12px;
+          font-weight: 700;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          z-index: 3;
+          font-family: 'Hind Siliguri', sans-serif;
         }
-        .division-more-card:hover .division-center-plus-btn {
-          transform: scale(1.15) rotate(90deg);
-          background: #009E64 !important;
-          box-shadow: 0 8px 25px rgba(0, 184, 117, 0.65) !important;
+
+        /* Dark Gradient Overlay */
+        .bbl-card-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top, rgba(10, 25, 41, 0.96) 0%, rgba(10, 25, 41, 0.62) 50%, rgba(10, 25, 41, 0.12) 100%);
+          z-index: 1;
+        }
+
+        /* Bottom Content Container */
+        .bbl-card-bottom {
+          position: absolute;
+          bottom: 14px;
+          left: 14px;
+          right: 14px;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .bbl-card-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .bbl-card-title {
+          font-size: 18px;
+          font-weight: 900;
+          color: #FFFFFF;
+          margin: 0;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-card-arrow-btn {
+          width: 34px;
+          height: 34px;
+          min-width: 34px;
+          border-radius: 50%;
+          background: #FFFFFF;
+          color: #064E3B;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease;
+        }
+
+        .bbl-division-card:hover .bbl-card-arrow-btn {
+          transform: translateX(3px) scale(1.08);
+          background: #059669;
+          color: #FFFFFF;
+        }
+
+        /* District Sub-tags */
+        .bbl-tag-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+
+        .bbl-mini-tag {
+          background: rgba(255, 255, 255, 0.18);
+          backdrop-filter: blur(6px);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          color: #FFFFFF;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 7px;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+
+        .bbl-mini-tag:hover {
+          background: rgba(255, 255, 255, 0.35);
+          transform: scale(1.04);
+        }
+
+        /* 4th Card: Green Gradient Special Card */
+        .bbl-more-card {
+          background: linear-gradient(135deg, #059669 0%, #047857 50%, #064E3B 100%);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 24px 20px;
+        }
+
+        .bbl-more-card:hover .bbl-more-plus-btn {
+          transform: rotate(90deg) scale(1.1);
+        }
+
+        .bbl-more-plus-btn {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #FFFFFF;
+          color: #059669;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+          transition: all 0.35s ease;
+          margin-bottom: 12px;
+        }
+
+        /* Pills Buttons for Districts & Areas */
+        .bbl-pill-btn {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 999px;
+          padding: 4px 14px 4px 5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+          user-select: none;
+        }
+
+        .bbl-pill-btn:hover {
+          transform: translateY(-2px);
+          border-color: #059669;
+          box-shadow: 0 6px 14px rgba(5, 150, 105, 0.12);
+        }
+
+        .bbl-pill-thumb {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .bbl-pill-text {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #1E293B;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-pill-count {
+          font-size: 12px;
+          font-weight: 500;
+          color: #64748B;
+          margin-left: 4px;
+        }
+
+        .bbl-pill-more {
+          background: #E8F8F2;
+          border-color: #A7F3D0;
+          color: #059669;
+          padding: 6px 16px;
+          font-weight: 700;
+          font-size: 13px;
+        }
+
+        .bbl-pill-more:hover {
+          background: #059669;
+          color: #FFFFFF;
+          border-color: #059669;
+        }
+
+        /* Header & Link Action Buttons */
+        .bbl-header-btn {
+          background: #FFFFFF;
+          border: 1.5px solid #059669;
+          color: #059669;
+          border-radius: 999px;
+          padding: 8px 18px;
+          font-weight: 800;
+          font-size: 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.25s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+        }
+
+        .bbl-header-btn:hover {
+          background: #059669;
+          color: #FFFFFF;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(5, 150, 105, 0.2);
+        }
+
+        .bbl-link-btn {
+          background: #E8F8F2;
+          border: none;
+          color: #059669;
+          border-radius: 999px;
+          padding: 5px 14px;
+          font-weight: 700;
+          font-size: 12.5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+        }
+
+        .bbl-link-btn:hover {
+          background: #059669;
+          color: #FFFFFF;
+        }
+
+        /* Bottom Stats Bar */
+        .bbl-stats-bar {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 20px;
+          padding: 18px 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-around;
+          box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .bbl-stat-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .bbl-stat-icon-wrap {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #E8F8F2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .bbl-stat-text {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+
+        .bbl-stat-val {
+          font-size: 22px;
+          font-weight: 900;
+          color: #0F172A;
+          font-family: 'Hind Siliguri', 'Inter', sans-serif;
+        }
+
+        .bbl-stat-lbl {
+          font-size: 14px;
+          font-weight: 600;
+          color: #64748B;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-stat-divider {
+          width: 1px;
+          height: 36px;
+          background: #E2E8F0;
+        }
+
+        .bbl-modal-item:hover {
+          border-color: #059669 !important;
+          box-shadow: 0 4px 14px rgba(5, 150, 105, 0.12);
+          transform: translateY(-2px);
+        }
+
+        @media (max-width: 992px) {
+          .bbl-stats-bar {
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: flex-start;
+          }
+          .bbl-stat-divider {
+            display: none;
+          }
+          .bbl-stat-item {
+            flex: 1 1 45%;
+          }
+        }
+        @media (max-width: 576px) {
+          .bbl-stat-item {
+            flex: 1 1 100%;
+          }
         }
       `}</style>
     </section>
@@ -2351,8 +2983,10 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <BrowseByLocationSection
+          popularDivisions={data?.popular_divisions}
           popularDistricts={data?.popular_districts}
           popularUpazilas={data?.popular_upazilas}
+          stats={data?.stats}
         />
       </ScrollReveal>
 
