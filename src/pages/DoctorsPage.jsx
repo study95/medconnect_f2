@@ -25,7 +25,7 @@ import {
   IconLock, IconClock, IconHeadset, IconChevronLeft, IconChevronRight,
   IconAdjustmentsHorizontal, IconX, IconMapPin, IconChevronDown, IconChevronUp, IconBrain, IconGenderFemale, IconDental,
   IconBuildingHospital, IconStar, IconTrash, IconActivity, IconCheck, IconVideo, IconCalendarCheck, IconListDetails, IconGridDots,
-  IconCurrentLocation, IconNavigation, IconLoader2, IconMicrophone
+  IconCurrentLocation, IconNavigation, IconLoader2, IconMicrophone, IconAlertTriangle, IconRefresh
 } from '@tabler/icons-react'
 
 const getSpecialtyIcon = (name = '', slug = '', isSelected = false) => {
@@ -224,6 +224,7 @@ function DoctorsPage() {
   const [isNearMeActive, setIsNearMeActive] = useState(() => {
     return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest'
   })
+  const [locationInlineError, setLocationInlineError] = useState(false)
   const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
@@ -369,6 +370,7 @@ function DoctorsPage() {
   const handleToggleNearMe = async () => {
     if (isNearMeActive) {
       setIsNearMeActive(false)
+      setLocationInlineError(false)
       setDistanceRadius('')
       if (sortBy === 'nearest') {
         setSortBy('relevance')
@@ -381,11 +383,12 @@ function DoctorsPage() {
 
     try {
       await requestLocation()
+      setLocationInlineError(false)
       setIsNearMeActive(true)
       setSortBy('nearest')
       updateUrlParams({ near_me: '1', sort: 'nearest' })
-    } catch (err) {
-      toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'doc-geo-err', duration: 4500 })
+    } catch {
+      setLocationInlineError(true)
     }
   }
 
@@ -395,13 +398,15 @@ function DoctorsPage() {
       if (!hasLocation) {
         try {
           await requestLocation()
+          setLocationInlineError(false)
           setIsNearMeActive(true)
           setSortBy('nearest')
           updateUrlParams({ sort: 'nearest', near_me: '1' })
-        } catch (err) {
-          toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'doc-geo-err', duration: 4500 })
+        } catch {
+          setLocationInlineError(true)
         }
       } else {
+        setLocationInlineError(false)
         setIsNearMeActive(true)
         setSortBy('nearest')
         updateUrlParams({ sort: 'nearest', near_me: '1' })
@@ -414,6 +419,7 @@ function DoctorsPage() {
 
   // Location Banner Success Callback
   const handleLocationBannerSuccess = () => {
+    setLocationInlineError(false)
     setIsNearMeActive(true)
     setSortBy('nearest')
     updateUrlParams({ near_me: '1', sort: 'nearest' })
@@ -741,6 +747,7 @@ function DoctorsPage() {
     setAvailableToday(false)
     setSearchText('')
     setIsNearMeActive(false)
+    setLocationInlineError(false)
     setDistanceRadius('')
     setSortBy('relevance')
     prevParamsRef.current = ''
@@ -966,12 +973,94 @@ function DoctorsPage() {
           -webkit-overflow-scrolling: touch;
           padding: 14px 20px 20px 20px;
         }
+
+        /* ── Page Layout & Spacings (Desktop & Mobile Responsive) ── */
+        .doc-main-container {
+          padding: 20px 24px;
+        }
+        .doc-breadcrumb {
+          font-size: 13px;
+          color: #64748B;
+          font-weight: 500;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .doc-page-heading {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin-bottom: 16px;
+          letter-spacing: -0.5px;
+        }
+        .doc-chips-wrapper {
+          position: relative;
+          margin-bottom: 16px;
+        }
+        .doc-chips-scroll {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 8px;
+          padding-top: 4px;
+          padding-left: 4px;
+          padding-right: 4px;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          align-items: center;
+          scroll-behavior: smooth;
+        }
+        .doc-results-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .doc-active-filters-bar {
+          background: rgba(248, 250, 252, 0.95);
+          border-bottom: none;
+          padding: 8px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
         @media (max-width: 991px) {
+          .doc-active-filters-bar {
+            padding: 2px 16px 8px 16px !important;
+          }
+          .doc-main-container {
+            padding: 8px 16px 20px !important;
+          }
+          .doc-breadcrumb {
+            margin-bottom: 4px !important;
+            font-size: 12px !important;
+          }
+          .doc-page-heading {
+            font-size: 20px !important;
+            margin-bottom: 8px !important;
+          }
+          .doc-chips-wrapper {
+            margin-bottom: 8px !important;
+          }
+          .doc-chips-scroll {
+            padding-top: 2px !important;
+            padding-bottom: 4px !important;
+          }
+          .doc-results-bar {
+            margin-bottom: 10px !important;
+          }
           .doc-desktop-search {
             display: none !important;
           }
           .doc-mobile-search-bar {
             display: block !important;
+            padding: 8px 16px 4px !important;
           }
           .doc-chip-scroll-btn {
             display: none !important;
@@ -986,7 +1075,7 @@ function DoctorsPage() {
           .doc-results-bar {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 10px !important;
+            gap: 8px !important;
           }
           .doc-results-controls {
             width: 100% !important;
@@ -1113,9 +1202,11 @@ function DoctorsPage() {
         position: 'sticky',
         top: 'calc(var(--header-height, 68px) - 1px)',
         zIndex: 1040,
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '10px 16px'
+        background: 'rgba(248, 250, 252, 0.95)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        borderBottom: 'none',
+        padding: '10px 16px 6px'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
@@ -1166,9 +1257,9 @@ function DoctorsPage() {
         </div>
       </div>
 
-      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS (White Background) ── */}
+      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS ── */}
       {activeCount > 0 && (
-        <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="doc-active-filters-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
               <span
@@ -1178,15 +1269,16 @@ function DoctorsPage() {
                   background: '#00B875',
                   color: 'white',
                   border: '1px solid #00B875',
-                  borderRadius: 4,
-                  padding: '4px 10px',
+                  borderRadius: 20,
+                  padding: '4px 12px',
                   fontSize: 12,
                   fontWeight: 600,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                   cursor: 'pointer',
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  boxShadow: '0 1px 3px rgba(0, 184, 117, 0.25)'
                 }}
               >
                 {f.label}
@@ -1206,23 +1298,17 @@ function DoctorsPage() {
         </div>
       )}
 
-      <Container fluid style={{ maxWidth: 1380, padding: '20px 24px' }}>
+      <Container fluid className="doc-main-container" style={{ maxWidth: 1380 }}>
         
         {/* ── BREADCRUMB ── */}
-        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="doc-breadcrumb">
           <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
           <span>/</span>
           <span style={{ color: '#0F172A', fontWeight: 600 }}>Doctor Listings</span>
         </div>
 
         {/* ── HEADING TITLE ── */}
-        <h1 style={{
-          fontSize: 28,
-          fontWeight: 800,
-          color: '#0F172A',
-          marginBottom: 16,
-          letterSpacing: '-0.5px'
-        }}>
+        <h1 className="doc-page-heading">
           {locationHeadingText ? (
             <>
               <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
@@ -1282,7 +1368,7 @@ function DoctorsPage() {
         </form>
 
         {/* ── POPULAR DEPARTMENTS CHIP STRIP (DYNAMIC WITH DESKTOP SCROLL & ARROWS) ── */}
-        <div style={{ position: 'relative', marginBottom: 16 }}>
+        <div className="doc-chips-wrapper">
           {/* Left Arrow Button (Desktop Only) */}
           {canScrollLeft && (
             <button
@@ -1348,20 +1434,7 @@ function DoctorsPage() {
           <div
             ref={chipContainerRef}
             onWheel={handleChipWheel}
-            style={{
-              display: 'flex',
-              gap: 8,
-              overflowX: 'auto',
-              paddingBottom: 8,
-              paddingTop: 4,
-              paddingLeft: 4,
-              paddingRight: 4,
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch',
-              alignItems: 'center',
-              scrollBehavior: 'smooth'
-            }}
+            className="doc-chips-scroll"
           >
             {popularChipSpecialties.map((spec) => {
               const specId = String(spec.id)
@@ -1450,7 +1523,7 @@ function DoctorsPage() {
         </div>
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
-        <div className="doc-results-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div className="doc-results-bar">
           <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
             <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedDoctors.length)}</strong> জন ডাক্তার
           </div>
@@ -1587,99 +1660,192 @@ function DoctorsPage() {
                 </div>
               )}
 
-              {/* Live Location / Near Me (Desktop Sidebar - Firstly) */}
-              <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী ডাক্তার</span>
-                <button
-                  type="button"
-                  onClick={handleToggleNearMe}
-                  disabled={locationLoading}
-                  style={{
-                    width: '100%',
-                    padding: '9px 14px',
-                    borderRadius: 8,
-                    background: isNearMeActive ? '#059669' : '#F1F5F9',
-                    color: isNearMeActive ? 'white' : '#334155',
-                    border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    cursor: 'pointer',
-                    marginBottom: isNearMeActive ? 12 : 0,
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                >
-                  {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
-                  <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের ডাক্তার খুঁজুন'}</span>
-                </button>
-                {isNearMeActive && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
-                    {RADIUS_OPTIONS.map(r => {
-                      const isChecked = distanceRadius === r.id
-                      return (
-                        <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          <input
-                            type="radio"
-                            name="desktop_doc_distance_radius"
-                            checked={isChecked}
-                            onChange={() => {
-                              setDistanceRadius(r.id)
-                              updateUrlParams({ radius: r.id })
-                            }}
-                            style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
-                          />
-                          <span>{r.label}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+                {/* Live Location / Near Me (Desktop Sidebar - Firstly) */}
+                <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী ডাক্তার</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleNearMe}
+                    disabled={locationLoading}
+                    style={{
+                      width: '100%',
+                      padding: '9px 14px',
+                      borderRadius: 8,
+                      background: isNearMeActive ? '#059669' : '#F1F5F9',
+                      color: isNearMeActive ? 'white' : '#334155',
+                      border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      marginBottom: isNearMeActive ? 12 : 0,
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                  >
+                    {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
+                    <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের ডাক্তার খুঁজুন'}</span>
+                  </button>
 
-              {/* Accordion 1: Department / Specialty */}
-              <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
-                <div onClick={() => toggleAccordion('specialty')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Department / Specialty</span>
-                  {openAccordions.specialty ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
-                </div>
-                {openAccordions.specialty && (
-                  <div style={{ marginTop: 10 }}>
-                    <input
-                      type="text"
-                      placeholder="খুঁজুন..."
-                      value={specialtySearch}
-                      onChange={e => setSpecialtySearch(e.target.value)}
-                      style={{ width: '100%', padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12, marginBottom: 8, outline: 'none' }}
-                    />
-                    <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {filteredSpecialties.map(s => {
-                        const isChecked = String(selectedSpecialty) === String(s.id)
+                  {/* Non-intrusive Inline Location Guidance Card */}
+                  {locationInlineError && !isNearMeActive && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                        boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                        <IconAlertTriangle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            আপনার লোকেশন বন্ধ রয়েছে
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#7F1D1D', margin: '4px 0 0', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            <div>১. ডিভাইসের নোটিফিকেশন বার নামিয়ে <strong>GPS / Location</strong> অন করুন।</div>
+                            <div style={{ marginTop: 2 }}>২. ব্রাউজারের ওপরে অ্যাড্রেস বারের <strong>🔒 (লক)</strong> আইকনে চাপ দিয়ে Location <strong>Allow</strong> করুন।</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                        <button
+                          type="button"
+                          onClick={handleToggleNearMe}
+                          disabled={locationLoading}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '7px 6px',
+                            borderRadius: 6,
+                            background: '#059669',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          {locationLoading ? <IconLoader2 size={13} className="spin-animation" style={{ flexShrink: 0 }} /> : <IconRefresh size={13} style={{ flexShrink: 0 }} />}
+                          <span style={{ whiteSpace: 'nowrap' }}>আবার চেষ্টা করুন</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLocationInlineError(false)
+                            setOpenAccordions(prev => ({ ...prev, location: true }))
+                            const target = document.getElementById('doc-location-accordion-desktop')
+                            if (target) {
+                              target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '7px 6px',
+                            borderRadius: 6,
+                            background: '#FFFFFF',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          <IconMapPin size={13} style={{ flexShrink: 0 }} />
+                          <span style={{ whiteSpace: 'nowrap' }}>জেলা সিলেক্ট করুন</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isNearMeActive && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
+                      {RADIUS_OPTIONS.map(r => {
+                        const isChecked = distanceRadius === r.id
                         return (
-                          <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
-                            <CustomCheckbox
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            <input
+                              type="radio"
+                              name="desktop_doc_distance_radius"
                               checked={isChecked}
-                              onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
-                              size={17}
+                              onChange={() => {
+                                setDistanceRadius(r.id)
+                                updateUrlParams({ radius: r.id })
+                              }}
+                              style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
                             />
-                            <span>{s.name_bn || s.name}</span>
+                            <span>{r.label}</span>
                           </label>
                         )
                       })}
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Accordion 2: Location */}
-              <div style={{ marginBottom: 4 }}>
-                <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
-                  {openAccordions.location ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  )}
                 </div>
+
+                {/* Accordion 1: Department / Specialty */}
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('specialty')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Department / Specialty</span>
+                    {openAccordions.specialty ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.specialty && (
+                    <div style={{ marginTop: 10 }}>
+                      <input
+                        type="text"
+                        placeholder="খুঁজুন..."
+                        value={specialtySearch}
+                        onChange={e => setSpecialtySearch(e.target.value)}
+                        style={{ width: '100%', padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12, marginBottom: 8, outline: 'none' }}
+                      />
+                      <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {filteredSpecialties.map(s => {
+                          const isChecked = String(selectedSpecialty) === String(s.id)
+                          return (
+                            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                              <CustomCheckbox
+                                checked={isChecked}
+                                onChange={() => setSelectedSpecialty(isChecked ? '' : String(s.id))}
+                                size={17}
+                              />
+                              <span>{s.name_bn || s.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 2: Location */}
+                <div id="doc-location-accordion-desktop" style={{ marginBottom: 4 }}>
+                  <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
+                    {openAccordions.location ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
                 {openAccordions.location && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
                     <div>
@@ -1877,6 +2043,98 @@ function DoctorsPage() {
               {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
               <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের ডাক্তার খুঁজুন'}</span>
             </button>
+
+            {/* Non-intrusive Inline Location Guidance Card (Mobile) */}
+            {locationInlineError && !isNearMeActive && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                  <IconAlertTriangle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#991B1B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      আপনার লোকেশন বন্ধ রয়েছে
+                    </div>
+                    <div style={{ fontSize: 12, color: '#7F1D1D', margin: '4px 0 0', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <div>১. ফোনের নোটিফিকেশন বার নামিয়ে <strong>GPS / Location</strong> অন করুন।</div>
+                      <div style={{ marginTop: 2 }}>২. ব্রাউজারের ওপরে অ্যাড্রেস বারের <strong>🔒 (লক)</strong> আইকনে চাপ দিয়ে Location <strong>Allow</strong> করুন।</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  <button
+                    type="button"
+                    onClick={handleToggleNearMe}
+                    disabled={locationLoading}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '8px 6px',
+                      borderRadius: 7,
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                  >
+                    {locationLoading ? <IconLoader2 size={14} className="spin-animation" style={{ flexShrink: 0 }} /> : <IconRefresh size={14} style={{ flexShrink: 0 }} />}
+                    <span style={{ whiteSpace: 'nowrap' }}>আবার চেষ্টা করুন</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocationInlineError(false)
+                      const target = document.getElementById('doc-location-section-mobile')
+                      if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '8px 6px',
+                      borderRadius: 7,
+                      background: '#FFFFFF',
+                      color: '#DC2626',
+                      border: '1px solid #FECACA',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}
+                  >
+                    <IconMapPin size={14} style={{ flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap' }}>জেলা সিলেক্ট করুন</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isNearMeActive && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
@@ -1937,7 +2195,7 @@ function DoctorsPage() {
           </div>
 
           {/* Location */}
-          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+          <div id="doc-location-section-mobile" style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>লোকেশন</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
@@ -2016,7 +2274,7 @@ function DoctorsPage() {
             onClick={closeMobileFilter}
             style={{ flex: 2, height: 44, borderRadius: 12, background: '#00803D', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", boxShadow: '0 4px 12px rgba(0, 128, 61, 0.25)' }}
           >
-            প্রয়োগ করুন ({toBengaliNumber(sortedDoctors.length)})
+            প্রয়োগ করুন
           </button>
         </div>
       </div>

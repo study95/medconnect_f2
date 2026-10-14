@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 
@@ -23,7 +24,7 @@ import {
   IconAdjustmentsHorizontal, IconX, IconCheck, IconTrash, IconMapPin,
   IconChevronUp, IconChevronDown, IconStethoscope, IconAlertTriangle,
   IconCalendarCheck, IconStar, IconListDetails, IconGridDots,
-  IconCurrentLocation, IconNavigation, IconLoader2
+  IconCurrentLocation, IconNavigation, IconLoader2, IconMicrophone, IconRefresh
 } from '@tabler/icons-react'
 
 const HOSPITAL_TYPES = [
@@ -101,6 +102,7 @@ function HospitalsPage() {
   const [isNearMeActive, setIsNearMeActive] = useState(() => {
     return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest'
   })
+  const [locationInlineError, setLocationInlineError] = useState(false)
   const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
@@ -122,6 +124,117 @@ function HospitalsPage() {
   }
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+
+  // Mobile Filter Bottom Sheet Drag-to-dismiss (Hardware Accelerated)
+  const hospFilterSheetRef = useRef(null)
+  const hospFilterOverlayRef = useRef(null)
+  const hospSheetTouchStartY = useRef(0)
+  const hospSheetCurrentY = useRef(0)
+  const isHospSheetDragging = useRef(false)
+
+  const closeMobileFilter = useCallback(() => {
+    if (hospFilterSheetRef.current) {
+      hospFilterSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      hospFilterSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (hospFilterOverlayRef.current) {
+      hospFilterOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      hospFilterOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setIsMobileFilterOpen(false)
+      hospSheetCurrentY.current = 0
+      if (hospFilterSheetRef.current) {
+        hospFilterSheetRef.current.style.transform = ''
+      }
+    }, 260)
+  }, [])
+
+  const handleHospSheetTouchStart = (e) => {
+    hospSheetTouchStartY.current = e.touches[0].clientY
+    hospSheetCurrentY.current = 0
+    isHospSheetDragging.current = true
+    if (hospFilterSheetRef.current) {
+      hospFilterSheetRef.current.style.transition = 'none'
+    }
+    if (hospFilterOverlayRef.current) {
+      hospFilterOverlayRef.current.style.transition = 'none'
+    }
+  }
+
+  const handleHospSheetTouchMove = (e) => {
+    if (!isHospSheetDragging.current) return
+    const deltaY = e.touches[0].clientY - hospSheetTouchStartY.current
+    if (deltaY > 0) {
+      hospSheetCurrentY.current = deltaY
+      if (hospFilterSheetRef.current) {
+        hospFilterSheetRef.current.style.transform = `translateY(${deltaY}px)`
+      }
+      if (hospFilterOverlayRef.current) {
+        const opacity = Math.max(0, 1 - deltaY / 450)
+        hospFilterOverlayRef.current.style.opacity = opacity
+      }
+    }
+  }
+
+  const handleHospSheetTouchEnd = () => {
+    if (!isHospSheetDragging.current) return
+    isHospSheetDragging.current = false
+    if (hospFilterSheetRef.current) {
+      hospFilterSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (hospFilterOverlayRef.current) {
+      hospFilterOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (hospSheetCurrentY.current > 100) {
+      closeMobileFilter()
+    } else {
+      if (hospFilterSheetRef.current) {
+        hospFilterSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (hospFilterOverlayRef.current) {
+        hospFilterOverlayRef.current.style.opacity = '1'
+      }
+      hospSheetCurrentY.current = 0
+    }
+  }
+
+  // Prevent background scroll when mobile filter is open
+  useEffect(() => {
+    if (isMobileFilterOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobileFilterOpen])
+
+  // Voice search handler
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'bn-BD'
+        recognition.onresult = (event) => {
+          const text = event.results?.[0]?.[0]?.transcript
+          if (text) {
+            setSearchText(text)
+            updateUrlParams({ search: text })
+          }
+        }
+        recognition.start()
+      } catch (err) {
+        console.error(err)
+        toast.error('ভয়েস সার্চ শুরু করা যায়নি')
+      }
+    } else {
+      toast.error('আপনার ব্রাউজার ভয়েস সার্চ সমর্থন করে না')
+    }
+  }
 
   // Accordion open/close state inside left filter panel & mobile drawer
   const [openAccordions, setOpenAccordions] = useState({
@@ -160,6 +273,7 @@ function HospitalsPage() {
   const handleToggleNearMe = async () => {
     if (isNearMeActive) {
       setIsNearMeActive(false)
+      setLocationInlineError(false)
       setDistanceRadius('')
       if (sortBy === 'nearest') {
         setSortBy('newest')
@@ -172,11 +286,12 @@ function HospitalsPage() {
 
     try {
       await requestLocation()
+      setLocationInlineError(false)
       setIsNearMeActive(true)
       setSortBy('nearest')
       updateUrlParams({ near_me: '1', sort: 'nearest' })
-    } catch (err) {
-      toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
+    } catch {
+      setLocationInlineError(true)
     }
   }
 
@@ -186,13 +301,15 @@ function HospitalsPage() {
       if (!hasLocation) {
         try {
           await requestLocation()
+          setLocationInlineError(false)
           setIsNearMeActive(true)
           setSortBy('nearest')
           updateUrlParams({ sort: 'nearest', near_me: '1' })
-        } catch (err) {
-          toast.error(err?.message || 'লোকেশন পারমিশন পাওয়া যায়নি।', { id: 'geo-err', duration: 4500 })
+        } catch {
+          setLocationInlineError(true)
         }
       } else {
+        setLocationInlineError(false)
         setIsNearMeActive(true)
         setSortBy('nearest')
         updateUrlParams({ sort: 'nearest', near_me: '1' })
@@ -205,6 +322,7 @@ function HospitalsPage() {
 
   // Location Banner Success Callback
   const handleLocationBannerSuccess = () => {
+    setLocationInlineError(false)
     setIsNearMeActive(true)
     setSortBy('nearest')
     updateUrlParams({ near_me: '1', sort: 'nearest' })
@@ -443,6 +561,7 @@ function HospitalsPage() {
     setOpenTodayOnly(false)
     setSearchText('')
     setIsNearMeActive(false)
+    setLocationInlineError(false)
     setDistanceRadius('')
     if (sortBy === 'nearest') setSortBy('newest')
     prevParamsRef.current = ''
@@ -570,53 +689,157 @@ function HospitalsPage() {
       
       {/* ── RESPONSIVE FILTER DRAWER CSS ── */}
       <style>{`
+        @keyframes hospSheetFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes hospSheetSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+
         .filter-drawer-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(15, 23, 42, 0.45);
+          background: rgba(15, 23, 42, 0.65);
           backdrop-filter: blur(4px);
           -webkit-backdrop-filter: blur(4px);
-          z-index: 29999;
-          opacity: 0;
-          visibility: hidden;
-          pointer-events: none;
-          display: none;
-          transition: all 0.3s ease;
+          z-index: 99999;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: hospSheetFadeIn 0.28s ease;
+          touch-action: none;
         }
-        .filter-drawer-backdrop.open {
-          opacity: 1;
-          visibility: visible;
-          pointer-events: auto;
-          display: block;
-        }
+
         .filter-drawer {
-          position: fixed;
-          top: 0;
-          bottom: 0;
-          right: -100%;
+          background: #FFFFFF;
           width: 100%;
-          max-width: 380px;
-          background: white;
-          z-index: 30000;
-          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
-          transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          max-width: 520px;
+          height: 84vh;
+          height: 84dvh;
+          max-height: 88vh;
+          border-radius: 24px 24px 0 0;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
+          animation: hospSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: transform;
+          touch-action: pan-y;
+          position: relative;
         }
-        .filter-drawer.open {
-          right: 0;
+
+        .hosp-sheet-drag-zone {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px 0 6px 0;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          background: #FFFFFF;
+          flex-shrink: 0;
         }
+
+        .hosp-sheet-drag-zone:active {
+          cursor: grabbing;
+        }
+
+        .hosp-sheet-drag-bar {
+          width: 44px;
+          height: 4.5px;
+          border-radius: 999px;
+          background: #CBD5E1;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .hosp-sheet-drag-zone:hover .hosp-sheet-drag-bar,
+        .hosp-sheet-drag-zone:active .hosp-sheet-drag-bar {
+          background: #94A3B8;
+          transform: scaleY(1.2);
+        }
+
+        .hosp-mobile-sheet-header {
+          padding: 4px 20px 12px 20px;
+          border-bottom: 1px solid #F1F5F9;
+          background: #FFFFFF;
+          flex-shrink: 0;
+          touch-action: none;
+          cursor: grab;
+          user-select: none;
+        }
+
         .drawer-scroll-body {
           flex: 1;
           overflow-y: auto;
-          padding: 12px 20px 20px 20px;
+          -webkit-overflow-scrolling: touch;
+          padding: 14px 20px 20px 20px;
         }
+
+        /* ── Page Layout & Spacings (Desktop & Mobile Responsive) ── */
+        .hosp-main-container {
+          padding: 20px 24px;
+        }
+        .hosp-breadcrumb {
+          font-size: 13px;
+          color: #64748B;
+          font-weight: 500;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .hosp-page-heading {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin-bottom: 16px;
+          letter-spacing: -0.5px;
+        }
+        .hosp-results-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .hosp-active-filters-bar {
+          background: rgba(248, 250, 252, 0.95);
+          border-bottom: none;
+          padding: 8px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
         @media (max-width: 991px) {
+          .hosp-active-filters-bar {
+            padding: 2px 16px 8px 16px !important;
+          }
+          .hosp-main-container {
+            padding: 8px 16px 20px !important;
+          }
+          .hosp-breadcrumb {
+            margin-bottom: 4px !important;
+            font-size: 12px !important;
+          }
+          .hosp-page-heading {
+            font-size: 20px !important;
+            margin-bottom: 8px !important;
+          }
+          .hosp-results-bar {
+            margin-bottom: 10px !important;
+          }
           .hosp-desktop-search {
             display: none !important;
           }
           .hosp-mobile-search-bar {
             display: block !important;
+            padding: 8px 16px 4px !important;
           }
         }
         @media (min-width: 992px) {
@@ -628,7 +851,7 @@ function HospitalsPage() {
           .hosp-results-bar {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 10px !important;
+            gap: 8px !important;
           }
           .hosp-results-controls {
             width: 100% !important;
@@ -638,6 +861,112 @@ function HospitalsPage() {
             margin-left: auto !important;
           }
         }
+
+        /* ── Mobile Search & Filter (Matching Home & Doctors Page Design) ── */
+        .hosp-mobile-search-pill {
+          height: 50px;
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 0 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          transition: all 0.2s ease;
+        }
+        .hosp-mobile-search-pill:focus-within {
+          border-color: #00B875;
+          box-shadow: 0 2px 12px rgba(0, 184, 117, 0.14);
+        }
+        .hosp-mobile-search-icon {
+          color: #00B875;
+          flex-shrink: 0;
+        }
+        .hosp-mobile-search-input {
+          border: none;
+          background: transparent;
+          outline: none;
+          width: 100%;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #1E293B;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .hosp-mobile-search-input::placeholder {
+          color: #64748B;
+          font-weight: 500;
+          opacity: 1;
+        }
+        .hosp-mobile-mic-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          color: #00B875;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .hosp-mobile-clear-btn {
+          background: none;
+          border: none;
+          color: #94A3B8;
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .hosp-mobile-clear-btn:hover {
+          color: #475569;
+        }
+        .hosp-mobile-filter-btn {
+          width: 50px;
+          height: 50px;
+          border-radius: 16px;
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #1E293B;
+          flex-shrink: 0;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          position: relative;
+          transition: all 0.2s ease;
+        }
+        .hosp-mobile-filter-btn:active {
+          transform: scale(0.96);
+          background: #F8FAFC;
+        }
+        .hosp-mobile-filter-btn.active {
+          border-color: #00B875;
+          background: #E8F8F0;
+          color: #00803D;
+        }
+        .hosp-mobile-filter-badge {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: #00B875;
+          color: #FFFFFF;
+          border-radius: 50%;
+          min-width: 19px;
+          height: 19px;
+          padding: 0 4px;
+          font-size: 11px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #FFFFFF;
+          box-shadow: 0 2px 6px rgba(0, 184, 117, 0.35);
+          font-family: 'Inter', system-ui, sans-serif;
+        }
       `}</style>
 
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
@@ -645,79 +974,54 @@ function HospitalsPage() {
         position: 'sticky',
         top: 'calc(var(--header-height, 68px) - 1px)',
         zIndex: 1040,
-        background: 'white',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '8px 16px'
+        background: 'rgba(248, 250, 252, 0.95)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        borderBottom: 'none',
+        padding: '8px 16px 4px'
       }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: 1, margin: 0 }}>
-            <input
-              type="text"
-              placeholder="হাসপাতালের নাম লিখুন..."
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{
-                width: '100%',
-                height: 42,
-                borderRadius: 8,
-                border: '1.5px solid #CBD5E1',
-                padding: '0 36px 0 14px',
-                fontSize: 13.5,
-                color: '#0F172A',
-                fontWeight: 600,
-                outline: 'none',
-                fontFamily: "'Hind Siliguri', sans-serif"
-              }}
-            />
-            {searchText ? (
-              <button type="button" onClick={handleClearSearch} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                <IconX size={18} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
+            <div className="hosp-mobile-search-pill">
+              <IconSearch size={20} className="hosp-mobile-search-icon" />
+              <input
+                type="text"
+                placeholder="হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                className="hosp-mobile-search-input"
+              />
+              {searchText && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="hosp-mobile-clear-btn"
+                  title="মুছুন"
+                >
+                  <IconX size={17} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleVoiceSearch}
+                className="hosp-mobile-mic-btn"
+                title="ভয়েস সার্চ"
+              >
+                <IconMicrophone size={19} />
               </button>
-            ) : (
-              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', pointerEvents: 'none' }}>
-                <IconSearch size={18} />
-              </span>
-            )}
+            </div>
           </form>
 
-          {/* Filter Button */}
+          {/* Filter Icon Button */}
           <button
             type="button"
             onClick={() => setIsMobileFilterOpen(true)}
-            style={{
-              height: 42,
-              padding: '0 14px',
-              borderRadius: 8,
-              background: '#00B875',
-              color: 'white',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
+            className={`hosp-mobile-filter-btn ${activeCount > 0 ? 'active' : ''}`}
+            title="ফিল্টার"
           >
-            <IconAdjustmentsHorizontal size={18} />
-            <span>ফিল্টার</span>
+            <IconAdjustmentsHorizontal size={22} />
             {activeCount > 0 && (
-              <span style={{
-                background: '#FFFFFF',
-                color: '#00B875',
-                borderRadius: '50%',
-                width: 18,
-                height: 18,
-                fontSize: 11,
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-                fontFamily: 'Inter, system-ui, sans-serif'
-              }}>
+              <span className="hosp-mobile-filter-badge">
                 {activeCount}
               </span>
             )}
@@ -725,9 +1029,9 @@ function HospitalsPage() {
         </div>
       </div>
 
-      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS (White Background) ── */}
+      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS ── */}
       {activeCount > 0 && (
-        <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="hosp-active-filters-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {activeFilters.map(f => (
               <span
@@ -737,15 +1041,16 @@ function HospitalsPage() {
                   background: '#00B875',
                   color: 'white',
                   border: '1px solid #00B875',
-                  borderRadius: 4,
-                  padding: '4px 10px',
+                  borderRadius: 20,
+                  padding: '4px 12px',
                   fontSize: 12,
                   fontWeight: 600,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                   cursor: 'pointer',
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  boxShadow: '0 1px 3px rgba(0, 184, 117, 0.25)'
                 }}
               >
                 {f.label}
@@ -765,23 +1070,17 @@ function HospitalsPage() {
         </div>
       )}
 
-      <Container fluid style={{ maxWidth: 1380, padding: '20px 24px' }}>
+      <Container fluid className="hosp-main-container" style={{ maxWidth: 1380 }}>
         
         {/* ── BREADCRUMB ── */}
-        <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="hosp-breadcrumb">
           <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
           <span>/</span>
           <span style={{ color: '#0F172A', fontWeight: 600 }}>Hospital Listings</span>
         </div>
 
         {/* ── HEADING TITLE ── */}
-        <h1 style={{
-          fontSize: 28,
-          fontWeight: 800,
-          color: '#0F172A',
-          marginBottom: 16,
-          letterSpacing: '-0.5px'
-        }}>
+        <h1 className="hosp-page-heading">
           {locationHeadingText ? (
             <>
               <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
@@ -841,7 +1140,7 @@ function HospitalsPage() {
         </form>
 
         {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
-        <div className="hosp-results-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div className="hosp-results-bar">
           <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
             <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
           </div>
@@ -1004,6 +1303,99 @@ function HospitalsPage() {
                     {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
                     <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের হাসপাতাল খুঁজুন'}</span>
                   </button>
+
+                  {/* Non-intrusive Inline Location Guidance Card */}
+                  {locationInlineError && !isNearMeActive && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                        boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                        <IconAlertTriangle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            আপনার লোকেশন বন্ধ রয়েছে
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#7F1D1D', margin: '4px 0 0', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            <div>১. ডিভাইসের নোটিফিকেশন বার নামিয়ে <strong>GPS / Location</strong> অন করুন।</div>
+                            <div style={{ marginTop: 2 }}>২. ব্রাউজারের ওপরে অ্যাড্রেস বারের <strong>🔒 (লক)</strong> আইকনে চাপ দিয়ে Location <strong>Allow</strong> করুন।</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                        <button
+                          type="button"
+                          onClick={handleToggleNearMe}
+                          disabled={locationLoading}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '7px 6px',
+                            borderRadius: 6,
+                            background: '#059669',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          {locationLoading ? <IconLoader2 size={13} className="spin-animation" style={{ flexShrink: 0 }} /> : <IconRefresh size={13} style={{ flexShrink: 0 }} />}
+                          <span style={{ whiteSpace: 'nowrap' }}>আবার চেষ্টা করুন</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLocationInlineError(false)
+                            setOpenAccordions(prev => ({ ...prev, location: true }))
+                            const target = document.getElementById('hosp-location-accordion-desktop')
+                            if (target) {
+                              target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '7px 6px',
+                            borderRadius: 6,
+                            background: '#FFFFFF',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}
+                        >
+                          <IconMapPin size={13} style={{ flexShrink: 0 }} />
+                          <span style={{ whiteSpace: 'nowrap' }}>জেলা সিলেক্ট করুন</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {isNearMeActive && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
@@ -1054,7 +1446,7 @@ function HospitalsPage() {
                 </div>
 
                 {/* Accordion 2: Location */}
-                <div style={{ marginBottom: 4 }}>
+                <div id="hosp-location-accordion-desktop" style={{ marginBottom: 4 }}>
                   <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
                     {openAccordions.location ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
@@ -1185,102 +1577,230 @@ function HospitalsPage() {
           </Row>
       </Container>
 
-      {/* ── MOBILE FILTER DRAWER BACKDROP ── */}
-      <div className={`filter-drawer-backdrop ${isMobileFilterOpen ? 'open' : ''}`} onClick={() => setIsMobileFilterOpen(false)} />
-
-      {/* ── MOBILE SLIDING FILTER DRAWER ── */}
-      <div className={`filter-drawer ${isMobileFilterOpen ? 'open' : ''}`}>
-        {/* Drawer Header */}
-        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #F1F5F9', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h5 style={{ fontWeight: 800, fontSize: 17, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>ফিল্টার সমুহ</h5>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                নির্বাচিত ফিল্টার ({activeCount})
-              </p>
+      {/* ── MOBILE FILTER BOTTOM SHEET MODAL (Portal to body) ── */}
+      {isMobileFilterOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={hospFilterOverlayRef}
+          className="filter-drawer-backdrop"
+          onClick={closeMobileFilter}
+        >
+          <div
+            ref={hospFilterSheetRef}
+            className="filter-drawer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            <div
+              className="hosp-sheet-drag-zone"
+              onTouchStart={handleHospSheetTouchStart}
+              onTouchMove={handleHospSheetTouchMove}
+              onTouchEnd={handleHospSheetTouchEnd}
+            >
+              <div className="hosp-sheet-drag-bar" />
             </div>
-            <button onClick={() => setIsMobileFilterOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}>
-              <IconX size={22} />
-            </button>
-          </div>
-        </div>
+
+            {/* Sheet Header (Swipeable, with filter count badge, without close X button per design preference) */}
+            <div
+              className="hosp-mobile-sheet-header"
+              onTouchStart={handleHospSheetTouchStart}
+              onTouchMove={handleHospSheetTouchMove}
+              onTouchEnd={handleHospSheetTouchEnd}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h5 style={{ fontWeight: 800, fontSize: 17, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      ফিল্টার সমূহ
+                    </h5>
+                    {activeCount > 0 && (
+                      <span style={{
+                        background: '#E8F8F0',
+                        color: '#00803D',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 20,
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}>
+                        {toBengaliNumber(activeCount)}টি সক্রিয়
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    পছন্দের ধরন, অবস্থান বা দূরত্ব ফিল্টার করুন
+                  </p>
+                </div>
+              </div>
+            </div>
 
         {/* Drawer Scroll Body */}
         <div className="drawer-scroll-body">
-          {/* Near Me & Distance (Mobile) */}
-          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী হাসপাতাল</span>
-            <button
-              type="button"
-              onClick={handleToggleNearMe}
-              disabled={locationLoading}
-              style={{
-                width: '100%',
-                padding: '9px 14px',
-                borderRadius: 8,
-                background: isNearMeActive ? '#059669' : '#F1F5F9',
-                color: isNearMeActive ? 'white' : '#334155',
-                border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
-                fontWeight: 700,
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                marginBottom: isNearMeActive ? 12 : 0,
-                fontFamily: "'Hind Siliguri', sans-serif"
-              }}
-            >
-              {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
-              <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের হাসপাতাল খুঁজুন'}</span>
-            </button>
-            {isNearMeActive && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
-                {RADIUS_OPTIONS.map(r => {
-                  const isChecked = distanceRadius === r.id
+            {/* Near Me & Distance (Mobile) */}
+            <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী হাসপাতাল</span>
+              <button
+                type="button"
+                onClick={handleToggleNearMe}
+                disabled={locationLoading}
+                style={{
+                  width: '100%',
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  background: isNearMeActive ? '#059669' : '#F1F5F9',
+                  color: isNearMeActive ? 'white' : '#334155',
+                  border: isNearMeActive ? 'none' : '1px solid #CBD5E1',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  marginBottom: isNearMeActive ? 12 : 0,
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}
+              >
+                {locationLoading ? <IconLoader2 size={16} className="spin-animation" /> : <IconCurrentLocation size={16} color={isNearMeActive ? 'white' : '#00B875'} />}
+                <span>{isNearMeActive ? 'নিকটবর্তী সক্রিয় (বন্ধ করতে ট্যাপ করুন)' : 'আপনার কাছের হাসপাতাল খুঁজুন'}</span>
+              </button>
+
+              {/* Non-intrusive Inline Location Guidance Card (Mobile) */}
+              {locationInlineError && !isNearMeActive && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                    <IconAlertTriangle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#991B1B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        আপনার লোকেশন বন্ধ রয়েছে
+                      </div>
+                      <div style={{ fontSize: 12, color: '#7F1D1D', margin: '4px 0 0', lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <div>১. ফোনের নোটিফিকেশন বার নামিয়ে <strong>GPS / Location</strong> অন করুন।</div>
+                        <div style={{ marginTop: 2 }}>২. ব্রাউজারের ওপরে অ্যাড্রেস বারের <strong>🔒 (লক)</strong> আইকনে চাপ দিয়ে Location <strong>Allow</strong> করুন।</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                    <button
+                      type="button"
+                      onClick={handleToggleNearMe}
+                      disabled={locationLoading}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '8px 6px',
+                        borderRadius: 7,
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}
+                    >
+                      {locationLoading ? <IconLoader2 size={14} className="spin-animation" style={{ flexShrink: 0 }} /> : <IconRefresh size={14} style={{ flexShrink: 0 }} />}
+                      <span style={{ whiteSpace: 'nowrap' }}>আবার চেষ্টা করুন</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationInlineError(false)
+                        const target = document.getElementById('hosp-location-section-mobile')
+                        if (target) {
+                          target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '8px 6px',
+                        borderRadius: 7,
+                        background: '#FFFFFF',
+                        color: '#DC2626',
+                        border: '1px solid #FECACA',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}
+                    >
+                      <IconMapPin size={14} style={{ flexShrink: 0 }} />
+                      <span style={{ whiteSpace: 'nowrap' }}>জেলা সিলেক্ট করুন</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isNearMeActive && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>দূরত্ব সিলেক্ট করুন:</span>
+                  {RADIUS_OPTIONS.map(r => {
+                    const isChecked = distanceRadius === r.id
+                    return (
+                      <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        <input
+                          type="radio"
+                          name="mobile_distance_radius"
+                          checked={isChecked}
+                          onChange={() => {
+                            setDistanceRadius(r.id)
+                            updateUrlParams({ radius: r.id })
+                          }}
+                          style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                        />
+                        <span>{r.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Hospital Type */}
+            <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল ধরন</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {HOSPITAL_TYPES.map(t => {
+                  const isChecked = hospitalType === t.id
                   return (
-                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: isChecked ? '#059669' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                      <input
-                        type="radio"
-                        name="mobile_distance_radius"
+                    <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                      <CustomCheckbox
                         checked={isChecked}
-                        onChange={() => {
-                          setDistanceRadius(r.id)
-                          updateUrlParams({ radius: r.id })
-                        }}
-                        style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
+                        onChange={() => setHospitalType(isChecked ? '' : t.id)}
                       />
-                      <span>{r.label}</span>
+                      <span>{t.icon} {t.label}</span>
                     </label>
                   )
                 })}
               </div>
-            )}
-          </div>
-
-          {/* Hospital Type */}
-          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল ধরন</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {HOSPITAL_TYPES.map(t => {
-                const isChecked = hospitalType === t.id
-                return (
-                  <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
-                    <CustomCheckbox
-                      checked={isChecked}
-                      onChange={() => setHospitalType(isChecked ? '' : t.id)}
-                    />
-                    <span>{t.icon} {t.label}</span>
-                  </label>
-                )
-              })}
             </div>
-          </div>
 
-          {/* Location */}
-          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            {/* Location */}
+            <div id="hosp-location-section-mobile" style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>লোকেশন (Location)</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
@@ -1345,16 +1865,27 @@ function HospitalsPage() {
           </div>
         </div>
 
-        {/* Drawer Footer */}
-        <div style={{ display: 'flex', gap: 10, padding: '14px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
-          <button type="button" onClick={handleClearAllFilters} style={{ flex: 1, height: 44, borderRadius: 8, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
+        {/* Sheet Footer */}
+        <div style={{ display: 'flex', gap: 10, padding: '12px 20px calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
+          <button
+            type="button"
+            onClick={handleClearAllFilters}
+            style={{ flex: 1, height: 44, borderRadius: 12, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}
+          >
             রিসেট
           </button>
-          <button type="button" onClick={() => setIsMobileFilterOpen(false)} style={{ flex: 2, height: 44, borderRadius: 8, background: '#0B192C', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            প্রয়োগ করুন ({sortedHospitals.length})
+          <button
+            type="button"
+            onClick={closeMobileFilter}
+            style={{ flex: 2, height: 44, borderRadius: 12, background: '#00803D', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", boxShadow: '0 4px 12px rgba(0, 128, 61, 0.25)' }}
+          >
+            প্রয়োগ করুন
           </button>
         </div>
       </div>
+    </div>,
+    document.body
+  )}
 
       {/* Floating Smart Location Prompt Banner */}
       <LocationPromptBanner
