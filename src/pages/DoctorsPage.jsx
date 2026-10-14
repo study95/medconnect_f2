@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Container, Row, Col, Modal } from 'react-bootstrap'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 
@@ -24,7 +25,7 @@ import {
   IconLock, IconClock, IconHeadset, IconChevronLeft, IconChevronRight,
   IconAdjustmentsHorizontal, IconX, IconMapPin, IconChevronDown, IconChevronUp, IconBrain, IconGenderFemale, IconDental,
   IconBuildingHospital, IconStar, IconTrash, IconActivity, IconCheck, IconVideo, IconCalendarCheck, IconListDetails, IconGridDots,
-  IconCurrentLocation, IconNavigation, IconLoader2
+  IconCurrentLocation, IconNavigation, IconLoader2, IconMicrophone
 } from '@tabler/icons-react'
 
 const getSpecialtyIcon = (name = '', slug = '', isSelected = false) => {
@@ -242,6 +243,93 @@ function DoctorsPage() {
     }
   }
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+
+  // Mobile Filter Bottom Sheet Drag-to-dismiss (Hardware Accelerated)
+  const docFilterSheetRef = useRef(null)
+  const docFilterOverlayRef = useRef(null)
+  const docSheetTouchStartY = useRef(0)
+  const docSheetCurrentY = useRef(0)
+  const isDocSheetDragging = useRef(false)
+
+  const closeMobileFilter = useCallback(() => {
+    if (docFilterSheetRef.current) {
+      docFilterSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      docFilterSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (docFilterOverlayRef.current) {
+      docFilterOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      docFilterOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setIsMobileFilterOpen(false)
+      docSheetCurrentY.current = 0
+      if (docFilterSheetRef.current) {
+        docFilterSheetRef.current.style.transform = ''
+      }
+    }, 260)
+  }, [])
+
+  const handleDocSheetTouchStart = (e) => {
+    docSheetTouchStartY.current = e.touches[0].clientY
+    docSheetCurrentY.current = 0
+    isDocSheetDragging.current = true
+    if (docFilterSheetRef.current) {
+      docFilterSheetRef.current.style.transition = 'none'
+    }
+    if (docFilterOverlayRef.current) {
+      docFilterOverlayRef.current.style.transition = 'none'
+    }
+  }
+
+  const handleDocSheetTouchMove = (e) => {
+    if (!isDocSheetDragging.current) return
+    const deltaY = e.touches[0].clientY - docSheetTouchStartY.current
+    if (deltaY > 0) {
+      docSheetCurrentY.current = deltaY
+      if (docFilterSheetRef.current) {
+        docFilterSheetRef.current.style.transform = `translateY(${deltaY}px)`
+      }
+      if (docFilterOverlayRef.current) {
+        const opacity = Math.max(0, 1 - deltaY / 450)
+        docFilterOverlayRef.current.style.opacity = opacity
+      }
+    }
+  }
+
+  const handleDocSheetTouchEnd = () => {
+    if (!isDocSheetDragging.current) return
+    isDocSheetDragging.current = false
+    if (docFilterSheetRef.current) {
+      docFilterSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (docFilterOverlayRef.current) {
+      docFilterOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (docSheetCurrentY.current > 100) {
+      closeMobileFilter()
+    } else {
+      if (docFilterSheetRef.current) {
+        docFilterSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (docFilterOverlayRef.current) {
+        docFilterOverlayRef.current.style.opacity = '1'
+      }
+      docSheetCurrentY.current = 0
+    }
+  }
+
+  // Prevent background scroll when mobile filter bottom sheet is open
+  useEffect(() => {
+    if (isMobileFilterOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobileFilterOpen])
 
   // Accordion state
   const [openAccordions, setOpenAccordions] = useState({
@@ -473,6 +561,30 @@ function DoctorsPage() {
   const handleClearSearch = () => {
     setSearchText('')
     updateUrlParams({ search: '' })
+  }
+
+  // Voice search handler
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'bn-BD'
+        recognition.onresult = (event) => {
+          const text = event.results?.[0]?.[0]?.transcript
+          if (text) {
+            setSearchText(text)
+            updateUrlParams({ search: text })
+          }
+        }
+        recognition.start()
+      } catch (err) {
+        console.error(err)
+      }
+    } else {
+      const el = document.querySelector('.doc-mobile-search-input')
+      if (el) el.focus()
+    }
   }
 
   // Active filters list
@@ -766,46 +878,93 @@ function DoctorsPage() {
       
       {/* ── RESPONSIVE FILTER DRAWER & LAYOUT CSS ── */}
       <style>{`
+        @keyframes docSheetFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes docSheetSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+
         .filter-drawer-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(15, 23, 42, 0.45);
+          background: rgba(15, 23, 42, 0.65);
           backdrop-filter: blur(4px);
           -webkit-backdrop-filter: blur(4px);
-          z-index: 29999;
-          opacity: 0;
-          visibility: hidden;
-          pointer-events: none;
-          display: none;
-          transition: all 0.3s ease;
+          z-index: 99999;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: docSheetFadeIn 0.28s ease;
+          touch-action: none;
         }
-        .filter-drawer-backdrop.open {
-          opacity: 1;
-          visibility: visible;
-          pointer-events: auto;
-          display: block;
-        }
+
         .filter-drawer {
-          position: fixed;
-          top: 0;
-          bottom: 0;
-          right: -100%;
+          background: #FFFFFF;
           width: 100%;
-          max-width: 380px;
-          background: white;
-          z-index: 30000;
-          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
-          transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          max-width: 520px;
+          height: 84vh;
+          height: 84dvh;
+          max-height: 88vh;
+          border-radius: 24px 24px 0 0;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
+          animation: docSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: transform;
+          touch-action: pan-y;
+          position: relative;
         }
-        .filter-drawer.open {
-          right: 0;
+
+        .doc-sheet-drag-zone {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px 0 6px 0;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          background: #FFFFFF;
+          flex-shrink: 0;
         }
+
+        .doc-sheet-drag-zone:active {
+          cursor: grabbing;
+        }
+
+        .doc-sheet-drag-bar {
+          width: 44px;
+          height: 4.5px;
+          border-radius: 999px;
+          background: #CBD5E1;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .doc-sheet-drag-zone:hover .doc-sheet-drag-bar,
+        .doc-sheet-drag-zone:active .doc-sheet-drag-bar {
+          background: #94A3B8;
+          transform: scaleY(1.2);
+        }
+
+        .doc-mobile-sheet-header {
+          padding: 4px 20px 12px 20px;
+          border-bottom: 1px solid #F1F5F9;
+          background: #FFFFFF;
+          flex-shrink: 0;
+          touch-action: none;
+          cursor: grab;
+          user-select: none;
+        }
+
         .drawer-scroll-body {
           flex: 1;
           overflow-y: auto;
-          padding: 12px 20px 20px 20px;
+          -webkit-overflow-scrolling: touch;
+          padding: 14px 20px 20px 20px;
         }
         @media (max-width: 991px) {
           .doc-desktop-search {
@@ -837,6 +996,116 @@ function DoctorsPage() {
             margin-left: auto !important;
           }
         }
+
+        /* ── Mobile Search & Filter (Matching Home Page 1no Image Design) ── */
+        .doc-mobile-search-pill {
+          height: 50px;
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 0 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          transition: all 0.2s ease;
+        }
+        .doc-mobile-search-pill:focus-within {
+          border-color: #00B875;
+          box-shadow: 0 2px 12px rgba(0, 184, 117, 0.14);
+        }
+        .doc-mobile-search-icon {
+          color: #00B875;
+          flex-shrink: 0;
+        }
+        .doc-mobile-search-input {
+          border: none;
+          background: transparent;
+          outline: none;
+          width: 100%;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #1E293B;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .doc-mobile-search-input::placeholder {
+          color: #64748B;
+          font-weight: 500;
+          opacity: 1;
+        }
+        .doc-mobile-mic-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          color: #00B875;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: transform 0.15s ease;
+        }
+        .doc-mobile-mic-btn:active {
+          transform: scale(0.9);
+        }
+        .doc-mobile-clear-btn {
+          background: none;
+          border: none;
+          color: #94A3B8;
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .doc-mobile-clear-btn:hover {
+          color: #475569;
+        }
+        .doc-mobile-filter-btn {
+          width: 50px;
+          height: 50px;
+          border-radius: 16px;
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #1E293B;
+          flex-shrink: 0;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          position: relative;
+          transition: all 0.2s ease;
+        }
+        .doc-mobile-filter-btn:active {
+          transform: scale(0.96);
+          background: #F8FAFC;
+        }
+        .doc-mobile-filter-btn.active {
+          border-color: #00B875;
+          background: #E8F8F0;
+          color: #00803D;
+        }
+        .doc-mobile-filter-badge {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: #00B875;
+          color: #FFFFFF;
+          border-radius: 50%;
+          min-width: 19px;
+          height: 19px;
+          padding: 0 4px;
+          font-size: 11px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #FFFFFF;
+          box-shadow: 0 2px 6px rgba(0, 184, 117, 0.35);
+          font-family: 'Inter', system-ui, sans-serif;
+        }
       `}</style>
 
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
@@ -844,79 +1113,52 @@ function DoctorsPage() {
         position: 'sticky',
         top: 'calc(var(--header-height, 68px) - 1px)',
         zIndex: 1040,
-        background: 'white',
+        background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
-        padding: '8px 16px'
+        padding: '10px 16px'
       }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: 1, margin: 0 }}>
-            <input
-              type="text"
-              placeholder="ডাক্তারের নাম বা বিশেষজ্ঞ লিখুন..."
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{
-                width: '100%',
-                height: 42,
-                borderRadius: 8,
-                border: '1.5px solid #CBD5E1',
-                padding: '0 36px 0 14px',
-                fontSize: 13.5,
-                color: '#0F172A',
-                fontWeight: 600,
-                outline: 'none',
-                fontFamily: "'Hind Siliguri', sans-serif"
-              }}
-            />
-            {searchText ? (
-              <button type="button" onClick={handleClearSearch} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                <IconX size={18} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
+            <div className="doc-mobile-search-pill">
+              <IconSearch size={20} className="doc-mobile-search-icon" />
+              <input
+                type="text"
+                placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                className="doc-mobile-search-input"
+              />
+              {searchText && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="doc-mobile-clear-btn"
+                  title="মুছুন"
+                >
+                  <IconX size={17} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleVoiceSearch}
+                className="doc-mobile-mic-btn"
+                title="ভয়েস সার্চ"
+              >
+                <IconMicrophone size={19} />
               </button>
-            ) : (
-              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748B', pointerEvents: 'none' }}>
-                <IconSearch size={18} />
-              </span>
-            )}
+            </div>
           </form>
 
-          {/* Filter Button */}
+          {/* Filter Icon Button (Matching Image 1 design) */}
           <button
             type="button"
             onClick={() => setIsMobileFilterOpen(true)}
-            style={{
-              height: 42,
-              padding: '0 14px',
-              borderRadius: 8,
-              background: '#00B875',
-              color: 'white',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
+            className={`doc-mobile-filter-btn ${activeCount > 0 ? 'active' : ''}`}
+            title="ফিল্টার"
           >
-            <IconAdjustmentsHorizontal size={18} />
-            <span>ফিল্টার</span>
+            <IconAdjustmentsHorizontal size={22} />
             {activeCount > 0 && (
-              <span style={{
-                background: '#FFFFFF',
-                color: '#00B875',
-                borderRadius: '50%',
-                width: 18,
-                height: 18,
-                fontSize: 11,
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-                fontFamily: 'Inter, system-ui, sans-serif'
-              }}>
+              <span className="doc-mobile-filter-badge">
                 {activeCount}
               </span>
             )}
@@ -1549,25 +1791,61 @@ function DoctorsPage() {
         </Row>
       </Container>
 
-      {/* ── MOBILE FILTER DRAWER BACKDROP ── */}
-      <div className={`filter-drawer-backdrop ${isMobileFilterOpen ? 'open' : ''}`} onClick={() => setIsMobileFilterOpen(false)} />
-
-      {/* ── MOBILE SLIDING FILTER DRAWER ── */}
-      <div className={`filter-drawer ${isMobileFilterOpen ? 'open' : ''}`}>
-        {/* Drawer Header */}
-        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #F1F5F9', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h5 style={{ fontWeight: 800, fontSize: 17, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>ফিল্টার সমুহ</h5>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                নির্বাচিত ফিল্টার ({activeCount})
-              </p>
+      {/* ── MOBILE FILTER BOTTOM SHEET MODAL (Portal to body) ── */}
+      {isMobileFilterOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={docFilterOverlayRef}
+          className="filter-drawer-backdrop"
+          onClick={closeMobileFilter}
+        >
+          <div
+            ref={docFilterSheetRef}
+            className="filter-drawer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            <div
+              className="doc-sheet-drag-zone"
+              onTouchStart={handleDocSheetTouchStart}
+              onTouchMove={handleDocSheetTouchMove}
+              onTouchEnd={handleDocSheetTouchEnd}
+            >
+              <div className="doc-sheet-drag-bar" />
             </div>
-            <button onClick={() => setIsMobileFilterOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}>
-              <IconX size={22} />
-            </button>
-          </div>
-        </div>
+
+            {/* Sheet Header (Swipeable, with filter count badge, without close X button per design preference) */}
+            <div
+              className="doc-mobile-sheet-header"
+              onTouchStart={handleDocSheetTouchStart}
+              onTouchMove={handleDocSheetTouchMove}
+              onTouchEnd={handleDocSheetTouchEnd}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h5 style={{ fontWeight: 800, fontSize: 17, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      ফিল্টার সমূহ
+                    </h5>
+                    {activeCount > 0 && (
+                      <span style={{
+                        background: '#E8F8F0',
+                        color: '#00803D',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 20,
+                        fontFamily: "'Hind Siliguri', sans-serif"
+                      }}>
+                        {toBengaliNumber(activeCount)}টি সক্রিয়
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    পছন্দের বিভাগ, অবস্থান বা দূরত্ব ফিল্টার করুন
+                  </p>
+                </div>
+              </div>
+            </div>
 
         {/* Drawer Scroll Body */}
         <div className="drawer-scroll-body">
@@ -1724,16 +2002,27 @@ function DoctorsPage() {
           </div>
         </div>
 
-        {/* Drawer Footer */}
-        <div style={{ display: 'flex', gap: 10, padding: '14px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
-          <button type="button" onClick={handleClearAllFilters} style={{ flex: 1, height: 44, borderRadius: 8, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
+        {/* Sheet Footer */}
+        <div style={{ display: 'flex', gap: 10, padding: '12px 20px calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #F1F5F9', background: 'white' }}>
+          <button
+            type="button"
+            onClick={handleClearAllFilters}
+            style={{ flex: 1, height: 44, borderRadius: 12, border: '1.5px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}
+          >
             রিসেট
           </button>
-          <button type="button" onClick={() => setIsMobileFilterOpen(false)} style={{ flex: 2, height: 44, borderRadius: 8, background: '#0B192C', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            প্রয়োগ করুন ({sortedDoctors.length})
+          <button
+            type="button"
+            onClick={closeMobileFilter}
+            style={{ flex: 2, height: 44, borderRadius: 12, background: '#00803D', border: 'none', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif", boxShadow: '0 4px 12px rgba(0, 128, 61, 0.25)' }}
+          >
+            প্রয়োগ করুন ({toBengaliNumber(sortedDoctors.length)})
           </button>
         </div>
       </div>
+    </div>,
+    document.body
+  )}
 
       {/* Floating Smart Location Prompt Banner */}
       <LocationPromptBanner

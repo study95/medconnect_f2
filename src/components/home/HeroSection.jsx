@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, memo } from 'react'
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
@@ -753,6 +753,78 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const [activeSlide, setActiveSlide] = useState(0)
   const [selectedDate, setSelectedDate] = useState('')
   const dateInputRef = useRef(null)
+
+  // Unified Bottom Sheet drag-to-dismiss refs & handlers (Hardware Accelerated)
+  const unifiedSheetRef = useRef(null)
+  const unifiedOverlayRef = useRef(null)
+  const sheetTouchStartY = useRef(0)
+  const sheetCurrentY = useRef(0)
+  const isSheetDragging = useRef(false)
+
+  const closeUnifiedSheet = useCallback(() => {
+    if (unifiedSheetRef.current) {
+      unifiedSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      unifiedSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (unifiedOverlayRef.current) {
+      unifiedOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      unifiedOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setShowUnifiedModal(false)
+      sheetCurrentY.current = 0
+    }, 260)
+  }, [])
+
+  const handleSheetTouchStart = (e) => {
+    sheetTouchStartY.current = e.touches[0].clientY
+    sheetCurrentY.current = 0
+    isSheetDragging.current = true
+    if (unifiedSheetRef.current) {
+      unifiedSheetRef.current.style.transition = 'none'
+    }
+    if (unifiedOverlayRef.current) {
+      unifiedOverlayRef.current.style.transition = 'none'
+    }
+  }
+
+  const handleSheetTouchMove = (e) => {
+    if (!isSheetDragging.current) return
+    const deltaY = e.touches[0].clientY - sheetTouchStartY.current
+    if (deltaY > 0) {
+      sheetCurrentY.current = deltaY
+      if (unifiedSheetRef.current) {
+        unifiedSheetRef.current.style.transform = `translateY(${deltaY}px)`
+      }
+      if (unifiedOverlayRef.current) {
+        const opacity = Math.max(0, 1 - deltaY / 450)
+        unifiedOverlayRef.current.style.opacity = opacity
+      }
+    }
+  }
+
+  const handleSheetTouchEnd = () => {
+    if (!isSheetDragging.current) return
+    isSheetDragging.current = false
+    if (unifiedSheetRef.current) {
+      unifiedSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (unifiedOverlayRef.current) {
+      unifiedOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (sheetCurrentY.current > 100) {
+      closeUnifiedSheet()
+    } else {
+      if (unifiedSheetRef.current) {
+        unifiedSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (unifiedOverlayRef.current) {
+        unifiedOverlayRef.current.style.opacity = '1'
+      }
+      sheetCurrentY.current = 0
+    }
+  }
 
   const getDateLabel = () => {
     if (!selectedDate) return 'তারিখ'
@@ -1842,38 +1914,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 <IconChevronDown size={14} color="#64748B" />
               )}
             </button>
-
-            {/* Pill 4: তারিখ */}
-            <button
-              type="button"
-              onClick={openDatePicker}
-              className={`hero-mobile-filter-pill ${selectedDate ? 'active' : ''}`}
-            >
-              <IconCalendarEvent size={15} color="#00803D" stroke={2.2} />
-              <span>{getDateLabel()}</span>
-              {selectedDate ? (
-                <span
-                  className="hero-mobile-filter-pill-clear"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedDate('')
-                  }}
-                >
-                  <IconX size={14} />
-                </span>
-              ) : (
-                <IconChevronDown size={14} color="#64748B" />
-              )}
-              {/* Invisible native date picker input */}
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={selectedDate}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-              />
-            </button>
           </div>
 
           {/* 4. Quick Action Cards (4-Grid) */}
@@ -2140,10 +2180,33 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
       {/* 4. Smart Unified Search Bottom Sheet Modal (Portal to body for top z-index) */}
       {showUnifiedModal && typeof document !== 'undefined' && createPortal(
-        <div className="hero-mobile-unified-overlay" onClick={() => setShowUnifiedModal(false)}>
-          <div className="hero-mobile-unified-popup" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="hero-mobile-unified-header">
+        <div
+          ref={unifiedOverlayRef}
+          className="hero-mobile-unified-overlay"
+          onClick={closeUnifiedSheet}
+        >
+          <div
+            ref={unifiedSheetRef}
+            className="hero-mobile-unified-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            <div
+              className="hero-mobile-sheet-drag-zone"
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
+            >
+              <div className="hero-mobile-sheet-drag-bar" />
+            </div>
+
+            {/* Header (swipe-enabled, no close button) */}
+            <div
+              className="hero-mobile-unified-header"
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
+            >
               <div>
                 <div className="hero-mobile-unified-title">
                   ডাক্তার ও সেবা অনুসন্ধান
@@ -2157,14 +2220,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                   পছন্দের বিভাগ, অবস্থান বা হাসপাতাল বেছে নিন
                 </div>
               </div>
-              <button
-                type="button"
-                className="loc-close-btn"
-                onClick={() => setShowUnifiedModal(false)}
-                title="বন্ধ করুন"
-              >
-                <IconX size={20} />
-              </button>
             </div>
 
             {/* Segmented Tab Bar */}
@@ -2246,7 +2301,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 type="button"
                 className="hero-mobile-unified-search-btn"
                 onClick={(e) => {
-                  setShowUnifiedModal(false)
+                  closeUnifiedSheet()
                   handleSearch(e)
                 }}
               >
@@ -4171,7 +4226,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            animation: locFadeIn 0.2s ease;
+            animation: locFadeIn 0.28s ease;
+            touch-action: none;
           }
 
           .hero-mobile-unified-popup {
@@ -4185,17 +4241,53 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
-            animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+            box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
+            animation: mobileFilterSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+            touch-action: pan-y;
+          }
+
+          /* Top Drag Handle Indicator Bar */
+          .hero-mobile-sheet-drag-zone {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 0 6px 0;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            background: #FFFFFF;
+          }
+
+          .hero-mobile-sheet-drag-zone:active {
+            cursor: grabbing;
+          }
+
+          .hero-mobile-sheet-drag-bar {
+            width: 44px;
+            height: 4.5px;
+            border-radius: 999px;
+            background: #CBD5E1;
+            transition: background 0.2s ease, transform 0.2s ease;
+          }
+
+          .hero-mobile-sheet-drag-zone:hover .hero-mobile-sheet-drag-bar,
+          .hero-mobile-sheet-drag-zone:active .hero-mobile-sheet-drag-bar {
+            background: #94A3B8;
+            transform: scaleY(1.2);
           }
 
           .hero-mobile-unified-header {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            padding: 16px 18px 12px 18px;
+            padding: 4px 20px 12px 20px;
             border-bottom: 1px solid #F1F5F9;
             flex-shrink: 0;
+            touch-action: none;
+            cursor: grab;
+            user-select: none;
           }
 
           .hero-mobile-unified-title {
