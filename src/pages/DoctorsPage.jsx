@@ -425,13 +425,50 @@ function DoctorsPage() {
     updateUrlParams({ near_me: '1', sort: 'nearest' })
   }
 
+  // Disambiguate if districtParam is actually a division slug
+  const matchedDivision = useMemo(() => {
+    if (!districtParam) return null
+    const p = districtParam.trim().toLowerCase()
+    const knownDivisionMap = {
+      'dhaka': 1,
+      'sylhet': 2,
+      'rangpur': 3,
+      'barisal': 4,
+      'barishal': 4,
+      'chattogram': 5,
+      'chittagong': 5,
+      'chhatagram': 5,
+      'rajshahi': 6,
+      'khulna': 7,
+      'kulna': 7,
+      'mymensingh': 8,
+      'maimonshigh': 8,
+    }
+    if (knownDivisionMap[p]) {
+      const foundInList = divisions?.find(d => Number(d.id) === knownDivisionMap[p])
+      return foundInList || { id: knownDivisionMap[p], name: districtParam }
+    }
+    if (divisions?.length > 0) {
+      return divisions.find(d => {
+        const n = (d.name || '').toLowerCase()
+        const s = (d.slug || '').toLowerCase()
+        return s === p || n === p
+      })
+    }
+    return null
+  }, [districtParam, divisions])
+
   // Sync regional URL params with useLocations
   useEffect(() => {
-    if (districtParam && districts?.length > 0 && !selectedDistrict) {
+    if (matchedDivision && !selectedDivision) {
+      setSelectedDivision(String(matchedDivision.id))
+      return
+    }
+    if (districtParam && !matchedDivision && districts?.length > 0 && !selectedDistrict) {
       const match = districts.find(d => d.slug === districtParam)
       if (match) setSelectedDistrict(String(match.id))
     }
-  }, [districtParam, districts, selectedDistrict, setSelectedDistrict])
+  }, [districtParam, matchedDivision, selectedDivision, setSelectedDivision, districts, selectedDistrict, setSelectedDistrict])
 
   useEffect(() => {
     if (upazilaParam && upazilas?.length > 0 && !selectedUpazila) {
@@ -477,9 +514,15 @@ function DoctorsPage() {
 
   const appliedFilters = useMemo(() => {
     const p = {}
-    if (districtParam)             p.district_slug = districtParam
+    if (districtParam) {
+      if (matchedDivision) {
+        p.division_id = matchedDivision.id
+      } else {
+        p.district_slug = districtParam
+      }
+    }
     if (upazilaParam)              p.upazila_slug  = upazilaParam
-    if (selectedDivision)          p.division_id   = selectedDivision
+    if (selectedDivision && !p.division_id) p.division_id = selectedDivision
     if (selectedDistrict)          p.district_id   = selectedDistrict
     if (selectedUpazila)           p.upazila_id    = selectedUpazila
     if (selectedUnion)             p.union_id      = selectedUnion
@@ -498,7 +541,7 @@ function DoctorsPage() {
     }
     if (sortBy)                    p.sort          = sortBy
     return p
-  }, [districtParam, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, effectiveSearch, isNearMeActive, userLocation, distanceRadius, sortBy])
+  }, [districtParam, matchedDivision, upazilaParam, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, selectedSpecialty, selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, effectiveSearch, isNearMeActive, userLocation, distanceRadius, sortBy])
 
   const { doctors, total, loading, fetchingNext, hasMore, fetchMore, error, refresh } = useInfiniteDoctors(appliedFilters)
 
@@ -824,7 +867,14 @@ function DoctorsPage() {
       { name: 'Doctors', url: '/doctors' },
     ]
 
-    if (districtParam) {
+    if (matchedDivision) {
+      const divNameBn = matchedDivision.bangla_name || matchedDivision.name_bn || matchedDivision.name
+      const divNameEn = matchedDivision.name || districtParam
+      canonicalPath = `/doctors/${districtParam}`
+      title = `${divNameBn || divNameEn} বিভাগ সকল ডাক্তার তালিকা | MedConnect`
+      description = `${divNameBn || divNameEn} বিভাগের সকল বিশেষজ্ঞ ডাক্তারদের তালিকা, চেম্বার সময়সূচী ও অনলাইন সিরিয়াল বুকিং সেবা।`
+      breadcrumbs.push({ name: divNameEn || 'Division', url: `/doctors/${districtParam}` })
+    } else if (districtParam) {
       canonicalPath = `/doctors/${districtParam}`
       title = `${distNameBn || distNameEn} জেলার সেরা বিশেষজ্ঞ ডাক্তার তালিকা | MedConnect`
       description = `${distNameBn || distNameEn} জেলার অভিজ্ঞ ডাক্তারদের তালিকা, বিশেষজ্ঞ বিভাগ, চেম্বার লোকেশন ও অনলাইন অ্যাপয়েন্টমেন্ট।`
@@ -872,7 +922,7 @@ function DoctorsPage() {
       canonicalUrl: `https://medconnect.com.bd${canonicalPath}`,
       schema: [collectionSchema, breadcrumbSchema],
     }
-  }, [districtParam, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, doctors])
+  }, [districtParam, matchedDivision, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, doctors])
 
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>

@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Send,
   Headset,
   Phone
 } from 'lucide-react'
@@ -398,10 +397,7 @@ export default function ForgotPasswordPage() {
                         <span>পাঠানো হচ্ছে...</span>
                       </>
                     ) : (
-                      <>
-                        <Send size={13} />
-                        <span>ওটিপি পাঠান</span>
-                      </>
+                      <span>ওটিপি পাঠান</span>
                     )}
                   </button>
                 </div>
@@ -722,15 +718,19 @@ export default function ForgotPasswordPage() {
         }
 
         .fp-input-wrapper-inline-btn {
-          height: 52px;
+          position: relative;
+          height: 50px;
           padding-left: 14px;
-          padding-right: 6px;
+          padding-right: 108px;
         }
 
         .fp-inline-otp-btn {
-          height: 40px;
+          position: absolute;
+          right: 5px;
+          top: 5px;
+          bottom: 5px;
           padding: 0 14px;
-          border-radius: 9px;
+          border-radius: 8px;
           background: linear-gradient(135deg, #00B875 0%, #059669 100%);
           color: #FFFFFF;
           border: none;
@@ -739,23 +739,25 @@ export default function ForgotPasswordPage() {
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          justify-content: center;
           white-space: nowrap;
           box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
           transition: all 0.2s ease;
-          flex-shrink: 0;
+          z-index: 2;
         }
 
         .fp-inline-otp-btn:hover:not(:disabled) {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 184, 117, 0.35);
+          transform: none;
+          box-shadow: 0 3px 10px rgba(0, 184, 117, 0.35);
         }
 
         .fp-inline-otp-btn:disabled {
-          opacity: 0.6;
+          background: #E2E8F0 !important;
+          color: #94A3B8 !important;
           cursor: not-allowed;
-          box-shadow: none;
+          box-shadow: none !important;
+          opacity: 1 !important;
         }
 
         .fp-input-icon {

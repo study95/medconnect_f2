@@ -63,6 +63,9 @@ export const regenerateChamberToken = (chamberId) =>
 export const regenerateHospitalToken = (hospitalId) =>
   axiosInstance.post(`/doctor-queue/hospitals/${hospitalId}/regenerate-token`)
 
+export const trackLiveSerialByPhone = (phone) =>
+  axiosInstance.post('/appointments/track-by-phone', { phone })
+
 export const setChamberBreak = (chamberId, data) =>
   axiosInstance.post(`/doctor-queue/chambers/${chamberId}/break`, data)
 

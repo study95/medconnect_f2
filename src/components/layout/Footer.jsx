@@ -14,7 +14,6 @@ import {
 function Footer() {
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(window.innerWidth < 992)
-  const [openSection, setOpenSection] = useState(null)
   const currentYear = new Date().getFullYear()
   const [cms, setCms] = useState(getContent())
 
@@ -42,7 +41,7 @@ function Footer() {
   const isQuickApptPage = location.pathname.startsWith('/quick-appointment') ||
                          location.pathname.startsWith('/book-appointment')
 
-  if (isAuthPage || (isMobile && isQuickApptPage)) {
+  if (isAuthPage || isMobile) {
     return null
   }
 
@@ -152,160 +151,18 @@ function Footer() {
     )
   }
 
-  const AccordionItem = ({ id, title, children }) => {
-    const isOpen = openSection === id;
-    return (
-      <div style={{ 
-        borderBottom: '1px solid rgba(0, 184, 117, 0.22)',
-        background: isOpen ? 'rgba(0, 184, 117, 0.04)' : 'transparent',
-        transition: 'background 0.3s ease'
-      }}>
-        <div 
-          onClick={() => setOpenSection(isOpen ? null : id)}
-          style={{ 
-            padding: '20px 24px', display: 'flex', justifyContent: 'space-between', 
-            alignItems: 'center', cursor: 'pointer',
-            fontWeight: 800, fontSize: 16, color: isOpen ? '#00B875' : '#02382B',
-            fontFamily: "'Inter', 'Hind Siliguri', sans-serif",
-            letterSpacing: '0.2px'
-          }}
-        >
-          <span>{title}</span>
-          <div style={{ 
-            width: 28, height: 28, borderRadius: '50%', 
-            background: isOpen ? 'rgba(0, 184, 117, 0.2)' : 'rgba(0, 184, 117, 0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.3s ease',
-            flexShrink: 0
-          }}>
-            {isOpen ? (
-              <IconMinus size={16} stroke={2.5} color="#00B875" />
-            ) : (
-              <IconPlus size={16} stroke={2.5} color="#00B875" />
-            )}
-          </div>
-        </div>
-        <div style={{ 
-          maxHeight: isOpen ? '600px' : '0px', 
-          overflow: 'hidden', 
-          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          opacity: isOpen ? 1 : 0
-        }}>
-          <div style={{ 
-            padding: '0 24px 20px', display: 'flex', flexDirection: 'column'
-          }}>
-            {children}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── MOBILE VIEW (ACCORDION) ────────────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <footer style={{ 
-        background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)',
-        color: '#02382B',
-        fontFamily: "'Inter', 'Hind Siliguri', sans-serif",
-        position: 'relative',
-        overflow: 'hidden',
-        borderTop: '1px solid rgba(0, 184, 117, 0.22)'
-      }}>
-        {/* Soft Glassmorphism Glows */}
-        <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.08) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 250, height: 250, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.06) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
-
-        <div style={{ borderTop: '1px solid rgba(0, 184, 117, 0.22)', position: 'relative', zIndex: 2 }}>
-          <AccordionItem id="brand" title="ডক্টর বুকলেট সম্পর্কে">
-            {LEGAL_LINKS.slice(0, 1).map(link => renderMobileLink(link))}
-            {QUICK_LINKS.slice(3, 5).map(link => renderMobileLink(link))}
-          </AccordionItem>
-
-          <AccordionItem id="patients" title="রোগীদের জন্য">
-            {QUICK_LINKS.slice(0, 3).map(link => renderMobileLink(link))}
-          </AccordionItem>
-
-          <AccordionItem id="doctors" title="ডাক্তারদের জন্য">
-            {renderMobileLink({ label: 'আপনি কি ডাক্তার?', to: '/register-doctor', icon: <IconUserPlus size={16} /> })}
-            {renderMobileLink({ label: 'ডাক্তার ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> })}
-          </AccordionItem>
-
-          <AccordionItem id="hospitals" title="হাসপাতালের জন্য">
-            {renderMobileLink({ label: 'আপনার কি হাসপাতাল আছে?', to: '/register-hospital', icon: <IconBuildingHospital size={16} /> })}
-            {renderMobileLink({ label: 'হাসপাতাল ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> })}
-          </AccordionItem>
-
-          <AccordionItem id="more" title="আরও জানুন">
-            {LEGAL_LINKS.slice(1).map(link => renderMobileLink(link))}
-            {renderMobileLink({ label: 'সাহায্য কেন্দ্র (FAQ)', to: '/support', icon: <IconHelp size={16} /> })}
-          </AccordionItem>
-
-          <AccordionItem id="social" title="সোশ্যাল মিডিয়া">
-            {SOCIAL_LINKS.map(link => (
-              <a 
-                key={link.label} 
-                href={link.url} 
-                style={{
-                  color: '#064E3B',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  border: '1px solid #DCFCE7',
-                  textDecoration: 'none',
-                  fontSize: 15,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  transition: 'all 0.3s ease',
-                  marginBottom: '6px',
-                  gap: 10,
-                  fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
-                }}
-              >
-                <span style={{ color: '#00B875', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  {link.icon}
-                </span>
-                <span>{link.label}</span>
-              </a>
-            ))}
-          </AccordionItem>
-        </div>
-
-        {/* Centered Logo & Brand Area */}
-        <div style={{ padding: '40px 20px 80px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-            <img 
-              src="/doctorBookletLogo.png" 
-              alt="Doctor Booklet Logo" 
-              style={{ 
-                height: '44px', 
-                width: 'auto', 
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 2px 8px rgba(0, 184, 117, 0.15))' 
-              }} 
-            />
-          </Link>
-          
-          <p style={{ color: '#064E3B', fontSize: 13, margin: 0, fontWeight: 500, letterSpacing: '0.5px', lineHeight: 1.6, opacity: 0.85 }}>
-            {copyrightText}
-          </p>
-        </div>
-      </footer>
-    )
-  }
-
-  // ─── DESKTOP VIEW (GRID) ────────────────────────────────────────────────────
   return (
-    <footer style={{ 
-      background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)', 
-      padding: '80px 0 30px', 
-      position: 'relative', 
-      overflow: 'hidden',
-      color: '#02382B',
-      fontFamily: "'Hind Siliguri', sans-serif",
-      borderTop: '1px solid #BBF7D0'
-    }}>
+    <footer 
+      className="d-none d-lg-block"
+      style={{ 
+        background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)', 
+        padding: '44px 0 30px', 
+        position: 'relative', 
+        overflow: 'hidden',
+        color: '#02382B',
+        fontFamily: "'Hind Siliguri', sans-serif"
+      }}
+    >
       {/* Aesthetic Background Glows */}
       <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.08) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />

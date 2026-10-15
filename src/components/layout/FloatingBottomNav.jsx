@@ -14,11 +14,20 @@ export default function FloatingBottomNav() {
   const location = useLocation();
   const { isLoggedIn } = useAuth();
 
-  // Hide floating bottom nav on doctor and hospital detail pages
-  if (
-    (location.pathname.startsWith('/doctors/') && location.pathname !== '/doctors') ||
-    (location.pathname.startsWith('/hospitals/') && location.pathname !== '/hospitals')
-  ) {
+  // Hide floating bottom nav ONLY on genuine doctor and hospital detail pages
+  const isDetailPath = (prefix) => {
+    if (!location.pathname.startsWith(prefix + '/')) return false
+    if (location.pathname === prefix || location.pathname.startsWith(prefix + '/view/')) return false
+    const segments = location.pathname.replace(new RegExp(`^${prefix}/`), '').split('/').filter(Boolean)
+    if (segments.length >= 3) return true
+    if (segments.length === 1) {
+      const s = segments[0]
+      return /^\d+$/.test(s) || (s.length === 26 && /^[0-9A-HJ-KM-NP-TV-Z]+$/i.test(s))
+    }
+    return false
+  }
+
+  if (isDetailPath('/doctors') || isDetailPath('/hospitals')) {
     return null;
   }
 

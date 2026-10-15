@@ -14,13 +14,8 @@ import { toast } from 'react-hot-toast'
 
 // Helper to convert date to beautiful Bengali date & time string
 const formatBengaliDateTime = (dateInput) => {
-  if (!dateInput) {
-    return { date: '২৯ সেপ্টেম্বর ২০২৪', time: 'সকাল ১০:৩০' }
-  }
-  const d = new Date(dateInput)
-  if (isNaN(d.getTime())) {
-    return { date: '২৯ সেপ্টেম্বর ২০২৪', time: 'সকাল ১০:৩০' }
-  }
+  const d = dateInput ? new Date(dateInput) : new Date()
+  const validDate = isNaN(d.getTime()) ? new Date() : d
 
   const bngMonths = [
     'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
@@ -28,12 +23,12 @@ const formatBengaliDateTime = (dateInput) => {
   ]
   const toBngNum = (num) => String(num).replace(/[0-9]/g, (digit) => '০১২৩৪৫৬৭৮৯'[digit])
 
-  const day = toBngNum(d.getDate())
-  const month = bngMonths[d.getMonth()]
-  const year = toBngNum(d.getFullYear())
+  const day = toBngNum(validDate.getDate())
+  const month = bngMonths[validDate.getMonth()]
+  const year = toBngNum(validDate.getFullYear())
 
-  const hours = d.getHours()
-  const minutes = toBngNum(String(d.getMinutes()).padStart(2, '0'))
+  const hours = validDate.getHours()
+  const minutes = toBngNum(String(validDate.getMinutes()).padStart(2, '0'))
 
   let period = 'সকাল'
   if (hours >= 12 && hours < 15) period = 'দুপুর'
@@ -53,7 +48,7 @@ const formatBengaliDateTime = (dateInput) => {
 export default function PendingVerificationPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, fetchCurrentUser, isDoctor, isManager, isAdmin } = useAuth()
+  const { user, fetchCurrentUser, isDoctor, isManager, isAdmin, isPatient, isLoggedIn, loading, logout } = useAuth()
 
   const [refreshing, setRefreshing] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -63,6 +58,7 @@ export default function PendingVerificationPage() {
   const isHospital = stateType === 'hospital' ||
     user?.registration_type === 'hospital' ||
     user?.hospital ||
+    user?.role_id === 3 ||
     location.pathname.includes('hospital')
 
   const roleLabel = isHospital ? 'হাসপাতাল' : 'ডাক্তার'
@@ -92,13 +88,42 @@ export default function PendingVerificationPage() {
   const submissionTimestamp = user?.created_at || location.state?.created_at || null
   const { date: submissionDate, time: submissionTime } = formatBengaliDateTime(submissionTimestamp)
 
-  // Auto check if already approved
+  // Route Protection & Auto-Redirect checks
   useEffect(() => {
-    if (isAdmin || isDoctor || isManager) {
-      toast.success('আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে!')
-      navigate('/admin', { replace: true })
+    if (loading) return
+
+    // 1. If guest with no registration state -> Redirect to Login
+    if (!isLoggedIn && !location.state?.type) {
+      navigate('/login', { replace: true })
+      return
     }
-  }, [isAdmin, isDoctor, isManager, navigate])
+
+    // 2. If approved Admin / Doctor / Hospital -> Redirect to their dashboard
+    if (isAdmin) {
+      toast.success('আপনার অ্যাকাউন্ট অনুমোদিত!')
+      navigate('/admin', { replace: true })
+      return
+    }
+    if (isDoctor) {
+      toast.success('আপনার ডাক্তার অ্যাকাউন্ট অনুমোদিত হয়েছে!')
+      navigate('/doctor', { replace: true })
+      return
+    }
+    if (isManager) {
+      toast.success('আপনার হাসপাতাল অ্যাকাউন্ট অনুমোদিত হয়েছে!')
+      navigate('/hospital', { replace: true })
+      return
+    }
+
+    // 3. If regular patient with no pending doctor/hospital application -> Redirect to Home
+    const isDoctorApp = location.state?.type === 'doctor' || user?.registration_type === 'doctor' || !!user?.doctor || user?.role_id === 2
+    const isHospitalApp = location.state?.type === 'hospital' || user?.registration_type === 'hospital' || !!user?.hospital || user?.role_id === 3
+
+    if (isLoggedIn && !isDoctorApp && !isHospitalApp && (isPatient || user?.role_id === 4)) {
+      navigate('/', { replace: true })
+      return
+    }
+  }, [loading, isLoggedIn, isAdmin, isDoctor, isManager, isPatient, user, location.state, navigate])
 
   // Live status check
   const handleCheckStatus = async () => {
@@ -108,9 +133,19 @@ export default function PendingVerificationPage() {
         await fetchCurrentUser()
       }
 
-      if (isAdmin || isDoctor || isManager) {
+      if (isAdmin) {
         toast.success('অভিনন্দন! আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে।')
         navigate('/admin', { replace: true })
+        return
+      }
+      if (isDoctor) {
+        toast.success('অভিনন্দন! আপনার ডাক্তার অ্যাকাউন্ট অনুমোদিত হয়েছে।')
+        navigate('/doctor', { replace: true })
+        return
+      }
+      if (isManager) {
+        toast.success('অভিনন্দন! আপনার হাসপাতাল অ্যাকাউন্ট অনুমোদিত হয়েছে।')
+        navigate('/hospital', { replace: true })
         return
       }
 
@@ -125,6 +160,22 @@ export default function PendingVerificationPage() {
       setRefreshing(false)
       toast.error('স্ট্যাটাস আপডেট চেক করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
     }
+  }
+
+  // Loading state while auth initializes
+  if (loading && !location.state?.type) {
+    return (
+      <div className="pv-page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="spinner-border text-success" role="status">
+          <span className="visually-hidden">লোড হচ্ছে...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Prevent flash of page content for unauthorized visitors
+  if (!isLoggedIn && !location.state?.type) {
+    return null
   }
 
   return (
@@ -318,6 +369,29 @@ export default function PendingVerificationPage() {
             <Phone size={14} className="pv-phone-pill-icon" />
             <span>09613868438</span>
           </a>
+        </div>
+
+        {/* Sign out / Switch Account Action */}
+        <div style={{ textAlign: 'center', marginTop: 4, marginBottom: 8 }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (logout) logout()
+              navigate('/login', { replace: true })
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#059669',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}
+          >
+            অন্য অ্যাকাউন্ট দিয়ে সাইন ইন করুন / লগআউট
+          </button>
         </div>
 
       </div>

@@ -28,13 +28,21 @@ import {
   IconReportMedical,
   IconArrowRight,
   IconHeart,
-  IconStarFilled
+  IconStarFilled,
+  IconActivity,
+  IconBroadcast,
+  IconPhone,
+  IconDeviceTv,
+  IconClock
 } from '@tabler/icons-react'
 import { getContent } from '../../utils/contentService'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
 import { useFavorites } from '../../context/FavoritesContext'
+import { useAuth } from '../../context/AuthContext'
+import { trackLiveSerialByPhone } from '../../api/appointmentApi'
 import ScrollReveal from '../common/ScrollReveal'
+import QuickLiveSerialModal from '../common/QuickLiveSerialModal'
 
 // ── Location Popup Picker ───────────────────────────────────────────────────
 function LocationPopup({ onClose, onSelect }) {
@@ -745,6 +753,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const [selectedHospital, setSelectedHospital] = useState('')
 
   const [searchText, setSearchText] = useState('')
+  const [showLiveSerialModal, setShowLiveSerialModal] = useState(false)
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false)
   const [showUnifiedModal, setShowUnifiedModal] = useState(false)
   const [unifiedTab, setUnifiedTab] = useState('specialty')
@@ -825,6 +834,93 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       sheetCurrentY.current = 0
     }
   }
+
+  // All Specialties Mobile Popup drag-to-dismiss refs & handlers (Hardware Accelerated)
+  const specSheetRef = useRef(null)
+  const specOverlayRef = useRef(null)
+  const specSheetTouchStartY = useRef(0)
+  const specSheetCurrentY = useRef(0)
+  const isSpecSheetDragging = useRef(false)
+
+  const closeSpecialtiesPopup = useCallback(() => {
+    if (specSheetRef.current) {
+      specSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      specSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (specOverlayRef.current) {
+      specOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      specOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setShowAllSpecialtiesPopup(false)
+      specSheetCurrentY.current = 0
+      if (specSheetRef.current) {
+        specSheetRef.current.style.transform = ''
+      }
+    }, 260)
+  }, [])
+
+  const handleSpecSheetTouchStart = (e) => {
+    specSheetTouchStartY.current = e.touches[0].clientY
+    specSheetCurrentY.current = 0
+    isSpecSheetDragging.current = true
+    if (specSheetRef.current) {
+      specSheetRef.current.style.transition = 'none'
+    }
+    if (specOverlayRef.current) {
+      specOverlayRef.current.style.transition = 'none'
+    }
+  }
+
+  const handleSpecSheetTouchMove = (e) => {
+    if (!isSpecSheetDragging.current) return
+    const deltaY = e.touches[0].clientY - specSheetTouchStartY.current
+    if (deltaY > 0) {
+      specSheetCurrentY.current = deltaY
+      if (specSheetRef.current) {
+        specSheetRef.current.style.transform = `translateY(${deltaY}px)`
+      }
+      if (specOverlayRef.current) {
+        const opacity = Math.max(0, 1 - deltaY / 450)
+        specOverlayRef.current.style.opacity = opacity
+      }
+    }
+  }
+
+  const handleSpecSheetTouchEnd = () => {
+    if (!isSpecSheetDragging.current) return
+    isSpecSheetDragging.current = false
+    if (specSheetRef.current) {
+      specSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (specOverlayRef.current) {
+      specOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (specSheetCurrentY.current > 100) {
+      closeSpecialtiesPopup()
+    } else {
+      if (specSheetRef.current) {
+        specSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (specOverlayRef.current) {
+        specOverlayRef.current.style.opacity = '1'
+      }
+      specSheetCurrentY.current = 0
+    }
+  }
+
+  // Prevent background scroll when any mobile bottom sheet is open
+  useEffect(() => {
+    if (showUnifiedModal || showAllSpecialtiesPopup) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showUnifiedModal, showAllSpecialtiesPopup])
 
   const getDateLabel = () => {
     if (!selectedDate) return 'তারিখ'
@@ -1554,6 +1650,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         />
       )}
 
+      {/* Live Serial Tracking Modal */}
+      <QuickLiveSerialModal
+        isOpen={showLiveSerialModal}
+        onClose={() => setShowLiveSerialModal(false)}
+      />
+
       {/* DESKTOP HERO VIEW (>= 992px) */}
       <div className="hero-desktop-wrapper">
         <Container style={{ maxWidth: 1240 }}>
@@ -1932,17 +2034,22 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               </div>
             </div>
 
-            {/* Action 2: হাসপাতাল খুঁজুন */}
+            {/* Action 2: লাইভ সিরিয়াল ট্র্যাকিং */}
             <div
-              className="hero-mobile-action-card hero-mobile-action-blue"
-              onClick={() => navigate('/hospitals')}
+              className="hero-mobile-action-card hero-mobile-action-cyan"
+              onClick={() => setShowLiveSerialModal(true)}
+              style={{ position: 'relative' }}
             >
-              <div className="hero-mobile-action-icon-wrapper">
-                <IconBuildingHospital size={30} color="#2563EB" stroke={2.2} />
+              <div className="hero-mobile-live-badge">
+                <span className="hero-mobile-live-pulse-dot" />
+                LIVE
               </div>
-              <div className="hero-mobile-action-text">
-                <div>হাসপাতাল</div>
-                <div>খুঁজুন</div>
+              <div className="hero-mobile-action-icon-wrapper hero-mobile-cyan-icon-wrap">
+                <IconActivity size={30} color="#0284C7" stroke={2.3} />
+              </div>
+              <div className="hero-mobile-action-text hero-mobile-cyan-text">
+                <div>লাইভ সিরিয়াল</div>
+                <div>ট্র্যাকিং</div>
               </div>
             </div>
 
@@ -2317,10 +2424,33 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
       {/* 5. All Specialties Mobile Popup / Modal (Rendered into document.body to ensure top z-index over bottom nav) */}
       {showAllSpecialtiesPopup && typeof document !== 'undefined' && createPortal(
-        <div className="hero-mobile-specialties-overlay" onClick={() => setShowAllSpecialtiesPopup(false)}>
-          <div className="hero-mobile-specialties-popup" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="hero-mobile-specialties-popup-header">
+        <div
+          ref={specOverlayRef}
+          className="hero-mobile-specialties-overlay"
+          onClick={closeSpecialtiesPopup}
+        >
+          <div
+            ref={specSheetRef}
+            className="hero-mobile-specialties-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            <div
+              className="hero-mobile-sheet-drag-zone"
+              onTouchStart={handleSpecSheetTouchStart}
+              onTouchMove={handleSpecSheetTouchMove}
+              onTouchEnd={handleSpecSheetTouchEnd}
+            >
+              <div className="hero-mobile-sheet-drag-bar" />
+            </div>
+
+            {/* Header (Swipeable) */}
+            <div
+              className="hero-mobile-specialties-popup-header"
+              onTouchStart={handleSpecSheetTouchStart}
+              onTouchMove={handleSpecSheetTouchMove}
+              onTouchEnd={handleSpecSheetTouchEnd}
+            >
               <div>
                 <div className="hero-mobile-specialties-popup-title">
                   সকল বিশেষজ্ঞতা
@@ -2335,7 +2465,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               <button
                 type="button"
                 className="loc-close-btn"
-                onClick={() => setShowAllSpecialtiesPopup(false)}
+                onClick={closeSpecialtiesPopup}
               >
                 <IconX size={20} />
               </button>
@@ -3432,6 +3562,44 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             border: 1px solid rgba(139, 92, 246, 0.22);
           }
 
+          .hero-mobile-action-cyan {
+            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+            border: 1.5px solid #0284C7;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+            position: relative;
+            overflow: visible;
+          }
+
+          .hero-mobile-live-badge {
+            position: absolute;
+            top: -7px;
+            right: 6px;
+            background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+            color: #FFFFFF;
+            font-size: 8.5px;
+            font-weight: 800;
+            padding: 1.5px 6px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3.5px;
+            letter-spacing: 0.05em;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
+            border: 1px solid #BAE6FD;
+            line-height: 1.2;
+            z-index: 3;
+          }
+
+          .hero-mobile-live-pulse-dot {
+            width: 5px;
+            height: 5px;
+            background-color: #38BDF8;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px #38BDF8;
+            animation: qlsPulseDot 1.4s infinite ease-in-out;
+          }
+
           .hero-mobile-action-icon-wrapper {
             display: flex;
             align-items: center;
@@ -3957,15 +4125,19 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             overflow: hidden;
             box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
             animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+            will-change: transform;
           }
 
           .hero-mobile-specialties-popup-header {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            padding: 18px 20px 12px 20px;
+            padding: 4px 20px 14px 20px;
             border-bottom: 1px solid #F1F5F9;
             flex-shrink: 0;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
           }
 
           .hero-mobile-specialties-popup-title {
@@ -4596,9 +4768,485 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           .loc-popup-overlay { padding-top: 80px; }
         }
 
+        /* ── Quick Live Serial Modal (QLS) ── */
+        .qls-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(5px);
+          -webkit-backdrop-filter: blur(5px);
+          z-index: 999999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: qlsOverlayFade 0.2s ease-out;
+        }
+
+        @keyframes qlsOverlayFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .qls-modal-content {
+          background: #FFFFFF;
+          border-radius: 20px;
+          width: 100%;
+          max-width: 480px;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.28);
+          animation: qlsModalSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        @keyframes qlsModalSlideUp {
+          from { transform: translateY(20px) scale(0.97); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .qls-drag-indicator {
+          display: none;
+        }
+
+        .qls-modal-header {
+          padding: 16px 20px 14px 20px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          border-bottom: 1px solid #F1F5F9;
+          background: #FFFFFF;
+        }
+
+        .qls-header-title-box {
+          flex: 1;
+        }
+
+        .qls-live-pill-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #E0F2FE;
+          color: #0284C7;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2.5px 8px;
+          border-radius: 999px;
+          margin-bottom: 6px;
+          border: 1px solid #BAE6FD;
+        }
+
+        .qls-pulse-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #0284C7;
+          box-shadow: 0 0 6px #0284C7;
+          animation: qlsPulseDot 1.4s infinite ease-in-out;
+        }
+
+        .qls-title {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 3px 0;
+          line-height: 1.3;
+        }
+
+        .qls-subtitle {
+          font-size: 12px;
+          color: #64748B;
+          margin: 0;
+          line-height: 1.4;
+        }
+
+        .qls-close-btn {
+          background: #F1F5F9;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #64748B;
+          cursor: pointer;
+          transition: all 0.18s;
+          flex-shrink: 0;
+          margin-left: 12px;
+        }
+
+        .qls-close-btn:hover {
+          background: #E2E8F0;
+          color: #0F172A;
+        }
+
+        .qls-search-form {
+          padding: 12px 18px;
+          background: #F8FAFC;
+          border-bottom: 1px solid #F1F5F9;
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .qls-input-wrap {
+          position: relative;
+          flex: 1;
+          display: flex;
+          align-items: center;
+        }
+
+        .qls-input-icon {
+          position: absolute;
+          left: 11px;
+          color: #0284C7;
+          pointer-events: none;
+        }
+
+        .qls-input {
+          width: 100%;
+          height: 42px;
+          padding: 0 30px 0 36px;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 10px;
+          font-size: 14.5px;
+          font-weight: 700;
+          color: #0F172A;
+          outline: none;
+          background: #FFFFFF;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          letter-spacing: 0.04em;
+        }
+
+        .qls-input:focus {
+          border-color: #0284C7;
+          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.16);
+        }
+
+        .qls-clear-input {
+          position: absolute;
+          right: 8px;
+          background: none;
+          border: none;
+          color: #94A3B8;
+          cursor: pointer;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .qls-clear-input:hover {
+          color: #E11D48;
+        }
+
+        .qls-submit-btn {
+          height: 42px;
+          padding: 0 16px;
+          background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+          color: #FFFFFF;
+          border: none;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          white-space: nowrap;
+          box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3);
+          transition: transform 0.18s, box-shadow 0.18s;
+        }
+
+        .qls-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .qls-submit-btn:not(:disabled):hover {
+          transform: translateY(-1px);
+          box-shadow: 0 5px 14px rgba(2, 132, 199, 0.4);
+        }
+
+        .qls-error-box {
+          margin: 10px 18px 0 18px;
+          padding: 8px 12px;
+          background: #FEF2F2;
+          border: 1px solid #FECACA;
+          border-radius: 8px;
+          color: #DC2626;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .qls-results-container {
+          flex: 1;
+          overflow-y: auto;
+          padding: 14px 18px;
+          min-height: 160px;
+          max-height: 380px;
+        }
+
+        .qls-loading-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 36px 16px;
+          color: #64748B;
+          gap: 12px;
+          text-align: center;
+          font-size: 13px;
+        }
+
+        .qls-empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 24px 16px;
+          text-align: center;
+        }
+
+        .qls-empty-icon-box {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #E0F2FE;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 10px;
+        }
+
+        .qls-empty-state h4 {
+          font-size: 15px;
+          font-weight: 800;
+          color: #1E293B;
+          margin: 0 0 6px 0;
+        }
+
+        .qls-empty-state p {
+          font-size: 12px;
+          color: #64748B;
+          max-width: 290px;
+          margin: 0 0 14px 0;
+          line-height: 1.5;
+        }
+
+        .qls-book-cta-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 16px;
+          background: #00B875;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 999px;
+          font-size: 12.5px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.28);
+        }
+
+        .qls-appointments-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .qls-appointment-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 13px 14px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+          transition: border-color 0.2s;
+        }
+
+        .qls-appointment-card:hover {
+          border-color: #BAE6FD;
+        }
+
+        .qls-card-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 11px;
+        }
+
+        .qls-doc-specialty {
+          font-size: 11px;
+          font-weight: 700;
+          color: #0284C7;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+
+        .qls-doc-name {
+          font-size: 14.5px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 2px 0;
+        }
+
+        .qls-chamber-name {
+          font-size: 12px;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .qls-today-badge {
+          background: #DCFCE7;
+          color: #15803D;
+          font-size: 10.5px;
+          font-weight: 700;
+          padding: 2.5px 8px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+          border: 1px solid #BBF7D0;
+        }
+
+        .qls-counters-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .qls-counter-box {
+          padding: 8px 4px;
+          border-radius: 10px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .qls-box-your {
+          background: #F0FDF4;
+          border: 1px solid #BBF7D0;
+        }
+
+        .qls-box-serving {
+          background: #E0F2FE;
+          border: 1.5px solid #7DD3FC;
+        }
+
+        .qls-box-ahead {
+          background: #FEF3C7;
+          border: 1px solid #FDE68A;
+        }
+
+        .qls-counter-label {
+          font-size: 10px;
+          font-weight: 700;
+          color: #64748B;
+          margin-bottom: 2px;
+          white-space: nowrap;
+        }
+
+        .qls-counter-value {
+          font-size: 16px;
+          font-weight: 900;
+          color: #0F172A;
+        }
+
+        .qls-box-serving .qls-counter-value {
+          color: #0369A1;
+        }
+
+        .qls-card-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .qls-tv-btn {
+          flex: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 10px;
+          background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+          color: #FFFFFF;
+          border: none;
+          border-radius: 9px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.15s;
+        }
+
+        .qls-tv-btn:active {
+          transform: scale(0.97);
+        }
+
+        .qls-ticket-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 8px 12px;
+          background: #F1F5F9;
+          color: #334155;
+          border: 1px solid #CBD5E1;
+          border-radius: 9px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .qls-modal-footer {
+          padding: 10px 16px;
+          background: #F8FAFC;
+          border-top: 1px solid #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          font-size: 11.5px;
+          color: #64748B;
+          text-align: center;
+        }
+
         @media (max-width: 576px) {
           .hero-section-main {
             padding-top: calc(var(--header-height, 68px) + 10px) !important;
+          }
+          .qls-modal-overlay {
+            align-items: flex-end;
+            padding: 0;
+          }
+          .qls-modal-content {
+            border-radius: 22px 22px 0 0;
+            max-height: 88vh;
+            animation: qlsBottomSheetSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          @keyframes qlsBottomSheetSlide {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+          .qls-drag-indicator {
+            display: block;
+            width: 38px;
+            height: 4px;
+            background: #CBD5E1;
+            border-radius: 999px;
+            margin: 8px auto 2px auto;
           }
         }
       `}</style>

@@ -379,7 +379,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
   }
 
   return (
-    <section id="most-viewed-doctors-section" style={{ padding: '16px 0 28px', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
+    <section id="most-viewed-doctors-section" style={{ padding: '8px 0 22px', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
       {/* ── Mobile Layout (< 768px): Matching "আজ যেসব ডাক্তার বসবেন" Design ── */}
       <div className="most-viewed-mobile-wrapper">
         <div className="most-viewed-mobile-header">

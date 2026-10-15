@@ -35,7 +35,7 @@ export default function TodayDoctorsSection() {
   }
 
   return (
-    <section id="today-doctors-section" className="d-none d-lg-block" style={{ padding: '24px 0 28px', background: '#F8FAFC', position: 'relative' }}>
+    <section id="today-doctors-section" className="d-none d-lg-block" style={{ padding: '20px 0 12px', background: '#F8FAFC', position: 'relative' }}>
       <Container>
         {/* Section Header */}
         <div style={{

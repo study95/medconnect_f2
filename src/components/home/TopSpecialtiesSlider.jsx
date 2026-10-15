@@ -416,7 +416,7 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
   const [searchQuery, setSearchQuery]                 = useState('')
   const navigate   = useNavigate()
   const { t, i18n } = useTranslation()
-  const language   = i18n.language
+  const language = (typeof window !== 'undefined' && (localStorage.getItem('language') === 'en' || localStorage.getItem('i18nextLng') === 'en')) ? 'en' : 'bn'
 
   // Fetch only if not provided from parent HomePage
   useEffect(() => {
@@ -448,10 +448,10 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
   return (
     <section
       id="tss-section"
+      className="d-none d-md-block"
       style={{
-        padding: '56px 0 60px',
-        background: '#FAFBFD',
-        borderTop: '1px solid rgba(226,232,240,0.6)',
+        padding: '28px 0 32px',
+        background: '#FFFFFF',
         position: 'relative'
       }}
     >
@@ -461,28 +461,35 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
           <div className="d-flex align-items-center gap-2 mb-1">
             <h2
               style={{
-                fontSize: 'clamp(24px, 3.2vw, 32px)',
+                fontSize: 'clamp(22px, 3.2vw, 32px)',
                 fontWeight: 900,
-                color: '#064E3B',
+                color: '#0F172A',
                 margin: 0,
                 fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
-                letterSpacing: '-0.3px'
+                letterSpacing: '-0.3px',
+                lineHeight: 1.3
               }}
             >
-              {language === 'bn' ? 'বিশেষজ্ঞ চিকিৎসা সেবা সমূহ' : 'Specialist Healthcare Services'}
+              {language === 'bn' ? (
+                <>
+                  বিশেষজ্ঞ <span style={{ color: '#059669' }}>চিকিৎসা সেবাসমূহ</span>
+                </>
+              ) : (
+                'Specialist Healthcare Services'
+              )}
             </h2>
           </div>
           <p
             style={{
-              fontSize: 'clamp(14px, 1.8vw, 15.5px)',
+              fontSize: 'clamp(13.5px, 1.6vw, 15px)',
               fontWeight: 500,
               color: '#64748B',
-              margin: 0,
-              fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+              margin: '4px 0 0 0',
+              fontFamily: "'Hind Siliguri', sans-serif"
             }}
           >
             {language === 'bn'
-              ? 'আপনার প্রয়োজন অনুযায়ী বিশেষজ্ঞ ডাক্তারের খুঁজে নিন'
+              ? 'আপনার প্রয়োজন অনুযায়ী অভিজ্ঞ বিশেষজ্ঞ ডাক্তার বেছে নিন'
               : 'Find specialist doctors tailored to your medical needs'}
           </p>
         </div>
