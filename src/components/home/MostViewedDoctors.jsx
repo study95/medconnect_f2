@@ -389,8 +389,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
             className="most-viewed-mobile-all-link"
             onClick={() => navigate('/doctors?top_10=1')}
           >
-            <span>সব দেখুন</span>
-            <span className="most-viewed-mobile-all-arrow">→</span>
+            সব দেখুন
           </button>
         </div>
 

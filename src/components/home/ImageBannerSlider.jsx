@@ -275,8 +275,12 @@ export default function ImageBannerSlider() {
           }
         }
 
+        @media (max-width: 991px) {
+          .image-banner-slider-section { padding: 4px 0 10px !important; }
+        }
+
         @media (max-width: 575px) {
-          .image-banner-slider-section { padding: 6px 0 12px !important; }
+          .image-banner-slider-section { padding: 4px 0 10px !important; }
           .image-banner-slider-section .container-fluid { padding-left: 0 !important; padding-right: 0 !important; }
           .image-banner-prev-btn, .image-banner-next-btn { display: none !important; }
           .image-slide-card { border-radius: 12px !important; aspect-ratio: 16 / 8.5 !important; min-height: auto !important; }

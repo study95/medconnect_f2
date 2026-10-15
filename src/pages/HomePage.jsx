@@ -18,7 +18,7 @@ import {
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
   IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus,
-  IconSearch, IconX, IconActivity, IconUserHeart
+  IconSearch, IconX, IconActivity, IconUserHeart, IconHelp
 } from '@tabler/icons-react'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -1826,7 +1826,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           <div className="bbl-stat-divider" />
 
           {/* Upazilas */}
-          <div className="bbl-stat-item">
+          <div className="bbl-stat-item bbl-stat-upazila">
             <div className="bbl-stat-icon-wrap">
               <IconBuildingHospital size={24} stroke={2} color="#059669" />
             </div>
@@ -2749,15 +2749,19 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             white-space: nowrap;
           }
 
+          .bbl-stat-upazila {
+            display: none !important;
+          }
+
           .bbl-stats-bar {
             display: grid !important;
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 2px !important;
-            padding: 14px 6px !important;
-            border-radius: 16px !important;
-            background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #E6F4EA 100%) !important;
-            border: 1px solid #A7F3D0 !important;
-            box-shadow: 0 4px 16px rgba(5, 150, 105, 0.08) !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 4px !important;
+            padding: 14px 8px !important;
+            border-radius: 18px !important;
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 35%, #99F6E4 70%, #BAE6FD 100%) !important;
+            border: 1.5px solid #34D399 !important;
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.16) !important;
           }
           .bbl-stat-divider {
             display: none !important;
@@ -2767,39 +2771,39 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             flex-direction: column !important;
             align-items: center !important;
             text-align: center !important;
-            gap: 4px !important;
+            gap: 5px !important;
             min-width: 0 !important;
           }
           .bbl-stat-item.bbl-stat-wide {
             grid-column: span 1 !important;
           }
           .bbl-stat-icon-wrap {
-            width: 32px !important;
-            height: 32px !important;
-            border-radius: 9px !important;
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 10px !important;
             background: #FFFFFF !important;
-            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.12) !important;
+            box-shadow: 0 3px 8px rgba(6, 78, 59, 0.14) !important;
           }
           .bbl-stat-icon-wrap svg {
-            width: 17px !important;
-            height: 17px !important;
+            width: 20px !important;
+            height: 20px !important;
           }
           .bbl-stat-text {
             flex-direction: column !important;
             align-items: center !important;
-            gap: 1px !important;
+            gap: 2px !important;
             line-height: 1.15 !important;
           }
           .bbl-stat-val {
-            font-size: 13.5px !important;
+            font-size: 15.5px !important;
             font-weight: 800 !important;
-            color: #065F46 !important;
+            color: #064E3B !important;
             white-space: nowrap !important;
           }
           .bbl-stat-lbl {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            color: #047857 !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            color: #065F46 !important;
             white-space: nowrap !important;
           }
 
@@ -2892,23 +2896,23 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         @media (max-width: 360px) {
           .bbl-stats-bar {
-            padding: 11px 2px !important;
-            gap: 1px !important;
+            padding: 11px 4px !important;
+            gap: 2px !important;
           }
           .bbl-stat-icon-wrap {
-            width: 28px !important;
-            height: 28px !important;
-            border-radius: 7px !important;
+            width: 33px !important;
+            height: 33px !important;
+            border-radius: 8px !important;
           }
           .bbl-stat-icon-wrap svg {
-            width: 15px !important;
-            height: 15px !important;
+            width: 17px !important;
+            height: 17px !important;
           }
           .bbl-stat-val {
-            font-size: 12.5px !important;
+            font-size: 13.5px !important;
           }
           .bbl-stat-lbl {
-            font-size: 10px !important;
+            font-size: 11px !important;
           }
         }
       `}</style>
@@ -2983,17 +2987,23 @@ function HomepageFaqSection() {
   }
 
   return (
-    <section style={{ padding: '36px 0 24px', background: '#F8FAFC' }}>
+    <section className="homepage-faq-section" style={{ padding: '36px 0 32px', background: '#F8FAFC' }}>
       <Container style={{ maxWidth: 880 }}>
         <div className="text-center mb-4">
           <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
             প্রশ্নোত্তর
           </span>
-          <h2 className="fw-bold text-dark" style={{ fontSize: 'clamp(22px, 3.5vw, 30px)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+          <h2 className="fw-bold text-dark" style={{ fontSize: 'clamp(22px, 3.5vw, 30px)', fontFamily: "'Hind Siliguri', sans-serif", marginBottom: 6 }}>
             সাধারণ জিজ্ঞাসা ও উত্তর
           </h2>
-          <p className="text-muted" style={{ fontSize: '0.95rem', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            DoctorBooklet ব্যবহার ও স্বাস্থ্যসেবা প্রাপ্তি সংক্রান্ত সাধারণ তথ্যাবলী
+          <p className="text-muted" style={{
+            fontSize: 'clamp(12px, 3.2vw, 14.5px)',
+            fontFamily: "'Hind Siliguri', sans-serif",
+            margin: '0 auto',
+            lineHeight: 1.4,
+            fontWeight: 500
+          }}>
+            DoctorBooklet ব্যবহার ও সেবা সংক্রান্ত তথ্যাবলী
           </p>
         </div>
 
@@ -3014,17 +3024,18 @@ function HomepageFaqSection() {
                 <button
                   type="button"
                   onClick={() => handleToggle(i)}
-                  className="w-100 d-flex align-items-center justify-content-between p-3 p-md-4 text-start border-0 bg-transparent"
+                  className="faq-toggle-btn w-100 d-flex align-items-center justify-content-between p-3 p-md-4 text-start border-0 bg-transparent"
                   style={{ cursor: 'pointer', outline: 'none', gap: 14 }}
                   aria-expanded={isOpen}
                 >
                   <span
-                    className="fw-bold mb-0"
+                    className="faq-question-text mb-0"
                     style={{
-                      fontSize: 16,
+                      fontSize: 15.5,
+                      fontWeight: 600,
                       color: isOpen ? '#15803D' : '#1E293B',
                       fontFamily: "'Hind Siliguri', sans-serif",
-                      lineHeight: 1.5,
+                      lineHeight: 1.4,
                       flex: 1,
                       transition: 'color 0.2s ease'
                     }}
@@ -3032,7 +3043,7 @@ function HomepageFaqSection() {
                     {faq.q}
                   </span>
                   <span
-                    className="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    className="faq-toggle-icon d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
                     style={{
                       width: 32,
                       height: 32,
@@ -3048,17 +3059,17 @@ function HomepageFaqSection() {
 
                 {isOpen && (
                   <div
-                    className="px-3 px-md-4 pb-3 pb-md-4 pt-0"
+                    className="faq-answer-wrap px-3 px-md-4 pb-3 pb-md-4 pt-0"
                     style={{
                       animation: 'faqFadeIn 0.3s ease'
                     }}
                   >
-                    <div style={{ height: 1, background: '#F1F5F9', marginBottom: 14 }} />
+                    <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
                     <p
                       className="text-muted mb-0"
                       style={{
-                        fontSize: 14.5,
-                        lineHeight: 1.7,
+                        fontSize: 14,
+                        lineHeight: 1.6,
                         fontFamily: "'Hind Siliguri', sans-serif",
                         color: '#475569'
                       }}
@@ -3072,35 +3083,16 @@ function HomepageFaqSection() {
           })}
         </div>
 
-        {/* আরো জানুন (FAQ / Help Center) Button */}
-        <div className="text-center mt-3">
+        {/* আরো জানুন (FAQ / Help Center) Realistic 3D Pill Button */}
+        <div className="faq-more-btn-wrap text-center mt-4">
           <Link
             to="/support"
-            className="btn text-white rounded-pill px-4 py-2 fw-bold"
-            style={{
-              fontSize: '0.95rem',
-              fontFamily: "'Hind Siliguri', sans-serif",
-              background: '#00B875',
-              borderColor: '#00B875',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.35)',
-              transition: 'all 0.25s ease'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#009E64'
-              e.currentTarget.style.borderColor = '#009E64'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#00B875'
-              e.currentTarget.style.borderColor = '#00B875'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
+            className="faq-more-btn"
           >
-            আরো জানুন (সাহায্য কেন্দ্র FAQ)
-            <IconArrowRight size={18} />
+            <IconHelp size={19} stroke={2.2} style={{ flexShrink: 0, opacity: 0.95 }} />
+            <span>আরো জানুন (সাহায্য কেন্দ্র FAQ)</span>
+            <span className="faq-btn-divider" />
+            <IconArrowRight size={17} stroke={2.5} style={{ flexShrink: 0 }} />
           </Link>
         </div>
       </Container>
@@ -3109,6 +3101,99 @@ function HomepageFaqSection() {
         @keyframes faqFadeIn {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .faq-more-btn {
+          background: linear-gradient(180deg, #10B981 0%, #00B875 50%, #059669 100%);
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          box-shadow: 
+            0 6px 20px rgba(0, 184, 117, 0.38),
+            0 2px 4px rgba(0, 0, 0, 0.08),
+            inset 0 1.5px 1px rgba(255, 255, 255, 0.5),
+            inset 0 -1.5px 2px rgba(0, 60, 35, 0.22);
+          color: #FFFFFF !important;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+          border-radius: 9999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 10px 24px;
+          font-size: 14.5px;
+          font-weight: 700;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          text-decoration: none !important;
+          cursor: pointer;
+        }
+
+        .faq-more-btn:hover {
+          background: linear-gradient(180deg, #34D399 0%, #00B875 50%, #047857 100%);
+          box-shadow: 
+            0 9px 26px rgba(0, 184, 117, 0.45),
+            0 3px 6px rgba(0, 0, 0, 0.1),
+            inset 0 1.5px 1px rgba(255, 255, 255, 0.6),
+            inset 0 -1.5px 2px rgba(0, 60, 35, 0.3);
+          transform: translateY(-2px);
+          color: #FFFFFF !important;
+        }
+
+        .faq-more-btn:active {
+          background: linear-gradient(180deg, #059669 0%, #00B875 70%, #047857 100%);
+          box-shadow: 
+            0 3px 10px rgba(0, 184, 117, 0.3),
+            inset 0 2px 4px rgba(0, 0, 0, 0.25);
+          transform: translateY(1px);
+        }
+
+        .faq-btn-divider {
+          width: 1px;
+          height: 16px;
+          background: rgba(255, 255, 255, 0.38);
+          margin: 0 2px;
+          display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+          .homepage-faq-section {
+            padding-top: 24px !important;
+            padding-bottom: 86px !important;
+          }
+          .faq-toggle-btn {
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .faq-question-text {
+            font-size: 14.2px !important;
+            line-height: 1.38 !important;
+            font-weight: 600 !important;
+          }
+          .faq-toggle-icon {
+            width: 28px !important;
+            height: 28px !important;
+          }
+          .faq-toggle-icon svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+          .faq-answer-wrap {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+            padding-bottom: 14px !important;
+          }
+          .faq-answer-wrap p {
+            font-size: 13.5px !important;
+            line-height: 1.55 !important;
+          }
+          .faq-more-btn-wrap {
+            margin-top: 20px !important;
+            margin-bottom: 8px !important;
+          }
+          .faq-more-btn {
+            font-size: 13.5px !important;
+            padding: 9px 18px !important;
+            gap: 8px !important;
+          }
         }
       `}</style>
     </section>
@@ -3126,8 +3211,13 @@ function PatientTestimonialsSection() {
   }, [])
 
   const sec = cms?.testimonials || {}
-  const title = sec.title || 'হাজারো রোগীর ভরসা ও সন্তুষ্টি'
-  const subtitle = sec.subtitle || 'আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।'
+  const rawTitle = sec.title
+  const title = (!rawTitle || rawTitle === 'হাজারো রোগীর ভরসা ও সন্তুষ্টি') ? 'রোগীদের আস্থা ও ভালোবাসা' : rawTitle
+
+  const rawSubtitle = sec.subtitle
+  const subtitle = (!rawSubtitle || rawSubtitle.includes('আমাদের সেবা ব্যবহার করে যারা') || rawSubtitle.includes('তাদের কথা শুনুন'))
+    ? 'আমাদের সেবা নিয়ে রোগীদের বাস্তব মতামত'
+    : rawSubtitle
   const testimonials = (sec.items && sec.items.length > 0) ? sec.items : [
     {
       name: 'ঐশী খান',
@@ -3163,21 +3253,21 @@ function PatientTestimonialsSection() {
     <section style={{ background: '#FFFFFF', padding: '38px 0 36px' }}>
       <Container>
         {/* Section Title Header */}
-        <div style={{ textAlign: 'center', maxWidth: 720, margin: '0 auto 42px' }}>
+        <div className="testimonial-header-wrap" style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 32px' }}>
           <h2 style={{
-            fontSize: 'clamp(24px, 4vw, 36px)',
+            fontSize: 'clamp(21px, 3.5vw, 32px)',
             fontWeight: 900,
             color: '#0F172A',
-            marginBottom: 10,
+            marginBottom: 8,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
             {title}
           </h2>
           <p style={{
-            fontSize: 14.5,
+            fontSize: 'clamp(12.5px, 3.4vw, 14.5px)',
             color: '#64748B',
             margin: 0,
-            lineHeight: 1.6,
+            lineHeight: 1.4,
             fontWeight: 500,
             fontFamily: "'Hind Siliguri', sans-serif"
           }}>
@@ -3208,7 +3298,7 @@ function PatientTestimonialsSection() {
                   background: '#FFFFFF',
                   border: '1.5px solid #E2E8F0',
                   borderRadius: 16,
-                  padding: '28px 24px 24px',
+                  padding: '24px 22px 22px',
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
@@ -3217,15 +3307,15 @@ function PatientTestimonialsSection() {
                 }}
                 className="testimonial-card"
                 >
-                  {/* Top Header: Avatar, Name & Rating */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                  {/* Top Header: Avatar & Name */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <img
                         src={item.image}
                         alt={item.name}
                         style={{
-                          width: 52,
-                          height: 52,
+                          width: 48,
+                          height: 48,
                           borderRadius: '50%',
                           objectFit: 'cover',
                           border: '2px solid #F0FDFA'
@@ -3233,7 +3323,7 @@ function PatientTestimonialsSection() {
                       />
                       <div>
                         <h4 style={{
-                          fontSize: 16,
+                          fontSize: 15.5,
                           fontWeight: 800,
                           color: '#0F172A',
                           margin: 0,
@@ -3245,13 +3335,6 @@ function PatientTestimonialsSection() {
                           {item.role}
                         </span>
                       </div>
-                    </div>
-
-                    {/* 5 Gold Star Rating */}
-                    <div style={{ display: 'flex', gap: 3, color: '#F59E0B' }}>
-                      {[...Array(item.rating)].map((_, i) => (
-                        <IconStar key={i} size={18} fill="#F59E0B" stroke={0} />
-                      ))}
                     </div>
                   </div>
 
@@ -3326,6 +3409,15 @@ function PatientTestimonialsSection() {
             border-radius: 99px;
             opacity: 1;
             box-shadow: 0 2px 8px rgba(0, 184, 117, 0.4);
+          }
+
+          @media (max-width: 767px) {
+            .testimonial-header-wrap {
+              margin-bottom: 20px !important;
+            }
+            .testimonial-card {
+              padding: 18px 16px !important;
+            }
           }
         `}</style>
       </Container>
@@ -3461,7 +3553,7 @@ function DarkRegistrationSection() {
         </div>
 
         {/* Mobile Swipe Pagination Indicator Dots */}
-        <div className="reg-mobile-dots d-flex d-md-none justify-content-center align-items-center gap-2 mt-3">
+        <div className="reg-mobile-dots d-flex d-md-none justify-content-center align-items-center gap-2 mt-2 mb-1">
           {roles.map((_, idx) => (
             <span
               key={idx}
@@ -3472,8 +3564,8 @@ function DarkRegistrationSection() {
           ))}
         </div>
 
-        {/* Bottom Green Action Button */}
-        <div style={{ textAlign: 'center', marginTop: 30 }}>
+        {/* Bottom Green Action Button (Desktop Only) */}
+        <div className="d-none d-md-block" style={{ textAlign: 'center', marginTop: 30 }}>
           <button
             onClick={() => navigate('/register')}
             className="reg-bottom-cta-btn"
@@ -3641,7 +3733,7 @@ function DarkRegistrationSection() {
 
         @media (max-width: 767px) {
           .registration-section {
-            padding: 22px 0 24px !important;
+            padding: 22px 0 16px !important;
           }
           .reg-cards-scroll-container {
             display: flex !important;
@@ -3651,7 +3743,7 @@ function DarkRegistrationSection() {
             scroll-snap-type: x mandatory !important;
             -webkit-overflow-scrolling: touch !important;
             scrollbar-width: none !important;
-            padding: 6px 16px 14px 16px !important;
+            padding: 6px 16px 10px 16px !important;
             margin: 0 -12px !important;
             gap: 12px !important;
             align-items: stretch !important;
@@ -3769,9 +3861,8 @@ function HospitalPartnersSection({ hospitals = [] }) {
   ]
 
   const items = customItems || (hospitals && hospitals.length > 0 ? hospitals : fallbackPartners)
-
-  // Multiply array elements to guarantee seamless infinite loop animation
-  const marqueeItems = [...items, ...items, ...items, ...items]
+  // Ensure enough items for seamless infinite looping
+  const slides = items.length < 12 ? [...items, ...items, ...items] : items
 
   return (
     <section style={{ padding: '28px 0 30px', background: '#FFFFFF', overflow: 'hidden' }}>
@@ -3793,19 +3884,41 @@ function HospitalPartnersSection({ hospitals = [] }) {
         </div>
       </Container>
 
-      {/* Infinite Continuous Slow Marquee Slider */}
-      <div className="partner-marquee-container" style={{ position: 'relative', width: '100%', overflow: 'hidden', padding: '10px 0' }}>
+      {/* Interactive Swipeable & Auto-Moving Left-to-Right Slider */}
+      <div className="partner-swiper-wrapper" style={{ position: 'relative', width: '100%', overflow: 'hidden', padding: '10px 0' }}>
         {/* Left & Right subtle gradient fade overlays */}
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 90, background: 'linear-gradient(to right, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 90, background: 'linear-gradient(to left, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 45, background: 'linear-gradient(to right, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 45, background: 'linear-gradient(to left, #FFFFFF 20%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
 
-        <div className="partner-marquee-track">
-          {marqueeItems.map((hosp, idx) => {
+        <Swiper
+          modules={[Autoplay]}
+          spaceBetween={16}
+          slidesPerView={2.3}
+          autoplay={{
+            delay: 2000,
+            disableOnInteraction: false,
+            reverseDirection: false, // Right-to-Left auto moving (ডান থেকে বামে)
+            pauseOnMouseEnter: true
+          }}
+          speed={700}
+          loop={true}
+          grabCursor={true}
+          touchEventsTarget="container"
+          breakpoints={{
+            440: { slidesPerView: 2.8, spaceBetween: 16 },
+            576: { slidesPerView: 3.5, spaceBetween: 18 },
+            768: { slidesPerView: 4.5, spaceBetween: 20 },
+            992: { slidesPerView: 5.5, spaceBetween: 22 },
+            1200: { slidesPerView: 6, spaceBetween: 24 }
+          }}
+          className="partner-swiper"
+        >
+          {slides.map((hosp, idx) => {
             const imgSrc = hosp.logo_url || hosp.logo || hosp.photo_url || hosp.photo || hosp.image
             const finalImg = imgSrc ? getMediaUrl(imgSrc) : '/favicon.png'
 
             return (
-              <div key={idx} className="partner-marquee-item">
+              <SwiperSlide key={idx} style={{ height: 'auto', display: 'flex', justifyContent: 'center' }}>
                 <div className="partner-logo-card">
                   <img
                     src={finalImg}
@@ -3821,31 +3934,20 @@ function HospitalPartnersSection({ hospitals = [] }) {
                     }}
                   />
                 </div>
-              </div>
+              </SwiperSlide>
             )
           })}
-        </div>
+        </Swiper>
       </div>
 
       <style>{`
-        .partner-marquee-track {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-          width: max-content;
-          animation: partnerMarquee 40s linear infinite;
-        }
-
-        .partner-marquee-container:hover .partner-marquee-track {
-          animation-play-state: paused;
-        }
-
-        .partner-marquee-item {
-          flex-shrink: 0;
+        .partner-swiper {
+          padding: 8px 4px !important;
         }
 
         .partner-logo-card {
-          width: 140px;
+          width: 100%;
+          max-width: 150px;
           height: 76px;
           background: #FFFFFF;
           border: 1px solid #E2E8F0;
@@ -3856,20 +3958,29 @@ function HospitalPartnersSection({ hospitals = [] }) {
           padding: 8px 12px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          user-select: none;
+          -webkit-user-select: none;
+          cursor: grab;
+        }
+
+        .partner-logo-card:active {
+          cursor: grabbing;
         }
 
         .partner-logo-card:hover {
           border-color: #00A88C;
-          box-shadow: 0 12px 28px rgba(0, 168, 140, 0.16);
-          transform: translateY(-4px);
+          box-shadow: 0 10px 24px rgba(0, 168, 140, 0.14);
+          transform: translateY(-3px);
         }
 
-        @keyframes partnerMarquee {
-          0% {
-            transform: translateX(0);
+        @media (max-width: 576px) {
+          .partner-logo-card {
+            height: 68px;
+            border-radius: 12px;
           }
-          100% {
-            transform: translateX(-50%);
+          .partner-logo-card img {
+            width: 72px !important;
+            height: 44px !important;
           }
         }
       `}</style>

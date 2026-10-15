@@ -73,8 +73,8 @@ const INITIAL_CONTENT = {
   // ── PATIENT TESTIMONIALS (Home page) ────────
   testimonials: {
     badge: 'রোগীদের রিভিউ',
-    title: 'হাজারো রোগীর ভরসা ও সন্তুষ্টি',
-    subtitle: 'আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।',
+    title: 'রোগীদের আস্থা ও ভালোবাসা',
+    subtitle: 'আমাদের সেবা নিয়ে রোগীদের বাস্তব মতামত',
     items: [
       {
         id: 1,
@@ -437,6 +437,14 @@ export const getContent = () => {
   if (saved) {
     try {
       const parsed = JSON.parse(saved)
+      if (parsed?.testimonials) {
+        if (parsed.testimonials.title === 'হাজারো রোগীর ভরসা ও সন্তুষ্টি') {
+          parsed.testimonials.title = 'রোগীদের আস্থা ও ভালোবাসা'
+        }
+        if (parsed.testimonials.subtitle && (parsed.testimonials.subtitle.includes('আমাদের সেবা ব্যবহার করে যারা') || parsed.testimonials.subtitle.includes('তাদের কথা শুনুন'))) {
+          parsed.testimonials.subtitle = 'আমাদের সেবা নিয়ে রোগীদের বাস্তব মতামত'
+        }
+      }
       return deepMerge(INITIAL_CONTENT, parsed)
     } catch (e) {
       return INITIAL_CONTENT

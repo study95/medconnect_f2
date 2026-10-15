@@ -6,7 +6,7 @@ import { getAppointments } from '../api/appointmentApi'
 import { getPrescription } from '../api/adminApi'
 import { AppointmentListSkeleton } from '../components/common/Skeletons'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Calendar, Clock, ChevronRight, ArrowLeft, Download, Loader2, FileText, User, Star } from 'lucide-react'
+import { MapPin, Calendar, Clock, ChevronRight, Download, Loader2, FileText, User, Star } from 'lucide-react'
 // html2canvas and jsPDF are dynamically imported inside the download handler
 // to avoid adding ~600KB to the initial MyAppointmentsPage bundle
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
@@ -250,46 +250,9 @@ function MyAppointmentsPage() {
         }
       `}</style>
 
-      {/* ── Navigation Header ── */}
-      <Container style={{ paddingTop: 16, paddingBottom: 4 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          background: '#fff',
-          padding: '10px 16px',
-          borderRadius: 14,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-          marginBottom: 18,
-        }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#F0FDF4', color: '#00966D',
-              border: '1px solid #D1FAE5',
-              padding: '7px 16px', borderRadius: 10,
-              fontWeight: 700, fontSize: 13.5,
-              cursor: 'pointer', flexShrink: 0,
-              fontFamily: "'Hind Siliguri', sans-serif",
-            }}
-          >
-            <ArrowLeft size={16} strokeWidth={2.5} />
-            ফিরে যান
-          </button>
-          <h5 style={{
-            margin: 0, fontWeight: 800, fontSize: 16.5, color: '#0F172A',
-            fontFamily: "'Hind Siliguri', sans-serif",
-          }}>
-            আমার অ্যাপয়েন্টমেন্ট
-          </h5>
-        </div>
-      </Container>
-
       {/* ── Filter Tabs ── */}
       {!loading && appointments.length > 0 && (
-        <Container style={{ marginBottom: 14 }}>
+        <Container style={{ paddingTop: 20, marginBottom: 14 }}>
           <div style={{
             display: 'flex',
             gap: 8,
@@ -344,7 +307,7 @@ function MyAppointmentsPage() {
       )}
 
       {/* ── List ── */}
-      <Container>
+      <Container style={(!loading && appointments.length > 0) ? undefined : { paddingTop: 20 }}>
         {loading && <AppointmentListSkeleton count={4} />}
 
         {!loading && appointments.length === 0 && (

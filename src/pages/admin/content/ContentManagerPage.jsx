@@ -117,14 +117,14 @@ function TestimonialsTab({ data, onChange }) {
         <Col md={6}>
           <FieldInput
             label="সেকশন শিরোনাম"
-            value={data.title || 'হাজারো রোগীর ভরসা ও সন্তুষ্টি'}
+            value={data.title || 'রোগীদের আস্থা ও ভালোবাসা'}
             onChange={v => onChange('title', v)}
           />
         </Col>
         <Col md={6}>
           <FieldInput
             label="সেকশন সাব-টাইটেল"
-            value={data.subtitle || 'আমাদের সেবা ব্যবহার করে যারা তাদের পছন্দের বিশেষজ্ঞ ডাক্তার ও সঠিক চিকিৎসা সেবা নিশ্চিত করেছেন, তাদের কথা শুনুন।'}
+            value={data.subtitle || 'আমাদের সেবা নিয়ে রোগীদের বাস্তব মতামত'}
             onChange={v => onChange('subtitle', v)}
           />
         </Col>

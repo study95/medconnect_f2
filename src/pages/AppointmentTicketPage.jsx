@@ -5,7 +5,7 @@ import { getAppointmentById, cancelAppointment, sendAppointmentCancelOtp, verify
 import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { getPrescription } from '../api/adminApi'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, ArrowLeft, CheckCircle2, AlertCircle, FileText, Download, Loader2, Star } from 'lucide-react'
+import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, CheckCircle2, AlertCircle, FileText, Download, Loader2, Star } from 'lucide-react'
 // html2canvas and jsPDF are dynamically imported inside handleDownloadRx()
 // so they don't bloat the initial page load (~600KB saved from first render)
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
@@ -490,82 +490,181 @@ export default function AppointmentTicketPage() {
 
   return (
     <div className="page-wrapper" style={{ background: '#F0F4F8', minHeight: '100vh', paddingBottom: 72 }}>
-      {/* ── Keyframe Animations ── */}
+      {/* ── Keyframe Animations & Responsive Styles ── */}
       <style>{`
         @keyframes pingDot {
           0% { transform: scale(1); opacity: 0.8; }
           50% { transform: scale(1.8); opacity: 0; }
           100% { transform: scale(1); opacity: 0; }
         }
+
+        .appt-ticket-main-card {
+          background: #FFFFFF;
+          border-radius: 18px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 4px 18px rgba(15,23,42,0.05);
+          padding: 22px 20px;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .appt-top-status-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 16px;
+          border-bottom: 1px solid #F1F5F9;
+          margin-bottom: 18px;
+          gap: 8px;
+        }
+
+        .appt-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 12px;
+          border-radius: 999px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .appt-status-text {
+          font-size: 0.76rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .appt-serial-badge {
+          font-size: 14.5px;
+          font-weight: 800;
+          color: #EF4444;
+          font-family: 'Hind Siliguri', sans-serif;
+          background: #FEF2F2;
+          padding: 6px 14px;
+          border-radius: 8px;
+          border: 1px solid #FECACA;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .appt-patient-info-box {
+          border: 1px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 14px 16px;
+          margin-bottom: 16px;
+          background: #FFFFFF;
+        }
+
+        .appt-patient-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+          gap: 6px;
+        }
+
+        .appt-patient-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-shrink: 0;
+        }
+
+        .appt-patient-title-text {
+          font-size: 14px;
+          font-weight: 800;
+          color: #00966D;
+          white-space: nowrap;
+        }
+
+        .appt-patient-badges-wrap {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        .appt-patient-id-badge {
+          font-size: 11px;
+          font-weight: 700;
+          color: #64748B;
+          background: #F1F5F9;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-family: monospace;
+          white-space: nowrap;
+        }
+
+        .appt-patient-relation-badge {
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #0284C7;
+          background: #F0F9FF;
+          border: 1px solid #BAE6FD;
+          padding: 2px 8px;
+          border-radius: 20px;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 576px) {
+          .appt-ticket-main-card {
+            padding: 16px 12px !important;
+            border-radius: 16px !important;
+          }
+          .appt-top-status-row {
+            padding-bottom: 12px !important;
+            margin-bottom: 14px !important;
+            gap: 6px !important;
+          }
+          .appt-status-badge {
+            padding: 4px 8px !important;
+          }
+          .appt-status-text {
+            font-size: 11.5px !important;
+          }
+          .appt-serial-badge {
+            font-size: 12.5px !important;
+            padding: 4px 9px !important;
+          }
+          .appt-patient-info-box {
+            padding: 12px 10px !important;
+          }
+          .appt-patient-header {
+            gap: 4px !important;
+          }
+          .appt-patient-title-text {
+            font-size: 12px !important;
+          }
+          .appt-patient-badges-wrap {
+            gap: 4px !important;
+          }
+          .appt-patient-id-badge {
+            font-size: 10px !important;
+            padding: 2px 5px !important;
+          }
+          .appt-patient-relation-badge {
+            font-size: 10px !important;
+            padding: 2px 5px !important;
+          }
+        }
       `}</style>
 
-      {/* ── Top Navigation Bar ── */}
-      <Container style={{ paddingTop: 16, paddingBottom: 4, maxWidth: 520 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          background: '#fff',
-          padding: '10px 16px',
-          borderRadius: 14,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-          marginBottom: 16,
-        }}>
-          <button
-            onClick={() => navigate('/my-appointments')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#F0FDF4', color: '#00966D',
-              border: '1px solid #D1FAE5',
-              padding: '7px 16px', borderRadius: 10,
-              fontWeight: 700, fontSize: 13.5,
-              cursor: 'pointer', flexShrink: 0,
-              fontFamily: "'Hind Siliguri', sans-serif",
-            }}
-          >
-            <ArrowLeft size={16} strokeWidth={2.5} />
-            ফিরে যান
-          </button>
-          <h5 style={{
-            margin: 0, fontWeight: 800, fontSize: 16.5, color: '#0F172A',
-            fontFamily: "'Hind Siliguri', sans-serif",
-          }}>
-            অ্যাপয়েন্টমেন্ট বিবরণ
-          </h5>
-        </div>
-      </Container>
-
       {/* ── Main Details Card ── */}
-      <Container style={{ maxWidth: 520 }}>
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 18,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 4px 18px rgba(15,23,42,0.05)',
-          padding: '22px 20px',
-          fontFamily: '"Hind Siliguri", sans-serif',
-        }}>
+      <Container style={{ maxWidth: 520, paddingTop: 20 }}>
+        <div className="appt-ticket-main-card">
 
           {/* Top Status & Serial Row */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingBottom: 16,
-            borderBottom: '1px solid #F1F5F9',
-            marginBottom: 18,
-          }}>
+          <div className="appt-top-status-row">
             {/* Status with live alert indicator */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: statusBg,
-              padding: '4px 12px',
-              borderRadius: 999,
-              border: `1px solid ${isUpcoming ? '#A7F3D0' : statusDot + '33'}`,
-            }}>
+            <div
+              className="appt-status-badge"
+              style={{
+                background: statusBg,
+                border: `1px solid ${isUpcoming ? '#A7F3D0' : statusDot + '33'}`,
+              }}
+            >
               <div style={{ position: 'relative', width: 8, height: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {isUpcoming && (
                   <div style={{
@@ -579,26 +678,14 @@ export default function AppointmentTicketPage() {
                 )}
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusDot }} />
               </div>
-              <span style={{ fontSize: '0.76rem', fontWeight: 700, color: statusColor }}>
+              <span className="appt-status-text" style={{ color: statusColor }}>
                 {statusText}
               </span>
             </div>
 
             {/* Serial Number Display */}
             <div>
-              <span style={{
-                fontSize: 15,
-                fontWeight: 800,
-                color: '#EF4444',
-                fontFamily: "'Hind Siliguri', sans-serif",
-                background: '#FEF2F2',
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: '1px solid #FECACA',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}>
+              <span className="appt-serial-badge">
                 সিরিয়াল নং - {toBnNum(serialNum)}
               </span>
             </div>
@@ -726,56 +813,34 @@ export default function AppointmentTicketPage() {
           </div>
 
           {/* Patient Info Box */}
-          <div style={{
-            border: '1px solid #E2E8F0',
-            borderRadius: 14,
-            padding: '14px 16px',
-            marginBottom: 16,
-            background: '#fff',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div className="appt-patient-info-box">
+            <div className="appt-patient-header">
+              <div className="appt-patient-title-wrap">
                 <User size={16} color="#00966D" />
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#00966D' }}>রোগীর তথ্য</span>
+                <span className="appt-patient-title-text">রোগীর তথ্য</span>
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#64748B',
-                  background: '#F1F5F9',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  fontFamily: 'monospace'
-                }}>
+              <div className="appt-patient-badges-wrap">
+                <span className="appt-patient-id-badge">
                   আইডি: {apptNumber}
                 </span>
                 {isOther && (
-                  <span style={{
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    color: '#0284C7',
-                    background: '#F0F9FF',
-                    border: '1px solid #BAE6FD',
-                    padding: '2px 8px',
-                    borderRadius: 20
-                  }}>
+                  <span className="appt-patient-relation-badge">
                     অন্যের জন্য {patientRelation ? `(${patientRelation})` : ''}
                   </span>
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1, borderRight: '1px solid #F1F5F9', paddingRight: 8 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ flex: '0 0 auto', maxWidth: '42%', borderRight: '1px solid #F1F5F9', paddingRight: 8 }}>
                 <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600, marginBottom: 3 }}>রোগীর নাম</div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', wordBreak: 'break-word' }}>
                   {patientName}
-                  {patientAge ? <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500, marginLeft: 4 }}>({patientAge} বছর)</span> : ''}
+                  {patientAge ? <span style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, marginLeft: 4 }}>({patientAge} বছর)</span> : ''}
                 </div>
               </div>
-              <div style={{ flex: 1, paddingLeft: 8 }}>
+              <div style={{ flex: 1, paddingLeft: 8, minWidth: 0 }}>
                 <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600, marginBottom: 3 }}>উপসর্গ / নোট</div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>{notes}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0F172A', lineHeight: 1.45, wordBreak: 'break-word' }}>{notes}</div>
               </div>
             </div>
           </div>

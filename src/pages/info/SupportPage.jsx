@@ -262,76 +262,134 @@ export default function SupportPage() {
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 100 }}>
       {/* ── CSS FOR RESPONSIVE COMPACT MOBILE VIEW ── */}
       <style>{`
+        /* Universal Hide Scrollbars for tabs and filter pills */
+        .support-tabs-nav::-webkit-scrollbar,
+        .support-cat-pills-row::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
+
+        .support-cat-pills-row {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          padding: 2px 2px 10px 2px;
+          margin-bottom: 22px;
+          width: 100%;
+        }
+
         @media (max-width: 768px) {
           .support-hero-section {
-            padding: 0 0 42px !important;
+            padding: 0 0 52px !important;
           }
-          .support-hero-title {
-            font-size: 21px !important;
+          .support-hero-badge {
+            padding: 3px 12px !important;
+            font-size: 11px !important;
             margin-bottom: 8px !important;
           }
+          .support-hero-title {
+            font-size: 20px !important;
+            margin-bottom: 6px !important;
+            line-height: 1.3 !important;
+          }
           .support-hero-desc {
-            font-size: 13px !important;
+            font-size: 12px !important;
             line-height: 1.5 !important;
+            max-width: 92% !important;
           }
           .support-quick-cards-container {
-            margin-top: -24px !important;
+            margin-top: -32px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
           }
           .support-quick-card {
-            padding: 12px 14px !important;
-            border-radius: 14px !important;
-            gap: 12px !important;
+            padding: 9px 8px !important;
+            border-radius: 13px !important;
+            gap: 7px !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.05) !important;
+            min-height: 56px !important;
           }
           .support-quick-card-icon {
-            width: 38px !important;
-            height: 38px !important;
-            border-radius: 10px !important;
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 9px !important;
+            flex-shrink: 0 !important;
           }
           .support-quick-card-icon svg {
-            width: 18px !important;
-            height: 18px !important;
+            width: 15px !important;
+            height: 15px !important;
           }
           .support-quick-card-label {
-            font-size: 10px !important;
+            font-size: 9.5px !important;
+            margin-bottom: 1px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
           .support-quick-card-value {
-            font-size: 13.5px !important;
+            font-size: 11.5px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
           .support-tabs-container {
-            margin-top: 20px !important;
+            margin-top: 18px !important;
           }
           .support-tabs-nav {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
             padding: 4px !important;
             border-radius: 14px !important;
-            margin-bottom: 16px !important;
+            margin-bottom: 14px !important;
             gap: 4px !important;
+            overflow-x: visible !important;
           }
           .support-tab-btn {
-            padding: 8px 10px !important;
-            font-size: 12px !important;
+            padding: 8px 2px !important;
+            font-size: 11.5px !important;
             border-radius: 10px !important;
+            width: 100% !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            white-space: nowrap !important;
+            letter-spacing: -0.01em !important;
           }
           .support-tab-btn svg {
-            width: 14px !important;
-            height: 14px !important;
+            width: 13.5px !important;
+            height: 13.5px !important;
+            flex-shrink: 0 !important;
           }
           .support-content-card {
-            padding: 20px 16px !important;
+            padding: 18px 14px !important;
             border-radius: 18px !important;
           }
+          .support-cat-pills-row {
+            gap: 6px !important;
+            padding: 2px 2px 6px 2px !important;
+            margin-bottom: 16px !important;
+          }
           .support-cat-chip {
-            padding: 5px 12px !important;
+            padding: 6px 12px !important;
             font-size: 12px !important;
           }
+          .support-faq-card {
+            border-radius: 13px !important;
+          }
           .support-faq-q-btn {
-            padding: 14px 14px !important;
+            padding: 12px 13px !important;
           }
           .support-faq-q-text {
             font-size: 13.5px !important;
+            line-height: 1.4 !important;
           }
           .support-faq-answer {
-            padding: 0 14px 14px 44px !important;
+            padding: 10px 14px 14px 14px !important;
             font-size: 13px !important;
+            line-height: 1.65 !important;
           }
           .tracker-search-wrap {
             display: flex !important;
@@ -355,90 +413,91 @@ export default function SupportPage() {
 
       {/* ── HERO SECTION (ELEGANT & NO SEARCHBAR) ── */}
       <section className="support-hero-section" style={{ 
-        background: 'linear-gradient(135deg, #013A28 0%, #006644 50%, #00B875 100%)', 
-        padding: '0 0 85px', 
+        background: 'linear-gradient(135deg, #013A28 0%, #00563B 55%, #009960 100%)', 
+        padding: '0 0 80px', 
         color: 'white',
         position: 'relative',
         overflow: 'hidden'
       }}>
         {/* Background Ambient Glows */}
-        <div style={{ position: 'absolute', top: -120, right: -120, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -120, left: -120, width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,184,117,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -120, right: -120, width: 440, height: 440, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -110, left: -110, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.24) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <BreadcrumbHUD links={[{ label: 'সাপোর্ট ও সাহায্য কেন্দ্র' }]} variant="light" />
 
-        <Container style={{ position: 'relative', zIndex: 2, marginTop: 16 }}>
+        <Container style={{ position: 'relative', zIndex: 2, marginTop: 14 }}>
           <Row className="justify-content-center text-center">
             <Col lg={8} md={10}>
-              <div style={{ 
+              <div className="support-hero-badge" style={{ 
                 background: 'rgba(255, 255, 255, 0.15)', 
-                backdropFilter: 'blur(12px)',
-                padding: '6px 20px', 
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                padding: '5px 18px', 
                 borderRadius: 99, 
-                fontSize: 12.5, 
+                fontSize: 12, 
                 fontWeight: 800,
-                marginBottom: 16,
+                marginBottom: 12,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
-                border: '1px solid rgba(255,255,255,0.25)',
+                gap: 7,
+                border: '1px solid rgba(255,255,255,0.22)',
                 color: '#DCFCE7'
               }}>
-                <Sparkles size={15} color="#34D399" />
-                <span>{support.badge || '২৪/৭ অফিসিয়াল কাস্টমার কেয়ার ও হেল্প ডেসক'}</span>
+                <Sparkles size={14} color="#34D399" />
+                <span>{support.badge || '২৪/৭ কাস্টমার কেয়ার ও হেল্প ডেস্ক'}</span>
               </div>
 
               <h1 className="support-hero-title" style={{ 
-                fontSize: 'clamp(28px, 4.5vw, 48px)', 
+                fontSize: 'clamp(26px, 4.2vw, 46px)', 
                 fontWeight: 900, 
-                marginBottom: 14, 
+                marginBottom: 10, 
                 lineHeight: 1.25,
                 letterSpacing: '-0.5px' 
               }}>
-                {support.title || 'আপনার স্বাস্থ্যসেবায় আমাদের সার্বক্ষণিক সহায়তা'}
+                {support.title || 'আপনার স্বাস্থ্যসেবায় সার্বক্ষণিক সহায়তা'}
               </h1>
 
               <p className="support-hero-desc" style={{ 
-                fontSize: 'clamp(14.5px, 1.8vw, 17px)', 
+                fontSize: 'clamp(13px, 1.6vw, 16px)', 
                 opacity: 0.92, 
-                lineHeight: 1.65, 
-                maxWidth: 640, 
+                lineHeight: 1.6, 
+                maxWidth: 620, 
                 margin: '0 auto',
                 fontWeight: 400 
               }}>
-                {support.subtitle || faqData.subtitle || 'Doctor Booklet অ্যাপয়েন্টমেন্ট, পেমেন্ট, ও ডিজিটাল সেবা সংক্রান্ত যেকোনো তথ্যের জন্য সচরাচর প্রশ্নাবলী দেখুন অথবা সাপোর্ট টিকিট জমা দিন।'}
+                {support.subtitle || faqData.subtitle || 'Doctor Booklet অ্যাপয়েন্টমেন্ট, পেমেন্ট, ও ডিজিটাল সেবা সংক্রান্ত তথ্যের জন্য সচরাচর প্রশ্নাবলী দেখুন বা টিকিট জমা দিন।'}
               </p>
             </Col>
           </Row>
         </Container>
       </section>
 
-      {/* ── 3 QUICK CONTACT CHANNELS (FLOATING OVER HERO) ── */}
-      <Container className="support-quick-cards-container" style={{ marginTop: -45, position: 'relative', zIndex: 10 }}>
+      {/* ── 2 QUICK CONTACT CHANNELS (FLOATING SYMMETRICALLY OVER HERO) ── */}
+      <Container className="support-quick-cards-container" style={{ marginTop: -42, position: 'relative', zIndex: 10 }}>
         <Row className="g-2 g-md-3 justify-content-center">
           {/* Card 1: Helpline */}
-          <Col md={4} xs={12}>
+          <Col md={6} sm={6} xs={6}>
             <div className="support-quick-card" style={{
               background: 'white',
-              borderRadius: 20,
-              padding: '22px 20px',
+              borderRadius: 18,
+              padding: '18px 16px',
               border: '1px solid rgba(226, 232, 240, 0.8)',
-              boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+              boxShadow: '0 10px 26px rgba(0,0,0,0.06)',
               display: 'flex',
               alignItems: 'center',
-              gap: 16,
+              gap: 12,
               height: '100%',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
             >
-              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DCFCE7' }}>
-                <PhoneCall size={22} />
+              <div className="support-quick-card-icon" style={{ width: 44, height: 44, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DCFCE7' }}>
+                <PhoneCall size={20} />
               </div>
-              <div style={{ flexGrow: 1 }}>
-                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>২৪/৭ ফোন হেল্পলাইন</div>
-                <a href={`tel:${site.phone || '017XXXXXXXX'}`} className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 16, textDecoration: 'none', display: 'block', lineHeight: 1.2 }}>
+              <div style={{ flexGrow: 1, minWidth: 0 }}>
+                <div className="support-quick-card-label" style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>২৪/৭ হেল্পলাইন</div>
+                <a href={`tel:${site.phone || '017XXXXXXXX'}`} className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 15, textDecoration: 'none', display: 'block', lineHeight: 1.2 }}>
                   {site.phone || '017 XXXX XXXX'}
                 </a>
               </div>
@@ -446,19 +505,19 @@ export default function SupportPage() {
           </Col>
 
           {/* Card 2: Create Ticket */}
-          <Col md={4} xs={6}>
+          <Col md={6} sm={6} xs={6}>
             <div 
               onClick={() => setActiveMainTab('ticket')}
               className="support-quick-card"
               style={{
                 background: 'white',
-                borderRadius: 20,
-                padding: '22px 20px',
+                borderRadius: 18,
+                padding: '18px 16px',
                 border: activeMainTab === 'ticket' ? '2px solid #00B875' : '1px solid rgba(226, 232, 240, 0.8)',
-                boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                boxShadow: '0 10px 26px rgba(0,0,0,0.06)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 16,
+                gap: 12,
                 height: '100%',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease'
@@ -466,46 +525,13 @@ export default function SupportPage() {
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; if (activeMainTab !== 'ticket') e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
             >
-              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DBEAFE' }}>
-                <Ticket size={22} />
+              <div className="support-quick-card-icon" style={{ width: 44, height: 44, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #DBEAFE' }}>
+                <Ticket size={20} />
               </div>
-              <div style={{ flexGrow: 1 }}>
-                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>অনলাইন সাপোর্ট টিকিট</div>
-                <div className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 15, lineHeight: 1.2 }}>
-                  টিকিট তৈরি করুন ➔
-                </div>
-              </div>
-            </div>
-          </Col>
-
-          {/* Card 3: Call Back Request */}
-          <Col md={4} xs={6}>
-            <div 
-              onClick={() => setShowCallbackModal(true)}
-              className="support-quick-card"
-              style={{
-                background: 'white',
-                borderRadius: 20,
-                padding: '22px 20px',
-                border: '1px solid rgba(226, 232, 240, 0.8)',
-                boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                height: '100%',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00B875' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)' }}
-            >
-              <div className="support-quick-card-icon" style={{ width: 48, height: 48, borderRadius: 14, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FDE68A' }}>
-                <Headphones size={22} />
-              </div>
-              <div style={{ flexGrow: 1 }}>
-                <div className="support-quick-card-label" style={{ fontSize: 11.5, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>কল ব্যাক সুবিধা</div>
-                <div className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 15, lineHeight: 1.2 }}>
-                  কল ব্যাক রিকোয়েস্ট 📞
+              <div style={{ flexGrow: 1, minWidth: 0 }}>
+                <div className="support-quick-card-label" style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>অনলাইন টিকিট</div>
+                <div className="support-quick-card-value" style={{ color: '#0F172A', fontWeight: 900, fontSize: 14.5, lineHeight: 1.2 }}>
+                  টিকিট তৈরি ➔
                 </div>
               </div>
             </div>
@@ -514,43 +540,47 @@ export default function SupportPage() {
       </Container>
 
       {/* ── MAIN CONTENT AREA (CLEAN TABS & GRID LAYOUT) ── */}
-      <Container className="support-tabs-container" id="support-tabs-container" style={{ marginTop: 36 }}>
+      <Container className="support-tabs-container" id="support-tabs-container" style={{ marginTop: 32 }}>
         
         {/* TAB NAVIGATION HEADER BAR */}
         <div className="support-tabs-nav" style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 8,
           background: 'white',
-          padding: '8px',
+          padding: '7px 8px',
           borderRadius: 18,
           border: '1px solid #E2E8F0',
-          marginBottom: 28,
+          marginBottom: 24,
           boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
-          overflowX: 'auto'
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
         }}>
           <button
             onClick={() => setActiveMainTab('faq')}
             className="support-tab-btn"
             style={{
               flex: 1,
-              padding: '12px 20px',
-              borderRadius: 14,
+              padding: '11px 16px',
+              borderRadius: 13,
               border: 'none',
               background: activeMainTab === 'faq' ? '#00B875' : 'transparent',
               color: activeMainTab === 'faq' ? 'white' : '#64748B',
               fontWeight: 800,
-              fontSize: 14.5,
+              fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              gap: 6,
               transition: 'all 0.25s ease',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              boxShadow: activeMainTab === 'faq' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
             }}
           >
-            <HelpCircle size={18} /> সচরাচর জিজ্ঞাসা (FAQ)
+            <HelpCircle size={17} />
+            <span>FAQ <span className="d-none d-md-inline">জিজ্ঞাসা</span></span>
           </button>
 
           <button
@@ -558,23 +588,25 @@ export default function SupportPage() {
             className="support-tab-btn"
             style={{
               flex: 1,
-              padding: '12px 20px',
-              borderRadius: 14,
+              padding: '11px 16px',
+              borderRadius: 13,
               border: 'none',
               background: activeMainTab === 'ticket' ? '#00B875' : 'transparent',
               color: activeMainTab === 'ticket' ? 'white' : '#64748B',
               fontWeight: 800,
-              fontSize: 14.5,
+              fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              gap: 6,
               transition: 'all 0.25s ease',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              boxShadow: activeMainTab === 'ticket' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
             }}
           >
-            <Ticket size={18} /> নতুন সাপোর্ট টিকিট জমা
+            <Ticket size={17} />
+            <span>নতুন টিকিট <span className="d-none d-md-inline">জমা</span></span>
           </button>
 
           <button
@@ -582,23 +614,25 @@ export default function SupportPage() {
             className="support-tab-btn"
             style={{
               flex: 1,
-              padding: '12px 20px',
-              borderRadius: 14,
+              padding: '11px 16px',
+              borderRadius: 13,
               border: 'none',
               background: activeMainTab === 'status' ? '#00B875' : 'transparent',
               color: activeMainTab === 'status' ? 'white' : '#64748B',
               fontWeight: 800,
-              fontSize: 14.5,
+              fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              gap: 6,
               transition: 'all 0.25s ease',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              boxShadow: activeMainTab === 'status' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
             }}
           >
-            <Search size={18} /> টিকিট স্ট্যাটাস ট্র্যাক
+            <Search size={17} />
+            <span>ট্র্যাক টিকিট <span className="d-none d-md-inline">করুন</span></span>
           </button>
         </div>
 
@@ -625,8 +659,8 @@ export default function SupportPage() {
                   </h3>
                 </div>
 
-                {/* CATEGORY FILTER CHIPS */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {/* CATEGORY FILTER CHIPS (CLEAN HORIZONTAL SWIPE PILLS) */}
+                <div className="support-cat-pills-row">
                   {categories.map(cat => {
                     const isActive = activeCategory === cat.id
                     return (
@@ -635,82 +669,90 @@ export default function SupportPage() {
                         onClick={() => setActiveCategory(cat.id)}
                         className="support-cat-chip"
                         style={{
-                          background: isActive ? '#00B875' : '#F8FAFC',
-                          color: isActive ? 'white' : '#475569',
-                          border: isActive ? '1px solid #00B875' : '1px solid #E2E8F0',
+                          background: isActive ? '#00B875' : '#FFFFFF',
+                          color: isActive ? '#FFFFFF' : '#334155',
+                          border: isActive ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
                           padding: '7px 16px',
-                          borderRadius: 99,
+                          borderRadius: 999,
                           fontSize: 13,
                           fontWeight: 700,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          transition: 'all 0.2s ease'
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          boxShadow: isActive ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 3px rgba(0,0,0,0.02)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          fontFamily: "'Hind Siliguri', sans-serif"
                         }}
                       >
-                        <span>{cat.icon}</span>
+                        <span style={{ fontSize: 14 }}>{cat.icon}</span>
                         <span>{cat.label}</span>
                       </button>
                     )
                   })}
                 </div>
 
-                {/* FAQ List Render */}
+                {/* FAQ List Render (MODERN SLEEK CARDS WITH LEFT ACCENT) */}
                 {filteredFaqs.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {filteredFaqs.map((item, index) => {
                       const id = item.id || index + 1
                       const isOpen = openFaqId === id
-                      const vote = votedFaqs[id]
 
                       return (
                         <div
                           key={id}
+                          className="support-faq-card"
                           style={{
-                            borderRadius: 16,
-                            border: isOpen ? '1.5px solid #00B875' : '1px solid #E8EDF2',
-                            background: 'white',
+                            borderRadius: 14,
+                            border: isOpen ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+                            borderLeft: isOpen ? '4px solid #00B875' : '1px solid #E2E8F0',
+                            background: '#FFFFFF',
                             overflow: 'hidden',
-                            transition: 'all 0.25s ease',
-                            boxShadow: isOpen ? '0 4px 20px rgba(0,184,117,0.12)' : '0 1px 4px rgba(0,0,0,0.03)'
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: isOpen ? '0 4px 16px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.02)'
                           }}
                         >
                           {/* Question Row */}
                           <button
                             onClick={() => toggleFaq(id)}
+                            className="support-faq-q-btn"
                             style={{
                               width: '100%',
-                              padding: '16px 20px',
-                              background: isOpen ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' : 'white',
+                              padding: '14px 18px',
+                              background: isOpen ? '#F0FDF4' : '#FFFFFF',
                               border: 'none',
                               textAlign: 'left',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              gap: 14,
+                              gap: 12,
                               cursor: 'pointer',
                               fontFamily: "'Hind Siliguri', sans-serif",
-                              transition: 'background 0.2s ease'
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 10,
-                                background: isOpen ? '#00B875' : '#F1F5F9',
-                                color: isOpen ? 'white' : '#64748B',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 900,
-                                fontSize: 13,
-                                flexShrink: 0
-                              }}>
-                                Q
-                              </div>
-                              <span style={{ fontWeight: 700, fontSize: 15, color: isOpen ? '#02382B' : '#1E293B', lineHeight: 1.45 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                              <span style={{
+                                width: 7,
+                                height: 7,
+                                borderRadius: '50%',
+                                background: isOpen ? '#00B875' : '#94A3B8',
+                                flexShrink: 0,
+                                transition: 'background 0.2s ease'
+                              }} />
+                              <span 
+                                className="support-faq-q-text"
+                                style={{ 
+                                  fontWeight: 700, 
+                                  fontSize: 15, 
+                                  color: isOpen ? '#064E3B' : '#0F172A', 
+                                  lineHeight: 1.45,
+                                  transition: 'color 0.2s ease'
+                                }}
+                              >
                                 {item.q}
                               </span>
                             </div>
@@ -719,28 +761,31 @@ export default function SupportPage() {
                               height: 28,
                               borderRadius: '50%',
                               background: isOpen ? '#00B875' : '#F1F5F9',
-                              color: isOpen ? 'white' : '#94A3B8',
+                              color: isOpen ? '#FFFFFF' : '#64748B',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
                               transition: 'all 0.2s ease'
                             }}>
-                              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                             </div>
                           </button>
 
                           {/* Answer Row */}
                           {isOpen && (
-                            <div style={{
-                              padding: '0 20px 18px 62px',
-                              borderTop: '1px solid #DCFCE7'
-                            }}>
+                            <div 
+                              className="support-faq-answer"
+                              style={{
+                                padding: '12px 18px 16px 35px',
+                                borderTop: '1px solid #E6F4EA',
+                                background: '#FFFFFF'
+                              }}
+                            >
                               <div style={{
-                                paddingTop: 12,
-                                fontSize: 14,
+                                fontSize: 13.5,
                                 color: '#475569',
-                                lineHeight: 1.8,
+                                lineHeight: 1.75,
                                 fontWeight: 450
                               }}>
                                 {item.a}
@@ -1280,73 +1325,116 @@ export default function SupportPage() {
 
               {/* Office Hours Box */}
               <div style={{ 
-                background: '#0F172A', 
-                borderRadius: 20, 
+                background: 'linear-gradient(145deg, #064E3B 0%, #022C22 100%)', 
+                borderRadius: 22, 
                 padding: '24px 22px', 
-                color: 'white',
-                backgroundImage: 'radial-gradient(circle at top right, rgba(0,184,117,0.25), transparent 70%)',
-                boxShadow: '0 8px 24px rgba(15,23,42,0.12)'
+                border: '1px solid rgba(52, 211, 153, 0.22)',
+                boxShadow: '0 12px 30px rgba(2, 44, 34, 0.25)',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
-                    <Clock size={18} />
-                  </div>
-                  <div>
-                    <h5 style={{ fontWeight: 800, margin: 0, fontSize: 15 }}>অফিস সময়সূচী</h5>
-                    <span style={{ fontSize: 11, color: '#34D399', fontWeight: 700 }}>● লাইভ সাপোর্ট সক্রিয়</span>
-                  </div>
-                </div>
-                <p style={{ opacity: 0.85, fontSize: 12.5, lineHeight: 1.6, marginBottom: 12 }}>
-                  {site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: বন্ধ'}
-                </p>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', marginBottom: 12 }} />
-                <p style={{ fontSize: 11.5, fontWeight: 700, color: '#34D399', margin: 0 }}>
-                  গড় টিকিট রেসপন্স সময়: ২ ঘণ্টা
-                </p>
-              </div>
+                {/* Background glow accent */}
+                <div style={{
+                  position: 'absolute',
+                  top: -20,
+                  right: -20,
+                  width: 130,
+                  height: 130,
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%)',
+                  pointerEvents: 'none'
+                }} />
 
-              {/* Emergency Box matching user screenshot */}
-              <div style={{ 
-                background: 'white', 
-                borderRadius: 24, 
-                padding: '24px 20px', 
-                border: '1.5px solid #FFE4E6',
-                boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
-                textAlign: 'center'
-              }}>
-                <div style={{ 
-                  width: 48, height: 48, borderRadius: 16, 
-                  background: '#FFE4E6', color: '#EF4444', 
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 12
-                }}>
-                  <AlertTriangle size={24} />
-                </div>
-                <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি চিকিৎসা হেল্পলাইন</h5>
-                <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
-                  জরুরি অ্যাম্বুলেন্স বা সরাসরি পরামর্শের জন্য ডায়াল করুন
-                </p>
-                <a 
-                  href={`tel:${site.phone || '09638649314'}`} 
-                  style={{ 
-                    display: 'flex',
+                {/* Top Header: Icon + Title & Live Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      background: 'rgba(52, 211, 153, 0.15)',
+                      border: '1px solid rgba(52, 211, 153, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#34D399',
+                      flexShrink: 0
+                    }}>
+                      <Clock size={19} />
+                    </div>
+                    <span style={{ fontWeight: 800, margin: 0, fontSize: 16, color: '#FFFFFF', lineHeight: 1.2 }}>
+                      অফিস সময়সূচী
+                    </span>
+                  </div>
+
+                  <span style={{
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    background: '#EF4444', 
-                    color: 'white', 
-                    padding: '12px 20px', 
-                    borderRadius: 99, 
-                    fontWeight: 900, 
-                    fontSize: 16,
-                    textDecoration: 'none',
-                    boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Phone size={18} />
-                  <span>{site.phone || '09638649314'}</span>
-                </a>
+                    gap: 6,
+                    background: 'rgba(52, 211, 153, 0.15)',
+                    border: '1px solid rgba(52, 211, 153, 0.35)',
+                    padding: '4px 10px',
+                    borderRadius: 99,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#6EE7B7',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 6px #34D399' }} />
+                    লাইভ সাপোর্ট সক্রিয়
+                  </span>
+                </div>
+
+                {/* Office Hours Schedule Rows */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 14,
+                  padding: '12px 14px',
+                  marginBottom: 14,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
+                }}>
+                  {(site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: সকাল ১০টা - বিকাল ৫টা')
+                    .split('|')
+                    .map((item, idx) => {
+                      const trimmed = item.trim()
+                      const colonIdx = trimmed.indexOf(':')
+                      if (colonIdx !== -1) {
+                        const day = trimmed.slice(0, colonIdx).trim()
+                        const time = trimmed.slice(colonIdx + 1).trim()
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                            <span style={{ color: '#94A3B8', fontWeight: 600 }}>{day}:</span>
+                            <span style={{ color: '#FFFFFF', fontWeight: 700 }}>{time}</span>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div key={idx} style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 600 }}>
+                          {trimmed}
+                        </div>
+                      )
+                    })}
+                </div>
+
+                {/* Response Time Badge */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'rgba(52, 211, 153, 0.1)',
+                  border: '1px solid rgba(52, 211, 153, 0.25)',
+                  borderRadius: 12,
+                  padding: '9px 12px',
+                  color: '#34D399',
+                  fontSize: 12,
+                  fontWeight: 700
+                }}>
+                  <Clock size={15} style={{ flexShrink: 0 }} />
+                  <span>গড় টিকিট রেসপন্স সময়: ২ ঘণ্টা</span>
+                </div>
               </div>
 
             </div>
