@@ -10,46 +10,43 @@ import {
   Lock,
   Zap,
   Building2,
-  Award,
-  FileCheck,
-  Globe,
-  Handshake,
-  MapPin,
-  Calendar,
-  Headphones,
-  TrendingUp,
   Target,
+  Compass,
   Sparkles,
   Search,
   ArrowRight,
-  BadgeCheck,
   HeartPulse,
   Activity,
   CheckCircle2,
-  UserCheck
+  XCircle,
+  Clock,
+  Monitor,
+  Users,
+  Smartphone,
+  Server,
+  FileText,
+  BadgeCheck,
+  Stethoscope,
+  TrendingUp,
+  MapPin,
+  HelpCircle,
+  CalendarCheck,
+  HeartHandshake,
+  Headphones
 } from 'lucide-react'
 
-// ─── Inline Keyframe & Responsive Styles ──────────────────────────────────────
+// ─── Inline Keyframe & Enterprise Responsive Styles ───────────────────────────
 const ABOUT_STYLES = `
-  @keyframes about-fade-up {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes about-pulse-ring {
-    0%   { transform: scale(0.95); opacity: 0.7; }
-    50%  { transform: scale(1.2); opacity: 0.25; }
-    100% { transform: scale(0.95); opacity: 0.7; }
-  }
-  @keyframes about-float {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-6px); }
+  @keyframes about-glow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50%      { opacity: 0.65; transform: scale(1.08); }
   }
 
   .about-hero-section {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #02382B 0%, #064E3B 45%, #00B875 100%);
-    padding: 36px 0 48px;
+    background: linear-gradient(135deg, #012B1E 0%, #034D36 45%, #00875A 100%);
+    padding: 38px 0 52px;
     margin-bottom: 0;
   }
   .about-hero-section::before {
@@ -57,8 +54,18 @@ const ABOUT_STYLES = `
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 85% 20%, rgba(0, 184, 117, 0.25) 0%, transparent 50%),
-      radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.08) 0%, transparent 45%);
+      radial-gradient(circle at 80% 25%, rgba(0, 184, 117, 0.28) 0%, transparent 55%),
+      radial-gradient(circle at 10% 85%, rgba(255, 255, 255, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(2, 43, 30, 0.4) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .about-hero-grid-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
     pointer-events: none;
   }
 
@@ -66,79 +73,84 @@ const ABOUT_STYLES = `
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,0.15);
-    color: white;
+    background: rgba(255, 255, 255, 0.14);
+    color: #DCFCE7;
     font-size: 12px;
     font-weight: 800;
-    padding: 5px 14px;
+    padding: 6px 16px;
     border-radius: 99px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     margin-bottom: 16px;
-    border: 1px solid rgba(255,255,255,0.25);
-    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .about-hero-title {
-    font-size: clamp(26px, 4.5vw, 52px);
+    font-size: clamp(28px, 4.6vw, 48px);
     font-weight: 900;
-    color: #fff;
-    letter-spacing: -1px;
-    line-height: 1.15;
+    color: #FFFFFF;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
     margin-bottom: 16px;
   }
 
   .about-hero-desc {
     font-size: clamp(14.5px, 1.8vw, 17px);
-    color: rgba(255,255,255,0.88);
-    font-weight: 500;
-    line-height: 1.65;
-    max-width: 560px;
-    margin-bottom: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 450;
+    line-height: 1.7;
+    max-width: 680px;
+    margin: 0 auto;
   }
 
   .about-stat-card {
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-radius: 16px;
     padding: 18px 14px;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
   }
   .about-stat-card:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.18);
     transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
   }
   .about-stat-number {
-    font-size: clamp(22px, 3vw, 32px);
+    font-size: clamp(24px, 3.2vw, 34px);
     font-weight: 900;
-    color: #fff;
+    color: #FFFFFF;
     letter-spacing: -0.5px;
     line-height: 1.1;
     margin-bottom: 4px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
   .about-stat-label {
     font-size: 11.5px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.88);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
   }
 
+  /* ── SECTION BADGES & HEADINGS ── */
   .about-section-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     background: #F0FDF4;
-    color: #00B875;
-    font-size: 11px;
+    color: #00875A;
+    font-size: 11.5px;
     font-weight: 800;
     padding: 5px 14px;
     border-radius: 99px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     margin-bottom: 12px;
     border: 1px solid #DCFCE7;
@@ -153,476 +165,368 @@ const ABOUT_STYLES = `
   .about-section-heading {
     font-size: clamp(22px, 3vw, 32px);
     font-weight: 900;
-    color: var(--mc-text);
-    letter-spacing: -0.6px;
+    color: var(--mc-text, #0F172A);
+    letter-spacing: -0.5px;
     line-height: 1.25;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .about-card-box {
-    background: var(--mc-white);
-    border: 1px solid var(--mc-border);
+    background: var(--mc-white, #FFFFFF);
+    border: 1px solid var(--mc-border, #E2E8F0);
     border-radius: 20px;
-    padding: 28px 24px;
+    padding: 32px 28px;
     height: 100%;
-    box-shadow: var(--mc-shadow);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
   }
 
-  .about-value-card {
-    background: var(--mc-white);
-    border: 1px solid var(--mc-border);
+  /* ── VISION & MISSION DUAL CARDS ── */
+  .about-vision-card {
+    background: #FFFFFF;
     border-radius: 20px;
+    padding: 32px 28px;
+    border: 1.5px solid #E2E8F0;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .about-vision-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 32px rgba(0, 184, 117, 0.12);
+    border-color: #00B875;
+  }
+  .about-vision-card.mission {
+    border-top: 5px solid #00B875;
+  }
+  .about-vision-card.vision {
+    border-top: 5px solid #0284C7;
+  }
+
+  /* ── ECOSYSTEM PILLARS ── */
+  .about-eco-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
     padding: 24px 20px;
     height: 100%;
     transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--mc-shadow);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   }
-  .about-value-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    border-radius: 20px 20px 0 0;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  .about-value-card:hover {
+  .about-eco-card:hover {
     transform: translateY(-4px);
-    box-shadow: var(--mc-shadow-hover);
-    border-color: rgba(0, 184, 117, 0.35);
-  }
-  .about-value-card:hover::before { opacity: 1; }
-  .about-value-card.green::before  { background: linear-gradient(90deg, #00B875, #10B981); }
-  .about-value-card.blue::before   { background: linear-gradient(90deg, #059669, #34D399); }
-  .about-value-card.purple::before { background: linear-gradient(90deg, #047857, #059669); }
-  .about-value-card.amber::before  { background: linear-gradient(90deg, #00B875, #059669); }
-
-  .about-icon-ring {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-    flex-shrink: 0;
+    border-color: #00B875;
+    box-shadow: 0 10px 24px rgba(0, 184, 117, 0.1);
   }
 
-  .about-timeline {
-    position: relative;
-    padding-left: 32px;
-  }
-  .about-timeline::before {
-    content: '';
-    position: absolute;
-    left: 9px; top: 6px; bottom: 6px;
-    width: 2px;
-    background: linear-gradient(to bottom, #00B875, rgba(0, 184, 117, 0.15));
-    border-radius: 2px;
-  }
-  .about-timeline-item {
-    position: relative;
-    padding-bottom: 24px;
-    animation: about-fade-up 0.5s ease both;
-  }
-  .about-timeline-item:last-child { padding-bottom: 0; }
-  .about-timeline-dot {
-    position: absolute;
-    left: -32px;
-    top: 4px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #00B875;
-    border: 3px solid var(--mc-bg);
-    box-shadow: 0 0 0 2px #00B875;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .about-timeline-year {
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    color: #00B875;
-    text-transform: uppercase;
-    margin-bottom: 3px;
-  }
-  .about-timeline-title {
-    font-size: 15.5px;
-    font-weight: 800;
-    color: var(--mc-text);
-    margin-bottom: 4px;
-  }
-  .about-timeline-desc {
-    font-size: 13px;
-    color: var(--mc-text-muted);
-    line-height: 1.55;
-    font-weight: 500;
-  }
-
-  .about-team-card {
-    background: var(--mc-white);
-    border: 1px solid var(--mc-border);
-    border-radius: 20px;
-    padding: 24px 18px;
-    text-align: center;
-    transition: all 0.3s ease;
-    box-shadow: var(--mc-shadow);
+  /* ── STEP CARDS ── */
+  .about-step-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 18px;
+    padding: 28px 22px;
     height: 100%;
-  }
-  .about-team-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--mc-shadow-hover);
-    border-color: rgba(0, 184, 117, 0.35);
-  }
-  .about-team-avatar {
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    margin: 0 auto 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
-    color: white;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
     position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
   }
-  .about-team-avatar-check {
+  .about-step-card:hover {
+    transform: translateY(-4px);
+    border-color: #00B875;
+    box-shadow: 0 12px 28px rgba(0, 184, 117, 0.12);
+  }
+  .about-step-num {
+    font-size: 28px;
+    font-weight: 900;
+    color: #E2E8F0;
     position: absolute;
-    bottom: -1px;
-    right: -1px;
-    width: 18px;
-    height: 18px;
-    background: #00B875;
-    border-radius: 50%;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--mc-white);
+    top: 20px;
+    right: 22px;
+    line-height: 1;
+    font-family: 'Hind Siliguri', sans-serif;
   }
-  .about-team-name {
-    font-size: 15.5px;
-    font-weight: 800;
-    color: var(--mc-text);
-    margin-bottom: 2px;
-  }
-  .about-team-role {
-    font-size: 12px;
-    font-weight: 700;
-    color: #00B875;
-    margin-bottom: 8px;
-  }
-  .about-team-desc {
-    font-size: 12.5px;
-    color: var(--mc-text-muted);
-    line-height: 1.5;
-    font-weight: 500;
+  .about-step-card:hover .about-step-num {
+    color: #A7F3D0;
   }
 
+  /* ── TRUST & ARCHITECTURAL PILLARS ── */
+  .about-pillar-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 22px 18px;
+    height: 100%;
+    transition: all 0.25s ease;
+  }
+  .about-pillar-card:hover {
+    border-color: #00B875;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ── GUARANTEE CARDS ── */
+  .about-guarantee-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 22px 18px;
+    height: 100%;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  }
+  .about-guarantee-card:hover {
+    border-color: #00B875;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px rgba(0, 184, 117, 0.09);
+  }
+
+  /* ── SMART CTA SECTION & MOCKUP ── */
   .about-cta-section {
-    background: linear-gradient(135deg, #02382B 0%, #064E3B 45%, #00B875 100%);
-    border-radius: 20px;
-    padding: 36px 28px;
+    background: linear-gradient(135deg, #012B1E 0%, #034D36 45%, #00875A 100%);
+    border-radius: 24px;
+    padding: 38px 36px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 12px 36px rgba(0, 184, 117, 0.22);
+    box-shadow: 0 16px 40px rgba(0, 184, 117, 0.22);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
   }
-  .about-cta-section::before {
-    content: '';
+  .about-cta-orb-1 {
     position: absolute;
-    top: -40%; right: -10%;
+    top: -60px; right: -60px;
     width: 280px; height: 280px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 70%);
     border-radius: 50%;
     pointer-events: none;
   }
+  .about-cta-orb-2 {
+    position: absolute;
+    bottom: -60px; left: -40px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(0, 184, 117, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .about-cta-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+  .about-cta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 5px 14px;
+    border-radius: 99px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #DCFCE7;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .about-cta-title {
+    font-size: clamp(24px, 3.6vw, 36px);
+    font-weight: 900;
+    color: #FFFFFF;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+    margin-bottom: 12px;
+  }
+  .about-cta-desc {
+    font-size: 14.5px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 450;
+    line-height: 1.65;
+    margin-bottom: 18px;
+    max-width: 580px;
+  }
+  .about-cta-check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 6px;
+  }
+  .about-cta-check-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #DCFCE7;
+  }
+  .about-cta-card-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .about-cta-mockup-card {
+    background: #FFFFFF;
+    border-radius: 18px;
+    padding: 18px 20px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease;
+  }
+  .about-cta-mockup-card:hover {
+    transform: translateY(-2px);
+  }
+  .about-cta-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00B875;
+    box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.25);
+    animation: about-glow 2s infinite ease-in-out;
+  }
+  .about-cta-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    width: 100%;
+  }
   .about-cta-btn {
-    background: white;
-    color: #064E3B;
+    background: #FFFFFF;
+    color: #012B1E;
     border: none;
     border-radius: 12px;
-    padding: 12px 24px;
-    font-size: 14px;
+    padding: 12px 20px;
+    font-size: 13.5px;
     font-weight: 800;
     cursor: pointer;
     transition: all 0.25s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
+    flex: 1;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   }
   .about-cta-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
     background: #F0FDF4;
-    color: #02382B;
+    color: #00875A;
   }
   .about-cta-btn-outline {
-    background: transparent;
-    color: white;
-    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.14);
+    color: #FFFFFF;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-radius: 12px;
-    padding: 11px 22px;
-    font-size: 14px;
+    padding: 11px 18px;
+    font-size: 13.5px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.25s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
+    white-space: nowrap;
   }
   .about-cta-btn-outline:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: white;
+    background: rgba(255, 255, 255, 0.24);
+    border-color: #FFFFFF;
     transform: translateY(-2px);
   }
 
-  .about-trust-bar {
-    background: var(--mc-white);
-    border: 1px solid var(--mc-border);
-    border-radius: 16px;
-    padding: 16px 20px;
-    box-shadow: var(--mc-shadow);
-  }
-
-  .about-partner-logo {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: var(--mc-bg);
-    border-radius: 10px;
-    border: 1px solid var(--mc-border);
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--mc-text-muted);
-    white-space: nowrap;
-    transition: all 0.2s ease;
-  }
-  .about-partner-logo:hover {
-    border-color: #00B875;
-    color: #00B875;
-  }
-
-  /* ─── Mobile Specific Enhancements ────────────────────────────────────────── */
+  /* ── MOBILE SPECIFIC REFINEMENTS ── */
   @media (max-width: 768px) {
     .about-hero-section {
-      padding: 24px 0 36px;
+      padding: 24px 0 40px;
       text-align: center;
     }
-    .about-hero-badge {
-      margin-left: auto;
-      margin-right: auto;
-    }
     .about-hero-title {
-      font-size: clamp(24px, 6.5vw, 34px) !important;
-      margin-bottom: 12px !important;
+      font-size: 24px !important;
+      line-height: 1.3 !important;
+      margin-bottom: 10px !important;
     }
     .about-hero-desc {
-      font-size: 14.5px !important;
-      margin: 0 auto !important;
-    }
-    .about-hero-mobile-pills {
-      display: flex !important;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 16px;
+      font-size: 13px !important;
+      line-height: 1.6 !important;
     }
     .about-stat-card {
-      padding: 14px 10px !important;
-      border-radius: 14px;
+      padding: 12px 8px !important;
+      border-radius: 13px !important;
     }
     .about-stat-number {
-      font-size: 22px !important;
+      font-size: 21px !important;
     }
     .about-stat-label {
-      font-size: 10px !important;
-      letter-spacing: 0.03em !important;
-    }
-    .about-trust-bar {
-      padding: 14px 14px !important;
-      margin-top: -14px !important;
-      margin-bottom: 32px !important;
-    }
-    .about-partner-logo {
-      padding: 5px 10px;
-      font-size: 11px;
+      font-size: 9.5px !important;
     }
     .about-card-box {
+      padding: 20px 16px !important;
+      border-radius: 16px !important;
+    }
+    .about-vision-card {
       padding: 22px 18px !important;
       border-radius: 16px !important;
     }
-    .about-value-card {
+    .about-eco-card {
+      padding: 18px 14px !important;
+      border-radius: 14px !important;
+    }
+    .about-step-card {
       padding: 20px 16px !important;
-      border-radius: 16px !important;
+      border-radius: 14px !important;
     }
-    .about-timeline {
-      padding-left: 26px !important;
+    .about-step-num {
+      font-size: 24px !important;
+      top: 16px !important;
+      right: 16px !important;
     }
-    .about-timeline::before {
-      left: 7px !important;
+    .about-pillar-card {
+      padding: 16px 14px !important;
+      border-radius: 14px !important;
     }
-    .about-timeline-dot {
-      left: -26px !important;
-      width: 16px !important;
-      height: 16px !important;
-      top: 5px !important;
-      box-shadow: 0 0 0 1px var(--mc-primary) !important;
-    }
-    .about-timeline-dot svg {
-      width: 9px !important;
-      height: 9px !important;
-    }
-    .about-timeline-item {
-      padding-bottom: 16px !important;
-    }
-    .about-team-card {
-      padding: 20px 16px !important;
-      border-radius: 16px !important;
+    .about-guarantee-card {
+      padding: 16px 14px !important;
+      border-radius: 14px !important;
     }
     .about-cta-section {
-      padding: 28px 18px !important;
-      border-radius: 16px !important;
+      padding: 24px 16px !important;
+      border-radius: 18px !important;
       text-align: center;
     }
-    .about-cta-buttons {
+    .about-cta-title {
+      font-size: 21px !important;
+      line-height: 1.3 !important;
+    }
+    .about-cta-desc {
+      font-size: 12.5px !important;
+      line-height: 1.55 !important;
+      margin: 0 auto 14px !important;
+    }
+    .about-cta-check-list {
+      align-items: center !important;
+      margin-bottom: 16px !important;
+    }
+    .about-cta-buttons-container {
       flex-direction: column !important;
-      width: 100%;
-      gap: 10px !important;
+      gap: 8px !important;
     }
     .about-cta-btn, .about-cta-btn-outline {
-      width: 100%;
-    }
-    .about-section-heading {
-      font-size: clamp(20px, 5vw, 26px) !important;
+      width: 100% !important;
+      padding: 11px 14px !important;
     }
   }
 `
 
-// ─── Data Structures ──────────────────────────────────────────────────────────
-const VALUES = {
-  en: [
-    {
-      icon: ShieldCheck,
-      color: 'green',
-      bg: 'rgba(0,184,117,0.1)',
-      iconColor: '#00B875',
-      title: 'Verified Credentials',
-      desc: 'Every doctor undergoes BMDC registration verification and credential checks.',
-    },
-    {
-      icon: Lock,
-      color: 'blue',
-      bg: 'rgba(5,150,105,0.1)',
-      iconColor: '#059669',
-      title: 'Patient Data Security',
-      desc: 'End-to-end encrypted health records. We never share your medical data with third parties.',
-    },
-    {
-      icon: Zap,
-      color: 'amber',
-      bg: 'rgba(16,185,129,0.1)',
-      iconColor: '#10B981',
-      title: 'Instant Booking',
-      desc: 'Real-time appointment availability with instant serial confirmation, eliminating wait queues.',
-    },
-    {
-      icon: Building2,
-      color: 'purple',
-      bg: 'rgba(4,120,87,0.1)',
-      iconColor: '#047857',
-      title: 'Network of Excellence',
-      desc: "Partnered with Bangladesh's top accredited hospitals and specialist chambers nationwide.",
-    },
-  ],
-  bn: [
-    {
-      icon: ShieldCheck,
-      color: 'green',
-      bg: 'rgba(0,184,117,0.1)',
-      iconColor: '#00B875',
-      title: 'যাচাইকৃত সনদপত্র',
-      desc: 'প্রতিটি ডাক্তার বিএমডিসি নিবন্ধন যাচাই ও পরীক্ষা-নিরীক্ষার পর প্ল্যাটফর্মে যোগ দেন।',
-    },
-    {
-      icon: Lock,
-      color: 'blue',
-      bg: 'rgba(5,150,105,0.1)',
-      iconColor: '#059669',
-      title: 'রোগীর তথ্য নিরাপত্তা',
-      desc: 'এন্ড-টু-এন্ড এনক্রিপ্টেড রেকর্ড। আপনার চিকিৎসা তথ্য কখনোই তৃতীয় পক্ষের সাথে শেয়ার করা হয় না।',
-    },
-    {
-      icon: Zap,
-      color: 'amber',
-      bg: 'rgba(16,185,129,0.1)',
-      iconColor: '#10B981',
-      title: 'তাৎক্ষণিক বুকিং',
-      desc: 'রিয়েল-টাইম প্রাপ্যতা ও তাৎক্ষণিক সিরিয়াল নিশ্চিতকরণ — দীর্ঘ লাইন এড়ান।',
-    },
-    {
-      icon: Building2,
-      color: 'purple',
-      bg: 'rgba(4,120,87,0.1)',
-      iconColor: '#047857',
-      title: 'শ্রেষ্ঠত্বের নেটওয়ার্ক',
-      desc: 'সারাদেশে বাংলাদেশের শীর্ষ স্বীকৃত হাসপাতাল ও বিশেষজ্ঞ চেম্বারের সাথে অংশীদারিত্ব।',
-    },
-  ],
-}
-
-const TIMELINE = {
-  en: [
-    { year: '2022', title: 'Platform Founded', desc: 'Doctor Booklet Bangladesh established in Panthapath, Dhaka to digitize healthcare.' },
-    { year: '2023', title: '500+ Doctors Onboarded', desc: 'Reached 500 BMDC-verified doctors across Dhaka, Chittagong, and Sylhet.' },
-    { year: '2024', title: 'Hospital Expansion', desc: 'Signed partnerships with 200+ accredited hospitals with live slot booking.' },
-    { year: '2025', title: 'Digital Payments', desc: 'Integrated bKash, Nagad & Rocket gateways for instant serial confirmation.' },
-    { year: '2026', title: '1 Million+ Patients', desc: 'Crossed 1 million patients served, covering all 8 divisions of Bangladesh.' },
-  ],
-  bn: [
-    { year: '২০২২', title: 'প্ল্যাটফর্ম প্রতিষ্ঠা', desc: 'স্বাস্থ্যসেবা ডিজিটালায়নের লক্ষ্যে Doctor Booklet Bangladesh পান্থপথে প্রতিষ্ঠিত হয়।' },
-    { year: '২০২৩', title: '৫০০+ ডাক্তার অনবোর্ড', desc: 'ঢাকা, চট্টগ্রাম ও সিলেট বিভাগে ৫০০ বিএমডিসি-যাচাইকৃত ডাক্তারের মাইলফলক অর্জিত।' },
-    { year: '২০২৪', title: 'হাসপাতাল সম্প্রসারণ', desc: '২০০+ স্বীকৃত হাসপাতালের সাথে অংশীদারিত্ব ও জাতীয় পর্যায়ে অনলাইন বুকিং चालू।' },
-    { year: '২০২৫', title: 'ডিজিটাল পেমেন্ট', desc: 'বিকাশ, নগদ ও রকেট পেমেন্ট গেটওয়ের মাধ্যমে তাৎক্ষণিক স্লট কনফার্মেশন।' },
-    { year: '২০২৬', title: '১০ লাখ+ রোগী সেবিত', desc: '১০ লাখের বেশি রোগী সেবার মাইলফলক অতিক্রম করে সকল ৮ বিভাগে সম্প্রসারণ।' },
-  ],
-}
-
-const TEAM = {
-  en: [
-    { initials: 'AR', bg: 'linear-gradient(135deg, #00B875, #064E3B)', name: 'Dr. Arman Rahman', role: 'Founder & CEO', desc: 'MBBS, MPH. Visionary leader with 15+ years in health tech and clinical management.' },
-    { initials: 'SK', bg: 'linear-gradient(135deg, #059669, #02382B)', name: 'Sumaiya Khan', role: 'Chief Medical Officer', desc: 'MD, Cardiology. Oversees clinical quality and doctor credential verification.' },
-    { initials: 'RH', bg: 'linear-gradient(135deg, #10B981, #047857)', name: 'Rafiq Hossain', role: 'CTO & Co-Founder', desc: "MSc. Computer Science. Architect of secure infrastructure and health APIs." },
-    { initials: 'NA', bg: 'linear-gradient(135deg, #00B875, #059669)', name: 'Nadia Ahmed', role: 'Head of Partnerships', desc: 'MBA, Healthcare. Manages relationships with 200+ hospitals nationwide.' },
-  ],
-  bn: [
-    { initials: 'AR', bg: 'linear-gradient(135deg, #00B875, #064E3B)', name: 'ডাঃ আরমান রহমান', role: 'প্রতিষ্ঠাতা ও সিইও', desc: 'MBBS, MPH। স্বাস্থ্য প্রযুক্তি ও ক্লিনিকাল ম্যানেজমেন্টে ১৫+ বছরের অভিজ্ঞ দূরদৃষ্টিসম্পন্ন নেতা।' },
-    { initials: 'SK', bg: 'linear-gradient(135deg, #059669, #02382B)', name: 'সুমাইয়া খান', role: 'চিফ মেডিকেল অফিসার', desc: 'MD, কার্ডিওলজি। ক্লিনিকাল মান ও ডাক্তার সনদপত্র যাচাই প্রোটোকল তত্ত্বাবধান করেন।' },
-    { initials: 'RH', bg: 'linear-gradient(135deg, #10B981, #047857)', name: 'রফিক হোসেন', role: 'সিটিও ও সহ-প্রতিষ্ঠাতা', desc: 'MSc. কম্পিউটার বিজ্ঞান। প্ল্যাটফর্মের নিরাপদ অবকাঠামো ও এপিআই স্থপতি।' },
-    { initials: 'NA', bg: 'linear-gradient(135deg, #00B875, #059669)', name: 'নাদিয়া আহমেদ', role: 'অংশীদারিত্ব প্রধান', desc: 'MBA, হেলথকেয়ার। ২০০+ হাসপাতাল ও চিকিৎসা প্রতিষ্ঠানের সাথে সম্পর্ক পরিচালনা করেন।' },
-  ],
-}
-
-const ACCREDITATIONS = [
-  { icon: Award, label: 'BMDC Verified' },
-  { icon: ShieldCheck, label: 'SSL Secured' },
-  { icon: FileCheck, label: 'DGDA Compliant' },
-  { icon: Globe, label: 'ISO 27001' },
-  { icon: Handshake, label: 'MoHFW Partner' },
-]
-
-// ─── Component ─────────────────────────────────────────────────────────────
 export default function AboutPage() {
   const [data, setData] = useState(getContent())
 
@@ -639,120 +543,44 @@ export default function AboutPage() {
   const isEn = lang === 'en'
 
   const content = data[lang]?.about_us || data['en']?.about_us || data.about_us || {}
-  const values   = isEn ? VALUES.en   : VALUES.bn
-  const timeline = (content.timeline && content.timeline.length > 0) ? content.timeline : (isEn ? TIMELINE.en : TIMELINE.bn)
-  const team     = isEn ? TEAM.en     : TEAM.bn
-
-  const isDark = theme === 'dark'
 
   return (
-    <div className="page-wrapper" style={{ background: 'var(--mc-bg)', paddingBottom: 0 }}>
+    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 60 }}>
       {/* Inline Styles */}
       <style>{ABOUT_STYLES}</style>
 
       {/* ═══════════════════════════════════════════════════
-          HERO SECTION
+          1. ENTERPRISE HERO SECTION
       ═══════════════════════════════════════════════════ */}
       <div className="about-hero-section">
-        <BreadcrumbHUD links={[{ label: t('about_us') }]} variant="light" />
+        <div className="about-hero-grid-pattern" />
+        <BreadcrumbHUD links={[{ label: isEn ? 'About Platform' : 'আমাদের পরিচিতি ও লক্ষ্য' }]} variant="light" />
 
-        <Container style={{ position: 'relative', zIndex: 2 }}>
-          <Row className="align-items-center g-4" style={{ marginTop: 8 }}>
-            <Col lg={7}>
-              <div>
-                <div className="about-hero-badge">
-                  <Sparkles size={13} color="#ADFCE9" />
-                  {content.badge || (isEn ? 'Our Story & Mission' : 'আমাদের গল্প ও লক্ষ্য')}
-                </div>
+        <Container style={{ position: 'relative', zIndex: 2, marginTop: 12 }}>
+          <div className="text-center">
+            <div className="about-hero-badge">
+              <Sparkles size={14} color="#34D399" />
+              <span>{content.badge || (isEn ? 'Enterprise Digital Health Platform' : 'আধুনিক ডিজিটাল স্বাস্থ্যসেবা প্ল্যাটফর্ম')}</span>
+            </div>
 
-                <h1 className="about-hero-title">
-                  {content.title ? (
-                    content.title
-                  ) : isEn ? (
-                    <>Bridging Patients to <br className="d-none d-md-block" /><span style={{ color: '#ADFCE9' }}>Expert Healthcare</span></>
-                  ) : (
-                    <>রোগী ও বিশেষজ্ঞের <br className="d-none d-md-block" /><span style={{ color: '#ADFCE9' }}>মধ্যে সেতুবন্ধন</span></>
-                  )}
-                </h1>
+            <h1 className="about-hero-title">
+              {content.title || (isEn ? 'Bridging Patients & Specialists with Trust & Technology' : 'স্বাস্থ্যসেবায় উদ্ভাবন, আস্থা ও প্রযুক্তির সমন্বয়')}
+            </h1>
 
-                <p className="about-hero-desc">
-                  {content.subtitle || (isEn
-                    ? 'Doctor Booklet Bangladesh is the country\'s trusted digital healthcare platform — connecting patients with BMDC-verified specialists, accredited hospitals, and seamless appointment scheduling across all 8 divisions.'
-                    : 'Doctor Booklet Bangladesh দেশের সবচেয়ে বিশ্বস্ত ডিজিটাল স্বাস্থ্যসেবা প্ল্যাটফর্ম — সকল ৮টি বিভাগে বিএমডিসি-যাচাইকৃত বিশেষজ্ঞ, স্বীকৃত হাসপাতাল ও নিরবচ্ছিন্ন অ্যাপয়েন্টমেন্টের সংযোগ স্থাপন করছে।'
-                  )}
-                </p>
+            <p className="about-hero-desc">
+              {content.subtitle || (isEn
+                ? 'Doctor Booklet is an enterprise-grade digital healthcare infrastructure in Bangladesh — eliminating waiting queues, connecting verified medical specialists, and providing seamless outpatient scheduling across all 64 districts.'
+                : 'Doctor Booklet আধুনিক প্রযুক্তি ও মানবিক সেবার সমন্বয়ে তৈরি একটি উন্নত ডিজিটাল স্বাস্থ্যসেবা প্ল্যাটফর্ম — যা হাসপাতাল ও ডাক্তারের সাথে রোগীর সরাসরি নির্ভরযোগ্য সংযোগ স্থাপন করে সিরিয়ালের দীর্ঘ অপেক্ষা ও জটিলতা দূর করে।')}
+            </p>
+          </div>
 
-                {/* Responsive Mobile Badges */}
-                <div className="d-flex d-lg-none about-hero-mobile-pills">
-                  <span style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 11, color: '#fff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <BadgeCheck size={13} color="#ADFCE9" />
-                    {isEn ? 'BMDC Verified' : 'BMDC যাচাইকৃত'}
-                  </span>
-                  <span style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 11, color: '#fff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Zap size={13} color="#FCD34D" />
-                    {isEn ? 'Instant Serial' : 'তাৎক্ষণিক সিরিয়াল'}
-                  </span>
-                </div>
-              </div>
-            </Col>
-
-            <Col lg={5} className="d-none d-lg-flex justify-content-center">
-              <div style={{ position: 'relative', width: 260, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {/* Outer animated ring */}
-                <div style={{
-                  position: 'absolute',
-                  width: 160, height: 160, borderRadius: '50%',
-                  border: '2px dashed rgba(255,255,255,0.25)',
-                  animation: 'about-pulse-ring 4s infinite ease-in-out',
-                }} />
-
-                {/* Central Glass Graphic Card */}
-                <div style={{
-                  width: 120, height: 120, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '2px solid rgba(255,255,255,0.35)',
-                  backdropFilter: 'blur(16px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  animation: 'about-float 4s ease-in-out infinite',
-                  boxShadow: '0 16px 36px rgba(0,0,0,0.2)',
-                  position: 'relative', zIndex: 2,
-                }}>
-                  <HeartPulse size={56} color="#ADFCE9" />
-                </div>
-
-                {/* Floating Tags */}
-                <div style={{
-                  position: 'absolute', top: 5, left: -15,
-                  background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '6px 12px',
-                  fontSize: 11.5, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 6,
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.12)', zIndex: 3,
-                }}>
-                  <BadgeCheck size={15} color="#ADFCE9" />
-                  {isEn ? 'BMDC Verified' : 'BMDC যাচাইকৃত'}
-                </div>
-
-                <div style={{
-                  position: 'absolute', bottom: 10, right: -15,
-                  background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '6px 12px',
-                  fontSize: 11.5, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 6,
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.12)', zIndex: 3,
-                }}>
-                  <Zap size={15} color="#FCD34D" />
-                  {isEn ? 'Instant Serial' : 'তাৎক্ষণিক সিরিয়াল'}
-                </div>
-              </div>
-            </Col>
-          </Row>
-
-          {/* ─── Key Stats Grid ─── */}
-          <Row className="g-2 g-md-3" style={{ marginTop: 24 }}>
+          {/* Key Platform Impact Stats Grid */}
+          <Row className="g-2 g-md-3 justify-content-center" style={{ marginTop: 28 }}>
             {[
-              { num: content.stat_doctors || '1,000+', label: isEn ? 'Verified Doctors' : 'যাচাইকৃত ডাক্তার' },
-              { num: content.stat_hospitals || '500+',   label: isEn ? 'Partner Hospitals' : 'পার্টনার হাসপাতাল' },
-              { num: content.stat_patients || '10 লাখ+',    label: isEn ? 'Patients Served' : 'সেবিত রোগী' },
-              { num: content.stat_coverage || '৮টি বিভাগ',      label: isEn ? 'Divisions Covered' : 'বিভাগ কভার করা হয়' },
+              { num: content.stat_doctors || '১,০০০+', label: isEn ? 'Verified Specialists' : 'যাচাইকৃত বিশেষজ্ঞ ডাক্তার' },
+              { num: content.stat_hospitals || '২০০+', label: isEn ? 'Partner Facilities' : 'পার্টনার হাসপাতাল ও চেম্বার' },
+              { num: content.stat_patients || '৫০,০০০+', label: isEn ? 'Appointments Completed' : 'সফল সিরিয়াল ও সেবা' },
+              { num: content.stat_coverage || '৬৪ জেলা', label: isEn ? 'Countrywide Coverage' : 'দেশব্যাপী ডিজিটাল সেবা' },
             ].map((s, i) => (
               <Col xs={6} md={3} key={i}>
                 <div className="about-stat-card">
@@ -766,338 +594,712 @@ export default function AboutPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════
-          TRUST / ACCREDITATION BAR
+          2. CORPORATE OVERVIEW / THE PROBLEM WE SOLVE
       ═══════════════════════════════════════════════════ */}
-      <Container style={{ marginTop: -20, marginBottom: 40, position: 'relative', zIndex: 3 }}>
-        <div className="about-trust-bar">
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            flexWrap: 'wrap', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--mc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>
-              {isEn ? 'Recognized With:' : 'স্বীকৃত:'}
-            </span>
-            {ACCREDITATIONS.map((a, i) => {
-              const IconComp = a.icon
-              return (
-                <div className="about-partner-logo" key={i}>
-                  <IconComp size={14} color="var(--mc-primary)" />
-                  <span>{a.label}</span>
+      <Container style={{ marginTop: 44, marginBottom: 44 }}>
+        <div className="about-card-box">
+          <Row className="align-items-center g-4">
+            <Col lg={7}>
+              <div>
+                <div className="about-section-badge">
+                  <span className="dot" />
+                  {isEn ? 'Our Purpose' : 'আমাদের পরিচিতি ও উদ্দেশ্য'}
                 </div>
-              )
-            })}
-          </div>
+                <h2 className="about-section-heading">
+                  {content.story_title || (isEn ? 'Transforming Outpatient Care from Chaos to Clarity' : 'চিরাচরিত ভোগান্তি দূর করে স্বাস্থ্যসেবায় নতুন দিগন্ত')}
+                </h2>
+                <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.75, fontWeight: 450, marginBottom: 14 }}>
+                  {content.story_desc || (isEn
+                    ? 'In the traditional healthcare landscape, scheduling a doctor appointment often involves hours of waiting at crowded counters, uncertainty about slot times, and lack of verified doctor information.'
+                    : 'ঐতিহ্যগত চিকিৎসা ব্যবস্থাপনায় ডাক্তারের সিরিয়াল নেওয়া মানেই ছিল ভোরে লাইনে দাঁড়ানো, দীর্ঘ ঘণ্টার অপেক্ষা, চেম্বারে ভিড় এবং কখন ডাক্তার দেখবেন সেই অনিশ্চয়তা। Doctor Booklet এই চিরাচরিত চিত্রকে বদলে দিতে প্রযুক্তির মেলবন্ধন ঘটিয়েছে।')}
+                </p>
+                <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.75, fontWeight: 450, marginBottom: 20 }}>
+                  {isEn
+                    ? 'Doctor Booklet replaces manual paper notebooks and unorganized queue systems with an enterprise-grade digital ecosystem. Patients get live token tracking, transparent chamber timings, and verified credentials, while clinics enjoy fully automated OPD workflows.'
+                    : 'আমরা কাগজের নোটবুক ও বিশৃঙ্খল সিরিয়াল সিস্টেমের পরিবর্তে নিয়ে এসেছি রিয়েল-টাইম ক্লাউড প্ল্যাটফর্ম। এখানে রোগীরা ঘরে বসেই লাইভ সিরিয়াল দেখতে পান, ডাক্তারগণ সুশৃঙ্খলভাবে রোগী দেখতে পারেন এবং হাসপাতালগুলো ডিজিটাল ডিসপ্লে ও ওপিডি সফটওয়্যারের মাধ্যমে উন্নত সেবা প্রদান করতে পারে।'}
+                </p>
+
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                    <CheckCircle2 size={16} color="#00B875" />
+                    <span>{isEn ? 'Real-Time Serial Queue' : 'রিয়েল-টাইম লাইভ সিরিয়াল'}</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                    <CheckCircle2 size={16} color="#00B875" />
+                    <span>{isEn ? '100% BMDC Verified Doctors' : 'বিএমডিসি যাচাইকৃত বিশেষজ্ঞ'}</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                    <CheckCircle2 size={16} color="#00B875" />
+                    <span>{isEn ? 'Zero Counter Congestion' : 'কাউন্টারে দীর্ঘ লাইনমুক্ত'}</span>
+                  </div>
+                </div>
+              </div>
+            </Col>
+
+            <Col lg={5}>
+              <div style={{
+                background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+                borderRadius: 18,
+                padding: '28px 24px',
+                border: '1.5px solid #BBF7D0',
+                position: 'relative'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: '#00B875', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(0, 184, 117, 0.3)' }}>
+                    <HeartPulse size={24} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#064E3B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ডিজিটাল অঙ্গীকার</div>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: '#064E3B', lineHeight: 1.2 }}>রোগীর সময় ও আস্থার মূল্য</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ background: '#FFFFFF', borderRadius: 12, padding: '12px 14px', border: '1px solid #DCFCE7', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Clock size={18} color="#00B875" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>গড়ে ৭০% অপেক্ষার সময় হ্রাস</span>
+                  </div>
+                  <div style={{ background: '#FFFFFF', borderRadius: 12, padding: '12px 14px', border: '1px solid #DCFCE7', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Smartphone size={18} color="#00B875" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>এসএমএস ও ডিজিটাল সিরিয়াল টিকিট</span>
+                  </div>
+                  <div style={{ background: '#FFFFFF', borderRadius: 12, padding: '12px 14px', border: '1px solid #DCFCE7', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Monitor size={18} color="#00B875" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>ওয়েটিং রুম ডিসপ্লে বোর্ড সংযোগ</span>
+                  </div>
+                </div>
+              </div>
+            </Col>
+          </Row>
         </div>
       </Container>
 
       {/* ═══════════════════════════════════════════════════
-          MISSION + VISION SECTION
+          3. DEDICATED MISSION & VISION SHOWCASE
       ═══════════════════════════════════════════════════ */}
       <Container style={{ marginBottom: 44 }}>
-        <Row className="g-3 g-md-4 align-items-stretch">
-          <Col lg={6}>
-            <div className="about-card-box">
-              <div>
-                <div className="about-section-badge">
-                  <span className="dot" />
-                  {isEn ? 'Who We Are' : 'আমরা কে'}
-                </div>
-                <h2 className="about-section-heading">
-                  {isEn ? 'The Standard for Digital Healthcare in Bangladesh' : 'বাংলাদেশে ডিজিটাল স্বাস্থ্যসেবার মানদণ্ড'}
-                </h2>
-                <p style={{ fontSize: 14.5, color: 'var(--mc-text-muted)', lineHeight: 1.7, fontWeight: 500, marginBottom: 14 }}>
-                  {content.description}
-                </p>
-                <p style={{ fontSize: 14.5, color: 'var(--mc-text-muted)', lineHeight: 1.7, fontWeight: 500, marginBottom: 20 }}>
-                  {isEn
-                    ? 'We operate with one goal in mind: removing every barrier between a patient and the right doctor. Our platform enforces multi-layer verification, ensuring every listed practitioner holds active BMDC registration and valid hospital affiliations.'
-                    : 'আমরা একটি লক্ষ্য নিয়ে কাজ করি: রোগী ও সঠিক ডাক্তারের মধ্যে প্রতিটি বাধা দূর করা। আমাদের প্ল্যাটফর্ম বহু-স্তর যাচাই প্রয়োগ করে, নিশ্চিত করে যে তালিকাভুক্ত প্রতিটি চিকিৎসকের সক্রিয় বিএমডিসি নিবন্ধন ও বৈধ হাসপাতাল সম্পর্ক রয়েছে।'
-                  }
-                </p>
-              </div>
+        <div className="text-center" style={{ marginBottom: 26 }}>
+          <div className="about-section-badge">
+            <span className="dot" />
+            {isEn ? 'Guiding Principles' : 'আমাদের দৃষ্টিভঙ্গি ও লক্ষ্য'}
+          </div>
+          <h2 className="about-section-heading" style={{ margin: 0 }}>
+            {isEn ? 'Mission & Vision Defining Our Future' : 'আমাদের মিশন ও ভিশন'}
+          </h2>
+          <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 540, margin: '6px auto 0', lineHeight: 1.6 }}>
+            {isEn
+              ? 'Anchoring every engineering standard and clinical partnership to bring world-class healthcare within reach.'
+              : 'প্রতিটি প্রযুক্তিগত উন্নয়ন ও অংশীদারিত্বের মূল অনুপ্রেরণা — যা কোটি মানুষের সুস্বাস্থ্য নিশ্চিত করতে আমাদের পথ দেখায়।'}
+          </p>
+        </div>
 
-              {/* Mission Box */}
-              <div style={{
-                background: isDark ? 'rgba(0,184,117,0.1)' : 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
-                borderRadius: 14, padding: '16px 18px',
-                border: '1px solid rgba(0,184,117,0.25)',
-                display: 'flex', gap: 12, alignItems: 'flex-start'
-              }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, background: 'rgba(0,184,117,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                }}>
-                  <Target size={20} color="#00B875" />
+        <Row className="g-4 align-items-stretch">
+          {/* ── CARD 1: OUR MISSION ── */}
+          <Col lg={6}>
+            <div className="about-vision-card mission">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1.5px solid #DCFCE7', boxShadow: '0 4px 12px rgba(0, 184, 117, 0.12)' }}>
+                  <Target size={26} />
                 </div>
                 <div>
-                  <p style={{ fontSize: 10.5, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
-                    {t('our_mission')}
-                  </p>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--mc-text)', lineHeight: 1.55, margin: 0 }}>
-                    "{content.mission}"
-                  </p>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {isEn ? 'Our Mission' : 'আমাদের মিশন'}
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
+                    {content.mission_title || (isEn ? 'Accessible & Time-Definite Healthcare' : 'সহজলভ্য, স্বচ্ছ ও সময়সাশ্রয়ী চিকিৎসা সেবা')}
+                  </h3>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.8, fontWeight: 450, marginBottom: 20 }}>
+                {content.mission_desc || content.mission || (isEn
+                  ? 'To dismantle every friction point between patients and trusted healthcare providers through verified scheduling, real-time queue intelligence, and transparent outpatient coordination.'
+                  : 'প্রযুক্তির সর্বোচ্চ উৎকর্ষ কাজে লাগিয়ে বাংলাদেশের প্রতিটি নাগরিকের কাছে বিশেষজ্ঞ চিকিৎসা সেবা সহজলভ্য ও সময়সাশ্রয়ী করা — সিরিয়ালের দীর্ঘ অপেক্ষা ও বিভ্রান্তি দূর করে হাসপাতাল ও ডাক্তারের সাথে রোগীর সরাসরি নির্ভরযোগ্য ডিজিটাল সংযোগ স্থাপন করা।')}
+              </p>
+
+              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0F172A', marginBottom: 10 }}>মিশনের মূল ৩টি স্তম্ভ:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#334155' }}>
+                    <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span><strong>তথ্যের যথার্থতা:</strong> শতভাগ নিবন্ধিত ডাক্তার ও নির্ভরযোগ্য ফি তালিকা।</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#334155' }}>
+                    <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span><strong>স্মার্ট শিডিউলিং:</strong> ডিজিটাল টোকেন ও লাইভ সিরিয়াল মনিটরিং।</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#00B875' }}>
+                    <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ color: '#334155' }}><strong>রোগী-কেন্দ্রিক সেবা:</strong> ২৪/৭ হেল্পলাইন ও সহজ ইউজার এক্সপেরিয়েন্স।</span>
+                  </div>
                 </div>
               </div>
             </div>
           </Col>
 
+          {/* ── CARD 2: OUR VISION ── */}
           <Col lg={6}>
-            {/* Vision + Quick facts panel */}
-            <div className="about-card-box">
-              <div>
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <Activity size={17} color="#00B875" />
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                      {isEn ? 'Our Vision' : 'আমাদের দৃষ্টিভঙ্গি'}
+            <div className="about-vision-card vision">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#F0F9FF', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1.5px solid #BAE6FD', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.12)' }}>
+                  <Compass size={26} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {isEn ? 'Our Vision' : 'আমাদের ভিশন'}
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
+                    {content.vision_title || (isEn ? 'National Health Infrastructure of Choice' : 'বাংলাদেশের সর্বজনীন ডিজিটাল স্বাস্থ্য ইকোসিস্টেম')}
+                  </h3>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.8, fontWeight: 450, marginBottom: 20 }}>
+                {content.vision_desc || content.vision || (isEn
+                  ? 'To become the benchmark digital health infrastructure across Bangladesh — establishing a future where every citizen, regardless of geographical barriers, accesses specialized clinical care with dignity and transparency.'
+                  : 'একটি সর্বজনীন, ক্যাশলেস ও পেপারলেস স্বাস্থ্যসেবা পরিকাঠামো গড়ে তোলা — যেখানে দেশের প্রত্যন্ত অঞ্চল থেকে শুরু করে মহানগর পর্যন্ত প্রতিটি নাগরিক তাৎক্ষণিক বিশেষজ্ঞ পরামর্শ, ডিজিটাল প্রেসক্রিপশন ও হাসপাতাল বুকিং সুবিধা পাবেন পরম সম্মানের সাথে।')}
+              </p>
+
+              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0F172A', marginBottom: 10 }}>ভিশনের ভবিষ্যৎ রূপরেখা:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#334155' }}>
+                    <CheckCircle2 size={16} color="#0284C7" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span><strong>সর্বজনীন বিস্তার:</strong> বাংলাদেশের ৮টি বিভাগের সকল ৬৪ জেলায় পূর্ণাঙ্গ নেটওয়ার্ক।</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#334155' }}>
+                    <CheckCircle2 size={16} color="#0284C7" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span><strong>স্মার্ট ওপিডি অটোমেশন:</strong> হাসপাতাল ক্লিনিক ও চেম্বারের ১০০% পেপারলেস কিউ।</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#334155' }}>
+                    <CheckCircle2 size={16} color="#0284C7" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span><strong>নিরাপদ সেন্ট্রাল রেকর্ড:</strong> রোগীর ব্যক্তিগত তথ্যের এন্ড-টু-এন্ড সুরক্ষা।</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+
+      {/* ═══════════════════════════════════════════════════
+          4. THE DOCTOR BOOKLET PLATFORM ECOSYSTEM
+      ═══════════════════════════════════════════════════ */}
+      <div style={{ background: '#FFFFFF', padding: '48px 0', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', marginBottom: 44 }}>
+        <Container>
+          <div className="text-center" style={{ marginBottom: 30 }}>
+            <div className="about-section-badge">
+              <span className="dot" />
+              {isEn ? 'Platform Ecosystem' : 'প্ল্যাটফর্ম ইকোসিস্টেম'}
+            </div>
+            <h2 className="about-section-heading" style={{ margin: 0 }}>
+              {isEn ? 'Comprehensive Solutions for the Healthcare Community' : 'সবার জন্য তৈরি এক সমন্বিত ডিজিটাল পরিকাঠামো'}
+            </h2>
+            <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 560, margin: '8px auto 0', lineHeight: 1.6 }}>
+              {isEn
+                ? 'Empowering patients, consulting doctors, and healthcare institutions through synchronized digital modules.'
+                : 'রোগী, বিশেষজ্ঞ চিকিৎসক ও হাসপাতাল — প্রতিটি পক্ষের সর্বোচ্চ সুবিধা নিশ্চিতে আমাদের ৪টি মূল মডিউল।'}
+            </p>
+          </div>
+
+          <Row className="g-3 g-md-4">
+            {/* Pillar 1: For Patients */}
+            <Col xs={12} sm={6} lg={3}>
+              <div className="about-eco-card">
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #DCFCE7' }}>
+                  <Smartphone size={22} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>রোগীদের জন্য</h4>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                  তাৎক্ষণিক সিরিয়াল বুকিং, ঘরে বসেই লাইভ সিরিয়াল ট্র্যাকিং, এসএমএস আপডেট ও ডিজিটাল প্রেসক্রিপশন সংরক্ষণ।
+                </p>
+              </div>
+            </Col>
+
+            {/* Pillar 2: For Doctors */}
+            <Col xs={12} sm={6} lg={3}>
+              <div className="about-eco-card">
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #DBEAFE' }}>
+                  <Stethoscope size={22} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>ডাক্তারদের জন্য</h4>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                  স্মার্ট চেম্বার শিডিউলিং, পেশেন্ট সিরিয়াল ম্যানেজমেন্ট, ছুটির ক্যালেন্ডার নিয়ন্ত্রণ ও ক্লিনিক্যাল প্রোফাইল।
+                </p>
+              </div>
+            </Col>
+
+            {/* Pillar 3: For Hospitals */}
+            <Col xs={12} sm={6} lg={3}>
+              <div className="about-eco-card">
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #DDD6FE' }}>
+                  <Building2 size={22} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>হাসপাতাল ও ক্লিনিক</h4>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                  সেন্ট্রালাইজড ওপিডি কাউন্টার সমন্বয়, একাধিক ডাক্তারের সিরিয়াল হ্যান্ডলিং ও দৈনিক রিপোর্ট ম্যানেজমেন্ট।
+                </p>
+              </div>
+            </Col>
+
+            {/* Pillar 4: Public Display Board */}
+            <Col xs={12} sm={6} lg={3}>
+              <div className="about-eco-card">
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #FDE68A' }}>
+                  <Monitor size={22} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>লাইভ ডিসপ্লে বোর্ড</h4>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                  ওয়েটিং রুমে রিয়েল-টাইম টিভি মনিটর ডিসপ্লে, লাইভ টোকেন কলিং ও রোগীদের জন্য নিখুঁত সিরিয়াল নোটিস।
+                </p>
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════
+          5. CREDENTIAL VERIFICATION & DATA SECURITY PILLARS
+      ═══════════════════════════════════════════════════ */}
+      <Container style={{ marginBottom: 44 }}>
+        <div className="text-center" style={{ marginBottom: 26 }}>
+          <div className="about-section-badge">
+            <span className="dot" />
+            {isEn ? 'Trust & Security' : 'নির্ভরযোগ্যতা ও নিরাপত্তা পরিকাঠামো'}
+          </div>
+          <h2 className="about-section-heading" style={{ margin: 0 }}>
+            {isEn ? 'Engineered with Strict Clinical & Security Standards' : 'নিরাপত্তা ও নৈতিকতার সর্বোচ্চ মান'}
+          </h2>
+          <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 540, margin: '6px auto 0', lineHeight: 1.6 }}>
+            {isEn
+              ? 'We prioritize patient data confidentiality, credential authentication, and platform uptime above all.'
+              : 'রোগীর তথ্যের শতভাগ গোপনীয়তা এবং প্রকৃত ডাক্তারের সনদপত্র যাচাইকরণের সুদৃঢ় প্রতিশ্রুতি।'}
+          </p>
+        </div>
+
+        <Row className="g-3 g-md-4">
+          <Col md={6} lg={3}>
+            <div className="about-pillar-card">
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #DCFCE7' }}>
+                <BadgeCheck size={20} />
+              </div>
+              <h4 style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>বিএমডিসি নিবন্ধন যাচাই</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                প্ল্যাটফর্মে তালিকাভুক্তির পূর্বে প্রতিটি চিকিৎসকের সক্রিয় বিএমডিসি রেজিস্ট্রেশন ও ডিগ্রি যাচাই করা হয়।
+              </p>
+            </div>
+          </Col>
+
+          <Col md={6} lg={3}>
+            <div className="about-pillar-card">
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #DBEAFE' }}>
+                <Lock size={20} />
+              </div>
+              <h4 style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>ডেটা এনক্রিপশন (SSL)</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                আধুনিক ২৫৬-বিট এসএসএল/টিএলএস এনক্রিপশনের মাধ্যমে রোগীর প্রতিটি অ্যাপয়েন্টমেন্ট ও তথ্য সুরক্ষিত থাকে।
+              </p>
+            </div>
+          </Col>
+
+          <Col md={6} lg={3}>
+            <div className="about-pillar-card">
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#FEF2F2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #FEE2E2' }}>
+                <ShieldCheck size={20} />
+              </div>
+              <h4 style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>জিরো স্প্যাম ও প্রাইভেসি</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                রোগীর ব্যক্তিগত মোবাইল নম্বর বা প্রেসক্রিপশন কোনো তৃতীয় পক্ষের কাছে শেয়ার বা বাণিজ্যিক কাজে ব্যবহৃত হয় না।
+              </p>
+            </div>
+          </Col>
+
+          <Col md={6} lg={3}>
+            <div className="about-pillar-card">
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#FAF5FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #F3E8FF' }}>
+                <Server size={20} />
+              </div>
+              <h4 style={{ fontSize: 15.5, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>৯৯.৯% ক্লাউড আপটাইম</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                সার্বক্ষণিক সক্রিয় হাই-পারফরম্যান্স সার্ভার অবকাঠামো, যা যেকোনো জরুরি মুহূর্তে তাৎক্ষণিক বুকিং নিশ্চিত করে।
+              </p>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+
+      {/* ═══════════════════════════════════════════════════
+          6A. COMPARISON: TRADITIONAL VS DOCTOR BOOKLET
+      ═══════════════════════════════════════════════════ */}
+      <Container style={{ marginBottom: 44 }}>
+        <div className="about-card-box" style={{ background: '#FFFFFF', padding: '36px 30px' }}>
+          <div className="text-center" style={{ marginBottom: 30 }}>
+            <div className="about-section-badge">
+              <span className="dot" />
+              {isEn ? 'Value Comparison' : 'পার্থক্য ও শ্রেষ্ঠত্ব'}
+            </div>
+            <h2 className="about-section-heading" style={{ margin: 0 }}>
+              {isEn ? 'The Traditional Way vs. The Doctor Booklet Standard' : 'চিরাচরিত ভোগান্তি বনাম Doctor Booklet-এর স্মার্ট সমাধান'}
+            </h2>
+            <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 600, margin: '8px auto 0', lineHeight: 1.6 }}>
+              {isEn
+                ? 'See how our digital workflows eliminate outpatient friction, uncertainty, and hours of wasted waiting time.'
+                : 'প্রথাগত পদ্ধতির অনিশ্চয়তা দূর করে আমরা তৈরি করেছি এক নির্ভরযোগ্য, স্বচ্ছ ও ঝামেলাহীন স্বাস্থ্যসেবা পরিকাঠামো।'}
+            </p>
+          </div>
+
+          <Row className="g-4 align-items-stretch">
+            {/* Left: Traditional Way */}
+            <Col lg={6}>
+              <div style={{
+                background: '#FFF5F5',
+                border: '1.5px solid #FED7D7',
+                borderRadius: 18,
+                padding: '24px 22px',
+                height: '100%'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #FEB2B2' }}>
+                  <XCircle size={24} color="#E53E3E" />
+                  <div>
+                    <h4 style={{ fontSize: 17, fontWeight: 900, color: '#9B2C2C', margin: 0 }}>প্রথাগত / চিরাচরিত পদ্ধতি</h4>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#C53030' }}>অনিশ্চয়তা, দীর্ঘ লাইন ও সময় অপচয়</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <XCircle size={17} color="#E53E3E" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#742A2A', lineHeight: 1.5, fontWeight: 500 }}>
+                      ভোরে চেম্বার বা হাসপাতালে গিয়ে দীর্ঘ লাইনে দাঁড়িয়ে সিরিয়াল নেওয়ার শারীরিক ক্লান্তি
                     </span>
                   </div>
-                  <p style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--mc-text)', lineHeight: 1.6, margin: 0 }}>
-                    {content.vision || (isEn
-                      ? 'To become the definitive health-trust layer for all 170 million citizens of Bangladesh — enabling every person to access verified, quality healthcare within minutes.'
-                      : '১৭ কোটি নাগরিকের জন্য নিশ্চিত স্বাস্থ্য-আস্থা স্তর হয়ে ওঠা — প্রত্যেক ব্যক্তিকে মিনিটের মধ্যে যাচাইকৃত, মানসম্মত স্বাস্থ্যসেবা অ্যাক্সেস করতে সক্ষম করা।'
-                    )}
-                  </p>
-                </div>
-
-                <div style={{ height: 1, background: 'var(--mc-border)', marginBottom: 18 }} />
-
-                {/* Quick Facts List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[
-                    { icon: MapPin, label: isEn ? 'Headquarters' : 'সদর দফতর', value: isEn ? 'Panthapath, Dhaka-1215' : 'পান্থপথ, ঢাকা-১২১৫' },
-                    { icon: Calendar, label: isEn ? 'Founded'      : 'প্রতিষ্ঠিত',  value: isEn ? '2022' : '২০২২' },
-                    { icon: Globe, label: isEn ? 'Coverage'     : 'কভারেজ',    value: isEn ? 'All 8 Divisions of Bangladesh' : 'বাংলাদেশের সকল ৮ বিভাগ' },
-                    { icon: Headphones, label: isEn ? 'Support'      : 'সহায়তা',    value: isEn ? '24/7 Patient Helpline' : '২৪/৭ রোগী হেল্পলাইন' },
-                  ].map((f, i) => {
-                    const FactIcon = f.icon
-                    return (
-                      <div key={i} style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '9px 12px', borderRadius: 10, background: 'var(--mc-bg)',
-                        border: '1px solid var(--mc-border)'
-                      }}>
-                        <div style={{
-                          width: 30, height: 30, borderRadius: 8,
-                          background: 'var(--mc-white)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
-                        }}>
-                          <FactIcon size={15} color="var(--mc-primary)" />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--mc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 1 }}>
-                            {f.label}
-                          </div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--mc-text)' }}>
-                            {f.value}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <XCircle size={17} color="#E53E3E" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#742A2A', lineHeight: 1.5, fontWeight: 500 }}>
+                      ডাক্তার কখন চেম্বারে ঢুকবেন বা কখন সিরিয়াল আসবে সে বিষয়ে ঘণ্টার পর ঘণ্টা অনিশ্চয়তা
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <XCircle size={17} color="#E53E3E" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#742A2A', lineHeight: 1.5, fontWeight: 500 }}>
+                      ভিড়ের মধ্যে ওয়েটিং রুমে বসার জায়গা না পাওয়া এবং অস্বস্তিকর পরিবেশের ভোগান্তি
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <XCircle size={17} color="#E53E3E" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#742A2A', lineHeight: 1.5, fontWeight: 500 }}>
+                      কাগজের প্রেসক্রিপশন হারিয়ে যাওয়া বা পূর্ববর্তী কোনো মেডিকেল রেকর্ডের ডিজিটাল হিস্ট্রি না থাকা
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <XCircle size={17} color="#E53E3E" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#742A2A', lineHeight: 1.5, fontWeight: 500 }}>
+                      ডাক্তারের ফি, ডিগ্রি ও চেম্বার শিডিউল সম্পর্কে নির্ভরযোগ্য স্বচ্ছ তথ্যের অভাব
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Col>
-        </Row>
+            </Col>
+
+            {/* Right: Doctor Booklet Smart Way */}
+            <Col lg={6}>
+              <div style={{
+                background: '#F0FDF4',
+                border: '1.5px solid #BBF7D0',
+                borderRadius: 18,
+                padding: '24px 22px',
+                height: '100%',
+                boxShadow: '0 4px 18px rgba(0, 184, 117, 0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #A7F3D0' }}>
+                  <CheckCircle2 size={24} color="#00B875" />
+                  <div>
+                    <h4 style={{ fontSize: 17, fontWeight: 900, color: '#064E3B', margin: 0 }}>Doctor Booklet স্মার্ট সমাধান</h4>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#00875A' }}>ঘরে বসেই নিশ্চিত, দ্রুত ও নির্ভরযোগ্য সেবা</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <CheckCircle2 size={17} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#064E3B', lineHeight: 1.5, fontWeight: 600 }}>
+                      ঘরে বা কর্মস্থলে বসেই মোবাইল থেকে ১ ক্লিকে সুবিধাজনক তারিখ ও সময় নির্বাচন করে সিরিয়াল বুকিং
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <CheckCircle2 size={17} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#064E3B', lineHeight: 1.5, fontWeight: 600 }}>
+                      রিয়েল-টাইম লাইভ সিরিয়াল ট্র্যাকিং — মোবাইল স্ক্রিনেই বর্তমান রানিং সিরিয়াল দেখার স্বচ্ছতা
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <CheckCircle2 size={17} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#064E3B', lineHeight: 1.5, fontWeight: 600 }}>
+                      সিরিয়াল আসার নির্ধারিত সময়ে চেম্বারে সরাসরি আগমন, ফলে ঘণ্টার পর ঘণ্টা দীর্ঘ অপেক্ষার অবসান
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <CheckCircle2 size={17} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#064E3B', lineHeight: 1.5, fontWeight: 600 }}>
+                      প্রোফাইলে আজীবন ডিজিটাল হেলথ কার্ড, অ্যাপয়েন্টমেন্ট হিস্ট্রি ও প্রেসক্রিপশন ডাউনলোড সুবিধা
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <CheckCircle2 size={17} color="#00B875" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#064E3B', lineHeight: 1.5, fontWeight: 600 }}>
+                      শতভাগ বিএমডিসি সনদ যাচাইকৃত ডাক্তার প্রোফাইল, প্রকৃত ডিগ্রি ও সম্পূর্ণ উন্মুক্ত ভিজিট ফি
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </div>
       </Container>
 
       {/* ═══════════════════════════════════════════════════
-          CORE VALUES SECTION
+          6B. HOW IT WORKS: 3 SIMPLE STEPS
       ═══════════════════════════════════════════════════ */}
-      <div style={{
-        background: isDark ? 'rgba(30,41,59,0.4)' : '#F1F5F9',
-        padding: '40px 0',
-        marginBottom: 44,
-        borderTop: '1px solid var(--mc-border)',
-        borderBottom: '1px solid var(--mc-border)'
-      }}>
+      <div style={{ background: '#FFFFFF', padding: '48px 0', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', marginBottom: 44 }}>
         <Container>
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div className="about-section-badge" style={{ margin: '0 auto 10px' }}>
+          <div className="text-center" style={{ marginBottom: 30 }}>
+            <div className="about-section-badge">
               <span className="dot" />
-              {isEn ? 'Core Values' : 'মূল মান'}
+              {isEn ? 'Simple 3-Step Process' : 'সহজ কর্মপ্রক্রিয়া'}
             </div>
-            <h2 className="about-section-heading" style={{ marginBottom: 8 }}>
-              {isEn ? 'What We Stand For' : 'আমরা কীসের জন্য দাঁড়াই'}
+            <h2 className="about-section-heading" style={{ margin: 0 }}>
+              {isEn ? 'How to Book & Consult in 3 Easy Steps' : 'সহজ ৩টি ধাপে আপনার কাঙ্ক্ষিত ডাক্তারের সিরিয়াল'}
             </h2>
-            <p style={{ fontSize: 14.5, color: 'var(--mc-text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.55, fontWeight: 500 }}>
+            <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 560, margin: '8px auto 0', lineHeight: 1.6 }}>
               {isEn
-                ? 'Four pillars that define every decision we make and every feature we build.'
-                : 'চারটি স্তম্ভ যা আমাদের প্রতিটি সিদ্ধান্ত ও বৈশিষ্ট্য নির্ধারণ করে।'
-              }
+                ? 'Designed for simplicity so anyone can schedule an appointment and track consultation in seconds.'
+                : 'কোনো জটিলতা ছাড়াই যেকোনো স্মার্টফোন থেকে মুহূর্তেই সিরিয়াল নিশ্চিত করুন এবং সময়মতো চিকিৎসা সেবা গ্রহণ করুন।'}
             </p>
           </div>
 
-          <Row className="g-3">
-            {values.map((v, i) => {
-              const ValueIcon = v.icon
-              return (
-                <Col xs={12} sm={6} lg={3} key={i}>
-                  <div className={`about-value-card ${v.color}`}>
-                    <div className="about-icon-ring" style={{ background: v.bg }}>
-                      <ValueIcon size={24} color={v.iconColor} />
-                    </div>
-                    <h4 style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--mc-text)', marginBottom: 6, lineHeight: 1.3 }}>
-                      {v.title}
-                    </h4>
-                    <p style={{ fontSize: 13, color: 'var(--mc-text-muted)', lineHeight: 1.55, fontWeight: 500, margin: 0 }}>
-                      {v.desc}
-                    </p>
-                  </div>
-                </Col>
-              )
-            })}
+          <Row className="g-3 g-md-4">
+            {/* Step 1 */}
+            <Col md={4}>
+              <div className="about-step-card">
+                <span className="about-step-num">০১</span>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #DCFCE7' }}>
+                  <Search size={22} />
+                </div>
+                <h4 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>বিশেষজ্ঞ ও হাসপাতাল সন্ধান</h4>
+                <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.65, margin: 0, fontWeight: 450 }}>
+                  আপনার এলাকা, বিভাগ বা রোগের লক্ষণ অনুযায়ী যাচাইকৃত বিশেষজ্ঞ ডাক্তার বা পছন্দের হাসপাতাল নির্বাচন করুন। ডাক্তারের যোগ্যতা ও ফি যাচাই করুন।
+                </p>
+              </div>
+            </Col>
+
+            {/* Step 2 */}
+            <Col md={4}>
+              <div className="about-step-card">
+                <span className="about-step-num">০২</span>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #DBEAFE' }}>
+                  <CalendarCheck size={22} />
+                </div>
+                <h4 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>তাৎক্ষণিক সিরিয়াল বুকিং</h4>
+                <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.65, margin: 0, fontWeight: 450 }}>
+                  সুবিধাজনক তারিখ ও উপলব্ধ চেম্বার সময় বেছে নিয়ে ১ ক্লিকে সিরিয়াল কনফার্ম করুন। আপনার মোবাইলে সাথে সাথে ডিজিটাল সিরিয়াল টিকিট ও এসএমএস পৌঁছে যাবে।
+                </p>
+              </div>
+            </Col>
+
+            {/* Step 3 */}
+            <Col md={4}>
+              <div className="about-step-card">
+                <span className="about-step-num">০৩</span>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FAF5FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #F3E8FF' }}>
+                  <Activity size={22} />
+                </div>
+                <h4 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>লাইভ ট্র্যাকিং ও চিকিৎসা</h4>
+                <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.65, margin: 0, fontWeight: 450 }}>
+                  ঘরে বসেই মোবাইলে বর্তমান রানিং সিরিয়াল লাইভ ট্র্যাক করুন। সিরিয়াল আসার ঠিক পূর্ব মুহূর্তে চেম্বারে পৌঁছে স্বাচ্ছন্দ্যে ডাক্তারের পরামর্শ গ্রহণ করুন।
+                </p>
+              </div>
+            </Col>
           </Row>
         </Container>
       </div>
 
       {/* ═══════════════════════════════════════════════════
-          MILESTONES / TIMELINE
+          6C. OUR CORE COMMITMENTS & GUARANTEES
       ═══════════════════════════════════════════════════ */}
       <Container style={{ marginBottom: 44 }}>
-        <Row className="g-4 align-items-start">
-          <Col lg={5}>
-            <div style={{ position: 'sticky', top: 90 }}>
-              <div className="about-section-badge">
-                <span className="dot" />
-                {isEn ? 'Our Journey' : 'আমাদের যাত্রা'}
-              </div>
-              <h2 className="about-section-heading" style={{ marginBottom: 12 }}>
-                {isEn ? 'From Idea to National Platform' : 'ধারণা থেকে জাতীয় প্ল্যাটফর্ম'}
-              </h2>
-              <p style={{ fontSize: 14.5, color: 'var(--mc-text-muted)', lineHeight: 1.65, fontWeight: 500, marginBottom: 20 }}>
-                {isEn
-                  ? "In just four years, Doctor Booklet has grown from a small startup to Bangladesh's largest verified healthcare network."
-                  : 'মাত্র চার বছরে Doctor Booklet ঢাকার একটি ছোট স্টার্টআপ থেকে বাংলাদেশের বৃহত্তম যাচাইকৃত স্বাস্থ্যসেবা নেটওয়ার্কে পরিণত হয়েছে।'
-                }
-              </p>
+        <div className="text-center" style={{ marginBottom: 28 }}>
+          <div className="about-section-badge">
+            <span className="dot" />
+            {isEn ? 'Core Commitments' : 'আমাদের মূল অঙ্গীকার'}
+          </div>
+          <h2 className="about-section-heading" style={{ margin: 0 }}>
+            {isEn ? 'Our Unwavering Promises to Every Patient & Partner' : 'স্বাস্থ্যসেবায় আমাদের অপরিবর্তনীয় ৪টি নীতি'}
+          </h2>
+          <p style={{ fontSize: 14.5, color: '#64748B', maxWidth: 540, margin: '8px auto 0', lineHeight: 1.6 }}>
+            {isEn
+              ? 'Our operational standards are rooted in medical ethics, transparency, and relentless dedication to healthcare excellence.'
+              : 'যে মৌলিক নীতি ও অঙ্গীকারগুলোর ওপর ভিত্তি করে পরিচালিত হয় Doctor Booklet-এর প্রতিটি সেবা ও কার্যক্রম।'}
+          </p>
+        </div>
 
-              <div style={{
-                background: 'linear-gradient(135deg, #064E3B, #00B875)',
-                borderRadius: 14, padding: '16px 18px',
-                display: 'flex', gap: 14, alignItems: 'center',
-                boxShadow: '0 6px 20px rgba(0,184,117,0.2)'
-              }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <TrendingUp size={20} color="#fff" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 1 }}>
-                    {isEn ? 'Rapid Growth' : 'দ্রুত প্রবৃদ্ধি'}
-                  </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>
-                    {isEn ? '500+ new doctors onboarded every quarter' : 'প্রতি ত্রৈমাসিকে ৫০০+ নতুন ডাক্তার অনবোর্ড'}
-                  </div>
-                </div>
+        <Row className="g-3 g-md-4">
+          <Col md={6} lg={3}>
+            <div className="about-guarantee-card">
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #DCFCE7' }}>
+                <Clock size={20} />
               </div>
+              <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>রোগীর সময় ও মর্যাদা</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                সিরিয়ালের দীর্ঘ অনিশ্চয়তা দূর করে রোগীর প্রতিটি মুহূর্তের সময়ের সর্বোচ্চ মূল্যায়ন ও মর্যাদা নিশ্চিত করা আমাদের প্রধান দায়িত্ব।
+              </p>
             </div>
           </Col>
 
-          <Col lg={7}>
-            <div className="about-timeline">
-              {timeline.map((item, i) => (
-                <div className="about-timeline-item" key={i}>
-                  <div className="about-timeline-dot">
-                    <CheckCircle2 size={10} color="#fff" />
-                  </div>
-                  <div style={{
-                    background: 'var(--mc-white)', border: '1px solid var(--mc-border)',
-                    borderRadius: 14, padding: '16px 18px',
-                    boxShadow: i === timeline.length - 1 ? '0 4px 18px rgba(0,184,117,0.15)' : 'var(--mc-shadow)',
-                    borderLeft: i === timeline.length - 1 ? '3px solid #00B875' : '1px solid var(--mc-border)',
-                  }}>
-                    <div className="about-timeline-year">{item.year}</div>
-                    <div className="about-timeline-title">{item.title}</div>
-                    <div className="about-timeline-desc">{item.desc}</div>
-                  </div>
-                </div>
-              ))}
+          <Col md={6} lg={3}>
+            <div className="about-guarantee-card">
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #DBEAFE' }}>
+                <ShieldCheck size={20} />
+              </div>
+              <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>শতভাগ তথ্যের স্বচ্ছতা</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                কোনো প্রকার গোপনীয় বা অতিরিক্ত চার্জ নেই। ডাক্তার ও হাসপাতালের যাচাইকৃত তথ্য ও আসল ফি সবসময় উন্মুক্ত রাখা হয়।
+              </p>
+            </div>
+          </Col>
+
+          <Col md={6} lg={3}>
+            <div className="about-guarantee-card">
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: '#FAF5FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #F3E8FF' }}>
+                <Lock size={20} />
+              </div>
+              <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>ডেটা নিরাপত্তা ও সুরক্ষা</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                রোগীর ব্যক্তিগত স্বাস্থ্য তথ্য ও প্রেসক্রিপশন সম্পূর্ণ সুরক্ষিত, যা কখনোই কোনো বাণিজ্যিক প্রচারণায় তৃতীয় পক্ষের সাথে শেয়ার করা হয় না।
+              </p>
+            </div>
+          </Col>
+
+          <Col md={6} lg={3}>
+            <div className="about-guarantee-card">
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, border: '1px solid #FDE68A' }}>
+                <HeartHandshake size={20} />
+              </div>
+              <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>সার্বক্ষণিক নিবেদিত সহায়তা</h4>
+              <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                অ্যাপয়েন্টমেন্ট বাতিল, রিফান্ড বা যেকোনো সমস্যায় রোগী ও ডাক্তারের সহায়তায় আমাদের পেশাদার কাস্টমার সাপোর্ট টিম সর্বদা প্রস্তুত।
+              </p>
             </div>
           </Col>
         </Row>
       </Container>
 
       {/* ═══════════════════════════════════════════════════
-          LEADERSHIP TEAM
+          7. ENTERPRISE SMART CTA SECTION
       ═══════════════════════════════════════════════════ */}
-      <div style={{
-        background: isDark ? 'rgba(30,41,59,0.4)' : '#F1F5F9',
-        padding: '40px 0',
-        marginBottom: 44,
-        borderTop: '1px solid var(--mc-border)',
-        borderBottom: '1px solid var(--mc-border)'
-      }}>
-        <Container>
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div className="about-section-badge" style={{ margin: '0 auto 10px' }}>
-              <span className="dot" />
-              {isEn ? 'Leadership' : 'নেতৃত্ব'}
-            </div>
-            <h2 className="about-section-heading" style={{ marginBottom: 8 }}>
-              {isEn ? 'Meet Our Leadership Team' : 'আমাদের নেতৃত্ব দলের সাথে পরিচিত হন'}
-            </h2>
-            <p style={{ fontSize: 14.5, color: 'var(--mc-text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.55, fontWeight: 500 }}>
-              {isEn
-                ? 'Experienced clinicians and technologists united by a single purpose: improving healthcare access in Bangladesh.'
-                : 'অভিজ্ঞ চিকিৎসক ও প্রযুক্তিবিদরা একটি উদ্দেশ্যে একত্রিত: বাংলাদেশে স্বাস্থ্যসেবা অ্যাক্সেস উন্নত করা।'
-              }
-            </p>
-          </div>
+      <Container style={{ marginBottom: 20 }}>
+        <div className="about-cta-section">
+          {/* Ambient Lighting Orbs */}
+          <div className="about-cta-orb-1" />
+          <div className="about-cta-orb-2" />
+          <div className="about-cta-grid-bg" />
 
-          <Row className="g-3">
-            {team.map((member, i) => (
-              <Col xs={12} sm={6} lg={3} key={i}>
-                <div className="about-team-card">
-                  <div className="about-team-avatar" style={{ background: member.bg }}>
-                    {member.initials}
-                    <div className="about-team-avatar-check">
-                      <CheckCircle2 size={11} />
+          <Row className="align-items-center g-4" style={{ position: 'relative', zIndex: 3 }}>
+            {/* Left Content */}
+            <Col lg={7}>
+              <div className="about-cta-badge">
+                <Sparkles size={14} color="#34D399" />
+                <span>আজই শুরু করুন • ডিজিটাল স্বাস্থ্যসেবা</span>
+              </div>
+
+              <h2 className="about-cta-title">
+                {isEn ? 'Step into the Future of Smart Healthcare' : 'স্মার্ট স্বাস্থ্যসেবার আধুনিক অভিজ্ঞতায় যুক্ত হোন'}
+              </h2>
+
+              <p className="about-cta-desc">
+                {isEn
+                  ? 'Say goodbye to long counter queues and uncertain wait times. Book verified specialists, receive instant digital tokens, and track consultation schedules live from anywhere.'
+                  : 'দীর্ঘ লাইনে দাঁড়িয়ে সময় ও শ্রম নষ্ট করার দিন শেষ। ঘরে বসেই নিশ্চিত করুন বিশেষজ্ঞ ডাক্তারের সিরিয়াল এবং রিয়েল-টাইমে ট্র্যাক করুন আপনার চেম্বার শিডিউল।'}
+              </p>
+
+              {/* 3 Value Checkpoints */}
+              <div className="about-cta-check-list">
+                <div className="about-cta-check-item">
+                  <CheckCircle2 size={16} color="#34D399" />
+                  <span>কোনো বাড়তি বুকিং ফি নেই</span>
+                </div>
+                <div className="about-cta-check-item">
+                  <CheckCircle2 size={16} color="#34D399" />
+                  <span>লাইভ সিরিয়াল ট্র্যাকিং ও এসএমএস অ্যালার্ট</span>
+                </div>
+                <div className="about-cta-check-item">
+                  <CheckCircle2 size={16} color="#34D399" />
+                  <span>১০০% বিএমডিসি সনদ যাচাইকৃত ডাক্তার</span>
+                </div>
+              </div>
+            </Col>
+
+            {/* Right Interactive Mockup + Actions */}
+            <Col lg={5}>
+              <div className="about-cta-card-wrap">
+                {/* Live Serial Tracker Card Mockup */}
+                <div className="about-cta-mockup-card">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="about-cta-live-dot" />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#00B875', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        লাইভ সিরিয়াল ট্র্যাকিং
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, background: '#F0FDF4', color: '#00B875', padding: '2px 8px', borderRadius: 6, border: '1px solid #DCFCE7' }}>
+                      সক্রিয় সেশন
+                    </span>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #DCFCE7', flexShrink: 0 }}>
+                      <Stethoscope size={18} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        ডাঃ ফারহানা আহমেদ
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>মেডিসিন ও হৃদরোগ বিশেষজ্ঞ</div>
                     </div>
                   </div>
-                  <div className="about-team-name">{member.name}</div>
-                  <div className="about-team-role">{member.role}</div>
-                  <div className="about-team-desc">{member.desc}</div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-        </Container>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════
-          CTA SECTION
-      ═══════════════════════════════════════════════════ */}
-      <Container style={{ paddingBottom: 44 }}>
-        <div className="about-cta-section">
-          <Row className="align-items-center g-3">
-            <Col lg={7}>
-              <p style={{ fontSize: 10.5, fontWeight: 800, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-                {isEn ? 'Get Started Today' : 'আজই শুরু করুন'}
-              </p>
-              <h2 style={{ fontSize: 'clamp(22px, 3.5vw, 34px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.6px', lineHeight: 1.2, marginBottom: 10 }}>
-                {isEn
-                  ? 'Ready to Experience Smarter Healthcare?'
-                  : 'স্মার্ট স্বাস্থ্যসেবার অভিজ্ঞতা নিতে প্রস্তুত?'
-                }
-              </h2>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500, lineHeight: 1.55, marginBottom: 0 }}>
-                {isEn
-                  ? 'Join over 1 million patients who trust Doctor Booklet to connect them with verified specialists across Bangladesh.'
-                  : 'বাংলাদেশে যাচাইকৃত বিশেষজ্ঞদের সাথে সংযুক্ত করতে Doctor Booklet বিশ্বস্ত ১০ লাখেরও বেশি রোগীর দলে যোগ দিন।'
-                }
-              </p>
-            </Col>
-            <Col lg={5}>
-              <div className="d-flex flex-wrap gap-2 justifyContent-flex-start about-cta-buttons justify-content-lg-end">
-                <button className="about-cta-btn" onClick={() => navigate('/doctors')}>
-                  <Search size={15} />
-                  {isEn ? 'Find a Doctor' : 'ডাক্তার খুঁজুন'}
-                </button>
-                <button className="about-cta-btn-outline" onClick={() => navigate('/contact')}>
-                  {isEn ? 'Contact Us' : 'যোগাযোগ করুন'}
-                  <ArrowRight size={15} />
-                </button>
+                  <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '10px 8px', border: '1px solid #E2E8F0', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, textAlign: 'center', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 9.5, color: '#64748B', fontWeight: 700 }}>আপনার সিরিয়াল</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: '#00B875' }}>#১২</div>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: 9.5, color: '#64748B', fontWeight: 700 }}>বর্তমান রানিং</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: '#0284C7' }}>#০৯</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9.5, color: '#64748B', fontWeight: 700 }}>আনুমানিক অপেক্ষা</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 900, color: '#D97706' }}>~১৫ মিনিট</div>
+                    </div>
+                  </div>
+
+                  {/* Progress Line */}
+                  <div style={{ width: '100%', height: 5, background: '#E2E8F0', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ width: '75%', height: '100%', background: 'linear-gradient(90deg, #00B875 0%, #34D399 100%)', borderRadius: 99 }} />
+                  </div>
+                </div>
+
+                {/* Smart Action Buttons */}
+                <div className="about-cta-buttons-container">
+                  <button className="about-cta-btn" onClick={() => navigate('/doctors')}>
+                    <Search size={16} />
+                    <span>ডাক্তার খুঁজুন ও সিরিয়াল নিন</span>
+                  </button>
+                  <button className="about-cta-btn-outline" onClick={() => navigate('/support')}>
+                    <Headphones size={16} />
+                    <span>২৪/৭ হেল্পডেস্ক</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
               </div>
             </Col>
           </Row>
