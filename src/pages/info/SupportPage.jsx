@@ -282,6 +282,71 @@ export default function SupportPage() {
           width: 100%;
         }
 
+        /* ── HERO SECTION LUXURY ENTERPRISE STYLES ── */
+        .support-hero-section {
+          background: radial-gradient(130% 100% at 50% 0%, #064E3B 0%, #022C22 55%, #011C15 100%);
+          position: relative;
+          overflow: hidden;
+          color: #FFFFFF;
+          padding: 0 0 85px;
+        }
+
+        .support-hero-grid {
+          position: absolute;
+          inset: 0;
+          background-image: 
+            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+          background-size: 36px 36px;
+          mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
+          -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
+          pointer-events: none;
+        }
+
+        .support-hero-glow-1 {
+          position: absolute;
+          top: -140px;
+          right: 5%;
+          width: 550px;
+          height: 550px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(0, 184, 117, 0.28) 0%, rgba(6, 78, 59, 0.08) 50%, transparent 70%);
+          filter: blur(45px);
+          pointer-events: none;
+        }
+
+        .support-hero-glow-2 {
+          position: absolute;
+          top: 15%;
+          left: -100px;
+          width: 480px;
+          height: 480px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(6, 78, 59, 0.04) 50%, transparent 70%);
+          filter: blur(50px);
+          pointer-events: none;
+        }
+
+        .support-hero-glow-3 {
+          position: absolute;
+          bottom: -80px;
+          left: 35%;
+          width: 500px;
+          height: 300px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, transparent 70%);
+          filter: blur(55px);
+          pointer-events: none;
+        }
+
+        .support-hero-title {
+          color: #FFFFFF !important;
+          background: linear-gradient(180deg, #FFFFFF 0%, #E2FBE8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          text-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+        }
+
         @media (max-width: 768px) {
           .support-hero-section {
             padding: 0 0 52px !important;
@@ -411,17 +476,24 @@ export default function SupportPage() {
         }
       `}</style>
 
-      {/* ── HERO SECTION (ELEGANT & NO SEARCHBAR) ── */}
-      <section className="support-hero-section" style={{ 
-        background: 'linear-gradient(135deg, #013A28 0%, #00563B 55%, #009960 100%)', 
-        padding: '0 0 80px', 
-        color: 'white',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* Background Ambient Glows */}
-        <div style={{ position: 'absolute', top: -120, right: -120, width: 440, height: 440, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -110, left: -110, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.24) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* ── HERO SECTION (PREMIUM MEDICAL ENTERPRISE LOOK) ── */}
+      <section className="support-hero-section">
+        {/* Subtle Architectural Micro-Grid */}
+        <div className="support-hero-grid" />
+
+        {/* Ambient Glowing Orbs */}
+        <div className="support-hero-glow-1" />
+        <div className="support-hero-glow-2" />
+        <div className="support-hero-glow-3" />
+
+        {/* Architectural Subtle Ambient Light Wave */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.18, pointerEvents: 'none', overflow: 'hidden' }}>
+          <svg width="100%" height="100%" viewBox="0 0 1440 400" fill="none" preserveAspectRatio="none">
+            <path d="M-100 280 C300 400, 700 120, 1100 250 C1300 320, 1500 180, 1600 200" stroke="rgba(52, 211, 153, 0.45)" strokeWidth="1.5" fill="none" />
+            <path d="M-100 230 C350 350, 750 80, 1150 200 C1350 270, 1550 140, 1600 160" stroke="rgba(56, 189, 248, 0.35)" strokeWidth="1" strokeDasharray="6 6" fill="none" />
+            <path d="M-100 330 C250 450, 650 170, 1050 300 C1250 370, 1450 230, 1600 250" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="1" fill="none" />
+          </svg>
+        </div>
 
         <BreadcrumbHUD links={[{ label: 'সাপোর্ট ও সাহায্য কেন্দ্র' }]} variant="light" />
 
@@ -429,19 +501,20 @@ export default function SupportPage() {
           <Row className="justify-content-center text-center">
             <Col lg={8} md={10}>
               <div className="support-hero-badge" style={{ 
-                background: 'rgba(255, 255, 255, 0.15)', 
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                padding: '5px 18px', 
+                background: 'rgba(255, 255, 255, 0.12)', 
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                padding: '6px 18px', 
                 borderRadius: 99, 
-                fontSize: 12, 
+                fontSize: 12.5, 
                 fontWeight: 800,
-                marginBottom: 12,
+                marginBottom: 14,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 7,
+                gap: 8,
                 border: '1px solid rgba(255,255,255,0.22)',
-                color: '#DCFCE7'
+                color: '#DCFCE7',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
               }}>
                 <Sparkles size={14} color="#34D399" />
                 <span>{support.badge || '২৪/৭ কাস্টমার কেয়ার ও হেল্প ডেস্ক'}</span>
@@ -450,7 +523,7 @@ export default function SupportPage() {
               <h1 className="support-hero-title" style={{ 
                 fontSize: 'clamp(26px, 4.2vw, 46px)', 
                 fontWeight: 900, 
-                marginBottom: 10, 
+                marginBottom: 12, 
                 lineHeight: 1.25,
                 letterSpacing: '-0.5px' 
               }}>
@@ -459,9 +532,9 @@ export default function SupportPage() {
 
               <p className="support-hero-desc" style={{ 
                 fontSize: 'clamp(13px, 1.6vw, 16px)', 
-                opacity: 0.92, 
-                lineHeight: 1.6, 
-                maxWidth: 620, 
+                color: 'rgba(255, 255, 255, 0.88)', 
+                lineHeight: 1.65, 
+                maxWidth: 640, 
                 margin: '0 auto',
                 fontWeight: 400 
               }}>

@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import useLocations from '../../hooks/useLocations'
 import PasswordInput from '../../components/common/PasswordInput'
+import LegalDocumentModal from '../../components/common/LegalDocumentModal'
 import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
@@ -43,6 +44,8 @@ export default function HospitalRegisterPage() {
   })
   const [previews, setPreviews] = useState({ logo: null, banner: null })
   const [loading, setLoading] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [legalModal, setLegalModal] = useState({ open: false, type: 'terms' })
   const [errors, setErrors] = useState({})
 
   // Cascading locations
@@ -105,6 +108,7 @@ export default function HospitalRegisterPage() {
       if (form.password.length < 6) errs.password = 'Minimum 6 characters required'
     }
     if (form.password !== form.password_confirmation) errs.password_confirmation = 'Passwords do not match'
+    if (!agreedToTerms) errs.terms = 'শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি প্রদান বাধ্যতামূলক'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -305,6 +309,72 @@ export default function HospitalRegisterPage() {
             </div>
           </div>
 
+          {/* Terms & Privacy Consent Checkbox */}
+          <div style={{
+            margin: '20px 0',
+            padding: '12px 14px',
+            borderRadius: 12,
+            background: agreedToTerms ? 'rgba(2, 132, 199, 0.05)' : '#F8FAFC',
+            border: agreedToTerms ? '1.5px solid #0284c7' : '1.5px solid #E2E8F0',
+            transition: 'all 0.25s ease'
+          }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked)
+                  if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }))
+                }}
+                style={{ width: 18, height: 18, accentColor: '#0284c7', cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
+                আমি Doctor Booklet-এর{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setLegalModal({ open: true, type: 'terms' })
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: '#0284c7',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ব্যবহারের শর্তাবলী
+                </button>{' '}
+                এবং{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setLegalModal({ open: true, type: 'privacy' })
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: '#0284c7',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  গোপনীয়তা নীতি
+                </button>{' '}
+                পড়েছি এবং এতে সম্মতি জানাচ্ছি। <span style={{ color: '#EF4444' }}>*</span>
+              </span>
+            </label>
+          </div>
+          {errors.terms && <div className="auth-field-error" style={{ marginTop: -12, marginBottom: 16 }}>{errors.terms}</div>}
+
           {/* Footer */}
           <div className="auth-register-footer">
             <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
@@ -313,7 +383,18 @@ export default function HospitalRegisterPage() {
                 Login
               </span>
             </p>
-            <button type="submit" className="auth-btn-primary" style={{ width: 'auto', padding: '14px 40px', background: '#0284c7' }} disabled={loading}>
+            <button 
+              type="submit" 
+              className="auth-btn-primary" 
+              style={{ 
+                width: 'auto', 
+                padding: '14px 40px', 
+                background: '#0284c7',
+                opacity: (!agreedToTerms || loading) ? 0.6 : 1,
+                cursor: (!agreedToTerms || loading) ? 'not-allowed' : 'pointer'
+              }} 
+              disabled={loading || !agreedToTerms}
+            >
               {loading ? (
                 <><span className="spinner-border spinner-border-sm" /> Registering...</>
               ) : (
@@ -323,6 +404,17 @@ export default function HospitalRegisterPage() {
           </div>
         </form>
       </div>
+
+      {/* ── LEGAL DOCUMENT MODAL ── */}
+      <LegalDocumentModal
+        show={legalModal.open}
+        type={legalModal.type}
+        onClose={() => setLegalModal({ open: false, type: 'terms' })}
+        onAgree={() => {
+          setAgreedToTerms(true)
+          if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }))
+        }}
+      />
     </div>
   )
 }

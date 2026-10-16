@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
+import LegalDocumentModal from '../components/common/LegalDocumentModal'
 import '../styles/auth-premium.css'
 
 const HOSPITAL_TYPES = [
@@ -85,6 +86,8 @@ const RegisterPage = () => {
   const [throttleTimer, setThrottleTimer] = useState(0)
   const [verifying, setVerifying] = useState(false)
   const [verificationToken, setVerificationToken] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [legalModal, setLegalModal] = useState({ open: false, type: 'terms' })
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const otpRefs = useRef([])
 
@@ -378,6 +381,11 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFieldErrors({})
+
+    if (!agreedToTerms) {
+      setFieldErrors({ terms: 'রেজিস্ট্রেশন সম্পন্ন করতে ব্যবহারের শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি প্রদান করুন।' })
+      return
+    }
 
     if (form.password !== form.confirm) {
       setFieldErrors({ confirm: 'পাসওয়ার্ড মিলছে না!' })
@@ -1291,6 +1299,91 @@ const RegisterPage = () => {
                     </Col>
                   </Row>
 
+                  {/* ── TERMS & PRIVACY CONSENT CHECKBOX ── */}
+                  <div style={{
+                    marginBottom: 18,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: agreedToTerms ? 'rgba(0, 184, 117, 0.05)' : '#F8FAFC',
+                    border: agreedToTerms ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
+                    transition: 'all 0.25s ease'
+                  }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      cursor: 'pointer',
+                      margin: 0,
+                      userSelect: 'none'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => {
+                          setAgreedToTerms(e.target.checked)
+                          if (fieldErrors.terms) setFieldErrors(prev => ({ ...prev, terms: '' }))
+                        }}
+                        style={{
+                          width: 18,
+                          height: 18,
+                          accentColor: '#00B875',
+                          cursor: 'pointer',
+                          marginTop: 2,
+                          flexShrink: 0
+                        }}
+                      />
+                      <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
+                        আমি Doctor Booklet-এর{' '}
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setLegalModal({ open: true, type: 'terms' })
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            color: '#00B875',
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ব্যবহারের শর্তাবলী
+                        </button>{' '}
+                        এবং{' '}
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setLegalModal({ open: true, type: 'privacy' })
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            color: '#00B875',
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          গোপনীয়তা নীতি
+                        </button>{' '}
+                        পড়েছি এবং এতে সম্মতি জানাচ্ছি। <span style={{ color: '#EF4444' }}>*</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {fieldErrors.terms && (
+                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: -10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.terms}
+                    </p>
+                  )}
+
                   {fieldErrors.general && (
                     <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {fieldErrors.general}
@@ -1298,9 +1391,19 @@ const RegisterPage = () => {
                   )}
 
                   <Button
-                    type="submit" disabled={loading}
+                    type="submit" 
+                    disabled={loading || !agreedToTerms}
                     className={`w-100 auth-btn-premium ${cfg.btnClass}`}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: 8,
+                      opacity: (!agreedToTerms || loading) ? 0.6 : 1,
+                      cursor: (!agreedToTerms || loading) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s ease',
+                      filter: (!agreedToTerms && !loading) ? 'grayscale(35%)' : 'none'
+                    }}
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" /> প্রসেস হচ্ছে...</>
@@ -1369,6 +1472,16 @@ const RegisterPage = () => {
           </div>
         </div>
       </div>
+      {/* ── LEGAL DOCUMENT MODAL ── */}
+      <LegalDocumentModal
+        show={legalModal.open}
+        type={legalModal.type}
+        onClose={() => setLegalModal({ open: false, type: 'terms' })}
+        onAgree={() => {
+          setAgreedToTerms(true)
+          if (fieldErrors.terms) setFieldErrors(prev => ({ ...prev, terms: '' }))
+        }}
+      />
     </div>
   )
 }
