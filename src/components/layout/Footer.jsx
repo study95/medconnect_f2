@@ -48,6 +48,12 @@ function Footer() {
   const isLinkActive = (to) => {
     if (!to) return false
     if (to === '/' && location.pathname === '/') return true
+    if (to.includes('/legal')) {
+      if (location.pathname !== '/legal') return false
+      const currentTab = new URLSearchParams(location.search).get('tab') || 'terms'
+      const targetTab = new URLSearchParams(to.split('?')[1] || '').get('tab') || 'terms'
+      return currentTab === targetTab
+    }
     if (to !== '/' && location.pathname.startsWith(to)) return true
     return false
   }
@@ -69,9 +75,9 @@ function Footer() {
 
   const LEGAL_LINKS = [
     { label: 'আমাদের সম্পর্কে', to: '/about', icon: <IconInfoCircle size={16} /> },
-    { label: 'ব্যবহারের শর্তাবলী', to: '/legal', icon: <IconShieldCheck size={16} /> },
-    { label: 'গোপনীয়তা নীতি', to: '/legal', icon: <IconLock size={16} /> },
-    { label: 'রিফান্ড পলিসি', to: '/legal', icon: <IconReceiptRefund size={16} /> },
+    { label: 'ব্যবহারের শর্তাবলী', to: '/legal?tab=terms', icon: <IconShieldCheck size={16} /> },
+    { label: 'গোপনীয়তা নীতি', to: '/legal?tab=privacy', icon: <IconLock size={16} /> },
+    { label: 'রিফান্ড পলিসি', to: '/legal?tab=refund', icon: <IconReceiptRefund size={16} /> },
   ]
 
   const SOCIAL_LINKS = [
@@ -317,15 +323,33 @@ function Footer() {
             {copyrightText}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <Link to="/legal" style={{ color: '#064E3B', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#064E3B'}>
+            <Link 
+              to="/legal?tab=terms" 
+              style={{ 
+                color: isLinkActive('/legal?tab=terms') ? '#00B875' : '#064E3B', 
+                textDecoration: 'none', 
+                fontSize: 13, 
+                fontWeight: isLinkActive('/legal?tab=terms') ? 700 : 600, 
+                transition: 'color 0.2s' 
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
+              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=terms') ? '#00B875' : '#064E3B'}
+            >
               ব্যবহারের শর্তাবলী (Terms)
             </Link>
             <span style={{ color: '#86EFAC', fontSize: 12 }}>•</span>
-            <Link to="/legal" style={{ color: '#064E3B', textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#064E3B'}>
+            <Link 
+              to="/legal?tab=privacy" 
+              style={{ 
+                color: isLinkActive('/legal?tab=privacy') ? '#00B875' : '#064E3B', 
+                textDecoration: 'none', 
+                fontSize: 13, 
+                fontWeight: isLinkActive('/legal?tab=privacy') ? 700 : 600, 
+                transition: 'color 0.2s' 
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
+              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=privacy') ? '#00B875' : '#064E3B'}
+            >
               গোপনীয়তা নীতি (Privacy)
             </Link>
           </div>
