@@ -230,6 +230,51 @@ export default function ContactPage() {
           pointer-events: none;
         }
 
+        /* ── SLA HERO GRID ── */
+        .contact-sla-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          max-width: 580px;
+        }
+        .contact-sla-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 14px;
+          padding: 8px 14px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        @media (max-width: 768px) {
+          .contact-sla-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .contact-sla-card {
+            padding: 8px 10px !important;
+            border-radius: 12px !important;
+            gap: 8px !important;
+          }
+          .contact-sla-title {
+            font-size: 10.5px !important;
+          }
+          .contact-sla-desc {
+            font-size: 12px !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .contact-sla-grid {
+            gap: 6px !important;
+          }
+          .contact-sla-card {
+            padding: 6px 8px !important;
+          }
+        }
+
         /* ── QUICK ACTION STRIP ── */
         .contact-strip-container {
           margin-top: -60px;
@@ -486,30 +531,13 @@ export default function ContactPage() {
                 {contact.hero_subtitle || 'রোগী, নিবন্ধিত ডাক্তার কিংবা হাসপাতাল কর্তৃপক্ষ—যেকোনো প্রশ্ন, প্রযুক্তিগত সহায়তা বা প্রাতিষ্ঠানিক অংশীদারিত্বের জন্য আমাদের বিশেষজ্ঞ টিমের সাথে যোগাযোগ করুন।'}
               </p>
 
-              {/* Service SLA Highlights */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                gap: 10,
-                maxWidth: 580
-              }}>
+              {/* Service SLA Highlights: Balanced 2x2 Grid with Zero Gaps */}
+              <div className="contact-sla-grid">
                 {[
-                  { icon: <Clock size={16} />, title: 'গড় রেসপন্স টাইম', desc: '১৫ মিনিট' },
                   { icon: <ShieldCheck size={16} />, title: 'তথ্য সুরক্ষা', desc: '২৫৬-বিট এনক্রিপশন' },
                   { icon: <Headset size={16} />, title: 'সরাসরি হটলাইন', desc: '২৪/৭ ডেডিকেটেড' }
                 ].map((sla, i) => (
-                  <div key={i} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255, 255, 255, 0.16)',
-                    borderRadius: 14,
-                    padding: '8px 14px',
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
-                  }}>
+                  <div key={i} className="contact-sla-card">
                     <div style={{ 
                       width: 32, height: 32, borderRadius: 10,
                       background: 'rgba(52, 211, 153, 0.18)',
@@ -518,9 +546,9 @@ export default function ContactPage() {
                     }}>
                       {sla.icon}
                     </div>
-                    <div>
-                      <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11, fontWeight: 600 }}>{sla.title}</div>
-                      <div style={{ color: 'white', fontSize: 13.5, fontWeight: 800 }}>{sla.desc}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="contact-sla-title" style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sla.title}</div>
+                      <div className="contact-sla-desc" style={{ color: 'white', fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sla.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -914,10 +942,8 @@ export default function ContactPage() {
       {/* ── MAIN INTERACTIVE CONTACT SECTION ── */}
       <section style={{ padding: '48px 0 65px' }}>
         <Container>
-          <Row className="g-4">
-            {/* LEFT COLUMN: Enterprise Message Form */}
-            <Col lg={7} md={12}>
-              <div className="contact-form-card">
+          {/* 1. TOP: FULL WIDTH Enterprise Message Form (Layout Diagram Part 1) */}
+          <div className="contact-form-card" style={{ marginBottom: 30 }}>
                 {/* Header */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -1156,13 +1182,12 @@ export default function ContactPage() {
                   </Row>
                 </form>
               </div>
-            </Col>
 
-            {/* RIGHT COLUMN: Office Info & Map */}
-            <Col lg={5} md={12}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* 1. Office Details Card */}
-                <div className="contact-info-card">
+          {/* 2. BOTTOM: Office Details on Left & Map on Right (Layout Diagram Part 2) */}
+          <Row className="g-4 align-items-stretch">
+            {/* Bottom Left: Office Details Card */}
+            <Col lg={6} md={12}>
+              <div className="contact-info-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ 
@@ -1284,43 +1309,26 @@ export default function ContactPage() {
                     </div>
                   </div>
                 </div>
+            </Col>
 
-                {/* 2. Interactive Google Map Embed Card */}
-                <div id="office-map" style={{
-                  background: '#FFFFFF',
-                  borderRadius: 24,
-                  padding: 14,
-                  border: '1.5px solid #E2E8F0',
-                  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.04)',
-                  position: 'relative'
-                }}>
-                  <div style={{ borderRadius: 16, overflow: 'hidden', height: 215, position: 'relative' }}>
-                    {contact.map_embed ? (
-                      <iframe 
-                        src={contact.map_embed} 
-                        width="100%" 
-                        height="215" 
-                        style={{ border: 0 }} 
-                        allowFullScreen 
-                        loading="lazy" 
-                        referrerPolicy="no-referrer-when-downgrade" 
-                        title="Doctor Booklet Office Location Map" 
-                      />
-                    ) : (
-                      <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14608.036944849319!2d90.36710724874272!3d23.747049993356064!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b33cffc3fb%3A0x4a826f475fd312af!2sDhanmondi%2C%20Dhaka!5e0!3m2!1sen!2sbd!4v1710000000000!5m2!1sen!2sbd"
-                        width="100%"
-                        height="215"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Doctor Booklet Dhanmondi Map"
-                      />
-                    )}
-                  </div>
-                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', flexWrap: 'wrap', gap: 6 }}>
-                    <span style={{ fontSize: 12.5, color: '#475569', fontWeight: 700 }}>ঢাকা ধানমন্ডি সেন্ট্রাল অফিস</span>
+            {/* Bottom Right: Interactive Google Map Embed Card */}
+            <Col lg={6} md={12}>
+              <div id="office-map" className="contact-info-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ 
+                        width: 36, height: 36, borderRadius: 10, 
+                        background: '#EFF6FF', color: '#2563EB', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                      }}>
+                        <Navigation size={18} />
+                      </div>
+                      <h4 style={{ fontWeight: 800, color: '#0F172A', fontSize: 17, margin: 0 }}>
+                        ম্যাপ লোকেশন ও ডিরেকশন
+                      </h4>
+                    </div>
+
                     <a 
                       href="https://maps.google.com/?q=Dhanmondi,Dhaka" 
                       target="_blank" 
@@ -1339,6 +1347,37 @@ export default function ContactPage() {
                       <ExternalLink size={13} />
                     </a>
                   </div>
+
+                  <div style={{ borderRadius: 16, overflow: 'hidden', height: 260, position: 'relative' }}>
+                    {contact.map_embed ? (
+                      <iframe 
+                        src={contact.map_embed} 
+                        width="100%" 
+                        height="260" 
+                        style={{ border: 0 }} 
+                        allowFullScreen 
+                        loading="lazy" 
+                        referrerPolicy="no-referrer-when-downgrade" 
+                        title="Doctor Booklet Office Location Map" 
+                      />
+                    ) : (
+                      <iframe
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14608.036944849319!2d90.36710724874272!3d23.747049993356064!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b33cffc3fb%3A0x4a826f475fd312af!2sDhanmondi%2C%20Dhaka!5e0!3m2!1sen!2sbd!4v1710000000000!5m2!1sen!2sbd"
+                        width="100%"
+                        height="260"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Doctor Booklet Dhanmondi Map"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ fontSize: 12.5, color: '#475569', fontWeight: 700 }}>ঢাকা ধানমন্ডি সেন্ট্রাল অফিস</span>
+                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 700 }}>হেডকোয়ার্টার ক্যাম্পাস</span>
                 </div>
               </div>
             </Col>

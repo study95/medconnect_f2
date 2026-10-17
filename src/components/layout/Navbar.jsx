@@ -33,7 +33,7 @@ function AppNavbar() {
   const isDoctorDetailPage = isDetailPath('/doctors')
   const isAppViewDetailPage = isHospitalDetailPage || isDoctorDetailPage
   const isAuthPage = location.pathname.startsWith('/login') ||
-                     location.pathname.startsWith('/register') ||
+                     (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||
                      location.pathname.startsWith('/pending-verification') ||
                      location.pathname.startsWith('/forgot-password') ||
                      location.pathname.startsWith('/reset-password')

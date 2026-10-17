@@ -473,6 +473,127 @@ export default function SupportPage() {
             padding: 16px 14px !important;
             border-radius: 14px !important;
           }
+          .support-info-card, .support-office-card {
+            padding: 18px 16px !important;
+            border-radius: 20px !important;
+          }
+          .support-card-header {
+            margin-bottom: 14px !important;
+            gap: 8px !important;
+          }
+          .support-channel-item {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 13px 13px !important;
+            gap: 12px !important;
+          }
+          .support-channel-info {
+            width: 100% !important;
+            gap: 10px !important;
+          }
+          .support-channel-actions {
+            width: 100% !important;
+            display: flex !important;
+            gap: 8px !important;
+          }
+          .support-channel-btn-main {
+            flex: 1 !important;
+            justify-content: center !important;
+            padding: 10px 14px !important;
+            font-size: 13px !important;
+            border-radius: 10px !important;
+          }
+          .support-channel-btn-copy {
+            padding: 10px 14px !important;
+            font-size: 12.5px !important;
+            border-radius: 10px !important;
+          }
+        }
+
+        .support-info-card {
+          background: white;
+          border-radius: 24px;
+          padding: 26px 24px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 8px 25px rgba(0,0,0,0.03);
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justifyContent: space-between;
+        }
+        .support-office-card {
+          background: linear-gradient(145deg, #064E3B 0%, #022C22 100%);
+          border-radius: 24px;
+          padding: 26px 24px;
+          border: 1px solid rgba(52, 211, 153, 0.22);
+          box-shadow: 0 12px 30px rgba(2, 44, 34, 0.25);
+          position: relative;
+          overflow: hidden;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .support-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          gap: 12px;
+        }
+        .support-channel-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 16px;
+          background: #F8FAFC;
+          border-radius: 16px;
+          border: 1px solid #F1F5F9;
+          gap: 12px;
+          transition: all 0.2s ease;
+        }
+        .support-channel-item:hover {
+          border-color: #CBD5E1;
+          background: #F1F5F9;
+        }
+        .support-channel-info {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          min-width: 0;
+          flex: 1;
+        }
+        .support-channel-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .support-channel-btn-main {
+          padding: 8px 14px;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 12.5px;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        .support-channel-btn-copy {
+          padding: 8px 10px;
+          border-radius: 10px;
+          border: 1px solid #E2E8F0;
+          background: white;
+          color: #475569;
+          font-size: 11.5px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
         }
       `}</style>
 
@@ -709,9 +830,8 @@ export default function SupportPage() {
           </button>
         </div>
 
-        <Row className="g-4">
-          {/* MAIN LEFT CONTENT */}
-          <Col lg={8}>
+        {/* 1. TOP: FULL WIDTH INTERACTIVE SUPPORT SECTION (FAQ / Ticket / Track) */}
+        <div style={{ marginBottom: 30 }}>
             
             {/* ── TAB 1: FAQ ACCORDION HUB ── */}
             {activeMainTab === 'faq' && (
@@ -1350,76 +1470,153 @@ export default function SupportPage() {
                 </div>
               </div>
             )}
-          </Col>
+        </div>
 
-          {/* RIGHT SIDEBAR (PROFESSIONAL STATS & HOTLINES) */}
-          <Col lg={4}>
-            <div style={{ position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              {/* Direct Channels Box */}
-              <div style={{
-                background: 'white',
-                borderRadius: 20,
-                padding: '24px 22px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.03)'
-              }}>
-                <h5 style={{ fontWeight: 800, color: '#0F172A', marginBottom: 16, fontSize: 16 }}>
-                  সাপোর্ট চ্যানেলসমূহ
-                </h5>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {/* Phone */}
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Phone size={18} />
+        {/* 2. BOTTOM: Support Channels on Left & Office Hours on Right (Side-by-Side) */}
+        <Row className="g-4 align-items-stretch">
+          {/* Bottom Left: Support Channels Box */}
+          <Col lg={6} md={12}>
+            <div className="support-info-card">
+              <div>
+                <div className="support-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      background: '#F0FDF4',
+                      color: '#00B875',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <Headphones size={19} />
                     </div>
-                    <div style={{ flexGrow: 1 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>২৪/৭ হেল্পলাইন হটলাইন</div>
-                      <a href={`tel:${site.phone || '017XXXXXXXX'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>
-                        {site.phone || '017 XXXX XXXX'}
+                    <div>
+                      <h4 style={{ fontWeight: 800, color: '#0F172A', fontSize: 16, margin: 0, lineHeight: 1.2 }}>
+                        সাপোর্ট চ্যানেলসমূহ
+                      </h4>
+                      <p style={{ margin: '3px 0 0', fontSize: 11.5, color: '#64748B' }}>সরাসরি হেল্পডেস্কের সাথে কথা বলুন</p>
+                    </div>
+                  </div>
+                  <span style={{
+                    background: '#DCFCE7',
+                    color: '#166534',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '3px 9px',
+                    borderRadius: 99,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block', boxShadow: '0 0 6px #22C55E' }} />
+                    সক্রিয়
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Phone Helpline */}
+                  <div className="support-channel-item">
+                    <div className="support-channel-info">
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Phone size={18} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 2 }}>২৪/৭ হেল্পলাইন হটলাইন</div>
+                        <a href={`tel:${site.phone || '017XXXXXXXX'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 15, textDecoration: 'none', display: 'block', lineHeight: 1.2 }}>
+                          {site.phone || '017 XXXX XXXX'}
+                        </a>
+                      </div>
+                    </div>
+                    <div className="support-channel-actions">
+                      <a
+                        href={`tel:${site.phone || '017XXXXXXXX'}`}
+                        className="support-channel-btn-main"
+                        style={{
+                          background: '#00B875',
+                          color: 'white',
+                          boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)'
+                        }}
+                      >
+                        <Phone size={13} />
+                        <span>সরাসরি কল দিন</span>
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(site.phone || '017XXXXXXXX', 'phone')}
+                        className="support-channel-btn-copy"
+                        title="নম্বর কপি করুন"
+                      >
+                        {copiedText === 'phone' ? <CheckCircle2 size={13} color="#059669" /> : <Copy size={13} />}
+                        <span>কপি</span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Email */}
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Mail size={18} />
+                  {/* Email Support */}
+                  <div className="support-channel-item">
+                    <div className="support-channel-info">
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Mail size={18} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 2 }}>অফিসিয়াল ইমেইল সাপোর্ট</div>
+                        <a href={`mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 13.5, textDecoration: 'none', display: 'block', wordBreak: 'break-all', lineHeight: 1.2 }}>
+                          {site.email_support || 'support@doctorbooklet.com.bd'}
+                        </a>
+                      </div>
                     </div>
-                    <div style={{ flexGrow: 1 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>ইমেইল সাপোর্ট</div>
-                      <a href={`mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`} style={{ color: '#0F172A', fontWeight: 800, fontSize: 13, textDecoration: 'none', wordBreak: 'break-all' }}>
-                        {site.email_support || 'support@doctorbooklet.com.bd'}
+                    <div className="support-channel-actions">
+                      <a
+                        href={`mailto:${site.email_support || 'support@doctorbooklet.com.bd'}`}
+                        className="support-channel-btn-main"
+                        style={{
+                          background: '#2563EB',
+                          color: 'white',
+                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
+                        }}
+                      >
+                        <Mail size={13} />
+                        <span>ইমেইল পাঠান</span>
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(site.email_support || 'support@doctorbooklet.com.bd', 'email')}
+                        className="support-channel-btn-copy"
+                        title="ইমেইল কপি করুন"
+                      >
+                        {copiedText === 'email' ? <CheckCircle2 size={13} color="#059669" /> : <Copy size={13} />}
+                        <span>কপি</span>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </Col>
 
-              {/* Office Hours Box */}
-              <div style={{ 
-                background: 'linear-gradient(145deg, #064E3B 0%, #022C22 100%)', 
-                borderRadius: 22, 
-                padding: '24px 22px', 
-                border: '1px solid rgba(52, 211, 153, 0.22)',
-                boxShadow: '0 12px 30px rgba(2, 44, 34, 0.25)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                {/* Background glow accent */}
-                <div style={{
-                  position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 130,
-                  height: 130,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%)',
-                  pointerEvents: 'none'
-                }} />
+          {/* Bottom Right: Office Hours Box */}
+          <Col lg={6} md={12}>
+            <div className="support-office-card">
+              {/* Background glow accent */}
+              <div style={{
+                position: 'absolute',
+                top: -20,
+                right: -20,
+                width: 140,
+                height: 140,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%)',
+                pointerEvents: 'none'
+              }} />
 
+              <div>
                 {/* Top Header: Icon + Title & Live Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div className="support-card-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 38,
@@ -1435,26 +1632,30 @@ export default function SupportPage() {
                     }}>
                       <Clock size={19} />
                     </div>
-                    <span style={{ fontWeight: 800, margin: 0, fontSize: 16, color: '#FFFFFF', lineHeight: 1.2 }}>
-                      অফিস সময়সূচী
-                    </span>
+                    <div>
+                      <h4 style={{ fontWeight: 800, margin: 0, fontSize: 16, color: '#FFFFFF', lineHeight: 1.2 }}>
+                        অফিস সময়সূচী
+                      </h4>
+                      <p style={{ margin: '3px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)' }}>অফিস ও সরাসরি কার্যকাল</p>
+                    </div>
                   </div>
 
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     background: 'rgba(52, 211, 153, 0.15)',
                     border: '1px solid rgba(52, 211, 153, 0.35)',
-                    padding: '4px 10px',
+                    padding: '3px 9px',
                     borderRadius: 99,
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#6EE7B7',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 6px #34D399' }} />
-                    লাইভ সাপোর্ট সক্রিয়
+                    লাইভ সক্রিয়
                   </span>
                 </div>
 
@@ -1464,10 +1665,10 @@ export default function SupportPage() {
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: 14,
                   padding: '12px 14px',
-                  marginBottom: 14,
+                  marginBottom: 16,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 8
+                  gap: 9
                 }}>
                   {(site.office_hours || 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: সকাল ১০টা - বিকাল ৫টা')
                     .split('|')
@@ -1491,25 +1692,27 @@ export default function SupportPage() {
                       )
                     })}
                 </div>
+              </div>
 
-                {/* Response Time Badge */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: 'rgba(52, 211, 153, 0.1)',
-                  border: '1px solid rgba(52, 211, 153, 0.25)',
-                  borderRadius: 12,
-                  padding: '9px 12px',
-                  color: '#34D399',
-                  fontSize: 12,
-                  fontWeight: 700
-                }}>
+              {/* Response Time Badge at bottom of Right Card */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(52, 211, 153, 0.1)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                borderRadius: 12,
+                padding: '9px 12px',
+                color: '#34D399',
+                fontSize: 12,
+                fontWeight: 700
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <Clock size={15} style={{ flexShrink: 0 }} />
                   <span>গড় টিকিট রেসপন্স সময়: ২ ঘণ্টা</span>
                 </div>
+                <span style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 600 }}>দ্রুত সমাধান</span>
               </div>
-
             </div>
           </Col>
         </Row>

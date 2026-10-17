@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Container, Row, Col, Modal, Button } from 'react-bootstrap'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import {
   IconSearch, IconArrowRight, IconCheck, IconClock, IconShieldCheck,
@@ -13,9 +13,55 @@ import {
 
 export default function ServicesPage() {
   const navigate = useNavigate()
-  const [activeRole, setActiveRole] = useState('patient') // 'patient' | 'doctor' | 'hospital' | 'legal'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const validRoles = ['patient', 'doctor', 'hospital', 'legal']
+  const initialRole = searchParams.get('tab') || searchParams.get('role')
+  const [activeRole, setActiveRole] = useState(validRoles.includes(initialRole) ? initialRole : 'patient')
   const [showLegalDocModal, setShowLegalDocModal] = useState(false)
   const [selectedLegalDoc, setSelectedLegalDoc] = useState(null)
+
+  const tabsContainerRef = useRef(null)
+  const tabRefs = useRef({})
+
+  const scrollToActiveTab = (behavior = 'smooth') => {
+    const container = tabsContainerRef.current
+    const activeBtn = tabRefs.current[activeRole]
+    if (container && activeBtn) {
+      const scrollTarget = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2)
+      container.scrollTo({
+        left: Math.max(0, scrollTarget),
+        behavior
+      })
+    }
+  }
+
+  // Smoothly center the active tab in mobile view whenever activeRole changes
+  useEffect(() => {
+    scrollToActiveTab('smooth')
+    const timer = setTimeout(() => scrollToActiveTab('smooth'), 120)
+    return () => clearTimeout(timer)
+  }, [activeRole])
+
+  // Sync if URL query param changes
+  useEffect(() => {
+    const tab = searchParams.get('tab') || searchParams.get('role')
+    if (tab && validRoles.includes(tab) && tab !== activeRole) {
+      setActiveRole(tab)
+    }
+  }, [searchParams])
+
+  const handleRoleChange = (role, scrollSection = false) => {
+    setActiveRole(role)
+    setSearchParams({ tab: role }, { replace: true })
+    if (scrollSection) {
+      const tabsSection = document.getElementById('services-role-tabs')
+      if (tabsSection) {
+        const yOffset = -80 // account for fixed navbar height
+        const y = tabsSection.getBoundingClientRect().top + window.pageYOffset + yOffset
+        window.scrollTo({ top: y, behavior: 'smooth' })
+      }
+    }
+  }
 
   // ─── 1. SERVICES FOR PATIENTS ──────────────────────────────────────────────
   const patientServices = [
@@ -371,10 +417,17 @@ export default function ServicesPage() {
             display: none !important;
           }
           .services-role-btn {
-            padding: 7px 14px !important;
-            font-size: 12px !important;
+            padding: 8px 16px !important;
+            font-size: 12.5px !important;
             border-radius: 99px !important;
             gap: 6px !important;
+            flex-shrink: 0 !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          }
+          .services-role-btn-active {
+            font-weight: 900 !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+            transform: scale(1.02);
           }
           .services-main-container {
             padding-top: 20px !important;
@@ -612,7 +665,7 @@ export default function ServicesPage() {
                   Doctor Booklet তথ্যপ্রযুক্তি আইন অনুযায়ী একটি নিরপেক্ষ ইন্টারমিডিয়ারি। আমরা কোনো চিকিৎসা পরামর্শ দেই না; চিকিৎসকের সঙ্গে রোগীকে নির্বিঘ্নে যুক্ত করি।
                 </p>
                 <button
-                  onClick={() => setActiveRole('legal')}
+                  onClick={() => handleRoleChange('legal', true)}
                   style={{
                     width: '100%',
                     background: 'linear-gradient(135deg, #00B875 0%, #009E64 100%)',
@@ -641,12 +694,24 @@ export default function ServicesPage() {
       </section>
 
       {/* ─── ROLE SELECTOR TABS ────────────────────────────────────────────────── */}
-      <section className="services-sticky-tabs">
+      <section className="services-sticky-tabs" id="services-role-tabs">
         <Container>
-          <div className="services-tabs-scroll" style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', padding: '12px 0' }}>
+          <div
+            ref={tabsContainerRef}
+            className="services-tabs-scroll"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              overflowX: 'auto',
+              padding: '12px 0',
+              position: 'relative'
+            }}
+          >
             <button
-              className="services-role-btn"
-              onClick={() => setActiveRole('patient')}
+              ref={el => (tabRefs.current['patient'] = el)}
+              className={`services-role-btn ${activeRole === 'patient' ? 'services-role-btn-active' : ''}`}
+              onClick={() => handleRoleChange('patient')}
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
@@ -660,7 +725,8 @@ export default function ServicesPage() {
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                flexShrink: 0
               }}
             >
               <IconUsers size={18} color={activeRole === 'patient' ? '#00B875' : '#64748B'} />
@@ -668,8 +734,9 @@ export default function ServicesPage() {
             </button>
 
             <button
-              className="services-role-btn"
-              onClick={() => setActiveRole('doctor')}
+              ref={el => (tabRefs.current['doctor'] = el)}
+              className={`services-role-btn ${activeRole === 'doctor' ? 'services-role-btn-active' : ''}`}
+              onClick={() => handleRoleChange('doctor')}
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
@@ -683,7 +750,8 @@ export default function ServicesPage() {
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                flexShrink: 0
               }}
             >
               <IconStethoscope size={18} color={activeRole === 'doctor' ? '#0EA5E9' : '#64748B'} />
@@ -691,8 +759,9 @@ export default function ServicesPage() {
             </button>
 
             <button
-              className="services-role-btn"
-              onClick={() => setActiveRole('hospital')}
+              ref={el => (tabRefs.current['hospital'] = el)}
+              className={`services-role-btn ${activeRole === 'hospital' ? 'services-role-btn-active' : ''}`}
+              onClick={() => handleRoleChange('hospital')}
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
@@ -706,7 +775,8 @@ export default function ServicesPage() {
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                flexShrink: 0
               }}
             >
               <IconBuildingHospital size={18} color={activeRole === 'hospital' ? '#6366F1' : '#64748B'} />
@@ -714,8 +784,9 @@ export default function ServicesPage() {
             </button>
 
             <button
-              className="services-role-btn"
-              onClick={() => setActiveRole('legal')}
+              ref={el => (tabRefs.current['legal'] = el)}
+              className={`services-role-btn ${activeRole === 'legal' ? 'services-role-btn-active' : ''}`}
+              onClick={() => handleRoleChange('legal')}
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
@@ -729,7 +800,8 @@ export default function ServicesPage() {
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                flexShrink: 0
               }}
             >
               <IconShieldCheck size={18} color={activeRole === 'legal' ? '#D97706' : '#64748B'} />

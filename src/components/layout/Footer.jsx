@@ -33,7 +33,7 @@ function Footer() {
   }, [])
 
   const isAuthPage = location.pathname.startsWith('/login') ||
-                     location.pathname.startsWith('/register') ||
+                     (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||
                      location.pathname.startsWith('/pending-verification') ||
                      location.pathname.startsWith('/forgot-password') ||
                      location.pathname.startsWith('/reset-password')
@@ -94,26 +94,26 @@ function Footer() {
         key={link.label} 
         to={link.to} 
         style={{
-          color: active ? '#00B875' : '#064E3B',
+          color: active ? '#34D399' : 'rgba(255, 255, 255, 0.72)',
           textDecoration: 'none',
           fontSize: 14,
-          fontWeight: active ? 700 : 600,
+          fontWeight: active ? 700 : 500,
           transition: 'all 0.25s ease',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
         }}
         onMouseEnter={e => { 
-          e.currentTarget.style.color = '#00B875'
+          e.currentTarget.style.color = '#34D399'
           e.currentTarget.style.transform = 'translateX(6px)' 
         }}
         onMouseLeave={e => { 
-          e.currentTarget.style.color = active ? '#00B875' : '#064E3B'
+          e.currentTarget.style.color = active ? '#34D399' : 'rgba(255, 255, 255, 0.72)'
           e.currentTarget.style.transform = 'translateX(0)' 
         }}
       >
         <span style={{ 
-          color: '#00B875', 
+          color: '#34D399', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
@@ -133,9 +133,9 @@ function Footer() {
         key={link.label} 
         to={link.to} 
         style={{
-          color: active ? '#00B875' : '#064E3B',
-          background: active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
-          border: active ? '1px solid #00B875' : '1px solid #DCFCE7',
+          color: active ? '#34D399' : 'rgba(255, 255, 255, 0.85)',
+          background: active ? 'rgba(0, 184, 117, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+          border: active ? '1px solid #34D399' : '1px solid rgba(255, 255, 255, 0.1)',
           textDecoration: 'none',
           fontSize: 15,
           fontWeight: active ? 700 : 600,
@@ -149,7 +149,7 @@ function Footer() {
           fontFamily: "'Inter', 'Hind Siliguri', sans-serif"
         }}
       >
-        <span style={{ color: '#00B875', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ color: '#34D399', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
           {link.icon}
         </span>
         <span>{link.label}</span>
@@ -161,38 +161,76 @@ function Footer() {
     <footer 
       className="d-none d-lg-block"
       style={{ 
-        background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)', 
-        padding: '44px 0 30px', 
+        background: 'linear-gradient(180deg, #021B14 0%, #041611 50%, #010D0A 100%)', 
+        padding: '56px 0 32px', 
         position: 'relative', 
         overflow: 'hidden',
-        color: '#02382B',
+        color: '#FFFFFF',
         fontFamily: "'Hind Siliguri', sans-serif"
       }}
     >
-      {/* Aesthetic Background Glows */}
-      <div style={{ position: 'absolute', bottom: -120, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, height: 300, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.08) 0%, transparent 75%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'radial-gradient(circle, rgba(0, 184, 117, 0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* Radiant Top Accent Bar */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '2px',
+        background: 'linear-gradient(90deg, transparent 0%, #00B875 30%, #38BDF8 70%, transparent 100%)',
+        zIndex: 2
+      }} />
 
-      <Container>
+      {/* Atmospheric Background Glows & Subtle Micro-Grid */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '-80px', 
+        left: '12%', 
+        width: '450px', 
+        height: '350px', 
+        background: 'radial-gradient(circle, rgba(0, 184, 117, 0.14) 0%, transparent 70%)', 
+        filter: 'blur(70px)', 
+        pointerEvents: 'none' 
+      }} />
+      <div style={{ 
+        position: 'absolute', 
+        bottom: '-100px', 
+        right: '10%', 
+        width: '500px', 
+        height: '400px', 
+        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%)', 
+        filter: 'blur(80px)', 
+        pointerEvents: 'none' 
+      }} />
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(to right, rgba(52, 211, 153, 0.025) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(52, 211, 153, 0.025) 1px, transparent 1px)
+        `,
+        backgroundSize: '36px 36px',
+        pointerEvents: 'none'
+      }} />
+
+      <Container style={{ position: 'relative', zIndex: 1 }}>
         <Row className="g-5">
           {/* 1. BRAND & STORY */}
           <Col lg={4} className="mb-4 mb-lg-0">
-            <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginBottom: 24 }}>
+            <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginBottom: 22 }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet Logo" 
                 style={{ 
-                  height: '48px', 
+                  height: '44px', 
                   width: 'auto', 
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 2px 8px rgba(0, 184, 117, 0.15))' 
+                  objectFit: 'contain'
                 }} 
               />
             </Link>
-            <p style={{ color: '#064E3B', fontSize: 15, lineHeight: 1.7, marginBottom: 32, maxWidth: 340, opacity: 0.9 }}>
+            <p style={{ color: 'rgba(255, 255, 255, 0.72)', fontSize: 14, lineHeight: 1.7, marginBottom: 28, maxWidth: 340 }}>
               {site.tagline || 'আমরা আধুনিক প্রযুক্তির মাধ্যমে স্বাস্থ্যসেবাকে আপনার দোরগোড়ায় পৌঁছে দিতে প্রতিশ্রুতিবদ্ধ। বিশ্বস্ত ডাক্তার ও উন্নত হাসপাতালের সাথে যুক্ত থাকুন Doctor Booklet-এর মাধ্যমে।'}
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
               {SOCIAL_LINKS.map((link, i) => (
                 <a 
                   key={i} 
@@ -201,28 +239,28 @@ function Footer() {
                     width: 38, 
                     height: 38, 
                     borderRadius: 10, 
-                    background: '#FFFFFF', 
-                    border: '1px solid #BBF7D0', 
+                    background: 'rgba(255, 255, 255, 0.06)', 
+                    border: '1px solid rgba(255, 255, 255, 0.12)', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 
-                    color: '#059669', 
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 2px 6px rgba(0, 184, 117, 0.08)'
+                    color: 'rgba(255, 255, 255, 0.8)', 
+                    transition: 'all 0.25s ease',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
                   }}
                   onMouseEnter={e => { 
                     e.currentTarget.style.background = '#00B875'
                     e.currentTarget.style.color = '#FFFFFF'
-                    e.currentTarget.style.borderColor = '#00B875'
+                    e.currentTarget.style.borderColor = '#34D399'
                     e.currentTarget.style.transform = 'translateY(-3px)' 
-                    e.currentTarget.style.boxShadow = '0 6px 14px rgba(0, 184, 117, 0.25)'
+                    e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 184, 117, 0.4)'
                   }}
                   onMouseLeave={e => { 
-                    e.currentTarget.style.background = '#FFFFFF'
-                    e.currentTarget.style.color = '#059669'
-                    e.currentTarget.style.borderColor = '#BBF7D0'
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
                     e.currentTarget.style.transform = 'translateY(0)' 
-                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 184, 117, 0.08)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)'
                   }}
                 >
                   {link.icon}
@@ -234,13 +272,13 @@ function Footer() {
           {/* 2. QUICK LINKS */}
           <Col lg={2}>
             <h6 style={{ 
-              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#FFFFFF', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 22, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#34D399', borderRadius: 2 }}></span>
               দ্রুত লিঙ্ক
             </h6>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {QUICK_LINKS.map(link => renderFooterLink(link))}
             </div>
           </Col>
@@ -248,13 +286,13 @@ function Footer() {
           {/* 3. FOR PARTNERS */}
           <Col lg={3}>
             <h6 style={{ 
-              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#FFFFFF', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 22, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#34D399', borderRadius: 2 }}></span>
               পার্টনারশিপ
             </h6>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {PARTNER_LINKS.map(link => renderFooterLink(link))}
             </div>
           </Col>
@@ -262,93 +300,54 @@ function Footer() {
           {/* 4. LEGAL & CONTACT */}
           <Col lg={3}>
             <h6 style={{ 
-              color: '#02382B', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24, 
+              color: '#FFFFFF', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 22, 
               display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <span style={{ width: 4, height: 14, background: '#00B875', borderRadius: 2 }}></span>
+              <span style={{ width: 4, height: 14, background: '#34D399', borderRadius: 2 }}></span>
               আইনি ও সহায়তা
             </h6>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {LEGAL_LINKS.map(link => renderFooterLink(link))}
-            </div>
-            
-            <div className="d-lg-none" style={{ 
-              padding: '24px', borderRadius: 20, background: 'rgba(255,255,255,0.7)', 
-              border: '1px solid #BBF7D0', maxWidth: 320
-            }}>
-               <h6 style={{ color: '#02382B', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 20 }}>যোগাযোগ করুন</h6>
-               
-               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
-                        <IconPhone size={18} />
-                     </div>
-                     <div>
-                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>হেল্পলাইন</p>
-                        <p style={{ margin: 0, color: '#00B875', fontSize: 15, fontWeight: 900 }}>{site.phone || '017 XXXX XXXX'}</p>
-                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
-                        <IconMail size={18} />
-                     </div>
-                     <div>
-                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ইমেইল</p>
-                        <p style={{ margin: 0, color: '#02382B', fontSize: 14, fontWeight: 700 }}>{site.email || 'info@doctorbooklet.com.bd'}</p>
-                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0, 184, 117, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875', marginTop: 2 }}>
-                        <IconMapPin size={18} />
-                     </div>
-                     <div>
-                        <p style={{ margin: 0, color: '#065F46', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ঠিকানা</p>
-                        <p style={{ margin: 0, color: '#064E3B', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{site.address || 'বনানী, ঢাকা-১২১৩, বাংলাদেশ'}</p>
-                     </div>
-                  </div>
-               </div>
             </div>
           </Col>
         </Row>
 
-        {/* BOTTOM BAR */}
+        {/* BOTTOM COPYRIGHT BAR */}
         <div style={{ 
-          marginTop: 60, paddingTop: 30, borderTop: '1px solid #BBF7D0', 
+          marginTop: 48, paddingTop: 26, borderTop: '1px solid rgba(255, 255, 255, 0.08)', 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          flexWrap: 'wrap', gap: 20
+          flexWrap: 'wrap', gap: 16
         }}>
-          <p style={{ color: '#064E3B', fontSize: 13, margin: 0, fontWeight: 600, opacity: 0.9 }}>
+          <p style={{ color: 'rgba(255, 255, 255, 0.55)', fontSize: 13, margin: 0, fontWeight: 500 }}>
             {copyrightText}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <Link 
               to="/legal?tab=terms" 
               style={{ 
-                color: isLinkActive('/legal?tab=terms') ? '#00B875' : '#064E3B', 
+                color: isLinkActive('/legal?tab=terms') ? '#34D399' : 'rgba(255, 255, 255, 0.65)', 
                 textDecoration: 'none', 
                 fontSize: 13, 
-                fontWeight: isLinkActive('/legal?tab=terms') ? 700 : 600, 
+                fontWeight: isLinkActive('/legal?tab=terms') ? 700 : 500, 
                 transition: 'color 0.2s' 
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=terms') ? '#00B875' : '#064E3B'}
+              onMouseEnter={e => e.currentTarget.style.color = '#34D399'}
+              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=terms') ? '#34D399' : 'rgba(255, 255, 255, 0.65)'}
             >
               ব্যবহারের শর্তাবলী (Terms)
             </Link>
-            <span style={{ color: '#86EFAC', fontSize: 12 }}>•</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.2)', fontSize: 12 }}>•</span>
             <Link 
               to="/legal?tab=privacy" 
               style={{ 
-                color: isLinkActive('/legal?tab=privacy') ? '#00B875' : '#064E3B', 
+                color: isLinkActive('/legal?tab=privacy') ? '#34D399' : 'rgba(255, 255, 255, 0.65)', 
                 textDecoration: 'none', 
                 fontSize: 13, 
-                fontWeight: isLinkActive('/legal?tab=privacy') ? 700 : 600, 
+                fontWeight: isLinkActive('/legal?tab=privacy') ? 700 : 500, 
                 transition: 'color 0.2s' 
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#00B875'}
-              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=privacy') ? '#00B875' : '#064E3B'}
+              onMouseEnter={e => e.currentTarget.style.color = '#34D399'}
+              onMouseLeave={e => e.currentTarget.style.color = isLinkActive('/legal?tab=privacy') ? '#34D399' : 'rgba(255, 255, 255, 0.65)'}
             >
               গোপনীয়তা নীতি (Privacy)
             </Link>
