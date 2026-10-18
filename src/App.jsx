@@ -5,7 +5,6 @@ import Footer        from './components/layout/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import ScrollToTop   from './components/common/ScrollToTop'
 import BackToTop     from './components/common/BackToTop'
-import WelcomeModal  from './components/common/WelcomeModal'
 import FloatingBottomNav from './components/layout/FloatingBottomNav'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import GlobalDialog from './components/common/GlobalDialog'
@@ -571,7 +570,6 @@ function App() {
             element={
               <>
                 <AppNavbar />
-                <WelcomeModal />
                 <Routes>
                   {/* Auth Routes (Responsive: desktop clean card, mobile top & bottom nav) */}
                   <Route path="/login"                      element={<LoginPage />} />

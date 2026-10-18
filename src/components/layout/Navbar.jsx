@@ -110,7 +110,7 @@ function AppNavbar() {
     <>
       <style>{`
         :root {
-          --header-height: ${isAuthPage ? '0px' : (scrolled ? '110px' : '116px')};
+          --header-height: ${isAuthPage ? '0px' : (scrolled ? '66px' : '102px')};
         }
         .page-wrapper {
           padding-top: var(--header-height) !important;
@@ -126,105 +126,127 @@ function AppNavbar() {
         }
 
         .db-topbar {
-          background-color: #00B875;
-          color: #ffffff;
-          font-size: 13px;
+          background: linear-gradient(90deg, #00B875 0%, #009E64 50%, #008754 100%);
+          color: #FFFFFF;
+          font-size: 12.5px;
           font-weight: 500;
-          height: 40px;
+          height: 36px;
           display: flex;
           align-items: center;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
 
         .db-topbar-link {
-          color: #ffffff;
+          color: rgba(255, 255, 255, 0.92);
           text-decoration: none;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          font-size: 13px;
+          gap: 5px;
+          font-size: 12.5px;
           font-weight: 600;
-          transition: opacity 0.2s ease;
+          transition: all 0.2s ease;
         }
         .db-topbar-link:hover {
-          color: #ffffff;
-          opacity: 0.85;
+          color: #FFFFFF;
+          opacity: 1;
+          transform: translateY(-0.5px);
+          text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
         }
 
         .db-topbar-auth-btn {
-          background-color: rgba(255, 255, 255, 0.2);
-          color: #ffffff;
-          padding: 4px 14px;
-          border-radius: 6px;
-          font-size: 13px;
+          background-color: rgba(255, 255, 255, 0.18);
+          color: #FFFFFF;
+          border: 1px solid rgba(255, 255, 255, 0.38);
+          backdrop-filter: blur(4px);
+          padding: 3px 14px;
+          border-radius: 99px;
+          font-size: 12px;
           font-weight: 700;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          transition: background-color 0.2s ease;
+          transition: all 0.2s ease;
         }
         .db-topbar-auth-btn:hover {
-          background-color: rgba(255, 255, 255, 0.3);
-          color: #ffffff;
+          background-color: #FFFFFF;
+          color: #00803D;
+          border-color: #FFFFFF;
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+          transform: translateY(-1px);
         }
 
-        /* MAIN NAVBAR */
+        /* MAIN NAVBAR (Glassmorphism & Crisp Border) */
         .db-main-header {
-          background: #ffffff;
-          box-shadow: ${scrolled ? '0 4px 20px rgba(0,0,0,0.06)' : '0 1px 4px rgba(0,0,0,0.03)'};
-          border-bottom: 1px solid #eef2f6;
-          height: ${scrolled ? '70px' : '76px'};
+          background: rgba(255, 255, 255, 0.96);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          box-shadow: ${scrolled ? '0 8px 25px rgba(0,0,0,0.06)' : '0 2px 12px rgba(0,0,0,0.02)'};
+          border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+          height: ${scrolled ? '66px' : '68px'};
           transition: all 0.3s ease;
           display: flex;
           align-items: center;
         }
 
         .db-nav-item {
-          color: #1e293b;
-          font-size: 15px;
+          color: #334155;
+          font-size: 14.5px;
           font-weight: 700;
-          padding: 8px 16px !important;
+          padding: 8px 14px !important;
           border-radius: 8px;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          position: relative;
           transition: all 0.2s ease;
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
         .db-nav-item:hover {
           color: #00B875;
-          background-color: rgba(0, 184, 117, 0.08);
+          background-color: rgba(0, 184, 117, 0.06);
         }
         .db-nav-item.active-item {
-          background-color: rgba(0, 184, 117, 0.12) !important;
+          background-color: transparent !important;
           color: #00B875 !important;
-          font-weight: 700;
+          font-weight: 850;
+        }
+        .db-nav-item.active-item::after {
+          content: '';
+          position: absolute;
+          bottom: 0px;
+          left: 12px;
+          right: 12px;
+          height: 2.5px;
+          background: #00B875;
+          border-radius: 99px;
+          box-shadow: 0 2px 6px rgba(0, 184, 117, 0.35);
         }
 
         .db-btn-primary {
-          background-color: #00B875;
+          background: linear-gradient(135deg, #00B875 0%, #00966D 100%);
           color: #ffffff;
-          border: none;
-          padding: 9px 18px;
-          border-radius: 8px;
+          border: 1px solid #34D399;
+          padding: 9px 20px;
+          border-radius: 12px;
           font-size: 14px;
-          font-weight: 700;
+          font-weight: 800;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          transition: all 0.25s ease;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.28);
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
         .db-btn-primary:hover {
-          background-color: #009E64;
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
           color: #ffffff;
-          transform: translateY(-1px);
-          box-shadow: 0 6px 18px rgba(0, 184, 117, 0.35);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 22px rgba(0, 184, 117, 0.45);
         }
 
         .db-btn-outline {
@@ -484,7 +506,7 @@ function AppNavbar() {
                     className={`db-nav-item ${isActive ? 'active-item' : ''}`}
                   >
                     {item.isHome && (
-                      <Home size={16} strokeWidth={2.2} style={{ color: isActive ? '#084d2f' : '#1e293b' }} />
+                      <Home size={16} strokeWidth={2.2} style={{ color: isActive ? '#00B875' : '#475569' }} />
                     )}
                     <span>{item.label}</span>
                   </Nav.Link>

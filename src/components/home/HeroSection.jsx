@@ -1588,28 +1588,99 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         overflow: 'hidden'
       }}
     >
-      {/* Dynamic Background Layer */}
-      <div className="hero-bg-dynamic" style={{
-        position: 'absolute',
-        inset: -14,
-        backgroundImage: `url('${heroBgImage}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center 36%',
-        backgroundRepeat: 'no-repeat',
-        filter: 'blur(2.5px) brightness(0.88) contrast(1.05)',
-        transform: 'scale(1.05)',
-        zIndex: -2,
-        pointerEvents: 'none',
-        transition: 'background-image 0.5s ease'
-      }} />
-      {/* Dark overlay */}
-      <div className="hero-bg-dark-overlay" style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.75) 45%, rgba(11, 25, 44, 0.82) 100%)',
-        zIndex: -1,
-        pointerEvents: 'none'
-      }} />
+      {/* ── ULTRA-PREMIUM MODERN HEALTH-TECH BACKGROUND CANVAS (OPTION B) ── */}
+      <div className="hero-ambient-canvas" aria-hidden="true">
+        {/* 1. Base Gradient Canvas */}
+        <div className="hero-canvas-base" />
+
+        {/* 2. High-Tech Geometric Grid Overlay */}
+        <div className="hero-canvas-grid" />
+
+        {/* 3. Luminous Radial Glow Accents (Breathing & Animated) */}
+        <div className="hero-ambient-glow hero-glow-left" />
+        <div className="hero-ambient-glow hero-glow-right" />
+        <div className="hero-ambient-glow hero-glow-center-spotlight" />
+
+        {/* 4. Medical ECG / Heartbeat Wave & Tech Wave Curves (SVG) */}
+        <div className="hero-ecg-wave-wrapper">
+          <svg
+            className="hero-ecg-svg"
+            viewBox="0 0 1440 180"
+            preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="heroWaveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00B875" stopOpacity="0.08" />
+                <stop offset="50%" stopColor="#38BDF8" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#00B875" stopOpacity="0.08" />
+              </linearGradient>
+              <linearGradient id="heroWaveGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#064E3B" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="#022018" stopOpacity="0.30" />
+              </linearGradient>
+              <linearGradient id="heroEcgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#34D399" stopOpacity="0.08" />
+                <stop offset="25%" stopColor="#34D399" stopOpacity="0.30" />
+                <stop offset="50%" stopColor="#00B875" stopOpacity="0.48" />
+                <stop offset="75%" stopColor="#38BDF8" stopOpacity="0.38" />
+                <stop offset="100%" stopColor="#34D399" stopOpacity="0.08" />
+              </linearGradient>
+              <filter id="heroEcgGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            {/* Subtle harmonic curved flowing waves */}
+            <path
+              d="M 0,115 Q 360,65 720,105 T 1440,90 L 1440,180 L 0,180 Z"
+              fill="url(#heroWaveGrad1)"
+            />
+            <path
+              d="M 0,135 Q 360,95 720,125 T 1440,110 L 1440,180 L 0,180 Z"
+              fill="url(#heroWaveGrad2)"
+            />
+
+            {/* ECG Base Path (Soft Glowing Line) */}
+            <path
+              d="M 0,110 L 380,110 L 395,110 L 405,104 L 412,116 L 424,42 L 436,145 L 446,98 L 458,110 L 478,102 L 495,110 L 880,110 L 895,110 L 905,104 L 912,116 L 924,36 L 936,150 L 946,95 L 958,110 L 978,100 L 995,110 L 1440,110"
+              stroke="url(#heroEcgGrad)"
+              strokeWidth="1.8"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.35"
+            />
+
+            {/* ECG Pulse Traveling Blip (Animated Living Heartbeat Line) */}
+            <path
+              className="hero-ecg-pulse-travel"
+              d="M 0,110 L 380,110 L 395,110 L 405,104 L 412,116 L 424,42 L 436,145 L 446,98 L 458,110 L 478,102 L 495,110 L 880,110 L 895,110 L 905,104 L 912,116 L 924,36 L 936,150 L 946,95 L 958,110 L 978,100 L 995,110 L 1440,110"
+              stroke="#00E599"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#heroEcgGlow)"
+            />
+          </svg>
+        </div>
+
+        {/* 5. Smooth Bottom Section Transition Gradient */}
+        <div className="hero-bottom-fade-blend" />
+
+        {/* 6. Optional: Custom CMS uploaded image overlay */}
+        {hero.bg_image_url && hero.bg_image_url !== '/images/city_hero_bg.jpg' && (
+          <div
+            className="hero-cms-bg-overlay"
+            style={{ backgroundImage: `url('${hero.bg_image_url}')` }}
+          />
+        )}
+      </div>
       {/* Location Popup */}
       {showLocationPopup && (
         <LocationPopup
@@ -2541,6 +2612,167 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           overflow: hidden;
         }
 
+        /* ── Ultra-Premium Modern Health-Tech Background Canvas (Option B) ──── */
+        .hero-ambient-canvas {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          pointer-events: none;
+          z-index: -1;
+        }
+
+        .hero-canvas-base {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(145deg, #011811 0%, #032A20 42%, #053B2D 72%, #082635 100%);
+          z-index: 1;
+        }
+
+        .hero-canvas-grid {
+          position: absolute;
+          inset: 0;
+          background-image: 
+            linear-gradient(to right, rgba(52, 211, 153, 0.048) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(52, 211, 153, 0.048) 1px, transparent 1px);
+          background-size: 38px 38px;
+          z-index: 2;
+        }
+
+        .hero-ambient-glow {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          filter: blur(28px);
+          z-index: 3;
+          will-change: transform, opacity;
+        }
+
+        .hero-glow-left {
+          top: -100px;
+          left: -80px;
+          width: 540px;
+          height: 540px;
+          background: radial-gradient(circle, rgba(0, 184, 117, 0.30) 0%, transparent 68%);
+          animation: heroGlowPulseLeft 9s ease-in-out infinite alternate;
+        }
+
+        .hero-glow-right {
+          top: -90px;
+          right: -80px;
+          width: 580px;
+          height: 580px;
+          background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 68%);
+          animation: heroGlowPulseRight 11s ease-in-out infinite alternate;
+        }
+
+        .hero-glow-center-spotlight {
+          top: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 880px;
+          height: 440px;
+          border-radius: 50%;
+          background: radial-gradient(ellipse at 50% 45%, rgba(0, 184, 117, 0.17) 0%, rgba(56, 189, 248, 0.07) 45%, transparent 72%);
+          filter: blur(22px);
+          animation: heroSpotlightPulse 7s ease-in-out infinite alternate;
+        }
+
+        @keyframes heroGlowPulseLeft {
+          0% {
+            transform: scale(1) translate3d(0, 0, 0);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.16) translate3d(20px, 16px, 0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes heroGlowPulseRight {
+          0% {
+            transform: scale(1) translate3d(0, 0, 0);
+            opacity: 0.75;
+          }
+          100% {
+            transform: scale(1.14) translate3d(-18px, 20px, 0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes heroSpotlightPulse {
+          0% {
+            transform: translateX(-50%) scale(0.96);
+            opacity: 0.82;
+          }
+          100% {
+            transform: translateX(-50%) scale(1.05);
+            opacity: 1;
+          }
+        }
+
+        /* ── Medical Wave & ECG Pulse Line ── */
+        .hero-ecg-wave-wrapper {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 180px;
+          z-index: 4;
+          pointer-events: none;
+        }
+
+        .hero-ecg-svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+
+        .hero-ecg-pulse-travel {
+          stroke-dasharray: 120 1600;
+          stroke-dashoffset: 1720;
+          animation: heroEcgTravel 5.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        }
+
+        @keyframes heroEcgTravel {
+          0% {
+            stroke-dashoffset: 1720;
+            opacity: 0;
+          }
+          8% {
+            opacity: 1;
+          }
+          92% {
+            opacity: 1;
+          }
+          100% {
+            stroke-dashoffset: 0;
+            opacity: 0;
+          }
+        }
+
+        /* ── Bottom Fade / Section Transition Blend ── */
+        .hero-bottom-fade-blend {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 70px;
+          background: linear-gradient(to bottom, transparent 0%, rgba(1, 24, 17, 0.45) 55%, rgba(1, 24, 17, 0.92) 100%);
+          z-index: 5;
+          pointer-events: none;
+        }
+
+        .hero-cms-bg-overlay {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center;
+          opacity: 0.16;
+          mix-blend-mode: overlay;
+          z-index: 2;
+          pointer-events: none;
+        }
+
 
 
 
@@ -2964,7 +3196,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: block !important;
           }
           .hero-bg-dynamic,
-          .hero-bg-dark-overlay {
+          .hero-bg-dark-overlay,
+          .hero-ambient-canvas {
             display: none !important;
           }
           .hero-section-main {
