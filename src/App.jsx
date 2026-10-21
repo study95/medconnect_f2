@@ -88,6 +88,7 @@ const PrescriptionListPage = lazy(() => import('./pages/admin/prescriptions/Pres
 const HighlightManagementPage = lazy(() => import('./pages/admin/highlights/HighlightManagementPage'))
 const PrescriptionFormPage = lazy(() => import('./pages/admin/prescriptions/PrescriptionFormPage'))
 const PrescriptionViewPage = lazy(() => import('./pages/admin/prescriptions/PrescriptionViewPage'))
+const PrescriptionVerifyPage = lazy(() => import('./pages/PrescriptionVerifyPage'))
 const DoctorNotesPage      = lazy(() => import('./pages/admin/prescriptions/DoctorNotesPage'))
 const MedicineListPage    = lazy(() => import('./pages/admin/medicines/MedicineListPage'))
 const MedicineFormPage    = lazy(() => import('./pages/admin/medicines/MedicineFormPage'))
@@ -630,6 +631,8 @@ function App() {
                   <Route path="/my-appointments/:id"  element={<ProtectedRoute><AppointmentTicketPage /></ProtectedRoute>} />
                   <Route path="/appointment-ticket/:id" element={<ProtectedRoute><AppointmentTicketPage /></ProtectedRoute>} />
                   <Route path="/prescriptions/view/:id" element={<ProtectedRoute><PrescriptionViewPage /></ProtectedRoute>} />
+                  <Route path="/rx/view/:id"            element={<PrescriptionVerifyPage />} />
+                  <Route path="/rx/verify/:id"          element={<PrescriptionVerifyPage />} />
                   <Route path="/profile"              element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                   <Route path="*" element={<NotFoundPage />} />
