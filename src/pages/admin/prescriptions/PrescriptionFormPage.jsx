@@ -486,6 +486,7 @@ export default function PrescriptionFormPage() {
   // Auto-Save & Draft State
   const [activeDraftId, setActiveDraftId] = useState(() => (isEdit && id ? id : null))
   const [isDraftStatus, setIsDraftStatus] = useState(false)
+  const [rxVersion, setRxVersion] = useState(null)
   // draftKey is stable even when doctorScopeId is null — uses 'anon' as fallback so the restore
   // effect fires once when doctorScopeId resolves to a real value (changes from null)
   const draftKey = doctorScopeId
@@ -1784,6 +1785,9 @@ export default function PrescriptionFormPage() {
             if (p.status === 'draft') {
               setIsDraftStatus(true)
               setActiveDraftId(p.public_id || p.id)
+              if (p.version !== undefined && p.version !== null) {
+                setRxVersion(Number(p.version))
+              }
             } else {
               setIsDraftStatus(false)
               showError({
@@ -1942,6 +1946,9 @@ export default function PrescriptionFormPage() {
             if (p && p.status === 'draft') {
               setIsDraftStatus(true)
               setActiveDraftId(p.public_id || p.id)
+              if (p.version !== undefined && p.version !== null) {
+                setRxVersion(Number(p.version))
+              }
               setForm(prev => ({
                 ...prev,
                 appointment_id: appointmentId,
@@ -2376,6 +2383,7 @@ export default function PrescriptionFormPage() {
           const updatePayload = {
             chamber_id: activeForm.chamber_id || undefined,
             status: 'draft',
+            ...(rxVersion !== null ? { version: rxVersion } : {}),
             diagnosis: activeForm.diagnosis || '',
             medicines: cleanMeds,
             advice: activeForm.advice || '',
@@ -2394,7 +2402,11 @@ export default function PrescriptionFormPage() {
             registration_no: activeForm.registration_no || activeForm.patient_public_id || '',
             visited_at: resolvedVisitedAt
           }
-          await updatePrescription(currentDraftId, updatePayload)
+          const res = await updatePrescription(currentDraftId, updatePayload)
+          const updatedVer = res?.data?.data?.version ?? res?.data?.version
+          if (updatedVer !== undefined && updatedVer !== null) {
+            setRxVersion(Number(updatedVer))
+          }
           setIsDraftStatus(true)
         } else {
           // CREATE — use appointment_public_id for backend resolution
@@ -2422,6 +2434,10 @@ export default function PrescriptionFormPage() {
           }
           const res = await createPrescription(createPayload)
           const newDraftId = res.data?.data?.public_id || res.data?.data?.id || res.data?.public_id || res.data?.id
+          const createdVer = res?.data?.data?.version ?? res?.data?.version
+          if (createdVer !== undefined && createdVer !== null) {
+            setRxVersion(Number(createdVer))
+          }
           if (newDraftId) {
             setActiveDraftId(newDraftId)
             setIsDraftStatus(true)
@@ -2444,7 +2460,12 @@ export default function PrescriptionFormPage() {
     } catch (err) {
       console.error('Failed to save draft:', err)
       setAutoSaveStatus('unsaved')
-      if (!silent) {
+      if (err?.response?.status === 409) {
+        showError({
+          title: 'Version Conflict (অন্য ট্যাবে আপডেট হয়েছে)',
+          message: 'এই প্রেসক্রিপশন ড্রাফটটি অন্য কোনো ট্যাব বা ডিভাইসে আপডেট করা হয়েছে। অনুগ্রহ করে পেজটি রিলোড করুন।'
+        })
+      } else if (!silent) {
         showError({ title: 'Save Error', message: getErrorMessage(err, 'Could not save draft.') })
       }
     }
@@ -3774,6 +3795,7 @@ export default function PrescriptionFormPage() {
     const basePayload = {
       chamber_id: form.chamber_id || undefined,
       status: 'finalized',
+      ...(rxVersion !== null ? { version: rxVersion } : {}),
       diagnosis: form.diagnosis.trim(),
       medicines: cleanMeds,
       advice: form.advice,
@@ -3843,11 +3865,18 @@ export default function PrescriptionFormPage() {
       }
     } catch (err) {
       console.error('Prescription save error:', err, err?.response?.data)
-      const serverMsg = err?.response?.data?.message || (err?.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : null)
-      showError({
-        title: 'প্রেসক্রিপশন সেভ করা যায়নি',
-        message: getErrorMessage(err, serverMsg || 'প্রেসক্রিপশনটি সিস্টেমে সেভ করা সম্ভব হয়নি। অনুগ্রহ করে তথ্য পরীক্ষা করে আবার চেষ্টা করুন।')
-      })
+      if (err?.response?.status === 409) {
+        showError({
+          title: 'Version Conflict (প্রেসক্রিপশন কনফ্লিক্ট - 409)',
+          message: err?.response?.data?.message || 'এই প্রেসক্রিপশনটি অন্য কোনো ট্যাব বা সেশনে ইতোমধ্যে পরিবর্তন বা ফাইনালাইজ করা হয়েছে। অনুগ্রহ করে পেজটি রিলোড করুন।'
+        })
+      } else {
+        const serverMsg = err?.response?.data?.message || (err?.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : null)
+        showError({
+          title: 'প্রেসক্রিপশন সেভ করা যায়নি',
+          message: getErrorMessage(err, serverMsg || 'প্রেসক্রিপশনটি সিস্টেমে সেভ করা সম্ভব হয়নি। অনুগ্রহ করে তথ্য পরীক্ষা করে আবার চেষ্টা করুন।')
+        })
+      }
     } finally {
       setSaving(false)
     }
