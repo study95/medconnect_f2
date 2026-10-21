@@ -266,6 +266,17 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     localStorage.removeItem('userType')
+    // Purge any cached clinical prescription drafts or patient notes from shared browser storage
+    try {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('dr_rx_draft_') || key.startsWith('dr_notes_'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k))
+    } catch (e) {}
     setUser(null)
     setUserType(null)
   }

@@ -44,9 +44,14 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template },
     ? patientIdVal 
     : (rx.id && rx.id !== 'preview' ? `RX-${rx.id}` : 'RX-LIVE');
 
+  const rxPublicId = rx.public_id || (typeof rx.id === 'string' && rx.id.startsWith('RX-') ? rx.id : null);
+  const sigPrefix = rx.digital_hash ? String(rx.digital_hash).slice(0, 16) : '';
+  const verifyTargetId = rxPublicId || rx.id || regNo;
+  const sigQuery = sigPrefix ? `?sig=${encodeURIComponent(sigPrefix)}` : '';
+
   const verificationUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/rx/view/${rx.id || regNo}` 
-    : `https://medconnect.com/rx/view/${regNo}`;
+    ? `${window.location.origin}/rx/view/${verifyTargetId}${sigQuery}` 
+    : `https://medconnect.com/rx/view/${verifyTargetId}${sigQuery}`;
 
   // Formatted Name: name(patient_id)
   const cleanPatientName = (patientNameVal || '').replace(/\s*\([A-Z0-9-]+\)$/i, '').trim();
