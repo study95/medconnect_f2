@@ -12,6 +12,8 @@ import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import SearchableSelect from '../../../components/common/SearchableSelect'
 import useDebounce from '../../../hooks/useDebounce'
+import { CalendarCheck, Printer } from 'lucide-react'
+import AppointmentPrintModal from '../../../components/admin/AppointmentPrintModal'
 
 function TableCheckbox({ checked, indeterminate, onChange, title }) {
   return (
@@ -99,6 +101,7 @@ export default function AppointmentListPage() {
   const [showFilters, setShowFilters] = useState(Boolean(initialStatus))
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showPrintModal, setShowPrintModal] = useState(false)
 
   // Filters State
   const [search, setSearch] = useState('')
@@ -113,6 +116,33 @@ export default function AppointmentListPage() {
   const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Today's local date in 'YYYY-MM-DD'
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    const yearVal = d.getFullYear()
+    const monthVal = String(d.getMonth() + 1).padStart(2, '0')
+    const dayVal = String(d.getDate()).padStart(2, '0')
+    return `${yearVal}-${monthVal}-${dayVal}`
+  }, [])
+
+  // Check if Today's quick filter is active
+  const isTodayActive = useMemo(() => {
+    return dateFrom === todayStr && dateTo === todayStr && !month && !year
+  }, [dateFrom, dateTo, month, year, todayStr])
+
+  const handleToggleToday = () => {
+    if (isTodayActive) {
+      setDateFrom('')
+      setDateTo('')
+    } else {
+      setDateFrom(todayStr)
+      setDateTo(todayStr)
+      setMonth('')
+      setYear('')
+      setCurrentPage(1)
+    }
+  }
 
   // Reset to page 1 whenever any filter or search changes
   useEffect(() => {
@@ -243,13 +273,95 @@ export default function AppointmentListPage() {
 
   return (
     <div className="admin-container">
-      <div className="admin-page-header">
+      <div
+        className="admin-page-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 14,
+          marginBottom: 20
+        }}
+      >
         <div>
-          <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
+          <h2 className="admin-page-title" style={{ color: 'var(--admin-text)', margin: 0 }}>
             <span style={{ marginRight: 12 }}>📅</span>
             Appointment Management
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Track patient bookings and manage clinical schedules</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)', margin: '4px 0 0 0' }}>
+            Track patient bookings and manage clinical schedules
+          </p>
+        </div>
+
+        {/* Action Controls: Quick Today Filter, Print & Export */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Today's Appointments Quick Button */}
+          <button
+            type="button"
+            onClick={handleToggleToday}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 16px',
+              borderRadius: 12,
+              border: isTodayActive ? '1.5px solid #00B875' : '1.5px solid var(--admin-border, #E2E8F0)',
+              background: isTodayActive
+                ? 'linear-gradient(135deg, #00B875 0%, #059669 100%)'
+                : 'var(--admin-card-bg, #FFFFFF)',
+              color: isTodayActive ? '#FFFFFF' : 'var(--admin-text, #0F172A)',
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: isTodayActive
+                ? '0 4px 14px rgba(0, 184, 117, 0.35)'
+                : '0 1px 3px rgba(0,0,0,0.04)',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <CalendarCheck size={16} />
+            <span>আজকের অ্যাপয়েন্টমেন্ট</span>
+            {isTodayActive && (
+              <span
+                style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  padding: '1px 7px',
+                  borderRadius: 99,
+                  marginLeft: 2
+                }}
+              >
+                ✓ ফিল্টার অন
+              </span>
+            )}
+          </button>
+
+          {/* Print & Report Sheet Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowPrintModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 16px',
+              borderRadius: 12,
+              border: '1.5px solid #0284C7',
+              background: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <Printer size={16} />
+            <span>প্রিন্ট ও রিপোর্ট</span>
+          </button>
         </div>
       </div>
 
@@ -264,8 +376,11 @@ export default function AppointmentListPage() {
         hasActiveFilters={Boolean(dateFrom || dateTo || month || year || doctorId || hospitalId || roleFilter || statusFilter || search)}
         onClearFilters={clearFilters}
         activeFilters={[
-          dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
-          dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
+          isTodayActive
+            ? { key: 'today', label: '📅 ফিল্টার: আজকের অ্যাপয়েন্টমেন্ট', onRemove: () => { setDateFrom(''); setDateTo('') } }
+            : null,
+          !isTodayActive && dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          !isTodayActive && dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
           month && { key: 'month', label: `Month: ${months.find(m => String(m.id) === String(month))?.name || month}`, onRemove: () => setMonth('') },
           year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
@@ -789,6 +904,17 @@ export default function AppointmentListPage() {
         onConfirm={handleBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
         loading={bulkDeleting}
+      />
+
+      <AppointmentPrintModal
+        show={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        appointments={appointments}
+        total={total}
+        filters={serverFilters}
+        doctors={doctors}
+        hospitals={hospitals}
+        user={user}
       />
 
       <style dangerouslySetInnerHTML={{ __html: `

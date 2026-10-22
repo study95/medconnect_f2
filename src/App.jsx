@@ -649,6 +649,7 @@ function App() {
         <GlobalDialog />
         <Toaster 
           position="top-right" 
+          containerStyle={{ zIndex: 999999 }}
           toastOptions={{ 
             duration: 3500,
             style: {
