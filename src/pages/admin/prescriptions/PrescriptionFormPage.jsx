@@ -3365,7 +3365,8 @@ export default function PrescriptionFormPage() {
     }
     return 'DOB: Not specified'
   })()
-  const visitNo = form.visit_no || appointmentInfo?.visit_no || appointmentInfo?.serial_number || appointmentInfo?.serial_no || (appointmentInfo?.appointment_number ? `#${appointmentInfo.appointment_number}` : '01')
+  const rawVisitNo = form.visit_no || appointmentInfo?.visit_no || appointmentInfo?.serial_number || appointmentInfo?.serial_no || (appointmentInfo?.appointment_number ? String(appointmentInfo.appointment_number) : '01')
+  const visitNo = String(rawVisitNo).replace(/^#+/, '')
 
   // Real-time Active Counters — only counted when doctor has written/added items
   const activeMedicinesCount = form.medicines.filter(m => (m.medicine_name || '').trim().length > 0).length
@@ -4056,7 +4057,7 @@ export default function PrescriptionFormPage() {
             <div className="dr-patient-meta-block">
               <span className="dr-meta-label">Visit & Time</span>
               <span className="dr-meta-value" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0d9488', fontWeight: 700 }}>
-                <span>Visit #{visitNo}</span>
+                <span>Visit {visitNo}</span>
                 <span style={{ color: '#64748b', fontWeight: 500 }}>
                   <Clock size={11} style={{ display: 'inline', marginRight: 2 }} />
                   {appointmentInfo?.appointment_time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
@@ -6152,7 +6153,7 @@ export default function PrescriptionFormPage() {
                 ) : clinicalTimeline.length === 0 ? (
                   <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
                     <AlertCircle size={18} style={{ margin: '0 auto 6px', display: 'block', opacity: 0.6 }} />
-                    No previous clinical records found. This is their 1st visit (Visit #01).
+                    No previous clinical records found. This is their 1st visit (Visit 01).
                   </div>
                 ) : (
                   clinicalTimeline.map((ev, idx) => {
@@ -6163,7 +6164,7 @@ export default function PrescriptionFormPage() {
                       : 'Past Date'
                     const occurredTime = p.visiting_time_display 
                       || (ev.occurred_at ? new Date(ev.occurred_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '')
-                    const visitNoBadge = p.visit_no_display || (ev.visit_no ? `Visit #${String(ev.visit_no).padStart(2, '0')}` : null)
+                    const visitNoBadge = p.visit_no_display ? `Visit ${p.visit_no_display}` : (ev.visit_no ? `Visit ${String(ev.visit_no).padStart(2, '0')}` : null)
                     const medicinesCount = p.medicines_count || (Array.isArray(p.medicines) ? p.medicines.length : 0)
 
                     return (
