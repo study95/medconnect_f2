@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Container, Row, Col } from 'react-bootstrap'
+import { Container, Row, Col, Modal } from 'react-bootstrap'
 import { 
   MapPin, Phone, Mail, Globe, Clock, Send, ShieldCheck, 
   Headset, CheckCircle2, Copy, ExternalLink,
   Building2, ArrowRight, MessageSquare, ChevronDown,
   Sparkles, MessageCircle, User, Stethoscope, 
-  CreditCard, Wrench, Navigation, Check, HelpCircle
+  CreditCard, Wrench, Navigation, Check, HelpCircle, Plus, Minus, AlertTriangle,
+  Search, RefreshCw, Calendar, ArrowLeft, X
 } from 'lucide-react'
-import { getContent } from '../utils/contentService'
+import { getContent, fetchContentFromBackend } from '../utils/contentService'
+import axiosInstance from '../api/axiosInstance'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 
 export default function ContactPage() {
@@ -17,25 +19,40 @@ export default function ContactPage() {
   useEffect(() => {
     const handleUpdate = () => setCms(getContent())
     window.addEventListener('cms-updated', handleUpdate)
+    fetchContentFromBackend()
     return () => window.removeEventListener('cms-updated', handleUpdate)
   }, [])
 
   const site = cms.site || {}
   const contact = cms.contact || {}
+  const faqCms = cms.faq || {}
 
+  const [activeFormTab, setActiveFormTab] = useState('send') // 'send' or 'track'
   const [activeDepartment, setActiveDepartment] = useState('general')
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
     phone: '', 
-    subject: 'সাধারণ জিজ্ঞাসা ও রোগী সেবা', 
+    subject: 'অ্যাপয়েন্টমেন্ট ও রোগী সেবা', 
     extraField: '', 
     message: '' 
   })
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [copiedField, setCopiedField] = useState(null)
   const [activeFaq, setActiveFaq] = useState(null)
+
+  // Token ID (CID) & Modal state for public contact messages
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [newCidToken, setNewCidToken] = useState('')
+  const [copiedCid, setCopiedCid] = useState(false)
+
+  // Public Tracking state
+  const [trackCid, setTrackCid] = useState('')
+  const [trackLoading, setTrackLoading] = useState(false)
+  const [trackResult, setTrackResult] = useState(null)
+  const [trackError, setTrackError] = useState('')
 
   // Determine if office is currently open (BD time Saturday to Thursday 9:00 AM - 8:00 PM)
   const [isOfficeOpen, setIsOfficeOpen] = useState(true)
@@ -59,42 +76,42 @@ export default function ContactPage() {
   const DEPARTMENTS = [
     {
       id: 'general',
-      label: 'সাধারণ ও রোগী সেবা',
+      label: 'অ্যাপয়েন্টমেন্ট ও রোগী সেবা',
       icon: <Headset size={16} />,
       badge: 'গড় রেসপন্স ১৫ মিনিট',
-      placeholderSubject: 'সাধারণ জিজ্ঞাসা ও অ্যাপয়েন্টমেন্ট সংক্রান্ত',
+      placeholderSubject: 'অ্যাপয়েন্টমেন্ট ও রোগী সেবা',
       extraLabel: null
     },
     {
       id: 'doctor',
-      label: 'ডাক্তার অনবোর্ডিং',
+      label: 'ডাক্তার নিবন্ধন সেবা',
       icon: <Stethoscope size={16} />,
       badge: 'ভেরিফিকেশন টিম',
-      placeholderSubject: 'ডাক্তার নিবন্ধন ও ডিজিটাল চেম্বার',
+      placeholderSubject: 'ডাক্তার নিবন্ধন সেবা',
       extraLabel: 'বিএমডিসি নম্বর (BMDC Reg No)'
     },
     {
       id: 'hospital',
-      label: 'হাসপাতাল পার্টনারশিপ',
+      label: 'হাসপাতাল ও ক্লিনিক সেবা',
       icon: <Building2 size={16} />,
       badge: 'প্রাতিষ্ঠানিক সাপোর্ট',
-      placeholderSubject: 'হাসপাতাল / ডায়াগনস্টিক সফটওয়্যার ইন্টিগ্রেশন',
+      placeholderSubject: 'হাসপাতাল ও ক্লিনিক সেবা',
       extraLabel: 'হাসপাতাল / প্রতিষ্ঠানের নাম'
     },
     {
       id: 'billing',
-      label: 'বিলিং ও পেমেন্ট',
+      label: 'ফি ও পেমেন্ট সংক্রান্ত',
       icon: <CreditCard size={16} />,
       badge: 'অ্যাকাউন্টস ডেস্ক',
-      placeholderSubject: 'পেমেন্ট ভেরিফিকেশন ও ইনভয়েস',
+      placeholderSubject: 'ফি ও পেমেন্ট সংক্রান্ত',
       extraLabel: 'ট্রানজ্যাকশন আইডি (ঐচ্ছিক)'
     },
     {
       id: 'tech',
-      label: 'কারিগরি সহায়তা',
+      label: 'লগইন ও টেকনিক্যাল সাপোর্ট',
       icon: <Wrench size={16} />,
       badge: 'আইটি সাপোর্ট',
-      placeholderSubject: 'সিস্টেম এরর বা বাগ রিপোর্ট',
+      placeholderSubject: 'লগইন ও টেকনিক্যাল সাপোর্ট',
       extraLabel: 'ডিভাইস বা ব্রাউজার বিবরণ'
     }
   ]
@@ -103,7 +120,7 @@ export default function ContactPage() {
     setActiveDepartment(dept.id)
     setForm(prev => ({
       ...prev,
-      subject: dept.placeholderSubject
+      subject: dept.label
     }))
   }
 
@@ -113,18 +130,68 @@ export default function ContactPage() {
       return
     }
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-    setForm({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      subject: DEPARTMENTS.find(d => d.id === activeDepartment)?.placeholderSubject || 'সাধারণ জিজ্ঞাসা', 
-      extraField: '', 
-      message: '' 
-    })
-    setLoading(false)
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 6000)
+    setSubmitError('')
+    setSubmitted(false)
+
+    try {
+      const activeDeptObj = DEPARTMENTS.find(d => d.id === activeDepartment)
+      const fullSubject = form.extraField?.trim()
+        ? `${form.subject} (${activeDeptObj?.extraLabel || 'রেফারেন্স'}: ${form.extraField.trim()})`
+        : form.subject
+
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        department: form.subject,
+        extra_field: form.extraField?.trim() || null,
+        subject: fullSubject,
+        message: form.message.trim(),
+      }
+
+      const res = await axiosInstance.post('/contact-messages', payload)
+      const generatedCid = res.data?.token_id || res.data?.data?.token_id || ''
+
+      setNewCidToken(generatedCid)
+      setShowSuccessModal(true)
+
+      setForm({ 
+        name: '', 
+        email: '', 
+        phone: '', 
+        subject: DEPARTMENTS.find(d => d.id === activeDepartment)?.label || 'অ্যাপয়েন্টমেন্ট ও রোগী সেবা', 
+        extraField: '', 
+        message: '' 
+      })
+      setSubmitted(true)
+      setTimeout(() => setSubmitted(false), 8000)
+    } catch (err) {
+      const msg = err.response?.data?.message || 'বার্তা পাঠানো সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন বা হেল্পলাইনে কল করুন।'
+      setSubmitError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTrack = async (cidToTrack) => {
+    const token = (cidToTrack !== undefined ? cidToTrack : trackCid).trim().toUpperCase()
+    if (!token) {
+      setTrackError('অনুগ্রহ করে ট্র্যাকিং আইডি (CID) লিখুন।')
+      return
+    }
+    setTrackLoading(true)
+    setTrackError('')
+    setTrackResult(null)
+
+    try {
+      const res = await axiosInstance.get(`/contact-messages/track/${token}`)
+      setTrackResult(res.data)
+    } catch (err) {
+      const msg = err.response?.data?.message || 'এই ট্র্যাকিং আইডি (CID) দিয়ে কোনো বার্তা খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সঠিক আইডিটি দিন।'
+      setTrackError(msg)
+    } finally {
+      setTrackLoading(false)
+    }
   }
 
   const handleCopy = (text, fieldName) => {
@@ -135,7 +202,7 @@ export default function ContactPage() {
     setTimeout(() => setCopiedField(null), 2500)
   }
 
-  const FAQS = [
+  const DEFAULT_FAQS = [
     {
       q: 'অনলাইনে সিরিয়াল নেওয়ার পর এসএমএস না আসলে কী করব?',
       a: 'সাধারণত সিরিয়াল নিশ্চিত হওয়ামাত্রই স্বয়ংক্রিয় এসএমএস প্রেরিত হয়। মোবাইল নেটওয়ার্ক বিলম্বের কারণে এসএমএস না পেলে আপনার ড্যাশবোর্ডের "আমার সিরিয়াল" সেকশনে লগইন করে তাৎক্ষণিক ডিজিটাল টিকিট ডাউনলোড বা দেখতে পারেন অথবা আমাদের হেল্পলাইনে কল করুন।'
@@ -154,8 +221,22 @@ export default function ContactPage() {
     }
   ]
 
-  const phoneValue = contact.phone || site.phone || '01700-000000'
-  const emailValue = contact.email || site.email_support || site.email || 'support@doctorbooklet.com.bd'
+  const FAQS = Array.isArray(faqCms.items) && faqCms.items.length > 0
+    ? faqCms.items.slice(0, 5)
+    : DEFAULT_FAQS
+
+  const phoneValue = (contact.phone && contact.phone !== '017 XXXX XXXX')
+    ? contact.phone
+    : ((site.phone && site.phone !== '017 XXXX XXXX') ? site.phone : '09613868438')
+  const whatsappValue = contact.whatsapp || phoneValue || '01747465666'
+  const cleanWhatsappPhone = (() => {
+    const digits = whatsappValue.replace(/[^0-9]/g, '')
+    if (!digits) return '8801747465666'
+    if (digits.startsWith('880')) return digits
+    if (digits.startsWith('01')) return `88${digits}`
+    return digits
+  })()
+  const emailValue = contact.email || site.email_support || site.email || 'info@doctorbooklet.com.bd'
   
   // Clean address to remove legacy "মেডকানেক্ট" references
   const rawAddress = contact.address || site.address || 'বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫'
@@ -165,9 +246,11 @@ export default function ContactPage() {
   
   // Facebook / Messenger URL
   const facebookUrl = site.facebook || 'https://facebook.com'
-  const messengerUrl = facebookUrl.includes('facebook.com') && !facebookUrl.endsWith('facebook.com')
-    ? facebookUrl.replace('facebook.com', 'm.me')
-    : 'https://m.me'
+  const messengerUrl = contact.messenger
+    ? (contact.messenger.startsWith('http') ? contact.messenger : `https://m.me/${contact.messenger.replace(/^@/, '')}`)
+    : (facebookUrl.includes('facebook.com') && !facebookUrl.endsWith('facebook.com')
+      ? facebookUrl.replace('facebook.com', 'm.me')
+      : 'https://m.me/doctorbooklet')
 
   return (
     <div className="page-wrapper contact-page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
@@ -305,15 +388,22 @@ export default function ContactPage() {
           transform: translateY(-5px);
         }
 
-        /* ── DEPARTMENT PILLS (MOBILE TOUCH-FRIENDLY) ── */
+        /* ── DEPARTMENT PILLS (MOBILE TOUCH-FRIENDLY & DESKTOP BALANCED GRID) ── */
         .dept-tabs-container {
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          padding-bottom: 6px;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 10px;
           margin-bottom: 22px;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: thin;
+        }
+        @media (max-width: 991px) {
+          .dept-tabs-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+          }
         }
         .dept-tabs-container::-webkit-scrollbar {
           height: 4px;
@@ -325,7 +415,7 @@ export default function ContactPage() {
 
         .dept-pill-btn {
           white-space: nowrap;
-          padding: 9px 16px;
+          padding: 10px 14px;
           border-radius: 12px;
           font-size: 13.5px;
           font-weight: 700;
@@ -334,11 +424,19 @@ export default function ContactPage() {
           color: #475569;
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
           cursor: pointer;
           transition: all 0.2s ease;
           flex-shrink: 0;
+          width: 100%;
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+        }
+        @media (max-width: 991px) {
+          .dept-pill-btn {
+            width: auto;
+            padding: 9px 16px;
+          }
         }
         .dept-pill-btn:hover {
           border-color: #00B875;
@@ -425,41 +523,588 @@ export default function ContactPage() {
         }
 
         /* ── FAQ ACCORDION ITEM ── */
+        @keyframes contactFaqFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .contact-faq-item {
           background: #FFFFFF;
-          border-radius: 16px;
-          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
           overflow: hidden;
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
           margin-bottom: 12px;
         }
-        .contact-faq-item:hover {
-          border-color: #CBD5E1;
-        }
         .contact-faq-item.active {
-          border-color: #A7F3D0;
-          box-shadow: 0 6px 18px rgba(0, 184, 117, 0.08);
+          border-color: #86EFAC;
+          box-shadow: 0 4px 20px rgba(0, 184, 117, 0.08);
         }
         .contact-faq-header {
-          padding: 16px 20px;
+          width: 100%;
+          padding: 16px 24px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           cursor: pointer;
           background: transparent;
+          border: none;
+          text-align: left;
           gap: 12px;
           user-select: none;
+          outline: none;
+        }
+        .contact-faq-q-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13.5px;
+          font-weight: 800;
+          font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
+          flex-shrink: 0;
+          transition: all 0.25s ease;
+        }
+        .contact-faq-q-text {
+          font-size: 15.5px;
+          font-weight: 600;
+          font-family: 'Hind Siliguri', sans-serif;
+          line-height: 1.4;
+          flex: 1;
+          transition: color 0.2s ease;
+        }
+        .contact-faq-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.25s ease;
         }
         .contact-faq-body {
-          padding: 0 20px 18px;
+          padding: 0 24px 20px;
+          animation: contactFaqFadeIn 0.3s ease;
+        }
+        .contact-faq-body p {
+          margin: 0;
           color: #475569;
           font-size: 14px;
-          line-height: 1.65;
+          font-weight: 400;
+          line-height: 1.6;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        @media (max-width: 768px) {
+          .contact-faq-header {
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .contact-faq-q-badge {
+            width: 25px !important;
+            height: 25px !important;
+            font-size: 12.5px !important;
+          }
+          .contact-faq-q-text {
+            font-size: 14.2px !important;
+            line-height: 1.38 !important;
+            font-weight: 600 !important;
+          }
+          .contact-faq-icon {
+            width: 26px !important;
+            height: 26px !important;
+          }
+          .contact-faq-icon svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+          .contact-faq-body {
+            padding: 0 14px 14px !important;
+          }
+          .contact-faq-body p {
+            font-size: 13.5px !important;
+            line-height: 1.55 !important;
+          }
+        }
+        .btn-faq-more {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          color: #FFFFFF !important;
+          padding: 12px 24px;
+          border-radius: 12px;
+          font-weight: 800;
+          font-size: 14px;
+          text-decoration: none !important;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          transition: all 0.25s ease;
+          white-space: nowrap;
         }
         .btn-faq-more:hover {
           transform: translateY(-2px);
-          box-shadow: 0 12px 26px rgba(0, 184, 117, 0.45) !important;
+          box-shadow: 0 8px 22px rgba(0, 184, 117, 0.4) !important;
           color: white !important;
+        }
+        .faq-more-wrapper {
+          text-align: center;
+          margin-top: 24px;
+          margin-bottom: 20px;
+        }
+        @media (max-width: 576px) {
+          .btn-faq-more {
+            width: 100% !important;
+            max-width: 310px;
+            padding: 11px 18px !important;
+            font-size: 13.5px !important;
+          }
+          .faq-more-wrapper {
+            margin-bottom: 35px !important;
+          }
+        }
+
+        /* ── CID SUCCESS MODAL (RESPONSIVE) ── */
+        .cid-success-modal .modal-dialog {
+          margin: 16px auto;
+          max-width: 440px;
+        }
+        .cid-modal-card {
+          padding: 32px 28px;
+          text-align: center;
+          background: #FFFFFF;
+          border-radius: 24px;
+        }
+        .cid-token-container {
+          background: #F0FDF4;
+          border: 1.5px dashed #059669;
+          border-radius: 16px;
+          padding: 14px 16px;
+          margin-bottom: 16px;
+          text-align: left;
+        }
+        .cid-inner-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          background: #FFFFFF;
+          border: 1.5px solid #86EFAC;
+          border-radius: 12px;
+          padding: 8px 12px;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.05);
+        }
+
+        /* ── CONTACT CARD TABS & SEARCH (SEGMENTED & RESPONSIVE) ── */
+        .contact-switcher-bar {
+          display: flex;
+          background: #F1F5F9;
+          padding: 6px;
+          gap: 6px;
+          border-bottom: 1px solid #E2E8F0;
+        }
+        .contact-switcher-btn {
+          flex: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 11px 14px;
+          border-radius: 12px;
+          border: none;
+          font-weight: 800;
+          font-size: 13.5px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: transparent;
+          color: #64748B;
+          white-space: nowrap;
+        }
+        .contact-switcher-btn.active {
+          background: #FFFFFF;
+          color: #064E3B;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .live-badge {
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 99px;
+          background: #DCFCE7;
+          color: #15803D;
+        }
+        .contact-form-body {
+          padding: 28px 24px;
+        }
+        .cid-search-btn {
+          height: 48px;
+          border-radius: 14px;
+          border: none;
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          color: white;
+          font-weight: 800;
+          font-size: 15px;
+          padding: 0 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          white-space: nowrap;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        /* ── TRACK RESULT CARD ── */
+        .track-result-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 18px;
+          padding: 20px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+        .track-cid-badge {
+          font-family: monospace;
+          font-size: 17px;
+          font-weight: 900;
+          color: #064E3B;
+          background: #ECFDF5;
+          padding: 5px 12px;
+          border-radius: 10px;
+          border: 1.5px solid #A7F3D0;
+          letter-spacing: 0.8px;
+          white-space: nowrap;
+        }
+        .track-copy-btn {
+          background: #F1F5F9;
+          border: 1px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: #475569;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        .track-status-pill {
+          font-size: 11.5px;
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 99px;
+          white-space: nowrap;
+        }
+        .track-status-pill.unread {
+          background: #FFFBEB;
+          color: #B45309;
+          border: 1px solid #FDE68A;
+        }
+        .track-status-pill.read {
+          background: #EFF6FF;
+          color: #1D4ED8;
+          border: 1px solid #BFDBFE;
+        }
+        .track-status-pill.replied {
+          background: #ECFDF5;
+          color: #047857;
+          border: 1px solid #A7F3D0;
+        }
+
+        /* ── INFO CARD (SENDER & DEPT) ── */
+        .track-info-card {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 12px 14px;
+          margin: 14px 0;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .track-info-col {
+          min-width: 0;
+        }
+        .track-info-label {
+          font-size: 10.5px;
+          font-weight: 800;
+          color: #94A3B8;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          display: block;
+          margin-bottom: 2px;
+        }
+        .track-info-value {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #1E293B;
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* ── STEPPER TIMELINE ── */
+        .stepper-box {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 16px 14px;
+          margin-bottom: 14px;
+        }
+        .stepper-title {
+          font-size: 11.5px;
+          font-weight: 800;
+          color: #64748B;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 14px;
+        }
+        .stepper-track {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          position: relative;
+        }
+        .stepper-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          flex: 1;
+          z-index: 2;
+        }
+        .stepper-node {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #E2E8F0;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 13px;
+          margin-bottom: 6px;
+          border: 2px solid #FFFFFF;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+          transition: all 0.3s ease;
+        }
+        .stepper-item.step-done .stepper-node {
+          background: #059669;
+          color: #FFFFFF;
+          box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+        }
+        .stepper-item.step-current .stepper-node {
+          background: #F59E0B;
+          color: #FFFFFF;
+          box-shadow: 0 3px 10px rgba(245, 158, 11, 0.25);
+        }
+        .stepper-label {
+          font-size: 12px;
+          font-weight: 800;
+          color: #64748B;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .stepper-item.step-done .stepper-label {
+          color: #065F46;
+        }
+        .stepper-item.step-current .stepper-label {
+          color: #92400E;
+        }
+        .stepper-sub {
+          font-size: 10px;
+          color: #94A3B8;
+          margin-top: 2px;
+          white-space: nowrap;
+        }
+        .stepper-connector {
+          flex: 1;
+          height: 3px;
+          background: #E2E8F0;
+          margin-top: 15px;
+          margin-left: -6px;
+          margin-right: -6px;
+          z-index: 1;
+          border-radius: 2px;
+          transition: background 0.3s ease;
+        }
+        .stepper-connector.active {
+          background: #059669;
+        }
+
+        /* ── MESSAGE & REPLY CARDS ── */
+        .track-msg-card {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-bottom: 12px;
+        }
+        .track-msg-badge {
+          font-size: 10.5px;
+          font-weight: 800;
+          color: #94A3B8;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          display: block;
+          margin-bottom: 4px;
+        }
+        .track-msg-body {
+          margin: 0;
+          font-size: 13px;
+          color: #334155;
+          line-height: 1.6;
+        }
+        .track-reply-card {
+          background: #ECFDF5;
+          border: 1.5px solid #6EE7B7;
+          border-radius: 14px;
+          padding: 14px 16px;
+          margin-bottom: 12px;
+        }
+        .track-reply-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 900;
+          color: #064E3B;
+          margin-bottom: 6px;
+        }
+        .track-reply-body {
+          margin: 0;
+          font-size: 13.5px;
+          color: #065F46;
+          line-height: 1.7;
+          font-weight: 600;
+          white-space: pre-wrap;
+        }
+        .track-pending-card {
+          background: #FFFBEB;
+          border: 1px solid #FDE68A;
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 12px;
+          color: #92400E;
+          line-height: 1.5;
+        }
+        .track-new-msg-btn {
+          width: 100%;
+          background: #F8FAFC;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 11px 16px;
+          color: #065F46;
+          font-weight: 800;
+          font-size: 13px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+        }
+        .track-new-msg-btn:hover {
+          background: #F0FDF4;
+          border-color: #86EFAC;
+        }
+
+        @media (max-width: 576px) {
+          .cid-success-modal .modal-dialog {
+            margin: 12px;
+            max-width: calc(100% - 24px);
+          }
+          .cid-modal-card {
+            padding: 24px 16px !important;
+            border-radius: 20px !important;
+          }
+          .cid-token-container {
+            padding: 12px 12px !important;
+            margin-bottom: 14px !important;
+            border-radius: 14px !important;
+          }
+          .cid-inner-bar {
+            padding: 7px 10px !important;
+          }
+          .cid-modal-icon {
+            width: 58px !important;
+            height: 58px !important;
+            margin-bottom: 14px !important;
+          }
+          .cid-modal-icon svg {
+            width: 32px !important;
+            height: 32px !important;
+          }
+          .cid-modal-title {
+            font-size: 20px !important;
+            margin-bottom: 6px !important;
+          }
+          .cid-modal-desc {
+            font-size: 13px !important;
+            margin-bottom: 14px !important;
+            line-height: 1.5 !important;
+          }
+          .contact-switcher-bar {
+            padding: 5px !important;
+            gap: 4px !important;
+          }
+          .contact-switcher-btn {
+            padding: 9px 8px !important;
+            font-size: 12.5px !important;
+            gap: 5px !important;
+          }
+          .contact-form-body {
+            padding: 16px 12px !important;
+          }
+          .cid-search-btn {
+            width: 100% !important;
+            padding: 12px 20px !important;
+            height: 46px !important;
+          }
+          .track-result-card {
+            padding: 14px 12px !important;
+            border-radius: 14px !important;
+          }
+          .track-info-card {
+            padding: 10px 10px !important;
+            gap: 8px !important;
+            margin: 10px 0 !important;
+          }
+          .track-info-value {
+            font-size: 12.5px !important;
+          }
+          .stepper-box {
+            padding: 12px 6px !important;
+          }
+          .stepper-node {
+            width: 28px !important;
+            height: 28px !important;
+            font-size: 11px !important;
+          }
+          .stepper-connector {
+            margin-top: 13px !important;
+          }
+          .stepper-label {
+            font-size: 11px !important;
+          }
+          .stepper-sub {
+            font-size: 9px !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .contact-main-section {
+            padding: 24px 0 95px !important;
+          }
         }
       `}</style>
 
@@ -505,7 +1150,7 @@ export default function ContactPage() {
                   background: '#34D399', display: 'inline-block',
                   boxShadow: '0 0 10px #34D399'
                 }} />
-                <span>সার্বক্ষণিক কানেক্টিভিটি ও কাস্টমার কেয়ার</span>
+                <span>{contact.hero_badge || 'সার্বক্ষণিক কানেক্টিভিটি ও কাস্টমার কেয়ার'}</span>
               </div>
 
               <h1 style={{ 
@@ -598,9 +1243,10 @@ export default function ContactPage() {
                   <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>যেকোনো জরুরি জিজ্ঞাসা বা সিস্টেমে সাহায্যের জন্য সরাসরি যোগাযোগ করুন।</div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'rgba(255,255,255,0.7)' }}>
-                  <span>সাপ্তাহিক কর্মদিবস: শনি-বৃহ</span>
-                  <span style={{ color: '#34D399', fontWeight: 700 }}>সকাল ৯টা - রাত ৮টা</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 11.5, color: 'rgba(255,255,255,0.75)' }}>
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {officeHoursValue.split('|')[0]?.trim() || 'শনি-বৃহ: সকাল ৯টা - রাত ৮টা'}
+                  </span>
                 </div>
               </div>
             </Col>
@@ -646,14 +1292,16 @@ export default function ContactPage() {
                     display: 'inline-flex', alignItems: 'center', gap: 5
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
-                    ২৪/৭ হেল্পলাইন
+                    {contact.phone_badge || '২৪/৭ হেল্পলাইন'}
                   </span>
                 </div>
                 <h5 style={{ fontWeight: 900, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>টেলিফোন কল</h5>
                 <p style={{ color: '#00B875', fontWeight: 900, fontSize: 16, margin: 0, letterSpacing: '0.3px' }}>
                   {phoneValue}
                 </p>
-                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>সরাসরি সেন্ট্রাল কল সেন্টারে কথা বলুন</p>
+                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>
+                  {contact.phone_subtitle || 'সরাসরি সেন্ট্রাল কল সেন্টারে কথা বলুন'}
+                </p>
               </div>
 
               <div style={{ marginTop: 18, position: 'relative', zIndex: 2 }}>
@@ -722,19 +1370,21 @@ export default function ContactPage() {
                     display: 'inline-flex', alignItems: 'center', gap: 5
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#25D366', display: 'inline-block' }} />
-                    WhatsApp Live
+                    {contact.whatsapp_badge || 'WhatsApp Live'}
                   </span>
                 </div>
                 <h5 style={{ fontWeight: 900, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>হোয়াটসঅ্যাপ সাপোর্ট</h5>
                 <p style={{ color: '#15803D', fontWeight: 800, fontSize: 14.5, margin: 0 }}>
-                  তাৎক্ষণিক চ্যাট ও প্রেসক্রিপশন
+                  {contact.whatsapp_title || 'তাৎক্ষণিক চ্যাট ও প্রেসক্রিপশন'}
                 </p>
-                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>ডকুমেন্ট, ছবি ও প্রশ্ন সরাসরি পাঠান</p>
+                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>
+                  {contact.whatsapp_subtitle || 'ডকুমেন্ট, ছবি ও প্রশ্ন সরাসরি পাঠান'}
+                </p>
               </div>
 
               <div style={{ marginTop: 18, position: 'relative', zIndex: 2 }}>
                 <a 
-                  href={`https://wa.me/${phoneValue.replace(/[^0-9]/g, '') || '8801700000000'}`} 
+                  href={`https://wa.me/${cleanWhatsappPhone}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{
@@ -795,14 +1445,16 @@ export default function ContactPage() {
                     display: 'inline-flex', alignItems: 'center', gap: 5
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
-                    অফিসিয়াল ইমেইল
+                    {contact.email_badge || 'অফিসিয়াল ইমেইল'}
                   </span>
                 </div>
                 <h5 style={{ fontWeight: 900, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>ইমেইল হেল্পডেস্ক</h5>
                 <p style={{ color: '#1E40AF', fontWeight: 800, fontSize: 13, margin: 0, wordBreak: 'break-all' }}>
                   {emailValue}
                 </p>
-                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>সর্বোচ্চ ২ ঘণ্টার মধ্যে আনুষ্ঠানিক উত্তর</p>
+                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>
+                  {contact.email_subtitle || 'সর্বোচ্চ ২ ঘণ্টার মধ্যে আনুষ্ঠানিক উত্তর'}
+                </p>
               </div>
 
               <div style={{ marginTop: 18, position: 'relative', zIndex: 2, display: 'flex', gap: 8 }}>
@@ -897,14 +1549,16 @@ export default function ContactPage() {
                     display: 'inline-flex', alignItems: 'center', gap: 5
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0284C7', display: 'inline-block' }} />
-                    Messenger Chat
+                    {contact.messenger_badge || 'Messenger Chat'}
                   </span>
                 </div>
                 <h5 style={{ fontWeight: 900, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>ফেসবুক মেসেঞ্জার</h5>
                 <p style={{ color: '#0284C7', fontWeight: 800, fontSize: 14.5, margin: 0 }}>
-                  সরাসরি অফিসিয়াল ইনবক্স
+                  {contact.messenger_title || 'সরাসরি অফিসিয়াল ইনবক্স'}
                 </p>
-                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>সোশ্যাল সাপোর্ট টিম সার্বক্ষণিক সক্রিয়</p>
+                <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>
+                  {contact.messenger_subtitle || 'সোশ্যাল সাপোর্ট টিম সার্বক্ষণিক সক্রিয়'}
+                </p>
               </div>
 
               <div style={{ marginTop: 18, position: 'relative', zIndex: 2 }}>
@@ -940,248 +1594,707 @@ export default function ContactPage() {
       </Container>
 
       {/* ── MAIN INTERACTIVE CONTACT SECTION ── */}
-      <section style={{ padding: '48px 0 65px' }}>
+      <section className="contact-main-section" style={{ padding: '48px 0 65px' }}>
         <Container>
-          {/* 1. TOP: FULL WIDTH Enterprise Message Form (Layout Diagram Part 1) */}
-          <div className="contact-form-card" style={{ marginBottom: 30 }}>
-                {/* Header */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ 
-                      background: '#ECFDF5', 
-                      color: '#059669', 
-                      fontSize: 12, 
-                      fontWeight: 800, 
-                      padding: '4px 12px', 
-                      borderRadius: 99,
-                      border: '1px solid #A7F3D0'
-                    }}>
-                      মেসেজ পাঠান
-                    </span>
-                    <span style={{ color: '#64748B', fontSize: 12.5, fontWeight: 600 }}>
-                      • গড় উত্তর সময়: ১৫-৩০ মিনিট
-                    </span>
-                  </div>
-                  <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 'clamp(21px, 3.2vw, 25px)', marginBottom: 6 }}>
-                    আপনার জিজ্ঞাসা বা মতামত জানান
-                  </h3>
-                  <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
-                    নিচের বিভাগ নির্বাচন করে আপনার বার্তাটি পাঠান। আমাদের ডেডিকেটেড টিম দ্রুত আপনার সাথে যোগাযোগ করবে।
-                  </p>
-                </div>
+          {/* 1. TOP: FULL WIDTH Enterprise Message Form with Tabs (Layout Diagram Part 1) */}
+          <div className="contact-form-card" style={{ marginBottom: 30, padding: 0, overflow: 'hidden' }}>
+            {/* Form / Tracking Top Switcher (Segmented, No Horizontal Overflow) */}
+            <div className="contact-switcher-bar">
+              <button
+                type="button"
+                onClick={() => { setActiveFormTab('send'); setTrackError(''); }}
+                className={`contact-switcher-btn ${activeFormTab === 'send' ? 'active' : ''}`}
+              >
+                <Send size={15} />
+                <span>নতুন বার্তা</span>
+              </button>
 
-                {/* Department Selector Tabs */}
+              <button
+                type="button"
+                onClick={() => setActiveFormTab('track')}
+                className={`contact-switcher-btn ${activeFormTab === 'track' ? 'active' : ''}`}
+              >
+                <Search size={15} />
+                <span>স্ট্যাটাস (CID)</span>
+                <span className="live-badge">লাইভ</span>
+              </button>
+            </div>
+
+            <div className="contact-form-body">
+              {activeFormTab === 'send' ? (
                 <div>
-                  <label style={{ fontSize: 12.5, fontWeight: 800, color: '#334155', display: 'block', marginBottom: 8 }}>
-                    বিভাগ বা বিষয়ের ধরন নির্বাচন করুন:
-                  </label>
-                  <div className="dept-tabs-container">
-                    {DEPARTMENTS.map((dept) => (
-                      <button
-                        key={dept.id}
-                        type="button"
-                        onClick={() => handleDepartmentChange(dept)}
-                        className={`dept-pill-btn ${activeDepartment === dept.id ? 'active' : ''}`}
-                      >
-                        {dept.icon}
-                        <span>{dept.label}</span>
-                      </button>
-                    ))}
+                  {/* Header */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ 
+                        background: '#ECFDF5', 
+                        color: '#059669', 
+                        fontSize: 12, 
+                        fontWeight: 800, 
+                        padding: '4px 12px', 
+                        borderRadius: 99,
+                        border: '1px solid #A7F3D0'
+                      }}>
+                        মেসেজ পাঠান
+                      </span>
+                      <span style={{ color: '#64748B', fontSize: 12.5, fontWeight: 600 }}>
+                        • গড় উত্তর সময়: ১৫-৩০ মিনিট
+                      </span>
+                    </div>
+                    <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 'clamp(21px, 3.2vw, 25px)', marginBottom: 6 }}>
+                      আপনার জিজ্ঞাসা বা মতামত জানান
+                    </h3>
+                    <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+                      নিচের বিভাগ নির্বাচন করে আপনার বার্তাটি পাঠান। আমাদের ডেডিকেটেড টিম দ্রুত আপনার সাথে যোগাযোগ করবে।
+                    </p>
                   </div>
-                </div>
 
-                {/* Success Banner */}
-                {submitted && (
-                  <div style={{ 
-                    background: '#ECFDF5', 
-                    border: '1.5px solid #6EE7B7', 
-                    borderRadius: 16, 
-                    padding: '16px 20px', 
-                    marginBottom: 22, 
-                    display: 'flex', 
-                    alignItems: 'flex-start', 
-                    gap: 12,
-                    color: '#065F46'
-                  }}>
-                    <CheckCircle2 size={24} color="#059669" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#064E3B', marginBottom: 2 }}>
-                        আপনার বার্তাটি সফলভাবে জমা হয়েছে!
-                      </div>
-                      <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.5 }}>
-                        ধন্যবাদ। আমাদের সংশ্লিষ্ট বিভাগের সাপোর্ট স্পেশালিস্ট অতি দ্রুত আপনার ইমেইল বা ফোন নম্বরে যোগাযোগ করবেন।
-                      </div>
+                  {/* Department Selector Tabs */}
+                  <div>
+                    <label style={{ fontSize: 12.5, fontWeight: 800, color: '#334155', display: 'block', marginBottom: 8 }}>
+                      বিভাগ বা বিষয়ের ধরন নির্বাচন করুন:
+                    </label>
+                    <div className="dept-tabs-container">
+                      {DEPARTMENTS.map((dept) => (
+                        <button
+                          key={dept.id}
+                          type="button"
+                          onClick={() => handleDepartmentChange(dept)}
+                          className={`dept-pill-btn ${activeDepartment === dept.id ? 'active' : ''}`}
+                        >
+                          {dept.icon}
+                          <span>{dept.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
 
-                {/* Form */}
-                <form onSubmit={handleSubmit}>
-                  <Row className="g-3">
-                    {/* Name */}
-                    <Col md={6} xs={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
-                        আপনার পুরো নাম <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
-                      <div className="input-group-custom">
-                        <User size={17} className="input-icon" />
-                        <input
-                          id="contact-name"
-                          value={form.name}
-                          onChange={e => setForm({ ...form, name: e.target.value })}
-                          required
-                          placeholder="উদাঃ মোঃ রহিম আহমেদ"
-                          className="contact-input"
-                        />
+                  {/* Error Banner */}
+                  {submitError && (
+                    <div style={{ 
+                      background: '#FEF2F2', 
+                      border: '1.5px solid #FECACA', 
+                      borderRadius: 16, 
+                      padding: '14px 18px', 
+                      marginBottom: 20, 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      gap: 12,
+                      color: '#991B1B'
+                    }}>
+                      <AlertTriangle size={22} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }}>
+                        {submitError}
                       </div>
-                    </Col>
+                    </div>
+                  )}
 
-                    {/* Phone */}
-                    <Col md={6} xs={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
-                        মোবাইল নম্বর <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
-                      <div className="input-group-custom">
-                        <Phone size={17} className="input-icon" />
-                        <input
-                          id="contact-phone"
-                          value={form.phone}
-                          onChange={e => setForm({ ...form, phone: e.target.value })}
-                          required
-                          placeholder="017XXXXXXXX"
-                          className="contact-input"
-                        />
-                      </div>
-                    </Col>
-
-                    {/* Email */}
-                    <Col md={6} xs={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
-                        ইমেইল ঠিকানা <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
-                      <div className="input-group-custom">
-                        <Mail size={17} className="input-icon" />
-                        <input
-                          id="contact-email"
-                          type="email"
-                          value={form.email}
-                          onChange={e => setForm({ ...form, email: e.target.value })}
-                          required
-                          placeholder="rahim@example.com"
-                          className="contact-input"
-                        />
-                      </div>
-                    </Col>
-
-                    {/* Subject Line */}
-                    <Col md={6} xs={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
-                        বার্তার বিষয় <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
-                      <div className="input-group-custom">
-                        <MessageSquare size={17} className="input-icon" />
-                        <input
-                          id="contact-subject"
-                          value={form.subject}
-                          onChange={e => setForm({ ...form, subject: e.target.value })}
-                          required
-                          placeholder="বার্তার মূল বিষয়"
-                          className="contact-input"
-                        />
-                      </div>
-                    </Col>
-
-                    {/* Dynamic Extra Field based on department */}
-                    {DEPARTMENTS.find(d => d.id === activeDepartment)?.extraLabel && (
-                      <Col xs={12}>
+                  {/* Form */}
+                  <form onSubmit={handleSubmit}>
+                    <Row className="g-3">
+                      {/* Name */}
+                      <Col md={6} xs={12}>
                         <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
-                          {DEPARTMENTS.find(d => d.id === activeDepartment).extraLabel}
+                          আপনার পুরো নাম <span style={{ color: '#EF4444' }}>*</span>
                         </label>
-                        <input
-                          id="contact-extra"
-                          value={form.extraField}
-                          onChange={e => setForm({ ...form, extraField: e.target.value })}
-                          placeholder="প্রাসঙ্গিক তথ্য এখানে লিখুন"
+                        <div className="input-group-custom">
+                          <User size={17} className="input-icon" />
+                          <input
+                            id="contact-name"
+                            value={form.name}
+                            onChange={e => setForm({ ...form, name: e.target.value })}
+                            required
+                            placeholder="উদাঃ মোঃ রহিম আহমেদ"
+                            className="contact-input"
+                          />
+                        </div>
+                      </Col>
+
+                      {/* Phone */}
+                      <Col md={6} xs={12}>
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                          মোবাইল নম্বর <span style={{ color: '#EF4444' }}>*</span>
+                        </label>
+                        <div className="input-group-custom">
+                          <Phone size={17} className="input-icon" />
+                          <input
+                            id="contact-phone"
+                            value={form.phone}
+                            onChange={e => setForm({ ...form, phone: e.target.value })}
+                            required
+                            placeholder="017XXXXXXXX"
+                            className="contact-input"
+                          />
+                        </div>
+                      </Col>
+
+                      {/* Email */}
+                      <Col md={6} xs={12}>
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                          ইমেইল ঠিকানা <span style={{ color: '#EF4444' }}>*</span>
+                        </label>
+                        <div className="input-group-custom">
+                          <Mail size={17} className="input-icon" />
+                          <input
+                            id="contact-email"
+                            type="email"
+                            value={form.email}
+                            onChange={e => setForm({ ...form, email: e.target.value })}
+                            required
+                            placeholder="rahim@example.com"
+                            className="contact-input"
+                          />
+                        </div>
+                      </Col>
+
+                      {/* Subject Line */}
+                      <Col md={6} xs={12}>
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                          বার্তার বিষয় <span style={{ color: '#EF4444' }}>*</span>
+                        </label>
+                        <div className="input-group-custom">
+                          <MessageSquare size={17} className="input-icon" />
+                          <input
+                            id="contact-subject"
+                            value={form.subject}
+                            readOnly
+                            tabIndex={-1}
+                            required
+                            placeholder="বার্তার মূল বিষয়"
+                            className="contact-input"
+                            style={{
+                              background: '#F1F5F9',
+                              color: '#0F172A',
+                              fontWeight: 700,
+                              cursor: 'not-allowed',
+                              userSelect: 'none'
+                            }}
+                          />
+                        </div>
+                      </Col>
+
+                      {/* Dynamic Extra Field based on department */}
+                      {DEPARTMENTS.find(d => d.id === activeDepartment)?.extraLabel && (
+                        <Col xs={12}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                            {DEPARTMENTS.find(d => d.id === activeDepartment).extraLabel}
+                          </label>
+                          <input
+                            id="contact-extra"
+                            value={form.extraField}
+                            onChange={e => setForm({ ...form, extraField: e.target.value })}
+                            placeholder="প্রাসঙ্গিক তথ্য এখানে লিখুন"
+                            className="contact-input"
+                          />
+                        </Col>
+                      )}
+
+                      {/* Message Box */}
+                      <Col xs={12}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', margin: 0 }}>
+                            আপনার বিস্তারিত বার্তা <span style={{ color: '#EF4444' }}>*</span>
+                          </label>
+                          <span style={{ fontSize: 11.5, color: '#94A3B8' }}>{form.message.length}/500 অক্ষর</span>
+                        </div>
+                        <textarea
+                          id="contact-message"
+                          value={form.message}
+                          onChange={e => setForm({ ...form, message: e.target.value.slice(0, 500) })}
+                          required
+                          rows={4}
+                          placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন..."
                           className="contact-input"
+                          style={{ resize: 'vertical', minHeight: 115 }}
                         />
                       </Col>
-                    )}
 
-                    {/* Message Box */}
-                    <Col xs={12}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', margin: 0 }}>
-                          আপনার বিস্তারিত বার্তা <span style={{ color: '#EF4444' }}>*</span>
-                        </label>
-                        <span style={{ fontSize: 11.5, color: '#94A3B8' }}>{form.message.length}/500 অক্ষর</span>
+                      {/* Submit Button & Privacy note */}
+                      <Col xs={12} className="mt-2">
+                        <button
+                          id="contact-submit"
+                          type="submit"
+                          disabled={loading}
+                          style={{
+                            background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 14,
+                            padding: '14px 28px',
+                            fontWeight: 800,
+                            fontSize: 15,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif",
+                            boxShadow: '0 8px 20px rgba(0, 184, 117, 0.3)',
+                            transition: 'all 0.25s ease',
+                            opacity: loading ? 0.8 : 1
+                          }}
+                        >
+                          {loading ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                              বার্তা পাঠানো হচ্ছে...
+                            </>
+                          ) : (
+                            <>
+                              <Send size={18} /> 
+                              <span>বার্তা পাঠান</span>
+                            </>
+                          )}
+                        </button>
+
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          gap: 6, 
+                          marginTop: 12, 
+                          color: '#64748B', 
+                          fontSize: 12 
+                        }}>
+                          <ShieldCheck size={14} color="#059669" />
+                          <span>আপনার প্রদত্ত সকল তথ্য কঠোরভাবে সুরক্ষিত ও গোপন রাখা হয়।</span>
+                        </div>
+                      </Col>
+                    </Row>
+                  </form>
+                </div>
+              ) : (
+                /* LIVE TRACKING TAB */
+                <div>
+                  {/* Tracking Header */}
+                  <div style={{ marginBottom: 22 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ 
+                        background: '#ECFDF5', 
+                        color: '#059669', 
+                        fontSize: 12, 
+                        fontWeight: 800, 
+                        padding: '4px 12px', 
+                        borderRadius: 99,
+                        border: '1px solid #A7F3D0'
+                      }}>
+                        লাইভ স্ট্যাটাস ট্র্যাকার
+                      </span>
+                      <span style={{ color: '#64748B', fontSize: 12.5, fontWeight: 600 }}>
+                        • তাৎক্ষণিক ফলাফল
+                      </span>
+                    </div>
+                    <h3 style={{ fontWeight: 900, color: '#0F172A', fontSize: 'clamp(21px, 3.2vw, 25px)', marginBottom: 6 }}>
+                      পূর্বে পাঠানো বার্তার স্ট্যাটাস দেখুন
+                    </h3>
+                    <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+                      বার্তা প্রেরণের সময় প্রাপ্ত <strong>CID ট্র্যাকিং আইডি</strong> (উদাঃ CID-123456) লিখে অনুসন্ধান করুন।
+                    </p>
+                  </div>
+
+                  {/* Search Box */}
+                  <form onSubmit={(e) => { e.preventDefault(); handleTrack(); }} style={{ marginBottom: 22 }}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 280px', position: 'relative' }}>
+                        <input
+                          type="text"
+                          value={trackCid}
+                          onChange={(e) => setTrackCid(e.target.value.toUpperCase())}
+                          placeholder="আপনার CID লিখুন (উদাঃ CID-782914)"
+                          style={{
+                            width: '100%',
+                            height: 48,
+                            borderRadius: 14,
+                            border: '2px solid #CBD5E1',
+                            padding: trackCid ? '0 42px 0 44px' : '0 16px 0 44px',
+                            fontSize: 15,
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                            letterSpacing: 1,
+                            outline: 'none',
+                            background: '#FFFFFF'
+                          }}
+                        />
+                        <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: 16, top: 15, pointerEvents: 'none' }} />
+                        {trackCid && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTrackCid('')
+                              setTrackError(null)
+                              setTrackResult(null)
+                            }}
+                            title="মুছে ফেলুন"
+                            style={{
+                              position: 'absolute',
+                              right: 12,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: '#F1F5F9',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 26,
+                              height: 26,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#64748B',
+                              padding: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#E2E8F0'
+                              e.currentTarget.style.color = '#0F172A'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#F1F5F9'
+                              e.currentTarget.style.color = '#64748B'
+                            }}
+                          >
+                            <X size={15} strokeWidth={2.5} />
+                          </button>
+                        )}
                       </div>
-                      <textarea
-                        id="contact-message"
-                        value={form.message}
-                        onChange={e => setForm({ ...form, message: e.target.value.slice(0, 500) })}
-                        required
-                        rows={4}
-                        placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন..."
-                        className="contact-input"
-                        style={{ resize: 'vertical', minHeight: 115 }}
-                      />
-                    </Col>
-
-                    {/* Submit Button & Privacy note */}
-                    <Col xs={12} className="mt-2">
                       <button
-                        id="contact-submit"
                         type="submit"
-                        disabled={loading}
-                        style={{
-                          background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 14,
-                          padding: '14px 28px',
-                          fontWeight: 800,
-                          fontSize: 15,
-                          cursor: loading ? 'not-allowed' : 'pointer',
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif",
-                          boxShadow: '0 8px 20px rgba(0, 184, 117, 0.3)',
-                          transition: 'all 0.25s ease',
-                          opacity: loading ? 0.8 : 1
-                        }}
+                        disabled={trackLoading}
+                        className="cid-search-btn"
                       >
-                        {loading ? (
+                        {trackLoading ? (
                           <>
-                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
-                            বার্তা পাঠানো হচ্ছে...
+                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                            <span>অনুসন্ধান হচ্ছে...</span>
                           </>
                         ) : (
                           <>
-                            <Send size={18} /> 
-                            <span>বার্তা পাঠান</span>
+                            <Search size={18} />
+                            <span>স্ট্যাটাস যাচাই করুন</span>
                           </>
                         )}
                       </button>
+                    </div>
+                  </form>
 
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        gap: 6, 
-                        marginTop: 12, 
-                        color: '#64748B', 
-                        fontSize: 12 
-                      }}>
-                        <ShieldCheck size={14} color="#059669" />
-                        <span>আপনার প্রদত্ত সকল তথ্য কঠোরভাবে সুরক্ষিত ও গোপন রাখা হয়।</span>
+                  {/* Error Message */}
+                  {trackError && (
+                    <div style={{
+                      background: '#FEF2F2',
+                      border: '1.5px solid #FECACA',
+                      borderRadius: 14,
+                      padding: '14px 18px',
+                      marginBottom: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      color: '#991B1B'
+                    }}>
+                      <AlertTriangle size={20} color="#DC2626" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 13.5, fontWeight: 700 }}>{trackError}</span>
+                    </div>
+                  )}
+
+                  {/* Result Display */}
+                  {trackResult && (
+                    <div className="track-result-card">
+                      {/* Top Details */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className="track-cid-badge">{trackResult.token_id}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(trackResult.token_id, 'result-cid')}
+                              className="track-copy-btn"
+                              title="কপি করুন"
+                            >
+                              {copiedField === 'result-cid' ? <Check size={13} color="#059669" /> : <Copy size={13} />}
+                              <span>{copiedField === 'result-cid' ? 'কপি হয়েছে' : 'কপি'}</span>
+                            </button>
+                          </div>
+
+                          <span className={`track-status-pill ${trackResult.status}`}>
+                            {trackResult.status === 'replied' ? '✓ উত্তর সম্পন্ন' : (trackResult.status === 'read' ? '• পর্যালোচিত' : '• অপেক্ষমান')}
+                          </span>
+                        </div>
+
+                        {trackResult.submitted_at && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748B' }}>
+                            <Clock size={13} />
+                            <span>প্রেরণ: {new Date(trackResult.submitted_at).toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                          </div>
+                        )}
                       </div>
-                    </Col>
-                  </Row>
-                </form>
+
+                      {/* 2-Column Info Card (Sender & Dept) */}
+                      <div className="track-info-card">
+                        <div className="track-info-col">
+                          <span className="track-info-label">প্রেরকের নাম</span>
+                          <span className="track-info-value">{trackResult.name}</span>
+                        </div>
+                        <div className="track-info-col" style={{ textAlign: 'right' }}>
+                          <span className="track-info-label">বিভাগ / বিষয়</span>
+                          <span className="track-info-value" style={{ color: '#059669' }}>{trackResult.department || trackResult.subject}</span>
+                        </div>
+                      </div>
+
+                      {/* Horizontal Stepper Timeline */}
+                      <div className="stepper-box">
+                        <div className="stepper-title">বার্তার বর্তমান অগ্রগতি:</div>
+                        
+                        {(() => {
+                          const isUnread = trackResult.status === 'unread'
+                          const isRead = trackResult.status === 'read'
+                          const isReplied = trackResult.status === 'replied'
+
+                          const step1Done = true
+                          const step2Done = isRead || isReplied
+                          const step3Done = isReplied
+
+                          return (
+                            <div className="stepper-track">
+                              {/* Step 1 */}
+                              <div className="stepper-item step-done">
+                                <div className="stepper-node">✓</div>
+                                <div className="stepper-label">জমা হয়েছে</div>
+                                <div className="stepper-sub">গৃহীত</div>
+                              </div>
+
+                              {/* Connector 1 */}
+                              <div className={`stepper-connector ${step2Done ? 'active' : ''}`} />
+
+                              {/* Step 2 */}
+                              <div className={`stepper-item ${step2Done ? 'step-done' : (isUnread ? 'step-current' : '')}`}>
+                                <div className="stepper-node">{step2Done ? '✓' : '২'}</div>
+                                <div className="stepper-label">পর্যালোচনাধীন</div>
+                                <div className="stepper-sub">{step2Done ? 'দেখা হয়েছে' : 'অপেক্ষমান'}</div>
+                              </div>
+
+                              {/* Connector 2 */}
+                              <div className={`stepper-connector ${step3Done ? 'active' : ''}`} />
+
+                              {/* Step 3 */}
+                              <div className={`stepper-item ${step3Done ? 'step-done' : ''}`}>
+                                <div className="stepper-node">{step3Done ? '✓' : '৩'}</div>
+                                <div className="stepper-label">উত্তর সম্পন্ন</div>
+                                <div className="stepper-sub">{step3Done ? 'প্রদত্ত' : 'প্রক্রিয়াধীন'}</div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Admin Reply / Note if available */}
+                      {trackResult.admin_note ? (
+                        <div className="track-reply-card">
+                          <div className="track-reply-header">
+                            <CheckCircle2 size={18} color="#059669" />
+                            <span>প্রতিনিধির অফিসিয়াল উত্তর:</span>
+                          </div>
+                          <p className="track-reply-body">{trackResult.admin_note}</p>
+                          {trackResult.replied_at && (
+                            <div style={{ fontSize: 11.5, color: '#047857', marginTop: 8, textAlign: 'right' }}>
+                              {new Date(trackResult.replied_at).toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="track-pending-card">
+                          <Clock size={16} color="#D97706" style={{ flexShrink: 0 }} />
+                          <span>আমাদের প্রতিনিধি বার্তাটি পর্যবেক্ষণ করছেন। উত্তর পাওয়া মাত্র এখানে দেখতে পাবেন।</span>
+                        </div>
+                      )}
+
+                      {/* Original message text preview */}
+                      <div className="track-msg-card">
+                        <span className="track-msg-badge">আপনার প্রেরিত বার্তা</span>
+                        <p className="track-msg-body">{trackResult.message}</p>
+                      </div>
+
+                      {/* Bottom Switch button */}
+                      <div style={{ marginTop: 14 }}>
+                        <button
+                          type="button"
+                          onClick={() => { setActiveFormTab('send'); setTrackResult(null); setTrackCid(''); }}
+                          className="track-new-msg-btn"
+                        >
+                          <span>নতুন আরেকটি বার্তা পাঠাবেন?</span>
+                          <ArrowRight size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── CID SUCCESS POPUP MODAL (RESPONSIVE) ── */}
+          <Modal
+            show={showSuccessModal}
+            onHide={() => setShowSuccessModal(false)}
+            backdrop="static"
+            keyboard={false}
+            centered
+            size="md"
+            dialogClassName="cid-success-modal"
+          >
+            <div className="cid-modal-card">
+              <div className="cid-modal-icon" style={{
+                width: 68,
+                height: 68,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+                color: '#059669',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+                boxShadow: '0 8px 24px rgba(5, 150, 105, 0.16)',
+                border: '2px solid #A7F3D0'
+              }}>
+                <CheckCircle2 size={38} strokeWidth={2.4} />
               </div>
+
+              <h4 className="cid-modal-title" style={{ fontWeight: 900, color: '#064E3B', fontSize: 22, marginBottom: 8 }}>
+                বার্তা সফলভাবে জমা হয়েছে!
+              </h4>
+              <p className="cid-modal-desc" style={{ color: '#475569', fontSize: 13.5, lineHeight: 1.6, marginBottom: 18, maxWidth: 380, margin: '0 auto 18px' }}>
+                আপনার অনুসন্ধানটি আমাদের ডেটাবেসে নথিভুক্ত হয়েছে। বার্তার লাইভ স্ট্যাটাস বা প্রতিনিধির উত্তর দেখার জন্য নিচের ট্র্যাকিং আইডিটি (CID) সংরক্ষণ করুন।
+              </p>
+
+              {/* CID Box with Clean Inner Bar (Never Wraps on Mobile) */}
+              <div className="cid-token-container">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    কন্টাক্ট ট্র্যাকিং আইডি (CID)
+                  </span>
+                  <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                    সংরক্ষণ করুন
+                  </span>
+                </div>
+
+                <div className="cid-inner-bar">
+                  <div style={{
+                    fontFamily: 'monospace',
+                    fontSize: 'clamp(17px, 5.2vw, 21px)',
+                    fontWeight: 900,
+                    color: '#064E3B',
+                    letterSpacing: 1,
+                    whiteSpace: 'nowrap',
+                    userSelect: 'all',
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {newCidToken || 'CID-XXXXXX'}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.clipboard && newCidToken) {
+                        navigator.clipboard.writeText(newCidToken)
+                        setCopiedCid(true)
+                        setTimeout(() => setCopiedCid(false), 2500)
+                      }
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      background: copiedCid ? '#059669' : '#ECFDF5',
+                      color: copiedCid ? '#FFFFFF' : '#047857',
+                      border: '1px solid #A7F3D0',
+                      borderRadius: 8,
+                      padding: '7px 12px',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {copiedCid ? <Check size={13} /> : <Copy size={13} />}
+                    <span>{copiedCid ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tip info pill */}
+              <div style={{
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 12,
+                padding: '10px 14px',
+                fontSize: 12,
+                color: '#475569',
+                lineHeight: 1.55,
+                marginBottom: 20,
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8
+              }}>
+                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
+                <span>এই আইডি দিয়ে আপনি যেকোনো সময় এই পৃষ্ঠার <strong>"স্ট্যাটাস দেখুন"</strong> ট্যাবে গিয়ে প্রতিনিধির উত্তর ও অগ্রগতি পর্যবেক্ষণ করতে পারবেন।</span>
+              </div>
+
+              {/* Symmetrical Action Buttons (50-50 on mobile) */}
+              <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSuccessModal(false)}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '12px 14px',
+                    fontWeight: 800,
+                    fontSize: 14.5,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  ঠিক আছে
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessModal(false)
+                    setActiveFormTab('track')
+                    setTrackCid(newCidToken)
+                    handleTrack(newCidToken)
+                  }}
+                  style={{
+                    flex: 1,
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 12,
+                    padding: '12px 14px',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  স্ট্যাটাস দেখুন
+                </button>
+              </div>
+            </div>
+          </Modal>
 
           {/* 2. BOTTOM: Office Details on Left & Map on Right (Layout Diagram Part 2) */}
           <Row className="g-4 align-items-stretch">
@@ -1198,7 +2311,7 @@ export default function ContactPage() {
                         <Building2 size={18} />
                       </div>
                       <h4 style={{ fontWeight: 800, color: '#0F172A', fontSize: 17, margin: 0 }}>
-                        প্রধান কার্যালয়
+                        {contact.office_title || 'প্রধান কার্যালয়'}
                       </h4>
                     </div>
 
@@ -1330,7 +2443,7 @@ export default function ContactPage() {
                     </div>
 
                     <a 
-                      href="https://maps.google.com/?q=Dhanmondi,Dhaka" 
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressValue)}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       style={{ 
@@ -1376,8 +2489,8 @@ export default function ContactPage() {
                 </div>
 
                 <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', flexWrap: 'wrap', gap: 6 }}>
-                  <span style={{ fontSize: 12.5, color: '#475569', fontWeight: 700 }}>ঢাকা ধানমন্ডি সেন্ট্রাল অফিস</span>
-                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 700 }}>হেডকোয়ার্টার ক্যাম্পাস</span>
+                  <span style={{ fontSize: 12.5, color: '#475569', fontWeight: 700 }}>{contact.office_title || 'প্রধান কার্যালয়'} — {addressValue.split(',').slice(-2).join(',').trim() || 'ধানমন্ডি, ঢাকা'}</span>
+                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 700 }}>{site.name || 'Doctor Booklet Bangladesh'}</span>
                 </div>
               </div>
             </Col>
@@ -1416,31 +2529,41 @@ export default function ContactPage() {
                       key={idx} 
                       className={`contact-faq-item ${isOpen ? 'active' : ''}`}
                     >
-                      <div 
+                      <button 
+                        type="button"
                         className="contact-faq-header"
                         onClick={() => setActiveFaq(isOpen ? null : idx)}
+                        aria-expanded={isOpen}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ 
-                            width: 26, height: 26, borderRadius: '50%', 
-                            background: isOpen ? '#00B875' : '#F1F5F9', 
-                            color: isOpen ? 'white' : '#64748B', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                            fontSize: 12.5, fontWeight: 800, flexShrink: 0 
-                          }}>
-                            ?
-                          </span>
-                          <span style={{ fontWeight: 800, fontSize: 15, color: isOpen ? '#064E3B' : '#0F172A' }}>
-                            {faq.q}
-                          </span>
-                        </div>
-                        <div style={{ color: isOpen ? '#00B875' : '#94A3B8', flexShrink: 0, transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                          <ChevronDown size={18} />
-                        </div>
-                      </div>
+                        <span
+                          className="contact-faq-q-badge"
+                          style={{
+                            background: isOpen ? '#00B875' : '#F1F5F9',
+                            color: isOpen ? '#FFFFFF' : '#64748B',
+                            border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0'
+                          }}
+                        >
+                          ?
+                        </span>
+                        <span className="contact-faq-q-text" style={{ color: isOpen ? '#15803D' : '#1E293B' }}>
+                          {faq.q}
+                        </span>
+                        <span
+                          className="contact-faq-icon"
+                          style={{
+                            background: isOpen ? '#ECFDF5' : '#F8FAFC',
+                            color: isOpen ? '#00B875' : '#64748B',
+                            border: isOpen ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                          }}
+                        >
+                          <ChevronDown size={17} strokeWidth={2.4} />
+                        </span>
+                      </button>
                       {isOpen && (
                         <div className="contact-faq-body">
-                          {faq.a}
+                          <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
+                          <p>{faq.a}</p>
                         </div>
                       )}
                     </div>
@@ -1448,29 +2571,14 @@ export default function ContactPage() {
                 })}
 
                 {/* More Questions / Help Center Button */}
-                <div style={{ textAlign: 'center', marginTop: 28 }}>
+                <div className="faq-more-wrapper">
                   <Link
                     to="/support"
                     className="btn-faq-more"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
-                      color: 'white',
-                      padding: '13px 30px',
-                      borderRadius: 99,
-                      fontWeight: 800,
-                      fontSize: 15,
-                      textDecoration: 'none',
-                      boxShadow: '0 8px 22px rgba(0, 184, 117, 0.35)',
-                      transition: 'all 0.25s ease'
-                    }}
                   >
-                    <HelpCircle size={19} />
-                    <span>আরো জানুন (সাহায্য কেন্দ্র FAQ)</span>
-                    <span style={{ opacity: 0.6, fontSize: 16 }}>|</span>
-                    <ArrowRight size={17} />
+                    <HelpCircle size={18} />
+                    <span>সকল প্রশ্নোত্তর ও সাহায্য কেন্দ্র</span>
+                    <ArrowRight size={16} />
                   </Link>
                 </div>
               </Col>

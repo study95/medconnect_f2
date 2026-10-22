@@ -98,6 +98,7 @@ const PaymentListPage     = lazy(() => import('./pages/admin/payments/PaymentLis
 const ContentManagerPage  = lazy(() => import('./pages/admin/content/ContentManagerPage'))
 const ServiceListPage    = lazy(() => import('./pages/admin/services/ServiceListPage'))
 const ServiceFormPage    = lazy(() => import('./pages/admin/services/ServiceFormPage'))
+const ContactMessageListPage = lazy(() => import('./pages/admin/contact/ContactMessageListPage'))
 const PatientListPage     = lazy(() => import('./pages/admin/patients/PatientListPage'))
 const PatientFormPage     = lazy(() => import('./pages/admin/patients/PatientFormPage'))
 
@@ -357,6 +358,7 @@ function App() {
             <Route path="services" element={<ServiceListPage />} />
             <Route path="services/create" element={<ServiceFormPage />} />
             <Route path="services/edit/:id" element={<ServiceFormPage />} />
+            <Route path="contact-messages" element={<ContactMessageListPage />} />
 
             {/* Subscription System */}
             <Route path="subscription" element={<DoctorSubscriptionExperiencePage />} />

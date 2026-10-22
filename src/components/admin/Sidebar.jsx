@@ -13,7 +13,7 @@ import {
   CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt,
   ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
   Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
-  Tag, Clock, Megaphone
+  Tag, Clock, Megaphone, Mail
 } from 'lucide-react'
 
 // ─── Collapsible Section Component ────────────────────────────────────────────
@@ -726,7 +726,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {/* ── SYSTEM ── Admin, Manager, Doctor */}
           {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('content.update')) && (
-            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/sms-settings', '/admin/audit-logs']} {...sectionProps}>
+            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/audit-logs']} {...sectionProps}>
               {/* Users — Admin only */}
               {(isAdmin || hasPermission('user.view')) && (
                 <NavLink
@@ -740,7 +740,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </NavLink>
               )}
 
-              {/* Content CMS & Support Ticket */}
+              {/* Content CMS, Support Ticket & Contact Messages */}
               {(isAdmin || hasPermission('content.update')) && (
                 <>
                   <NavLink
@@ -761,6 +761,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Ticket size={18} /></span>
                     <span className="nav-text">Support Ticket</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/contact-messages"
+                    className={`sidebar-nav-item ${isActive('/admin/contact-messages') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Contact Messages' : undefined}
+                  >
+                    <span className="nav-icon"><Mail size={18} /></span>
+                    <span className="nav-text">Contact Messages</span>
                   </NavLink>
                 </>
               )}

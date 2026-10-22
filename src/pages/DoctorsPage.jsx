@@ -1357,16 +1357,33 @@ function DoctorsPage() {
           <span style={{ color: '#0F172A', fontWeight: 600 }}>Doctor Listings</span>
         </div>
 
-        {/* ── HEADING TITLE ── */}
-        <h1 className="doc-page-heading">
-          {locationHeadingText ? (
-            <>
-              <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
-            </>
-          ) : (
-            <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
-          )}
-        </h1>
+        {/* ── HEADING TITLE + INLINE AVAILABILITY DATE FILTER BAR (DESKTOP) ── */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 16
+        }}>
+          <h1 className="doc-page-heading" style={{ margin: 0 }}>
+            {locationHeadingText ? (
+              <>
+                <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
+              </>
+            ) : (
+              <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
+            )}
+          </h1>
+
+          <div className="d-none d-lg-block">
+            <AvailabilityDateFilter
+              value={selectedDate}
+              onChange={handleDateChange}
+              inline
+            />
+          </div>
+        </div>
 
         {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
         <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
@@ -1562,14 +1579,6 @@ function DoctorsPage() {
               </button>
             )}
           </div>
-        </div>
-
-        {/* ── AVAILABILITY DATE FILTER (DESKTOP ONLY - MOVED INSIDE FILTER DRAWER ON MOBILE) ── */}
-        <div className="d-none d-lg-block">
-          <AvailabilityDateFilter
-            value={selectedDate}
-            onChange={handleDateChange}
-          />
         </div>
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}

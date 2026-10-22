@@ -46,7 +46,7 @@ const formatCustomDateBn = (dateStr) => {
  * @param {string} value - Selected preset or YYYY-MM-DD date string ('today' | 'tomorrow' | 'next_7_days' | 'YYYY-MM-DD' | '')
  * @param {function} onChange - Callback receiving the new value or empty string if cleared
  */
-export default function AvailabilityDateFilter({ value = '', onChange }) {
+export default function AvailabilityDateFilter({ value = '', onChange, inline = false }) {
   const dateInputRef = useRef(null)
 
   const isPreset = ['today', 'tomorrow', 'next_7_days'].includes(value)
@@ -115,6 +115,216 @@ export default function AvailabilityDateFilter({ value = '', onChange }) {
   const handleClear = (e) => {
     e.stopPropagation()
     onChange?.('')
+  }
+
+  if (inline) {
+    return (
+      <div className="avail-date-inline-bar">
+        <style>{`
+          .avail-date-inline-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 6px 10px 6px 14px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+            flex-wrap: nowrap;
+            max-width: 100%;
+          }
+          .avail-date-inline-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding-right: 10px;
+            border-right: 1px solid #E2E8F0;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          .avail-date-inline-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00B875;
+            flex-shrink: 0;
+          }
+          .avail-date-inline-chips {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: nowrap;
+          }
+          .avail-date-inline-chip {
+            height: 34px;
+            padding: 0 13px;
+            border-radius: 99px;
+            font-size: 12.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-family: 'Hind Siliguri', sans-serif;
+            transition: all 0.18s ease;
+            outline: none;
+          }
+          .avail-date-inline-chip:hover {
+            border-color: #00B875 !important;
+            background: #F0FDF4;
+          }
+          .avail-date-inline-chip.is-selected:hover {
+            background: #059669 !important;
+          }
+        `}</style>
+
+        {/* Left Label with Calendar Badge */}
+        <div className="avail-date-inline-label">
+          <span className="avail-date-inline-icon">
+            <IconCalendar size={16} stroke={2.2} />
+          </span>
+          <span style={{
+            fontSize: 13.5,
+            fontWeight: 800,
+            color: '#0F172A',
+            fontFamily: "'Hind Siliguri', sans-serif"
+          }}>
+            কবে ডাক্তার দেখাতে চান?
+          </span>
+        </div>
+
+        {/* Right 4 Single-Row Chips */}
+        <div className="avail-date-inline-chips">
+          {/* 1. আজ (Today) */}
+          <button
+            type="button"
+            className={`avail-date-inline-chip ${value === 'today' ? 'is-selected' : ''}`}
+            onClick={() => handlePillClick('today')}
+            aria-pressed={value === 'today'}
+            style={{
+              border: value === 'today' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+              background: value === 'today' ? '#00B875' : '#F8FAFC',
+              color: value === 'today' ? '#FFFFFF' : '#334155',
+              fontWeight: value === 'today' ? 800 : 600,
+              boxShadow: value === 'today' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            }}
+          >
+            {value === 'today' ? <IconCheck size={14} /> : <IconCalendarEvent size={14} color="#64748B" />}
+            <span>আজ {todayDateLabel ? `(${todayDateLabel})` : ''}</span>
+          </button>
+
+          {/* 2. আগামীকাল (Tomorrow) */}
+          <button
+            type="button"
+            className={`avail-date-inline-chip ${value === 'tomorrow' ? 'is-selected' : ''}`}
+            onClick={() => handlePillClick('tomorrow')}
+            aria-pressed={value === 'tomorrow'}
+            style={{
+              border: value === 'tomorrow' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+              background: value === 'tomorrow' ? '#00B875' : '#F8FAFC',
+              color: value === 'tomorrow' ? '#FFFFFF' : '#334155',
+              fontWeight: value === 'tomorrow' ? 800 : 600,
+              boxShadow: value === 'tomorrow' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            }}
+          >
+            {value === 'tomorrow' ? <IconCheck size={14} /> : <IconCalendarStats size={14} color="#64748B" />}
+            <span>আগামীকাল {tomorrowDateLabel ? `(${tomorrowDateLabel})` : ''}</span>
+          </button>
+
+          {/* 3. পরবর্তী ৭ দিন (Next 7 Days) */}
+          <button
+            type="button"
+            className={`avail-date-inline-chip ${value === 'next_7_days' ? 'is-selected' : ''}`}
+            onClick={() => handlePillClick('next_7_days')}
+            aria-pressed={value === 'next_7_days'}
+            style={{
+              border: value === 'next_7_days' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+              background: value === 'next_7_days' ? '#00B875' : '#F8FAFC',
+              color: value === 'next_7_days' ? '#FFFFFF' : '#334155',
+              fontWeight: value === 'next_7_days' ? 800 : 600,
+              boxShadow: value === 'next_7_days' ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+            }}
+          >
+            {value === 'next_7_days' ? <IconCheck size={14} /> : <IconCalendar size={14} color="#64748B" />}
+            <span>পরবর্তী ৭ দিন</span>
+          </button>
+
+          {/* 4. তারিখ দিন (Custom Date Picker) */}
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              type="button"
+              className={`avail-date-inline-chip ${isCustomDate ? 'is-selected' : ''}`}
+              onClick={handleCustomDateClick}
+              aria-pressed={isCustomDate}
+              style={{
+                border: isCustomDate ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+                background: isCustomDate ? '#00B875' : '#F8FAFC',
+                color: isCustomDate ? '#FFFFFF' : '#334155',
+                fontWeight: isCustomDate ? 800 : 600,
+                boxShadow: isCustomDate ? '0 3px 10px rgba(0, 184, 117, 0.25)' : 'none'
+              }}
+            >
+              {isCustomDate ? <IconCheck size={14} /> : <IconCalendarEvent size={14} color="#00B875" />}
+              <span>{isCustomDate ? formatCustomDateBn(value) : 'তারিখ দিন'}</span>
+            </button>
+
+            <input
+              ref={dateInputRef}
+              type="date"
+              min={todayIso}
+              value={isCustomDate ? value : ''}
+              onChange={handleDateInputChange}
+              aria-label="তারিখ নির্বাচন ক্যালেন্ডার"
+              tabIndex={-1}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0,
+                pointerEvents: 'none',
+                visibility: 'hidden'
+              }}
+            />
+          </div>
+
+          {/* Inline Reset Button when a date is selected */}
+          {value && (
+            <button
+              type="button"
+              onClick={handleClear}
+              title="তারিখ ফিল্টার রিসেট করুন"
+              style={{
+                height: 30,
+                padding: '0 9px',
+                borderRadius: 99,
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#EF4444',
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                fontFamily: "'Hind Siliguri', sans-serif",
+                flexShrink: 0
+              }}
+            >
+              <span>রিসেট</span>
+              <IconX size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (

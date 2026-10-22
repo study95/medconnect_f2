@@ -38,7 +38,7 @@ export default function ImageBannerSlider() {
 
 
   return (
-    <section className="image-banner-slider-section" style={{ padding: '16px 0 12px', position: 'relative', overflow: 'hidden' }}>
+    <section className="image-banner-slider-section" style={{ padding: '24px 0 10px', position: 'relative', overflow: 'hidden' }}>
       <Container fluid className="px-2 px-md-4">
         
         <div className="image-banner-wrapper" style={{ position: 'relative' }}>

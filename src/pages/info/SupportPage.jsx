@@ -7,7 +7,8 @@ import {
   Phone, Mail, HelpCircle, MessageSquare, Clock, ShieldCheck, 
   ChevronDown, ChevronUp, ArrowRight, LifeBuoy, Sparkles,
   CheckCircle2, AlertTriangle, Send, RefreshCw, ThumbsUp, ThumbsDown,
-  Ticket, FileText, Headphones, PhoneCall, Copy, Search, X
+  Ticket, FileText, Headphones, PhoneCall, Copy, Search, X, Plus, Minus,
+  Layers, Calendar, CreditCard, UserCheck, Stethoscope
 } from 'lucide-react'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
 
@@ -59,14 +60,21 @@ export default function SupportPage() {
   const [callbackTime, setCallbackTime] = useState('এখনই (Next 15 min)')
   const [callbackSubmitting, setCallbackSubmitting] = useState(false)
 
-  // Categories
+  // Categories with User-Friendly Names & Lucide Icons
   const categories = [
-    { id: 'all', label: 'সব প্রশ্ন', icon: '🌐' },
-    { id: 'appointment', label: 'অ্যাপয়েন্টমেন্ট', icon: '📅' },
-    { id: 'payment', label: 'পেমেন্ট ও রিফান্ড', icon: '💳' },
-    { id: 'account', label: 'অ্যাকাউন্ট ও নিরাপত্তা', icon: '🔒' },
-    { id: 'services', label: 'ডিজিটাল সেবা', icon: '🩺' },
+    { id: 'all', label: 'সকল প্রশ্ন', icon: Layers },
+    { id: 'appointment', label: 'ডাক্তার বুকিং', icon: Calendar },
+    { id: 'payment', label: 'পেমেন্ট ও রিফান্ড', icon: CreditCard },
+    { id: 'account', label: 'লগইন ও একাউন্ট', icon: UserCheck },
+    { id: 'services', label: 'অনলাইন সেবা ও প্রেসক্রিপশন', icon: Stethoscope },
   ]
+
+  // Convert number to Bengali digits
+  const toBanglaNum = (num) => {
+    if (num === undefined || num === null) return '০'
+    const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯']
+    return String(num).replace(/[0-9]/g, (d) => banglaDigits[d])
+  }
 
   // Master FAQ items
   const rawItems = useMemo(() => {
@@ -104,6 +112,16 @@ export default function SupportPage() {
       return { ...item, id, category: cat }
     })
   }, [faqData.items])
+
+  // Count items per category
+  const categoryCounts = useMemo(() => {
+    const counts = { all: rawItems.length }
+    rawItems.forEach(item => {
+      const cat = item.category || 'account'
+      counts[cat] = (counts[cat] || 0) + 1
+    })
+    return counts
+  }, [rawItems])
 
   // Filter FAQs by Category
   const filteredFaqs = useMemo(() => {
@@ -272,14 +290,27 @@ export default function SupportPage() {
 
         .support-cat-pills-row {
           display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-          -webkit-overflow-scrolling: touch;
-          padding: 2px 2px 10px 2px;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          padding: 2px 2px 14px 2px;
           margin-bottom: 22px;
           width: 100%;
+        }
+
+        .support-cat-chip {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .support-cat-chip:hover:not(.active) {
+          background: #F8FAFC !important;
+          border-color: #CBD5E1 !important;
+          color: #0F172A !important;
+          transform: translateY(-1px);
+        }
+
+        .support-cat-chip:active {
+          transform: translateY(0);
         }
 
         /* ── HERO SECTION LUXURY ENTERPRISE STYLES ── */
@@ -433,28 +464,50 @@ export default function SupportPage() {
             border-radius: 18px !important;
           }
           .support-cat-pills-row {
-            gap: 6px !important;
-            padding: 2px 2px 6px 2px !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 7px !important;
+            padding: 2px 2px 8px 2px !important;
             margin-bottom: 16px !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            -webkit-overflow-scrolling: touch !important;
           }
           .support-cat-chip {
             padding: 6px 12px !important;
-            font-size: 12px !important;
+            font-size: 12.5px !important;
           }
           .support-faq-card {
-            border-radius: 13px !important;
+            border-radius: 12px !important;
           }
           .support-faq-q-btn {
-            padding: 12px 13px !important;
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .support-faq-q-badge {
+            width: 25px !important;
+            height: 25px !important;
+            font-size: 12.5px !important;
           }
           .support-faq-q-text {
-            font-size: 13.5px !important;
-            line-height: 1.4 !important;
+            font-size: 14.2px !important;
+            line-height: 1.38 !important;
+            font-weight: 600 !important;
+          }
+          .support-faq-icon {
+            width: 26px !important;
+            height: 26px !important;
+          }
+          .support-faq-icon svg {
+            width: 15px !important;
+            height: 15px !important;
           }
           .support-faq-answer {
-            padding: 10px 14px 14px 14px !important;
-            font-size: 13px !important;
-            line-height: 1.65 !important;
+            padding: 0 14px 14px 14px !important;
+          }
+          .support-faq-answer p {
+            font-size: 13.5px !important;
+            line-height: 1.55 !important;
           }
           .tracker-search-wrap {
             display: flex !important;
@@ -774,7 +827,7 @@ export default function SupportPage() {
             }}
           >
             <HelpCircle size={17} />
-            <span>FAQ <span className="d-none d-md-inline">জিজ্ঞাসা</span></span>
+            <span>সচরাচর জিজ্ঞাসা</span>
           </button>
 
           <button
@@ -800,7 +853,7 @@ export default function SupportPage() {
             }}
           >
             <Ticket size={17} />
-            <span>নতুন টিকিট <span className="d-none d-md-inline">জমা</span></span>
+            <span>নতুন টিকিট জমা</span>
           </button>
 
           <button
@@ -826,7 +879,7 @@ export default function SupportPage() {
             }}
           >
             <Search size={17} />
-            <span>ট্র্যাক টিকিট <span className="d-none d-md-inline">করুন</span></span>
+            <span>টিকিট ট্র্যাক করুন</span>
           </button>
         </div>
 
@@ -852,44 +905,65 @@ export default function SupportPage() {
                   </h3>
                 </div>
 
-                {/* CATEGORY FILTER CHIPS (CLEAN HORIZONTAL SWIPE PILLS) */}
+                {/* CATEGORY FILTER CHIPS */}
                 <div className="support-cat-pills-row">
                   {categories.map(cat => {
+                    const IconComponent = cat.icon
                     const isActive = activeCategory === cat.id
+                    const count = categoryCounts[cat.id] ?? 0
                     return (
                       <button
                         key={cat.id}
+                        type="button"
                         onClick={() => setActiveCategory(cat.id)}
-                        className="support-cat-chip"
+                        className={`support-cat-chip ${isActive ? 'active' : ''}`}
                         style={{
                           background: isActive ? '#00B875' : '#FFFFFF',
                           color: isActive ? '#FFFFFF' : '#334155',
                           border: isActive ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                          padding: '7px 16px',
+                          padding: '7px 15px',
                           borderRadius: 999,
-                          fontSize: 13,
+                          fontSize: 13.5,
                           fontWeight: 700,
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 6,
+                          gap: 7,
                           whiteSpace: 'nowrap',
                           flexShrink: 0,
-                          boxShadow: isActive ? '0 3px 10px rgba(0, 184, 117, 0.25)' : '0 1px 3px rgba(0,0,0,0.02)',
+                          boxShadow: isActive ? '0 3px 12px rgba(0, 184, 117, 0.25)' : '0 1px 3px rgba(0,0,0,0.03)',
                           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                           fontFamily: "'Hind Siliguri', sans-serif"
                         }}
                       >
-                        <span style={{ fontSize: 14 }}>{cat.icon}</span>
+                        <IconComponent size={15} style={{ strokeWidth: isActive ? 2.4 : 2 }} />
                         <span>{cat.label}</span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 20,
+                            height: 20,
+                            padding: '0 6px',
+                            borderRadius: 99,
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            background: isActive ? 'rgba(255,255,255,0.25)' : '#F1F5F9',
+                            color: isActive ? '#FFFFFF' : '#64748B',
+                            lineHeight: 1
+                          }}
+                        >
+                          {toBanglaNum(count)}
+                        </span>
                       </button>
                     )
                   })}
                 </div>
 
-                {/* FAQ List Render (MODERN SLEEK CARDS WITH LEFT ACCENT) */}
+                {/* FAQ List Render (MATCHING HOMEPAGE FAQ ACCORDION STYLE) */}
                 {filteredFaqs.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {filteredFaqs.map((item, index) => {
                       const id = item.id || index + 1
                       const isOpen = openFaqId === id
@@ -899,23 +973,24 @@ export default function SupportPage() {
                           key={id}
                           className="support-faq-card"
                           style={{
-                            borderRadius: 14,
-                            border: isOpen ? '1.5px solid #00B875' : '1px solid #E2E8F0',
-                            borderLeft: isOpen ? '4px solid #00B875' : '1px solid #E2E8F0',
+                            borderRadius: 12,
+                            border: `1px solid ${isOpen ? '#86EFAC' : '#E2E8F0'}`,
                             background: '#FFFFFF',
                             overflow: 'hidden',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: isOpen ? '0 4px 16px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.02)'
+                            transition: 'all 0.25s ease',
+                            boxShadow: isOpen ? '0 4px 20px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.04)'
                           }}
                         >
                           {/* Question Row */}
                           <button
+                            type="button"
                             onClick={() => toggleFaq(id)}
                             className="support-faq-q-btn"
+                            aria-expanded={isOpen}
                             style={{
                               width: '100%',
-                              padding: '14px 18px',
-                              background: isOpen ? '#F0FDF4' : '#FFFFFF',
+                              padding: '16px 24px',
+                              background: 'transparent',
                               border: 'none',
                               textAlign: 'left',
                               display: 'flex',
@@ -923,46 +998,63 @@ export default function SupportPage() {
                               alignItems: 'center',
                               gap: 12,
                               cursor: 'pointer',
-                              fontFamily: "'Hind Siliguri', sans-serif",
-                              transition: 'all 0.2s ease'
+                              outline: 'none'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                              <span style={{
-                                width: 7,
-                                height: 7,
+                            <span
+                              className="support-faq-q-badge"
+                              style={{
+                                width: 28,
+                                height: 28,
                                 borderRadius: '50%',
-                                background: isOpen ? '#00B875' : '#94A3B8',
+                                background: isOpen ? '#00B875' : '#F1F5F9',
+                                color: isOpen ? '#FFFFFF' : '#64748B',
+                                border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 13.5,
+                                fontWeight: 800,
+                                fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif",
                                 flexShrink: 0,
-                                transition: 'background 0.2s ease'
-                              }} />
-                              <span 
-                                className="support-faq-q-text"
-                                style={{ 
-                                  fontWeight: 700, 
-                                  fontSize: 15, 
-                                  color: isOpen ? '#064E3B' : '#0F172A', 
-                                  lineHeight: 1.45,
-                                  transition: 'color 0.2s ease'
-                                }}
-                              >
-                                {item.q}
-                              </span>
-                            </div>
-                            <div style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: '50%',
-                              background: isOpen ? '#00B875' : '#F1F5F9',
-                              color: isOpen ? '#FFFFFF' : '#64748B',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              transition: 'all 0.2s ease'
-                            }}>
-                              {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                            </div>
+                                transition: 'all 0.25s ease'
+                              }}
+                            >
+                              ?
+                            </span>
+                            <span 
+                              className="support-faq-q-text"
+                              style={{ 
+                                fontWeight: 600, 
+                                fontSize: 15.5, 
+                                color: isOpen ? '#15803D' : '#1E293B', 
+                                fontFamily: "'Hind Siliguri', sans-serif",
+                                lineHeight: 1.4,
+                                flex: 1,
+                                transition: 'color 0.2s ease'
+                              }}
+                            >
+                              {item.q}
+                            </span>
+                            <span
+                              className="support-faq-icon"
+                              style={{
+                                width: 30,
+                                height: 30,
+                                borderRadius: '50%',
+                                background: isOpen ? '#ECFDF5' : '#F8FAFC',
+                                color: isOpen ? '#00B875' : '#64748B',
+                                border: isOpen ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                transition: 'all 0.25s ease',
+                                transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                              }}
+                            >
+                              <ChevronDown size={17} strokeWidth={2.4} />
+                            </span>
                           </button>
 
                           {/* Answer Row */}
@@ -970,19 +1062,21 @@ export default function SupportPage() {
                             <div 
                               className="support-faq-answer"
                               style={{
-                                padding: '12px 18px 16px 35px',
-                                borderTop: '1px solid #E6F4EA',
+                                padding: '0 24px 20px',
                                 background: '#FFFFFF'
                               }}
                             >
-                              <div style={{
-                                fontSize: 13.5,
+                              <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
+                              <p style={{
+                                margin: 0,
+                                fontSize: 14,
                                 color: '#475569',
-                                lineHeight: 1.75,
-                                fontWeight: 450
+                                lineHeight: 1.6,
+                                fontWeight: 400,
+                                fontFamily: "'Hind Siliguri', sans-serif"
                               }}>
                                 {item.a}
-                              </div>
+                              </p>
                             </div>
                           )}
                         </div>
@@ -1267,14 +1361,55 @@ export default function SupportPage() {
                 {/* Search Bar Form */}
                 <form onSubmit={handleSearchTicket} style={{ marginBottom: 20 }}>
                   <div className="tracker-search-wrap" style={{ display: 'flex', gap: 10 }}>
-                    <input
-                      required
-                      value={statusSearchId}
-                      onChange={e => setStatusSearchId(e.target.value)}
-                      placeholder="টিকিট আইডি লিখুন (উদাঃ TID-130707)..."
-                      className="tracker-search-input"
-                      style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
-                    />
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        required
+                        value={statusSearchId}
+                        onChange={e => setStatusSearchId(e.target.value)}
+                        placeholder="টিকিট আইডি লিখুন (উদাঃ TID-130707)..."
+                        className="tracker-search-input"
+                        style={{ width: '100%', padding: statusSearchId ? '12px 42px 12px 16px' : '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                      />
+                      {statusSearchId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStatusSearchId('')
+                            setStatusError('')
+                            setSearchedTicketResult(null)
+                          }}
+                          title="মুছে ফেলুন"
+                          style={{
+                            position: 'absolute',
+                            right: 12,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: '#F1F5F9',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: '#64748B',
+                            padding: 0,
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#E2E8F0'
+                            e.currentTarget.style.color = '#0F172A'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#F1F5F9'
+                            e.currentTarget.style.color = '#64748B'
+                          }}
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="submit"
                       className="tracker-search-btn"

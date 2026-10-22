@@ -699,7 +699,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   }, [])
   const hero = cms.hero || {}
 
-  const line2Text = 'ডাক্তার বুকিং, আরো সহজ'
+  const line2Text = 'ডাক্তার বুকিং, এখন আরো সহজ ও দ্রুত'
   const [typedLine2, setTypedLine2] = useState('')
 
   useEffect(() => {
@@ -1553,14 +1553,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const handleScrollDown = () => {
     const heroSec = document.querySelector('.hero-section-main')
     if (heroSec) {
-      const topbar = document.querySelector('.db-topbar')
-      const mainHeader = document.querySelector('.db-main-header') || document.querySelector('.navbar')
-      let totalHeaderHeight = 0
-      if (topbar) totalHeaderHeight += topbar.offsetHeight
-      if (mainHeader) totalHeaderHeight += mainHeader.offsetHeight
-      if (totalHeaderHeight === 0) totalHeaderHeight = 90
-      
-      const targetTop = heroSec.offsetTop + heroSec.offsetHeight - totalHeaderHeight
+      // Once scrolled (> 20px), fixed header height is 102px (36px topbar + 66px main header)
+      const scrolledFixedHeaderHeight = 102
+      // If currently at top (scrollY <= 20), --header-height is 102px and will shrink to 66px (-36px) on scroll
+      const headerVarShrink = window.scrollY <= 20 ? 36 : 0
+      const exactSliderSectionTop = heroSec.offsetTop + heroSec.offsetHeight - headerVarShrink
+      const targetTop = exactSliderSectionTop - scrolledFixedHeaderHeight
       window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
     } else {
       window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' })
@@ -1727,139 +1725,259 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         onClose={() => setShowLiveSerialModal(false)}
       />
 
-      {/* DESKTOP HERO VIEW (>= 992px) */}
+      {/* DESKTOP HERO VIEW (>= 992px) — Modern 2026 Health-Tech SaaS Style */}
       <div className="hero-desktop-wrapper">
-        <Container style={{ maxWidth: 1240 }}>
-          {/* Hero Title */}
-        <ScrollReveal direction="up" distance={20} duration={600}>
-          <div className="text-center mx-auto hero-title-wrapper" style={{ maxWidth: 980, marginBottom: 36 }}>
-            <h1 className="hero-title-h1" style={{ fontSize: 'clamp(22px, 3.6vw, 44px)', fontWeight: 900, color: '#00B875', lineHeight: 1.35, letterSpacing: '-0.01em', marginBottom: 16, textShadow: '0 2px 14px rgba(0, 0, 0, 0.6)', fontFamily: "'Hind Siliguri', sans-serif" }}>
-              <div style={{ display: 'block', color: '#00B875', whiteSpace: 'nowrap' }}>স্বাগত ডক্টর বুকলেটে</div>
-              <div className="hero-typed-wrapper" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', minHeight: '1.35em', lineHeight: 1.35, marginTop: 4 }}>
-                <span style={{ color: '#FFFFFF', whiteSpace: 'nowrap' }}>{typedLine2 || ' '}</span>
-                <span style={{ display: 'inline-block', color: '#00B875', fontWeight: 300, animation: 'cursorBlink 0.8s infinite', marginLeft: 2, lineHeight: 1 }}>|</span>
-              </div>
-            </h1>
-            <p className="hero-subtitle-p" style={{ fontSize: 'clamp(14px, 1.6vw, 18px)', color: 'rgba(241, 245, 249, 0.94)', fontWeight: 400, lineHeight: 1.65, margin: '0 auto', maxWidth: 880 }}>
-              {hero.subtitle || 'বাংলাদেশের অভিজ্ঞ ও যাচাইকৃত বিশেষজ্ঞ ডাক্তার, হাসপাতাল এবং চেম্বার খুঁজে মাত্র কয়েক ক্লিকেই অ্যাপয়েন্টমেন্ট বুক করুন—দ্রুত, নিরাপদ এবং সম্পূর্ণ ঝামেলামুক্তভাবে।'}
-            </p>
+        {/* Clean Dot-Matrix & Subtle Twinkle Accents Layer */}
+        <div className="sz-hero-decor-layer" aria-hidden="true">
+          <div className="sz-dot-matrix-overlay" />
+
+          {/* Subtle Floating Sparkle & Star Accents */}
+          <div className="sz-accent-icon sz-accent-sparkle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+              <path d="M20 2v4" />
+              <path d="M22 4h-4" />
+            </svg>
           </div>
-        </ScrollReveal>
-
-        {/* Search Bar */}
-        <ScrollReveal direction="up" distance={25} duration={700}>
-          <form onSubmit={handleSearch} className="hero-search-form" style={{ marginBottom: 44 }}>
-            <div className="hero-search-bar">
-
-              {/* 1. Location Popup Trigger */}
-              <div
-                className="hero-field-col hero-field-location"
-                onClick={() => setShowLocationPopup(true)}
-                title="লোকেশন নির্বাচন করুন"
-              >
-                <div className="hero-field-icon-bg">
-                  <IconMapPin size={18} style={{ color: '#00B875', flexShrink: 0 }} />
-                </div>
-                <span className="hero-field-text" style={{ color: locationLabel ? '#1E293B' : '#64748B', fontWeight: locationLabel ? 700 : 500 }}>
-                  {locationLabel || 'লোকেশন নির্বাচন করুন'}
-                </span>
-                {locationLabel ? (
-                  <IconX
-                    size={16}
-                    style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); setLocationLabel(''); setLocationParams({}) }}
-                  />
-                ) : (
-                  <IconChevronDown size={16} style={{ color: '#94A3B8', marginLeft: 'auto' }} />
-                )}
-              </div>
-
-              {/* 2. বিশেষজ্ঞতা Popup Trigger */}
-              <div
-                className="hero-field-col hero-field-location"
-                onClick={() => setShowSpecialtyPopup(true)}
-                title="বিশেষজ্ঞতা নির্বাচন করুন"
-              >
-                <div className="hero-field-icon-bg">
-                  <IconStethoscope size={18} style={{ color: '#00B875', flexShrink: 0 }} />
-                </div>
-                <span className="hero-field-text" style={{ color: specialtyLabel ? '#1E293B' : '#64748B', fontWeight: specialtyLabel ? 700 : 500 }}>
-                  {specialtyLabel || 'বিশেষজ্ঞতা নির্বাচন করুন'}
-                </span>
-                {specialtyLabel ? (
-                  <IconX size={16} style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); setSpecialtyLabel(''); setSelectedSpecialty('') }} />
-                ) : (
-                  <IconChevronDown size={16} style={{ color: '#94A3B8', marginLeft: 'auto' }} />
-                )}
-              </div>
-
-              {/* 3. হাসপাতাল Popup Trigger */}
-              <div
-                className="hero-field-col hero-field-location"
-                onClick={() => setShowHospitalPopup(true)}
-                title="হাসপাতাল নির্বাচন করুন"
-              >
-                <div className="hero-field-icon-bg">
-                  <IconBuildingHospital size={18} style={{ color: '#00B875', flexShrink: 0 }} />
-                </div>
-                <span className="hero-field-text" style={{ color: hospitalLabel ? '#1E293B' : '#64748B', fontWeight: hospitalLabel ? 700 : 500 }}>
-                  {hospitalLabel || 'হাসপাতাল নির্বাচন করুন'}
-                </span>
-                {hospitalLabel ? (
-                  <IconX size={16} style={{ color: '#64748B', marginLeft: 'auto', cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); setHospitalLabel(''); setSelectedHospital('') }} />
-                ) : (
-                  <IconChevronDown size={16} style={{ color: '#94A3B8', marginLeft: 'auto' }} />
-                )}
-              </div>
-
-              {/* 4. Keyword */}
-              <div className="hero-field-col">
-                <div className="hero-field-icon-bg">
-                  <IconWriting size={18} style={{ color: '#00B875', flexShrink: 0 }} />
-                </div>
-                <input
-                  type="text"
-                  placeholder="ডাক্তার / হাসপাতাল / বিশেষজ্ঞতা লিখুন"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  className="hero-text-input"
-                />
-              </div>
-
-              {/* 5. Search Button */}
-              <button type="submit" className="hero-search-btn">
-                <IconSearch size={20} stroke={2.8} />
-                <span>খুঁজুন</span>
-              </button>
-            </div>
-          </form>
-        </ScrollReveal>
-
-        {/* Feature Badges */}
-        <ScrollReveal direction="up" distance={30} duration={800}>
-          <div className="hero-features-row">
-            {featureCards.map((card, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)' }}>
-                  {card.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginBottom: 3 }}>{card.title}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{card.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollReveal>
-
-        {/* Scroll Down */}
-        <div onClick={handleScrollDown} className="hero-scroll-down-btn" title="Scroll Down">
-          <div className="hero-scroll-icon">
-            <IconChevronsDown size={26} stroke={2.5} />
+          <div className="sz-accent-icon sz-accent-star">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+            </svg>
           </div>
         </div>
+
+        {/* 4 Modern Glassmorphic Floating Mini-Cards (Vector Icons, No Emojis) */}
+        <div
+          className="sz-float-badge sz-float-tl"
+          onClick={() => navigate('/doctors')}
+          title="বিশেষজ্ঞ ডাক্তার দেখুন"
+        >
+          <div className="sz-float-icon-box sz-icon-emerald">
+            <IconUserCheck size={19} stroke={2.3} />
+          </div>
+          <div className="sz-float-content">
+            <div className="sz-float-title">১,২০০+ বিশেষজ্ঞ ডাক্তার</div>
+            <div className="sz-float-sub">১০০% বিএমডিসি ভেরিফাইড</div>
+          </div>
+        </div>
+
+        <div
+          className="sz-float-badge sz-float-bl"
+          onClick={() => navigate('/hospitals')}
+          title="হাসপাতাল ও চেম্বার দেখুন"
+        >
+          <div className="sz-float-icon-box sz-icon-amber">
+            <IconBuildingHospital size={19} stroke={2.3} />
+          </div>
+          <div className="sz-float-content">
+            <div className="sz-float-title">৫০০+ শীর্ষ হাসপাতাল</div>
+            <div className="sz-float-sub">আধুনিক চেম্বার ও ডায়াগনস্টিক</div>
+          </div>
+        </div>
+
+        <div
+          className="sz-float-badge sz-float-tr"
+          onClick={() => setShowLiveSerialModal(true)}
+          title="লাইভ সিরিয়াল ট্র্যাক করুন"
+        >
+          <div className="sz-float-icon-box sz-icon-sky">
+            <IconBroadcast size={19} stroke={2.3} />
+          </div>
+          <div className="sz-float-content">
+            <div className="sz-float-title">
+              <span>লাইভ সিরিয়াল ট্র্যাকিং</span>
+              <span className="sz-live-inline-dot" />
+            </div>
+            <div className="sz-float-sub">রিয়েল-টাইম কিউ আপডেট</div>
+          </div>
+        </div>
+
+        <div
+          className="sz-float-badge sz-float-br"
+          onClick={() => navigate('/quick-appointment')}
+          title="দ্রুত অ্যাপয়েন্টমেন্ট নিন"
+        >
+          <div className="sz-float-icon-box sz-icon-teal">
+            <IconClock size={19} stroke={2.3} />
+          </div>
+          <div className="sz-float-content">
+            <div className="sz-float-title">৩০ সেকেন্ডে বুকিং</div>
+            <div className="sz-float-sub">ইনস্ট্যান্ট এসএমএস অ্যালার্ট</div>
+          </div>
+        </div>
+
+        <Container style={{ maxWidth: 1120, position: 'relative', zIndex: 10 }}>
+          <ScrollReveal direction="up" distance={20} duration={600}>
+            <div className="text-center mx-auto hero-title-wrapper" style={{ maxWidth: 960 }}>
+              {/* Top Animated Pill Badge */}
+              <div className="sz-top-pill-wrap">
+                <div className="sz-top-pill">
+                  <span className="sz-ping-dot-wrap">
+                    <span className="sz-ping-circle" />
+                    <span className="sz-ping-core" />
+                  </span>
+                  <span className="sz-top-pill-text">
+                    বাংলাদেশের আধুনিক{' '}
+                    <span className="sz-top-pill-highlight">ডিজিটাল হেলথকেয়ার</span>{' '}
+                    প্ল্যাটফর্ম
+                  </span>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="sz-top-pill-sparkle"
+                  >
+                    <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+                    <path d="M20 2v4" />
+                    <path d="M22 4h-4" />
+                    <circle cx="4" cy="20" r="2" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Bold Display Headline with Curved Brush Swoosh (Style 1) */}
+              <h1 className="sz-hero-h1">
+                <span className="sz-hero-main-line">ডাক্তার অ্যাপয়েন্টমেন্ট এখন</span>{' '}
+                <span className="sz-hero-highlight-box">
+                  <span className="sz-hero-highlight-text">আরো সহজ ও দ্রুত</span>
+                  <svg
+                    className="sz-hero-swoosh-svg"
+                    viewBox="0 0 360 26"
+                    fill="none"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id="szSwooshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#10B981" stopOpacity="0.2" />
+                        <stop offset="22%" stopColor="#34D399" stopOpacity="1" />
+                        <stop offset="55%" stopColor="#6EE7B7" stopOpacity="1" />
+                        <stop offset="82%" stopColor="#38BDF8" stopOpacity="0.95" />
+                        <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.15" />
+                      </linearGradient>
+                      <linearGradient id="szSwooshSubGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#34D399" stopOpacity="0" />
+                        <stop offset="50%" stopColor="#FBBF24" stopOpacity="0.75" />
+                        <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      className="sz-swoosh-path-main"
+                      d="M4 19 C 82 5, 235 4, 356 15 C 245 10, 95 11, 4 19 Z"
+                      fill="url(#szSwooshGrad)"
+                    />
+                    <path
+                      className="sz-swoosh-stroke-main"
+                      d="M6 17 Q 180 4 354 14"
+                      stroke="url(#szSwooshGrad)"
+                      strokeWidth="4.2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      className="sz-swoosh-stroke-sub"
+                      d="M52 22 Q 185 13 308 20"
+                      stroke="url(#szSwooshSubGrad)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+              </h1>
+
+              {/* Rich Subtitle */}
+              <p className="sz-hero-subtitle">
+                {hero.subtitle ? (
+                  hero.subtitle
+                ) : (
+                  <>
+                    দেশের অভিজ্ঞ ও বিএমডিসি নিবন্ধিত{' '}
+                    <strong className="sz-sub-strong">বিশেষজ্ঞ ডাক্তার</strong>, শীর্ষস্থানীয়{' '}
+                    <strong className="sz-sub-strong">হাসপাতাল ও চেম্বার</strong> খুঁজুন এবং ঘরে বসেই নিমিষেই নিশ্চিত করুন আপনার{' '}
+                    <strong className="sz-sub-strong">অ্যাপয়েন্টমেন্ট</strong> ও{' '}
+                    <strong className="sz-sub-strong">লাইভ সিরিয়াল</strong>।
+                  </>
+                )}
+              </p>
+
+              {/* Rounded-Full Dual CTA Buttons (Vector Icons Only) */}
+              <div className="sz-cta-row">
+                <button
+                  type="button"
+                  onClick={() => navigate('/doctors')}
+                  className="sz-btn-primary"
+                >
+                  <IconStethoscope size={21} stroke={2.4} />
+                  <span>অ্যাপয়েন্টমেন্ট নিন</span>
+                  <IconArrowRight size={18} stroke={2.5} className="sz-btn-arrow" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowLiveSerialModal(true)}
+                  className="sz-btn-secondary"
+                >
+                  <span className="hero-btn-live-pulse" />
+                  <IconActivity size={20} stroke={2.3} className="sz-btn-sec-icon" />
+                  <span>লাইভ সিরিয়াল ট্র্যাকিং</span>
+                  <IconChevronRight size={17} stroke={2.4} className="sz-btn-sec-arrow" />
+                </button>
+              </div>
+
+              {/* Bottom 4 Colorful Checkmark Trust Pills */}
+              <div className="sz-trust-pills-row">
+                <span className="sz-trust-pill sz-trust-pill-emerald">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  ১,২০০+ বিশেষজ্ঞ ডাক্তার ও চেম্বার
+                </span>
+
+                <span className="sz-trust-pill sz-trust-pill-sky">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  রিয়েল-টাইম লাইভ সিরিয়াল আপডেট
+                </span>
+
+                <span className="sz-trust-pill sz-trust-pill-amber">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  ইনস্ট্যান্ট এসএমএস কনফার্মেশন
+                </span>
+
+                <span className="sz-trust-pill sz-trust-pill-indigo">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  কোনো অতিরিক্ত ঝামেলা নেই
+                </span>
+              </div>
+
+              {/* Animated Scroll-Down Button to Position Slider Perfectly */}
+              <div
+                className="hero-scroll-down-btn"
+                onClick={handleScrollDown}
+                title="নিচে স্লাইডার দেখুন"
+                role="button"
+                tabIndex={0}
+                aria-label="Scroll to banner slider"
+              >
+                <div className="hero-scroll-icon">
+                  <IconChevronsDown size={22} stroke={2.4} />
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </Container>
       </div>
 
@@ -2624,7 +2742,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         .hero-canvas-base {
           position: absolute;
           inset: 0;
-          background: linear-gradient(145deg, #011811 0%, #032A20 42%, #053B2D 72%, #082635 100%);
+          background: linear-gradient(145deg, #01140E 0%, #03261C 38%, #053B2D 68%, #072A3B 100%);
           z-index: 1;
         }
 
@@ -2636,6 +2754,179 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             linear-gradient(to bottom, rgba(52, 211, 153, 0.048) 1px, transparent 1px);
           background-size: 38px 38px;
           z-index: 2;
+        }
+
+        /* ── Medical Cross & Atmospheric Symbols ── */
+        .hero-medical-symbols {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 2;
+        }
+
+        .hero-med-symbol {
+          position: absolute;
+          font-family: system-ui, -apple-system, sans-serif;
+          font-weight: 300;
+          color: rgba(52, 211, 153, 0.16);
+          line-height: 1;
+          user-select: none;
+          pointer-events: none;
+          animation: heroSymbolFloat 12s ease-in-out infinite alternate;
+        }
+
+        .hero-med-cross-1 {
+          top: 18%;
+          left: 6%;
+          font-size: 58px;
+          animation-duration: 10s;
+        }
+
+        .hero-med-cross-2 {
+          top: 26%;
+          right: 7%;
+          font-size: 72px;
+          color: rgba(56, 189, 248, 0.14);
+          animation-duration: 14s;
+          animation-delay: -3s;
+        }
+
+        .hero-med-cross-3 {
+          top: 64%;
+          left: 12%;
+          font-size: 40px;
+          animation-duration: 11s;
+          animation-delay: -5s;
+        }
+
+        .hero-med-cross-4 {
+          top: 56%;
+          right: 12%;
+          font-size: 48px;
+          color: rgba(52, 211, 153, 0.12);
+          animation-duration: 13s;
+          animation-delay: -2s;
+        }
+
+        .hero-med-cross-5 {
+          top: 10%;
+          right: 25%;
+          font-size: 34px;
+          animation-duration: 9s;
+          animation-delay: -6s;
+        }
+
+        @keyframes heroSymbolFloat {
+          0% { transform: translateY(0px) rotate(0deg); opacity: 0.5; }
+          50% { transform: translateY(-16px) rotate(8deg); opacity: 0.9; }
+          100% { transform: translateY(12px) rotate(-6deg); opacity: 0.6; }
+        }
+
+        /* ── Modern Glowing Medical Bio-Bubbles ── */
+        .hero-bubbles-container {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          pointer-events: none;
+          z-index: 2;
+        }
+
+        .hero-bubble {
+          position: absolute;
+          border-radius: 50%;
+          background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.42) 0%, rgba(52, 211, 153, 0.18) 40%, rgba(56, 189, 248, 0.10) 75%, transparent 100%);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.28), 0 0 16px rgba(52, 211, 153, 0.2);
+          backdrop-filter: blur(2px);
+          animation: heroBubbleFloat ease-in-out infinite alternate;
+          will-change: transform, opacity;
+        }
+
+        .hero-bubble-1 {
+          width: 58px;
+          height: 58px;
+          top: 22%;
+          left: 10%;
+          animation-duration: 9s;
+          animation-delay: 0s;
+        }
+
+        .hero-bubble-2 {
+          width: 82px;
+          height: 82px;
+          top: 48%;
+          left: 6%;
+          animation-duration: 13s;
+          animation-delay: -2s;
+        }
+
+        .hero-bubble-3 {
+          width: 36px;
+          height: 36px;
+          top: 68%;
+          left: 19%;
+          animation-duration: 8s;
+          animation-delay: -4s;
+        }
+
+        .hero-bubble-4 {
+          width: 70px;
+          height: 70px;
+          top: 18%;
+          right: 12%;
+          animation-duration: 11s;
+          animation-delay: -1s;
+        }
+
+        .hero-bubble-5 {
+          width: 46px;
+          height: 46px;
+          top: 54%;
+          right: 7%;
+          animation-duration: 10s;
+          animation-delay: -3s;
+        }
+
+        .hero-bubble-6 {
+          width: 92px;
+          height: 92px;
+          top: 62%;
+          right: 20%;
+          animation-duration: 14s;
+          animation-delay: -5s;
+        }
+
+        .hero-bubble-7 {
+          width: 28px;
+          height: 28px;
+          top: 12%;
+          left: 26%;
+          animation-duration: 7s;
+          animation-delay: -2.5s;
+        }
+
+        .hero-bubble-8 {
+          width: 42px;
+          height: 42px;
+          top: 74%;
+          left: 45%;
+          animation-duration: 9.5s;
+          animation-delay: -6s;
+        }
+
+        @keyframes heroBubbleFloat {
+          0% {
+            transform: translateY(0px) translateX(0px) scale(1);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-24px) translateX(10px) scale(1.06);
+            opacity: 0.95;
+          }
+          100% {
+            transform: translateY(-48px) translateX(-8px) scale(0.96);
+            opacity: 0.65;
+          }
         }
 
         .hero-ambient-glow {
@@ -2776,12 +3067,145 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
 
 
-        /* ── Search Bar ───────────────────────── */
+        /* ── Minimalist Rating Pill & CTA Buttons ──── */
+        .hero-trust-badge-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 6px;
+        }
+
+        .hero-trust-badge-minimal {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 16px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 999px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+          font-family: 'Hind Siliguri', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.95);
+        }
+
+        .hero-trust-star-icon {
+          color: #FBBF24;
+          font-size: 14px;
+        }
+
+        .hero-trust-rating-val {
+          color: #FFFFFF;
+          font-weight: 700;
+        }
+
+        .hero-trust-divider-dot {
+          color: rgba(255, 255, 255, 0.35);
+          font-size: 12px;
+        }
+
+        .hero-trust-doc-count {
+          color: #34D399;
+          font-weight: 700;
+        }
+
+        /* ── Modern Medical Call-To-Action (CTA) Buttons ── */
+        .hero-cta-actions-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 18px;
+          flex-wrap: wrap;
+          margin-top: 0;
+          margin-bottom: 20px;
+        }
+
+        .hero-btn-primary-cta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 15px 34px;
+          background: linear-gradient(135deg, #00B875 0%, #009E64 100%);
+          color: #FFFFFF;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          border-radius: 14px;
+          font-size: 16px;
+          font-weight: 700;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+          box-shadow: 0 10px 28px rgba(0, 184, 117, 0.38), 0 2px 6px rgba(0, 0, 0, 0.2);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hero-btn-primary-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 36px rgba(0, 184, 117, 0.52), 0 4px 10px rgba(0, 0, 0, 0.25);
+          background: linear-gradient(135deg, #00CC82 0%, #00B875 100%);
+        }
+
+        .hero-btn-primary-cta:active {
+          transform: translateY(0);
+        }
+
+        .hero-btn-arrow {
+          transition: transform 0.2s ease;
+        }
+
+        .hero-btn-primary-cta:hover .hero-btn-arrow {
+          transform: translateX(4px);
+        }
+
+        .hero-btn-secondary-cta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 15px 30px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          color: #FFFFFF;
+          border: 1.5px solid rgba(255, 255, 255, 0.24);
+          border-radius: 14px;
+          font-size: 15.5px;
+          font-weight: 600;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hero-btn-secondary-cta:hover {
+          background: rgba(255, 255, 255, 0.14);
+          border-color: rgba(56, 189, 248, 0.55);
+          color: #38BDF8;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(56, 189, 248, 0.22);
+        }
+
+        .hero-btn-secondary-cta:active {
+          transform: translateY(0);
+        }
+
+        .hero-btn-live-pulse {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #38BDF8;
+          box-shadow: 0 0 10px #38BDF8;
+          animation: heroLivePulse 2s infinite;
+        }
+
+        /* ── Search Bar (Health-Tech Precision Glow) ───────────────────────── */
         .hero-search-bar {
           background: #FFFFFF;
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 20px 45px rgba(0,0,0,0.22);
+          border: 1.5px solid rgba(52, 211, 153, 0.35);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.32), 0 0 30px rgba(0, 184, 117, 0.14);
           display: flex;
           align-items: stretch;
           width: 100%;
@@ -3114,13 +3538,72 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         }
         .loc-item:hover .srch-item-check { color: #00803D; }
 
-        /* ── Feature row & Scroll icon ──────── */
+        /* ── Feature row (Medical Frosted Glass Cards) ──────── */
         .hero-features-row {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 24px;
+          gap: 16px;
           max-width: 1180px;
-          margin: 0 auto 36px;
+          margin: 16px auto 36px;
+        }
+
+        .hero-feature-card {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.06);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 14px;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+        }
+
+        .hero-feature-card:hover {
+          background: rgba(255, 255, 255, 0.11);
+          border-color: rgba(52, 211, 153, 0.38);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 24px rgba(0, 184, 117, 0.18);
+        }
+
+        .hero-feature-icon-box {
+          width: 46px;
+          height: 46px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+          border: 1px solid rgba(255, 255, 255, 0.85);
+          transition: transform 0.25s ease;
+        }
+
+        .hero-feature-card:hover .hero-feature-icon-box {
+          transform: scale(1.08);
+        }
+
+        .hero-feature-text {
+          text-align: left;
+        }
+
+        .hero-feature-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: #FFFFFF;
+          line-height: 1.25;
+          margin-bottom: 2px;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .hero-feature-desc {
+          font-size: 11.5px;
+          color: rgba(241, 245, 249, 0.82);
+          line-height: 1.35;
+          font-family: 'Hind Siliguri', sans-serif;
         }
 
         .hero-scroll-down-btn {
@@ -3128,44 +3611,590 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          margin: 36px auto 10px;
+          margin: 18px auto 0;
           cursor: pointer;
           width: fit-content;
           user-select: none;
+          position: relative;
+          z-index: 15;
         }
 
         .hero-scroll-icon {
-          width: 48px;
-          height: 48px;
+          width: 42px;
+          height: 42px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.18);
+          background: rgba(16, 185, 129, 0.16);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border: 1.5px solid rgba(255,255,255,0.4);
+          border: 1.5px solid rgba(52, 211, 153, 0.48);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #FFFFFF;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+          color: #6EE7B7;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), 0 0 14px rgba(16, 185, 129, 0.22);
           animation: heroScrollBounce 2.2s infinite ease-in-out;
           transition: all 0.3s ease;
         }
 
         @keyframes heroScrollBounce {
           0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(12px); }
-          60% { transform: translateY(6px); }
+          40% { transform: translateY(8px); }
+          60% { transform: translateY(4px); }
         }
 
         .hero-scroll-down-btn:hover .hero-scroll-icon {
-          background: rgba(22,163,74,0.9);
-          border-color: #22C55E;
+          background: linear-gradient(135deg, #00B875 0%, #0D9488 100%);
+          border-color: #6EE7B7;
+          color: #FFFFFF;
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
           transform: scale(1.1);
         }
 
         @keyframes cursorBlink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
+        }
+
+        /* ── Modern 2026 Health-Tech SaaS Desktop Hero ── */
+        .hero-desktop-wrapper {
+          position: relative;
+          width: 100%;
+          padding: 18px 0 8px;
+        }
+
+        .sz-hero-decor-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 1;
+          user-select: none;
+        }
+
+        .sz-dot-matrix-overlay {
+          position: absolute;
+          inset: -40px 0;
+          opacity: 0.38;
+          background-image:
+            radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.14) 0%, transparent 75%),
+            radial-gradient(rgba(52, 211, 153, 0.3) 1.35px, transparent 1.35px);
+          background-size: 100% 100%, 34px 34px;
+          mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, black 35%, transparent 90%);
+          -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, black 35%, transparent 90%);
+        }
+
+        @keyframes szFloatSlow {
+          0% { transform: translateY(0px); }
+          100% { transform: translateY(-8px); }
+        }
+
+        @keyframes szRotateSlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* Subtle Sparkle & Star accents */
+        .sz-accent-icon {
+          position: absolute;
+          pointer-events: none;
+        }
+
+        .sz-accent-sparkle {
+          top: 14%;
+          left: 23%;
+          color: #34D399;
+          opacity: 0.65;
+          animation: szPulseTwinkle 4s ease-in-out infinite;
+        }
+
+        .sz-accent-star {
+          bottom: 28%;
+          right: 22%;
+          color: #38BDF8;
+          opacity: 0.55;
+          animation: szPulseTwinkle 4.5s ease-in-out 0.6s infinite;
+        }
+
+        @keyframes szPulseTwinkle {
+          0%, 100% { transform: scale(0.95) rotate(0deg); opacity: 0.45; }
+          50% { transform: scale(1.15) rotate(8deg); opacity: 0.85; }
+        }
+
+        /* 4 Sleek Glassmorphic Floating Mini-Cards (No Emojis, Pure Vector UI) */
+        .sz-float-badge {
+          position: absolute;
+          z-index: 20;
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 16px 10px 12px;
+          border-radius: 16px;
+          background: rgba(6, 38, 28, 0.72);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          cursor: pointer;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+          white-space: nowrap;
+          user-select: none;
+        }
+
+        .sz-float-icon-box {
+          width: 38px;
+          height: 38px;
+          border-radius: 11px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.25s ease;
+        }
+
+        .sz-float-badge:hover .sz-float-icon-box {
+          transform: scale(1.08);
+        }
+
+        .sz-icon-emerald {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
+          color: #34D399;
+          border: 1px solid rgba(52, 211, 153, 0.35);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .sz-icon-amber {
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%);
+          color: #FBBF24;
+          border: 1px solid rgba(251, 191, 36, 0.35);
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+
+        .sz-icon-sky {
+          background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(2, 132, 199, 0.15) 100%);
+          color: #38BDF8;
+          border: 1px solid rgba(56, 189, 248, 0.35);
+          box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+        }
+
+        .sz-icon-teal {
+          background: linear-gradient(135deg, rgba(20, 184, 166, 0.25) 0%, rgba(13, 148, 136, 0.15) 100%);
+          color: #2DD4BF;
+          border: 1px solid rgba(45, 212, 191, 0.35);
+          box-shadow: 0 4px 12px rgba(20, 184, 166, 0.2);
+        }
+
+        .sz-float-content {
+          display: flex;
+          flex-direction: column;
+          text-align: left;
+          line-height: 1.25;
+        }
+
+        .sz-float-title {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #FFFFFF;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .sz-float-sub {
+          font-size: 11.5px;
+          font-weight: 500;
+          color: rgba(203, 213, 225, 0.85);
+          margin-top: 2px;
+        }
+
+        .sz-live-inline-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #EF4444;
+          box-shadow: 0 0 8px #EF4444;
+          animation: qlsPulseDot 1.5s infinite ease-in-out;
+        }
+
+        /* Top-Left Card */
+        .sz-float-tl {
+          top: 12%;
+          left: 2.5%;
+          border-color: rgba(52, 211, 153, 0.28);
+          transform: rotate(-1.5deg);
+          animation: szFloatSlow 6s ease-in-out infinite alternate;
+        }
+        .sz-float-tl:hover {
+          transform: rotate(0deg) translateY(-4px) scale(1.03);
+          background: rgba(6, 55, 40, 0.88);
+          border-color: rgba(52, 211, 153, 0.6);
+        }
+
+        /* Bottom-Left Card */
+        .sz-float-bl {
+          bottom: 24%;
+          left: 3%;
+          border-color: rgba(251, 191, 36, 0.26);
+          transform: rotate(1.5deg);
+          animation: szFloatSlow 7s ease-in-out -2s infinite alternate;
+        }
+        .sz-float-bl:hover {
+          transform: rotate(0deg) translateY(-4px) scale(1.03);
+          background: rgba(6, 55, 40, 0.88);
+          border-color: rgba(251, 191, 36, 0.55);
+        }
+
+        /* Top-Right Card */
+        .sz-float-tr {
+          top: 12%;
+          right: 2.5%;
+          border-color: rgba(56, 189, 248, 0.28);
+          transform: rotate(1.5deg);
+          animation: szFloatSlow 6.5s ease-in-out -1s infinite alternate;
+        }
+        .sz-float-tr:hover {
+          transform: rotate(0deg) translateY(-4px) scale(1.03);
+          background: rgba(8, 47, 73, 0.88);
+          border-color: rgba(56, 189, 248, 0.6);
+        }
+
+        /* Bottom-Right Card */
+        .sz-float-br {
+          bottom: 24%;
+          right: 3%;
+          border-color: rgba(45, 212, 191, 0.28);
+          transform: rotate(-1.5deg);
+          animation: szFloatSlow 7.5s ease-in-out -3s infinite alternate;
+        }
+        .sz-float-br:hover {
+          transform: rotate(0deg) translateY(-4px) scale(1.03);
+          background: rgba(13, 60, 56, 0.88);
+          border-color: rgba(45, 212, 191, 0.6);
+        }
+
+        @media (max-width: 1240px) {
+          .sz-float-badge {
+            display: none;
+          }
+        }
+
+        /* Center Top Animated Pill Badge */
+        .sz-top-pill-wrap {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 18px;
+        }
+
+        .sz-top-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 6px 18px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(52, 211, 153, 0.32);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          cursor: default;
+          transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .sz-top-pill:hover {
+          transform: scale(1.03);
+          border-color: rgba(52, 211, 153, 0.55);
+        }
+
+        .sz-ping-dot-wrap {
+          position: relative;
+          display: flex;
+          width: 9px;
+          height: 9px;
+        }
+
+        .sz-ping-circle {
+          position: absolute;
+          display: inline-flex;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          background: #34D399;
+          opacity: 0.75;
+          animation: szPing 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .sz-ping-core {
+          position: relative;
+          display: inline-flex;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: #10B981;
+          box-shadow: 0 0 8px #34D399;
+        }
+
+        @keyframes szPing {
+          75%, 100% {
+            transform: scale(2.4);
+            opacity: 0;
+          }
+        }
+
+        .sz-top-pill-text {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #F1F5F9;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .sz-top-pill-highlight {
+          font-weight: 900;
+          color: #34D399;
+        }
+
+        .sz-top-pill-sparkle {
+          color: #FBBF24;
+          animation: szRotateSlow 4.5s linear infinite;
+        }
+
+        /* Main Display Headline with Curved Brush Swoosh (Style 1) */
+        .sz-hero-h1 {
+          font-size: clamp(34px, 4.3vw, 58px);
+          font-weight: 900;
+          color: #FFFFFF;
+          line-height: 1.26;
+          letter-spacing: -0.02em;
+          margin: 0 auto 24px;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .sz-hero-main-line {
+          text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+        }
+
+        .sz-hero-highlight-box {
+          position: relative;
+          display: inline-block;
+          padding: 0 8px 8px;
+          z-index: 1;
+        }
+
+        .sz-hero-highlight-text {
+          position: relative;
+          z-index: 2;
+          background: linear-gradient(135deg, #A7F3D0 0%, #34D399 45%, #38BDF8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          text-shadow: none;
+          filter: drop-shadow(0 4px 18px rgba(16, 185, 129, 0.28));
+        }
+
+        .sz-hero-swoosh-svg {
+          position: absolute;
+          left: -2%;
+          bottom: -5px;
+          width: 104%;
+          height: 20px;
+          z-index: 1;
+          pointer-events: none;
+          overflow: visible;
+          filter: drop-shadow(0 4px 12px rgba(52, 211, 153, 0.45));
+        }
+
+        .sz-swoosh-stroke-main {
+          stroke-dasharray: 400;
+          stroke-dashoffset: 400;
+          animation: szSwooshDraw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+        }
+
+        .sz-swoosh-path-main {
+          opacity: 0;
+          animation: szSwooshFade 0.8s ease 0.35s forwards;
+        }
+
+        .sz-swoosh-stroke-sub {
+          stroke-dasharray: 300;
+          stroke-dashoffset: 300;
+          animation: szSwooshDraw 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+        }
+
+        @keyframes szSwooshDraw {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+
+        @keyframes szSwooshFade {
+          to {
+            opacity: 0.85;
+          }
+        }
+
+        /* Rich Subtitle */
+        .sz-hero-subtitle {
+          font-size: clamp(15px, 1.35vw, 18px);
+          color: rgba(226, 232, 240, 0.88);
+          font-weight: 500;
+          line-height: 1.65;
+          max-width: 680px;
+          margin: 0 auto 28px;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .sz-sub-strong {
+          color: #FFFFFF;
+          font-weight: 800;
+          text-decoration: underline;
+          text-decoration-color: rgba(52, 211, 153, 0.5);
+          text-underline-offset: 4px;
+        }
+
+        /* Dual Rounded-Full CTA Buttons */
+        .sz-cta-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-bottom: 34px;
+        }
+
+        .sz-btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 32px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #00B875 0%, #0D9488 100%);
+          color: #FFFFFF;
+          font-size: 16px;
+          font-weight: 800;
+          font-family: 'Hind Siliguri', sans-serif;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          box-shadow: 0 12px 30px rgba(0, 184, 117, 0.35), 0 4px 10px rgba(0, 0, 0, 0.2);
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sz-btn-primary:hover {
+          transform: translateY(-3px);
+          background: linear-gradient(135deg, #10B981 0%, #0F766E 100%);
+          box-shadow: 0 18px 38px rgba(16, 185, 129, 0.48), 0 6px 14px rgba(0, 0, 0, 0.25);
+        }
+
+        .sz-btn-primary:active {
+          transform: translateY(0) scale(0.98);
+        }
+
+        .sz-btn-arrow,
+        .sz-btn-sec-arrow {
+          transition: transform 0.22s ease;
+        }
+
+        .sz-btn-primary:hover .sz-btn-arrow,
+        .sz-btn-secondary:hover .sz-btn-sec-arrow {
+          transform: translateX(4px);
+        }
+
+        .sz-btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 30px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1.5px solid rgba(52, 211, 153, 0.35);
+          color: #FFFFFF;
+          font-size: 15.5px;
+          font-weight: 700;
+          font-family: 'Hind Siliguri', sans-serif;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sz-btn-secondary:hover {
+          transform: translateY(-3px);
+          background: rgba(255, 255, 255, 0.14);
+          border-color: #38BDF8;
+          color: #E0F2FE;
+          box-shadow: 0 14px 32px rgba(56, 189, 248, 0.24);
+        }
+
+        .sz-btn-secondary:active {
+          transform: translateY(0) scale(0.98);
+        }
+
+        .sz-btn-sec-icon {
+          color: #38BDF8;
+        }
+
+        .sz-btn-sec-arrow {
+          opacity: 0.75;
+        }
+
+        /* Bottom 4 Colorful Checkmark Trust Pills */
+        .sz-trust-pills-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 4px;
+          margin-bottom: 10px;
+        }
+
+        .sz-trust-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 13px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 700;
+          font-family: 'Hind Siliguri', sans-serif;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+          transition: transform 0.2s ease;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 1100px) {
+          .sz-trust-pills-row {
+            flex-wrap: wrap;
+          }
+        }
+
+        .sz-trust-pill:hover {
+          transform: translateY(-2px);
+        }
+
+        .sz-trust-pill-emerald {
+          color: #6EE7B7;
+          background: rgba(6, 78, 59, 0.65);
+          border: 1px solid rgba(52, 211, 153, 0.35);
+        }
+
+        .sz-trust-pill-sky {
+          color: #7DD3FC;
+          background: rgba(12, 74, 110, 0.65);
+          border: 1px solid rgba(56, 189, 248, 0.35);
+        }
+
+        .sz-trust-pill-amber {
+          color: #FCD34D;
+          background: rgba(120, 53, 15, 0.55);
+          border: 1px solid rgba(251, 191, 36, 0.35);
+        }
+
+        .sz-trust-pill-indigo {
+          color: #C4B5FD;
+          background: rgba(49, 46, 129, 0.55);
+          border: 1px solid rgba(167, 139, 250, 0.35);
         }
 
         @media (min-width: 992px) {
@@ -3176,15 +4205,15 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: none !important;
           }
           .hero-section-main {
-            min-height: 100vh !important;
+            min-height: auto !important;
             display: flex !important;
             flex-direction: column !important;
-            justify-content: center !important;
-            padding-top: calc(var(--header-height, 100px) + 45px) !important;
-            padding-bottom: 45px !important;
+            justify-content: flex-start !important;
+            padding-top: calc(var(--header-height, 102px) + 22px) !important;
+            padding-bottom: 28px !important;
           }
           .hero-title-wrapper {
-            margin-top: 12px !important;
+            margin-top: 4px !important;
           }
         }
 

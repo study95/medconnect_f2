@@ -3007,7 +3007,7 @@ function HomepageFaqSection() {
           </p>
         </div>
 
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-2">
           {faqs.map((faq, i) => {
             const isOpen = openIndex === i
             return (
@@ -3015,7 +3015,7 @@ function HomepageFaqSection() {
                 key={i}
                 className="bg-white rounded-3 border"
                 style={{
-                  boxShadow: isOpen ? '0 4px 20px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  boxShadow: isOpen ? '0 4px 16px rgba(0, 184, 117, 0.08)' : '0 1px 2px rgba(0, 0, 0, 0.03)',
                   borderColor: isOpen ? '#86EFAC' : '#E2E8F0',
                   transition: 'all 0.25s ease',
                   overflow: 'hidden'
@@ -3024,18 +3024,34 @@ function HomepageFaqSection() {
                 <button
                   type="button"
                   onClick={() => handleToggle(i)}
-                  className="faq-toggle-btn w-100 d-flex align-items-center justify-content-between p-3 p-md-4 text-start border-0 bg-transparent"
-                  style={{ cursor: 'pointer', outline: 'none', gap: 14 }}
+                  className="faq-toggle-btn w-100 d-flex align-items-center justify-content-between text-start border-0 bg-transparent"
+                  style={{ cursor: 'pointer', outline: 'none', gap: 10, padding: '11px 16px' }}
                   aria-expanded={isOpen}
                 >
                   <span
+                    className="faq-q-badge d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: isOpen ? '#00B875' : '#F1F5F9',
+                      color: isOpen ? '#FFFFFF' : '#64748B',
+                      border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0',
+                      fontSize: 12.5,
+                      fontWeight: 800,
+                      fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif",
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    ?
+                  </span>
+                  <span
                     className="faq-question-text mb-0"
                     style={{
-                      fontSize: 15.5,
+                      fontSize: 15,
                       fontWeight: 600,
                       color: isOpen ? '#15803D' : '#1E293B',
                       fontFamily: "'Hind Siliguri', sans-serif",
-                      lineHeight: 1.4,
+                      lineHeight: 1.35,
                       flex: 1,
                       transition: 'color 0.2s ease'
                     }}
@@ -3045,31 +3061,33 @@ function HomepageFaqSection() {
                   <span
                     className="faq-toggle-icon d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
                     style={{
-                      width: 32,
-                      height: 32,
-                      background: isOpen ? '#00B875' : '#F1F5F9',
-                      color: isOpen ? '#FFFFFF' : '#475569',
+                      width: 26,
+                      height: 26,
+                      background: isOpen ? '#ECFDF5' : '#F8FAFC',
+                      color: isOpen ? '#00B875' : '#64748B',
                       transition: 'all 0.25s ease',
-                      border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0'
+                      border: isOpen ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                      transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
                     }}
                   >
-                    {isOpen ? <IconMinus size={18} stroke={2.5} /> : <IconPlus size={18} stroke={2.5} />}
+                    <IconChevronDown size={15} stroke={2.4} />
                   </span>
                 </button>
 
                 {isOpen && (
                   <div
-                    className="faq-answer-wrap px-3 px-md-4 pb-3 pb-md-4 pt-0"
+                    className="faq-answer-wrap pt-0"
                     style={{
+                      padding: '0 16px 12px 16px',
                       animation: 'faqFadeIn 0.3s ease'
                     }}
                   >
-                    <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
+                    <div style={{ height: 1, background: '#F1F5F9', marginBottom: 10 }} />
                     <p
                       className="text-muted mb-0"
                       style={{
-                        fontSize: 14,
-                        lineHeight: 1.6,
+                        fontSize: 13.8,
+                        lineHeight: 1.55,
                         fontFamily: "'Hind Siliguri', sans-serif",
                         color: '#475569'
                       }}
@@ -3160,26 +3178,31 @@ function HomepageFaqSection() {
             padding-bottom: 86px !important;
           }
           .faq-toggle-btn {
-            padding: 12px 14px !important;
-            gap: 10px !important;
+            padding: 9px 12px !important;
+            gap: 8px !important;
+          }
+          .faq-q-badge {
+            width: 22px !important;
+            height: 22px !important;
+            font-size: 11.5px !important;
           }
           .faq-question-text {
-            font-size: 14.2px !important;
-            line-height: 1.38 !important;
+            font-size: 14px !important;
+            line-height: 1.35 !important;
             font-weight: 600 !important;
           }
           .faq-toggle-icon {
-            width: 28px !important;
-            height: 28px !important;
+            width: 24px !important;
+            height: 24px !important;
           }
           .faq-toggle-icon svg {
-            width: 16px !important;
-            height: 16px !important;
+            width: 14px !important;
+            height: 14px !important;
           }
           .faq-answer-wrap {
-            padding-left: 14px !important;
-            padding-right: 14px !important;
-            padding-bottom: 14px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-bottom: 11px !important;
           }
           .faq-answer-wrap p {
             font-size: 13.5px !important;
@@ -3988,9 +4011,8 @@ function HospitalPartnersSection({ hospitals = [] }) {
   )
 }
 
-// ─── DOCTOR BOOKING PROMO BANNER (FULL WIDTH SINGLE ROW LIVE TRACKER) ────
+// ─── DOCTOR BOOKING PROMO BANNER (CONTAINED FLOATING LIVE QUEUE CARD) ────
 function DoctorBookingPromoBanner() {
-  const navigate = useNavigate()
   const [showLiveSerialModal, setShowLiveSerialModal] = useState(false)
   return (
     <section
@@ -3998,13 +4020,9 @@ function DoctorBookingPromoBanner() {
       style={{
         width: '100%',
         margin: '0',
-        position: 'relative',
-        background: 'linear-gradient(90deg, #022C22 0%, #064E3B 32%, #047857 70%, #065F46 100%)',
-        padding: '30px 0',
-        minHeight: '165px',
-        display: 'flex',
-        alignItems: 'center',
-        overflow: 'hidden'
+        padding: '14px 0 28px',
+        background: 'transparent',
+        position: 'relative'
       }}
     >
       <style>{`
@@ -4014,160 +4032,194 @@ function DoctorBookingPromoBanner() {
           }
         }
         @keyframes livePulseAnim {
-          0% { transform: scale(0.95); opacity: 0.8; }
-          50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px #EF4444; }
-          100% { transform: scale(0.95); opacity: 0.8; }
+          0% { transform: scale(0.95); opacity: 0.85; }
+          50% { transform: scale(1.22); opacity: 1; box-shadow: 0 0 12px #EF4444; }
+          100% { transform: scale(0.95); opacity: 0.85; }
+        }
+        @keyframes radarRingWave {
+          0% { transform: scale(0.85); opacity: 0.7; }
+          100% { transform: scale(1.55); opacity: 0; }
         }
         .live-pulse-dot {
           animation: livePulseAnim 1.6s infinite ease-in-out;
         }
+        .live-promo-contained-card {
+          position: relative;
+          background: linear-gradient(105deg, #021C16 0%, #032B22 38%, #064E3B 72%, #04392C 100%);
+          border-radius: 26px;
+          padding: 30px 38px;
+          overflow: hidden;
+          border: 1px solid rgba(52, 211, 153, 0.28);
+          box-shadow: 0 22px 48px -12px rgba(2, 44, 34, 0.28), 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
         .live-tracker-single-row {
+          position: relative;
+          z-index: 2;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 28px;
+          gap: 32px;
+        }
+        .live-radar-icon-box {
+          width: 72px;
+          height: 72px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.24) 0%, rgba(5, 150, 105, 0.08) 100%);
+          border: 1px solid rgba(52, 211, 153, 0.38);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          flex-shrink: 0;
+        }
+        .live-radar-icon-box::before {
+          content: '';
+          position: absolute;
+          inset: -6px;
+          border-radius: 24px;
+          border: 1.5px solid rgba(52, 211, 153, 0.45);
+          animation: radarRingWave 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+          pointer-events: none;
+        }
+        .live-right-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          flex-shrink: 0;
+        }
+        .live-dashboard-widget {
+          background: rgba(6, 40, 30, 0.72);
+          border: 1px solid rgba(110, 231, 183, 0.26);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border-radius: 16px;
+          padding: 11px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+        }
+        .live-Serial-cta-btn {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          background: linear-gradient(135deg, #FFFFFF 0%, #ECFDF5 100%);
+          color: #064E3B;
+          border: 1px solid rgba(255, 255, 255, 0.95);
+          border-radius: 14px;
+          padding: 12.5px 24px;
+          font-size: 16px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28), 0 0 20px rgba(16, 185, 129, 0.22);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+        }
+        .live-Serial-cta-btn:hover {
+          transform: translateY(-2px);
+          background: #FFFFFF;
+          box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38), 0 0 28px rgba(52, 211, 153, 0.42);
+        }
+        @media (max-width: 1199px) {
+          .live-promo-contained-card {
+            padding: 24px 26px;
+          }
         }
         @media (max-width: 991px) {
           .live-tracker-single-row {
             flex-wrap: wrap;
             gap: 20px;
           }
+          .live-right-stack {
+            width: 100%;
+          }
         }
       `}</style>
 
-      {/* Subtle Background Glow Rings */}
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '20%',
-        width: 360,
-        height: 180,
-        transform: 'translate(-50%, -50%)',
-        background: 'radial-gradient(ellipse, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
-        pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        right: '15%',
-        width: 320,
-        height: 160,
-        transform: 'translate(50%, -50%)',
-        background: 'radial-gradient(ellipse, rgba(52, 211, 153, 0.18) 0%, transparent 70%)',
-        pointerEvents: 'none'
-      }} />
+      <Container fluid="xl" className="px-3 px-lg-4">
+        <div className="live-promo-contained-card">
+          {/* Subtle Dot Matrix & Ambient Glow Inside Card */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'radial-gradient(rgba(167, 243, 208, 0.12) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+            maskImage: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.9) 50%, rgba(0,0,0,0.4) 100%)',
+            WebkitMaskImage: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.9) 50%, rgba(0,0,0,0.4) 100%)',
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '25%',
+            width: 460,
+            height: 220,
+            transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(16, 185, 129, 0.24) 0%, transparent 70%)',
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            right: '18%',
+            width: 380,
+            height: 190,
+            transform: 'translate(50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(45, 212, 191, 0.18) 0%, transparent 70%)',
+            pointerEvents: 'none'
+          }} />
 
-      <Container fluid="xl" className="px-3 px-lg-4" style={{ position: 'relative', zIndex: 1, width: '100%' }}>
-        <div className="live-tracker-single-row">
+          <div className="live-tracker-single-row">
           
-          {/* Left Segment: Full-Height Mobile Mockup + LIVE Headline */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22, minWidth: 280, flex: '1 1 auto' }}>
+          {/* Left Segment: Spacious 2-Line Headline + Trust Sub-row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22, flex: '1 1 540px' }}>
             
-            {/* Realistic Full-Height Smartphone Mockup */}
-            <div style={{
-              width: 86,
-              height: 154,
-              borderRadius: 20,
-              background: '#0B132B',
-              border: '2.5px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 12px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1.5px rgba(255, 255, 255, 0.1)',
-              position: 'relative',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              flexShrink: 0,
-              filter: 'drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35))'
-            }}>
-              {/* Top Dynamic Island / Speaker */}
-              <div style={{
-                width: 24,
-                height: 5,
-                borderRadius: 99,
-                background: '#000000',
-                margin: '5px auto 4px'
-              }} />
-
-              {/* Phone App Header */}
-              <div style={{
-                background: '#047857',
-                padding: '3px 5px',
-                borderRadius: 5,
-                margin: '0 4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <span style={{ fontSize: 7, fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.2px' }}>DoctorBooklet</span>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
-              </div>
-
-              {/* Phone Screen Live Queue Box */}
-              <div style={{
-                background: '#FFFFFF',
-                borderRadius: 8,
-                margin: '4px 4px 3px',
-                padding: '5px 4px',
-                textAlign: 'center',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
-              }}>
-                <div style={{ fontSize: 7, color: '#047857', fontWeight: 800 }}>চলতি সিরিয়াল</div>
-                <div style={{
-                  fontSize: 18,
-                  fontWeight: 900,
-                  color: '#059669',
-                  lineHeight: 1.1,
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}>
-                  ১২
-                </div>
-                <div style={{ fontSize: 6, color: '#64748B', fontWeight: 600 }}>চেম্বার লাইভ চলছে</div>
-              </div>
-
-              {/* Mini Upcoming Ticker on Phone */}
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.12)',
-                borderRadius: 5,
-                margin: '1px 4px',
-                padding: '3px 4px',
-                textAlign: 'center',
-                fontSize: 6.5,
-                color: '#A7F3D0',
-                fontWeight: 600
-              }}>
-                পরবর্তী: ১৩ • ১৪
-              </div>
-
-              {/* Bottom Home Indicator */}
-              <div style={{
-                width: 26,
-                height: 2.5,
-                borderRadius: 99,
-                background: 'rgba(255, 255, 255, 0.5)',
-                margin: 'auto auto 4px'
-              }} />
+            {/* Glowing Live Radar / Pulse Icon Box */}
+            <div className="live-radar-icon-box">
+              <IconActivity size={34} color="#34D399" stroke={2.2} />
+              <span
+                className="live-pulse-dot"
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  width: 13,
+                  height: 13,
+                  borderRadius: '50%',
+                  background: '#EF4444',
+                  border: '2.5px solid #032B22'
+                }}
+              />
             </div>
 
-            {/* LIVE Badge, Headline & Sub-bullet */}
+            {/* Spacious Badge, 2-Line Headline & Micro Features */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              {/* Single-Line Top Badge + Tagline */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 99,
-                  background: 'rgba(239, 68, 68, 0.22)',
-                  border: '1px solid rgba(239, 68, 68, 0.6)',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(248, 113, 113, 0.55)',
                   color: '#FCA5A5',
                   fontSize: 12,
                   fontWeight: 800,
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.4px',
+                  whiteSpace: 'nowrap'
                 }}>
                   <span
                     className="live-pulse-dot"
                     style={{
-                      width: 8,
-                      height: 8,
+                      width: 7,
+                      height: 7,
                       borderRadius: '50%',
                       background: '#EF4444',
                       display: 'inline-block'
@@ -4175,100 +4227,154 @@ function DoctorBookingPromoBanner() {
                   />
                   LIVE সিরিয়াল ট্র্যাকিং
                 </span>
-                <span style={{ color: '#A7F3D0', fontSize: 13.5, fontWeight: 600 }}>
-                  • চেম্বারে বসে অপেক্ষার দিন শেষ
+                <span style={{ color: '#6EE7B7', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  • চেম্বারে বসে দীর্ঘ অপেক্ষার দিন শেষ
                 </span>
               </div>
 
+              {/* Clean 2-Line Main Headline */}
               <h3 style={{
-                fontSize: 'clamp(18px, 1.9vw, 24px)',
+                fontSize: 'clamp(21px, 2.05vw, 27px)',
                 fontWeight: 900,
                 color: '#FFFFFF',
                 margin: 0,
-                lineHeight: 1.4,
-                fontFamily: "'Hind Siliguri', sans-serif"
+                lineHeight: 1.35,
+                fontFamily: "'Hind Siliguri', sans-serif",
+                letterSpacing: '-0.2px'
               }}>
-                ঘরে বসেই লাইভ সিরিয়াল ট্র্যাক করুন ও পছন্দের ডাক্তারের অ্যাপয়েন্টমেন্ট নিন
+                ঘরে বসেই <span style={{
+                  background: 'linear-gradient(90deg, #6EE7B7 0%, #FDE047 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>লাইভ সিরিয়াল ট্র্যাক করুন</span>
+                <br />
+                ও পছন্দের ডাক্তারের অ্যাপয়েন্টমেন্ট নিন
               </h3>
-            </div>
-          </div>
 
-          {/* Middle Segment: Real-Time Chamber Queue Pill (Without #) */}
-          <div style={{
-            background: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: 16,
-            padding: '10px 22px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 18,
-            flexShrink: 0
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 700, textTransform: 'uppercase' }}>
-                চলতি সিরিয়াল
-              </div>
+              {/* Bottom Micro Trust Pills for Clean Breathing Room */}
               <div style={{
-                fontSize: 26,
-                fontWeight: 900,
-                color: '#FDE047',
-                lineHeight: 1.1,
-                fontFamily: "'Hind Siliguri', sans-serif"
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                marginTop: 9,
+                fontSize: 12.5,
+                color: '#A7F3D0',
+                fontWeight: 600,
+                flexWrap: 'wrap'
               }}>
-                ১২
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 36, background: 'rgba(255, 255, 255, 0.18)' }} />
-
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#FFFFFF', fontWeight: 700 }}>
-                <IconActivity size={17} color="#34D399" />
-                <span>রিয়েল-টাইম ডিসপ্লে</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#D1FAE5', marginTop: 2 }}>
-                মোবাইলেই চেম্বার আপডেট
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: '#34D399', fontWeight: 900 }}>✓</span> রিয়েল-টাইম চেম্বার আপডেট
+                </span>
+                <span style={{ opacity: 0.35 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: '#FDE047', fontWeight: 900 }}>✓</span> সঠিক সময়ে চেম্বারে পৌঁছান
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Right Segment: Primary Action Button Only */}
-          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {/* Right Segment: Stacked Live Status Card (Top) + Action Button (Bottom) */}
+          <div className="live-right-stack">
+            
+            {/* Top Tier: 3-Step Live Chamber Status Dashboard Card */}
+            <div className="live-dashboard-widget">
+              {/* Step 1: Active Serial in Chamber */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, rgba(253, 224, 71, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%)',
+                  border: '1px solid rgba(253, 224, 71, 0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 21,
+                  fontWeight: 900,
+                  color: '#FDE047',
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  boxShadow: '0 4px 14px rgba(253, 224, 71, 0.15)'
+                }}>
+                  ১২
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: '#6EE7B7', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px #34D399' }} />
+                    চলতি সিরিয়াল
+                  </div>
+                  <div style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 700, marginTop: 1, whiteSpace: 'nowrap' }}>
+                    চেম্বারে চলছে
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ width: 1, height: 34, background: 'rgba(255, 255, 255, 0.14)' }} />
+
+              {/* Step 2: Upcoming Queue Numbers */}
+              <div>
+                <div style={{ fontSize: 11.5, color: '#A7F3D0', fontWeight: 600, marginBottom: 3, whiteSpace: 'nowrap' }}>
+                  পরবর্তী সিরিয়াল
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    padding: '2px 9px',
+                    borderRadius: 7,
+                    background: 'rgba(52, 211, 153, 0.18)',
+                    border: '1px solid rgba(52, 211, 153, 0.35)',
+                    color: '#ECFDF5',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>১৩</span>
+                  <span style={{
+                    padding: '2px 9px',
+                    borderRadius: 7,
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#D1FAE5',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>১৪</span>
+                </div>
+              </div>
+
+              <div style={{ width: 1, height: 34, background: 'rgba(255, 255, 255, 0.14)' }} />
+
+              {/* Step 3: Real-Time Auto Update Info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <div style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  background: 'rgba(52, 211, 153, 0.14)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#34D399'
+                }}>
+                  <IconClock size={18} stroke={2.2} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    ~১০ মিনিট অপেক্ষা
+                  </div>
+                  <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    অটো-আপডেট ডিসপ্লে
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Tier: Full-Width Matching Primary CTA Button */}
             <button
               onClick={() => setShowLiveSerialModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 9,
-                background: '#FFFFFF',
-                color: '#065F46',
-                border: 'none',
-                borderRadius: 99,
-                padding: '13px 28px',
-                fontSize: 16,
-                fontWeight: 800,
-                cursor: 'pointer',
-                boxShadow: '0 6px 22px rgba(0, 0, 0, 0.25)',
-                transition: 'all 0.25s ease',
-                fontFamily: "'Hind Siliguri', sans-serif",
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 10px 28px rgba(0, 0, 0, 0.35)'
-                e.currentTarget.style.background = '#F0FDF4'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'none'
-                e.currentTarget.style.boxShadow = '0 6px 22px rgba(0, 0, 0, 0.25)'
-                e.currentTarget.style.background = '#FFFFFF'
-              }}
+              className="live-Serial-cta-btn"
             >
               <span
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 9,
+                  height: 9,
                   borderRadius: '50%',
                   background: '#059669',
                   boxShadow: '0 0 8px #10B981',
@@ -4279,8 +4385,10 @@ function DoctorBookingPromoBanner() {
               <span>লাইভ সিরিয়াল ট্র্যাক করুন</span>
               <IconArrowRight size={19} stroke={2.5} />
             </button>
+
           </div>
 
+          </div>
         </div>
       </Container>
 

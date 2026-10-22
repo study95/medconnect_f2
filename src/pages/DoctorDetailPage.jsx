@@ -745,13 +745,7 @@ function DoctorDetailPageContent() {
                 </button>
 
                 <button 
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      navigate('/login', { state: { from: window.location.pathname } })
-                      return
-                    }
-                    doctor && toggleFavoriteDoctor(doctor)
-                  }}
+                  onClick={() => doctor && toggleFavoriteDoctor(doctor)}
                   style={{
                     width: 46,
                     height: 46,

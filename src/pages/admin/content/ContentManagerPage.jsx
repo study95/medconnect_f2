@@ -849,10 +849,10 @@ function ContactTab({ data, onChange }) {
       </h6>
       <Row className="g-3 mb-4">
         <Col md={4}>
-          <FieldInput label="টপ ব্যাজ" value={data.hero_badge || ''} onChange={v => onChange('hero_badge', v)} placeholder="সার্বক্ষণিক যোগাযোগ" />
+          <FieldInput label="টপ ব্যাজ" value={data.hero_badge || ''} onChange={v => onChange('hero_badge', v)} placeholder="সার্বক্ষণিক কানেক্টিভিটি ও কাস্টমার কেয়ার" />
         </Col>
         <Col md={8}>
-          <FieldInput label="মূল শিরোনাম" value={data.hero_title || ''} onChange={v => onChange('hero_title', v)} placeholder="আমরা আছি আপনার সেবায় সর্বদা" />
+          <FieldInput label="মূল শিরোনাম" value={data.hero_title || ''} onChange={v => onChange('hero_title', v)} placeholder="ডাক্তার বুকলেট কন্টাক্ট হাব: আমরা সার্বক্ষণিক আপনার পাশে" />
         </Col>
         <Col md={12}>
           <FieldInput label="সাব-টাইটেল বিবরণ" value={data.hero_subtitle || ''} onChange={v => onChange('hero_subtitle', v)} multiline rows={2} placeholder="যেকোনো প্রশ্ন বা সহায়তার জন্য যোগাযোগ করুন..." />
@@ -860,28 +860,67 @@ function ContactTab({ data, onChange }) {
       </Row>
 
       <h6 style={{ fontWeight: 800, color: '#0F172A', fontSize: 16, marginBottom: 14 }}>
-        ২. অফিস ও যোগাযোগের তথ্যাদি
+        ২. কুইক অ্যাকশন চ্যানেল কার্ডসমূহ (৪টি যোগাযোগ মাধ্যম)
+      </h6>
+      <Row className="g-3 mb-4">
+        {/* Card 1: Telephone */}
+        <Col md={6}>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#00B875', marginBottom: 8 }}>📞 কার্ড ১: টেলিফোন কল</div>
+            <FieldInput label="হটলাইন / টেলিফোন নম্বর" value={data.phone || ''} onChange={v => onChange('phone', v)} placeholder="09613868438" />
+            <FieldInput label="ব্যাজ টেক্সট" value={data.phone_badge || ''} onChange={v => onChange('phone_badge', v)} placeholder="২৪/৭ হেল্পলাইন" />
+            <FieldInput label="সাব-টাইটেল নোট" value={data.phone_subtitle || ''} onChange={v => onChange('phone_subtitle', v)} placeholder="সরাসরি সেন্ট্রাল কল সেন্টারে কথা বলুন" />
+          </div>
+        </Col>
+
+        {/* Card 2: WhatsApp */}
+        <Col md={6}>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#16A34A', marginBottom: 8 }}>💬 কার্ড ২: হোয়াটসঅ্যাপ সাপোর্ট</div>
+            <FieldInput label="হোয়াটসঅ্যাপ নম্বর" value={data.whatsapp || ''} onChange={v => onChange('whatsapp', v)} placeholder="01747465666" />
+            <FieldInput label="হাইলাইট টেক্সট" value={data.whatsapp_title || ''} onChange={v => onChange('whatsapp_title', v)} placeholder="তাৎক্ষণিক চ্যাট ও প্রেসক্রিপশন" />
+            <FieldInput label="সাব-টাইটেল নোট" value={data.whatsapp_subtitle || ''} onChange={v => onChange('whatsapp_subtitle', v)} placeholder="ডকুমেন্ট, ছবি ও প্রশ্ন সরাসরি পাঠান" />
+          </div>
+        </Col>
+
+        {/* Card 3: Official Email */}
+        <Col md={6}>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#2563EB', marginBottom: 8 }}>✉️ কার্ড ৩: ইমেইল হেল্পডেস্ক</div>
+            <FieldInput label="অফিসিয়াল ইমেইল ঠিকানা" value={data.email || ''} onChange={v => onChange('email', v)} placeholder="info@doctorbooklet.com.bd" />
+            <FieldInput label="ব্যাজ টেক্সট" value={data.email_badge || ''} onChange={v => onChange('email_badge', v)} placeholder="অফিসিয়াল ইমেইল" />
+            <FieldInput label="সাব-টাইটেল নোট" value={data.email_subtitle || ''} onChange={v => onChange('email_subtitle', v)} placeholder="সর্বোচ্চ ২ ঘণ্টার মধ্যে আনুষ্ঠানিক উত্তর" />
+          </div>
+        </Col>
+
+        {/* Card 4: Facebook Messenger */}
+        <Col md={6}>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#0284C7', marginBottom: 8 }}>⚡ কার্ড ৪: ফেসবুক মেসেঞ্জার</div>
+            <FieldInput label="মেসেঞ্জার লিংক (m.me বা পেজ লিংক)" value={data.messenger || ''} onChange={v => onChange('messenger', v)} placeholder="https://m.me/doctorbooklet" />
+            <FieldInput label="হাইলাইট টেক্সট" value={data.messenger_title || ''} onChange={v => onChange('messenger_title', v)} placeholder="সরাসরি অফিসিয়াল ইনবক্স" />
+            <FieldInput label="সাব-টাইটেল নোট" value={data.messenger_subtitle || ''} onChange={v => onChange('messenger_subtitle', v)} placeholder="সোশ্যাল সাপোর্ট টিম সার্বক্ষণিক সক্রিয়" />
+          </div>
+        </Col>
+      </Row>
+
+      <h6 style={{ fontWeight: 800, color: '#0F172A', fontSize: 16, marginBottom: 14 }}>
+        ৩. প্রধান কার্যালয় ও সময়সূচী
       </h6>
       <Row className="g-3 mb-4">
         <Col md={6}>
           <FieldInput label="অফিস শিরোনাম" value={data.office_title || ''} onChange={v => onChange('office_title', v)} placeholder="প্রধান কার্যালয়" />
         </Col>
         <Col md={6}>
-          <FieldInput label="ফোন নম্বর" value={data.phone || ''} onChange={v => onChange('phone', v)} placeholder="017 XXXX XXXX" />
-        </Col>
-        <Col md={6}>
-          <FieldInput label="অফিসিয়াল ইমেইল" value={data.email || ''} onChange={v => onChange('email', v)} placeholder="info@doctorbooklet.com.bd" />
-        </Col>
-        <Col md={6}>
           <FieldInput label="অফিস সময়সূচি" value={data.office_hours || ''} onChange={v => onChange('office_hours', v)} placeholder="শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা" />
         </Col>
         <Col md={12}>
-          <FieldInput label="অফিসের পূর্ণ ঠিকানা" value={data.address || ''} onChange={v => onChange('address', v)} placeholder="মেডকানেক্ট কমপ্লেক্স, ধানমন্ডি, ঢাকা-১২০৫" />
+          <FieldInput label="অফিসের পূর্ণ ঠিকানা" value={data.address || ''} onChange={v => onChange('address', v)} placeholder="ডাক্তার বুকলেট হেডকোয়ার্টার, ধানমন্ডি, ঢাকা-১২০৫" />
         </Col>
       </Row>
 
       <h6 style={{ fontWeight: 800, color: '#0F172A', fontSize: 16, marginBottom: 14 }}>
-        ৩. গুগল ম্যাপস ও ইমার্জেন্সি বক্স
+        ৪. গুগল ম্যাপস ও ইমার্জেন্সি বক্স
       </h6>
       <Row className="g-3 mb-4">
         <Col md={6}>

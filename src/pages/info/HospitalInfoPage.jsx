@@ -6,7 +6,7 @@ import {
   ShieldCheck, ArrowRight, Sparkles, TrendingUp, CheckCircle2,
   PhoneCall, Laptop, ChevronDown, ChevronUp, Activity, 
   HelpCircle, Award, Database, Bell, Shield, Lock, Check,
-  Layers, UserCheck, Stethoscope, Ambulance, HeartPulse
+  Layers, UserCheck, Stethoscope, Ambulance, HeartPulse, Plus, Minus
 } from 'lucide-react'
 
 export default function HospitalInfoPage() {
@@ -602,13 +602,17 @@ export default function HospitalInfoPage() {
         }
 
         /* FAQ Section */
+        @keyframes hospitalFaqFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .hospital-faq-section {
           padding: 70px 0 60px;
         }
         .hospital-faq-btn {
           width: 100%;
-          padding: 16px 20px;
-          background: none;
+          padding: 16px 24px;
+          background: transparent;
           border: none;
           text-align: left;
           display: flex;
@@ -616,19 +620,50 @@ export default function HospitalInfoPage() {
           justify-content: space-between;
           gap: 12px;
           cursor: pointer;
+          outline: none;
+        }
+        .hospital-faq-q-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13.5px;
+          font-weight: 800;
+          font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
+          flex-shrink: 0;
+          transition: all 0.25s ease;
         }
         .hospital-faq-question {
-          font-weight: 800;
-          font-size: 15px;
-          line-height: 1.35;
+          font-weight: 600;
+          font-size: 15.5px;
+          line-height: 1.4;
+          font-family: 'Hind Siliguri', sans-serif;
+          flex: 1;
+          transition: color 0.2s ease;
+        }
+        .hospital-faq-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.25s ease;
         }
         .hospital-faq-answer {
-          padding: 0 20px 16px;
+          padding: 0 24px 20px;
+          animation: hospitalFaqFadeIn 0.3s ease;
+        }
+        .hospital-faq-answer p {
+          margin: 0;
           color: #475569;
-          font-size: 13.5px;
-          line-height: 1.7;
-          border-top: 1px solid #F1F5F9;
-          padding-top: 12px;
+          font-size: 14px;
+          font-weight: 400;
+          line-height: 1.6;
+          font-family: 'Hind Siliguri', sans-serif;
         }
 
         /* Bottom CTA */
@@ -937,15 +972,32 @@ export default function HospitalInfoPage() {
             padding: 34px 0 !important;
           }
           .hospital-faq-btn {
-            padding: 13px 14px !important;
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .hospital-faq-q-badge {
+            width: 25px !important;
+            height: 25px !important;
+            font-size: 12.5px !important;
           }
           .hospital-faq-question {
-            font-size: 13.5px !important;
-            line-height: 1.35 !important;
+            font-size: 14.2px !important;
+            line-height: 1.38 !important;
+            font-weight: 600 !important;
+          }
+          .hospital-faq-icon {
+            width: 26px !important;
+            height: 26px !important;
+          }
+          .hospital-faq-icon svg {
+            width: 15px !important;
+            height: 15px !important;
           }
           .hospital-faq-answer {
-            padding: 0 14px 12px !important;
-            font-size: 12.5px !important;
+            padding: 0 14px 14px !important;
+          }
+          .hospital-faq-answer p {
+            font-size: 13.5px !important;
             line-height: 1.55 !important;
           }
 
@@ -1375,42 +1427,57 @@ export default function HospitalInfoPage() {
             </h2>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {faqs.map((faq, idx) => {
               const isOpen = openFaq === idx
               return (
                 <div 
                   key={idx}
                   style={{
-                    background: 'white',
-                    borderRadius: 14,
-                    border: isOpen ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+                    background: '#FFFFFF',
+                    borderRadius: 12,
+                    border: `1px solid ${isOpen ? '#86EFAC' : '#E2E8F0'}`,
                     overflow: 'hidden',
-                    boxShadow: isOpen ? '0 6px 18px rgba(0, 184, 117, 0.08)' : '0 2px 6px rgba(0,0,0,0.02)',
-                    transition: 'all 0.2s ease'
+                    boxShadow: isOpen ? '0 4px 20px rgba(0, 184, 117, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                    transition: 'all 0.25s ease'
                   }}
                 >
                   <button
+                    type="button"
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
                     className="hospital-faq-btn"
+                    aria-expanded={isOpen}
                   >
-                    <span className="hospital-faq-question" style={{ color: isOpen ? '#00B875' : '#0F172A' }}>
+                    <span
+                      className="hospital-faq-q-badge"
+                      style={{
+                        background: isOpen ? '#00B875' : '#F1F5F9',
+                        color: isOpen ? '#FFFFFF' : '#64748B',
+                        border: isOpen ? '1px solid #00B875' : '1px solid #E2E8F0'
+                      }}
+                    >
+                      ?
+                    </span>
+                    <span className="hospital-faq-question" style={{ color: isOpen ? '#15803D' : '#1E293B' }}>
                       {faq.q}
                     </span>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: '50%',
-                      background: isOpen ? '#F0FDF4' : '#F8FAFC',
-                      color: isOpen ? '#00B875' : '#64748B',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                    </div>
+                    <span
+                      className="hospital-faq-icon"
+                      style={{
+                        background: isOpen ? '#ECFDF5' : '#F8FAFC',
+                        color: isOpen ? '#00B875' : '#64748B',
+                        border: isOpen ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }}
+                    >
+                      <ChevronDown size={17} strokeWidth={2.4} />
+                    </span>
                   </button>
 
                   {isOpen && (
                     <div className="hospital-faq-answer">
-                      {faq.a}
+                      <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
+                      <p>{faq.a}</p>
                     </div>
                   )}
                 </div>

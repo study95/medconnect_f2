@@ -172,13 +172,25 @@ const INITIAL_CONTENT = {
 
   // ── CONTACT PAGE ────────────────────────────
   contact: {
-    hero_badge: 'সার্বক্ষণিক যোগাযোগ',
-    hero_title: 'আমরা আছি আপনার সেবায় সর্বদা',
-    hero_subtitle: 'আপনার যেকোনো প্রশ্ন, মতামত বা সহায়তার জন্য আমাদের সাথে যোগাযোগ করুন। আমাদের টিম আপনার সাথে যোগাযোগ করবে।',
+    hero_badge: 'সার্বক্ষণিক কানেক্টিভিটি ও কাস্টমার কেয়ার',
+    hero_title: 'ডাক্তার বুকলেট কন্টাক্ট হাব: আমরা সার্বক্ষণিক আপনার পাশে',
+    hero_subtitle: 'রোগী, নিবন্ধিত ডাক্তার কিংবা হাসপাতাল কর্তৃপক্ষ—যেকোনো প্রশ্ন, প্রযুক্তিগত সহায়তা বা প্রাতিষ্ঠানিক অংশীদারিত্বের জন্য আমাদের বিশেষজ্ঞ টিমের সাথে যোগাযোগ করুন।',
     office_title: 'প্রধান কার্যালয়',
-    address: 'মেডকানেক্ট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫',
-    phone: '017 XXXX XXXX',
+    address: 'ডাক্তার বুকলেট হেডকোয়ার্টার, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫',
+    phone: '09613868438',
+    phone_badge: '২৪/৭ হেল্পলাইন',
+    phone_subtitle: 'সরাসরি সেন্ট্রাল কল সেন্টারে কথা বলুন',
+    whatsapp: '01747465666',
+    whatsapp_badge: 'WhatsApp Live',
+    whatsapp_title: 'তাৎক্ষণিক চ্যাট ও প্রেসক্রিপশন',
+    whatsapp_subtitle: 'ডকুমেন্ট, ছবি ও প্রশ্ন সরাসরি পাঠান',
     email: 'info@doctorbooklet.com.bd',
+    email_badge: 'অফিসিয়াল ইমেইল',
+    email_subtitle: 'সর্বোচ্চ ২ ঘণ্টার মধ্যে আনুষ্ঠানিক উত্তর',
+    messenger: 'https://m.me/doctorbooklet',
+    messenger_badge: 'Messenger Chat',
+    messenger_title: 'সরাসরি অফিসিয়াল ইনবক্স',
+    messenger_subtitle: 'সোশ্যাল সাপোর্ট টিম সার্বক্ষণিক সক্রিয়',
     office_hours: 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: সকাল ১০টা - বিকাল ৫টা',
     emergency_title: 'জরুরী সহায়তা প্রয়োজন?',
     emergency_subtitle: 'আমাদের হেল্পলাইনে কল করুন',
@@ -444,6 +456,9 @@ export const getContent = () => {
         if (parsed.testimonials.subtitle && (parsed.testimonials.subtitle.includes('আমাদের সেবা ব্যবহার করে যারা') || parsed.testimonials.subtitle.includes('তাদের কথা শুনুন'))) {
           parsed.testimonials.subtitle = 'আমাদের সেবা নিয়ে রোগীদের বাস্তব মতামত'
         }
+      }
+      if (parsed?.contact?.phone === '017 XXXX XXXX') {
+        parsed.contact.phone = '09613868438'
       }
       return deepMerge(INITIAL_CONTENT, parsed)
     } catch (e) {
