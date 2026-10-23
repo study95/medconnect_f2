@@ -28,7 +28,13 @@ export default function CompactUlid({ value, style, className }) {
     : cleanValue
 
   const handleCopy = (e) => {
-    e.stopPropagation()
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.nativeEvent) {
+        e.nativeEvent.stopImmediatePropagation?.()
+      }
+    }
     if (!cleanValue) return
 
     if (navigator?.clipboard?.writeText) {
@@ -74,6 +80,10 @@ export default function CompactUlid({ value, style, className }) {
       <button
         type="button"
         onClick={handleCopy}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
         style={{
           background: copied ? '#ecfdf5' : 'transparent',
           border: copied ? '1px solid #a7f3d0' : 'none',

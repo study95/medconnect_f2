@@ -489,46 +489,109 @@ export default function PaymentListPage() {
                       </span>
                     </td>
                     <td>
-                      {pay.is_payment_locked ? (
-                        <span 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11,
-                            fontWeight: 800,
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            background: 'rgba(16,185,129,0.15)',
-                            color: '#059669',
-                            border: '1px solid rgba(16,185,129,0.3)',
-                            userSelect: 'none'
-                          }} 
-                          title="প্রেসক্রিপশন সম্পন্ন হওয়ায় এই পেমেন্টটি লক করা হয়েছে"
-                        >
-                          🔒 PAID
-                        </span>
-                      ) : (
-                        <select
-                          value={pay.payment_status?.toLowerCase() || 'unpaid'}
-                          onChange={(e) => handleStatusUpdate(pay.id, e.target.value)}
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 700,
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            border: '1px solid var(--admin-border)',
-                            background: pay.payment_status?.toLowerCase() === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                            color: pay.payment_status?.toLowerCase() === 'paid' ? '#10B981' : '#F59E0B',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <option value="paid">PAID</option>
-                          <option value="unpaid">UNPAID</option>
-                          <option value="refunded">REFUNDED</option>
-                          <option value="partial">PARTIAL</option>
-                        </select>
-                      )}
+                      {(() => {
+                        const isCancelled = pay.status?.toLowerCase() === 'cancelled' || pay.status?.toLowerCase() === 'rejected'
+                        const isPaid = pay.payment_status?.toLowerCase() === 'paid' || pay.status?.toLowerCase() === 'completed'
+                        const isRefunded = pay.payment_status?.toLowerCase() === 'refunded'
+
+                        if (isCancelled) {
+                          return (
+                            <span 
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                color: '#DC2626',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                userSelect: 'none',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                              }} 
+                              title="অ্যাপয়েন্টমেন্ট বাতিল হওয়ায় পেমেন্ট প্রযোজ্য নয়"
+                            >
+                              ✕ CANCELLED
+                            </span>
+                          )
+                        }
+
+                        if (isRefunded) {
+                          return (
+                            <span 
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                background: 'rgba(147, 51, 234, 0.12)',
+                                color: '#7C3AED',
+                                border: '1px solid rgba(147, 51, 234, 0.25)',
+                                userSelect: 'none',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                              }} 
+                              title="রিফান্ড করা হয়েছে"
+                            >
+                              ↩ REFUNDED
+                            </span>
+                          )
+                        }
+
+                        if (isPaid) {
+                          return (
+                            <span 
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                color: '#059669',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                userSelect: 'none',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                              }} 
+                              title={pay.is_payment_locked ? "কনসালটেশন সম্পন্ন হওয়ায় পেমেন্ট সম্পন্ন ও লক করা হয়েছে" : "পেমেন্ট সম্পন্ন হয়েছে"}
+                            >
+                              {pay.is_payment_locked ? '🔒 PAID' : '✓ PAID'}
+                            </span>
+                          )
+                        }
+
+                        return (
+                          <span 
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              background: 'rgba(245, 158, 11, 0.12)',
+                              color: '#D97706',
+                              border: '1px solid rgba(245, 158, 11, 0.25)',
+                              userSelect: 'none',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                            }} 
+                            title="কনসালটেশন সম্পন্ন হলে স্বয়ংক্রিয়ভাবে PAID হবে"
+                          >
+                            ⏳ UNPAID
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td>
                       <div className="admin-actions">

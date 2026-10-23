@@ -302,22 +302,39 @@ export default function HospitalListPage() {
   const filtered = hospitals.filter(h => {
     if (search && search.trim()) {
       const q = search.trim().toLowerCase()
+      const publicId = String(h.public_id || '').toLowerCase()
+      const rawId = String(h.id || '').toLowerCase()
+      const name = String(h.name || '').toLowerCase()
+      const nameBn = String(h.name_bn || '').toLowerCase()
+      const phone = String(h.phone || h.hotline || h.emergency_phone || '').toLowerCase()
+      const email = String(h.email || h.official_email || '').toLowerCase()
+      const address = String(h.address || '').toLowerCase()
+      const branchName = String(h.branch_name || '').toLowerCase()
+      const license = String(h.license_number || '').toLowerCase()
+      const type = String(h.hospital_type || h.type || '').toLowerCase()
+
       const matchesSearch =
-        h.name?.toLowerCase().includes(q) ||
-        h.phone?.toLowerCase().includes(q) ||
-        h.email?.toLowerCase().includes(q) ||
-        h.address?.toLowerCase().includes(q) ||
-        h.branch_name?.toLowerCase().includes(q)
+        publicId.includes(q) ||
+        rawId.includes(q) ||
+        name.includes(q) ||
+        nameBn.includes(q) ||
+        phone.includes(q) ||
+        email.includes(q) ||
+        address.includes(q) ||
+        branchName.includes(q) ||
+        license.includes(q) ||
+        type.includes(q)
+
       if (!matchesSearch) return false
     }
 
-    if (hospitalIdFilter && h.id.toString() !== hospitalIdFilter.toString()) return false
+    if (hospitalIdFilter && String(h.id) !== String(hospitalIdFilter) && String(h.public_id) !== String(hospitalIdFilter)) return false
     if (statusFilter && (statusFilter === 'active' ? !h.is_active : h.is_active)) return false
 
-    if (divisionId && (h.division_id || h.division?.id)?.toString() !== divisionId.toString()) return false
-    if (districtId && (h.district_id || h.district?.id)?.toString() !== districtId.toString()) return false
-    if (upazilaId && (h.upazila_id || h.upazila?.id)?.toString() !== upazilaId.toString()) return false
-    if (unionId && (h.union_id || h.union?.id)?.toString() !== unionId.toString()) return false
+    if (divisionId && String(h.division_id || h.division?.id) !== String(divisionId)) return false
+    if (districtId && String(h.district_id || h.district?.id) !== String(districtId)) return false
+    if (upazilaId && String(h.upazila_id || h.upazila?.id) !== String(upazilaId)) return false
+    if (unionId && String(h.union_id || h.union?.id) !== String(unionId)) return false
 
     return true
   })
@@ -387,7 +404,7 @@ export default function HospitalListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search hospital by name, phone, branch, email..."
+        searchPlaceholder="Search hospital by ID, name, phone, branch, email..."
         onRefresh={fetchHospitals}
         refreshing={loading}
         showFilters={showFilters}
@@ -608,43 +625,54 @@ export default function HospitalListPage() {
                       />
                     </td>
                     <td style={{ paddingLeft: 16 }}>
-                      <Link to={`/admin/hospitals/view/${h.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
-                        {h.photo_url || h.logo_url || h.photo || h.hospital_logo ? (
-                          <img
-                            src={getMediaUrl(h.photo_url || h.logo_url || h.photo || h.hospital_logo)}
-                            alt={h.name || 'H'}
-                            style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--admin-border)' }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <Link to={`/admin/hospitals/view/${h.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          {h.photo_url || h.logo_url || h.photo || h.hospital_logo ? (
+                            <img
+                              src={getMediaUrl(h.photo_url || h.logo_url || h.photo || h.hospital_logo)}
+                              alt={h.name || 'H'}
+                              style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--admin-border)' }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              background: 'rgba(0,0,0,0.02)',
+                              display: (h.photo_url || h.logo_url || h.photo || h.hospital_logo) ? 'none' : 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 20,
+                              border: '1px solid var(--admin-border)'
                             }}
-                          />
-                        ) : null}
-                        <div
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 12,
-                            background: 'rgba(0,0,0,0.02)',
-                            display: (h.photo_url || h.logo_url || h.photo || h.hospital_logo) ? 'none' : 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 20,
-                            border: '1px solid var(--admin-border)'
-                          }}
-                        >
-                          🏥
-                        </div>
+                          >
+                            🏥
+                          </div>
+                        </Link>
                         <div>
-                          <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{h.name}</div>
-                          <CompactUlid value={h.public_id || h.id} />
+                          <Link 
+                            to={`/admin/hospitals/view/${h.id}`} 
+                            style={{ textDecoration: 'none', fontWeight: 700, color: 'var(--admin-text)', display: 'inline-block' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--admin-primary, #00A88C)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--admin-text)'}
+                          >
+                            {h.name}
+                          </Link>
+                          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 2 }}>
+                            <CompactUlid value={h.public_id || h.id} />
+                          </div>
                           {(h.top_10_hospital === 'yes' || h.top_10_hospital === true) && (
                             <span style={{ fontSize: 10, fontWeight: 800, color: '#92400E', background: 'rgba(254, 243, 199, 0.2)', padding: '2px 8px', borderRadius: 6, display: 'inline-block', marginTop: 4, border: '1px solid rgba(146, 64, 14, 0.2)' }}>
                               ⭐ TOP 10
                             </span>
                           )}
                         </div>
-                      </Link>
+                      </div>
                     </td>
                     <td>
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', maxWidth: 300, lineHeight: 1.5 }}>

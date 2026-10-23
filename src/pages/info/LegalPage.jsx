@@ -318,53 +318,72 @@ export default function LegalPage() {
   }, [activeContent, searchQuery])
 
   return (
-    <div className="page-wrapper legal-page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 90 }}>
+    <div className="page-wrapper legal-page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 16px))' }}>
       <style>{`
         /* ── HERO & AMBIENT HEADER ── */
         .legal-hero {
-          background: radial-gradient(130% 100% at 50% 0%, #064E3B 0%, #022C22 55%, #011C15 100%);
-          padding-bottom: 75px;
+          background: radial-gradient(120% 90% at 50% -10%, #065F46 0%, #033C2D 35%, #01241C 70%, #01120D 100%);
+          padding: 0 0 65px;
           position: relative;
           overflow: hidden;
           color: white;
+          border-bottom: 1.5px solid rgba(52, 211, 153, 0.22);
+          box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.35);
         }
-        @media (max-width: 768px) {
-          .legal-hero {
-            padding-bottom: 45px;
-          }
+        .legal-hero::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: 
+            radial-gradient(circle at 50% -10%, rgba(0, 255, 176, 0.20) 0%, transparent 60%),
+            radial-gradient(circle at 88% 25%, rgba(16, 185, 129, 0.16) 0%, transparent 45%),
+            radial-gradient(circle at 12% 70%, rgba(14, 165, 233, 0.12) 0%, transparent 45%);
+          pointer-events: none;
+          z-index: 1;
         }
         .legal-hero-grid {
           position: absolute;
           inset: 0;
           background-image: 
-            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
           background-size: 36px 36px;
           mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
           -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
           pointer-events: none;
+          z-index: 1;
         }
         .legal-hero-glow-1 {
           position: absolute;
-          top: -140px;
+          top: -120px;
           right: 5%;
-          width: 550px;
-          height: 550px;
+          width: 520px;
+          height: 520px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(0, 184, 117, 0.24) 0%, rgba(6, 78, 59, 0.06) 50%, transparent 70%);
-          filter: blur(40px);
+          background: radial-gradient(circle, rgba(0, 255, 176, 0.24) 0%, rgba(5, 150, 105, 0.08) 50%, transparent 70%);
+          filter: blur(50px);
           pointer-events: none;
+          z-index: 1;
         }
         .legal-hero-glow-2 {
           position: absolute;
-          top: 15%;
-          left: -100px;
-          width: 480px;
-          height: 480px;
+          top: 18%;
+          left: -80px;
+          width: 440px;
+          height: 440px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(14, 165, 233, 0.16) 0%, rgba(6, 78, 59, 0.04) 50%, transparent 70%);
-          filter: blur(45px);
+          background: radial-gradient(circle, rgba(14, 165, 233, 0.16) 0%, rgba(6, 78, 59, 0.05) 50%, transparent 70%);
+          filter: blur(50px);
           pointer-events: none;
+          z-index: 1;
+        }
+        .legal-hero-highlight {
+          background: linear-gradient(135deg, #A7F3D0 0%, #00FFB0 50%, #34D399 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
+          font-weight: 900;
+          filter: drop-shadow(0 2px 14px rgba(0, 255, 176, 0.35));
         }
 
         /* ── MOBILE HORIZONTAL PILL NAV ── */
@@ -372,25 +391,52 @@ export default function LegalPage() {
           display: none;
           gap: 8px;
           overflow-x: auto;
-          padding: 12px 4px 6px;
-          margin-top: -30px;
-          margin-bottom: 24px;
+          padding: 10px 4px 6px;
+          margin-top: -26px;
+          margin-bottom: 20px;
           -webkit-overflow-scrolling: touch;
-          scrollbar-width: thin;
+          scrollbar-width: none;
           position: relative;
           z-index: 10;
+        }
+        .legal-mobile-nav::-webkit-scrollbar {
+          display: none !important;
+          height: 0 !important;
         }
         @media (max-width: 991px) {
           .legal-mobile-nav {
             display: flex;
           }
         }
-        .legal-mobile-nav::-webkit-scrollbar {
-          height: 4px;
+        .legal-mobile-tab-btn {
+          white-space: nowrap;
+          padding: 9px 16px;
+          border-radius: 99px;
+          font-size: 13px;
+          font-weight: 700;
+          border: 1.5px solid #E2E8F0;
+          background: #FFFFFF;
+          color: #475569;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+          font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
         }
-        .legal-mobile-nav::-webkit-scrollbar-thumb {
-          background: #CBD5E1;
-          border-radius: 4px;
+        .legal-mobile-tab-btn:hover {
+          background: #F8FAFC;
+          border-color: #CBD5E1;
+          color: #0F172A;
+        }
+        .legal-mobile-tab-btn.active {
+          border-color: #00B875 !important;
+          background: #00B875 !important;
+          color: #FFFFFF !important;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.3) !important;
+          font-weight: 800 !important;
         }
 
         /* ── SIDEBAR DESKTOP ── */
@@ -452,12 +498,6 @@ export default function LegalPage() {
           box-shadow: 0 12px 36px rgba(15, 23, 42, 0.04);
           position: relative;
         }
-        @media (max-width: 768px) {
-          .legal-doc-card {
-            padding: 24px 18px;
-            border-radius: 20px;
-          }
-        }
 
         .clause-item {
           padding: 20px 22px;
@@ -500,6 +540,187 @@ export default function LegalPage() {
           transform: translateY(-50%);
           color: #94A3B8;
         }
+
+        /* ── RESPONSIVE MOBILE OPTIMIZATIONS ── */
+        @media (max-width: 991px) {
+          .legal-hero {
+            padding: 0 0 36px !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .legal-page-wrapper {
+            padding-bottom: calc(96px + env(safe-area-inset-bottom, 16px)) !important;
+          }
+          .legal-hero {
+            padding: 0 0 28px !important;
+          }
+          .legal-hero-grid {
+            display: none !important;
+          }
+          .legal-hero-glow-1,
+          .legal-hero-glow-2 {
+            opacity: 0.75 !important;
+          }
+          .legal-hero-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            white-space: nowrap !important;
+            max-width: 100% !important;
+            padding: 5px 12px !important;
+            font-size: clamp(9px, 2.75vw, 10.5px) !important;
+            margin-bottom: 12px !important;
+            line-height: 1 !important;
+            gap: 6px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            background: rgba(0, 255, 176, 0.10) !important;
+            border: 1px solid rgba(0, 255, 176, 0.35) !important;
+            box-shadow: 0 0 16px rgba(0, 255, 176, 0.16) !important;
+            color: #A7F3D0 !important;
+          }
+          .legal-hero-badge span {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-size: clamp(9px, 2.75vw, 10.5px) !important;
+            color: #A7F3D0 !important;
+          }
+          .legal-hero-badge svg {
+            width: 12px !important;
+            height: 12px !important;
+            flex-shrink: 0 !important;
+            color: #00FFB0 !important;
+          }
+          .legal-hero-title {
+            font-size: 21px !important;
+            line-height: 1.32 !important;
+            margin-bottom: 8px !important;
+            text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5) !important;
+            letter-spacing: -0.2px !important;
+          }
+          .legal-hero-desc {
+            font-size: 12.5px !important;
+            line-height: 1.58 !important;
+            margin-bottom: 8px !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+          }
+          .legal-hero-highlights {
+            display: none !important; /* Removes cluttered highlight boxes on mobile */
+          }
+          .legal-mobile-nav {
+            margin-top: -18px !important;
+            margin-bottom: 16px !important;
+            padding: 4px 2px 8px !important;
+            gap: 7px !important;
+          }
+          .legal-mobile-tab-btn {
+            padding: 8px 14px !important;
+            font-size: 12.5px !important;
+            border-radius: 99px !important;
+            gap: 6px !important;
+          }
+          .legal-mobile-tab-btn svg {
+            width: 14px !important;
+            height: 14px !important;
+          }
+          .legal-doc-card {
+            padding: 16px 14px !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+          }
+          .legal-doc-header {
+            padding-bottom: 12px !important;
+            margin-bottom: 14px !important;
+          }
+          .legal-doc-header-badges {
+            gap: 6px !important;
+          }
+          .legal-doc-header-badges span {
+            font-size: 11px !important;
+            padding: 3px 8px !important;
+          }
+          .legal-print-btn {
+            padding: 5px 12px !important;
+            font-size: 11.5px !important;
+            border-radius: 8px !important;
+          }
+          .legal-doc-title {
+            font-size: 18px !important;
+            margin-bottom: 4px !important;
+          }
+          .legal-doc-subtitle {
+            font-size: 12.5px !important;
+            line-height: 1.5 !important;
+          }
+          .legal-notice-box {
+            padding: 11px 12px !important;
+            border-radius: 12px !important;
+            margin-bottom: 14px !important;
+          }
+          .legal-notice-box p {
+            font-size: 12px !important;
+            line-height: 1.55 !important;
+          }
+          .legal-search-box {
+            margin-bottom: 14px !important;
+          }
+          .legal-search-box input {
+            padding: 9px 12px 9px 34px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+          }
+          .legal-search-box .search-icon {
+            left: 11px !important;
+            width: 14px !important;
+            height: 14px !important;
+          }
+          .clause-item {
+            padding: 13px 12px !important;
+            border-radius: 12px !important;
+          }
+          .clause-header {
+            gap: 6px !important;
+            margin-bottom: 8px !important;
+          }
+          .clause-badge {
+            font-size: 10.5px !important;
+            padding: 2px 7px !important;
+            border-radius: 6px !important;
+          }
+          .clause-heading {
+            font-size: 14px !important;
+            line-height: 1.35 !important;
+          }
+          .clause-copy-btn {
+            font-size: 11px !important;
+          }
+          .clause-content {
+            font-size: 12.8px !important;
+            line-height: 1.65 !important;
+          }
+          .legal-doc-footer {
+            margin-top: 22px !important;
+            padding: 16px 14px !important;
+            border-radius: 14px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            text-align: center !important;
+            gap: 12px !important;
+          }
+          .legal-doc-footer-info {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 10px !important;
+          }
+          .legal-footer-contact-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+          }
+        }
       `}</style>
 
       {/* ── HERO SECTION ── */}
@@ -508,52 +729,55 @@ export default function LegalPage() {
         <div className="legal-hero-glow-1" />
         <div className="legal-hero-glow-2" />
 
-        {/* Subtle Wave Lines */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none', overflow: 'hidden' }}>
+        {/* Subtle Ambient Waves & Light Lines */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.22, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }}>
           <svg width="100%" height="100%" viewBox="0 0 1440 380" fill="none" preserveAspectRatio="none">
-            <path d="M-100 260 C300 380, 700 100, 1100 230 C1300 300, 1500 160, 1600 180" stroke="rgba(52, 211, 153, 0.45)" strokeWidth="1.5" fill="none" />
-            <path d="M-100 210 C350 330, 750 60, 1150 180 C1350 250, 1550 120, 1600 140" stroke="rgba(56, 189, 248, 0.35)" strokeWidth="1" strokeDasharray="6 6" fill="none" />
+            <path d="M-100 260 C300 380, 700 100, 1100 230 C1300 300, 1500 160, 1600 180" stroke="rgba(0, 255, 176, 0.45)" strokeWidth="1.5" fill="none" />
+            <path d="M-100 210 C350 330, 750 60, 1150 180 C1350 250, 1550 120, 1600 140" stroke="rgba(56, 189, 248, 0.40)" strokeWidth="1" strokeDasharray="6 6" fill="none" />
+            <path d="M-100 310 C250 430, 650 150, 1050 280 C1250 350, 1450 210, 1600 230" stroke="rgba(255, 255, 255, 0.16)" strokeWidth="1" fill="none" />
           </svg>
         </div>
 
         <BreadcrumbHUD links={[{ label: 'আইনি ও পলিসি কেন্দ্র' }]} variant="light" />
 
-        <Container style={{ position: 'relative', zIndex: 2, marginTop: 12 }}>
+        <Container style={{ position: 'relative', zIndex: 3, marginTop: 12 }}>
           <Row className="align-items-center g-4">
             <Col lg={8} md={12}>
-              <div style={{
+              <div className="legal-hero-badge" style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                background: 'rgba(255, 255, 255, 0.12)',
+                background: 'rgba(0, 255, 176, 0.10)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.22)',
+                border: '1px solid rgba(0, 255, 176, 0.32)',
                 padding: '6px 14px',
                 borderRadius: 99,
                 fontSize: 12.5,
                 fontWeight: 700,
                 marginBottom: 16,
-                color: '#ECFDF5',
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+                color: '#A7F3D0',
+                boxShadow: '0 0 20px rgba(0, 255, 176, 0.18)',
+                whiteSpace: 'nowrap'
               }}>
-                <Scale size={15} color="#34D399" />
-                <span>গণপ্রজাতন্ত্রী বাংলাদেশের প্রচলিত আইন ও তথ্য সুরক্ষা নীতি সমর্থিত</span>
+                <Scale size={15} color="#00FFB0" style={{ flexShrink: 0 }} />
+                <span style={{ whiteSpace: 'nowrap' }}>গণপ্রজাতন্ত্রী বাংলাদেশের প্রচলিত আইন ও তথ্য সুরক্ষা নীতি সমর্থিত</span>
               </div>
 
-              <h1 style={{ 
+              <h1 className="legal-hero-title" style={{ 
                 color: 'white', 
                 fontWeight: 900, 
                 fontSize: 'clamp(26px, 4.5vw, 42px)', 
                 lineHeight: 1.25, 
                 marginBottom: 14,
                 letterSpacing: '-0.3px',
-                textShadow: '0 2px 20px rgba(0, 0, 0, 0.2)'
+                textShadow: '0 2px 20px rgba(0, 0, 0, 0.35)'
               }}>
-                আইনি ও অফিসিয়াল পলিসি ফ্রেমওয়ার্ক
+                আইনি ও অফিসিয়াল{' '}
+                <span className="legal-hero-highlight">পলিসি ফ্রেমওয়ার্ক</span>
               </h1>
 
-              <p style={{ 
+              <p className="legal-hero-desc" style={{ 
                 color: 'rgba(255,255,255,0.92)', 
                 fontSize: 'clamp(14px, 1.8vw, 16px)', 
                 lineHeight: 1.7, 
@@ -565,7 +789,7 @@ export default function LegalPage() {
               </p>
 
               {/* Legal Standards Highlights */}
-              <div style={{
+              <div className="legal-hero-highlights" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
                 gap: 10,
@@ -576,7 +800,7 @@ export default function LegalPage() {
                   { icon: <Lock size={16} />, title: 'ডেটা নিরাপত্তা', desc: '২৫৬-বিট এনক্রিপশন' },
                   { icon: <CreditCard size={16} />, title: 'অডিট রেডি', desc: 'জাতীয় রাজস্ব বোর্ড (NBR) ৫% ভ্যাট' }
                 ].map((item, i) => (
-                  <div key={i} style={{
+                  <div key={i} className="legal-hero-highlight-card" style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -588,7 +812,7 @@ export default function LegalPage() {
                     padding: '8px 14px',
                     boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
                   }}>
-                    <div style={{ 
+                    <div className="legal-hero-highlight-icon" style={{ 
                       width: 32, height: 32, borderRadius: 10,
                       background: 'rgba(52, 211, 153, 0.18)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -597,8 +821,8 @@ export default function LegalPage() {
                       {item.icon}
                     </div>
                     <div>
-                      <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11, fontWeight: 600 }}>{item.title}</div>
-                      <div style={{ color: 'white', fontSize: 13, fontWeight: 800 }}>{item.desc}</div>
+                      <div className="legal-hero-highlight-title" style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11, fontWeight: 600 }}>{item.title}</div>
+                      <div className="legal-hero-highlight-desc" style={{ color: 'white', fontSize: 13, fontWeight: 800 }}>{item.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -668,23 +892,7 @@ export default function LegalPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => handleTabSelect(tab.id)}
-                style={{
-                  whiteSpace: 'nowrap',
-                  padding: '10px 16px',
-                  borderRadius: 14,
-                  fontSize: 13.5,
-                  fontWeight: 800,
-                  border: isActive ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                  background: isActive ? '#064E3B' : '#FFFFFF',
-                  color: isActive ? '#FFFFFF' : '#475569',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  boxShadow: isActive ? '0 4px 14px rgba(6, 78, 59, 0.25)' : 'none',
-                  fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif"
-                }}
+                className={`legal-mobile-tab-btn ${isActive ? 'active' : ''}`}
               >
                 {tab.icon}
                 <span>{tab.title}</span>
@@ -791,9 +999,9 @@ export default function LegalPage() {
           <Col lg={8} xl={9}>
             <div className="legal-doc-card">
               {/* Document Header Bar */}
-              <div style={{ borderBottom: '1.5px solid #E2E8F0', paddingBottom: 24, marginBottom: 26 }}>
+              <div className="legal-doc-header" style={{ borderBottom: '1.5px solid #E2E8F0', paddingBottom: 24, marginBottom: 26 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div className="legal-doc-header-badges" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ 
                       padding: '4px 12px', 
                       borderRadius: 99, 
@@ -827,6 +1035,7 @@ export default function LegalPage() {
                   <button
                     type="button"
                     onClick={() => window.print()}
+                    className="legal-print-btn"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -849,7 +1058,7 @@ export default function LegalPage() {
                   </button>
                 </div>
 
-                <h2 style={{ 
+                <h2 className="legal-doc-title" style={{ 
                   fontWeight: 900, 
                   fontSize: 'clamp(22px, 3vw, 28px)', 
                   color: '#0F172A', 
@@ -859,13 +1068,13 @@ export default function LegalPage() {
                   {activeContent.title}
                 </h2>
                 
-                <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
+                <p className="legal-doc-subtitle" style={{ fontSize: 15, color: '#475569', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
                   {activeContent.subtitle}
                 </p>
               </div>
 
               {/* Callout Notice */}
-              <div style={{ 
+              <div className="legal-notice-box" style={{ 
                 padding: '18px 22px', 
                 borderRadius: 16, 
                 background: '#F0FDF4', 
@@ -934,20 +1143,21 @@ export default function LegalPage() {
                 ) : (
                   filteredSections.map((section, index) => (
                     <div key={index} className="clause-item">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ 
+                      <div className="clause-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
+                          <span className="clause-badge" style={{ 
                             fontSize: 12, 
                             fontWeight: 900, 
                             color: '#064E3B', 
                             background: '#ECFDF5', 
                             border: '1px solid #A7F3D0',
                             padding: '3px 10px', 
-                            borderRadius: 8 
+                            borderRadius: 8,
+                            flexShrink: 0
                           }}>
                             ধারা {section.num}
                           </span>
-                          <h4 style={{ 
+                          <h4 className="clause-heading" style={{ 
                             fontWeight: 800, 
                             fontSize: 17, 
                             color: '#0F172A', 
@@ -960,6 +1170,7 @@ export default function LegalPage() {
                         {/* Copy Clause Button */}
                         <button
                           type="button"
+                          className="clause-copy-btn"
                           onClick={() => handleCopyClause(section.num, section.content)}
                           style={{
                             border: 'none',
@@ -979,7 +1190,7 @@ export default function LegalPage() {
                         </button>
                       </div>
                       
-                      <p style={{ 
+                      <p className="clause-content" style={{ 
                         fontSize: 14.5, 
                         color: '#334155', 
                         lineHeight: 1.8, 
@@ -994,7 +1205,7 @@ export default function LegalPage() {
               </div>
 
               {/* Document Official Footer & Verification */}
-              <div style={{ 
+              <div className="legal-doc-footer" style={{ 
                 marginTop: 36, 
                 padding: '24px 26px', 
                 borderRadius: 18, 
@@ -1006,13 +1217,14 @@ export default function LegalPage() {
                 flexWrap: 'wrap',
                 gap: 16
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div className="legal-doc-footer-info" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ 
                     width: 44, height: 44, borderRadius: 12, 
                     background: '#00B875', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center', 
                     color: 'white',
-                    boxShadow: '0 6px 16px rgba(0, 184, 117, 0.25)' 
+                    boxShadow: '0 6px 16px rgba(0, 184, 117, 0.25)',
+                    flexShrink: 0
                   }}>
                     <ShieldCheck size={22} />
                   </div>
@@ -1028,6 +1240,7 @@ export default function LegalPage() {
 
                 <a 
                   href="mailto:legal@doctorbooklet.com.bd"
+                  className="legal-footer-contact-btn"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',

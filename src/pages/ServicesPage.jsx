@@ -484,7 +484,7 @@ export default function ServicesPage() {
             margin-top: 20px !important;
           }
           .services-bottom-cta {
-            padding: 32px 0 !important;
+            padding: 36px 0 calc(96px + env(safe-area-inset-bottom, 16px)) !important;
             text-align: center !important;
           }
           .services-bottom-cta-header {
