@@ -164,6 +164,9 @@ export function invalidateAppointments(queryClient, { appointmentId = null, cham
   queryClient.invalidateQueries({ queryKey: queryKeys.appointments.lists() })
   queryClient.invalidateQueries({ queryKey: queryKeys.appointments.adminLists() })
   queryClient.invalidateQueries({ queryKey: queryKeys.appointments.myAppointments() })
+  queryClient.invalidateQueries({ queryKey: ['appointments', 'summaryStats'] })
+  queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
+  queryClient.invalidateQueries({ queryKey: queryKeys.commissions.all })
 
   if (appointmentId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.appointments.detail(appointmentId) })

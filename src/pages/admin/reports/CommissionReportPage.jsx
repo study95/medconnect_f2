@@ -8,6 +8,7 @@ import { queryKeys } from '../../../lib/queryKeys'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import CommissionMemo from './CommissionMemo'
+import CompactUlid from '../../../components/common/CompactUlid'
 
 const MONTHS = [
   { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
@@ -221,7 +222,7 @@ export default function CommissionReportPage() {
     h && (String(h.id) === String(filters.hospital_id) || (h.public_id && String(h.public_id) === String(filters.hospital_id)))
   )
 
-  // Instant Client-side Search Filter (Patient name, doctor name, Public ID, Reg ID)
+  // Instant Client-side Search Filter (Patient name, doctor name, Public ID, Reg ID, Mobile)
   const filteredData = useMemo(() => {
     if (!search.trim()) return data
     const q = search.toLowerCase()
@@ -229,7 +230,9 @@ export default function CommissionReportPage() {
       (row.patient_name && row.patient_name.toLowerCase().includes(q)) ||
       (row.doctor_name && row.doctor_name.toLowerCase().includes(q)) ||
       (row.public_id && row.public_id.toLowerCase().includes(q)) ||
-      (row.registration_id && String(row.registration_id).includes(q))
+      (row.registration_id && String(row.registration_id).includes(q)) ||
+      (row.booking_phone && String(row.booking_phone).includes(q)) ||
+      (row.patient_phone && String(row.patient_phone).includes(q))
     )
   }, [data, search])
 
@@ -672,17 +675,29 @@ export default function CommissionReportPage() {
                       </td>
                       <td style={{ fontSize: 13, color: 'var(--admin-text)' }}>{row.date}</td>
                       <td>
-                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{row.patient_name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>ID: {row.public_id || row.registration_id}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{row.patient_name || 'Patient'}</div>
+                        <div style={{ marginTop: 2 }}>
+                          <CompactUlid 
+                            value={row.public_id || row.registration_id} 
+                            style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }} 
+                          />
+                        </div>
                       </td>
-                      <td style={{ textTransform: 'capitalize' }}>
-                         <span style={{ 
-                            fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6,
-                            background: row.created_by_role === 'manager' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                            color: row.created_by_role === 'manager' ? '#F59E0B' : '#3B82F6'
-                         }}>
-                            {row.created_by_role === 'manager' ? 'hospital' : row.created_by_role}
-                         </span>
+                      <td>
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          <span style={{ 
+                             fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6, textTransform: 'capitalize',
+                             background: row.created_by_role === 'manager' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                             color: row.created_by_role === 'manager' ? '#F59E0B' : '#3B82F6'
+                          }}>
+                             {row.created_by_role === 'manager' ? 'hospital' : (row.created_by_role || 'patient')}
+                          </span>
+                          {(row.booking_phone || row.patient_phone) && (
+                            <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
+                              {row.booking_phone || row.patient_phone}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ fontWeight: 600, color: 'var(--admin-text)' }}>৳{row.amount}</td>
                       <td style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{row.commission_rate}%</td>

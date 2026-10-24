@@ -2,124 +2,69 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
-import { getPayments, updatePayment, deletePayment, bulkDeletePayments } from '../../../api/adminApi'
+import { getPayments, updatePayment } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
-import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
-import { getErrorMessage } from '../../../utils/errorHelper'
+import MoneyReceiptModal from '../../../components/admin/MoneyReceiptModal'
+import {
+  FileText, CheckCircle2, Clock, Banknote, Smartphone,
+  RotateCcw, Printer, Check, RefreshCw
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
-function TableCheckbox({ checked, indeterminate, onChange, title }) {
-  return (
-    <label
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        margin: 0,
-        position: 'relative',
-        userSelect: 'none',
-        verticalAlign: 'middle',
-      }}
-      title={title}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        style={{
-          position: 'absolute',
-          opacity: 0,
-          width: 0,
-          height: 0,
-          margin: 0,
-          pointerEvents: 'none',
-        }}
-      />
-      <span
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: 5,
-          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #D1D5DB',
-          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.15s ease-in-out',
-          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        {checked && (
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-        {!checked && indeterminate && (
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        )}
-      </span>
-    </label>
-  )
-}
+const PAYMENT_METHODS = [
+  { id: 'all', label: 'All Methods' },
+  { id: 'cash', label: 'Cash (চেম্বার ক্যাশ)' },
+  { id: 'bkash', label: 'bKash (বিকাশ)' },
+  { id: 'nagad', label: 'Nagad (নগদ)' },
+  { id: 'rocket', label: 'Rocket (রকেট)' },
+  { id: 'card', label: 'Debit/Credit Card' },
+  { id: 'online', label: 'Online Gateway' },
+  { id: 'bank_transfer', label: 'Bank Transfer' },
+]
 
-const PAYMENT_METHODS = ['all', 'bkash', 'nagad', 'rocket', 'cash', 'card', 'online', 'bank_transfer']
-const PAYMENT_STATUSES = ['all', 'paid', 'unpaid', 'refunded', 'partial']
+const PAYMENT_STATUSES = [
+  { id: 'all', label: 'All Statuses' },
+  { id: 'paid', label: 'PAID (পরিশোধিত)' },
+  { id: 'unpaid', label: 'UNPAID (বকেয়া)' },
+  { id: 'refunded', label: 'REFUNDED (রিফান্ডকৃত)' },
+]
 
 export default function PaymentListPage() {
   const { isAdmin } = useAuth()
   const queryClient = useQueryClient()
+
+  // Filters State
   const [search, setSearch] = useState('')
   const [methodFilter, setMethodFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [selectedIds, setSelectedIds] = useState([])
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Receipt Modal State
+  const [receiptPayment, setReceiptPayment] = useState(null)
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [updatingId, setUpdatingId] = useState(null)
+
   const queryParams = useMemo(() => {
-    const params = {}
+    const params = { page: currentPage, per_page: perPage }
     if (methodFilter !== 'all') params.payment_method = methodFilter
     if (statusFilter !== 'all') params.payment_status = statusFilter
     if (dateFrom) params.date_from = dateFrom
     if (dateTo) params.date_to = dateTo
+    if (search.trim()) params.search = search.trim()
     return params
-  }, [methodFilter, statusFilter, dateFrom, dateTo])
+  }, [methodFilter, statusFilter, dateFrom, dateTo, currentPage, perPage, search])
 
   const {
-    data: payments = [],
+    data: paymentsResponse = { data: [], meta: null },
     isLoading: loading,
     isFetching,
     refetch,
@@ -127,53 +72,128 @@ export default function PaymentListPage() {
     queryKey: queryKeys.payments.adminList(queryParams),
     queryFn: async () => {
       const res = await getPayments(queryParams)
-      return res.data?.data?.data || res.data?.data || res.data || []
+      const raw = res.data?.data || res.data || {}
+      // Support both paginated (has .data array + meta) and flat array responses
+      if (Array.isArray(raw)) return { data: raw, meta: null }
+      return {
+        data: raw.data || [],
+        meta: raw.meta || (raw.last_page ? { current_page: raw.current_page, last_page: raw.last_page, per_page: raw.per_page, total: raw.total } : null),
+      }
     },
     staleTime: 60 * 1000,
   })
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
+  const payments = paymentsResponse.data
+  const serverMeta = paymentsResponse.meta
+
+  // Client-side text search removed — search is now server-side
+  const filtered = payments // server already filtered by search
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [methodFilter, statusFilter, dateFrom, dateTo, search, perPage])
+
+  const paginatedData = filtered // server already paginated
+
+  const totalPages = serverMeta ? serverMeta.last_page : Math.ceil(filtered.length / perPage)
+  const totalCount = serverMeta ? serverMeta.total : filtered.length
+
+  // Financial Stats Calculation
+  const stats = useMemo(() => {
+    let totalAmt = 0
+    let paidAmt = 0
+    let paidCnt = 0
+    let unpaidAmt = 0
+    let unpaidCnt = 0
+    let cashAmt = 0
+    let cashCnt = 0
+    let onlineAmt = 0
+    let onlineCnt = 0
+    let refundedAmt = 0
+    let refundedCnt = 0
+
+    filtered.forEach(p => {
+      const amt = Number(p.fee || p.amount || p.total_amount || 0)
+      totalAmt += amt
+
+      const pStatus = (p.payment_status || '').toLowerCase()
+      const isPaid = pStatus === 'paid' || (p.status || '').toLowerCase() === 'completed'
+      const isRefunded = pStatus === 'refunded'
+
+      if (isRefunded) {
+        refundedAmt += amt
+        refundedCnt += 1
+      } else if (isPaid) {
+        paidAmt += amt
+        paidCnt += 1
+      } else {
+        unpaidAmt += amt
+        unpaidCnt += 1
+      }
+
+      const pMethod = (p.payment_method || 'cash').toLowerCase()
+      if (pMethod === 'cash' || pMethod === 'cash on') {
+        cashAmt += amt
+        cashCnt += 1
+      } else {
+        onlineAmt += amt
+        onlineCnt += 1
+      }
+    })
+
+    return {
+      totalAmount: totalAmt,
+      totalCount: filtered.length,
+      paidAmount: paidAmt,
+      paidCount: paidCnt,
+      unpaidAmount: unpaidAmt,
+      unpaidCount: unpaidCnt,
+      cashAmount: cashAmt,
+      cashCount: cashCnt,
+      onlineAmount: onlineAmt,
+      onlineCount: onlineCnt,
+      refundedAmount: refundedAmt,
+      refundedCount: refundedCnt,
+    }
+  }, [filtered])
+
+  // Collect Cash & Mark as Paid (with immediate receipt opening)
+  const handleCollectCash = async (pay) => {
+    setUpdatingId(pay.id)
     try {
-      await deletePayment(deleteTarget.id)
-      toast.success('Payment record deleted successfully.')
+      await updatePayment(pay.id, {
+        payment_status: 'Paid',
+        payment_method: 'Cash',
+      })
+      toast.success(`পেমেন্ট সফলভাবে আদায় করা হয়েছে (৳${pay.fee || pay.amount || 0})`)
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
-      setSelectedIds(prev => prev.filter(id => id !== deleteTarget.id))
+      // Auto open money receipt for receptionist / user
+      setReceiptPayment({ ...pay, payment_status: 'Paid', payment_method: 'Cash' })
+      setShowReceiptModal(true)
     } catch (err) {
-      console.error('Failed to delete payment', err)
-      toast.error('Failed to delete payment record.')
+      toast.error(err.response?.data?.message || 'পেমেন্ট স্ট্যাটাস আপডেট করা সম্ভব হয়নি।')
     } finally {
-      setDeleting(false)
-      setDeleteTarget(null)
+      setUpdatingId(null)
     }
   }
 
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return
-    setBulkDeleting(true)
+  // Update Status manually (Paid, Unpaid, Refunded)
+  const handleStatusChange = async (pay, newStatus) => {
+    setUpdatingId(pay.id)
     try {
-      const res = await bulkDeletePayments(selectedIds)
-      toast.success(res.data?.message || `Successfully deleted ${selectedIds.length} payment record(s).`)
+      await updatePayment(pay.id, { payment_status: newStatus })
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
-      setSelectedIds([])
-      setShowBulkDeleteModal(false)
+      toast.success(`পেমেন্ট স্ট্যাটাস '${newStatus.toUpperCase()}' করা হয়েছে`)
     } catch (err) {
-      console.error('Failed to delete selected payment records', err)
-      toast.error(err.response?.data?.message || 'Failed to delete selected payment records.')
+      toast.error(err.response?.data?.message || 'পেমেন্ট স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।')
     } finally {
-      setBulkDeleting(false)
+      setUpdatingId(null)
     }
   }
 
-  const handleStatusUpdate = async (id, newStatus) => {
-    try {
-      await updatePayment(id, { payment_status: newStatus })
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all })
-      toast.success('পেমেন্ট স্ট্যাটাস আপডেট হয়েছে')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'পেমেন্ট স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।')
-    }
+  const handleOpenReceipt = (pay) => {
+    setReceiptPayment(pay)
+    setShowReceiptModal(true)
   }
 
   const clearFilters = () => {
@@ -184,74 +204,123 @@ export default function PaymentListPage() {
     setDateTo('')
   }
 
-  const filtered = payments.filter(pay => {
-    if (search) {
-      const q = search.toLowerCase()
-      const matchPatient = pay.patient?.name?.toLowerCase().includes(q) || pay.patient_name?.toLowerCase().includes(q) || pay.user_name?.toLowerCase().includes(q)
-      const matchDoc = pay.doctor?.name?.toLowerCase().includes(q) || pay.doctor_name?.toLowerCase().includes(q)
-      const matchTx = pay.transaction_id?.toLowerCase().includes(q) || String(pay.id).includes(q)
-      if (!matchPatient && !matchDoc && !matchTx) return false
-    }
-    return true
-  })
-
-  useEffect(() => { setCurrentPage(1) }, [filtered.length])
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
-
-  const isAllSelected = paginatedData.length > 0 && paginatedData.every(p => selectedIds.includes(p.id))
-  const isSomeSelected = paginatedData.some(p => selectedIds.includes(p.id))
-
-  const toggleSelectAll = () => {
-    if (isAllSelected) {
-      const pageIds = paginatedData.map(p => p.id)
-      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
-    } else {
-      const newIds = paginatedData.map(p => p.id).filter(id => !selectedIds.includes(id))
-      setSelectedIds(prev => [...prev, ...newIds])
-    }
-  }
-
-  const toggleSelectOne = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    )
-  }
-
-  const totalAmount = filtered.reduce((sum, p) => sum + Number(p.fee || p.amount || p.total_amount || 0), 0)
-  const paidCount = filtered.filter(p => p.payment_status === 'paid').length
-  const unpaidCount = filtered.filter(p => p.payment_status === 'unpaid' || !p.payment_status).length
+  // Interactive KPI Cards Definition
+  const kpiCards = [
+    {
+      id: 'total',
+      title: 'মোট ট্রানজেকশন',
+      count: `৳${stats.totalAmount.toLocaleString()}`,
+      sub: `${stats.totalCount} টি`,
+      icon: <FileText size={16} />,
+      color: '#3B82F6',
+      bgLight: 'rgba(59, 130, 246, 0.1)',
+      isActive: statusFilter === 'all' && methodFilter === 'all',
+      onClick: () => { setStatusFilter('all'); setMethodFilter('all') },
+    },
+    {
+      id: 'paid',
+      title: 'আদায়কৃত ফি',
+      count: `৳${stats.paidAmount.toLocaleString()}`,
+      sub: `${stats.paidCount} টি পরিশোধিত`,
+      icon: <CheckCircle2 size={16} />,
+      color: '#00B875',
+      bgLight: 'rgba(0, 184, 117, 0.12)',
+      isActive: statusFilter === 'paid',
+      onClick: () => { setStatusFilter(statusFilter === 'paid' ? 'all' : 'paid'); setMethodFilter('all') },
+    },
+    {
+      id: 'unpaid',
+      title: 'বকেয়া / চেম্বারে প্রদেয়',
+      count: `৳${stats.unpaidAmount.toLocaleString()}`,
+      sub: `${stats.unpaidCount} টি বকেয়া`,
+      icon: <Clock size={16} />,
+      color: '#F59E0B',
+      bgLight: 'rgba(245, 158, 11, 0.12)',
+      isActive: statusFilter === 'unpaid',
+      onClick: () => { setStatusFilter(statusFilter === 'unpaid' ? 'all' : 'unpaid'); setMethodFilter('all') },
+    },
+    {
+      id: 'cash',
+      title: 'কাউন্টার ক্যাশ',
+      count: `৳${stats.cashAmount.toLocaleString()}`,
+      sub: `${stats.cashCount} টি ক্যাশ`,
+      icon: <Banknote size={16} />,
+      color: '#0D9488',
+      bgLight: 'rgba(13, 148, 136, 0.12)',
+      isActive: methodFilter === 'cash',
+      onClick: () => { setMethodFilter(methodFilter === 'cash' ? 'all' : 'cash'); setStatusFilter('all') },
+    },
+    {
+      id: 'online',
+      title: 'ডিজিটাল / অনলাইন',
+      count: `৳${stats.onlineAmount.toLocaleString()}`,
+      sub: `${stats.onlineCount} টি ডিজিটাল`,
+      icon: <Smartphone size={16} />,
+      color: '#6366F1',
+      bgLight: 'rgba(99, 102, 241, 0.12)',
+      isActive: methodFilter === 'online' || methodFilter === 'bkash',
+      onClick: () => { setMethodFilter(methodFilter === 'online' ? 'all' : 'online'); setStatusFilter('all') },
+    },
+    {
+      id: 'refunded',
+      title: 'রিফান্ডকৃত ফি',
+      count: `৳${stats.refundedAmount.toLocaleString()}`,
+      sub: `${stats.refundedCount} টি রিফান্ড`,
+      icon: <RotateCcw size={16} />,
+      color: '#8B5CF6',
+      bgLight: 'rgba(139, 92, 246, 0.12)',
+      isActive: statusFilter === 'refunded',
+      onClick: () => { setStatusFilter(statusFilter === 'refunded' ? 'all' : 'refunded'); setMethodFilter('all') },
+    },
+  ]
 
   return (
     <div className="admin-container">
+      {/* Page Header */}
       <div className="admin-page-header">
         <div>
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>
             <span style={{ marginRight: 12 }}>💳</span>
-            Patient Payments
+            Patient Payments & Money Receipts
           </h2>
-          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Appointment booking fees, patient transaction records, and settlement logs</p>
+          <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>
+            Appointment consultation fees, counter cash collection logs, and printable money receipts
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
-        <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 16, padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Total Revenue</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#00A88C', marginTop: 4 }}>৳{totalAmount.toLocaleString()}</div>
-        </div>
-        <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 16, padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Paid Transactions</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#10B981', marginTop: 4 }}>{paidCount}</div>
-        </div>
-        <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', borderRadius: 16, padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Pending Dues</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#F59E0B', marginTop: 4 }}>{unpaidCount}</div>
-        </div>
+      {/* Compact Single-Row Financial KPI Badges */}
+      <div className="payments-kpi-grid">
+        {kpiCards.map((card) => (
+          <div
+            key={card.id}
+            onClick={card.onClick}
+            className={`payments-kpi-card ${card.isActive ? 'active' : ''}`}
+            style={{
+              '--kpi-color': card.color,
+              '--kpi-bg': card.bgLight,
+            }}
+            title={`${card.title}: ${card.count} (${card.sub}) - ফিল্টার করতে ক্লিক করুন`}
+          >
+            <div className="payments-kpi-icon" style={{ background: card.bgLight, color: card.color }}>
+              {card.icon}
+            </div>
+            <div className="payments-kpi-content">
+              <span className="payments-kpi-title">{card.title}</span>
+              <div className="payments-kpi-value">{card.count}</div>
+            </div>
+            {card.isActive && (
+              <span className="payments-kpi-active-badge">✓</span>
+            )}
+          </div>
+        ))}
       </div>
 
+      {/* Toolbar with instant auto-filters */}
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by patient, doctor, transaction ID..."
+        searchPlaceholder="Search by patient, phone, doctor, hospital, serial, transaction..."
         onRefresh={() => refetch()}
         refreshing={isFetching}
         showFilters={showFilters}
@@ -265,16 +334,16 @@ export default function PaymentListPage() {
           dateTo && { key: 'dateTo', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
         ].filter(Boolean)}
       >
-        <div style={{ minWidth: 140 }}>
+        <div style={{ minWidth: 160 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Payment Status</label>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}>
-            {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.toUpperCase()}</option>)}
+            {PAYMENT_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
-        <div style={{ minWidth: 140 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Method</label>
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Payment Method</label>
           <select value={methodFilter} onChange={e => setMethodFilter(e.target.value)} style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}>
-            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m === 'all' ? 'All Methods' : m.toUpperCase()}</option>)}
+            {PAYMENT_METHODS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
         <div style={{ minWidth: 140 }}>
@@ -287,6 +356,7 @@ export default function PaymentListPage() {
         </div>
       </ListToolbar>
 
+      {/* Table Card */}
       <div className="admin-card">
         <div
           className="admin-card-header"
@@ -300,131 +370,26 @@ export default function PaymentListPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h3 className="admin-card-title" style={{ margin: 0 }}>Transaction Ledger</h3>
+            <h3 className="admin-card-title" style={{ margin: 0 }}>Transaction & Billing Ledger</h3>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {selectedIds.length > 0 && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
-                  border: '1px solid #FECDD3',
-                  borderRadius: 20,
-                  padding: '4px 6px 4px 14px',
-                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
-                  animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      background: '#E11D48',
-                      color: '#ffffff',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 10,
-                      fontWeight: 800,
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: '#9F1239', letterSpacing: '-0.01em' }}>
-                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#BE123C' }}>selected</span>
-                  </span>
-                </div>
-
-                <div style={{ width: 1, height: 16, background: '#FDA4AF', opacity: 0.6 }} />
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedIds([])}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#9F1239',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    padding: '3px 8px',
-                    borderRadius: 12,
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(225, 29, 72, 0.1)'
-                    e.currentTarget.style.color = '#881337'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = '#9F1239'
-                  }}
-                >
-                  Deselect
-                </button>
-
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => setShowBulkDeleteModal(true)}
-                    style={{
-                      background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '5px 14px',
-                      borderRadius: 16,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
-                      transition: 'transform 0.1s ease, box-shadow 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(225, 29, 72, 0.35)'
-                      e.currentTarget.style.transform = 'translateY(-0.5px)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(225, 29, 72, 0.25)'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
-                    <span>Delete ({selectedIds.length})</span>
-                  </button>
-                )}
-              </div>
-            )}
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--admin-text-muted, #64748B)',
-                background: 'var(--admin-bg, #F8FAFC)',
-                padding: '4px 10px',
-                borderRadius: 8,
-                border: '1px solid var(--admin-border, #E2E8F0)',
-              }}
-            >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Records Found
-            </div>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--admin-text-muted, #64748B)',
+              background: 'var(--admin-bg, #F8FAFC)',
+              padding: '4px 10px',
+              borderRadius: 8,
+              border: '1px solid var(--admin-border, #E2E8F0)',
+            }}
+          >
+            <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{totalCount}</strong> Records Found
           </div>
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '20%', '14%', '12%', '12%', '8%']} headers={['', 'Transaction', 'Payer / Patient', 'Doctor / Service', 'Amount', 'Method', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['120px', '24%', '22%', '14%', '12%', '12%', '16%']} headers={['Transaction', 'Patient Details', 'Doctor / Service', 'Amount', 'Method', 'Status', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState hasFilters={Boolean(methodFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="💳" title="No payment records found" description="No transactions match your search or filter settings." />
         ) : (
@@ -432,179 +397,176 @@ export default function PaymentListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 44, textAlign: 'center', paddingLeft: 16 }}>
-                    <TableCheckbox
-                      checked={isAllSelected}
-                      indeterminate={isSomeSelected && !isAllSelected}
-                      onChange={toggleSelectAll}
-                      title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
-                    />
-                  </th>
                   <th>Transaction ID</th>
                   <th>Patient Details</th>
                   <th>Doctor / Service</th>
-                  <th>Amount</th>
+                  <th>Consultation Fee</th>
                   <th>Method</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>Payment Status</th>
+                  <th style={{ textAlign: 'center' }}>মানি রিসিট (Receipt)</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedData.map(pay => {
-                  const isSelected = selectedIds.includes(pay.id)
+                  const pStatus = (pay.payment_status || '').toLowerCase()
+                  const isCancelled = pay.status?.toLowerCase() === 'cancelled' || pay.status?.toLowerCase() === 'rejected'
+                  const isPaid = pStatus === 'paid' || pay.status?.toLowerCase() === 'completed'
+                  const isRefunded = pStatus === 'refunded'
+
                   return (
-                  <tr
-                    key={pay.id}
-                    style={{
-                      background: isSelected ? 'rgba(16, 185, 129, 0.06)' : undefined,
-                      transition: 'background 0.15s'
-                    }}
-                  >
-                    <td style={{ width: 44, textAlign: 'center', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
-                      <TableCheckbox
-                        checked={isSelected}
-                        onChange={() => toggleSelectOne(pay.id)}
-                        title="Select row"
-                      />
-                    </td>
-                    <td>
-                      <CompactUlid value={pay.transaction_id || `TXN-${pay.id}`} />
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{pay.patient?.name || pay.user_name || pay.patient_name || 'Patient'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{pay.patient?.phone || pay.user_phone || '—'}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{pay.doctor?.name || pay.doctor_name || 'Medical Consultation'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{pay.hospital?.name || pay.hospital_name || 'Hospital'}</div>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 14 }}>
-                        ৳{pay.fee || pay.amount || pay.total_amount || 0}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ textTransform: 'uppercase', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: '#F1F5F9', color: '#475569' }}>
-                        {pay.payment_method || 'CASH'}
-                      </span>
-                    </td>
-                    <td>
-                      {(() => {
-                        const isCancelled = pay.status?.toLowerCase() === 'cancelled' || pay.status?.toLowerCase() === 'rejected'
-                        const isPaid = pay.payment_status?.toLowerCase() === 'paid' || pay.status?.toLowerCase() === 'completed'
-                        const isRefunded = pay.payment_status?.toLowerCase() === 'refunded'
+                    <tr key={pay.id} style={{ transition: 'background 0.15s' }}>
+                      {/* Transaction ID */}
+                      <td>
+                        <CompactUlid value={pay.transaction_id || `TXN-${pay.id}`} />
+                        <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                          {pay.appointment_date ? new Date(pay.appointment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+                          {pay.serial_number ? ` • #${pay.serial_number}` : ''}
+                        </div>
+                      </td>
 
-                        if (isCancelled) {
-                          return (
-                            <span 
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                color: '#DC2626',
-                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                userSelect: 'none',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.03em',
-                              }} 
-                              title="অ্যাপয়েন্টমেন্ট বাতিল হওয়ায় পেমেন্ট প্রযোজ্য নয়"
-                            >
-                              ✕ CANCELLED
-                            </span>
-                          )
-                        }
+                      {/* Patient Details */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
+                          {pay.patient?.name || pay.user_name || pay.patient_name || 'Patient'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                          📞 {pay.patient?.phone || pay.user_phone || pay.patient_phone || '—'}
+                          {pay.patient?.age || pay.patient_age ? ` • ${pay.patient?.age || pay.patient_age}y` : ''}
+                        </div>
+                      </td>
 
-                        if (isRefunded) {
-                          return (
-                            <span 
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                background: 'rgba(147, 51, 234, 0.12)',
-                                color: '#7C3AED',
-                                border: '1px solid rgba(147, 51, 234, 0.25)',
-                                userSelect: 'none',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.03em',
-                              }} 
-                              title="রিফান্ড করা হয়েছে"
-                            >
-                              ↩ REFUNDED
-                            </span>
-                          )
-                        }
+                      {/* Doctor / Service */}
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>
+                          {pay.doctor?.name || pay.doctor_name || 'Medical Specialist'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
+                          📍 {pay.hospital?.name || pay.hospital_name || pay.chamber?.name || 'Chamber Consultation'}
+                        </div>
+                      </td>
 
-                        if (isPaid) {
-                          return (
-                            <span 
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                background: 'rgba(16, 185, 129, 0.12)',
-                                color: '#059669',
-                                border: '1px solid rgba(16, 185, 129, 0.25)',
-                                userSelect: 'none',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.03em',
-                              }} 
-                              title={pay.is_payment_locked ? "কনসালটেশন সম্পন্ন হওয়ায় পেমেন্ট সম্পন্ন ও লক করা হয়েছে" : "পেমেন্ট সম্পন্ন হয়েছে"}
-                            >
-                              {pay.is_payment_locked ? '🔒 PAID' : '✓ PAID'}
-                            </span>
-                          )
-                        }
+                      {/* Consultation Fee */}
+                      <td>
+                        <span style={{ fontWeight: 800, color: '#00A88C', fontSize: 14 }}>
+                          ৳{Number(pay.fee || pay.amount || pay.total_amount || 0).toLocaleString()}
+                        </span>
+                      </td>
 
-                        return (
-                          <span 
+                      {/* Method */}
+                      <td>
+                        <span style={{ textTransform: 'uppercase', fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'var(--admin-bg, #F1F5F9)', color: 'var(--admin-text, #475569)', border: '1px solid var(--admin-border, #E2E8F0)' }}>
+                          {pay.payment_method || 'CASH'}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        {isCancelled ? (
+                          <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 5,
-                              fontSize: 11,
+                              gap: 4,
+                              fontSize: 10.5,
                               fontWeight: 800,
-                              padding: '4px 10px',
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#DC2626',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                            }}
+                          >
+                            ✕ CANCELLED
+                          </span>
+                        ) : isRefunded ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(147, 51, 234, 0.12)',
+                              color: '#7C3AED',
+                              border: '1px solid rgba(147, 51, 234, 0.25)',
+                            }}
+                          >
+                            ↩ REFUNDED
+                          </span>
+                        ) : isPaid ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              color: '#059669',
+                              border: '1px solid rgba(16, 185, 129, 0.25)',
+                            }}
+                          >
+                            ✓ PAID
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: '3px 8px',
                               borderRadius: 6,
                               background: 'rgba(245, 158, 11, 0.12)',
                               color: '#D97706',
                               border: '1px solid rgba(245, 158, 11, 0.25)',
-                              userSelect: 'none',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.03em',
-                            }} 
-                            title="কনসালটেশন সম্পন্ন হলে স্বয়ংক্রিয়ভাবে PAID হবে"
+                            }}
                           >
                             ⏳ UNPAID
                           </span>
-                        )
-                      })()}
-                    </td>
-                    <td>
-                      <div className="admin-actions">
+                        )}
+                      </td>
+
+                      {/* Receipt Action Only */}
+                      <td style={{ textAlign: 'center' }}>
                         <button
-                          className="admin-btn admin-btn-danger admin-btn-sm"
-                          onClick={() => setDeleteTarget(pay)}
-                          disabled={pay.is_payment_locked}
-                          style={pay.is_payment_locked ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
-                          title={pay.is_payment_locked ? "প্রেসক্রিপশন সম্পন্ন হওয়ায় পেমেন্ট মুছে ফেলা সম্ভব নয়" : "Delete"}
-                        >🗑️</button>
-                      </div>
-                    </td>
-                  </tr>
+                          type="button"
+                          onClick={() => handleOpenReceipt(pay)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 14px',
+                            borderRadius: 8,
+                            border: '1.5px solid #0284C7',
+                            background: 'rgba(2, 132, 199, 0.08)',
+                            color: '#0284C7',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 3px rgba(2, 132, 199, 0.1)',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#0284C7'
+                            e.currentTarget.style.color = '#FFFFFF'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(2, 132, 199, 0.08)'
+                            e.currentTarget.style.color = '#0284C7'
+                          }}
+                          title="মানি রিসিট ও ভাউচার দেখুন / প্রিন্ট করুন"
+                        >
+                          <Printer size={14} />
+                          <span>রিসিট</span>
+                        </button>
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
@@ -614,30 +576,153 @@ export default function PaymentListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={serverMeta ? serverMeta.total : filtered.length}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}
         setPerPage={setPerPage}
+        totalPages={totalPages}
       />
 
-      <DeleteModal
-        show={!!deleteTarget}
-        title="Delete Payment Record"
-        message="Are you sure you want to delete this payment record? This action is permanent."
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-        loading={deleting}
+      {/* Money Receipt Modal */}
+      <MoneyReceiptModal
+        show={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        payment={receiptPayment}
       />
 
-      <DeleteModal
-        show={showBulkDeleteModal}
-        title="Bulk Delete Payment Records"
-        message={`Are you sure you want to delete ${selectedIds.length} selected payment transaction(s)? All associated billing logs will be affected. This action is permanent.`}
-        onConfirm={handleBulkDelete}
-        onCancel={() => setShowBulkDeleteModal(false)}
-        loading={bulkDeleting}
-      />
+      {/* Compact Styles */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* Compact Single-Row Payments KPI Grid */
+        .payments-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        @media (max-width: 1080px) {
+          .payments-kpi-grid {
+            display: flex;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 6px;
+            gap: 8px;
+            scrollbar-width: thin;
+          }
+          .payments-kpi-grid::-webkit-scrollbar {
+            height: 4px;
+          }
+          .payments-kpi-grid::-webkit-scrollbar-thumb {
+            background: var(--admin-border, #CBD5E1);
+            border-radius: 4px;
+          }
+        }
+
+        .payments-kpi-card {
+          background: var(--admin-card-bg, #FFFFFF);
+          border: 1.5px solid var(--admin-border, #E2E8F0);
+          border-radius: 10px;
+          padding: 8px 10px;
+          cursor: pointer;
+          transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          position: relative;
+          user-select: none;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+          min-height: 48px;
+          min-width: 0;
+        }
+
+        @media (max-width: 1080px) {
+          .payments-kpi-card {
+            flex: 0 0 148px;
+            scroll-snap-align: start;
+          }
+        }
+
+        .payments-kpi-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+          border-color: var(--kpi-color);
+        }
+
+        .payments-kpi-card.active {
+          border-color: var(--kpi-color);
+          background: var(--kpi-bg);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .payments-kpi-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .payments-kpi-content {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          transition: padding-right 0.15s ease;
+        }
+
+        .payments-kpi-card.active .payments-kpi-content {
+          padding-right: 12px;
+        }
+
+        .payments-kpi-title {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--admin-text-muted, #64748B);
+          line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .payments-kpi-card.active .payments-kpi-title {
+          color: var(--admin-text, #0F172A);
+        }
+
+        .payments-kpi-value {
+          font-size: 16px;
+          font-weight: 800;
+          line-height: 1.15;
+          color: var(--admin-text, #0F172A);
+          letter-spacing: -0.01em;
+        }
+
+        .payments-kpi-card.active .payments-kpi-value {
+          color: var(--kpi-color);
+        }
+
+        .payments-kpi-active-badge {
+          position: absolute;
+          top: 3px;
+          right: 4px;
+          width: 14px;
+          height: 14px;
+          border-radius: 99px;
+          background: var(--kpi-color);
+          color: #FFFFFF;
+          font-size: 9px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+      `}} />
     </div>
   )
 }

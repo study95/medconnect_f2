@@ -18,6 +18,7 @@ import { invalidateAppointments, invalidatePatients } from '../../lib/cacheInval
 import { useLookupQuery } from '../../lib/queryHooks'
 import {
   getAppointments,
+  getAppointmentStats,
   getAppointment,
   createAppointment,
   updateAppointment,
@@ -63,6 +64,25 @@ export function useAdminAppointments(filters = {}) {
     error: query.error ? getErrorMessage(query.error, 'Failed to load appointments list.') : null,
     refetch: query.refetch,
   }
+}
+
+/**
+ * Hook to fetch aggregated appointment KPI summary stats for live dashboard badges.
+ */
+export function useAdminAppointmentStats() {
+  return useQuery({
+    queryKey: ['appointments', 'summaryStats'],
+    queryFn: async () => {
+      try {
+        const res = await getAppointmentStats()
+        return res.data?.data || null
+      } catch (err) {
+        console.error('Failed to fetch appointment stats', err)
+        return null
+      }
+    },
+    staleTime: 30000,
+  })
 }
 
 /**
@@ -184,10 +204,10 @@ export function useAdminAppointmentMutations() {
     },
   })
 
-  // Optimistic Status Update (Confirmed, Completed, Cancelled)
+  // Optimistic Status & Payment Update (Confirmed, Completed, Cancelled)
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => updateAppointment(id, { status }),
-    onMutate: async ({ id, status }) => {
+    mutationFn: ({ id, ...payload }) => updateAppointment(id, payload),
+    onMutate: async ({ id, ...payload }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all })
 
       const previousLists = queryClient.getQueriesData({ queryKey: queryKeys.appointments.adminLists() })
@@ -196,14 +216,14 @@ export function useAdminAppointmentMutations() {
       // Optimistically update lists in memory
       queryClient.setQueriesData({ queryKey: queryKeys.appointments.adminLists() }, (old) => {
         if (!Array.isArray(old)) return old
-        return old.map((appt) => (appt.id === id ? { ...appt, status } : appt))
+        return old.map((appt) => (appt.id === id ? { ...appt, ...payload } : appt))
       })
 
       // Optimistically update detail in memory
       if (previousDetail) {
         queryClient.setQueryData(queryKeys.appointments.detail(id), (old) => ({
           ...old,
-          status,
+          ...payload,
         }))
       }
 

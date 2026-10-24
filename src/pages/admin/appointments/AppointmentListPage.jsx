@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
-import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
+import { useAdminAppointments, useAdminAppointmentLookups, useAdminAppointmentMutations, useAdminAppointmentStats } from '../../../features/appointments/useAdminAppointments'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -12,8 +12,9 @@ import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import SearchableSelect from '../../../components/common/SearchableSelect'
 import useDebounce from '../../../hooks/useDebounce'
-import { CalendarCheck, Printer } from 'lucide-react'
+import { CalendarCheck, Printer, CalendarDays, FileText, CheckCircle2, Sparkles, Clock, XCircle } from 'lucide-react'
 import AppointmentPrintModal from '../../../components/admin/AppointmentPrintModal'
+import AppointmentStatusModal from '../../../components/admin/AppointmentStatusModal'
 
 function TableCheckbox({ checked, indeterminate, onChange, title }) {
   return (
@@ -98,6 +99,7 @@ export default function AppointmentListPage() {
   const initialStatus = searchParams.get('status') || ''
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [changingStatus, setChangingStatus] = useState(null)
+  const [statusModalTarget, setStatusModalTarget] = useState(null)
   const [showFilters, setShowFilters] = useState(Boolean(initialStatus))
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
@@ -126,10 +128,24 @@ export default function AppointmentListPage() {
     return `${yearVal}-${monthVal}-${dayVal}`
   }, [])
 
+  // Current month & year strings
+  const currentMonthStr = useMemo(() => String(new Date().getMonth() + 1), [])
+  const currentYearStr = useMemo(() => String(new Date().getFullYear()), [])
+
   // Check if Today's quick filter is active
   const isTodayActive = useMemo(() => {
     return dateFrom === todayStr && dateTo === todayStr && !month && !year
   }, [dateFrom, dateTo, month, year, todayStr])
+
+  // Check if Current Month filter is active
+  const isMonthlyActive = useMemo(() => {
+    return String(month) === currentMonthStr && String(year) === currentYearStr && !dateFrom && !dateTo
+  }, [month, year, dateFrom, dateTo, currentMonthStr, currentYearStr])
+
+  // Check if All (Total) is active
+  const isAllActive = useMemo(() => {
+    return !statusFilter && !dateFrom && !dateTo && !month && !year
+  }, [statusFilter, dateFrom, dateTo, month, year])
 
   const handleToggleToday = () => {
     if (isTodayActive) {
@@ -140,6 +156,37 @@ export default function AppointmentListPage() {
       setDateTo(todayStr)
       setMonth('')
       setYear('')
+      setCurrentPage(1)
+    }
+  }
+
+  const handleSelectTotal = () => {
+    setStatusFilter('')
+    setDateFrom('')
+    setDateTo('')
+    setMonth('')
+    setYear('')
+    setCurrentPage(1)
+  }
+
+  const handleToggleMonthly = () => {
+    if (isMonthlyActive) {
+      setMonth('')
+      setYear('')
+    } else {
+      setDateFrom('')
+      setDateTo('')
+      setMonth(currentMonthStr)
+      setYear(currentYearStr)
+      setCurrentPage(1)
+    }
+  }
+
+  const handleToggleStatus = (status) => {
+    if (statusFilter === status) {
+      setStatusFilter('')
+    } else {
+      setStatusFilter(status)
       setCurrentPage(1)
     }
   }
@@ -178,12 +225,117 @@ export default function AppointmentListPage() {
     updateAppointmentStatus,
   } = useAdminAppointmentMutations()
 
+  // Realtime KPI Stats for badge cards
+  const { data: statsData, isLoading: statsLoading } = useAdminAppointmentStats()
+  const liveStats = useMemo(() => {
+    return {
+      total: statsData?.total ?? total ?? 0,
+      today: statsData?.today ?? 0,
+      monthly: statsData?.monthly ?? 0,
+      confirmed: statsData?.confirmed ?? 0,
+      completed: statsData?.completed ?? 0,
+      pending: statsData?.pending ?? 0,
+      cancelled: statsData?.cancelled ?? 0,
+    }
+  }, [statsData, total])
+
+  const kpiCards = [
+    {
+      id: 'total',
+      title: 'সর্বমোট',
+      count: liveStats.total,
+      icon: <FileText size={16} />,
+      color: '#3B82F6',
+      bgLight: 'rgba(59, 130, 246, 0.1)',
+      isActive: isAllActive,
+      onClick: handleSelectTotal,
+    },
+    {
+      id: 'today',
+      title: 'আজকের শিডিউল',
+      count: liveStats.today,
+      icon: <CalendarDays size={16} />,
+      color: '#00B875',
+      bgLight: 'rgba(0, 184, 117, 0.12)',
+      isActive: isTodayActive,
+      onClick: handleToggleToday,
+    },
+    {
+      id: 'monthly',
+      title: 'চলতি মাসের',
+      count: liveStats.monthly,
+      icon: <CalendarCheck size={16} />,
+      color: '#6366F1',
+      bgLight: 'rgba(99, 102, 241, 0.1)',
+      isActive: isMonthlyActive,
+      onClick: handleToggleMonthly,
+    },
+    {
+      id: 'confirmed',
+      title: 'কনফার্মড',
+      count: liveStats.confirmed,
+      icon: <CheckCircle2 size={16} />,
+      color: '#10B981',
+      bgLight: 'rgba(16, 185, 129, 0.12)',
+      isActive: statusFilter === 'confirmed',
+      onClick: () => handleToggleStatus('confirmed'),
+    },
+    {
+      id: 'completed',
+      title: 'ভিজিট সম্পন্ন',
+      count: liveStats.completed,
+      icon: <Sparkles size={16} />,
+      color: '#8B5CF6',
+      bgLight: 'rgba(139, 92, 246, 0.12)',
+      isActive: statusFilter === 'completed',
+      onClick: () => handleToggleStatus('completed'),
+    },
+    {
+      id: 'pending',
+      title: 'অপেক্ষমান',
+      count: liveStats.pending,
+      icon: <Clock size={16} />,
+      color: '#F59E0B',
+      bgLight: 'rgba(245, 158, 11, 0.12)',
+      isActive: statusFilter === 'pending',
+      onClick: () => handleToggleStatus('pending'),
+    },
+    {
+      id: 'cancelled',
+      title: 'বাতিলকৃত',
+      count: liveStats.cancelled,
+      icon: <XCircle size={16} />,
+      color: '#EF4444',
+      bgLight: 'rgba(239, 68, 68, 0.12)',
+      isActive: statusFilter === 'cancelled',
+      onClick: () => handleToggleStatus('cancelled'),
+    },
+  ]
+
   const handleStatusChange = async (id, newStatus) => {
     setChangingStatus(id)
     try {
       await updateAppointmentStatus({ id, status: newStatus })
     } catch (err) {
       console.error('Failed to update status', err)
+    } finally {
+      setChangingStatus(null)
+    }
+  }
+
+  const handleModalConfirmStatus = async (payload) => {
+    setChangingStatus(payload.id)
+    try {
+      await updateAppointmentStatus(payload)
+      toast.success(
+        payload.status === 'cancelled'
+          ? 'অ্যাপয়েন্টমেন্ট বাতিল করা হয়েছে'
+          : `অ্যাপয়েন্টমেন্ট ${payload.status.toUpperCase()} এবং পেমেন্ট (${payload.payment_status || 'Paid'}) সফলভাবে আপডেট হয়েছে`
+      )
+      setStatusModalTarget(null)
+    } catch (err) {
+      console.error('Failed to update status', err)
+      toast.error(err.response?.data?.message || 'স্ট্যাটাস আপডেট করা সম্ভব হয়নি')
     } finally {
       setChangingStatus(null)
     }
@@ -322,21 +474,6 @@ export default function AppointmentListPage() {
           >
             <CalendarCheck size={16} />
             <span>আজকের অ্যাপয়েন্টমেন্ট</span>
-            {isTodayActive && (
-              <span
-                style={{
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  color: '#FFFFFF',
-                  fontSize: 10.5,
-                  fontWeight: 800,
-                  padding: '1px 7px',
-                  borderRadius: 99,
-                  marginLeft: 2
-                }}
-              >
-                ✓ ফিল্টার অন
-              </span>
-            )}
           </button>
 
           {/* Print & Report Sheet Modal Trigger */}
@@ -365,6 +502,39 @@ export default function AppointmentListPage() {
         </div>
       </div>
 
+      {/* Interactive KPI Badge/Stat Cards (Admin, Doctor & Hospital Panels) */}
+      <div className="appointment-kpi-grid">
+        {kpiCards.map((card) => (
+          <div
+            key={card.id}
+            onClick={card.onClick}
+            className={`appointment-kpi-card ${card.isActive ? 'active' : ''}`}
+            style={{
+              '--kpi-color': card.color,
+              '--kpi-bg': card.bgLight,
+            }}
+            title={`${card.title}: ${Number(card.count).toLocaleString()} (ফিল্টার করতে ক্লিক করুন)`}
+          >
+            <div className="appointment-kpi-icon" style={{ background: card.bgLight, color: card.color }}>
+              {card.icon}
+            </div>
+            <div className="appointment-kpi-content">
+              <span className="appointment-kpi-title">{card.title}</span>
+              <div className="appointment-kpi-value">
+                {statsLoading && !statsData ? (
+                  <span className="appointment-kpi-skeleton" />
+                ) : (
+                  Number(card.count).toLocaleString()
+                )}
+              </div>
+            </div>
+            {card.isActive && (
+              <span className="appointment-kpi-active-badge">✓</span>
+            )}
+          </div>
+        ))}
+      </div>
+
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
@@ -379,10 +549,13 @@ export default function AppointmentListPage() {
           isTodayActive
             ? { key: 'today', label: '📅 ফিল্টার: আজকের অ্যাপয়েন্টমেন্ট', onRemove: () => { setDateFrom(''); setDateTo('') } }
             : null,
+          isMonthlyActive
+            ? { key: 'monthly', label: `📅 ফিল্টার: চলতি মাসের (${months.find(m => String(m.id) === currentMonthStr)?.name || ''})`, onRemove: () => { setMonth(''); setYear('') } }
+            : null,
           !isTodayActive && dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
           !isTodayActive && dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
-          month && { key: 'month', label: `Month: ${months.find(m => String(m.id) === String(month))?.name || month}`, onRemove: () => setMonth('') },
-          year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
+          !isMonthlyActive && month && { key: 'month', label: `Month: ${months.find(m => String(m.id) === String(month))?.name || month}`, onRemove: () => setMonth('') },
+          !isMonthlyActive && year && { key: 'year', label: `Year: ${year}`, onRemove: () => setYear('') },
           doctorId && { key: 'doctor', label: `Doctor: ${doctors.find(d => String(d.id) === String(doctorId))?.name || doctorId}`, onRemove: () => setDoctorId('') },
           hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
           statusFilter && { key: 'status', label: `Status: ${statusOptions.find(s => s.id === statusFilter)?.name || statusFilter}`, onRemove: () => setStatusFilter('') },
@@ -760,7 +933,7 @@ export default function AppointmentListPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {appt.is_payment_locked ? (
+                          {appt.status === 'completed' || appt.is_payment_locked ? (
                             <span 
                               style={{ 
                                 display: 'inline-flex', 
@@ -775,7 +948,7 @@ export default function AppointmentListPage() {
                                 border: '1px solid rgba(16,185,129,0.3)',
                                 whiteSpace: 'nowrap'
                               }}
-                              title="প্রেসক্রিপশন সম্পন্ন ও পেমেন্ট লক করা হয়েছে"
+                              title="প্রেসক্রিপশন সম্পন্ন ও স্ট্যাটাস লক করা হয়েছে"
                             >
                               🔒 Completed
                             </span>
@@ -784,11 +957,14 @@ export default function AppointmentListPage() {
                               className={`status-select-minimal status-${appt.status}`}
                               value={appt.status}
                               disabled={changingStatus === appt.id}
-                              onChange={(e) => handleStatusChange(appt.id, e.target.value)}
+                              onChange={(e) => {
+                                const newStat = e.target.value
+                                if (newStat === appt.status) return
+                                setStatusModalTarget({ appt, targetStatus: newStat })
+                              }}
                             >
                               <option value="pending">Pending</option>
                               <option value="confirmed">Confirmed</option>
-                              <option value="completed">Completed</option>
                               <option value="cancelled">Cancelled</option>
                             </select>
                           )}
@@ -917,6 +1093,15 @@ export default function AppointmentListPage() {
         user={user}
       />
 
+      <AppointmentStatusModal
+        show={!!statusModalTarget}
+        onClose={() => setStatusModalTarget(null)}
+        appointment={statusModalTarget?.appt}
+        targetStatus={statusModalTarget?.targetStatus}
+        onConfirm={handleModalConfirmStatus}
+        loading={changingStatus === statusModalTarget?.appt?.id}
+      />
+
       <style dangerouslySetInnerHTML={{ __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }
         
@@ -967,6 +1152,150 @@ export default function AppointmentListPage() {
         .status-select-minimal.status-confirmed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .status-select-minimal.status-completed { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
         .status-select-minimal.status-cancelled { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+        /* Compact Single-Row KPI Badge Cards */
+        .appointment-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        @media (max-width: 1080px) {
+          .appointment-kpi-grid {
+            display: flex;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 6px;
+            gap: 8px;
+            scrollbar-width: thin;
+          }
+          .appointment-kpi-grid::-webkit-scrollbar {
+            height: 4px;
+          }
+          .appointment-kpi-grid::-webkit-scrollbar-thumb {
+            background: var(--admin-border, #CBD5E1);
+            border-radius: 4px;
+          }
+        }
+
+        .appointment-kpi-card {
+          background: var(--admin-card-bg, #FFFFFF);
+          border: 1.5px solid var(--admin-border, #E2E8F0);
+          border-radius: 10px;
+          padding: 8px 10px;
+          cursor: pointer;
+          transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          position: relative;
+          user-select: none;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+          min-height: 48px;
+          min-width: 0;
+        }
+
+        @media (max-width: 1080px) {
+          .appointment-kpi-card {
+            flex: 0 0 140px;
+            scroll-snap-align: start;
+          }
+        }
+
+        .appointment-kpi-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+          border-color: var(--kpi-color);
+        }
+
+        .appointment-kpi-card.active {
+          border-color: var(--kpi-color);
+          background: var(--kpi-bg);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .appointment-kpi-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .appointment-kpi-content {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          transition: padding-right 0.15s ease;
+        }
+
+        .appointment-kpi-card.active .appointment-kpi-content {
+          padding-right: 12px;
+        }
+
+        .appointment-kpi-title {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--admin-text-muted, #64748B);
+          line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .appointment-kpi-card.active .appointment-kpi-title {
+          color: var(--admin-text, #0F172A);
+        }
+
+        .appointment-kpi-value {
+          font-size: 17px;
+          font-weight: 800;
+          line-height: 1.15;
+          color: var(--admin-text, #0F172A);
+          letter-spacing: -0.01em;
+        }
+
+        .appointment-kpi-card.active .appointment-kpi-value {
+          color: var(--kpi-color);
+        }
+
+        .appointment-kpi-active-badge {
+          position: absolute;
+          top: 3px;
+          right: 4px;
+          width: 14px;
+          height: 14px;
+          border-radius: 99px;
+          background: var(--kpi-color);
+          color: #FFFFFF;
+          font-size: 9px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+
+        .appointment-kpi-skeleton {
+          display: inline-block;
+          width: 28px;
+          height: 16px;
+          background: var(--admin-border, #E2E8F0);
+          border-radius: 4px;
+          animation: kpiPulse 1.5s infinite;
+        }
+
+        @keyframes kpiPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}} />

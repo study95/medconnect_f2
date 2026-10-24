@@ -225,6 +225,24 @@ export default function CheckoutPage() {
     }
   }, [legalModal.open, invoicePreviewModal, sessionSuccessData])
 
+  // Auto-dismiss general errorMsg after 6 seconds
+  useEffect(() => {
+    if (!errorMsg) return
+    const timer = setTimeout(() => {
+      setErrorMsg('')
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [errorMsg])
+
+  // Auto-dismiss manual errorMsg after 6 seconds
+  useEffect(() => {
+    if (!manualErrorMsg) return
+    const timer = setTimeout(() => {
+      setManualErrorMsg('')
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [manualErrorMsg])
+
   // Legacy state
   const [legacyPkg, setLegacyPkg] = useState(null)
   const [legacyPaymentRef, setLegacyPaymentRef] = useState('')
@@ -456,8 +474,15 @@ export default function CheckoutPage() {
     setErrorMsg('')
 
     try {
+      const selectedPlanId = parseInt(planIdParam, 10) || summaryData?.target_plan?.id || summaryData?.plan?.id
+      if (!selectedPlanId) {
+        setErrorMsg('কোন সাবস্ক্রিপশন প্ল্যান নির্বাচিত হয়নি। অনুগ্রহ করে পুনরায় প্যাকেজ নির্বাচন করুন।')
+        setSubmitting(false)
+        return
+      }
+
       const payload = {
-        plan_id: parseInt(planIdParam, 10),
+        plan_id: selectedPlanId,
         billing_cycle: billingCycle,
         coupon_code: appliedCoupon || null,
         payment_method: isFreePlan ? 'free_trial' : (paymentMode === 'online' ? onlineGateway : paymentMethod),
@@ -483,8 +508,36 @@ export default function CheckoutPage() {
         }
       }
     } catch (err) {
-      const fieldMsg = err.response?.data?.errors?.payment_method?.[0] || err.response?.data?.errors?.payment?.[0]
-      const msg = fieldMsg || err.response?.data?.message || 'চেকআউট সম্পন্ন করা সম্ভব হয়নি। ইনপুটগুলো যাচাই করুন।'
+      let msg = ''
+      const errors = err.response?.data?.errors
+      if (errors && typeof errors === 'object') {
+        const messages = []
+        for (const [key, val] of Object.entries(errors)) {
+          const itemMsg = Array.isArray(val) ? val[0] : String(val)
+          if (key === 'plan_id') {
+            messages.push('সাবস্ক্রিপশন প্ল্যান নির্বাচন সঠিক নয় বা পাওয়া যায়নি।')
+          } else if (key === 'payment_method' || key === 'payment') {
+            messages.push(itemMsg || 'পেমেন্ট মেথড নির্বাচন সঠিক নয়।')
+          } else if (key.startsWith('billing_address')) {
+            messages.push('বিলিং ঠিকানার তথ্য সঠিক নয়।')
+          } else if (key === 'terms_accepted') {
+            messages.push('শর্তাবলী ও নীতিমালা গ্রহণ করা আবশ্যক।')
+          } else {
+            messages.push(itemMsg)
+          }
+        }
+        msg = messages.filter(Boolean).join(' | ')
+      }
+
+      if (!msg) {
+        const rawMsg = err.response?.data?.message
+        if (rawMsg && rawMsg !== 'Validation failed.') {
+          msg = rawMsg
+        } else {
+          msg = 'চেকআউট সম্পন্ন করা সম্ভব হয়নি। অনুগ্রহ করে সকল তথ্য যাচাই করে আবার চেষ্টা করুন।'
+        }
+      }
+
       setErrorMsg(msg)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
@@ -550,8 +603,15 @@ export default function CheckoutPage() {
     setManualErrorMsg('')
 
     try {
+      const selectedPlanId = parseInt(planIdParam, 10) || summaryData?.target_plan?.id || summaryData?.plan?.id
+      if (!selectedPlanId) {
+        setManualErrorMsg('কোন সাবস্ক্রিপশন প্ল্যান পাওয়া যায়নি। অনুগ্রহ করে পুনরায় প্যাকেজ নির্বাচন করুন।')
+        setManualSubmitting(false)
+        return
+      }
+
       const formData = new FormData()
-      formData.append('plan_id', planIdParam)
+      formData.append('plan_id', selectedPlanId)
       formData.append('billing_cycle', billingCycle)
       formData.append('amount', summaryData?.pricing?.total_amount || 0)
       let methodToSubmit = manualMethod
@@ -583,13 +643,35 @@ export default function CheckoutPage() {
         initCheckout()
       }
     } catch (err) {
+      let msg = ''
       const errors = err.response?.data?.errors
-      if (errors) {
-        const firstErr = Object.values(errors)[0]
-        setManualErrorMsg(Array.isArray(firstErr) ? firstErr[0] : String(firstErr))
-      } else {
-        setManualErrorMsg(err.response?.data?.message || 'ম্যানুয়াল পেমেন্ট জমা দিতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
+      if (errors && typeof errors === 'object') {
+        const messages = []
+        for (const [key, val] of Object.entries(errors)) {
+          const itemMsg = Array.isArray(val) ? val[0] : String(val)
+          if (key === 'plan_id') {
+            messages.push('সাবস্ক্রিপশন প্ল্যান নির্বাচন সঠিক নয়।')
+          } else if (key === 'slip_image') {
+            messages.push('পেমেন্ট স্লিপের ফাইল সঠিক নয় বা সংযুক্ত করা হয়নি।')
+          } else if (key === 'transaction_reference') {
+            messages.push('ট্রানজেকশন আইডি (TrxID) প্রদান করুন।')
+          } else {
+            messages.push(itemMsg)
+          }
+        }
+        msg = messages.filter(Boolean).join(' | ')
       }
+
+      if (!msg) {
+        const rawMsg = err.response?.data?.message
+        if (rawMsg && rawMsg !== 'Validation failed.') {
+          msg = rawMsg
+        } else {
+          msg = 'ম্যানুয়াল পেমেন্ট তথ্য জমা দেওয়া ব্যর্থ হয়েছে। অনুগ্রহ করে তথ্য যাচাই করে আবার চেষ্টা করুন।'
+        }
+      }
+
+      setManualErrorMsg(msg)
     } finally {
       setManualSubmitting(false)
     }
@@ -831,9 +913,32 @@ export default function CheckoutPage() {
         )}
 
         {errorMsg && (
-          <div className="chk-banner error chk-fade-in">
-            <AlertTriangle size={20} style={{ flexShrink: 0 }} />
-            <div>{errorMsg}</div>
+          <div className="chk-banner error chk-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <AlertTriangle size={20} style={{ flexShrink: 0, color: '#DC2626' }} />
+              <div style={{ fontWeight: 600, fontSize: '13.5px', lineHeight: 1.5 }}>{errorMsg}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorMsg('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#DC2626',
+                padding: '4px 6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                flexShrink: 0,
+                transition: 'background 0.2s'
+              }}
+              title="বার্তাটি বন্ধ করুন"
+              aria-label="বার্তাটি বন্ধ করুন"
+            >
+              <X size={18} />
+            </button>
           </div>
         )}
 
@@ -1452,9 +1557,32 @@ export default function CheckoutPage() {
                       </div>
 
                       {manualErrorMsg && (
-                        <div className="chk-banner error" style={{ padding: '10px 14px', fontSize: '12.5px', marginBottom: '16px' }}>
-                          <AlertTriangle size={16} />
-                          <span>{manualErrorMsg}</span>
+                        <div className="chk-banner error" style={{ padding: '10px 14px', fontSize: '12.5px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                            <span>{manualErrorMsg}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setManualErrorMsg('')}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'inherit',
+                              opacity: 0.8,
+                              padding: '2px 4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '4px',
+                              flexShrink: 0
+                            }}
+                            title="বন্ধ করুন"
+                            aria-label="বন্ধ করুন"
+                          >
+                            <X size={15} />
+                          </button>
                         </div>
                       )}
 
@@ -1646,14 +1774,6 @@ export default function CheckoutPage() {
                   </span>
                 </label>
               </div>
-
-              {/* Inline Error Alert for instant visibility at bottom */}
-              {errorMsg && (
-                <div className="chk-banner error chk-fade-in" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 12 }}>
-                  <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ fontSize: '13px', lineHeight: 1.5, fontWeight: 600 }}>{errorMsg}</div>
-                </div>
-              )}
 
               {/* Submit CTA */}
               <button

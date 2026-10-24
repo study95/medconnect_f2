@@ -65,6 +65,7 @@ export const deleteChamber = (id) => axiosInstance.delete(`/doctor-chambers/${id
 
 // ===== APPOINTMENTS =====
 export const getAppointments = (params) => axiosInstance.get('/appointments', { params })
+export const getAppointmentStats = () => axiosInstance.get('/appointments/summary-stats')
 export const getAppointment = (id) => axiosInstance.get(`/appointments/${id}`)
 export const createAppointment = (data) => axiosInstance.post('/appointments', data)
 export const updateAppointment = (id, data) => axiosInstance.put(`/appointments/${id}`, data)
