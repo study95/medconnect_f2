@@ -65,6 +65,7 @@ export default function EmptyState({
   icon,
   title,
   description,
+  message,
   searchQuery,
   hasFilters,
   onClearFilters,
@@ -92,7 +93,7 @@ export default function EmptyState({
   const IconComponent = config.Icon
 
   const finalTitle = title || config.defaultTitle
-  const finalDesc = description || (
+  const finalDesc = description || message || (
     effectiveVariant === 'no-search-results' && searchQuery
       ? `We couldn’t find any records matching "${searchQuery}". Try a different keyword or clear your search.`
       : config.defaultDesc
@@ -158,11 +159,19 @@ export default function EmptyState({
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
         }}
       >
-        {icon ? (
-          typeof icon === 'string' ? <span>{icon}</span> : icon
-        ) : (
-          <IconComponent size={compact ? 22 : 28} strokeWidth={1.8} />
-        )}
+        {(() => {
+          if (!icon) {
+            return <IconComponent size={compact ? 22 : 28} strokeWidth={1.8} />
+          }
+          if (React.isValidElement(icon)) {
+            return icon
+          }
+          if (typeof icon === 'function' || (typeof icon === 'object' && icon !== null && (icon.$$typeof || icon.render))) {
+            const CustomIcon = icon
+            return <CustomIcon size={compact ? 22 : 28} strokeWidth={1.8} />
+          }
+          return <span>{icon}</span>
+        })()}
       </div>
 
       {/* Title */}

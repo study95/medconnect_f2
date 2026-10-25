@@ -1045,6 +1045,7 @@ function DoctorsPage() {
           letter-spacing: -0.5px;
         }
         .doc-chips-wrapper {
+          display: none;
           position: relative;
           margin-bottom: 16px;
         }
@@ -1096,6 +1097,7 @@ function DoctorsPage() {
             margin-bottom: 8px !important;
           }
           .doc-chips-wrapper {
+            display: block !important;
             margin-bottom: 8px !important;
           }
           .doc-chips-scroll {
@@ -1118,6 +1120,9 @@ function DoctorsPage() {
         }
         @media (min-width: 992px) {
           .doc-mobile-search-bar {
+            display: none !important;
+          }
+          .doc-chips-wrapper {
             display: none !important;
           }
         }

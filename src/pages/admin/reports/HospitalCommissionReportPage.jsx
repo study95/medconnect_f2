@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   FileText, Calendar, Filter, RotateCcw, CheckCircle2,
   Clock, CreditCard, Search, ArrowUpRight, Printer,
-  Building2, ShieldCheck, Sparkles, AlertCircle
+  Building2, ShieldCheck, Sparkles, AlertCircle, User, Stethoscope,
+  X, ChevronDown, ChevronUp, Copy, Check
 } from 'lucide-react'
 import { getHospitalCommissionReport, getHospitalCommissionRequests } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -15,6 +16,7 @@ import CommissionPaymentHistoryTab from './CommissionPaymentHistoryTab'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import TableFooter from '../../../components/admin/TableFooter'
 import EmptyState from '../../../components/common/EmptyState'
+import ListToolbar from '../../../components/admin/ListToolbar'
 
 const MONTHS = [
   { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
@@ -38,17 +40,80 @@ const formatDisplayDate = (dateVal) => {
   }
 }
 
+function CopyButton({ text, title = "Copy ID" }) {
+  const [copied, setCopied] = useState(false)
+
+  if (!text) return null
+
+  const handleCopy = (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(String(text).trim())
+      } else {
+        const el = document.createElement('textarea')
+        el.value = String(text).trim()
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (err) {
+      console.warn('Copy failed:', err)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? "Copied!" : title}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 19,
+        height: 19,
+        padding: 0,
+        marginLeft: 6,
+        background: copied ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.08)',
+        border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.4)' : 'rgba(100, 116, 139, 0.2)'}`,
+        borderRadius: 4,
+        color: copied ? '#059669' : 'var(--admin-text-muted, #64748b)',
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+        verticalAlign: 'middle',
+        flexShrink: 0
+      }}
+    >
+      {copied ? <Check size={11} strokeWidth={2.8} /> : <Copy size={11} strokeWidth={2} />}
+    </button>
+  )
+}
+
 export default function HospitalCommissionReportPage() {
   const navigate = useNavigate()
   const currentYear = new Date().getFullYear()
 
   const [filters, setFilters] = useState({
+    date_from: '',
+    date_to: '',
     month: '',
     year: currentYear.toString(),
     commission_status: '',
     search: '',
   })
   const [appliedFilters, setAppliedFilters] = useState(filters)
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
+
+  const activeFilterCount = (appliedFilters.month ? 1 : 0) +
+    (appliedFilters.commission_status ? 1 : 0) +
+    (appliedFilters.year && appliedFilters.year !== currentYear.toString() ? 1 : 0) +
+    (appliedFilters.date_from ? 1 : 0) +
+    (appliedFilters.date_to ? 1 : 0)
 
   const [perPage, setPerPage] = useState(15)
   const [currentPage, setCurrentPage] = useState(1)
@@ -76,15 +141,36 @@ export default function HospitalCommissionReportPage() {
   const summary = report.summary || {}
   const hasActivePackage = summary.has_active_package
 
-  // Client-side search for registration ID or patient name/phone
-  const filteredData = rawData.filter(item => {
+  // Client-side robust search (safe against null, numbers, case sensitivity, and date ranges)
+  const filteredData = rawData.filter((item, idx) => {
+    const itemDate = item.appointment_date || item.date
+    if (filters.date_from && itemDate && itemDate < filters.date_from) return false
+    if (filters.date_to && itemDate && itemDate > filters.date_to) return false
+
     if (!filters.search) return true
-    const q = filters.search.toLowerCase()
+    const q = String(filters.search).toLowerCase().trim()
+    if (!q) return true
+
+    const match = (val) => val != null && String(val).toLowerCase().includes(q)
+
     return (
-      (item.registration_id && item.registration_id.toLowerCase().includes(q)) ||
-      (item.patient_name && item.patient_name.toLowerCase().includes(q)) ||
-      (item.patient_phone && item.patient_phone.includes(q)) ||
-      (item.doctor_name && item.doctor_name.toLowerCase().includes(q))
+      match(idx + 1) ||
+      match(item.public_id) ||
+      match(item.registration_id) ||
+      match(item.patient_name) ||
+      match(item.patient_phone) ||
+      match(item.booking_phone) ||
+      match(item.doctor_name) ||
+      match(item.doctor_degree) ||
+      match(item.doctor_specialty) ||
+      match(item.doctor_public_id) ||
+      match(item.chamber_name) ||
+      match(item.chamber_public_id) ||
+      match(item.hospital_name) ||
+      match(item.commission_status) ||
+      match(item.payment_status) ||
+      match(item.appointment_date) ||
+      match(item.date)
     )
   })
 
@@ -99,8 +185,21 @@ export default function HospitalCommissionReportPage() {
     setAppliedFilters({ ...filters })
   }
 
+  const handleFilterChange = (key, val) => {
+    const nextFilters = { ...filters, [key]: val }
+    setFilters(nextFilters)
+    setAppliedFilters(nextFilters)
+  }
+
   const handleReset = () => {
-    const defaultF = { month: '', year: currentYear.toString(), commission_status: '', search: '' }
+    const defaultF = {
+      date_from: '',
+      date_to: '',
+      month: '',
+      year: currentYear.toString(),
+      commission_status: '',
+      search: ''
+    }
     setFilters(defaultF)
     setAppliedFilters(defaultF)
   }
@@ -279,45 +378,45 @@ export default function HospitalCommissionReportPage() {
         </div>
       )}
 
-      {/* ── 4 Key Metric Summary Cards ── */}
+      {/* ── 4 Key Metric Summary Cards (Slim & Compact) ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: 16,
-        marginBottom: 24
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 12,
+        marginBottom: 18
       }}>
         {/* Total Bookings Card */}
-        <div className="admin-card" style={{ padding: '20px 22px', borderRadius: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="admin-card" style={{ padding: '12px 16px', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Total Appointments
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Building2 size={18} />
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building2 size={15} />
             </div>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--admin-text)', lineHeight: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--admin-text)', lineHeight: 1.1 }}>
             {summary.total_count ?? 0}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 8 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--admin-text-muted)', marginTop: 5 }}>
             Counter: <strong>{summary.counter_cash_count ?? 0}</strong> &nbsp;|&nbsp; Online: <strong>{summary.online_count ?? 0}</strong>
           </div>
         </div>
 
         {/* Total Gross Fees Card */}
-        <div className="admin-card" style={{ padding: '20px 22px', borderRadius: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="admin-card" style={{ padding: '12px 16px', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Total Collected Fees
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CreditCard size={18} />
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CreditCard size={15} />
             </div>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#059669', lineHeight: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#059669', lineHeight: 1.1 }}>
             ৳{Number(summary.total_billed || 0).toLocaleString()}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--admin-text-muted)', marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
             <span>
               Cash: <strong>৳{Number(summary.counter_cash_amount || 0).toLocaleString()}</strong>
               {Number(summary.online_collected_amount || 0) > 0 && (
@@ -332,36 +431,36 @@ export default function HospitalCommissionReportPage() {
                   background: '#10B981',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: 8,
-                  padding: '3px 10px',
-                  fontSize: 11.5,
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontSize: 11,
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4
+                  gap: 3
                 }}
               >
-                💸 উত্তোলন করুন
+                💸 উত্তোলন
               </button>
             )}
           </div>
         </div>
 
         {/* Platform Commission Due (Payable) */}
-        <div className="admin-card" style={{ padding: '20px 22px', borderRadius: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="admin-card" style={{ padding: '12px 16px', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Commission Due (Payable)
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(245, 158, 11, 0.1)', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Clock size={18} />
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(245, 158, 11, 0.1)', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={15} />
             </div>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: (summary.pending_commission > 0) ? '#D97706' : 'var(--admin-text)', lineHeight: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: (summary.pending_commission > 0) ? '#D97706' : 'var(--admin-text)', lineHeight: 1.1 }}>
             ৳{Number(summary.pending_commission || 0).toLocaleString()}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--admin-text-muted)', marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
             <span>
               {summary.pending_commission > 0 
                 ? '⚠️ Settlement pending' 
@@ -375,51 +474,51 @@ export default function HospitalCommissionReportPage() {
                   background: '#10B981',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: 8,
-                  padding: '3px 10px',
-                  fontSize: 11.5,
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontSize: 11,
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4
+                  gap: 3
                 }}
               >
-                💳 বকেয়া পরিশোধ
+                💳 পরিশোধ
               </button>
             )}
             {Number(summary.pending_commission || 0) <= 0 && Number(summary.verifying_commission || 0) > 0 && (
               <span style={{
                 background: 'rgba(245, 158, 11, 0.15)',
                 color: '#B45309',
-                borderRadius: 8,
-                padding: '3px 10px',
-                fontSize: 11.5,
+                borderRadius: 6,
+                padding: '2px 8px',
+                fontSize: 11,
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 4
+                gap: 3
               }}>
-                🔍 যাচাইকরণ প্রক্রিয়াধীন
+                🔍 যাচাইাধীন
               </span>
             )}
           </div>
         </div>
 
         {/* Settled / Paid Commission */}
-        <div className="admin-card" style={{ padding: '20px 22px', borderRadius: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="admin-card" style={{ padding: '12px 16px', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Settled Commission
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={18} />
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={15} />
             </div>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#6366F1', lineHeight: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#6366F1', lineHeight: 1.1 }}>
             ৳{Number(summary.paid_commission || 0).toLocaleString()}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginTop: 8 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--admin-text-muted)', marginTop: 5 }}>
             Total Commission: <strong>৳{Number(summary.total_commission || 0).toLocaleString()}</strong>
           </div>
         </div>
@@ -444,268 +543,417 @@ export default function HospitalCommissionReportPage() {
         </div>
       )}
 
-      {/* ── View Switcher Tabs ── */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 20,
-        borderBottom: '1.5px solid var(--admin-border, #e2e8f0)',
-        paddingBottom: 4
-      }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('statement')}
-          style={{
-            padding: '10px 18px',
-            border: 'none',
-            borderBottom: activeTab === 'statement' ? '2.5px solid #00A88C' : '2.5px solid transparent',
-            background: 'none',
-            color: activeTab === 'statement' ? '#00A88C' : 'var(--admin-text-muted, #64748b)',
-            fontWeight: activeTab === 'statement' ? 800 : 600,
-            fontSize: 14,
-            cursor: 'pointer',
+      {/* ── Enterprise ListToolbar matching standard admin listings ── */}
+      <ListToolbar
+        search={filters.search}
+        onSearchChange={(val) => setFilters(prev => ({ ...prev, search: val }))}
+        searchPlaceholder="Search serial, patient, doctor..."
+        onRefresh={refetch}
+        refreshing={isLoading}
+        showFilters={showFilterPanel}
+        onToggleFilters={() => setShowFilterPanel(prev => !prev)}
+        hasActiveFilters={activeFilterCount > 0}
+        filterCount={activeFilterCount}
+        onClearFilters={handleReset}
+        activeFilters={[
+          appliedFilters.date_from && {
+            key: 'date_from',
+            label: `From: ${appliedFilters.date_from}`,
+            onRemove: () => handleFilterChange('date_from', '')
+          },
+          appliedFilters.date_to && {
+            key: 'date_to',
+            label: `To: ${appliedFilters.date_to}`,
+            onRemove: () => handleFilterChange('date_to', '')
+          },
+          appliedFilters.month && {
+            key: 'month',
+            label: `Month: ${MONTHS.find(m => String(m.value) === String(appliedFilters.month))?.label || appliedFilters.month}`,
+            onRemove: () => handleFilterChange('month', '')
+          },
+          appliedFilters.year && appliedFilters.year !== currentYear.toString() && {
+            key: 'year',
+            label: `Year: ${appliedFilters.year}`,
+            onRemove: () => handleFilterChange('year', currentYear.toString())
+          },
+          appliedFilters.commission_status && {
+            key: 'status',
+            label: `Status: ${
+              appliedFilters.commission_status === 'pending'
+                ? 'Pending / Due'
+                : appliedFilters.commission_status === 'verifying'
+                ? 'Verifying'
+                : 'Paid & Locked'
+            }`,
+            onRemove: () => handleFilterChange('commission_status', '')
+          }
+        ].filter(Boolean)}
+        middleActions={
+          <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
-            transition: 'all 0.15s'
-          }}
-        >
-          <FileText size={16} />
-          <span>অ্যাপয়েন্টমেন্ট ভিত্তিক স্টেটমেন্ট</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('payment_history')}
-          style={{
-            padding: '10px 18px',
-            border: 'none',
-            borderBottom: activeTab === 'payment_history' ? '2.5px solid #00A88C' : '2.5px solid transparent',
-            background: 'none',
-            color: activeTab === 'payment_history' ? '#00A88C' : 'var(--admin-text-muted, #64748b)',
-            fontWeight: activeTab === 'payment_history' ? 800 : 600,
-            fontSize: 14,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            transition: 'all 0.15s'
-          }}
-        >
-          <CreditCard size={16} />
-          <span>কমিশন পরিশোধের ইতিহাস (Payment History)</span>
-          {Number(summary.verifying_commission || 0) > 0 && (
-            <span style={{
-              padding: '2px 8px',
-              borderRadius: 9999,
-              fontSize: 11,
-              fontWeight: 800,
-              background: '#fef3c7',
-              color: '#d97706',
-              border: '1px solid #fde68a'
-            }}>
-              যাচাই চলছে
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'statement' ? (
-        <>
-          {/* ── Filters Bar ── */}
-          <div className="admin-card" style={{ padding: '16px 20px', borderRadius: 16, marginBottom: 20 }}>
-        <form onSubmit={handleApply} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-          {/* Search box */}
-          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-muted)' }} />
-            <input
-              type="text"
-              className="admin-form-input"
-              placeholder="Search serial, patient, doctor..."
-              value={filters.search}
-              onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              style={{ width: '100%', height: 40, paddingLeft: 36, borderRadius: 10, fontSize: 13 }}
-            />
-          </div>
-
-          {/* Month Selector */}
-          <div style={{ minWidth: 140 }}>
-            <select
-              className="admin-form-select"
-              value={filters.month}
-              onChange={e => setFilters(prev => ({ ...prev, month: e.target.value }))}
-              style={{ width: '100%', height: 40, borderRadius: 10, fontSize: 13 }}
-            >
-              <option value="">All Months</option>
-              {MONTHS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Year Selector */}
-          <div style={{ width: 110 }}>
-            <select
-              className="admin-form-select"
-              value={filters.year}
-              onChange={e => setFilters(prev => ({ ...prev, year: e.target.value }))}
-              style={{ width: '100%', height: 40, borderRadius: 10, fontSize: 13 }}
-            >
-              {[currentYear, currentYear - 1, currentYear - 2].map(y => (
-                <option key={y} value={y.toString()}>{y}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Commission Status */}
-          <div style={{ minWidth: 140 }}>
-            <select
-              className="admin-form-select"
-              value={filters.commission_status}
-              onChange={e => setFilters(prev => ({ ...prev, commission_status: e.target.value }))}
-              style={{ width: '100%', height: 40, borderRadius: 10, fontSize: 13 }}
-            >
-              <option value="">All Statuses</option>
-              <option value="pending">⏳ Pending / Due</option>
-              <option value="verifying">🔍 Verifying (যাচাইাধীন)</option>
-              <option value="paid">🔒 Settled (Paid & Locked)</option>
-            </select>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-            <button
-              type="submit"
-              className="admin-btn admin-btn-primary"
-              style={{ height: 40, padding: '0 18px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}
-            >
-              Filter
-            </button>
+            background: 'var(--admin-input-bg, #f1f5f9)',
+            padding: 3,
+            borderRadius: 10,
+            border: '1px solid var(--admin-border, #e2e8f0)',
+            gap: 3
+          }}>
             <button
               type="button"
-              className="admin-btn admin-btn-outline"
-              onClick={handleReset}
-              style={{ height: 40, padding: '0 14px', borderRadius: 10, fontSize: 13 }}
-              title="Reset filters"
+              onClick={() => setActiveTab('statement')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 32,
+                padding: '0 12px',
+                borderRadius: 7,
+                border: 'none',
+                background: activeTab === 'statement' ? '#ffffff' : 'transparent',
+                color: activeTab === 'statement' ? '#00A88C' : 'var(--admin-text-muted, #64748b)',
+                fontWeight: activeTab === 'statement' ? 700 : 500,
+                fontSize: 12.5,
+                cursor: 'pointer',
+                boxShadow: activeTab === 'statement' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
             >
-              <RotateCcw size={15} />
+              <FileText size={14} />
+              <span>স্টেটমেন্ট</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('payment_history')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 32,
+                padding: '0 12px',
+                borderRadius: 7,
+                border: 'none',
+                background: activeTab === 'payment_history' ? '#ffffff' : 'transparent',
+                color: activeTab === 'payment_history' ? '#00A88C' : 'var(--admin-text-muted, #64748b)',
+                fontWeight: activeTab === 'payment_history' ? 700 : 500,
+                fontSize: 12.5,
+                cursor: 'pointer',
+                boxShadow: activeTab === 'payment_history' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <CreditCard size={14} />
+              <span>পেমেন্ট হিস্ট্রি</span>
+              {Number(summary.verifying_commission || 0) > 0 && (
+                <span style={{
+                  padding: '1px 6px',
+                  borderRadius: 9999,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  background: '#fef3c7',
+                  color: '#d97706',
+                  border: '1px solid #fde68a'
+                }}>
+                  যাচাই চলছে
+                </span>
+              )}
             </button>
           </div>
-        </form>
-      </div>
+        }
+      >
+        {/* From Date */}
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', marginBottom: 4, textTransform: 'uppercase' }}>
+            From Date
+          </label>
+          <input
+            type="date"
+            className="admin-form-input"
+            value={filters.date_from || ''}
+            onChange={e => handleFilterChange('date_from', e.target.value)}
+            style={{ width: '100%', height: 38, borderRadius: 8, fontSize: 13 }}
+          />
+        </div>
 
-      {/* ── Table Statement Card ── */}
-      <div className="admin-card" style={{ borderRadius: 16, overflow: 'hidden' }}>
+        {/* To Date */}
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', marginBottom: 4, textTransform: 'uppercase' }}>
+            To Date
+          </label>
+          <input
+            type="date"
+            className="admin-form-input"
+            min={filters.date_from || undefined}
+            value={filters.date_to || ''}
+            onChange={e => handleFilterChange('date_to', e.target.value)}
+            style={{ width: '100%', height: 38, borderRadius: 8, fontSize: 13 }}
+          />
+        </div>
+
+        {/* Month Selector */}
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', marginBottom: 4, textTransform: 'uppercase' }}>
+            Month
+          </label>
+          <select
+            className="admin-form-select"
+            value={filters.month}
+            onChange={e => handleFilterChange('month', e.target.value)}
+            style={{ width: '100%', height: 38, borderRadius: 8, fontSize: 13 }}
+          >
+            <option value="">All Months</option>
+            {MONTHS.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Year Selector */}
+        <div style={{ minWidth: 130 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', marginBottom: 4, textTransform: 'uppercase' }}>
+            Year
+          </label>
+          <select
+            className="admin-form-select"
+            value={filters.year}
+            onChange={e => handleFilterChange('year', e.target.value)}
+            style={{ width: '100%', height: 38, borderRadius: 8, fontSize: 13 }}
+          >
+            {[currentYear, currentYear - 1, currentYear - 2].map(y => (
+              <option key={y} value={y.toString()}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Commission Status */}
+        <div style={{ minWidth: 180 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', marginBottom: 4, textTransform: 'uppercase' }}>
+            Commission Status
+          </label>
+          <select
+            className="admin-form-select"
+            value={filters.commission_status}
+            onChange={e => handleFilterChange('commission_status', e.target.value)}
+            style={{ width: '100%', height: 38, borderRadius: 8, fontSize: 13 }}
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">⏳ Pending / Due</option>
+            <option value="verifying">🔍 Verifying (যাচাইাধীন)</option>
+            <option value="paid">🔒 Settled (Paid & Locked)</option>
+          </select>
+        </div>
+      </ListToolbar>
+
+      {activeTab === 'statement' ? (
+        <div className="admin-card" style={{ borderRadius: 16, overflow: 'hidden' }}>
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : paginatedData.length === 0 ? (
           <EmptyState
-            icon={FileText}
-            title="No commission records found"
-            description="No appointment bookings match your filter criteria for this period."
+            variant={filters.search ? 'no-search-results' : 'no-data'}
+            searchQuery={filters.search}
+            onClearSearch={() => setFilters(prev => ({ ...prev, search: '' }))}
+            icon={<FileText size={28} />}
+            title={filters.search ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No commission records found'}
+            description={filters.search ? `"${filters.search}" এর সাথে মিলে এমন কোনো অ্যাপয়েন্টমেন্ট পাওয়া যায়নি।` : 'No appointment bookings match your filter criteria for this period.'}
           />
         ) : (
-          <div className="admin-table-container">
-            <table className="admin-table">
+          <div className="admin-table-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+            <table className="admin-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: 130 }}>Serial ID</th>
-                  <th>Patient Details</th>
-                  <th>Doctor & Chamber</th>
+                  <th style={{ width: 44, textAlign: 'center', padding: '12px 6px' }}>SL</th>
+                  <th>Patient & Appointment</th>
+                  <th>Doctor Details</th>
                   <th style={{ textAlign: 'right' }}>Visit Fee</th>
-                  <th style={{ textAlign: 'center' }}>Rate (%)</th>
-                  <th style={{ textAlign: 'right' }}>Platform Commission</th>
-                  <th style={{ textAlign: 'center' }}>Channel</th>
-                  <th style={{ textAlign: 'center' }}>Status</th>
-                  <th style={{ textAlign: 'right' }}>Date</th>
+                  <th style={{ textAlign: 'center', width: 75 }}>Comm %</th>
+                  <th style={{ textAlign: 'right' }}>Platform Fee</th>
+                  <th style={{ textAlign: 'center', width: 90 }}>Channel</th>
+                  <th style={{ textAlign: 'center', width: 125 }}>Status</th>
+                  <th style={{ textAlign: 'right', paddingRight: 20 }}>Date</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map(item => {
+                {paginatedData.map((item, index) => {
                   const isPaid = (item.commission_status || '').toLowerCase() === 'paid'
                   const isVerifying = (item.commission_status || '').toLowerCase() === 'verifying'
                   const isManagerCash = item.created_by_role === 'manager'
 
                   return (
                     <tr key={item.id}>
-                      {/* Serial / Reg ID */}
-                      <td>
-                        <span style={{ fontWeight: 800, color: 'var(--admin-text)', fontSize: 12.5 }}>
-                          {item.registration_id || `#${item.id}`}
+                      {/* Serial (#1, #2, ...) */}
+                      <td style={{ textAlign: 'center', width: 44, padding: '12px 6px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 26,
+                          height: 26,
+                          borderRadius: 7,
+                          background: 'rgba(100, 116, 139, 0.08)',
+                          color: 'var(--admin-text-muted)',
+                          fontSize: 12,
+                          fontWeight: 800
+                        }}>
+                          {(currentPage - 1) * perPage + index + 1}
                         </span>
                       </td>
 
-                      {/* Patient Details */}
-                      <td>
-                        <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13 }}>
-                          {item.patient_name || 'Patient'}
-                        </div>
-                        {item.patient_phone && (
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                            📞 {item.patient_phone}
+                      {/* Patient & Appointment Public ID (AP-XXXXXX, clean avatar + text) */}
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 8,
+                            background: 'rgba(0, 168, 140, 0.1)',
+                            border: '1px solid rgba(0, 168, 140, 0.22)',
+                            color: '#00A88C',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <User size={16} strokeWidth={2.4} />
                           </div>
-                        )}
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13, lineHeight: 1.25 }}>
+                              {item.patient_name || 'Patient'}
+                            </div>
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#00A88C',
+                              fontFamily: 'monospace',
+                              letterSpacing: '0.04em',
+                              marginTop: 2
+                            }}>
+                              <span>{item.public_id || `#${item.registration_id || item.id}`}</span>
+                              <CopyButton text={item.public_id || item.registration_id || item.id} title="Copy Appointment ID" />
+                            </div>
+                          </div>
+                        </div>
                       </td>
 
-                      {/* Doctor & Chamber */}
-                      <td>
-                        <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13 }}>
-                          {item.doctor_name || 'Consultant'}
-                        </div>
-                        {item.chamber_name && (
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>
-                            📍 {item.chamber_name}
+                      {/* Doctor Details (Name & Doctor Public ID DR-XXXXXX) */}
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                          <div style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 8,
+                            background: 'rgba(37, 99, 235, 0.1)',
+                            border: '1px solid rgba(37, 99, 235, 0.22)',
+                            color: '#2563EB',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 13,
+                            flexShrink: 0
+                          }}>
+                            <Stethoscope size={16} strokeWidth={2.2} />
                           </div>
-                        )}
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13, lineHeight: 1.25 }}>
+                              {item.doctor_name || 'Consultant'}
+                            </div>
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#2563EB',
+                              fontFamily: 'monospace',
+                              letterSpacing: '0.04em',
+                              marginTop: 2
+                            }}>
+                              <span>{item.doctor_public_id || (item.doctor_degree || 'Doctor')}</span>
+                              {item.doctor_public_id && (
+                                <CopyButton text={item.doctor_public_id} title="Copy Doctor ID" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Visit Fee */}
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--admin-text)', fontSize: 13 }}>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--admin-text)', fontSize: 13.5, whiteSpace: 'nowrap' }}>
                         ৳{Number(item.amount || 0).toLocaleString()}
                       </td>
 
                       {/* Commission Rate */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        {hasActivePackage ? (
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            color: '#059669',
+                            border: '1px solid rgba(16, 185, 129, 0.25)'
+                          }}>
+                            0% Plan
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background: 'rgba(100, 116, 139, 0.08)',
+                            border: '1px solid var(--admin-border)',
+                            color: 'var(--admin-text)'
+                          }}>
+                            {item.commission_rate ? `${item.commission_rate}%` : '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Platform Fee Deducted */}
+                      <td style={{
+                        textAlign: 'right',
+                        fontWeight: 800,
+                        fontSize: 13,
+                        color: hasActivePackage ? '#059669' : (item.commission_amount > 0 ? '#D97706' : '#059669'),
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {hasActivePackage ? '৳0' : `৳${Number(item.commission_amount || 0).toLocaleString()}`}
+                      </td>
+
+                      {/* Channel */}
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <span style={{
                           fontSize: 11,
-                          fontWeight: 800,
-                          padding: '2px 8px',
-                          borderRadius: 6,
-                          background: 'var(--admin-bg)',
-                          border: '1px solid var(--admin-border)',
-                          color: 'var(--admin-text)'
-                        }}>
-                          {hasActivePackage ? '0%' : (item.commission_rate ? `${item.commission_rate}%` : '—')}
-                        </span>
-                      </td>
-
-                      {/* Platform Commission Amount */}
-                      <td style={{ textAlign: 'right', fontWeight: 900, fontSize: 13, color: item.commission_amount > 0 ? '#D97706' : '#059669' }}>
-                        {hasActivePackage ? '৳0 (Waived)' : `৳${Number(item.commission_amount || 0).toLocaleString()}`}
-                      </td>
-
-                      {/* Booking Channel */}
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{
-                          fontSize: 10.5,
                           fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: 8,
-                          background: isManagerCash ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                          color: isManagerCash ? '#2563EB' : '#059669'
+                          padding: '3px 10px',
+                          borderRadius: 20,
+                          background: isManagerCash ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                          color: isManagerCash ? '#2563EB' : '#059669',
+                          border: isManagerCash ? '1px solid rgba(59, 130, 246, 0.22)' : '1px solid rgba(16, 185, 129, 0.22)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
                         }}>
-                          {isManagerCash ? '🏢 Counter' : '🌐 Online'}
+                          <span style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            background: isManagerCash ? '#3B82F6' : '#10B981'
+                          }} />
+                          {isManagerCash ? 'Counter' : 'Online'}
                         </span>
                       </td>
 
                       {/* Settlement Status */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isPaid ? (
                           <span style={{
                             fontSize: 11,
                             fontWeight: 800,
-                            padding: '3px 10px',
+                            padding: '4px 10px',
                             borderRadius: 8,
                             background: 'rgba(16, 185, 129, 0.12)',
                             color: '#059669',
@@ -713,56 +961,53 @@ export default function HospitalCommissionReportPage() {
                             whiteSpace: 'nowrap',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 4
+                            gap: 5
                           }} title={item.commission_note || 'Approved & Locked'}>
-                            🔒 PAID & LOCKED
+                            <CheckCircle2 size={13} strokeWidth={2.4} />
+                            PAID & LOCKED
                           </span>
                         ) : isVerifying ? (
                           <span style={{
                             fontSize: 11,
                             fontWeight: 800,
-                            padding: '3px 10px',
+                            padding: '4px 10px',
                             borderRadius: 8,
-                            background: 'rgba(245, 158, 11, 0.15)',
+                            background: 'rgba(245, 158, 11, 0.14)',
                             color: '#B45309',
                             border: '1px solid rgba(245, 158, 11, 0.35)',
                             whiteSpace: 'nowrap',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 4
+                            gap: 5
                           }} title={item.commission_note || 'Admin Verification Pending'}>
-                            🔍 VERIFYING (যাচাইাধীন)
+                            <Clock size={13} strokeWidth={2.4} />
+                            VERIFYING
                           </span>
                         ) : (
-                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                            <span style={{
-                              fontSize: 11,
-                              fontWeight: 800,
-                              padding: '3px 10px',
-                              borderRadius: 8,
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#DC2626',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {isManagerCash ? '⏳ DUE (UNPAID)' : '⏳ PENDING'}
-                            </span>
-                            {item.commission_note && item.commission_note.includes('Rejected') && (
-                              <span style={{ fontSize: 10, color: '#DC2626', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }} title={item.commission_note}>
-                                ❌ {item.commission_note}
-                              </span>
-                            )}
-                          </div>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '4px 10px',
+                            borderRadius: 8,
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#DC2626',
+                            border: '1px solid rgba(239, 68, 68, 0.28)',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5
+                          }}>
+                            <AlertCircle size={13} strokeWidth={2.4} />
+                            {isManagerCash ? 'DUE' : 'PENDING'}
+                          </span>
                         )}
                       </td>
 
                       {/* Date */}
-                      <td style={{ textAlign: 'right', color: 'var(--admin-text)', fontSize: 12.5, whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 700 }}>
-                          {formatDisplayDate(item.appointment_date || item.date)}
-                        </div>
+                      <td style={{ textAlign: 'right', color: 'var(--admin-text)', fontSize: 12.5, whiteSpace: 'nowrap', fontWeight: 700, paddingRight: 20 }}>
+                        <div>{formatDisplayDate(item.appointment_date || item.date)}</div>
                         {item.appointment_time && (
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
+                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500, marginTop: 2 }}>
                             {item.appointment_time}
                           </div>
                         )}
@@ -777,14 +1022,13 @@ export default function HospitalCommissionReportPage() {
 
         {/* Table Footer Pagination */}
         <TableFooter
-          totalItems={filteredData.length}
+          total={filteredData.length}
           perPage={perPage}
           currentPage={currentPage}
-          onPageChange={setCurrentPage}
-          onPerPageChange={setPerPage}
+          setCurrentPage={setCurrentPage}
+          setPerPage={setPerPage}
         />
       </div>
-      </>
       ) : (
         <CommissionPaymentHistoryTab
           fetchApi={getHospitalCommissionRequests}

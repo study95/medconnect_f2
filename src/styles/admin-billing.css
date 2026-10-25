@@ -56,6 +56,17 @@
 }
 
 /* ─── ANIMATIONS ─── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin,
+.fa-spin {
+  display: inline-block;
+  animation: spin 0.75s linear infinite !important;
+}
+
 @keyframes abFadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

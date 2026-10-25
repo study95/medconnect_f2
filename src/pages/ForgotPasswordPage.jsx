@@ -17,7 +17,8 @@ import {
   AlertCircle,
   RefreshCw,
   Headset,
-  Phone
+  Phone,
+  Edit2
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -409,7 +410,20 @@ export default function ForgotPasswordPage() {
           {step === 2 && (
             <form onSubmit={handleVerifyOtp} className="fp-form">
               <div className="fp-field-group">
-                <label className="fp-field-label">৬ সংখ্যার ওটিপি কোড</label>
+                <div className="fp-field-header-row">
+                  <label className="fp-field-label">৬ সংখ্যার ওটিপি কোড</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep(1)
+                      setStatusMsg({ type: '', text: '' })
+                    }}
+                    className="fp-change-number-btn"
+                  >
+                    <Edit2 size={12} strokeWidth={2.4} />
+                    <span>নম্বর পরিবর্তন</span>
+                  </button>
+                </div>
                 <div className="fp-otp-inputs-grid" onPaste={handleOtpPaste}>
                   {otp.map((digit, idx) => (
                     <input
@@ -463,19 +477,6 @@ export default function ForgotPasswordPage() {
                   </>
                 )}
               </button>
-
-              <div className="fp-change-number-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep(1)
-                    setStatusMsg({ type: '', text: '' })
-                  }}
-                  className="fp-change-number-btn"
-                >
-                  <ArrowLeft size={14} /> নম্বর পরিবর্তন করুন
-                </button>
-              </div>
             </form>
           )}
 
@@ -873,26 +874,32 @@ export default function ForgotPasswordPage() {
           text-decoration: underline;
         }
 
-        .fp-change-number-wrap {
+        .fp-field-header-row {
           display: flex;
-          justify-content: center;
-          margin-top: 4px;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
         }
 
         .fp-change-number-btn {
-          background: transparent;
-          border: none;
-          color: #64748B;
-          font-size: 12.5px;
-          font-weight: 600;
+          background: #F0FDF4;
+          border: 1px solid #DCFCE7;
+          border-radius: 6px;
+          color: #059669;
+          font-size: 11.5px;
+          font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 4px;
+          padding: 3px 8px;
+          transition: all 0.15s ease;
         }
 
         .fp-change-number-btn:hover {
-          color: #0F172A;
+          background: #DCFCE7;
+          color: #047857;
+          border-color: #BBF7D0;
         }
 
         /* Divider & Bottom Links */

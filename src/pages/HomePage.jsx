@@ -1396,6 +1396,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
       // Dynamic count: Reflect real hospital/doctor count from database
       let countText = '০টি হাসপাতাল'
+      let doctorsCountText = 'ডাক্তার সেবা'
       if (divData) {
         const hCount = divData.hospitals_count || 0
         const dCount = divData.doctors_count || 0
@@ -1403,8 +1404,11 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           countText = `${toBnNum(hCount)}টি হাসপাতাল`
         } else if (dCount > 0) {
           countText = `${toBnNum(dCount)}টি ডাক্তার`
-        } else {
-          countText = '০টি হাসপাতাল'
+        }
+        if (dCount > 0) {
+          doctorsCountText = `${toBnNum(dCount)}+ ডাক্তার সক্রিয়`
+        } else if (hCount > 0) {
+          doctorsCountText = `${toBnNum(hCount)}+ হাসপাতাল সংযুক্ত`
         }
       }
 
@@ -1430,6 +1434,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         bnName: cfg.bnName,
         enName: cfg.enName,
         count: countText,
+        doctorsCountText,
         searchKey: cfg.searchKey,
         img: cfg.img,
         districts: displayDistricts
@@ -1437,146 +1442,87 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     })
   }, [popularDivisions])
 
-  // Curated district thumbnail images matching Reference Image 2
-  const DISTRICT_THUMBNAILS = {
-    'sylhet': '/images/sylhet_division_teagarden.jpg',
-    'সিলেট': '/images/sylhet_division_teagarden.jpg',
-    'habiganj': 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70',
-    'হবিগঞ্জ': 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70',
-    'gazipur': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70',
-    'গাজীপুর': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70',
-    'chittagong': '/images/chattogram_division_sunset.jpg',
-    'চট্টগ্রাম': '/images/chattogram_division_sunset.jpg',
-    'narayanganj': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70',
-    'নারায়ণগঞ্জ': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70',
-    'mymensingh': 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70',
-    'ময়মনসিংহ': 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70',
-    'rajshahi': 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70',
-    'রাজশাহী': 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70',
-    'dhaka': '/images/dhaka_division_parliament.jpg',
-    'ঢাকা': '/images/dhaka_division_parliament.jpg',
-  }
-
-  const getDistrictImg = (dist) => {
-    const slugKey = (dist.slug || '').toLowerCase()
-    const nameKey = (dist.bangla_name || dist.name || '').toLowerCase()
-    return DISTRICT_THUMBNAILS[slugKey] || DISTRICT_THUMBNAILS[nameKey] || dist.img || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=100&auto=format&fit=crop&q=70'
-  }
-
-  // Preset 8 divisions of Bangladesh with rich metadata
-  const presetEightDivisions = [
-    {
-      id: 1,
-      name: 'ঢাকা বিভাগ',
-      enName: 'Dhaka Division',
-      slug: 'dhaka',
-      hospitals: '৮৫০+ হাসপাতাল',
-      doctors: '৫,২০০+ ডাক্তার',
-      districtsCount: '১৩টি জেলা',
-      img: '/images/dhaka_division_parliament.jpg'
-    },
-    {
-      id: 5,
-      name: 'চট্টগ্রাম বিভাগ',
-      enName: 'Chattogram Division',
-      slug: 'chattogram',
-      hospitals: '২৫০+ হাসপাতাল',
-      doctors: '২,৪০০+ ডাক্তার',
-      districtsCount: '১১টি জেলা',
-      img: '/images/chattogram_division_sunset.jpg'
-    },
-    {
-      id: 2,
-      name: 'সিলেট বিভাগ',
-      enName: 'Sylhet Division',
-      slug: 'sylhet',
-      hospitals: '১৮০+ হাসপাতাল',
-      doctors: '১,৮০০+ ডাক্তার',
-      districtsCount: '৪টি জেলা',
-      img: '/images/sylhet_division_teagarden.jpg'
-    },
-    {
-      id: 6,
-      name: 'রাজশাহী বিভাগ',
-      enName: 'Rajshahi Division',
-      slug: 'rajshahi',
-      hospitals: '১৬০+ হাসপাতাল',
-      doctors: '১,৫০০+ ডাক্তার',
-      districtsCount: '৮টি জেলা',
-      img: 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=100&auto=format&fit=crop&q=70'
-    },
-    {
-      id: 7,
-      name: 'খুলনা বিভাগ',
-      enName: 'Khulna Division',
-      slug: 'khulna',
-      hospitals: '১৪০+ হাসপাতাল',
-      doctors: '১,২০০+ ডাক্তার',
-      districtsCount: '১০টি জেলা',
-      img: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=100&auto=format&fit=crop&q=70'
-    },
-    {
-      id: 4,
-      name: 'বরিশাল বিভাগ',
-      enName: 'Barishal Division',
-      slug: 'barishal',
-      hospitals: '১১০+ হাসপাতাল',
-      doctors: '৯৫০+ ডাক্তার',
-      districtsCount: '৬টি জেলা',
-      img: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=70'
-    },
-    {
-      id: 3,
-      name: 'রংপুর বিভাগ',
-      enName: 'Rangpur Division',
-      slug: 'rangpur',
-      hospitals: '১৩০+ হাসপাতাল',
-      doctors: '১,১০০+ ডাক্তার',
-      districtsCount: '৮টি জেলা',
-      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=100&auto=format&fit=crop&q=70'
-    },
-    {
-      id: 8,
-      name: 'ময়মনসিংহ বিভাগ',
-      enName: 'Mymensingh Division',
-      slug: 'mymensingh',
-      hospitals: '১২০+ হাসপাতাল',
-      doctors: '৮৫০+ ডাক্তার',
-      districtsCount: '৪টি জেলা',
-      img: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?w=100&auto=format&fit=crop&q=70'
-    },
-  ]
-
+  // Dynamic Divisions from backend (with zero static fake numbers or images)
   const allEightDivisions = useMemo(() => {
-    return presetEightDivisions.map(div => {
-      const match = popularDivisions?.find(d => {
-        const n = (d.name || '').toLowerCase()
-        return n.includes(div.slug) ||
-               (div.slug === 'chattogram' && (n.includes('chhatagram') || n.includes('chittagong'))) ||
-               (d.bangla_name && div.name.includes(d.bangla_name))
+    if (Array.isArray(popularDivisions) && popularDivisions.length > 0) {
+      return popularDivisions.map(div => {
+        const rawBn = div.bangla_name || div.name || ''
+        const bnName = rawBn.includes('বিভাগ') ? rawBn : `${rawBn} বিভাগ`
+        const hCount = Number(div.hospitals_count || 0)
+        const dCount = Number(div.doctors_count || 0)
+        const distCount = Number(div.districts_count ?? (Array.isArray(div.districts) ? div.districts.length : 0))
+
+        let subText = ''
+        if (dCount > 0 && hCount > 0) {
+          subText = `${toBnNum(dCount)} জন ডাক্তার • ${toBnNum(hCount)}টি হাসপাতাল`
+        } else if (dCount > 0) {
+          subText = `${toBnNum(dCount)} জন ডাক্তার • ${toBnNum(distCount)}টি জেলা`
+        } else if (hCount > 0) {
+          subText = `${toBnNum(hCount)}টি হাসপাতাল • ${toBnNum(distCount)}টি জেলা`
+        } else {
+          subText = distCount > 0 ? `${toBnNum(distCount)}টি জেলা সংযুক্ত` : 'সেবা শীঘ্রই আসছে'
+        }
+
+        return {
+          id: div.id,
+          name: bnName,
+          enName: div.name ? `${div.name} Division` : '',
+          slug: (div.name || '').toLowerCase(),
+          hospitals: `${toBnNum(hCount)}টি হাসপাতাল`,
+          doctors: `${toBnNum(dCount)} জন ডাক্তার`,
+          districtsCount: `${toBnNum(distCount)}টি জেলা`,
+          subText,
+          hCount,
+          dCount,
+          distCount
+        }
       })
-      const hCount = match?.hospitals_count || 0
-      const dCount = match?.doctors_count || 0
-      const distCount = match?.districts_count || 0
-      return {
-        ...div,
-        id: match?.id || div.id,
-        dbId: match?.id || div.id,
-        hospitals: hCount > 0 ? `${toBnNum(hCount)}টি হাসপাতাল` : '০টি হাসপাতাল',
-        doctors: dCount > 0 ? `${toBnNum(dCount)}টি ডাক্তার` : '০টি ডাক্তার',
-        districtsCount: `${toBnNum(distCount)}টি জেলা`
-      }
-    })
+    }
+
+    // Fallback names of 8 divisions if popularDivisions not yet ready
+    const fallbackNames = [
+      { id: 1, name: 'ঢাকা বিভাগ', enName: 'Dhaka Division', slug: 'dhaka' },
+      { id: 5, name: 'চট্টগ্রাম বিভাগ', enName: 'Chattogram Division', slug: 'chattogram' },
+      { id: 2, name: 'সিলেট বিভাগ', enName: 'Sylhet Division', slug: 'sylhet' },
+      { id: 6, name: 'রাজশাহী বিভাগ', enName: 'Rajshahi Division', slug: 'rajshahi' },
+      { id: 7, name: 'খুলনা বিভাগ', enName: 'Khulna Division', slug: 'khulna' },
+      { id: 4, name: 'বরিশাল বিভাগ', enName: 'Barishal Division', slug: 'barishal' },
+      { id: 3, name: 'রংপুর বিভাগ', enName: 'Rangpur Division', slug: 'rangpur' },
+      { id: 8, name: 'ময়মনসিংহ বিভাগ', enName: 'Mymensingh Division', slug: 'mymensingh' },
+    ]
+    return fallbackNames.map(d => ({
+      ...d,
+      hospitals: '০টি হাসপাতাল',
+      doctors: '০ জন ডাক্তার',
+      districtsCount: '০টি জেলা',
+      subText: '০ জন ডাক্তার • ০টি হাসপাতাল',
+      hCount: 0,
+      dCount: 0,
+      distCount: 0
+    }))
   }, [popularDivisions])
 
-  // 100% Dynamic Districts strictly from backend database
+  // 100% Dynamic Districts directly from backend database
   const activeDistrictsList = useMemo(() => {
     return (popularDistricts || []).map(dist => {
       const bnName = dist.bangla_name || DISTRICT_NAME_BN[(dist.slug || dist.name || '').toLowerCase()] || dist.name
       const divName = dist.division?.bangla_name ||
         (dist.division?.name ? `${dist.division.name} বিভাগ` : '') ||
-        (DISTRICT_NAME_BN[(dist.division?.name || '').toLowerCase()] ? `${DISTRICT_NAME_BN[(dist.division?.name || '').toLowerCase()]} বিভাগ` : 'বাংলাদেশ')
-      const docCount = dist.doctors_count || 0
+        (DISTRICT_NAME_BN[(dist.division?.name || '').toLowerCase()] ? `${DISTRICT_NAME_BN[(dist.division?.name || '').toLowerCase()]} বিভাগ` : '')
+      const docCount = Number(dist.doctors_count || 0)
+      const hospCount = Number(dist.hospitals_count || 0)
+
+      let subText = ''
+      if (docCount > 0 && hospCount > 0) {
+        subText = `${divName ? `${divName} • ` : ''}${toBnNum(docCount)} ডাক্তার • ${toBnNum(hospCount)} হাসপাতাল`
+      } else if (docCount > 0) {
+        subText = `${divName ? `${divName} • ` : ''}${toBnNum(docCount)} জন ডাক্তার`
+      } else if (hospCount > 0) {
+        subText = `${divName ? `${divName} • ` : ''}${toBnNum(hospCount)}টি হাসপাতাল`
+      } else {
+        subText = divName || 'বাংলাদেশ'
+      }
+
       return {
         id: dist.id,
         name: bnName,
@@ -1584,8 +1530,9 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         slug: dist.slug,
         division: divName,
         doctorsCount: docCount,
+        hospitalsCount: hospCount,
         count: `${toBnNum(docCount)} জন ডাক্তার`,
-        img: getDistrictImg(dist)
+        subText
       }
     })
   }, [popularDistricts])
@@ -1637,38 +1584,46 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             <Col key={div.id} xs={12} sm={6} lg={3}>
               <div
                 onClick={() => navigate(`/doctors/${div.searchKey}`)}
-                className="bbl-division-card"
+                className="bbl-bento-card"
               >
-                {/* Background Image */}
-                <img
-                  src={div.img}
-                  alt={div.enName}
-                  className="bbl-card-img"
-                />
-
-                {/* Floating Top Badge */}
-                <div className="bbl-card-top-badge">
-                  <IconBuildingHospital size={16} color="#0284C7" stroke={2} />
-                  <span>{div.count}</span>
+                {/* Subtle Location Pin SVG Watermark */}
+                <div className="bbl-bento-watermark">
+                  <svg width="130" height="130" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
                 </div>
 
-                {/* Dark Gradient Overlay */}
-                <div className="bbl-card-overlay" />
-
-                {/* Bottom Content Container */}
-                <div className="bbl-card-bottom">
-                  {/* Title & Arrow Row */}
-                  <div className="bbl-card-title-row">
-                    <h4 className="bbl-card-title">
-                      {div.bnName} 📍
-                    </h4>
-                    <div className="bbl-card-arrow-btn">
-                      <IconArrowRight size={18} stroke={2.5} />
-                    </div>
+                {/* Top Row: Icon Badge + Hospital Count */}
+                <div className="bbl-bento-top">
+                  <div className="bbl-bento-icon-box">
+                    <IconMapPin size={22} stroke={2.2} />
                   </div>
+                  <div className="bbl-bento-count-badge">
+                    <IconBuildingHospital size={14} color="#00B875" stroke={2.2} />
+                    <span>{div.count}</span>
+                  </div>
+                </div>
 
-                  {/* District Sub-tags */}
-                  <div className="bbl-tag-list">
+                {/* Middle: Division Names & Stats Metric */}
+                <div className="bbl-bento-body">
+                  <h3 className="bbl-bento-title">
+                    {div.bnName}
+                  </h3>
+                  <div className="bbl-bento-subtitle">
+                    {div.enName}
+                  </div>
+                  <div className="bbl-bento-metrics">
+                    <span className="bbl-metric-chip">
+                      <IconUsers size={13} stroke={2} />
+                      <span>{div.doctorsCountText || 'বিশেষজ্ঞ ডাক্তার সেবা'}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Interactive District Pills + Action Arrow */}
+                <div className="bbl-bento-bottom">
+                  <div className="bbl-bento-districts">
                     {div.districts && div.districts.length > 0 ? (
                       div.districts.map((tag, idx) => (
                         <span
@@ -1683,7 +1638,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                               navigate(`/doctors/${tag.slug}`)
                             }
                           }}
-                          className="bbl-mini-tag"
+                          className="bbl-bento-district-pill"
                         >
                           {tag.name}
                         </span>
@@ -1694,19 +1649,22 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                           e.stopPropagation()
                           navigate(`/doctors/${div.searchKey}`)
                         }}
-                        className="bbl-mini-tag"
-                        style={{ opacity: 0.95 }}
+                        className="bbl-bento-district-pill"
                       >
-                        সকল ডাক্তার দেখুন
+                        সকল ডাক্তার
                       </span>
                     )}
+                  </div>
+
+                  <div className="bbl-bento-arrow-btn">
+                    <IconArrowRight size={16} stroke={2.5} />
                   </div>
                 </div>
               </div>
             </Col>
           ))}
 
-          {/* 4th Card: Special Card ("সব বিভাগ দেখুন") with User Uploaded Map Graphic */}
+          {/* 4th Card: Special Bento Card ("সব বিভাগ দেখুন") */}
           <Col xs={12} sm={6} lg={3}>
             <div
               onClick={() => {
@@ -1714,75 +1672,47 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                 setLocationSearch('')
                 setShowLocationModal(true)
               }}
-              className="bbl-division-card bbl-more-card"
-              style={{ position: 'relative', overflow: 'hidden' }}
+              className="bbl-bento-card bbl-bento-all-card"
             >
-              {/* Background Image: User Uploaded Bangladesh Map Graphic */}
-              <img
-                src="/images/bangladesh_map_all_divisions.png"
-                alt="সব বিভাগ দেখুন"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transition: 'transform 0.6s ease'
-                }}
-                className="bbl-card-img"
-              />
-
-              {/* Gentle Overlay for contrast */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(135deg, rgba(6, 78, 59, 0.52) 0%, rgba(2, 44, 34, 0.68) 100%)',
-                zIndex: 1
-              }} />
-
-              {/* Card Content */}
-              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                {/* Big White Circular "+" Button */}
-                <div className="bbl-more-plus-btn">
-                  <IconPlus size={28} stroke={3} />
-                </div>
-
-                {/* Title & Subtitles */}
-                <h4 style={{
-                  fontSize: 21,
-                  fontWeight: 900,
-                  color: '#FFFFFF',
-                  margin: '0 0 6px 0',
-                  fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
-                  lineHeight: 1.2
-                }}>
-                  সব বিভাগ দেখুন
-                </h4>
-
-                <span style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: 'rgba(255, 255, 255, 0.95)',
-                  fontFamily: "'Hind Siliguri', sans-serif",
-                  marginBottom: 2
-                }}>
-                  {toBnNum(stats?.total_divisions ?? 8)} বিভাগ • {toBnNum(stats?.total_districts ?? 3)} জেলা
-                </span>
-
-                <span style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'rgba(255, 255, 255, 0.85)',
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}>
-                  {toBnNum(stats?.total_upazilas ?? 3)} উপজেলা
-                </span>
+              {/* Subtle Map SVG Watermark */}
+              <div className="bbl-bento-all-watermark">
+                <svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
+                  <path d="M3 7l6 -3l6 3l6 -3v13l-6 3l-6 -3l-6 3v-13" />
+                  <path d="M9 4v13" />
+                  <path d="M15 7v13" />
+                </svg>
               </div>
 
-              {/* Bottom Right White Arrow Button */}
-              <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 2 }}>
-                <div className="bbl-card-arrow-btn">
-                  <IconArrowRight size={18} stroke={2.5} />
+              {/* Top Row: Plus Button + Tag */}
+              <div className="bbl-bento-top">
+                <div className="bbl-bento-all-plus-btn">
+                  <IconPlus size={22} stroke={3} />
+                </div>
+                <div className="bbl-bento-all-pill">
+                  <span>সমগ্র বাংলাদেশ</span>
+                </div>
+              </div>
+
+              {/* Middle: Title & Stat Summary */}
+              <div className="bbl-bento-body">
+                <h3 className="bbl-bento-all-title">
+                  সব বিভাগ দেখুন
+                </h3>
+                <div className="bbl-bento-all-subtitle">
+                  {toBnNum(stats?.total_divisions ?? 8)} বিভাগ • {toBnNum(stats?.total_districts ?? 3)} জেলা
+                </div>
+                <div className="bbl-bento-all-meta">
+                  {toBnNum(stats?.total_upazilas ?? 3)} উপজেলা সংযুক্ত
+                </div>
+              </div>
+
+              {/* Bottom: Action Label & Arrow */}
+              <div className="bbl-bento-bottom" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="bbl-bento-all-explore-text">
+                  তালিকা দেখুন
+                </span>
+                <div className="bbl-bento-all-arrow">
+                  <IconArrowRight size={16} stroke={2.5} />
                 </div>
               </div>
             </div>
@@ -1981,25 +1911,16 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                         className="bbl-popup-card"
                       >
                         <div className="bbl-popup-card-icon">
-                          {div.img ? (
-                            <img
-                              src={div.img}
-                              alt={div.name}
-                              className="bbl-popup-card-img"
-                              onError={(e) => { e.currentTarget.style.display = 'none' }}
-                            />
-                          ) : (
-                            <IconMapPin size={22} color="#059669" />
-                          )}
+                          <IconMapPin size={22} stroke={2.2} />
                         </div>
                         <div className="bbl-popup-card-info">
                           <h6 className="bbl-popup-card-title">{div.name}</h6>
                           <span className="bbl-popup-card-sub">
-                            {div.hospitals} • {div.districtsCount}
+                            {div.subText}
                           </span>
                         </div>
                         <div className="bbl-popup-card-arrow">
-                          <IconChevronRight size={18} color="#059669" />
+                          <IconChevronRight size={18} stroke={2.5} />
                         </div>
                       </div>
                     ))}
@@ -2015,29 +1936,24 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                   <div className="bbl-popup-grid">
                     {filteredDistricts.map((dist, idx) => (
                       <div
-                        key={dist.slug || idx}
+                        key={dist.slug || dist.id || idx}
                         onClick={() => {
                           closeLocationModal()
                           navigate(`/doctors/${dist.slug}`)
                         }}
                         className="bbl-popup-card"
                       >
-                        <div className="bbl-popup-card-icon">
-                          <img
-                            src={getDistrictImg(dist)}
-                            alt={dist.name}
-                            className="bbl-popup-card-img"
-                            onError={(e) => { e.currentTarget.style.display = 'none' }}
-                          />
+                        <div className="bbl-popup-card-icon bbl-popup-district-icon">
+                          <IconBuildingHospital size={20} stroke={2} />
                         </div>
                         <div className="bbl-popup-card-info">
                           <h6 className="bbl-popup-card-title">{dist.name}</h6>
                           <span className="bbl-popup-card-sub">
-                            {dist.division ? `${dist.division} • ` : ''}{dist.count}
+                            {dist.subText}
                           </span>
                         </div>
                         <div className="bbl-popup-card-arrow">
-                          <IconChevronRight size={18} color="#059669" />
+                          <IconChevronRight size={18} stroke={2.5} />
                         </div>
                       </div>
                     ))}
@@ -2057,161 +1973,296 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
       {/* ── Scoped Styles ── */}
       <style>{`
-        /* Card Container */
-        .bbl-division-card {
+        /* ── Bento-Style Division Cards (No Heavy Images, Ultra Clean & Productive) ── */
+        .bbl-bento-card {
           position: relative;
-          height: 250px;
+          min-height: 240px;
+          height: 100%;
+          background: linear-gradient(150deg, #F8FAFC 0%, #FFFFFF 55%);
           border-radius: 20px;
+          border: 1.5px solid #E2E8F0;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
           overflow: hidden;
           cursor: pointer;
-          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .bbl-division-card:hover {
+        .bbl-bento-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+          border-color: #00B875;
+          box-shadow: 0 14px 30px rgba(0, 184, 117, 0.12);
+          background: linear-gradient(150deg, #F0FDF4 0%, #FFFFFF 65%);
         }
 
-        .bbl-card-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .bbl-division-card:hover .bbl-card-img {
-          transform: scale(1.08);
-        }
-
-        /* Floating Top-Left Hospital Badge */
-        .bbl-card-top-badge {
+        .bbl-bento-watermark {
           position: absolute;
-          top: 14px;
-          left: 14px;
-          background: rgba(255, 255, 255, 0.94);
-          backdrop-filter: blur(8px);
-          border-radius: 999px;
-          padding: 4px 12px;
+          right: -15px;
+          bottom: -15px;
+          color: #00B875;
+          opacity: 0.05;
+          pointer-events: none;
+          transition: transform 0.4s ease, opacity 0.4s ease;
+        }
+
+        .bbl-bento-card:hover .bbl-bento-watermark {
+          transform: scale(1.15) rotate(6deg);
+          opacity: 0.09;
+        }
+
+        .bbl-bento-top {
           display: flex;
+          align-items: center;
+          justify-content: space-between;
+          z-index: 2;
+        }
+
+        .bbl-bento-icon-box {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #ECFDF5;
+          color: #00B875;
+          border: 1px solid #D1FAE5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.1);
+          transition: all 0.25s ease;
+        }
+
+        .bbl-bento-card:hover .bbl-bento-icon-box {
+          background: #00B875;
+          color: #FFFFFF;
+          border-color: #00B875;
+          transform: scale(1.05);
+        }
+
+        .bbl-bento-count-badge {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 99px;
+          padding: 4px 12px;
+          display: inline-flex;
           align-items: center;
           gap: 6px;
           color: #0F172A;
           font-size: 12px;
           font-weight: 700;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          z-index: 3;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
           font-family: 'Hind Siliguri', sans-serif;
         }
 
-        /* Dark Gradient Overlay */
-        .bbl-card-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to top, rgba(10, 25, 41, 0.96) 0%, rgba(10, 25, 41, 0.62) 50%, rgba(10, 25, 41, 0.12) 100%);
-          z-index: 1;
-        }
-
-        /* Bottom Content Container */
-        .bbl-card-bottom {
-          position: absolute;
-          bottom: 14px;
-          left: 14px;
-          right: 14px;
+        .bbl-bento-body {
+          margin: 12px 0 10px 0;
           z-index: 2;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
         }
 
-        .bbl-card-title-row {
+        .bbl-bento-title {
+          font-size: 21px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0 0 2px 0;
+          font-family: 'Hind Siliguri', sans-serif;
+          letter-spacing: -0.3px;
+        }
+
+        .bbl-bento-subtitle {
+          font-size: 12.5px;
+          color: #64748B;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .bbl-bento-metrics {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .bbl-metric-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #047857;
+          background: #ECFDF5;
+          border: 1px solid #D1FAE5;
+          padding: 3px 9px;
+          border-radius: 6px;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-bento-bottom {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 8px;
+          z-index: 2;
+          margin-top: auto;
+          padding-top: 10px;
+          border-top: 1px dashed #E2E8F0;
         }
 
-        .bbl-card-title {
-          font-size: 18px;
-          font-weight: 900;
-          color: #FFFFFF;
-          margin: 0;
-          font-family: 'Hind Siliguri', sans-serif;
-        }
-
-        .bbl-card-arrow-btn {
-          width: 34px;
-          height: 34px;
-          min-width: 34px;
-          border-radius: 50%;
-          background: #FFFFFF;
-          color: #064E3B;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease;
-        }
-
-        .bbl-division-card:hover .bbl-card-arrow-btn {
-          transform: translateX(3px) scale(1.08);
-          background: #059669;
-          color: #FFFFFF;
-        }
-
-        /* District Sub-tags */
-        .bbl-tag-list {
+        .bbl-bento-districts {
           display: flex;
           flex-wrap: wrap;
-          gap: 5px;
+          gap: 6px;
+          align-items: center;
         }
 
-        .bbl-mini-tag {
-          background: rgba(255, 255, 255, 0.18);
-          backdrop-filter: blur(6px);
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          color: #FFFFFF;
+        .bbl-bento-district-pill {
+          background: #F1F5F9;
+          border: 1px solid #E2E8F0;
+          color: #334155;
+          font-size: 11.5px;
+          font-weight: 700;
+          padding: 3px 9px;
           border-radius: 6px;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 7px;
           font-family: 'Hind Siliguri', sans-serif;
           transition: all 0.2s ease;
           cursor: pointer;
         }
 
-        .bbl-mini-tag:hover {
-          background: rgba(255, 255, 255, 0.35);
-          transform: scale(1.04);
+        .bbl-bento-district-pill:hover {
+          background: #00B875;
+          color: #FFFFFF;
+          border-color: #00B875;
+          transform: translateY(-1px);
         }
 
-        /* 4th Card: Green Gradient Special Card */
-        .bbl-more-card {
-          background: linear-gradient(135deg, #059669 0%, #047857 50%, #064E3B 100%);
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 24px 20px;
-        }
-
-        .bbl-more-card:hover .bbl-more-plus-btn {
-          transform: rotate(90deg) scale(1.1);
-        }
-
-        .bbl-more-plus-btn {
-          width: 52px;
-          height: 52px;
+        .bbl-bento-arrow-btn {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
           border-radius: 50%;
           background: #FFFFFF;
-          color: #059669;
+          border: 1.5px solid #CBD5E1;
+          color: #0F172A;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-          transition: all 0.35s ease;
-          margin-bottom: 12px;
+          flex-shrink: 0;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+          transition: all 0.25s ease;
+        }
+
+        .bbl-bento-card:hover .bbl-bento-arrow-btn {
+          background: #00B875;
+          border-color: #00B875;
+          color: #FFFFFF;
+          transform: translateX(3px);
+        }
+
+        /* ── 4th Card: Signature Emerald Bento ── */
+        .bbl-bento-all-card {
+          background: linear-gradient(145deg, #00B875 0%, #00803D 100%) !important;
+          border-color: #00803D !important;
+          color: #FFFFFF !important;
+          box-shadow: 0 8px 24px rgba(0, 184, 117, 0.22) !important;
+        }
+
+        .bbl-bento-all-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 16px 36px rgba(0, 184, 117, 0.35) !important;
+        }
+
+        .bbl-bento-all-watermark {
+          position: absolute;
+          right: -15px;
+          bottom: -15px;
+          color: #FFFFFF;
+          opacity: 0.12;
+          pointer-events: none;
+          transition: transform 0.4s ease;
+        }
+
+        .bbl-bento-all-card:hover .bbl-bento-all-watermark {
+          transform: scale(1.15) rotate(6deg);
+          opacity: 0.18;
+        }
+
+        .bbl-bento-all-plus-btn {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+          color: #FFFFFF;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+        }
+
+        .bbl-bento-all-card:hover .bbl-bento-all-plus-btn {
+          transform: rotate(90deg) scale(1.08);
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        .bbl-bento-all-pill {
+          background: rgba(255, 255, 255, 0.18);
+          backdrop-filter: blur(8px);
+          color: #FFFFFF;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          border-radius: 99px;
+          padding: 4px 12px;
+          font-size: 11.5px;
+          font-weight: 700;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-bento-all-title {
+          font-size: 21px;
+          font-weight: 900;
+          color: #FFFFFF;
+          margin: 0 0 3px 0;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-bento-all-subtitle {
+          font-size: 13px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.95);
+          font-family: 'Hind Siliguri', sans-serif;
+          margin-bottom: 4px;
+        }
+
+        .bbl-bento-all-meta {
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.85);
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-bento-all-explore-text {
+          font-size: 13px;
+          font-weight: 700;
+          color: #FFFFFF;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .bbl-bento-all-arrow {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #FFFFFF;
+          color: #00803D;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          transition: transform 0.25s ease;
+        }
+
+        .bbl-bento-all-card:hover .bbl-bento-all-arrow {
+          transform: translateX(3px) scale(1.05);
         }
 
         /* Pills Buttons for Districts & Areas */
@@ -2596,8 +2647,8 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         .bbl-popup-card {
           background: #FFFFFF;
-          border: 1.2px solid #EDF2F7;
-          border-radius: 16px;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
           padding: 12px 14px;
           display: flex;
           align-items: center;
@@ -2611,8 +2662,9 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         .bbl-popup-card:hover {
           transform: translateY(-2px);
-          border-color: #059669;
-          box-shadow: 0 8px 20px rgba(5, 150, 105, 0.12);
+          border-color: #00B875;
+          box-shadow: 0 8px 20px rgba(0, 184, 117, 0.12);
+          background: #F0FDF4;
         }
 
         .bbl-popup-card-icon {
@@ -2620,16 +2672,33 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           height: 44px;
           min-width: 44px;
           border-radius: 12px;
-          background: #E8F8F2;
+          background: #ECFDF5;
+          color: #00B875;
+          border: 1px solid #D1FAE5;
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          transition: transform 0.25s ease;
+          transition: all 0.25s ease;
         }
 
         .bbl-popup-card:hover .bbl-popup-card-icon {
-          transform: scale(1.05);
+          transform: scale(1.08);
+          background: #00B875;
+          color: #FFFFFF;
+          border-color: #00B875;
+        }
+
+        .bbl-popup-district-icon {
+          background: #F0FDF4;
+          color: #00803D;
+          border: 1px solid #DCFCE7;
+        }
+
+        .bbl-popup-card:hover .bbl-popup-district-icon {
+          background: #00803D;
+          color: #FFFFFF;
+          border-color: #00803D;
         }
 
         .bbl-popup-card-img {

@@ -26,6 +26,7 @@ export default function ListToolbar({
   filterCount = 0,
   activeFilters = [], // Array of { key, label, onRemove }
   children, // Advanced filter fields (selects, datepickers, etc.)
+  middleActions, // Extra buttons between Filter and Refresh (e.g. Tab switchers)
   actions, // Extra buttons like 'Add Doctor', 'Export CSV', etc.
   perPage,
   onPerPageChange,
@@ -188,6 +189,9 @@ export default function ListToolbar({
               {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           )}
+
+          {/* Middle Actions (e.g. Tabs between Filter & Refresh) */}
+          {middleActions}
 
           {/* Reset / Clear Filters */}
           {isFilterActive && onClearFilters && activeFilters.length === 0 && (

@@ -49,7 +49,9 @@ import {
   AlertOctagon
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import useDebounce from '../../hooks/useDebounce'
 import ListToolbar from '../../components/admin/ListToolbar'
+import TableFooter from '../../components/admin/TableFooter'
 import '../../styles/admin-billing.css'
 
 export default function AdminSmsSettingsPage() {
@@ -93,6 +95,7 @@ export default function AdminSmsSettingsPage() {
   const [logsStats, setLogsStats] = useState({ total_sent: 0, total_success: 0, total_failed: 0, today_count: 0 })
   const [logsPagination, setLogsPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
   const [logsSearch, setLogsSearch] = useState('')
+  const debouncedLogsSearch = useDebounce(logsSearch, 350)
   const [logsProvider, setLogsProvider] = useState('')
   const [logsStatus, setLogsStatus] = useState('')
   const [logsPurpose, setLogsPurpose] = useState('')
@@ -101,11 +104,13 @@ export default function AdminSmsSettingsPage() {
   const [dateTo, setDateTo] = useState('')
   const [showLogsFilters, setShowLogsFilters] = useState(false)
   const [logsPage, setLogsPage] = useState(1)
+  const [logsPerPage, setLogsPerPage] = useState(15)
   const [selectedLog, setSelectedLog] = useState(null)
   const [copied, setCopied] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [refreshCountdown, setRefreshCountdown] = useState(30)
   const [showPruneModal, setShowPruneModal] = useState(false)
+  const [manualRefreshing, setManualRefreshing] = useState(false)
 
   const fetchSettings = async () => {
     setLoading(true)
@@ -201,13 +206,15 @@ export default function AdminSmsSettingsPage() {
     setLogsPage(1)
   }
 
-  const fetchLogs = async (page = 1, silent = false) => {
+  const fetchLogs = async (page = 1, silent = false, overridePerPage = null, overrideSearch = null) => {
     if (!silent) setLogsLoading(true)
     try {
+      const currentPerPage = overridePerPage || logsPerPage
+      const effectiveSearch = overrideSearch !== null ? overrideSearch : debouncedLogsSearch
       const params = {
         page,
-        per_page: 15,
-        ...(logsSearch && { search: logsSearch.trim() }),
+        per_page: currentPerPage,
+        ...(effectiveSearch && { search: effectiveSearch.trim() }),
         ...(logsProvider && { provider: logsProvider }),
         ...(logsStatus && { status: logsStatus }),
         ...(logsPurpose && { purpose: logsPurpose }),
@@ -238,13 +245,36 @@ export default function AdminSmsSettingsPage() {
     fetchBalance()
   }, [])
 
+  // Reset to page 1 whenever debounced search or filters change
+  useEffect(() => {
+    setLogsPage(1)
+  }, [debouncedLogsSearch, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
+
   useEffect(() => {
     if (activeTab === 'logs') {
-      fetchLogs(logsPage)
+      fetchLogs(logsPage, false, logsPerPage, debouncedLogsSearch)
     } else if (activeTab === 'balance') {
       fetchBalance()
     }
-  }, [activeTab, logsPage, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
+  }, [activeTab, logsPage, logsPerPage, debouncedLogsSearch, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
+
+  const handleManualRefresh = async () => {
+    setManualRefreshing(true)
+    try {
+      const promises = [fetchBalance()]
+      if (activeTab === 'logs') {
+        promises.push(fetchLogs(logsPage, false, logsPerPage, debouncedLogsSearch))
+      } else {
+        promises.push(fetchSettings())
+      }
+      await Promise.all(promises)
+      toast.success('তথ্য সফলভাবে রিফ্রেশ করা হয়েছে', { id: 'sms-refresh-toast', duration: 2500 })
+    } catch {
+      toast.error('রিফ্রেশ করতে সমস্যা হয়েছে')
+    } finally {
+      setTimeout(() => setManualRefreshing(false), 500)
+    }
+  }
 
   // Auto-Refresh (30s) timer with full safety guards:
   // - Pauses when tab is hidden/minimized
@@ -278,7 +308,7 @@ export default function AdminSmsSettingsPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, activeTab, selectedLog, showPruneModal, logsPagination.current_page, logsSearch, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
+  }, [autoRefresh, activeTab, selectedLog, showPruneModal, logsPagination.current_page, debouncedLogsSearch, logsProvider, logsStatus, logsPurpose, dateFrom, dateTo])
 
   const handleSave = async (e) => {
     if (e) e.preventDefault()
@@ -423,7 +453,7 @@ export default function AdminSmsSettingsPage() {
   }
 
   return (
-    <div className="admin-billing-container" style={{ padding: '24px 32px' }}>
+    <div className="admin-container">
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -445,15 +475,12 @@ export default function AdminSmsSettingsPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => {
-              if (activeTab === 'logs') fetchLogs(logsPage)
-              else fetchSettings()
-            }}
-            disabled={loading || logsLoading}
+            onClick={handleManualRefresh}
+            disabled={loading || logsLoading || manualRefreshing}
             className="btn btn-outline-secondary"
             style={{ borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 14 }}
           >
-            <RefreshCw size={15} className={(loading || logsLoading) ? 'fa-spin' : ''} />
+            <RefreshCw size={15} className={(loading || logsLoading || manualRefreshing) ? 'animate-spin' : ''} />
             রিফ্রেশ
           </button>
 
@@ -2065,7 +2092,7 @@ export default function AdminSmsSettingsPage() {
                   onSearchKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setLogsPage(1)
-                      fetchLogs(1)
+                      fetchLogs(1, false, logsPerPage, logsSearch)
                     }
                   }}
                   searchPlaceholder="Search by ID, mobile number, message, IP..."
@@ -2155,30 +2182,6 @@ export default function AdminSmsSettingsPage() {
                         }} />
                         <Clock size={13} />
                         <span>{autoRefresh ? `Auto: ${refreshCountdown}s` : 'Auto: Off'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => { setLogsPage(1); fetchLogs(1); }}
-                        className="admin-btn admin-btn-primary"
-                        style={{
-                          height: 38,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '0 16px',
-                          fontWeight: 600,
-                          fontSize: 13,
-                          borderRadius: 9,
-                          background: '#00A88C',
-                          border: 'none',
-                          color: '#ffffff',
-                          boxShadow: '0 2px 6px rgba(0, 168, 140, 0.25)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Search size={14} />
-                        <span>খুঁজুন</span>
                       </button>
                     </div>
                   }
@@ -2319,10 +2322,7 @@ export default function AdminSmsSettingsPage() {
                 </ListToolbar>
 
               {/* Logs Table */}
-              <div style={{
-                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16,
-                overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-              }}>
+              <div className="admin-card" style={{ borderRadius: 16, overflow: 'hidden' }}>
                 {logsLoading ? (
                   <div style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
                     <RefreshCw size={24} className="fa-spin" style={{ margin: '0 auto 10px' }} />
@@ -2334,8 +2334,8 @@ export default function AdminSmsSettingsPage() {
                     <p style={{ margin: 0, fontWeight: 600 }}>কোনো এসএমএস লগ রেকর্ড পাওয়া যায়নি।</p>
                   </div>
                 ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                  <div className="admin-table-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+                    <table className="admin-table" style={{ width: '100%', marginBottom: 0 }}>
                       <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
                         <tr>
                           <th style={{ padding: '12px 18px', fontWeight: 600 }}>তারিখ ও সময়</th>
@@ -2351,18 +2351,26 @@ export default function AdminSmsSettingsPage() {
                         {logs.map(log => {
                           const isSuccess = log.status === 'success'
                           const provColor = getProviderColor(log.provider)
-                          const dateStr = log.created_at ? new Date(log.created_at).toLocaleString('bn-BD', {
-                            day: '2-digit', month: 'short', year: 'numeric',
+                          const dObj = log.created_at ? new Date(log.created_at) : null
+                          const displayDate = dObj ? dObj.toLocaleDateString('bn-BD', {
+                            day: '2-digit', month: 'short', year: 'numeric'
+                          }) : '—'
+                          const displayTime = dObj ? dObj.toLocaleTimeString('bn-BD', {
                             hour: '2-digit', minute: '2-digit', hour12: true
                           }) : ''
 
                           return (
                             <tr key={log.id}>
-                              <td style={{ padding: '12px 18px', color: '#475569', whiteSpace: 'nowrap' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <Clock size={13} color="#94a3b8" />
-                                  <span>{dateStr}</span>
+                              <td style={{ padding: '12px 18px', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--admin-text, #1e293b)', fontSize: 13, lineHeight: 1.25 }}>
+                                  {displayDate}
                                 </div>
+                                {displayTime && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--admin-text-muted, #64748b)', fontSize: 11.5, marginTop: 3 }}>
+                                    <Clock size={11} color="#94a3b8" />
+                                    <span>{displayTime}</span>
+                                  </div>
+                                )}
                               </td>
 
                               <td style={{ padding: '12px 18px', fontWeight: 700, color: '#1e293b' }}>
@@ -2448,35 +2456,21 @@ export default function AdminSmsSettingsPage() {
                   </div>
                 )}
 
-                {/* Pagination footer */}
-                {logsPagination.last_page > 1 && (
-                  <div style={{
-                    padding: '12px 20px', borderTop: '1px solid #e2e8f0',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                  }}>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>
-                      মোট {logsPagination.total} টির মধ্যে পৃষ্ঠা {logsPagination.current_page} / {logsPagination.last_page}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => setLogsPage(p => Math.max(1, p - 1))}
-                        disabled={logsPagination.current_page <= 1}
-                        className="btn btn-sm btn-outline-secondary"
-                        style={{ borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4 }}
-                      >
-                        <ChevronLeft size={14} /> পূর্ববর্তী
-                      </button>
-                      <button
-                        onClick={() => setLogsPage(p => Math.min(logsPagination.last_page, p + 1))}
-                        disabled={logsPagination.current_page >= logsPagination.last_page}
-                        className="btn btn-sm btn-outline-secondary"
-                        style={{ borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4 }}
-                      >
-                        পরবর্তী <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Unified Enterprise TableFooter matching Image 2 */}
+                <TableFooter
+                  currentPage={logsPagination.current_page}
+                  totalPages={logsPagination.last_page}
+                  total={logsPagination.total}
+                  perPage={logsPerPage}
+                  setCurrentPage={(p) => {
+                    setLogsPage(p)
+                  }}
+                  setPerPage={(newPerPage) => {
+                    setLogsPerPage(newPerPage)
+                    setLogsPage(1)
+                  }}
+                  perPageOptions={[10, 15, 25, 50, 100]}
+                />
               </div>
             </div>
           )})()}

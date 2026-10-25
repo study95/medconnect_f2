@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { Container } from 'react-bootstrap'
+import { Container, Row, Col } from 'react-bootstrap'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay } from 'swiper/modules'
 import { Link } from 'react-router-dom'
@@ -110,65 +110,75 @@ export default function TodayDoctorsSection() {
               <IconArrowRight size={15} />
             </Link>
 
-            {/* Prev / Next Slider Arrows */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                ref={prevRef}
-                type="button"
-                aria-label="আগের ডাক্তার"
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  border: '1.5px solid #CBD5E1',
-                  background: '#FFFFFF',
-                  color: '#0F172A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
-              >
-                <IconChevronLeft size={18} />
-              </button>
-              <button
-                ref={nextRef}
-                type="button"
-                aria-label="পরের ডাক্তার"
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  border: '1.5px solid #CBD5E1',
-                  background: '#FFFFFF',
-                  color: '#0F172A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
-              >
-                <IconChevronRight size={18} />
-              </button>
-            </div>
+            {/* Prev / Next Slider Arrows (Only shown when doctors > 3) */}
+            {doctors.length > 3 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  ref={prevRef}
+                  type="button"
+                  aria-label="আগের ডাক্তার"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    border: '1.5px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
+                >
+                  <IconChevronLeft size={18} />
+                </button>
+                <button
+                  ref={nextRef}
+                  type="button"
+                  aria-label="পরের ডাক্তার"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    border: '1.5px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00B875'; e.currentTarget.style.color = '#00B875' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A' }}
+                >
+                  <IconChevronRight size={18} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Content Slider or Skeleton */}
+        {/* Content Slider or Grid or Skeleton */}
         {isLoading ? (
-          <div style={{ display: 'flex', gap: 16, overflow: 'hidden', padding: '6px 0 16px' }}>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ flex: 1, minWidth: 260 }}>
+          <Row className="g-3">
+            {[1, 2, 3].map(i => (
+              <Col key={i} xs={12} sm={6} md={4}>
                 <DoctorCardSkeleton />
-              </div>
+              </Col>
             ))}
-          </div>
+          </Row>
+        ) : doctors.length <= 3 ? (
+          <Row className="g-3">
+            {doctors.map((doctor, index) => (
+              <Col key={doctor.id || index} xs={12} sm={6} md={4}>
+                <DoctorCard doctor={doctor} />
+              </Col>
+            ))}
+          </Row>
         ) : (
           <Swiper
             modules={[Navigation, Autoplay]}
@@ -186,15 +196,14 @@ export default function TodayDoctorsSection() {
               576: { slidesPerView: 2, spaceBetween: 16 },
               768: { slidesPerView: 2.5, spaceBetween: 16 },
               992: { slidesPerView: 3, spaceBetween: 16 },
-              1200: { slidesPerView: 3.5, spaceBetween: 16 },
-              1400: { slidesPerView: 4, spaceBetween: 16 }
+              1200: { slidesPerView: 3, spaceBetween: 16 }
             }}
             style={{ padding: '4px 2px 14px' }}
           >
             {doctors.map((doctor, index) => (
               <SwiperSlide key={doctor.id || index} style={{ height: 'auto' }}>
                 <div style={{ height: '100%' }}>
-                  <DoctorCard doctor={doctor} viewMode="grid" />
+                  <DoctorCard doctor={doctor} />
                 </div>
               </SwiperSlide>
             ))}

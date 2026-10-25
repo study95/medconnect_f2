@@ -19,14 +19,9 @@ export default function DoctorRoute({ children }) {
     return <Navigate to="/login/doctor" state={{ from: location }} replace />
   }
 
-  // Doctor or Super Admin is allowed into Doctor portal
-  if (isDoctor || isAdmin) {
+  // Doctor, Super Admin, or Hospital Manager is allowed into Doctor portal
+  if (isDoctor || isAdmin || isManager) {
     return children
-  }
-
-  // If a hospital manager tries to access /doctor/*, redirect them to /hospital
-  if (isManager) {
-    return <Navigate to="/hospital" replace />
   }
 
   // General patient or unauthorized role

@@ -12,13 +12,95 @@ import {
   IconBuildingHospital,
   IconDeviceTv,
   IconReportMedical,
-  IconHeadset
+  IconHeadset,
+  IconCalendar,
+  IconClock,
+  IconInfoCircle,
+  IconCalendarEvent,
+  IconTicket,
+  IconSearch
 } from '@tabler/icons-react'
+
+// Convert numbers to Bengali digits
+const toBn = (num) => {
+  if (num === null || num === undefined || num === '') return ''
+  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯']
+  return String(num).replace(/\d/g, d => bnDigits[Number(d)])
+}
+
+// Format YYYY-MM-DD to Bengali readable date (e.g. ২৮ অক্টোবর, ২০২৬ (বুধবার))
+const formatBanglaDate = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const cleanStr = String(dateStr).substring(0, 10)
+    const [y, m, d] = cleanStr.split('-').map(Number)
+    if (!y || !m || !d) return dateStr
+
+    const monthsBn = [
+      'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+      'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+    ]
+    const dayNameBnMap = {
+      0: 'রবিবার',
+      1: 'সোমবার',
+      2: 'মঙ্গলবার',
+      3: 'বুধবার',
+      4: 'বৃহস্পতিবার',
+      5: 'শুক্রবার',
+      6: 'শনিবার'
+    }
+    const dateObj = new Date(y, m - 1, d, 12, 0, 0)
+    const dayOfWeek = dayNameBnMap[dateObj.getDay()] || ''
+    const monthName = monthsBn[m - 1] || ''
+    const dayBn = toBn(d)
+    const yearBn = toBn(y)
+
+    return `${dayBn} ${monthName}, ${yearBn}${dayOfWeek ? ` (${dayOfWeek})` : ''}`
+  } catch {
+    return toBn(dateStr)
+  }
+}
+
+// Format 24h / time string to 12-hour Bengali time (e.g. বিকেল ৫:৩০ টা)
+const formatTime12h = (timeStr) => {
+  if (!timeStr) return null
+  const cleaned = String(timeStr).trim()
+  if (!cleaned || cleaned === 'null' || cleaned === 'undefined') return null
+
+  if (cleaned.includes('-')) {
+    const parts = cleaned.split('-').map(p => formatTime12h(p.trim())).filter(Boolean)
+    if (parts.length === 2) return `${parts[0]} - ${parts[1]}`
+  }
+
+  const m = cleaned.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|am|pm)?$/i)
+  if (m) {
+    let hours = parseInt(m[1], 10)
+    const minutes = m[2]
+    const meridiem = (m[3] || '').toUpperCase()
+
+    if (meridiem === 'PM' && hours < 12) hours += 12
+    if (meridiem === 'AM' && hours === 12) hours = 0
+
+    let period = 'সকাল'
+    if (hours >= 12 && hours < 16) {
+      period = 'দুপুর'
+    } else if (hours >= 16 && hours < 18) {
+      period = 'বিকেল'
+    } else if (hours >= 18 && hours < 20) {
+      period = 'সন্ধ্যা'
+    } else if (hours >= 20 || hours < 5) {
+      period = 'রাত'
+    }
+    const h12 = hours % 12 || 12
+    return `${period} ${toBn(h12)}:${toBn(minutes)}`
+  }
+  return toBn(cleaned)
+}
 
 export default function QuickLiveSerialModal({ isOpen, onClose }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [phone, setPhone] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [results, setResults] = useState([])
@@ -30,7 +112,7 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
       document.body.style.overflow = 'hidden'
       const initialPhone = user?.phone || user?.mobile || ''
       if (initialPhone) {
-        setPhone(initialPhone)
+        setSearchQuery(initialPhone)
         handleSearchSubmit(null, initialPhone)
       } else {
         setTimeout(() => inputRef.current?.focus(), 120)
@@ -46,18 +128,30 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
     }
   }, [isOpen])
 
-  const handleSearchSubmit = async (e, directPhone = null) => {
+  const handleSearchSubmit = async (e, directQuery = null) => {
     if (e && e.preventDefault) e.preventDefault()
-    const targetPhone = directPhone || phone
-    const clean = (targetPhone || '').trim().replace(/[^\d]/g, '')
-    if (clean.length < 11) {
+    const target = (directQuery !== null ? directQuery : searchQuery).trim()
+    if (!target) {
+      setErrorMsg('অনুগ্রহ করে মোবাইল নম্বর অথবা অ্যাপয়েন্টমেন্ট আইডি দিন')
+      return
+    }
+
+    const cleanDigits = target.replace(/[^\d]/g, '')
+    // If the input starts with 01 and looks like a phone number, validate 11 digits
+    if (/^01[3-9]/.test(target) && cleanDigits.length < 11) {
       setErrorMsg('অনুগ্রহ করে সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)')
       return
     }
+
+    if (target.length < 3) {
+      setErrorMsg('অনুগ্রহ করে সঠিক নম্বর বা আইডি দিন (কমপক্ষে ৩ অক্ষর)')
+      return
+    }
+
     setLoading(true)
     setErrorMsg('')
     try {
-      const res = await trackLiveSerialByPhone(clean)
+      const res = await trackLiveSerialByPhone(target)
       if (res.data?.success) {
         setResults(res.data.data || [])
         setSearched(true)
@@ -71,6 +165,19 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
       setLoading(false)
     }
   }
+
+  // Detect pattern for dynamic icon helper
+  const isPhonePattern = /^01[3-9]/.test(searchQuery.trim())
+  const isIdPattern = /^AP/i.test(searchQuery.trim()) || /[a-zA-Z]/.test(searchQuery.trim())
+
+  // Sort results so today's appointment comes first, then upcoming dates
+  const sortedResults = [...results].sort((a, b) => {
+    if (a.is_today && !b.is_today) return -1
+    if (!a.is_today && b.is_today) return 1
+    const dateA = a.appointment_date || ''
+    const dateB = b.appointment_date || ''
+    return dateA.localeCompare(dateB)
+  })
 
   if (!isOpen) return null
 
@@ -88,7 +195,7 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
               <span>রিয়েল-টাইম মনিটর</span>
             </div>
             <h3 className="qls-title">লাইভ সিরিয়াল ট্র্যাকিং</h3>
-            <p className="qls-subtitle">আপনার মোবাইল নম্বর দিয়ে বর্তমান সিরিয়াল ও চেম্বার স্ট্যাটাস জানুন</p>
+            <p className="qls-subtitle">মোবাইল নম্বর বা অ্যাপয়েন্টমেন্ট আইডি দিয়ে বর্তমান সিরিয়াল জানুন</p>
           </div>
           <button className="qls-close-btn" onClick={onClose} aria-label="Close">
             <IconX size={20} />
@@ -98,25 +205,30 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
         {/* Search Input Box */}
         <form onSubmit={handleSearchSubmit} className="qls-search-form">
           <div className="qls-input-wrap">
-            <IconPhone size={18} className="qls-input-icon" />
+            {isIdPattern ? (
+              <IconTicket size={18} className="qls-input-icon text-amber-600" />
+            ) : isPhonePattern ? (
+              <IconPhone size={18} className="qls-input-icon text-sky-600" />
+            ) : (
+              <IconSearch size={18} className="qls-input-icon text-slate-400" />
+            )}
             <input
               ref={inputRef}
-              type="tel"
-              placeholder="01XXXXXXXXX"
-              value={phone}
+              type="text"
+              placeholder="মোবাইল নং বা অ্যাপয়েন্টমেন্ট আইডি"
+              value={searchQuery}
               onChange={e => {
-                setPhone(e.target.value)
+                setSearchQuery(e.target.value)
                 if (errorMsg) setErrorMsg('')
               }}
-              maxLength={11}
               className="qls-input"
             />
-            {phone && (
+            {searchQuery && (
               <button
                 type="button"
                 className="qls-clear-input"
                 onClick={() => {
-                  setPhone('')
+                  setSearchQuery('')
                   setResults([])
                   setSearched(false)
                   setErrorMsg('')
@@ -129,20 +241,11 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           </div>
           <button
             type="submit"
-            disabled={loading || phone.replace(/[^\d]/g, '').length < 11}
+            disabled={loading || searchQuery.trim().length < 3}
             className="qls-submit-btn"
           >
-            {loading ? (
-              <>
-                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                <span>চেক হচ্ছে...</span>
-              </>
-            ) : (
-              <>
-                <IconBroadcast size={17} />
-                <span>সিরিয়াল দেখুন</span>
-              </>
-            )}
+            <IconBroadcast size={17} />
+            <span>{loading ? 'অনুসন্ধান হচ্ছে...' : 'সিরিয়াল দেখুন'}</span>
           </button>
         </form>
 
@@ -155,20 +258,44 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
         {/* Results Body */}
         <div className="qls-results-container">
           {loading && (
-            <div className="qls-loading-state">
-              <div className="spinner-border text-info" style={{ width: 34, height: 34 }} />
-              <p>লাইভ চেম্বার সার্ভার থেকে তথ্য সংগ্রহ করা হচ্ছে...</p>
+            <div className="qls-skeleton-container" aria-busy="true" aria-live="polite">
+              <div className="qls-skeleton-card">
+                <div className="qls-skeleton-top">
+                  <div style={{ flex: 1 }}>
+                    <div className="qls-shimmer-box" style={{ width: '38%', height: 11, marginBottom: 8 }} />
+                    <div className="qls-shimmer-box" style={{ width: '62%', height: 17, marginBottom: 8 }} />
+                    <div className="qls-shimmer-box" style={{ width: '48%', height: 13 }} />
+                  </div>
+                  <div className="qls-shimmer-box" style={{ width: 84, height: 24, borderRadius: 999 }} />
+                </div>
+
+                <div className="qls-skeleton-counters">
+                  <div className="qls-shimmer-box" style={{ height: 58, borderRadius: 10 }} />
+                  <div className="qls-shimmer-box" style={{ height: 58, borderRadius: 10 }} />
+                  <div className="qls-shimmer-box" style={{ height: 58, borderRadius: 10 }} />
+                </div>
+
+                <div className="qls-skeleton-actions">
+                  <div className="qls-shimmer-box" style={{ flex: 1, height: 38, borderRadius: 9 }} />
+                  <div className="qls-shimmer-box" style={{ width: 88, height: 38, borderRadius: 9 }} />
+                </div>
+              </div>
+              <div className="qls-skeleton-hint">
+                <span className="qls-pulse-dot" />
+                <span>লাইভ চেম্বার সার্ভার থেকে তথ্য সংগ্রহ করা হচ্ছে...</span>
+              </div>
             </div>
           )}
 
-          {!loading && searched && results.length === 0 && (
+          {!loading && searched && sortedResults.length === 0 && (
             <div className="qls-empty-state">
               <div className="qls-empty-icon-box">
                 <IconActivity size={32} color="#0EA5E9" />
               </div>
-              <h4>আজকের কোনো সক্রিয় সিরিয়াল নেই</h4>
-              <p>এই নম্বরে আজকের কোনো সক্রিয় সিরিয়াল পাওয়া যায়নি। আপনি কি নতুন কোনো ডাক্তারের সিরিয়াল বুক করতে চান?</p>
+              <h4>কোনো সক্রিয় সিরিয়াল নেই</h4>
+              <p>এই মোবাইল নম্বর বা অ্যাপয়েন্টমেন্ট আইডিতে আজকের বা আসন্ন কোনো সক্রিয় সিরিয়াল পাওয়া যায়নি। আপনি কি নতুন কোনো ডাক্তারের সিরিয়াল বুক করতে চান?</p>
               <button
+                type="button"
                 className="qls-book-cta-btn"
                 onClick={() => {
                   onClose()
@@ -181,80 +308,180 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {!loading && results.length > 0 && (
+          {!loading && sortedResults.length > 0 && (
             <div className="qls-appointments-list">
-              {results.map((item, idx) => (
-                <div key={item.id || idx} className="qls-appointment-card">
-                  {/* Doctor & Chamber Header */}
-                  <div className="qls-card-top">
-                    <div>
-                      <div className="qls-doc-specialty">{item.doctor_specialty || 'বিশেষজ্ঞ'}</div>
-                      <h4 className="qls-doc-name">{item.doctor_name}</h4>
-                      <div className="qls-chamber-name">
-                        <IconBuildingHospital size={14} />
-                        <span>{item.chamber_name} {item.hospital_name ? `(${item.hospital_name})` : ''}</span>
+              {sortedResults.length > 1 && (
+                <div className="qls-multi-count-pill">
+                  <IconCalendarEvent size={15} />
+                  <span>আপনার মোট <strong>{toBn(sortedResults.length)}টি</strong> সিরিয়াল পাওয়া গেছে:</span>
+                </div>
+              )}
+
+              {sortedResults.map((item, idx) => {
+                const isToday = Boolean(item.is_today)
+                const startTimeStr = formatTime12h(item.appointment_time || item.chamber_start_time)
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    className={`qls-appointment-card ${isToday ? 'is-today-card' : 'is-upcoming-card'}`}
+                  >
+                    {/* Doctor & Chamber Header */}
+                    <div className="qls-card-top">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="qls-doc-specialty">{item.doctor_specialty || 'বিশেষজ্ঞ'}</div>
+                        <h4 className="qls-doc-name">{item.doctor_name}</h4>
+                        <div className="qls-chamber-name">
+                          <IconBuildingHospital size={14} />
+                          <span>{item.chamber_name} {item.hospital_name ? `(${item.hospital_name})` : ''}</span>
+                        </div>
                       </div>
+
+                      {isToday ? (
+                        <div className="qls-today-badge">
+                          <span className="qls-pulse-dot" />
+                          <span>আজকের সেশন</span>
+                        </div>
+                      ) : (
+                        <div className="qls-upcoming-badge">
+                          <IconCalendar size={13} />
+                          <span>আসন্ন সিরিয়াল</span>
+                        </div>
+                      )}
                     </div>
-                    {item.is_today && (
-                      <div className="qls-today-badge">
-                        <span className="qls-pulse-dot" />
-                        <span>আজকের সেশন</span>
-                      </div>
+
+                    {isToday ? (
+                      /* ── CASE 1: TODAY'S APPOINTMENT (REAL-TIME QUEUE) ── */
+                      <>
+                        {/* Session Status / Starting Time Banner */}
+                        <div className="qls-session-time-banner">
+                          <IconClock size={14} className="qls-time-icon" />
+                          <span>
+                            {item.current_serving
+                              ? `চেম্বার লাইভ চলছে • আপনার সিরিয়াল #${toBn(item.serial_number)}`
+                              : startTimeStr
+                                ? `চেম্বার শুরুর নির্ধারিত সময়: ${startTimeStr}`
+                                : 'চেম্বার আজ নির্ধারিত সময়ে শুরু হবে'}
+                          </span>
+                        </div>
+
+                        {/* 3-Box Live Serial Counters */}
+                        <div className="qls-counters-row">
+                          <div className="qls-counter-box qls-box-your">
+                            <span className="qls-counter-label">আপনার সিরিয়াল</span>
+                            <span className="qls-counter-value">#{toBn(item.serial_number) || '—'}</span>
+                          </div>
+
+                          <div className="qls-counter-box qls-box-serving">
+                            <span className="qls-counter-label">বর্তমানে চলছে</span>
+                            <span className="qls-counter-value">
+                              {item.current_serving ? `#${toBn(item.current_serving)}` : 'শুরু হয়নি'}
+                            </span>
+                          </div>
+
+                          <div className="qls-counter-box qls-box-ahead">
+                            <span className="qls-counter-label">অপেক্ষমাণ রোগী</span>
+                            <span className="qls-counter-value">
+                              {item.patients_ahead !== null && item.patients_ahead !== undefined 
+                                ? `${toBn(item.patients_ahead)} জন` 
+                                : 'অপেক্ষমাণ'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="qls-card-actions">
+                          {item.display_token ? (
+                            <button
+                              type="button"
+                              className="qls-tv-btn"
+                              onClick={() => {
+                                onClose()
+                                navigate(`/display/${item.display_token}`)
+                              }}
+                            >
+                              <IconDeviceTv size={16} />
+                              <span>চেম্বারের লাইভ ডিসপ্লে দেখুন</span>
+                            </button>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            className="qls-ticket-btn"
+                            onClick={() => {
+                              onClose()
+                              navigate(`/appointment-ticket/${item.id}`)
+                            }}
+                          >
+                            <IconReportMedical size={15} />
+                            <span>ফুল টিকিট</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      /* ── CASE 2: UPCOMING APPOINTMENT ON FUTURE DATE ── */
+                      <>
+                        <div className="qls-upcoming-box">
+                          <div className="qls-upcoming-grid">
+                            <div className="qls-upcoming-field">
+                              <span className="qls-field-label">
+                                <IconCalendar size={13} />
+                                তারিখ
+                              </span>
+                              <span className="qls-field-value qls-date-highlight">
+                                {formatBanglaDate(item.appointment_date)}
+                              </span>
+                            </div>
+
+                            <div className="qls-upcoming-field">
+                              <span className="qls-field-label">
+                                <IconClock size={13} />
+                                নির্ধারিত সময়
+                              </span>
+                              <span className="qls-field-value">
+                                {startTimeStr || 'শিডিউল অনুযায়ী'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="qls-upcoming-footer-row">
+                            <div className="qls-upcoming-serial-pill">
+                              <span>আপনার সিরিয়াল নম্বর:</span>
+                              <strong>#{toBn(item.serial_number) || '—'}</strong>
+                            </div>
+                            {item.room_number ? (
+                              <div className="qls-room-pill">
+                                <span>রুম নং:</span>
+                                <strong>{toBn(item.room_number)}</strong>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="qls-upcoming-hint">
+                          <IconInfoCircle size={14} className="flex-shrink-0" />
+                          <span>অ্যাপয়েন্টমেন্টের দিন এই নম্বরে লাইভ সিরিয়াল মনিটরিং চালু হবে।</span>
+                        </div>
+
+                        <div className="qls-card-actions">
+                          <button
+                            type="button"
+                            className="qls-details-primary-btn"
+                            onClick={() => {
+                              onClose()
+                              navigate(`/appointment-ticket/${item.id}`)
+                            }}
+                          >
+                            <IconReportMedical size={16} />
+                            <span>বিস্তারিত অ্যাপয়েন্টমেন্ট দেখুন</span>
+                            <IconArrowRight size={15} />
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
-
-                  {/* 3-Box Live Serial Counters */}
-                  <div className="qls-counters-row">
-                    <div className="qls-counter-box qls-box-your">
-                      <span className="qls-counter-label">আপনার সিরিয়াল</span>
-                      <span className="qls-counter-value">#{item.serial_number || '—'}</span>
-                    </div>
-
-                    <div className="qls-counter-box qls-box-serving">
-                      <span className="qls-counter-label">বর্তমানে চলছে</span>
-                      <span className="qls-counter-value">
-                        {item.current_serving ? `#${item.current_serving}` : 'শুরু হয়নি'}
-                      </span>
-                    </div>
-
-                    <div className="qls-counter-box qls-box-ahead">
-                      <span className="qls-counter-label">অপেক্ষমাণ রোগী</span>
-                      <span className="qls-counter-value">
-                        {item.patients_ahead !== null && item.patients_ahead !== undefined 
-                          ? `${item.patients_ahead} জন` 
-                          : 'অপেক্ষমাণ'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="qls-card-actions">
-                    {item.display_token ? (
-                      <button
-                        className="qls-tv-btn"
-                        onClick={() => {
-                          onClose()
-                          navigate(`/display/${item.display_token}`)
-                        }}
-                      >
-                        <IconDeviceTv size={16} />
-                        <span>চেম্বারের লাইভ ডিসপ্লে দেখুন</span>
-                      </button>
-                    ) : null}
-
-                    <button
-                      className="qls-ticket-btn"
-                      onClick={() => {
-                        onClose()
-                        navigate(`/appointment-ticket/${item.id}`)
-                      }}
-                    >
-                      <IconReportMedical size={15} />
-                      <span>ফুল টিকিট</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -418,13 +645,19 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           padding: 0 30px 0 36px;
           border: 1.5px solid #CBD5E1;
           border-radius: 10px;
-          font-size: 14.5px;
+          font-size: 14px;
           font-weight: 700;
           color: #0F172A;
           outline: none;
           background: #FFFFFF;
           transition: border-color 0.2s, box-shadow 0.2s;
-          letter-spacing: 0.04em;
+        }
+
+        .qls-input::placeholder {
+          font-size: 12.5px;
+          font-weight: 500;
+          color: #94A3B8;
+          letter-spacing: 0;
         }
 
         .qls-input:focus {
@@ -494,19 +727,71 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           overflow-y: auto;
           padding: 14px 18px;
           min-height: 160px;
-          max-height: 380px;
+          max-height: 420px;
         }
 
-        .qls-loading-state {
+        /* ── Skeleton Shimmer Loader (Option 2) ── */
+        .qls-shimmer-box {
+          background: linear-gradient(90deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%);
+          background-size: 200% 100%;
+          animation: qlsShimmerAnim 1.4s infinite linear;
+          border-radius: 6px;
+        }
+
+        @keyframes qlsShimmerAnim {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+
+        .qls-skeleton-container {
           display: flex;
           flex-direction: column;
+          gap: 12px;
+          padding-top: 4px;
+          animation: qlsFadeIn 0.2s ease-out;
+        }
+
+        @keyframes qlsFadeIn {
+          from { opacity: 0; transform: translateY(3px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .qls-skeleton-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 14px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        }
+
+        .qls-skeleton-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 14px;
+          gap: 10px;
+        }
+
+        .qls-skeleton-counters {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+
+        .qls-skeleton-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .qls-skeleton-hint {
+          display: flex;
           align-items: center;
           justify-content: center;
-          padding: 36px 16px;
+          gap: 7px;
+          font-size: 11.5px;
           color: #64748B;
-          gap: 12px;
-          text-align: center;
-          font-size: 13px;
+          padding: 2px 0 6px 0;
         }
 
         .qls-empty-state {
@@ -559,6 +844,19 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           box-shadow: 0 2px 8px rgba(0, 184, 117, 0.28);
         }
 
+        .qls-multi-count-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #F1F5F9;
+          border: 1px solid #E2E8F0;
+          padding: 6px 11px;
+          border-radius: 8px;
+          font-size: 12px;
+          color: #334155;
+          margin-bottom: 11px;
+        }
+
         .qls-appointments-list {
           display: flex;
           flex-direction: column;
@@ -571,17 +869,24 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           border-radius: 14px;
           padding: 13px 14px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-          transition: border-color 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        .qls-appointment-card:hover {
+        .qls-appointment-card.is-today-card {
           border-color: #BAE6FD;
+          background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
+        }
+
+        .qls-appointment-card.is-upcoming-card {
+          border-color: #E2E8F0;
+          background: #FFFFFF;
         }
 
         .qls-card-top {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
+          gap: 8px;
           margin-bottom: 11px;
         }
 
@@ -620,6 +925,41 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
           gap: 4px;
           white-space: nowrap;
           border: 1px solid #BBF7D0;
+          flex-shrink: 0;
+        }
+
+        .qls-upcoming-badge {
+          background: #FEF3C7;
+          color: #B45309;
+          font-size: 10.5px;
+          font-weight: 700;
+          padding: 2.5px 8px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+          border: 1px solid #FDE68A;
+          flex-shrink: 0;
+        }
+
+        .qls-session-time-banner {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #E0F2FE;
+          border: 1px solid #BAE6FD;
+          border-radius: 8px;
+          padding: 6px 10px;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #0369A1;
+          margin-bottom: 10px;
+        }
+
+        .qls-time-icon {
+          color: #0284C7;
+          flex-shrink: 0;
         }
 
         .qls-counters-row {
@@ -670,6 +1010,122 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
 
         .qls-box-serving .qls-counter-value {
           color: #0369A1;
+        }
+
+        /* ── Upcoming Appointment Card Specifics ── */
+        .qls-upcoming-box {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 10px;
+          padding: 10px 12px;
+          margin-bottom: 9px;
+        }
+
+        .qls-upcoming-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .qls-upcoming-field {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .qls-field-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #64748B;
+        }
+
+        .qls-field-value {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #1E293B;
+          line-height: 1.35;
+        }
+
+        .qls-date-highlight {
+          color: #0F172A;
+        }
+
+        .qls-upcoming-footer-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          padding-top: 8px;
+          border-top: 1px dashed #E2E8F0;
+        }
+
+        .qls-upcoming-serial-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #EFF6FF;
+          border: 1px solid #DBEAFE;
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 11.5px;
+          color: #1D4ED8;
+        }
+
+        .qls-upcoming-serial-pill strong {
+          font-size: 12.5px;
+          font-weight: 800;
+        }
+
+        .qls-room-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: #F1F5F9;
+          border: 1px solid #E2E8F0;
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 11px;
+          color: #475569;
+        }
+
+        .qls-upcoming-hint {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: #64748B;
+          margin-bottom: 11px;
+          line-height: 1.4;
+        }
+
+        .qls-details-primary-btn {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 9px 14px;
+          background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+          color: #FFFFFF;
+          border: none;
+          border-radius: 10px;
+          font-size: 12.5px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28);
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .qls-details-primary-btn:hover {
+          box-shadow: 0 5px 14px rgba(2, 132, 199, 0.38);
+        }
+
+        .qls-details-primary-btn:active {
+          transform: scale(0.98);
         }
 
         .qls-card-actions {

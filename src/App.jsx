@@ -397,6 +397,11 @@ function App() {
 
             {/* Reports */}
             <Route path="reports/commission" element={<CommissionReportPage />} />
+            <Route path="reports/doctor-commission" element={<DoctorCommissionReportPage />} />
+            <Route path="reports/hospital-commission" element={<HospitalCommissionReportPage />} />
+            <Route path="commission-report" element={<CommissionReportPage />} />
+            <Route path="doctor-commission-report" element={<DoctorCommissionReportPage />} />
+            <Route path="hospital-commission-report" element={<HospitalCommissionReportPage />} />
             <Route path="reports/purchase" element={<PurchaseReportPage />} />
 
             {/* Profile & Password */}
@@ -554,6 +559,8 @@ function App() {
             {/* Hospital Commission & Settlements */}
             <Route path="commission-report" element={<HospitalCommissionReportPage />} />
             <Route path="settlements" element={<HospitalCommissionReportPage />} />
+            <Route path="hospital-commission-report" element={<HospitalCommissionReportPage />} />
+            <Route path="doctor-commission-report" element={<DoctorCommissionReportPage />} />
 
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />

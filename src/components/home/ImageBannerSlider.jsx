@@ -63,11 +63,11 @@ export default function ImageBannerSlider() {
             modules={[Navigation, Pagination, Autoplay]}
             centeredSlides={true}
             loop={banners.length > 2}
-            speed={700}
+            speed={500}
             autoplay={{
-              delay: 4500,
+              delay: 2800,
               disableOnInteraction: false,
-              pauseOnMouseEnter: true
+              pauseOnMouseEnter: false
             }}
             navigation={{
               prevEl: prevRef.current,

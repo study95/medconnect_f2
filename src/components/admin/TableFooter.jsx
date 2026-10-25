@@ -42,17 +42,24 @@ const PER_PAGE_OPTIONS = [10, 25, 50, 100, 500, 1000, 2000, 5000]
  */
 export default function TableFooter({
   total = 0,
+  totalItems,
   currentPage = 1,
   setCurrentPage,
+  onPageChange,
   perPage = 10,
   setPerPage,
+  onPerPageChange,
   perPageOptions = PER_PAGE_OPTIONS,
 }) {
-  if (total === 0) return null
+  const actualTotal = total || totalItems || 0
+  const handlePageChange = setCurrentPage || onPageChange
+  const handlePerPageChange = setPerPage || onPerPageChange
 
-  const totalPages = Math.ceil(total / perPage)
+  if (actualTotal === 0) return null
+
+  const totalPages = Math.ceil(actualTotal / perPage)
   const from = (currentPage - 1) * perPage + 1
-  const to = Math.min(currentPage * perPage, total)
+  const to = Math.min(currentPage * perPage, actualTotal)
 
   // Build page number array with ellipsis
   const pages = []
@@ -87,12 +94,12 @@ export default function TableFooter({
       {/* Left: Page-size selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
         <span>Show</span>
-        {setPerPage ? (
+        {handlePerPageChange ? (
           <select
             value={perPage}
             onChange={(e) => {
-              setPerPage(Number(e.target.value))
-              setCurrentPage && setCurrentPage(1)
+              handlePerPageChange(Number(e.target.value))
+              handlePageChange && handlePageChange(1)
             }}
             style={{
               height: 30,
@@ -119,19 +126,19 @@ export default function TableFooter({
 
       {/* Centre: Summary */}
       <div style={{ fontSize: 13, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-        Showing <strong>{from}</strong>–<strong>{to}</strong> of <strong>{total}</strong> entries
+        Showing <strong>{from}</strong>–<strong>{to}</strong> of <strong>{actualTotal}</strong> entries
       </div>
 
       {/* Right: Pagination */}
       {totalPages > 1 ? (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
           <button
-            onClick={() => currentPage > 1 && setCurrentPage(1)}
+            onClick={() => currentPage > 1 && handlePageChange && handlePageChange(1)}
             style={currentPage === 1 ? BTN_DISABLED : BTN_BASE}
             title="First"
           >«</button>
           <button
-            onClick={() => currentPage > 1 && setCurrentPage((p) => p - 1)}
+            onClick={() => currentPage > 1 && handlePageChange && handlePageChange(currentPage - 1)}
             style={currentPage === 1 ? BTN_DISABLED : BTN_BASE}
             title="Previous"
           >‹</button>
@@ -139,16 +146,16 @@ export default function TableFooter({
             p === '...' ? (
               <span key={`d${i}`} style={{ width: 30, textAlign: 'center', color: 'var(--admin-text-muted)', fontWeight: 700 }}>…</span>
             ) : (
-              <button key={p} onClick={() => setCurrentPage(p)} style={p === currentPage ? BTN_ACTIVE : BTN_BASE}>{p}</button>
+              <button key={p} onClick={() => handlePageChange && handlePageChange(p)} style={p === currentPage ? BTN_ACTIVE : BTN_BASE}>{p}</button>
             )
           )}
           <button
-            onClick={() => currentPage < totalPages && setCurrentPage((p) => p + 1)}
+            onClick={() => currentPage < totalPages && handlePageChange && handlePageChange(currentPage + 1)}
             style={currentPage === totalPages ? BTN_DISABLED : BTN_BASE}
             title="Next"
           >›</button>
           <button
-            onClick={() => currentPage < totalPages && setCurrentPage(totalPages)}
+            onClick={() => currentPage < totalPages && handlePageChange && handlePageChange(totalPages)}
             style={currentPage === totalPages ? BTN_DISABLED : BTN_BASE}
             title="Last"
           >»</button>
