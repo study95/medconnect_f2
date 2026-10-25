@@ -20,6 +20,7 @@ export function SubscriptionProvider({ children }) {
     showWarning: false,
     isTrial: false,
     isExpired: false,
+    isPendingVerification: false,
     entityType: null,
     planName: null,
     subscription: null,
@@ -39,6 +40,7 @@ export function SubscriptionProvider({ children }) {
       const daysRemaining = ss.days_remaining != null ? Number(ss.days_remaining) : null
       const hasAccess = Boolean(ss.has_access)
       const isExpired = !hasAccess || (daysRemaining !== null && daysRemaining <= 0)
+      const isPendingVerification = Boolean(ss.is_pending_verification || ss.is_checkout_locked || user.is_checkout_locked)
 
       setSubscriptionData({
         hasAccess,
@@ -47,6 +49,7 @@ export function SubscriptionProvider({ children }) {
         showWarning: Boolean(ss.show_warning) || (daysRemaining !== null && daysRemaining <= 3),
         isTrial,
         isExpired,
+        isPendingVerification,
         entityType: isDoctor ? 'doctor' : (isHospital ? 'hospital' : null),
         planName: ss.subscription?.name || null,
         subscription: ss.subscription,
@@ -68,6 +71,7 @@ export function SubscriptionProvider({ children }) {
           const isTrial = Boolean(data.is_trial || (!data.subscription && data.trial) || data.subscription?.plan?.tier === 'free')
           const daysRemaining = data.days_remaining != null ? Number(data.days_remaining) : null
           const hasAccess = Boolean(data.has_access)
+          const isPendingVerification = Boolean(data.is_checkout_locked || data.pending_payment || data.has_pending_transaction)
           const isExpired = !hasAccess || (daysRemaining !== null && daysRemaining <= 0)
 
           setSubscriptionData({
@@ -77,6 +81,7 @@ export function SubscriptionProvider({ children }) {
             showWarning: Boolean(data.show_warning) || (daysRemaining !== null && daysRemaining <= 3),
             isTrial,
             isExpired,
+        isPendingVerification,
             entityType: 'doctor',
             planName: data.subscription?.package?.name || data.subscription?.plan?.name || (isTrial ? 'ডাক্তার ফ্রি ট্রায়াল' : null),
             subscription: data.subscription,
@@ -98,6 +103,7 @@ export function SubscriptionProvider({ children }) {
           const daysRemaining = banners.days_remaining != null ? Number(banners.days_remaining) : null
           const isExpired = Boolean(banners.is_expired) || status === 'expired' || (daysRemaining !== null && daysRemaining <= 0)
           const hasAccess = (status === 'active' || status === 'trialing') && !isExpired
+          const isPendingVerification = Boolean(overview.is_checkout_locked) || Boolean(banners.is_pending_verification) || Boolean(overview.pending_payment)
 
           setSubscriptionData({
             hasAccess,
@@ -106,6 +112,7 @@ export function SubscriptionProvider({ children }) {
             showWarning: Boolean(banners.is_expiring_soon) || (daysRemaining !== null && daysRemaining <= 3),
             isTrial,
             isExpired,
+        isPendingVerification,
             entityType: 'hospital',
             planName: overview.current_plan?.plan?.name || (isTrial ? 'হাসপাতাল ফ্রি ট্রায়াল' : null),
             subscription: overview.current_plan,

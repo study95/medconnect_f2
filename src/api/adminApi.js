@@ -160,6 +160,16 @@ export const getCommissionReport = (params) => axiosInstance.get('/admin/commiss
 export const getHospitalCommissionReport = (params) => axiosInstance.get('/hospital/commission-report', { params })
 export const getDoctorCommissionReport = (params) => axiosInstance.get('/doctor/commission-report', { params })
 export const bulkUpdateCommissionStatus = (data) => axiosInstance.post('/admin/commission-bulk-update', data)
+export const getCommissionRequests = (params) => axiosInstance.get('/admin/commission-requests', { params })
+export const getCommissionRequestDetails = (id) => axiosInstance.get(`/admin/commission-requests/${id}`)
+export const approveCommissionRequest = (id, data = {}) => axiosInstance.post(`/admin/commission-requests/${id}/approve`, data)
+export const rejectCommissionRequest = (id, data = {}) => axiosInstance.post(`/admin/commission-requests/${id}/reject`, data)
+export const doctorPayCommission = (data) => axiosInstance.post('/doctor/finance/pay-commission', data)
+export const getDoctorCommissionRequests = (params) => axiosInstance.get('/doctor/finance/commission-requests', { params })
+export const doctorRequestPayout = (data) => axiosInstance.post('/doctor/finance/withdraw', data)
+export const hospitalPayCommission = (data) => axiosInstance.post('/hospital/finance/pay-commission', data)
+export const getHospitalCommissionRequests = (params) => axiosInstance.get('/hospital/finance/commission-requests', { params })
+export const hospitalRequestPayout = (data) => axiosInstance.post('/hospital/finance/withdraw', data)
 export const getPurchaseReport = (params) => axiosInstance.get('/admin/purchase-report', { params })
 
 // ===== CHAMBER TOGGLE =====

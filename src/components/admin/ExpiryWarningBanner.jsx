@@ -1,6 +1,6 @@
 // ExpiryWarningBanner.jsx — Universal sticky top banner for Doctor & Hospital subscription lifecycle
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { useAuth } from '../../context/AuthContext'
 import { Sparkles, AlertTriangle, ArrowRight, X, ShieldAlert } from 'lucide-react'
@@ -17,10 +17,31 @@ export default function ExpiryWarningBanner() {
     isExpired,
     expiryDate,
     hasActiveSubscription,
+    isPendingVerification,
     loaded
   } = useSubscription()
 
+  const location = useLocation()
   const [dismissed, setDismissed] = useState(false)
+
+  // Don't render on checkout pages (user is actively purchasing/upgrading)
+  if (location?.pathname?.includes('/subscription/checkout') || location?.pathname?.includes('/subscription-checkout')) {
+    return null
+  }
+
+  // Don't render anywhere if a payment is currently under administrator verification
+  if (isPendingVerification) {
+    return null
+  }
+
+  // Don't render on subscription management/history pages (they have their own dedicated status cards)
+  if (
+    location?.pathname?.includes('/subscription/history') ||
+    location?.pathname?.includes('/hospital-subscription') ||
+    location?.pathname?.includes('/doctor/subscription')
+  ) {
+    return null
+  }
 
   // Don't render for super admin or non-provider roles, or before subscription is loaded
   if (isAdmin || (!isDoctor && !isHospital) || !loaded) return null

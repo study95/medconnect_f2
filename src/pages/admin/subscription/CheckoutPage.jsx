@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import {
   getSubscriptionPackages,
   purchaseSubscription,
@@ -51,7 +52,6 @@ export const ONLINE_GATEWAY_METHODS = [
     icon: Smartphone,
   },
 ]
-
 export const MANUAL_PAYMENT_CHANNELS = [
   {
     key: 'offline',
@@ -86,7 +86,6 @@ export const MANUAL_PAYMENT_CHANNELS = [
     icon: Smartphone,
   },
 ]
-
 const ENTERPRISE_PAYMENT_METHODS = [
   {
     key: 'bkash',
@@ -126,6 +125,7 @@ const ENTERPRISE_PAYMENT_METHODS = [
   },
 ]
 
+const toBnDigits = (n) => String(n ?? '').replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d])
 
 export default function CheckoutPage() {
   const { isManager, user } = useAuth()
@@ -169,7 +169,6 @@ export default function CheckoutPage() {
   const isManualEnabled = summaryData?.manual_payment_settings?.enabled !== false
   const isOnlineMasterEnabled = summaryData?.online_payment_enabled !== false
   const enabledGatewayKeys = summaryData?.enabled_gateways || []
-
   const filteredOnlineGateways = ONLINE_GATEWAY_METHODS.filter(m => {
     if (!enabledGatewayKeys || enabledGatewayKeys.length === 0) return true
     if (m.key === 'sslcommerz') return enabledGatewayKeys.includes('sslcommerz')
@@ -346,6 +345,10 @@ export default function CheckoutPage() {
         if (res?.success && res?.data) {
           setIsEnterprise(true)
           setSummaryData(res.data)
+          const isFreeTarget = (res.data.target_plan?.tier === 'free') || (Number(res.data.pricing?.total_amount || 0) <= 0)
+          if (isFreeTarget && billingCycle !== 'monthly') {
+            setBillingCycle('monthly')
+          }
           if (res.data.entity) {
             const ent = res.data.entity
             setBillingAddress(prev => ({
@@ -641,6 +644,8 @@ export default function CheckoutPage() {
       if (res?.success) {
         setManualSuccessData(res.data)
         initCheckout()
+        toast.success('পেমেন্ট রসিদ সফলভাবে জমা হয়েছে!', { id: 'manual-pay-success', duration: 4000 })
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch (err) {
       let msg = ''
@@ -672,6 +677,8 @@ export default function CheckoutPage() {
       }
 
       setManualErrorMsg(msg)
+      toast.error(msg, { id: 'manual-pay-error', duration: 5000 })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setManualSubmitting(false)
     }
@@ -844,8 +851,8 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* ─── VERIFICATION LOCK BANNER ─── */}
-        {summaryData?.is_checkout_locked && (
+        {/* ─── VERIFICATION LOCK BANNER (Shown only when not already displaying submission success) ─── */}
+        {summaryData?.is_checkout_locked && !manualSuccessData && (
           <div className="chk-banner warning chk-fade-in">
             <Clock size={24} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
@@ -881,69 +888,184 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* ─── MANUAL PAYMENT SUBMITTED SUCCESS BANNER ─── */}
-        {manualSuccessData && (
-          <div className="chk-banner success chk-fade-in">
-            <CheckCircle2 size={28} style={{ color: '#10B981', flexShrink: 0 }} />
-            <div className="flex-grow-1">
-              <div style={{ fontWeight: 800, fontSize: '16px', color: '#065F46' }}>
-                পেমেন্ট রসিদ সফলভাবে জমা হয়েছে!
+        {/* ─── STANDALONE DIGITAL RECEIPT VOUCHER (When Manual Payment is Submitted) ─── */}
+        {manualSuccessData ? (
+          <div style={{
+            maxWidth: 620,
+            margin: '20px auto 50px',
+            background: 'var(--admin-card-bg, #ffffff)',
+            borderRadius: 18,
+            border: '1px solid var(--admin-border, #e2e8f0)',
+            boxShadow: '0 12px 35px rgba(0, 0, 0, 0.08)',
+            padding: '36px 32px',
+            textAlign: 'center',
+            animation: 'chkFadeIn 0.3s ease-out'
+          }}>
+            {/* Animated Checkmark Badge */}
+            <div style={{
+              width: 68,
+              height: 68,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              color: '#ffffff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35)',
+              marginBottom: 16
+            }}>
+              <CheckCircle2 size={38} />
+            </div>
+
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--admin-text, #0f172a)', margin: '0 0 8px' }}>
+              পেমেন্ট রসিদ সফলভাবে জমা হয়েছে!
+            </h2>
+            <p style={{ fontSize: 13.5, color: 'var(--admin-text-muted, #64748b)', margin: '0 auto 24px', maxWidth: 480, lineHeight: 1.6 }}>
+              আপনার TrxID এবং রসিদের স্ক্রিনশট গ্রহণ করা হয়েছে এবং বর্তমানে <strong>অ্যাডমিন পর্যালোচনায়</strong> রয়েছে। ভেরিফিকেশন সম্পন্ন হওয়ামাত্রই প্ল্যানটি স্বয়ংক্রিয়ভাবে সক্রিয় হবে।
+            </p>
+
+            {/* Receipt Summary Box */}
+            <div style={{
+              background: 'var(--admin-bg, #f8fafc)',
+              border: '1px solid var(--admin-border, #e2e8f0)',
+              borderRadius: 14,
+              padding: '18px 20px',
+              textAlign: 'left',
+              marginBottom: 26
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px dashed var(--admin-border, #cbd5e1)' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--admin-text-muted, #64748b)', fontWeight: 600 }}>নির্বাচিত প্যাকেজ:</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--admin-text, #0f172a)' }}>
+                  {target_plan?.name_bn || target_plan?.name || 'সাবস্ক্রিপশন প্যাকেজ'}
+                </span>
               </div>
-              <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#047857', lineHeight: 1.5 }}>
-                আপনার TrxID এবং রসিদের স্ক্রিনশট গ্রহণ করা হয়েছে এবং বর্তমানে <strong>অ্যাডমিন পর্যালোচনায়</strong> রয়েছে।
-                ভেরিফিকেশন সম্পন্ন হওয়ামাত্রই প্ল্যানটি সক্রিয় হবে।
-              </p>
-              <div className="d-flex align-items-center gap-3 mb-3 flex-wrap" style={{ background: '#d1fae5', padding: '8px 14px', borderRadius: 8, fontSize: '12.5px' }}>
-                <span>TrxID: <strong>{manualSuccessData.transaction_reference}</strong></span>
-                <span>•</span>
-                <span>পরিমাণ: <strong>৳{Number(manualSuccessData.submitted_amount || 0).toLocaleString()}</strong></span>
-                <span>•</span>
-                <span style={{ color: '#d97706', fontWeight: 800 }}>অ্যাডমিন অনুমোদনের অপেক্ষায়</span>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px dashed var(--admin-border, #cbd5e1)' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--admin-text-muted, #64748b)', fontWeight: 600 }}>ট্রানজেকশন রেফারেন্স (TrxID):</span>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <code style={{ fontSize: 13, fontWeight: 800, color: '#00A88C', background: 'rgba(0, 168, 140, 0.08)', padding: '3px 8px', borderRadius: 6 }}>
+                    {manualSuccessData.transaction_reference}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator?.clipboard) {
+                        navigator.clipboard.writeText(manualSuccessData.transaction_reference)
+                        toast.success('TrxID কপি করা হয়েছে!')
+                      }
+                    }}
+                    title="TrxID কপি করুন"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--admin-text-muted)' }}
+                  >
+                    <Copy size={13} />
+                  </button>
+                </div>
               </div>
-              <div className="d-flex gap-2 flex-wrap">
-                <Link to="/admin/subscription/history" className="chk-btn-primary" style={{ display: 'inline-flex', width: 'auto', padding: '10px 18px' }}>
-                  হিস্ট্রিতে ট্র্যাক করুন
-                </Link>
-                <Link to={returnUrl} className="chk-btn-outline" style={{ background: '#ffffff' }}>
-                  পোর্টালে ফিরে যান
-                </Link>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px dashed var(--admin-border, #cbd5e1)' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--admin-text-muted, #64748b)', fontWeight: 600 }}>জমাকৃত পরিমাণ:</span>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#059669' }}>
+                  {currency_symbol}{Number(manualSuccessData.submitted_amount || pricing?.total_amount || 0).toLocaleString()}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 11 }}>
+                <span style={{ fontSize: 12.5, color: 'var(--admin-text-muted, #64748b)', fontWeight: 600 }}>বর্তমান অবস্থা:</span>
+                <span style={{
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  color: '#D97706',
+                  background: 'rgba(217, 119, 6, 0.1)',
+                  border: '1px solid rgba(217, 119, 6, 0.25)',
+                  padding: '3px 10px',
+                  borderRadius: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}>
+                  <Clock size={12} />
+                  অ্যাডমিন পর্যালোচনার অপেক্ষায়
+                </span>
               </div>
             </div>
-          </div>
-        )}
 
-        {errorMsg && (
-          <div className="chk-banner error chk-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <AlertTriangle size={20} style={{ flexShrink: 0, color: '#DC2626' }} />
-              <div style={{ fontWeight: 600, fontSize: '13.5px', lineHeight: 1.5 }}>{errorMsg}</div>
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link
+                to={target_plan?.target_entity === 'hospital' || isManager ? "/hospital/hospital-subscription" : "/admin/subscription/history"}
+                className="chk-btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '12px 24px',
+                  borderRadius: 10,
+                  fontSize: 13.5,
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  textDecoration: 'none'
+                }}
+              >
+                <FileText size={16} />
+                <span style={{ color: '#ffffff' }}>হিস্ট্রিতে ট্র্যাক করুন</span>
+              </Link>
+              <Link
+                to={returnUrl}
+                className="chk-btn-outline"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '12px 24px',
+                  borderRadius: 10,
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  background: 'var(--admin-card-bg, #ffffff)',
+                  color: 'var(--admin-text, #0f172a)',
+                  textDecoration: 'none'
+                }}
+              >
+                <ArrowLeft size={16} />
+                <span>পোর্টালে ফিরে যান</span>
+              </Link>
             </div>
-            <button
-              type="button"
-              onClick={() => setErrorMsg('')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#DC2626',
-                padding: '4px 6px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '6px',
-                flexShrink: 0,
-                transition: 'background 0.2s'
-              }}
-              title="বার্তাটি বন্ধ করুন"
-              aria-label="বার্তাটি বন্ধ করুন"
-            >
-              <X size={18} />
-            </button>
           </div>
-        )}
+        ) : (
+          <>
+            {errorMsg && (
+              <div className="chk-banner error chk-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <AlertTriangle size={20} style={{ flexShrink: 0, color: '#DC2626' }} />
+                  <div style={{ fontWeight: 600, fontSize: '13.5px', lineHeight: 1.5 }}>{errorMsg}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMsg('')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#DC2626',
+                    padding: '4px 6px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '6px',
+                    flexShrink: 0,
+                    transition: 'background 0.2s'
+                  }}
+                  title="বার্তাটি বন্ধ করুন"
+                  aria-label="বার্তাটি বন্ধ করুন"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
 
-        {/* ─── MAIN 2-COLUMN GRID ─── */}
-        <div className="chk-grid">
+            {/* ─── MAIN 2-COLUMN GRID ─── */}
+            <div className="chk-grid">
 
           {/* LEFT COLUMN: Configuration & Payment */}
           <div>
@@ -983,10 +1105,10 @@ export default function CheckoutPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '22px', fontWeight: 900, color: '#00B875', lineHeight: 1.1 }}>
-                      {currency_symbol}{billingCycle === 'annual' ? Number(target_plan.price_annual).toLocaleString() : Number(target_plan.price_monthly).toLocaleString()}
+                      {isFreePlan ? '৳০' : `${currency_symbol}${billingCycle === 'annual' ? Number(target_plan.price_annual).toLocaleString() : Number(target_plan.price_monthly).toLocaleString()}`}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
-                      প্রতি {billingCycle === 'annual' ? 'বছর' : 'মাস'}
+                      {isFreePlan ? `${toBnDigits(target_plan.trial_period_days || 14)} দিনের ট্রায়াল` : `প্রতি ${billingCycle === 'annual' ? 'বছর' : 'মাস'}`}
                     </div>
                   </div>
                 </div>
@@ -1011,40 +1133,74 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Billing Cycle Switcher */}
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', display: 'block', color: 'var(--admin-text, #0f172a)' }}>
-                    বিলিং সাইকেল নির্বাচন করুন
-                  </label>
-                  <div className="chk-cycle-grid">
-                    <button
-                      type="button"
-                      disabled={summaryData?.is_checkout_locked}
-                      onClick={() => handleCycleChange('monthly')}
-                      className={`chk-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
-                    >
-                      <div style={{ fontWeight: 800, fontSize: '14px' }}>মাসিক বিলিং</div>
-                      <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
-                        প্রতি মাসে নিয়মিত পরিশোধ
+                {/* Billing Cycle Switcher or Trial Badge */}
+                {isFreePlan ? (
+                  <div style={{
+                    padding: '14px 18px',
+                    borderRadius: '12px',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1.5px solid rgba(16, 185, 129, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: '#10b981',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#065f46' }}>
+                        {toBnDigits(target_plan.trial_period_days || 14)} দিনের আনলিমিটেড ফ্রি ট্রায়াল
                       </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={summaryData?.is_checkout_locked}
-                      onClick={() => handleCycleChange('annual')}
-                      className={`chk-cycle-btn ${billingCycle === 'annual' ? 'active' : ''}`}
-                    >
-                      <span className="chk-savings-badge">
-                        ~২০% সাশ্রয়
-                      </span>
-                      <div style={{ fontWeight: 800, fontSize: '14px' }}>বাৎসরিক বিলিং</div>
-                      <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
-                        এককালীন ১২ মাসের পরিশোধ
+                      <div style={{ fontSize: '12px', color: '#047857', marginTop: '2px' }}>
+                        কোনো পেমেন্ট বা কার্ড ছাড়াই সাথে সাথে সক্রিয় হবে। ট্রায়ালের জন্য কোনো বিলিং সাইকেল প্রযোজ্য নয়।
                       </div>
-                    </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', display: 'block', color: 'var(--admin-text, #0f172a)' }}>
+                      বিলিং সাইকেল নির্বাচন করুন
+                    </label>
+                    <div className="chk-cycle-grid">
+                      <button
+                        type="button"
+                        disabled={summaryData?.is_checkout_locked}
+                        onClick={() => handleCycleChange('monthly')}
+                        className={`chk-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+                      >
+                        <div style={{ fontWeight: 800, fontSize: '14px' }}>মাসিক বিলিং</div>
+                        <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
+                          প্রতি মাসে নিয়মিত পরিশোধ
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={summaryData?.is_checkout_locked}
+                        onClick={() => handleCycleChange('annual')}
+                        className={`chk-cycle-btn ${billingCycle === 'annual' ? 'active' : ''}`}
+                      >
+                        <span className="chk-savings-badge">
+                          ~২০% সাশ্রয়
+                        </span>
+                        <div style={{ fontWeight: 800, fontSize: '14px' }}>বাৎসরিক বিলিং</div>
+                        <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
+                          এককালীন ১২ মাসের পরিশোধ
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CARD 2: Verified Customer & Entity Profile (Read-Only) */}
@@ -1825,88 +1981,94 @@ export default function CheckoutPage() {
                   {target_plan.name_bn || target_plan.name}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--admin-text-muted, #64748b)', marginTop: '2px' }}>
-                  বিলিং সাইকেল: <strong>{billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}</strong>
+                  {isFreePlan ? (
+                    <span>মেয়াদ: <strong>{toBnDigits(target_plan.trial_period_days || 14)} দিন ফ্রি ট্রায়াল</strong></span>
+                  ) : (
+                    <span>বিলিং সাইকেল: <strong>{billingCycle === 'annual' ? 'বাৎসরিক' : 'মাসিক'}</strong></span>
+                  )}
                 </div>
               </div>
 
               {/* Coupon Box */}
-              <div style={{ marginBottom: '18px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px', display: 'block', color: 'var(--admin-text, #0f172a)' }}>
-                  কুপন বা ডিসকাউন্ট কোড
-                </label>
-                {appliedCoupon ? (
-                  <div style={{
-                    background: '#ecfdf5',
-                    border: '1px solid #a7f3d0',
-                    borderRadius: '10px',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div style={{ fontSize: '12px', color: '#065f46', fontWeight: 800 }}>
-                      ✓ {appliedCoupon} কুপন যুক্ত হয়েছে
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      disabled={couponLoading}
-                      style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      মুছে ফেলুন
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        className="admin-form-input"
-                        placeholder="যেমন: SAVE20"
-                        value={couponInput}
-                        onChange={e => {
-                          setCouponInput(e.target.value.toUpperCase())
-                          setCouponError('')
-                        }}
-                        style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: '13px' }}
-                      />
+              {!isFreePlan && (
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px', display: 'block', color: 'var(--admin-text, #0f172a)' }}>
+                    কুপন বা ডিসকাউন্ট কোড
+                  </label>
+                  {appliedCoupon ? (
+                    <div style={{
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#065f46', fontWeight: 800 }}>
+                        ✓ {appliedCoupon} কুপন যুক্ত হয়েছে
+                      </div>
                       <button
                         type="button"
-                        className="chk-btn-outline"
-                        onClick={handleApplyCoupon}
-                        disabled={couponLoading || !couponInput.trim()}
-                        style={{ padding: '0 16px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={handleRemoveCoupon}
+                        disabled={couponLoading}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                       >
-                        {couponLoading ? (
-                          <>
-                            <RefreshCw size={13} className="animate-spin" />
-                            <span>যাচাই হচ্ছে...</span>
-                          </>
-                        ) : (
-                          'প্রয়োগ'
-                        )}
+                        মুছে ফেলুন
                       </button>
                     </div>
-                    {couponError && (
-                      <div style={{
-                        color: '#b91c1c',
-                        fontSize: '12px',
-                        marginTop: '6px',
-                        fontWeight: 600,
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}>
-                        <AlertTriangle size={13} style={{ flexShrink: 0, color: '#dc2626' }} />
-                        <span>{couponError}</span>
+                  ) : (
+                    <div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          className="admin-form-input"
+                          placeholder="যেমন: SAVE20"
+                          value={couponInput}
+                          onChange={e => {
+                            setCouponInput(e.target.value.toUpperCase())
+                            setCouponError('')
+                          }}
+                          style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: '13px' }}
+                        />
+                        <button
+                          type="button"
+                          className="chk-btn-outline"
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponInput.trim()}
+                          style={{ padding: '0 16px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {couponLoading ? (
+                            <>
+                              <RefreshCw size={13} className="animate-spin" />
+                              <span>যাচাই হচ্ছে...</span>
+                            </>
+                          ) : (
+                            'প্রয়োগ'
+                          )}
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                      {couponError && (
+                        <div style={{
+                          color: '#b91c1c',
+                          fontSize: '12px',
+                          marginTop: '6px',
+                          fontWeight: 600,
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <AlertTriangle size={13} style={{ flexShrink: 0, color: '#dc2626' }} />
+                          <span>{couponError}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Price Breakdown */}
               <div style={{ fontSize: '13.5px' }}>
@@ -1982,6 +2144,8 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
+        </>
+      )}
 
         {/* ─── INVOICE PREVIEW MODAL ─── */}
         {invoicePreviewModal && typeof document !== 'undefined' && createPortal(

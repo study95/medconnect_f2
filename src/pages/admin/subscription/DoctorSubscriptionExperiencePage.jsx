@@ -420,16 +420,29 @@ export default function DoctorSubscriptionExperiencePage() {
           <div>
             <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
               {isExpired ? (
-                <>
-                  <span className="doc-sub-badge-tier" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-                    <Shield size={12} />
-                    ফ্রি ট্রায়াল সমাপ্ত
-                  </span>
-                  <span className="doc-sub-badge-status expired">
-                    <span className="doc-sub-dot" style={{ background: '#ef4444' }} />
-                    সেবা স্থগিত
-                  </span>
-                </>
+                isTrial ? (
+                  <>
+                    <span className="doc-sub-badge-tier" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                      <Shield size={12} />
+                      ফ্রি ট্রায়াল সমাপ্ত
+                    </span>
+                    <span className="doc-sub-badge-status expired">
+                      <span className="doc-sub-dot" style={{ background: '#ef4444' }} />
+                      সেবা স্থগিত
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="doc-sub-badge-tier" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                      <Shield size={12} />
+                      {sub?.plan?.tier_bn || sub?.plan?.tier || 'প্র্যাকটিস'} টায়ার
+                    </span>
+                    <span className="doc-sub-badge-status expired">
+                      <span className="doc-sub-dot" style={{ background: '#ef4444' }} />
+                      মেয়াদ উত্তীর্ণ (স্থগিত)
+                    </span>
+                  </>
+                )
               ) : isTrial ? (
                 <>
                   <span className="doc-sub-badge-tier">
@@ -506,9 +519,11 @@ export default function DoctorSubscriptionExperiencePage() {
             </h2>
             <p className="text-muted" style={{ fontSize: '13.5px', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
               {isExpired
-                ? 'সেবা নিরবচ্ছিন্ন রাখতে অনুগ্রহ করে আপনার পছন্দের প্যাকেজে আপগ্রেড করুন।'
+                ? (isTrial
+                    ? 'আপনার ফ্রি ট্রায়ালের মেয়াদ শেষ হয়েছে। ডিজিটাল প্রেসক্রিপশন ও চেম্বার সেবা অব্যাহত রাখতে পছন্দের প্যাকেজ বেছে নিন।'
+                    : `আপনার ${sub?.plan?.name_bn || sub?.plan?.name || 'সাবস্ক্রিপশন'} প্যাকেজের মেয়াদ শেষ হয়েছে। সেবা নিরবচ্ছিন্ন রাখতে অনুগ্রহ করে রিনিউ বা আপগ্রেড করুন।`)
                 : isTrial
-                ? 'বর্তমানে ১৪ দিনের ফ্রি ট্রায়াল সক্রিয় রয়েছে। সকল ডিজিটাল প্রেসক্রিপশন ও চেম্বার সুবিধা উপভোগ করুন।'
+                ? `বর্তমানে ${String(sub?.plan?.trial_period_days || 14).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d])} দিনের ফ্রি ট্রায়াল সক্রিয় রয়েছে। সকল ডিজিটাল প্রেসক্রিপশন ও চেম্বার সুবিধা উপভোগ করুন।`
                 : 'ডক্টর প্ল্যাটফর্মে চিকিৎসকদের জন্য ডিজিটাল প্রেসক্রিপশন ও ক্লিনিক্যাল প্র্যাকটিস সুবিধা কার্যকর রয়েছে।'}
             </p>
           </div>
@@ -516,21 +531,30 @@ export default function DoctorSubscriptionExperiencePage() {
           <div className="doc-sub-hero-price-box">
             <div className="text-end" style={{ whiteSpace: 'nowrap' }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}>
-                {isExpired ? 'প্যাকেজ শুরু' : isTrial ? 'বর্তমান চার্জ' : 'সাইকেল ফি'}
+                {isExpired ? (isTrial ? 'প্যাকেজ শুরু' : 'সর্বশেষ প্যাকেজ চার্জ') : isTrial ? 'বর্তমান চার্জ' : 'সাইকেল ফি'}
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', lineHeight: 1.2 }}>
                 {isExpired ? (
-                  <span>
-                    ৳ {startingPrice.toLocaleString()}
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}> / মাস</span>
-                  </span>
+                  isTrial ? (
+                    <span>
+                      ৳ {startingPrice.toLocaleString()}
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}> / মাস</span>
+                    </span>
+                  ) : (
+                    <span>
+                      ৳ {Number(sub?.current_price || (sub?.billing_cycle === 'annual' ? sub?.plan?.price_annual : sub?.plan?.price_monthly) || startingPrice).toLocaleString()}
+                      <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#64748b' }}>
+                        {' '}/ {sub?.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
+                      </span>
+                    </span>
+                  )
                 ) : isTrial ? (
                   <span>
                     ৳ ০ <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>(ফ্রি)</span>
                   </span>
                 ) : (
                   <span>
-                    ৳ {Number(sub?.current_price || sub?.plan?.price_monthly || 0).toLocaleString()}
+                    ৳ {Number(sub?.current_price || (sub?.billing_cycle === 'annual' ? sub?.plan?.price_annual : sub?.plan?.price_monthly) || 0).toLocaleString()}
                     <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#94a3b8' }}>
                       {' '}/ {sub?.billing_cycle === 'annual' ? 'বছর' : 'মাস'}
                     </span>
@@ -545,9 +569,9 @@ export default function DoctorSubscriptionExperiencePage() {
               style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontWeight: 700 }}
             >
               <Zap size={14} />
-              <span>আপগ্রেড করুন</span>
+              <span>{isExpired ? (isTrial ? 'আপগ্রেড করুন' : 'রিনিউ / আপগ্রেড') : 'আপগ্রেড করুন'}</span>
             </button>
-            {sub?.status === 'active' && !isTrial && (
+            {sub?.status === 'active' && !isTrial && !isExpired && (
               <button
                 onClick={() => setShowCancelModal(true)}
                 className="doc-sub-btn-danger"
@@ -978,16 +1002,25 @@ export default function DoctorSubscriptionExperiencePage() {
                         style={{
                           fontSize: '11.5px',
                           fontWeight: 800,
-                          color: '#059669',
+                          color: isExpired ? '#dc2626' : '#059669',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '4px',
-                          background: 'rgba(16, 185, 129, 0.1)',
+                          background: isExpired ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          border: isExpired ? '1px solid rgba(239, 68, 68, 0.25)' : 'none',
                           padding: '3px 10px',
                           borderRadius: '999px'
                         }}
                       >
-                        <CheckCircle2 size={13} /> সক্রিয় প্ল্যান
+                        {isExpired ? (
+                          <>
+                            <AlertTriangle size={13} /> মেয়াদ শেষ
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={13} /> সক্রিয় প্ল্যান
+                          </>
+                        )}
                       </span>
                     )}
                   </div>
@@ -1127,15 +1160,15 @@ export default function DoctorSubscriptionExperiencePage() {
 
                 {/* Card Action Button */}
                 <div style={{ paddingTop: '20px', marginTop: '20px', borderTop: '1px solid var(--admin-border, #e2e8f0)' }}>
-                  {isCurrent ? (
+                  {isCurrent && !isExpired ? (
                     <button
                       disabled
                       className="w-100"
                       style={{
                         padding: '12px',
-                        background: isExpired ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.1)',
-                        border: isExpired ? '1.5px solid rgba(239, 68, 68, 0.25)' : '1.5px solid rgba(16, 185, 129, 0.3)',
-                        color: isExpired ? '#dc2626' : '#059669',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                        color: '#059669',
                         fontWeight: 700,
                         borderRadius: '12px',
                         fontSize: '13px',
@@ -1146,8 +1179,8 @@ export default function DoctorSubscriptionExperiencePage() {
                         gap: '6px'
                       }}
                     >
-                      {isExpired ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
-                      <span>{isExpired ? 'মেয়াদোত্তীর্ণ প্ল্যান (আপগ্রেড করুন)' : 'বর্তমান সক্রিয় প্ল্যান'}</span>
+                      <CheckCircle2 size={15} />
+                      <span>বর্তমান সক্রিয় প্ল্যান</span>
                     </button>
                   ) : overview?.is_checkout_locked ? (
                     <button
@@ -1181,14 +1214,23 @@ export default function DoctorSubscriptionExperiencePage() {
                         borderRadius: '12px',
                         fontSize: '13px',
                         fontWeight: 700,
-                        background: isFree ? '#059669' : undefined,
-                        boxShadow: isFree ? '0 4px 14px rgba(5, 150, 105, 0.25)' : undefined
+                        background: (isCurrent && isExpired)
+                          ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                          : isFree ? '#059669' : undefined,
+                        boxShadow: (isCurrent && isExpired)
+                          ? '0 4px 14px rgba(37, 99, 235, 0.25)'
+                          : isFree ? '0 4px 14px rgba(5, 150, 105, 0.25)' : undefined
                       }}
                     >
-                      {isFree ? (
+                      {isCurrent && isExpired ? (
+                        <>
+                          <Zap size={14} />
+                          <span>{isFree ? 'আপগ্রেড করুন' : 'প্ল্যানটি রিনিউ করুন'}</span>
+                        </>
+                      ) : isFree ? (
                         <>
                           <Sparkles size={14} />
-                          <span>১৪ দিনের ফ্রি ট্রায়াল শুরু করুন</span>
+                          <span>{String(plan.trial_period_days || 14).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d])} দিনের ফ্রি ট্রায়াল শুরু করুন</span>
                         </>
                       ) : (
                         <>

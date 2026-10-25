@@ -41,6 +41,17 @@ export default function CommissionMemo({ show, onClose, data = [], summary = {},
   const memoNumber = `CM-${entityTag}-${uniqueSerial}`
   const todayDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
+  const formatMemoDate = (val) => {
+    if (!val) return '—'
+    try {
+      const d = new Date(val)
+      if (isNaN(d.getTime())) return String(val).split('T')[0]
+      return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(d)
+    } catch {
+      return String(val).split('T')[0]
+    }
+  }
+
   // Financial Summary
   const totalCount = data.length
   const totalFees = data.reduce((acc, cur) => acc + Number(cur.amount || 0), 0) || Number(summary.total_fees || 0)
@@ -314,7 +325,7 @@ export default function CommissionMemo({ show, onClose, data = [], summary = {},
                         }}
                       >
                         <td style={{ padding: '10px 12px', color: '#64748B' }}>{index + 1}</td>
-                        <td style={{ padding: '10px 12px', color: '#334155', whiteSpace: 'nowrap' }}>{row.date}</td>
+                        <td style={{ padding: '10px 12px', color: '#334155', whiteSpace: 'nowrap' }}>{formatMemoDate(row.date || row.appointment_date)}</td>
                         <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.patient_name}</td>
                         <td style={{ padding: '10px 12px', color: '#475569', fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>
                           {row.public_id || row.registration_id}
