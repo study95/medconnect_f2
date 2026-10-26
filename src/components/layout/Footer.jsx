@@ -67,7 +67,7 @@ function Footer() {
   ]
 
   const PARTNER_LINKS = [
-    { label: 'রোগীদের সেবা ও সুবিধা', to: '/register-patient', icon: <IconUserPlus size={16} /> },
+    { label: 'আপনি কি রোগী?', to: '/register-patient', icon: <IconUserPlus size={16} /> },
     { label: 'আপনি কি ডাক্তার?', to: '/register-doctor', icon: <IconUserPlus size={16} /> },
     { label: 'আপনার কি হাসপাতাল আছে?', to: '/register-hospital', icon: <IconBuildingHospital size={16} /> },
     { label: 'পার্টনার ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> },
