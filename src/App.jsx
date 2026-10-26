@@ -59,6 +59,7 @@ const LegalPage             = lazy(() => import('./pages/info/LegalPage'))
 const SupportPage           = lazy(() => import('./pages/info/SupportPage'))
 const DoctorInfoPage        = lazy(() => import('./pages/info/DoctorInfoPage'))
 const HospitalInfoPage      = lazy(() => import('./pages/info/HospitalInfoPage'))
+const PatientInfoPage       = lazy(() => import('./pages/info/PatientInfoPage'))
 const NotFoundPage          = lazy(() => import('./pages/info/NotFoundPage'))
 
 // Admin pages
@@ -633,6 +634,8 @@ function App() {
                   <Route path="/support"         element={<SupportPage />} />
                   <Route path="/register-doctor"   element={<DoctorInfoPage />} />
                   <Route path="/register-hospital" element={<HospitalInfoPage />} />
+                  <Route path="/register-patient"  element={<PatientInfoPage />} />
+                  <Route path="/register-paitent"  element={<PatientInfoPage />} />
 
                   <Route path="/book-appointment" element={<BookAppointmentPage />} />
                   <Route path="/book-appointment/:doctorId" element={<BookAppointmentPage />} />

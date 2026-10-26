@@ -54,14 +54,6 @@ function AppNavbar() {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 20
       setScrolled(prev => prev !== isScrolled ? isScrolled : prev)
-
-      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolledPct = height > 0 ? (winScroll / height) * 100 : 0;
-      
-      document.querySelectorAll('.scroll-progress-bar').forEach(el => {
-        el.style.width = `${scrolledPct}%`;
-      });
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
     handleScroll()
@@ -271,23 +263,6 @@ function AppNavbar() {
           transform: translateY(-1px);
         }
 
-        /* Scroll Progress Bar */
-        .scroll-progress-container {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 100%;
-          height: 3px;
-          background: rgba(0, 184, 117, 0.1);
-          z-index: 10;
-        }
-        .scroll-progress-bar {
-          height: 100%;
-          background: #00B875;
-          width: 0%;
-          transition: width 0.15s ease;
-        }
-
         /* Custom Dropdown Styling */
         #topbar-user-dropdown + .dropdown-menu,
         .dropdown-menu {
@@ -476,10 +451,6 @@ function AppNavbar() {
 
         {/* DESKTOP MAIN NAVIGATION HEADER (WHITE BAR) */}
         <div className="db-main-header d-none d-lg-flex" style={{ position: 'relative' }}>
-          <div className="scroll-progress-container">
-            <div className="scroll-progress-bar"></div>
-          </div>
-
           <Container className="d-flex justify-content-between align-items-center">
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center text-decoration-none">
@@ -532,10 +503,6 @@ function AppNavbar() {
           padding: '10px 0',
           position: 'relative'
         }}>
-          <div className="scroll-progress-container">
-            <div className="scroll-progress-bar"></div>
-          </div>
-
           <Container className="d-flex justify-content-between align-items-center">
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center text-decoration-none">

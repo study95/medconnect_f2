@@ -656,7 +656,7 @@ function RegistrationCards() {
       title: 'Patient Registration',
       subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
       desc: 'ডাক্তার খুঁজুন এবং সহজেই অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
-      link: '/register',
+      link: '/register-patient',
       icon: (
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00B875" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="10" cy="7" r="4" />
