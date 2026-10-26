@@ -1572,49 +1572,60 @@ function HospitalDetailPage() {
             className="sticky-mobile-tabs"
             style={{
               display: 'flex',
+              alignItems: 'center',
+              gap: 8,
               overflowX: 'auto',
               whiteSpace: 'nowrap',
-              padding: '0 8px',
+              padding: '8px 14px 10px 14px',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
             }}
           >
             {[
-              { key: 'summary',    label: 'সংক্ষিপ্ত' },
-              { key: 'doctors',    label: 'ডাক্তার' },
+              { key: 'summary',    label: 'ওভারভিউ' },
               { key: 'department', label: 'বিভাগ সমূহ' },
               { key: 'facilities', label: 'সুবিধা সমূহ' },
+              { key: 'doctors',    label: 'ডাক্তার' },
               { key: 'gallery',    label: 'গ্যালারি' },
               { key: 'reviews',    label: 'রিভিউ' }
-            ].map(tab => (
-              <button
-                key={tab.key}
-                data-key={tab.key}
-                type="button"
-                onClick={() => scrollToSection(tab.key)}
-                style={{
-                  flex: '0 0 auto',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: `2.5px solid ${activeTab === tab.key ? '#00B875' : 'transparent'}`,
-                  color: activeTab === tab.key ? '#00B875' : '#64748B',
-                  fontWeight: activeTab === tab.key ? 900 : 700,
-                  fontSize: 13.5,
-                  padding: '10px 14px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  fontFamily: 'inherit'
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            ].map(tab => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  data-key={tab.key}
+                  type="button"
+                  onClick={() => scrollToSection(tab.key)}
+                  style={{
+                    flex: '0 0 auto',
+                    background: isActive ? '#00B875' : '#F8FAFC',
+                    border: `1px solid ${isActive ? '#00B875' : '#E2E8F0'}`,
+                    borderRadius: 20,
+                    color: isActive ? '#FFFFFF' : '#64748B',
+                    fontWeight: isActive ? 800 : 600,
+                    fontSize: 13,
+                    padding: '6px 14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: isActive ? '0 2px 8px rgba(0, 184, 117, 0.35)' : 'none',
+                    fontFamily: 'inherit',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1.2
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* 3. Navigation Tabs */}
-      <div className="sticky-tab-bar" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}` }}>
+      <div className="sticky-tab-bar d-none d-lg-block" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}` }}>
         <Container>
           <Nav
             ref={tabContainerRef}
@@ -2855,38 +2866,70 @@ function HospitalDetailPage() {
         boxShadow: '0 -6px 25px rgba(0, 0, 0, 0.12)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-          {/* Left: Hotline Number */}
+          {/* Left: Hotline Number (Stylized capsule matching right button) */}
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', display: 'block', marginBottom: 2 }}>
-              জরুরি হটলাইন
-            </span>
             {hospital?.phone ? (
               <a
                 href={`tel:${hospital.phone}`}
                 style={{
-                  fontSize: 15,
-                  fontWeight: 950,
-                  color: '#1E293B',
                   textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  padding: '6px 12px',
+                  background: '#F8FAFC',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 12,
+                  minHeight: 44,
+                  boxSizing: 'border-box'
                 }}
               >
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E6F8F3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <IconPhone size={14} color={primaryGreen} />
-                </div>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#059669',
+                  lineHeight: 1.15,
+                  marginBottom: 2,
+                  letterSpacing: '0.01em',
+                  display: 'block'
+                }}>
+                  হটলাইন
+                </span>
+                <span style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: '#1E293B',
+                  lineHeight: 1.15,
+                  letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: 'block'
+                }}>
                   {hospital.phone}
                 </span>
               </a>
             ) : (
-              <span style={{ fontSize: 13.5, fontWeight: 800, color: '#94A3B8' }}>
-                ফোন উপলব্ধ নেই
-              </span>
+              <div style={{
+                padding: '6px 12px',
+                background: '#F8FAFC',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                minHeight: 44,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                boxSizing: 'border-box'
+              }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#94A3B8', marginBottom: 2 }}>
+                  হটলাইন
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8' }}>
+                  উপলব্ধ নেই
+                </span>
+              </div>
             )}
           </div>
-
           {/* Right: Appointment Button */}
           <button
             type="button"

@@ -115,7 +115,10 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
         setSearchQuery(initialPhone)
         handleSearchSubmit(null, initialPhone)
       } else {
-        setTimeout(() => inputRef.current?.focus(), 120)
+        // Only autofocus on desktop screens to prevent abrupt virtual keyboard popup on mobile
+        if (typeof window !== 'undefined' && window.innerWidth > 640) {
+          setTimeout(() => inputRef.current?.focus(), 120)
+        }
       }
     } else {
       document.body.style.overflow = ''
@@ -215,7 +218,9 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
             <input
               ref={inputRef}
               type="text"
-              placeholder="মোবাইল নং বা অ্যাপয়েন্টমেন্ট আইডি"
+              inputMode="text"
+              autoComplete="off"
+              placeholder="মোবাইল বা আইডি দিন"
               value={searchQuery}
               onChange={e => {
                 setSearchQuery(e.target.value)
@@ -1203,6 +1208,30 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
             background: #CBD5E1;
             border-radius: 999px;
             margin: 8px auto 2px auto;
+          }
+
+          /* Mobile Search Input & Button Compact Layout */
+          .qls-search-form {
+            padding: 10px 14px;
+            gap: 7px;
+          }
+          .qls-input {
+            height: 40px;
+            padding: 0 26px 0 32px;
+            font-size: 13.5px;
+          }
+          .qls-input-icon {
+            left: 9px;
+          }
+          .qls-input::placeholder {
+            font-size: 12px;
+            font-weight: 500;
+          }
+          .qls-submit-btn {
+            height: 40px;
+            padding: 0 13px;
+            font-size: 12px;
+            gap: 5px;
           }
         }
       `}</style>
