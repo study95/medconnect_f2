@@ -1003,7 +1003,7 @@ export default function HospitalInfoPage() {
 
           /* Bottom CTA */
           .hospital-bottom-cta {
-            padding: 44px 0 38px !important;
+            padding: 44px 0 110px !important;
           }
           .hospital-bottom-cta-title {
             font-size: 20px !important;

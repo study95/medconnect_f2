@@ -12,13 +12,14 @@ import OptimizedImage from '../components/common/OptimizedImage'
 import ScrollReveal from '../components/common/ScrollReveal'
 import SeoHead from '../components/common/SeoHead'
 import QuickLiveSerialModal from '../components/common/QuickLiveSerialModal'
+import useLocations from '../hooks/useLocations'
 
 import {
-  IconArrowRight, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
+  IconArrowRight, IconArrowLeft, IconCalendar, IconShieldCheck, IconClock, IconStar, IconHeadset,
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
   IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus,
-  IconSearch, IconX, IconActivity, IconUserHeart, IconHelp
+  IconSearch, IconX, IconActivity, IconUserHeart, IconHelp, IconLoader2
 } from '@tabler/icons-react'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -1240,8 +1241,25 @@ function DigitalDashboardBanner() {
 function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [], popularUpazilas = [], stats = {} }) {
   const navigate = useNavigate()
   const [showLocationModal, setShowLocationModal] = useState(false)
-  const [modalTab, setModalTab] = useState('divisions') // 'divisions' | 'districts'
+  const [drillStep, setDrillStep] = useState('divisions') // 'divisions' | 'districts' | 'upazilas' | 'unions'
+  const [activeDivision, setActiveDivision] = useState(null)
+  const [activeDistrict, setActiveDistrict] = useState(null)
+  const [activeUpazila, setActiveUpazila] = useState(null)
   const [locationSearch, setLocationSearch] = useState('')
+
+  // Locations Cascade Hook (Powers instant caching & chained fetching)
+  const {
+    districts: cascadeDistricts,
+    upazilas: cascadeUpazilas,
+    unions: cascadeUnions,
+    setSelectedDivision,
+    setSelectedDistrict,
+    setSelectedUpazila,
+    setSelectedUnion,
+    loadingDistricts,
+    loadingUpazilas,
+    loadingUnions
+  } = useLocations()
 
   // Bottom sheet swipe down to dismiss refs & handlers (Specialties Style)
   const sheetRef = useRef(null)
@@ -1249,6 +1267,18 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
   const sheetTouchStartY = useRef(0)
   const sheetCurrentY = useRef(0)
   const isSheetDragging = useRef(false)
+
+  const resetDrillState = () => {
+    setDrillStep('divisions')
+    setActiveDivision(null)
+    setActiveDistrict(null)
+    setActiveUpazila(null)
+    setSelectedDivision('')
+    setSelectedDistrict('')
+    setSelectedUpazila('')
+    setSelectedUnion('')
+    setLocationSearch('')
+  }
 
   const closeLocationModal = () => {
     if (sheetRef.current) {
@@ -1261,7 +1291,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     }
     setTimeout(() => {
       setShowLocationModal(false)
-      setLocationSearch('')
+      resetDrillState()
       if (sheetRef.current) {
         sheetRef.current.style.transform = ''
       }
@@ -1316,6 +1346,88 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
       }
       sheetCurrentY.current = 0
     }
+  }
+
+  // Stepper handlers
+  const handleSelectDivision = (div) => {
+    setActiveDivision(div)
+    setActiveDistrict(null)
+    setActiveUpazila(null)
+    setSelectedDivision(String(div.id))
+    setSelectedDistrict('')
+    setSelectedUpazila('')
+    setSelectedUnion('')
+    setDrillStep('districts')
+    setLocationSearch('')
+  }
+
+  const handleSelectDistrict = (dist) => {
+    setActiveDistrict(dist)
+    setActiveUpazila(null)
+    setSelectedDistrict(String(dist.id))
+    setSelectedUpazila('')
+    setSelectedUnion('')
+    setDrillStep('upazilas')
+    setLocationSearch('')
+  }
+
+  const handleSelectUpazila = (upaz) => {
+    setActiveUpazila(upaz)
+    setSelectedUpazila(String(upaz.id))
+    setSelectedUnion('')
+    setDrillStep('unions')
+    setLocationSearch('')
+  }
+
+  const handleSelectUnion = (union) => {
+    closeLocationModal()
+    const queryParts = []
+    if (activeDivision?.id) queryParts.push(`division_id=${activeDivision.id}`)
+    if (activeDistrict?.id) queryParts.push(`district_id=${activeDistrict.id}`)
+    if (activeUpazila?.id) queryParts.push(`upazila_id=${activeUpazila.id}`)
+    if (union?.id) queryParts.push(`union_id=${union.id}`)
+    const qs = queryParts.length ? `?${queryParts.join('&')}` : ''
+    navigate(`/doctors${qs}`)
+  }
+
+  const handleGoBack = () => {
+    if (drillStep === 'unions') {
+      setDrillStep('upazilas')
+      setActiveUpazila(null)
+      setSelectedUpazila('')
+      setSelectedUnion('')
+      setLocationSearch('')
+    } else if (drillStep === 'upazilas') {
+      setDrillStep('districts')
+      setActiveDistrict(null)
+      setSelectedDistrict('')
+      setSelectedUpazila('')
+      setSelectedUnion('')
+      setLocationSearch('')
+    } else if (drillStep === 'districts') {
+      setDrillStep('divisions')
+      setActiveDivision(null)
+      setSelectedDivision('')
+      setSelectedDistrict('')
+      setSelectedUpazila('')
+      setSelectedUnion('')
+      setLocationSearch('')
+    }
+  }
+
+  const handleViewAllAtDivision = () => {
+    closeLocationModal()
+    navigate(`/doctors?division_id=${activeDivision.id}`)
+  }
+
+  const handleViewAllAtDistrict = () => {
+    closeLocationModal()
+    navigate(`/doctors?division_id=${activeDivision.id}&district_id=${activeDistrict.id}`)
+  }
+
+  const handleViewAllAtUpazila = () => {
+    closeLocationModal()
+    navigate(`/doctors?division_id=${activeDivision.id}&district_id=${activeDistrict.id}&upazila_id=${activeUpazila.id}`)
   }
 
   // Prevent background scroll when modal is open
@@ -1537,26 +1649,186 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     })
   }, [popularDistricts])
 
-  const filteredDivisions = allEightDivisions.filter(d => {
+  // ── Step 1: Divisions ──
+  const filteredDivisions = useMemo(() => {
     const q = locationSearch.trim().toLowerCase()
-    if (!q) return true
-    return (
+    if (!q) return allEightDivisions
+    return allEightDivisions.filter(d =>
       d.name.toLowerCase().includes(q) ||
       (d.enName && d.enName.toLowerCase().includes(q)) ||
       (d.slug && d.slug.toLowerCase().includes(q))
     )
-  })
+  }, [allEightDivisions, locationSearch])
 
-  const filteredDistricts = activeDistrictsList.filter(d => {
+  // ── Step 2: Districts (for activeDivision) ──
+  const activeDistrictsForStep = useMemo(() => {
+    if (!activeDivision) return []
+
+    if (Array.isArray(cascadeDistricts) && cascadeDistricts.length > 0) {
+      return cascadeDistricts.map(dist => {
+        const bnName = dist.bangla_name || DISTRICT_NAME_BN[(dist.slug || dist.name || '').toLowerCase()] || dist.name
+        const docCount = Number(dist.doctors_count || 0)
+        const hospCount = Number(dist.hospitals_count || 0)
+        let subText = ''
+        if (docCount > 0 && hospCount > 0) {
+          subText = `${toBnNum(docCount)} জন ডাক্তার • ${toBnNum(hospCount)}টি হাসপাতাল`
+        } else if (docCount > 0) {
+          subText = `${toBnNum(docCount)} জন ডাক্তার`
+        } else if (hospCount > 0) {
+          subText = `${toBnNum(hospCount)}টি হাসপাতাল`
+        } else {
+          subText = 'জেলা ভিত্তিক সেবা'
+        }
+        return {
+          id: dist.id,
+          name: bnName,
+          enName: dist.name,
+          slug: dist.slug || (dist.name || '').toLowerCase(),
+          docCount,
+          hospCount,
+          subText
+        }
+      })
+    }
+
+    // Fallback: Check popularDivisions embedded districts
+    const foundDiv = popularDivisions?.find(d => String(d.id) === String(activeDivision.id))
+    if (foundDiv && Array.isArray(foundDiv.districts) && foundDiv.districts.length > 0) {
+      return foundDiv.districts.map(dist => {
+        const bnName = dist.bangla_name || DISTRICT_NAME_BN[(dist.slug || dist.name || '').toLowerCase()] || dist.name
+        const docCount = Number(dist.doctors_count || 0)
+        const hospCount = Number(dist.hospitals_count || 0)
+        let subText = ''
+        if (docCount > 0 && hospCount > 0) {
+          subText = `${toBnNum(docCount)} জন ডাক্তার • ${toBnNum(hospCount)}টি হাসপাতাল`
+        } else if (docCount > 0) {
+          subText = `${toBnNum(docCount)} জন ডাক্তার`
+        } else if (hospCount > 0) {
+          subText = `${toBnNum(hospCount)}টি হাসপাতাল`
+        } else {
+          subText = 'জেলা ভিত্তিক সেবা'
+        }
+        return {
+          id: dist.id,
+          name: bnName,
+          enName: dist.name,
+          slug: dist.slug || (dist.name || '').toLowerCase(),
+          docCount,
+          hospCount,
+          subText
+        }
+      })
+    }
+
+    return []
+  }, [activeDivision, cascadeDistricts, popularDivisions])
+
+  const filteredDistricts = useMemo(() => {
     const q = locationSearch.trim().toLowerCase()
-    if (!q) return true
-    return (
+    if (!q) return activeDistrictsForStep
+    return activeDistrictsForStep.filter(d =>
       d.name.toLowerCase().includes(q) ||
       (d.enName && d.enName.toLowerCase().includes(q)) ||
-      (d.slug && d.slug.toLowerCase().includes(q)) ||
-      (d.division && d.division.toLowerCase().includes(q))
+      (d.slug && d.slug.toLowerCase().includes(q))
     )
-  })
+  }, [activeDistrictsForStep, locationSearch])
+
+  // ── Step 3: Upazilas (for activeDistrict) ──
+  const activeUpazilasForStep = useMemo(() => {
+    if (!activeDistrict || !Array.isArray(cascadeUpazilas)) return []
+    return cascadeUpazilas.map(upaz => {
+      const bnName = upaz.bangla_name || upaz.name
+      const docCount = Number(upaz.doctors_count || 0)
+      const hospCount = Number(upaz.hospitals_count || 0)
+      let subText = ''
+      if (docCount > 0) {
+        subText = `${toBnNum(docCount)} জন ডাক্তার সেবা`
+      } else if (hospCount > 0) {
+        subText = `${toBnNum(hospCount)}টি হাসপাতাল`
+      } else {
+        subText = 'উপজেলা স্বাস্থ্যসেবা'
+      }
+      return {
+        id: upaz.id,
+        name: bnName,
+        enName: upaz.name,
+        slug: upaz.slug || (upaz.name || '').toLowerCase(),
+        docCount,
+        hospCount,
+        subText
+      }
+    })
+  }, [activeDistrict, cascadeUpazilas])
+
+  const filteredUpazilas = useMemo(() => {
+    const q = locationSearch.trim().toLowerCase()
+    if (!q) return activeUpazilasForStep
+    return activeUpazilasForStep.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      (u.enName && u.enName.toLowerCase().includes(q)) ||
+      (u.slug && u.slug.toLowerCase().includes(q))
+    )
+  }, [activeUpazilasForStep, locationSearch])
+
+  // ── Step 4: Unions (for activeUpazila) ──
+  const activeUnionsForStep = useMemo(() => {
+    if (!activeUpazila || !Array.isArray(cascadeUnions)) return []
+    return cascadeUnions.map(un => {
+      const bnName = un.bangla_name || un.name
+      const docCount = Number(un.doctors_count || 0)
+      return {
+        id: un.id,
+        name: bnName,
+        enName: un.name,
+        slug: un.slug || (un.name || '').toLowerCase(),
+        docCount,
+        subText: docCount > 0 ? `${toBnNum(docCount)} জন ডাক্তার` : 'ইউনিয়ন স্বাস্থ্যসেবা'
+      }
+    })
+  }, [activeUpazila, cascadeUnions])
+
+  const filteredUnions = useMemo(() => {
+    const q = locationSearch.trim().toLowerCase()
+    if (!q) return activeUnionsForStep
+    return activeUnionsForStep.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      (u.enName && u.enName.toLowerCase().includes(q))
+    )
+  }, [activeUnionsForStep, locationSearch])
+
+  // Modal Header Info & Placeholder
+  const modalHeaderInfo = useMemo(() => {
+    if (drillStep === 'unions') {
+      return {
+        title: `${activeUpazila?.name || 'উপজেলা'}-এর ইউনিয়নসমূহ`,
+        badge: `${toBnNum(filteredUnions.length)}টি ইউনিয়ন`,
+        sub: 'ইউনিয়ন নির্বাচন করুন অথবা সরাসরি উপজেলার সকল ডাক্তার দেখুন',
+        placeholder: `${activeUpazila?.name || 'উপজেলা'}-এর ইউনিয়ন খুঁজুন...`
+      }
+    }
+    if (drillStep === 'upazilas') {
+      return {
+        title: `${activeDistrict?.name || 'জেলা'}-এর উপজেলাসমূহ`,
+        badge: `${toBnNum(filteredUpazilas.length)}টি উপজেলা`,
+        sub: 'উপজেলা নির্বাচন করুন অথবা সরাসরি জেলার সকল ডাক্তার দেখুন',
+        placeholder: `${activeDistrict?.name || 'জেলা'}-এর উপজেলা খুঁজুন...`
+      }
+    }
+    if (drillStep === 'districts') {
+      return {
+        title: `${activeDivision?.name || 'বিভাগ'}-এর জেলাসমূহ`,
+        badge: `${toBnNum(filteredDistricts.length)}টি জেলা`,
+        sub: 'জেলা নির্বাচন করে উপজেলায় প্রবেশ করুন অথবা সরাসরি সব ডাক্তার দেখুন',
+        placeholder: `${activeDivision?.name || 'বিভাগ'}-এর জেলা খুঁজুন...`
+      }
+    }
+    return {
+      title: 'বাংলাদেশের সকল বিভাগ',
+      badge: `${toBnNum(filteredDivisions.length)}টি বিভাগ`,
+      sub: 'বিভাগ নির্বাচন করে জেলা ও উপজেলা অনুযায়ী সরাসরি ডাক্তার খুঁজুন',
+      placeholder: 'বিভাগের নাম লিখে খুঁজুন (যেমন: সিলেট, ঢাকা, রাজশাহী)...'
+    }
+  }, [drillStep, activeDivision, activeDistrict, activeUpazila, filteredDivisions.length, filteredDistricts.length, filteredUpazilas.length, filteredUnions.length])
 
   return (
     <section style={{ background: '#F8FAFC', padding: '30px 0 32px' }}>
@@ -1631,8 +1903,9 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                           onClick={(e) => {
                             e.stopPropagation()
                             if (tag.isMore) {
-                              setModalTab('districts')
-                              setLocationSearch('')
+                              const found = allEightDivisions.find(d => d.id === div.id || d.slug === div.searchKey)
+                              const divObj = found || { id: div.id, name: div.bnName, slug: div.searchKey }
+                              handleSelectDivision(divObj)
                               setShowLocationModal(true)
                             } else {
                               navigate(`/doctors/${tag.slug}`)
@@ -1668,8 +1941,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           <Col xs={12} sm={6} lg={3}>
             <div
               onClick={() => {
-                setModalTab('divisions')
-                setLocationSearch('')
+                resetDrillState()
                 setShowLocationModal(true)
               }}
               className="bbl-bento-card bbl-bento-all-card"
@@ -1800,7 +2072,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         </div>
       </Container>
 
-      {/* ── Unified All Divisions & Districts Searchable Modal (Specialties Style) ── */}
+      {/* ── Unified Drill-Down Searchable Location Navigator Modal ── */}
       {showLocationModal && typeof document !== 'undefined' && createPortal(
         <div
           ref={overlayRef}
@@ -1831,13 +2103,13 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             >
               <div>
                 <div className="bbl-popup-title">
-                  বাংলাদেশের সকল বিভাগ ও জেলা
+                  {modalHeaderInfo.title}
                   <span className="bbl-popup-badge">
-                    {toBnNum(stats?.total_divisions ?? 8)}টি বিভাগ • {toBnNum(stats?.total_districts ?? (popularDistricts?.length || 3))}টি জেলা
+                    {modalHeaderInfo.badge}
                   </span>
                 </div>
                 <div className="bbl-popup-sub">
-                  পছন্দের বিভাগ বা জেলা নির্বাচন করে সরাসরি ডাক্তারের তালিকা দেখুন
+                  {modalHeaderInfo.sub}
                 </div>
               </div>
               <button
@@ -1850,13 +2122,101 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
               </button>
             </div>
 
-            {/* Sticky Search & Tab Filter Bar */}
+            {/* Interactive Breadcrumb Bar with Back Button */}
+            <div className="bbl-popup-breadcrumb-bar">
+              {drillStep !== 'divisions' && (
+                <button
+                  type="button"
+                  className="bbl-crumb-back-btn"
+                  onClick={handleGoBack}
+                  title="পূর্বের ধাপে ফিরে যান"
+                >
+                  <IconArrowLeft size={16} stroke={2.5} />
+                  <span>পেছনে</span>
+                </button>
+              )}
+
+              <div className="bbl-crumb-trail">
+                <button
+                  type="button"
+                  className={`bbl-crumb-link ${drillStep === 'divisions' ? 'current' : ''}`}
+                  onClick={() => {
+                    if (drillStep === 'divisions') return
+                    setDrillStep('divisions')
+                    setActiveDivision(null)
+                    setActiveDistrict(null)
+                    setActiveUpazila(null)
+                    setSelectedDivision('')
+                    setSelectedDistrict('')
+                    setSelectedUpazila('')
+                    setSelectedUnion('')
+                    setLocationSearch('')
+                  }}
+                >
+                  <IconMapPin size={14} />
+                  <span>বাংলাদেশ</span>
+                </button>
+
+                {activeDivision && (
+                  <>
+                    <IconChevronRight size={14} className="bbl-crumb-arrow" />
+                    <button
+                      type="button"
+                      className={`bbl-crumb-link ${drillStep === 'districts' ? 'current' : ''}`}
+                      onClick={() => {
+                        if (drillStep === 'districts') return
+                        setDrillStep('districts')
+                        setActiveDistrict(null)
+                        setActiveUpazila(null)
+                        setSelectedDistrict('')
+                        setSelectedUpazila('')
+                        setSelectedUnion('')
+                        setLocationSearch('')
+                      }}
+                    >
+                      <span>{activeDivision.name}</span>
+                    </button>
+                  </>
+                )}
+
+                {activeDistrict && (
+                  <>
+                    <IconChevronRight size={14} className="bbl-crumb-arrow" />
+                    <button
+                      type="button"
+                      className={`bbl-crumb-link ${drillStep === 'upazilas' ? 'current' : ''}`}
+                      onClick={() => {
+                        if (drillStep === 'upazilas') return
+                        setDrillStep('upazilas')
+                        setActiveUpazila(null)
+                        setSelectedUpazila('')
+                        setSelectedUnion('')
+                        setLocationSearch('')
+                      }}
+                    >
+                      <span>{activeDistrict.name}</span>
+                    </button>
+                  </>
+                )}
+
+                {activeUpazila && (
+                  <>
+                    <IconChevronRight size={14} className="bbl-crumb-arrow" />
+                    <span className="bbl-crumb-link current">
+                      {activeUpazila.name}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Sticky Search Bar */}
             <div className="bbl-popup-search-area">
               <div className="bbl-popup-search-box">
                 <IconSearch size={18} color="#059669" />
                 <input
                   type="text"
-                  placeholder="বিভাগ বা জেলার নাম লিখে খুঁজুন (যেমন: সিলেট, ঢাকা, হবিগঞ্জ)..."
+                  placeholder={modalHeaderInfo.placeholder}
                   value={locationSearch}
                   onChange={(e) => setLocationSearch(e.target.value)}
                   className="bbl-popup-search-input"
@@ -1871,43 +2231,70 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                   </button>
                 )}
               </div>
-
-              {/* Segmented Tab Filter */}
-              <div className="bbl-popup-tabs">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('divisions')}
-                  className={`bbl-modal-tab-btn ${modalTab === 'divisions' ? 'active' : ''}`}
-                >
-                  <IconMapPin size={15} />
-                  <span>বিভাগসমূহ</span>
-                  <span className="bbl-tab-badge">{toBnNum(filteredDivisions.length)}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModalTab('districts')}
-                  className={`bbl-modal-tab-btn ${modalTab === 'districts' ? 'active' : ''}`}
-                >
-                  <IconBuildingHospital size={15} />
-                  <span>সকল জেলা</span>
-                  <span className="bbl-tab-badge">{toBnNum(filteredDistricts.length)}</span>
-                </button>
-              </div>
             </div>
 
             {/* Body / Content Grid */}
             <div className="bbl-popup-body">
-              {modalTab === 'divisions' ? (
+              {/* Direct View All Doctors Action Banners */}
+              {drillStep === 'districts' && activeDivision && (
+                <div className="bbl-direct-action-banner">
+                  <div className="bbl-direct-action-info">
+                    <IconMapPin size={18} color="#059669" />
+                    <span>নির্দিষ্ট জেলা ছাড়া সমগ্র {activeDivision.name} বিভাগের সব ডাক্তার দেখতে চান?</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="bbl-direct-action-btn"
+                    onClick={handleViewAllAtDivision}
+                  >
+                    <span>{activeDivision.name} বিভাগের সব ডাক্তার</span>
+                    <IconArrowRight size={15} />
+                  </button>
+                </div>
+              )}
+
+              {drillStep === 'upazilas' && activeDistrict && (
+                <div className="bbl-direct-action-banner">
+                  <div className="bbl-direct-action-info">
+                    <IconBuildingHospital size={18} color="#059669" />
+                    <span>নির্দিষ্ট উপজেলা ছাড়া সমগ্র {activeDistrict.name} জেলার সব ডাক্তার দেখতে চান?</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="bbl-direct-action-btn"
+                    onClick={handleViewAllAtDistrict}
+                  >
+                    <span>{activeDistrict.name} জেলার সব ডাক্তার</span>
+                    <IconArrowRight size={15} />
+                  </button>
+                </div>
+              )}
+
+              {drillStep === 'unions' && activeUpazila && (
+                <div className="bbl-direct-action-banner">
+                  <div className="bbl-direct-action-info">
+                    <IconBuildingHospital size={18} color="#059669" />
+                    <span>ইউনিয়ন ছাড়া সমগ্র {activeUpazila.name} উপজেলার সব ডাক্তার দেখতে চান?</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="bbl-direct-action-btn"
+                    onClick={handleViewAllAtUpazila}
+                  >
+                    <span>{activeUpazila.name} উপজেলার সব ডাক্তার</span>
+                    <IconArrowRight size={15} />
+                  </button>
+                </div>
+              )}
+
+              {/* ── Step 1: Divisions Grid ── */}
+              {drillStep === 'divisions' && (
                 filteredDivisions.length > 0 ? (
                   <div className="bbl-popup-grid">
                     {filteredDivisions.map(div => (
                       <div
                         key={div.id}
-                        onClick={() => {
-                          closeLocationModal()
-                          navigate(`/doctors?division_id=${div.id}`)
-                        }}
+                        onClick={() => handleSelectDivision(div)}
                         className="bbl-popup-card"
                       >
                         <div className="bbl-popup-card-icon">
@@ -1931,16 +2318,21 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                     <p>কোনো বিভাগ পাওয়া যায়নি</p>
                   </div>
                 )
-              ) : (
-                filteredDistricts.length > 0 ? (
+              )}
+
+              {/* ── Step 2: Districts Grid ── */}
+              {drillStep === 'districts' && (
+                loadingDistricts ? (
+                  <div className="bbl-popup-loading">
+                    <IconLoader2 size={32} className="bbl-spin" color="#059669" />
+                    <p>{activeDivision?.name} এর জেলাসমূহ লোড হচ্ছে...</p>
+                  </div>
+                ) : filteredDistricts.length > 0 ? (
                   <div className="bbl-popup-grid">
-                    {filteredDistricts.map((dist, idx) => (
+                    {filteredDistricts.map(dist => (
                       <div
-                        key={dist.slug || dist.id || idx}
-                        onClick={() => {
-                          closeLocationModal()
-                          navigate(`/doctors/${dist.slug}`)
-                        }}
+                        key={dist.id}
+                        onClick={() => handleSelectDistrict(dist)}
                         className="bbl-popup-card"
                       >
                         <div className="bbl-popup-card-icon bbl-popup-district-icon">
@@ -1960,8 +2352,108 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                   </div>
                 ) : (
                   <div className="bbl-popup-empty">
-                    <IconSearch size={36} color="#CBD5E1" />
-                    <p>কোনো জেলা পাওয়া যায়নি</p>
+                    <IconBuildingHospital size={36} color="#CBD5E1" />
+                    <p>{activeDivision?.name} বিভাগে কোনো জেলা পাওয়া যায়নি</p>
+                    <button
+                      type="button"
+                      className="bbl-empty-action-btn"
+                      onClick={handleViewAllAtDivision}
+                    >
+                      <span>{activeDivision?.name} বিভাগের সব ডাক্তার দেখুন</span>
+                      <IconArrowRight size={15} />
+                    </button>
+                  </div>
+                )
+              )}
+
+              {/* ── Step 3: Upazilas Grid ── */}
+              {drillStep === 'upazilas' && (
+                loadingUpazilas ? (
+                  <div className="bbl-popup-loading">
+                    <IconLoader2 size={32} className="bbl-spin" color="#059669" />
+                    <p>{activeDistrict?.name} এর উপজেলাসমূহ লোড হচ্ছে...</p>
+                  </div>
+                ) : filteredUpazilas.length > 0 ? (
+                  <div className="bbl-popup-grid">
+                    {filteredUpazilas.map(upaz => (
+                      <div
+                        key={upaz.id}
+                        onClick={() => handleSelectUpazila(upaz)}
+                        className="bbl-popup-card"
+                      >
+                        <div className="bbl-popup-card-icon bbl-popup-upazila-icon">
+                          <IconBuildingHospital size={20} stroke={2} />
+                        </div>
+                        <div className="bbl-popup-card-info">
+                          <h6 className="bbl-popup-card-title">{upaz.name}</h6>
+                          <span className="bbl-popup-card-sub">
+                            {upaz.subText}
+                          </span>
+                        </div>
+                        <div className="bbl-popup-card-arrow">
+                          <IconChevronRight size={18} stroke={2.5} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bbl-popup-empty">
+                    <IconBuildingHospital size={36} color="#CBD5E1" />
+                    <p>{activeDistrict?.name} জেলায় কোনো উপজেলা পাওয়া যায়নি</p>
+                    <button
+                      type="button"
+                      className="bbl-empty-action-btn"
+                      onClick={handleViewAllAtDistrict}
+                    >
+                      <span>{activeDistrict?.name} জেলার সব ডাক্তার দেখুন</span>
+                      <IconArrowRight size={15} />
+                    </button>
+                  </div>
+                )
+              )}
+
+              {/* ── Step 4: Unions Grid ── */}
+              {drillStep === 'unions' && (
+                loadingUnions ? (
+                  <div className="bbl-popup-loading">
+                    <IconLoader2 size={32} className="bbl-spin" color="#059669" />
+                    <p>{activeUpazila?.name} এর ইউনিয়নসমূহ লোড হচ্ছে...</p>
+                  </div>
+                ) : filteredUnions.length > 0 ? (
+                  <div className="bbl-popup-grid">
+                    {filteredUnions.map(un => (
+                      <div
+                        key={un.id}
+                        onClick={() => handleSelectUnion(un)}
+                        className="bbl-popup-card"
+                      >
+                        <div className="bbl-popup-card-icon bbl-popup-union-icon">
+                          <IconMapPin size={20} stroke={2} />
+                        </div>
+                        <div className="bbl-popup-card-info">
+                          <h6 className="bbl-popup-card-title">{un.name}</h6>
+                          <span className="bbl-popup-card-sub">
+                            {un.subText}
+                          </span>
+                        </div>
+                        <div className="bbl-popup-card-arrow">
+                          <IconChevronRight size={18} stroke={2.5} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bbl-popup-empty">
+                    <IconMapPin size={36} color="#CBD5E1" />
+                    <p>{activeUpazila?.name} উপজেলায় কোনো ইউনিয়ন তালিকাভুক্ত নেই</p>
+                    <button
+                      type="button"
+                      className="bbl-empty-action-btn"
+                      onClick={handleViewAllAtUpazila}
+                    >
+                      <span>{activeUpazila?.name} উপজেলার সব ডাক্তার দেখুন</span>
+                      <IconArrowRight size={15} />
+                    </button>
                   </div>
                 )
               )}
@@ -2367,58 +2859,74 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           color: #FFFFFF;
         }
 
-        /* Bottom Stats Bar */
+        /* Bottom Stats Bar (Mobile-Inspired Fresh Gradient & Centered Layout) */
         .bbl-stats-bar {
-          background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 35%, #99F6E4 70%, #BAE6FD 100%);
+          border: 1.5px solid #34D399;
           border-radius: 20px;
-          padding: 18px 28px;
+          padding: 18px 24px;
           display: flex;
           align-items: center;
           justify-content: space-around;
-          box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+          box-shadow: 0 8px 24px rgba(13, 148, 136, 0.16);
         }
 
         .bbl-stat-item {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 12px;
+          justify-content: center;
+          text-align: center;
+          gap: 7px;
+          flex: 1;
         }
 
         .bbl-stat-icon-wrap {
           width: 44px;
           height: 44px;
           border-radius: 12px;
-          background: #E8F8F2;
+          background: #FFFFFF;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 4px 10px rgba(6, 78, 59, 0.12);
+          transition: transform 0.25s ease;
+        }
+
+        .bbl-stat-item:hover .bbl-stat-icon-wrap {
+          transform: translateY(-2px) scale(1.06);
         }
 
         .bbl-stat-text {
           display: flex;
-          align-items: baseline;
-          gap: 6px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 2px;
+          line-height: 1.15;
         }
 
         .bbl-stat-val {
-          font-size: 22px;
+          font-size: 21px;
           font-weight: 900;
-          color: #0F172A;
+          color: #064E3B;
           font-family: 'Hind Siliguri', 'Inter', sans-serif;
+          white-space: nowrap;
         }
 
         .bbl-stat-lbl {
-          font-size: 14px;
-          font-weight: 600;
-          color: #64748B;
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #065F46;
           font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
         }
 
         .bbl-stat-divider {
           width: 1px;
-          height: 36px;
-          background: #E2E8F0;
+          height: 44px;
+          background: rgba(5, 150, 105, 0.22);
         }
 
         /* Unified Modal Tabs */
@@ -2784,6 +3292,198 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           font-family: 'Hind Siliguri', sans-serif;
         }
 
+        /* ── Breadcrumb Bar & Back Navigation ── */
+        .bbl-popup-breadcrumb-bar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 24px;
+          background: #F1F5F9;
+          border-bottom: 1px solid #E2E8F0;
+          flex-shrink: 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .bbl-popup-breadcrumb-bar::-webkit-scrollbar {
+          display: none;
+        }
+        .bbl-crumb-back-btn {
+          background: #FFFFFF;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 4px 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #0F172A;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+          flex-shrink: 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .bbl-crumb-back-btn:hover {
+          background: #ECFDF5;
+          border-color: #059669;
+          color: #059669;
+        }
+        .bbl-crumb-trail {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+        }
+        .bbl-crumb-link {
+          background: none;
+          border: none;
+          padding: 3px 7px;
+          color: #059669;
+          font-weight: 700;
+          cursor: pointer;
+          border-radius: 6px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: background 0.15s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .bbl-crumb-link:hover {
+          background: rgba(5, 150, 105, 0.1);
+        }
+        .bbl-crumb-link.current {
+          color: #0F172A;
+          font-weight: 800;
+          cursor: default;
+        }
+        .bbl-crumb-link.current:hover {
+          background: none;
+        }
+        .bbl-crumb-arrow {
+          color: #94A3B8;
+          flex-shrink: 0;
+        }
+
+        /* ── Direct Action Banner (View all doctors at current level) ── */
+        .bbl-direct-action-banner {
+          margin-bottom: 14px;
+          background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
+          border: 1.5px solid #A7F3D0;
+          border-radius: 14px;
+          padding: 10px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.05);
+        }
+        .bbl-direct-action-info {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #065F46;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .bbl-direct-action-btn {
+          background: #059669;
+          border: none;
+          border-radius: 99px;
+          color: #FFFFFF;
+          padding: 6px 16px;
+          font-size: 12.5px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+          flex-shrink: 0;
+          box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+        }
+        .bbl-direct-action-btn:hover {
+          background: #047857;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+        }
+
+        /* ── Hierarchy Card Icons ── */
+        .bbl-popup-upazila-icon {
+          background: #EFF6FF;
+          color: #2563EB;
+          border: 1px solid #DBEAFE;
+        }
+        .bbl-popup-card:hover .bbl-popup-upazila-icon {
+          background: #2563EB;
+          color: #FFFFFF;
+          border-color: #2563EB;
+        }
+
+        .bbl-popup-union-icon {
+          background: #FAF5FF;
+          color: #9333EA;
+          border: 1px solid #F3E8FF;
+        }
+        .bbl-popup-card:hover .bbl-popup-union-icon {
+          background: #9333EA;
+          color: #FFFFFF;
+          border-color: #9333EA;
+        }
+
+        /* ── Loading Spinner ── */
+        .bbl-popup-loading {
+          text-align: center;
+          padding: 45px 0;
+          color: #059669;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+        .bbl-popup-loading p {
+          font-size: 14px;
+          font-weight: 600;
+          color: #64748B;
+          margin: 0;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+        .bbl-spin {
+          animation: bblSpin 0.8s linear infinite;
+        }
+        @keyframes bblSpin {
+          100% { transform: rotate(360deg); }
+        }
+
+        /* ── Empty Fallback Action Button ── */
+        .bbl-empty-action-btn {
+          background: #059669;
+          border: none;
+          border-radius: 99px;
+          color: #FFFFFF;
+          padding: 8px 20px;
+          font-size: 13.5px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', sans-serif;
+          margin-top: 6px;
+          box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+        }
+        .bbl-empty-action-btn:hover {
+          background: #047857;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 14px rgba(5, 150, 105, 0.35);
+        }
+
         @media (max-width: 992px) and (min-width: 769px) {
           .bbl-stats-bar {
             padding: 16px 20px;
@@ -2960,6 +3660,32 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
           .bbl-popup-card-sub {
             font-size: 11.5px !important;
+          }
+
+          .bbl-popup-breadcrumb-bar {
+            padding: 8px 16px !important;
+            gap: 6px !important;
+          }
+          .bbl-crumb-back-btn {
+            padding: 3px 8px !important;
+            font-size: 11.5px !important;
+          }
+          .bbl-crumb-trail {
+            font-size: 12px !important;
+          }
+          .bbl-direct-action-banner {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
+            padding: 9px 12px !important;
+          }
+          .bbl-direct-action-info {
+            font-size: 12px !important;
+          }
+          .bbl-direct-action-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 7px 12px !important;
           }
         }
 

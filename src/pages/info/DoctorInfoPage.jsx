@@ -1002,7 +1002,7 @@ export default function DoctorInfoPage() {
 
           /* Bottom CTA */
           .doctor-bottom-cta {
-            padding: 44px 0 38px !important;
+            padding: 44px 0 110px !important;
           }
           .doctor-bottom-cta-title {
             font-size: 20px !important;
