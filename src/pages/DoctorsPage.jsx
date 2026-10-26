@@ -13,7 +13,8 @@ import AvailabilityDateFilter from '../components/common/AvailabilityDateFilter'
 import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
-import useHospitals from '../hooks/useHospitals'
+import { useQuery } from '@tanstack/react-query'
+import { getHospitalById } from '../api/hospitalApi'
 import useDebounce from '../hooks/useDebounce'
 import useUserLocation from '../hooks/useUserLocation'
 import LocationPromptBanner from '../components/common/LocationPromptBanner'
@@ -137,10 +138,22 @@ function DoctorsPage() {
   })
 
   const { specialties } = useSpecialties()
-  const { hospitals } = useHospitals({ per_page: 100 })
 
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
   const [selectedHospital, setSelectedHospital]   = useState((searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : '')
+
+  // Lazy single-item fetch for active hospital filter badge ONLY when hospital_id filter is active
+  const { data: selectedHospitalData } = useQuery({
+    queryKey: ['hospital-badge', selectedHospital],
+    queryFn: async () => {
+      if (!selectedHospital) return null
+      const res = await getHospitalById(selectedHospital)
+      return res.data?.data || res.data || null
+    },
+    enabled: Boolean(selectedHospital && selectedHospital !== 'undefined'),
+    staleTime: 10 * 60 * 1000,
+  })
+
   const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
   const [selectedDate, setSelectedDate]           = useState(searchParams.get('date') || '')
@@ -149,7 +162,6 @@ function DoctorsPage() {
   const [availableToday, setAvailableToday]       = useState(false)
   const [telemedicineOnly, setTelemedicineOnly]   = useState(false)
   const [specialtySearch, setSpecialtySearch]     = useState('')
-  const [hospitalSearch, setHospitalSearch]       = useState('')
 
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
   const [modalSpecialtySearch, setModalSpecialtySearch]         = useState('')
@@ -702,17 +714,13 @@ function DoctorsPage() {
       })
     }
     if (selectedHospital && selectedHospital !== 'undefined') {
-      const item = hospitals.find(h => 
-        String(h.id) === String(selectedHospital) || 
-        String(h.public_id) === String(selectedHospital) || 
-        String(h.slug) === String(selectedHospital)
-      )
       const passedName = searchParams.get('hospital_name') || searchParams.get('hospital')
+      const hospName = selectedHospitalData?.name || selectedHospitalData?.name_bn || passedName || 'হাসপাতাল'
       list.push({
         key: 'hospital',
-        label: item ? (item.name || item.name_bn) : (passedName || 'হাসপাতাল'),
+        label: hospName,
         clear: () => {
-          setSelectedHospital(''); updateUrlParams({ hospital_name: '' })
+          setSelectedHospital('')
           updateUrlParams({ hospital_id: '', hospital_name: '' })
         }
       })
@@ -769,9 +777,9 @@ function DoctorsPage() {
     return list
   }, [
     selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
-    selectedHospital, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, searchText,
+    selectedHospital, selectedHospitalData, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, searchText,
     isNearMeActive, distanceRadius, handleToggleNearMe,
-    specialties, divisions, districts, upazilas, unions, hospitals, updateUrlParams, handleDateChange
+    specialties, divisions, districts, upazilas, unions, updateUrlParams, handleDateChange
   ])
 
   const activeCount = activeFilters.length
@@ -841,12 +849,6 @@ function DoctorsPage() {
     const q = specialtySearch.toLowerCase()
     return specialties.filter(s => (s.name || '').toLowerCase().includes(q) || (s.name_bn || '').toLowerCase().includes(q))
   }, [specialties, specialtySearch])
-
-  const filteredHospitals = useMemo(() => {
-    if (!hospitalSearch.trim()) return hospitals
-    const q = hospitalSearch.toLowerCase()
-    return hospitals.filter(h => (h.name || '').toLowerCase().includes(q) || (h.name_bn || '').toLowerCase().includes(q))
-  }, [hospitals, hospitalSearch])
 
   // Dynamic SEO metadata computation for national, district, and upazila doctor listing hubs
   const seoData = useMemo(() => {
@@ -1588,8 +1590,17 @@ function DoctorsPage() {
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div className="doc-results-bar">
-          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedDoctors.length)}</strong> জন ডাক্তার
+          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
+            {loading ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
+                <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                ডাক্তার খোঁজা হচ্ছে...
+              </span>
+            ) : (
+              <>
+                <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedDoctors.length)}</strong> জন ডাক্তার
+              </>
+            )}
           </div>
 
           <div className="doc-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

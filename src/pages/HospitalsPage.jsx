@@ -1191,8 +1191,17 @@ function HospitalsPage() {
 
         {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
         <div className="hosp-results-bar">
-          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
+          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
+            {loading ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
+                <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                হাসপাতাল খোঁজা হচ্ছে...
+              </span>
+            ) : (
+              <>
+                <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
+              </>
+            )}
           </div>
 
           <div className="hosp-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
