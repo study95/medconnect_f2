@@ -10,7 +10,9 @@ import { formatDistance, findNearestChamber, calculateDistance } from '../../uti
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 
-const DEMO_AVATAR = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+import { DEFAULT_DOCTOR_AVATAR } from '../../utils/mediaUtils'
+
+const DEMO_AVATAR = DEFAULT_DOCTOR_AVATAR
 
 const enToBn = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
 const toBnNum = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBn[d]) : '';

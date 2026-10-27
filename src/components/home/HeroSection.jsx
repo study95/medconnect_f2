@@ -1556,7 +1556,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
       // Once scrolled (> 20px), fixed header height is 102px (36px topbar + 66px main header)
       const scrolledFixedHeaderHeight = 102
       // If currently at top (scrollY <= 20), --header-height is 102px and will shrink to 66px (-36px) on scroll
-      const headerVarShrink = window.scrollY <= 20 ? 36 : 0
+      const headerVarShrink = 0
       const exactSliderSectionTop = heroSec.offsetTop + heroSec.offsetHeight - headerVarShrink
       const targetTop = exactSliderSectionTop - scrolledFixedHeaderHeight
       window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
@@ -2390,7 +2390,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                   {todayDoctors.map((doc) => {
                     const isFav = isDoctorFavorite(doc.id)
                     const photo = doc.photo || doc.photo_url || doc.image || doc.avatar || doc.profile_image
-                    const docImg = photo ? getMediaUrl(photo) : 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+                    const docImg = photo ? getMediaUrl(photo) : '/images/default-doctor.png'
                     const docName = doc.name_bn || doc.name || doc.doctor_name || 'ডা. বিশেষজ্ঞ'
                     const specialty = getDoctorSpecialtyTitle(doc)
                     const hospital = getDoctorHospitalTitle(doc)
@@ -2424,7 +2424,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                             className="hero-mobile-today-avatar-img"
                             onError={(e) => {
                               e.currentTarget.onerror = null
-                              e.currentTarget.src = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+                              e.currentTarget.src = '/images/default-doctor.png'
                             }}
                           />
                         </div>

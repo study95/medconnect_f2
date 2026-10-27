@@ -29,7 +29,16 @@ const OptimizedImage = memo(function OptimizedImage({
   const [loaded, setLoaded] = useState(false)
   const [errored, setErrored] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [prevSrc, setPrevSrc] = useState(src)
 
+  if (src !== prevSrc) {
+    setPrevSrc(src)
+    setLoaded(false)
+    setErrored(false)
+    setFailed(false)
+  }
+
+  const hasMainSrc = Boolean(src && src !== fallback)
   const imgSrc = failed ? '' : (errored ? (fallback || '') : (src || fallback || ''))
 
   const containerStyle = {
@@ -38,16 +47,38 @@ const OptimizedImage = memo(function OptimizedImage({
     height: height || 'auto',
     overflow: 'hidden',
     borderRadius: borderRadius || style.borderRadius || 0,
-    background: style.background || 'transparent',
+    background: style.background || '#F8FAFC',
     ...style,
   }
 
-  // Skeleton: only show if we have an explicit height (prevents CLS from unknown-height containers)
-  const showSkeleton = !loaded && !failed && (height || style.height || style.minHeight)
+  // Skeleton: only show if we have an explicit height and no fallback placeholder
+  const showSkeleton = !loaded && !failed && !fallback && (height || style.height || style.minHeight)
 
   return (
     <div style={containerStyle} className={className}>
-      {/* Shimmer placeholder — visible until image loads (only when height is known) */}
+      {/* Instant fallback placeholder — rendered underneath while real image loads */}
+      {fallback && hasMainSrc && (!loaded || errored) && (
+        <img
+          src={fallback}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit,
+            borderRadius: 'inherit',
+            display: 'block',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
+
+      {/* Shimmer placeholder — visible until image loads (only when height is known and no fallback) */}
       {showSkeleton && (
         <div
           aria-hidden="true"
@@ -58,6 +89,7 @@ const OptimizedImage = memo(function OptimizedImage({
             backgroundSize: '600px 100%',
             animation: 'shimmer 1.4s infinite linear',
             borderRadius: 'inherit',
+            zIndex: 1,
           }}
         />
       )}
@@ -82,12 +114,14 @@ const OptimizedImage = memo(function OptimizedImage({
             }
           }}
           style={{
+            position: 'relative',
+            zIndex: 2,
             width: '100%',
             height: '100%',
             objectFit,
             display: 'block',
-            opacity: loaded ? 1 : 0,
-            transition: 'opacity 0.3s ease',
+            opacity: (!hasMainSrc || loaded) ? 1 : 0,
+            transition: 'opacity 0.25s ease-in-out',
             borderRadius: 'inherit',
             // Prevent CLS — image always takes full container
             minWidth: '100%',

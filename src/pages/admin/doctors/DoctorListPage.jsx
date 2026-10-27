@@ -15,7 +15,7 @@ import toast from 'react-hot-toast'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { getDoctorSeatInvitations, acceptDoctorSeatInvitation, rejectDoctorSeatInvitation } from '../../../api/subscriptionApi'
 
-const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
+const DEMO_AVATAR = '/images/default-doctor.png'
 
 function TableCheckbox({ checked, indeterminate, onChange, title }) {
   return (

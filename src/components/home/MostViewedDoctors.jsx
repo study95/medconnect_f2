@@ -111,7 +111,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
             {doctors.map((doc) => {
               const isFav = isDoctorFavorite ? isDoctorFavorite(doc.id) : false
               const photo = doc.photo || doc.photo_url || doc.image || doc.avatar || doc.profile_image
-              const docImg = photo ? getMediaUrl(photo) : 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+              const docImg = photo ? getMediaUrl(photo) : '/images/default-doctor.png'
               const docName = doc.name_bn || doc.name || doc.doctor_name || 'ডা. বিশেষজ্ঞ'
               const specialty = getDoctorSpecialtyTitle(doc)
               const hospital = getDoctorHospitalTitle(doc)
@@ -145,7 +145,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
                       className="most-viewed-mobile-avatar-img"
                       onError={(e) => {
                         e.currentTarget.onerror = null
-                        e.currentTarget.src = 'https://img.freepik.com/free-photo/doctor-with-stethoscope-hands-crossed_1291-63.jpg'
+                        e.currentTarget.src = '/images/default-doctor.png'
                       }}
                     />
                   </div>

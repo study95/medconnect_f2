@@ -23,7 +23,8 @@ import SeoHead from '../components/common/SeoHead'
 import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildPhysicianSchema } from '../utils/schemaBuilder'
 import { translateMetadata } from '../utils/translationUtils'
-import { getMediaUrl } from '../utils/mediaUtils'
+import { getMediaUrl, DEFAULT_DOCTOR_AVATAR } from '../utils/mediaUtils'
+import OptimizedImage from '../components/common/OptimizedImage'
 import useUserLocation from '../hooks/useUserLocation'
 import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl } from '../utils/geoUtils'
 import { 
@@ -35,7 +36,7 @@ import {
   IconNavigation, IconCurrentLocation, IconLoader2
 } from '@tabler/icons-react'
 
-const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
+const DEMO_AVATAR = DEFAULT_DOCTOR_AVATAR
 
 // Verified Badge Icon (Green scalloped badge matching DoctorCard)
 const VerifiedBadge = ({ size = 26 }) => (
@@ -220,14 +221,18 @@ function DoctorDetailPageContent() {
       const topbar = document.querySelector('.db-topbar')
       const mainHeader = document.querySelector('.db-main-header') || document.querySelector('.navbar')
       let totalHeaderHeight = 0
-      if (topbar) totalHeaderHeight += topbar.offsetHeight
-      if (mainHeader) totalHeaderHeight += mainHeader.offsetHeight
-      if (totalHeaderHeight === 0) totalHeaderHeight = 135
+      if (topbar && window.getComputedStyle(topbar).display !== 'none') {
+        totalHeaderHeight += topbar.offsetHeight
+      }
+      if (mainHeader) {
+        totalHeaderHeight += mainHeader.offsetHeight
+      }
+      if (totalHeaderHeight === 0) {
+        totalHeaderHeight = 102
+      }
 
       const offset = totalHeaderHeight + 20
-      const bodyRect = document.body.getBoundingClientRect().top
-      const elementRect = rightCard.getBoundingClientRect().top
-      const elementPosition = elementRect - bodyRect
+      const elementPosition = rightCard.getBoundingClientRect().top + window.scrollY
       const offsetPosition = elementPosition - offset
 
       window.scrollTo({
@@ -441,14 +446,12 @@ function DoctorDetailPageContent() {
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
             {/* Square Avatar with Appointment Badge Tag */}
             <div style={{ position: 'relative', width: 90, height: 98, flexShrink: 0, borderRadius: 12, overflow: 'hidden', background: '#F1F5F9' }}>
-              <img
-                src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)}
+              <OptimizedImage
+                src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar)}
+                fallback={DEFAULT_DOCTOR_AVATAR}
                 alt={doctor?.name || 'Doctor'}
-                loading="lazy"
-                decoding="async"
                 width="90"
                 height="98"
-                onError={(e) => { e.target.src = DEMO_AVATAR }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
               <div style={{
@@ -557,12 +560,11 @@ function DoctorDetailPageContent() {
               
               {/* RECTANGULAR DOCTOR IMAGE (NO CIRCLE) WITH VERIFIED BADGE */}
               <div style={{ position: 'relative', width: '100%', borderRadius: 16, overflow: 'hidden', marginBottom: 20, background: '#F1F5F9' }}>
-                <img 
-                  src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar, DEMO_AVATAR)} 
+                <OptimizedImage 
+                  src={getMediaUrl(doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar)} 
+                  fallback={DEFAULT_DOCTOR_AVATAR}
                   alt={doctor?.name || 'Doctor'}
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => { e.target.src = DEMO_AVATAR }}
+                  eager={true}
                   style={{
                     width: '100%',
                     aspectRatio: '1/1',

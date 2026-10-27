@@ -22,7 +22,8 @@ import {
   IconPrinter, IconTicket, IconCopy, IconNavigation, IconUsers
 } from '@tabler/icons-react'
 
-const DEMO_AVATAR = 'https://img.freepik.com/free-vector/doctor-character-background_1270-84.jpg'
+import { DEFAULT_DOCTOR_AVATAR } from '../utils/mediaUtils'
+const DEMO_AVATAR = DEFAULT_DOCTOR_AVATAR
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBnNum = (str) => str ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''

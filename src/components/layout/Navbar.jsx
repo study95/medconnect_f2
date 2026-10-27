@@ -102,7 +102,7 @@ function AppNavbar() {
     <>
       <style>{`
         :root {
-          --header-height: ${isAuthPage ? '0px' : (scrolled ? '66px' : '102px')};
+          --header-height: ${isAuthPage ? '0px' : '102px'};
         }
         .page-wrapper {
           padding-top: var(--header-height) !important;
