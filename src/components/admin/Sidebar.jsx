@@ -5,7 +5,7 @@ import { getMediaUrl } from '../../utils/mediaUtils'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
-import { getPrescriptions } from '../../api/adminApi'
+import { getPrescriptions, getMonitoringSsoTicket } from '../../api/adminApi'
 
 import {
   Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
@@ -13,7 +13,7 @@ import {
   CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt,
   ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
   Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
-  Tag, Clock, Megaphone, Mail
+  Tag, Clock, Megaphone, Mail, Activity
 } from 'lucide-react'
 
 // ─── Collapsible Section Component ────────────────────────────────────────────
@@ -70,6 +70,24 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   const { unreadCount } = useSubscription()
   const location = useLocation()
+
+  const [openingPulse, setOpeningPulse] = useState(false)
+
+  const handleOpenPulse = async (e) => {
+    e.preventDefault()
+    if (openingPulse) return
+    setOpeningPulse(true)
+    try {
+      const res = await getMonitoringSsoTicket('pulse')
+      if (res.data?.sso_url) {
+        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Monitoring access is restricted to super admins.')
+    } finally {
+      setOpeningPulse(false)
+    }
+  }
 
   const portalBase = isDoctor ? '/doctor' : (isManager ? '/hospital' : '/admin')
   const pLink = (subpath) => `${portalBase}${subpath.startsWith('/') ? subpath : '/' + subpath}`
@@ -799,6 +817,24 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   <span className="nav-icon"><Shield size={18} /></span>
                   <span className="nav-text">Audit Log</span>
                 </NavLink>
+              )}
+
+              {/* System Pulse Live Monitoring — Admin only */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleOpenPulse}
+                  disabled={openingPulse}
+                  className="sidebar-nav-item"
+                  style={{ width: '100%', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                  title={isCollapsed ? 'System Pulse' : undefined}
+                >
+                  <span className="nav-icon"><Activity size={18} color="#00B875" /></span>
+                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span>System Pulse</span>
+                    <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>LIVE</span>
+                  </span>
+                </button>
               )}
             </SidebarSection>
           )}

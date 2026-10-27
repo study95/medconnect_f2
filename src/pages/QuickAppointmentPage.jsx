@@ -57,6 +57,11 @@ export default function QuickAppointmentPage() {
   const [doctorSearch, setDoctorSearch] = useState('')
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false)
 
+  // Doctor service access state
+  const isDoctorServiceDisabled = Boolean(
+    selectedDoctor && (selectedDoctor.has_service_access === false || selectedDoctor.online_booking_enabled === false)
+  )
+
   // Chamber selection state
   const [selectedChamberId, setSelectedChamberId] = useState('')
 
@@ -593,6 +598,11 @@ export default function QuickAppointmentPage() {
 
   // Open Wizard Handler with Inline Field Validation
   const handleProceedBooking = () => {
+    if (isDoctorServiceDisabled) {
+      toast.error('এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে।')
+      return
+    }
+
     const errors = { doctor: '', chamber: '', slot: '' }
     let hasErr = false
 
@@ -1929,38 +1939,62 @@ export default function QuickAppointmentPage() {
                           কোনো ডাক্তার পাওয়া যায়নি।
                         </div>
                       ) : (
-                        doctorsList.map(doc => (
-                          <div
-                            key={doc.id}
-                            onClick={() => {
-                              setSelectedDoctor(doc)
-                              setDoctorSearch('')
-                              setIsDoctorDropdownOpen(false)
-                            }}
-                            style={{
-                              padding: '10px 12px',
-                              borderRadius: 8,
-                              cursor: 'pointer',
-                              borderBottom: '1px solid #F1F5F9'
-                            }}
-                          >
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                              {doc.name || doc.name_bn}
+                        doctorsList.map(doc => {
+                          const isDocDisabled = doc.has_service_access === false || doc.online_booking_enabled === false
+                          return (
+                            <div
+                              key={doc.id}
+                              onClick={() => {
+                                setSelectedDoctor(doc)
+                                setDoctorSearch('')
+                                setIsDoctorDropdownOpen(false)
+                              }}
+                              style={{
+                                padding: '10px 12px',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #F1F5F9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                background: isDocDisabled ? '#FFF8F8' : 'transparent'
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: isDocDisabled ? '#991B1B' : '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                                  {doc.name || doc.name_bn}
+                                </div>
+                                <div style={{ fontSize: 12, color: isDocDisabled ? '#DC2626' : '#00B875', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                                  {doc.specialty?.name || doc.specialty?.name_bn || doc.specialty_name || 'বিশেষজ্ঞ'}
+                                </div>
+                              </div>
+                              {isDocDisabled && (
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: '#DC2626',
+                                  background: '#FEE2E2',
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  fontFamily: "'Hind Siliguri', sans-serif",
+                                  flexShrink: 0
+                                }}>
+                                  বুকিং বন্ধ
+                                </span>
+                              )}
                             </div>
-                            <div style={{ fontSize: 12, color: '#00B875', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                              {doc.specialty?.name || doc.specialty?.name_bn || doc.specialty_name || 'বিশেষজ্ঞ'}
-                            </div>
-                          </div>
-                        ))
+                          )
+                        })
                       )}
                     </div>
                   )}
                 </>
               ) : (
-                /* Selected Doctor Active Green Card Chip */
+                /* Selected Doctor Card Chip */
                 <div style={{
-                  background: '#F0FDF4',
-                  border: '1.5px solid #A7F3D0',
+                  background: isDoctorServiceDisabled ? '#FEF2F2' : '#F0FDF4',
+                  border: isDoctorServiceDisabled ? '1.5px solid #FCA5A5' : '1.5px solid #A7F3D0',
                   borderRadius: 12,
                   minHeight: 46,
                   padding: '10px 16px',
@@ -1970,20 +2004,48 @@ export default function QuickAppointmentPage() {
                   gap: 12
                 }}>
                   <div>
-                    <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: isDoctorServiceDisabled ? '#991B1B' : '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
                       {selectedDoctor.name || selectedDoctor.name_bn}
                     </div>
-                    <div style={{ fontSize: 12.5, color: '#00B875', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    <div style={{ fontSize: 12.5, color: isDoctorServiceDisabled ? '#DC2626' : '#00B875', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif" }}>
                       {selectedDoctor.specialty?.name || selectedDoctor.specialty?.name_bn || selectedDoctor.specialty_name || 'বিশেষজ্ঞ'}
+                      {isDoctorServiceDisabled && ' • (অনলাইন বুকিং বন্ধ)'}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setSelectedDoctor(null); setSelectedChamberId(''); setDoctorSearch('') }}
-                    style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', padding: 4, display: 'flex' }}
+                    style={{ background: 'none', border: 'none', color: isDoctorServiceDisabled ? '#DC2626' : '#059669', cursor: 'pointer', padding: 4, display: 'flex' }}
                   >
                     <IconX size={18} />
                   </button>
+                </div>
+              )}
+
+              {/* Service Disabled Alert Banner */}
+              {isDoctorServiceDisabled && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1.5px solid #FCA5A5',
+                  borderRadius: 14,
+                  padding: '14px 18px',
+                  marginTop: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: '#991B1B'
+                }}>
+                  <div style={{ background: '#FEE2E2', padding: 8, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconAlertTriangle size={24} color="#DC2626" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2, color: '#991B1B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      অনলাইন বুকিং সেবা সাময়িকভাবে বন্ধ
+                    </div>
+                    <div style={{ fontSize: 13, color: '#B91C1C', lineHeight: 1.45, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে সরাসরি চেম্বার বা হাসপাতালের হেল্পলাইনে যোগাযোগ করুন।
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -2000,7 +2062,7 @@ export default function QuickAppointmentPage() {
               <select
                 value={selectedChamberId}
                 onChange={(e) => setSelectedChamberId(e.target.value)}
-                disabled={!selectedDoctor}
+                disabled={!selectedDoctor || isDoctorServiceDisabled}
                 style={{
                   width: '100%',
                   height: 46,
@@ -2010,18 +2072,20 @@ export default function QuickAppointmentPage() {
                   fontSize: 14,
                   fontWeight: selectedChamberId ? 700 : 500,
                   color: selectedChamberId ? '#0F172A' : '#94A3B8',
-                  background: !selectedDoctor ? '#F8FAFC' : 'white',
+                  background: (!selectedDoctor || isDoctorServiceDisabled) ? '#F8FAFC' : 'white',
                   outline: 'none',
-                  cursor: !selectedDoctor ? 'not-allowed' : 'pointer',
+                  cursor: (!selectedDoctor || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer',
                   fontFamily: "'Hind Siliguri', sans-serif"
                 }}
               >
                 <option value="" disabled hidden style={{ color: '#94A3B8' }}>
                   {!selectedDoctor
                     ? 'ডাক্তারের চেম্বার সিলেক্ট করুন...'
-                    : filteredChambers.length === 0
-                      ? 'এই তারিখে চেম্বার খোলা নেই (তালিকা নিচে দেখুন)'
-                      : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
+                    : isDoctorServiceDisabled
+                      ? 'অনলাইন বুকিং সেবা সাময়িকভাবে বন্ধ'
+                      : filteredChambers.length === 0
+                        ? 'এই তারিখে চেম্বার খোলা নেই (তালিকা নিচে দেখুন)'
+                        : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
                 </option>
                 {filteredChambers.length > 0 ? (
                   filteredChambers.map(ch => (
@@ -2041,7 +2105,7 @@ export default function QuickAppointmentPage() {
                 )}
               </select>
 
-              {selectedDoctor && filteredChambers.length === 0 && (
+              {selectedDoctor && !isDoctorServiceDisabled && filteredChambers.length === 0 && (
                 <div style={{
                   marginTop: 10,
                   background: '#F8FAFC',
@@ -2351,11 +2415,12 @@ export default function QuickAppointmentPage() {
             <button
               type="button"
               onClick={handleProceedBooking}
+              disabled={isDoctorServiceDisabled}
               style={{
                 width: '100%',
                 height: 52,
                 borderRadius: 12,
-                background: '#00B875',
+                background: isDoctorServiceDisabled ? '#94A3B8' : '#00B875',
                 color: 'white',
                 border: 'none',
                 fontWeight: 800,
@@ -2364,14 +2429,15 @@ export default function QuickAppointmentPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 10,
-                cursor: 'pointer',
+                cursor: isDoctorServiceDisabled ? 'not-allowed' : 'pointer',
                 fontFamily: "'Hind Siliguri', sans-serif",
-                boxShadow: '0 6px 20px rgba(0, 184, 117, 0.28)',
-                transition: 'all 0.2s ease'
+                boxShadow: isDoctorServiceDisabled ? 'none' : '0 6px 20px rgba(0, 184, 117, 0.28)',
+                transition: 'all 0.2s ease',
+                opacity: isDoctorServiceDisabled ? 0.75 : 1
               }}
             >
               <IconCalendarEvent size={22} />
-              <span>অ্যাপয়েন্টমেন্ট নিন ➔</span>
+              <span>{isDoctorServiceDisabled ? 'অনলাইন বুকিং সেবা বন্ধ রয়েছে' : 'অ্যাপয়েন্টমেন্ট নিন ➔'}</span>
             </button>
 
           </div>

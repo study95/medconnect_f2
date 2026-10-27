@@ -185,3 +185,7 @@ export const previewAdminSmsPrune = (data) => axiosInstance.post('/admin/sms/pru
 export const executeAdminSmsPrune = (data) => axiosInstance.post('/admin/sms/prune-execute', data)
 export const exportAdminSmsPrune = (params = {}) => axiosInstance.get('/admin/sms/prune-export', { params, responseType: 'blob' })
 
+// ===== ENTERPRISE OBSERVABILITY & MONITORING SSO =====
+export const getMonitoringSsoTicket = (target = 'pulse') => axiosInstance.post('/admin/monitoring/sso-ticket', { target })
+
+

@@ -77,3 +77,6 @@ export const updateHospitalProfile = (data) => updateMyProfile(data)
 
 export const updatePasswordApi = (data) =>
   axiosInstance.post('/update-password', data)
+
+export const resendPasswordOtpApi = () =>
+  axiosInstance.post('/resend-password-otp')
