@@ -8,7 +8,7 @@ import {
   IconBabyCarriage, IconDroplet, IconDental, IconActivity, IconCalendar,
   IconUsers, IconShieldCheck, IconLock, IconDeviceMobile, IconMail, IconLoader2,
   IconTicket, IconPrinter, IconEdit, IconCircleCheck, IconAlertTriangle, IconAlertCircle,
-  IconChevronLeft, IconChevronRight, IconCopy, IconPhone
+  IconChevronLeft, IconChevronRight, IconCopy, IconPhone, IconCash, IconInfoCircle
 } from '@tabler/icons-react'
 import useSpecialties from '../hooks/useSpecialties'
 import { getDoctors, getDoctorById } from '../api/doctorApi'
@@ -141,13 +141,20 @@ export default function QuickAppointmentPage() {
     return () => clearInterval(interval)
   }, [otpTimer])
 
-  // Helper to format seconds to Bengali MM:SS
+  // Helper to format seconds to Bengali HH:MM:SS or MM:SS
   const formatOtpTimerBn = (seconds) => {
     const s = Math.max(0, parseInt(seconds, 10) || 0)
-    const m = Math.floor(s / 60)
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
     const remS = s % 60
+
+    const hStr = h < 10 ? `0${h}` : `${h}`
     const mStr = m < 10 ? `0${m}` : `${m}`
     const sStr = remS < 10 ? `0${remS}` : `${remS}`
+
+    if (h > 0) {
+      return `${toBengaliNumber(hStr)}:${toBengaliNumber(mStr)}:${toBengaliNumber(sStr)}`
+    }
     return `${toBengaliNumber(mStr)}:${toBengaliNumber(sStr)}`
   }
 
@@ -249,6 +256,12 @@ export default function QuickAppointmentPage() {
     if (!selectedDateStr) return doctorChambers
     return doctorChambers.filter(ch => isChamberOpenOnDate(ch, selectedDateStr))
   }, [doctorChambers, selectedDateStr])
+
+  // Currently selected chamber object in component scope
+  const currentChamber = useMemo(() => {
+    if (!selectedChamberId || !doctorChambers || doctorChambers.length === 0) return null
+    return doctorChambers.find(c => String(c.id) === String(selectedChamberId)) || null
+  }, [selectedChamberId, doctorChambers])
 
   // Compute doctor's next available date if no chamber open on current selectedDateStr
   const nextAvailableInfo = useMemo(() => {
@@ -476,7 +489,11 @@ export default function QuickAppointmentPage() {
 
     const refreshSlots = (isInitial = false) => {
       if (isInitial) setLoadingSlots(true)
-      getBookedSlots(selectedDoctor.id, { date: selectedDateStr, chamber_id: selectedChamberId })
+      getBookedSlots(selectedDoctor.id, { 
+        date: selectedDateStr, 
+        chamber_id: selectedChamberId,
+        _t: Date.now()
+      })
         .then((res) => {
           const booked = res.data?.booked_slots || res.data?.booked || []
           const generated = generateSlotsForChamber(currentChamber, booked)
@@ -517,7 +534,7 @@ export default function QuickAppointmentPage() {
       if (isBookingModalOpen && modalStep === 1) {
         refreshSlots(false)
       }
-    }, 15000)
+    }, 8000)
 
     return () => clearInterval(interval)
   }, [selectedDoctor, selectedDateStr, selectedChamberId, doctorChambers, isBookingModalOpen, modalStep])
@@ -550,6 +567,7 @@ export default function QuickAppointmentPage() {
   const docRef = useRef(null)
   const chamberRef = useRef(null)
   const slotRef = useRef(null)
+  const customDateInputRef = useRef(null)
 
   // Form errors state for inline field validation
   const [formErrors, setFormErrors] = useState({
@@ -1163,7 +1181,8 @@ export default function QuickAppointmentPage() {
         booking_for: bookingFor,
         relation: bookingFor === 'relative' ? relativeForm.relation : '',
         booker_phone: mobileNumber ? mobileNumber.replace(/\D/g, '') : '',
-        payment_status: 'Unpaid (চেম্বারে দিবেন)'
+        fee: appt.amount || currentChamber?.fee || selectedDoctor.fee || selectedDoctor.consultation_fee || 500,
+        payment_status: 'বকেয়া (চেম্বারে ক্যাশ প্রদেয়)'
       })
       setModalStep(5)
       toast.success('অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!', { id: 'book-ok' })
@@ -1660,51 +1679,90 @@ export default function QuickAppointmentPage() {
                   </span>
                 </button>
 
-                {/* 3. Custom Date Picker Card */}
-                <button
-                  type="button"
-                  onClick={() => setIsDatePickerOpen(true)}
-                  style={{
-                    background: dateMode === 'custom' ? '#00B875' : '#FFFFFF',
-                    border: dateMode === 'custom' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 14,
-                    padding: '10px 4px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    boxShadow: dateMode === 'custom' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
-                    transition: 'all 0.18s ease',
-                    outline: 'none',
-                    minHeight: 62
-                  }}
-                >
-                  <span style={{
-                    fontSize: 15,
-                    fontWeight: dateMode === 'custom' ? 800 : 700,
-                    color: dateMode === 'custom' ? '#FFFFFF' : '#0F172A',
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2
-                  }}>
-                    অন্য তারিখ
-                  </span>
-                  <span style={{
-                    fontSize: 12,
-                    fontWeight: dateMode === 'custom' ? 700 : 500,
-                    color: dateMode === 'custom' ? '#E6F9F0' : '#64748B',
-                    marginTop: 3,
-                    fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: '100%',
-                    padding: '0 4px'
-                  }}>
-                    {dateMode === 'custom' && customDate ? formatCustomDateBn(customDate) : 'পছন্দ করুন'}
-                  </span>
-                </button>
+                {/* 3. Custom Date Picker Card (Direct Calendar Picker) */}
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <button
+                    type="button"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      background: dateMode === 'custom' ? '#00B875' : '#FFFFFF',
+                      border: dateMode === 'custom' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
+                      borderRadius: 14,
+                      padding: '10px 4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: dateMode === 'custom' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
+                      transition: 'all 0.18s ease',
+                      outline: 'none',
+                      minHeight: 62
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 15,
+                      fontWeight: dateMode === 'custom' ? 800 : 700,
+                      color: dateMode === 'custom' ? '#FFFFFF' : '#0F172A',
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      lineHeight: 1.2
+                    }}>
+                      অন্য তারিখ
+                    </span>
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: dateMode === 'custom' ? 700 : 500,
+                      color: dateMode === 'custom' ? '#E6F9F0' : '#64748B',
+                      marginTop: 3,
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      lineHeight: 1.2,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '100%',
+                      padding: '0 4px'
+                    }}>
+                      {dateMode === 'custom' && customDate ? formatCustomDateBn(customDate) : 'পছন্দ করুন'}
+                    </span>
+                  </button>
+
+                  {/* Native HTML5 Datepicker overlay for instant 1-click native calendar popup */}
+                  <input
+                    ref={customDateInputRef}
+                    type="date"
+                    min={getBangladeshTodayStr()}
+                    value={customDate}
+                    onClick={(e) => {
+                      try {
+                        if (e.target.showPicker) {
+                          e.target.showPicker()
+                        }
+                      } catch {
+                        // handled by native click
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setCustomDate(e.target.value)
+                        setDateMode('custom')
+                        setSelectedAppointmentDate(e.target.value)
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer',
+                      zIndex: 10
+                    }}
+                    title="তারিখ নির্বাচন ক্যালেন্ডার"
+                    aria-label="তারিখ নির্বাচন ক্যালেন্ডার"
+                  />
+                </div>
               </div>
             </div>
 
@@ -3496,7 +3554,7 @@ export default function QuickAppointmentPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #E2E8F0' }}>
                   <IconStethoscope size={18} color="#00B875" />
                   <div>
                     <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার ও সময়</div>
@@ -3505,6 +3563,39 @@ export default function QuickAppointmentPage() {
                     </div>
                   </div>
                 </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <IconCash size={18} color="#00B875" />
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>পরামর্শ ফি</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                        ৳{toBengaliNumber(currentChamber?.fee || selectedDoctor?.fee || selectedDoctor?.consultation_fee || 500)}
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 6, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    চেম্বারে ক্যাশ প্রদেয়
+                  </span>
+                </div>
+              </div>
+
+              {/* Patient Reassurance Banner */}
+              <div style={{
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12.5,
+                color: '#166534',
+                fontFamily: "'Hind Siliguri', sans-serif"
+              }}>
+                <IconInfoCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />
+                <span>বুকিংয়ের জন্য কোনো অগ্রিম টাকা লাগবে না। নির্ধারিত ফি চেম্বার কাউন্টারে সরাসরি ক্যাশ প্রদান করবেন।</span>
               </div>
 
               <button
@@ -3958,7 +4049,7 @@ export default function QuickAppointmentPage() {
                         {confirmedAppointmentData.specialty}
                       </div>
                     </div>
-                    <span className={`quick-badge-status ${confirmedAppointmentData.payment_status === 'পরিশোধিত' ? 'quick-badge-paid' : 'quick-badge-unpaid'}`}>
+                    <span className={`quick-badge-status ${confirmedAppointmentData.payment_status?.includes('পরিশোধিত') ? 'quick-badge-paid' : 'quick-badge-unpaid'}`}>
                       {confirmedAppointmentData.payment_status}
                     </span>
                   </div>
@@ -3979,6 +4070,12 @@ export default function QuickAppointmentPage() {
                     <div className="quick-row-item">
                       <span className="quick-row-lbl">তারিখ ও সময়:</span>
                       <span className="quick-row-val">{confirmedAppointmentData.appointment_date} ({confirmedAppointmentData.appointment_time})</span>
+                    </div>
+                    <div className="quick-row-item">
+                      <span className="quick-row-lbl">পরামর্শ ফি:</span>
+                      <span className="quick-row-val" style={{ fontWeight: 800, color: '#0F172A' }}>
+                        ৳{toBengaliNumber(confirmedAppointmentData.fee || currentChamber?.fee || selectedDoctor?.fee || selectedDoctor?.consultation_fee || 500)} <span style={{ fontSize: 11.5, color: '#B45309', fontWeight: 600 }}>(চেম্বারে ক্যাশ প্রদেয়)</span>
+                      </span>
                     </div>
                     <div className="quick-row-item">
                       <span className="quick-row-lbl">রোগীর নাম:</span>

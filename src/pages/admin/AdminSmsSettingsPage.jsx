@@ -7,7 +7,8 @@ import {
   getAdminSmsBalance,
   previewAdminSmsPrune,
   executeAdminSmsPrune,
-  exportAdminSmsPrune
+  exportAdminSmsPrune,
+  resetAdminSmsQuota
 } from '../../api/adminApi'
 import {
   MessageSquare,
@@ -89,6 +90,11 @@ export default function AdminSmsSettingsPage() {
   const [testMode, setTestMode] = useState('otp') // 'otp' | 'custom' | 'ping'
   const [testCustomMessage, setTestCustomMessage] = useState('')
 
+  // Quota Override State
+  const [resetMobile, setResetMobile] = useState('')
+  const [resettingQuota, setResettingQuota] = useState(false)
+  const [resetQuotaResult, setResetQuotaResult] = useState(null)
+
   // Logs state
   const [logs, setLogs] = useState([])
   const [logsLoading, setLogsLoading] = useState(false)
@@ -111,6 +117,34 @@ export default function AdminSmsSettingsPage() {
   const [refreshCountdown, setRefreshCountdown] = useState(30)
   const [showPruneModal, setShowPruneModal] = useState(false)
   const [manualRefreshing, setManualRefreshing] = useState(false)
+
+  const handleResetMobileQuota = async (e) => {
+    if (e) e.preventDefault()
+    const clean = (resetMobile || '').trim().replace(/\D/g, '')
+    if (!clean || !/^01[3-9]\d{8}$/.test(clean)) {
+      toast.error('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)')
+      return
+    }
+    setResettingQuota(true)
+    setResetQuotaResult(null)
+    try {
+      const res = await resetAdminSmsQuota({ mobile: clean })
+      if (res.data?.success) {
+        toast.success(res.data.message || 'ওটিপি লিমিট সফলভাবে রিসেট করা হয়েছে')
+        setResetQuotaResult({ type: 'success', text: res.data.message })
+        setResetMobile('')
+      } else {
+        toast.error(res.data?.message || 'রিসেট করতে ব্যর্থ হয়েছে')
+        setResetQuotaResult({ type: 'danger', text: res.data?.message })
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'রিসেট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+      toast.error(msg)
+      setResetQuotaResult({ type: 'danger', text: msg })
+    } finally {
+      setResettingQuota(false)
+    }
+  }
 
   const fetchSettings = async () => {
     setLoading(true)
@@ -1514,67 +1548,153 @@ export default function AdminSmsSettingsPage() {
             </div>
           )}
 
-          {/* TAB 3: SECURITY & TEMPLATES */}
+          {/* TAB 3: SECURITY & TEMPLATES (Spacious 2-Column Executive Layout) */}
           {activeTab === 'security' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
-              {/* Throttling */}
-              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
-                  <Shield size={18} color="#00A88C" />
-                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Anti-SMS Bombing সিকিউরিটি</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 24, alignItems: 'start' }}>
+              
+              {/* LEFT COLUMN: SECURITY CONTROLS & EMERGENCY UNBLOCK */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {/* Throttling Limits */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Shield size={18} color="#00A88C" />
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Anti-SMS Bombing সিকিউরিটি</h4>
+                    </div>
+                    <span style={{ fontSize: 11, background: '#F0FDF4', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>সক্রিয় সুরক্ষা</span>
+                  </div>
+
+                  <div className="mb-3">
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
+                      কুলডাউন সময় (Cooldown Seconds)
+                    </label>
+                    <input
+                      type="number"
+                      min="30"
+                      max="300"
+                      value={form.throttle?.cooldown_seconds || 60}
+                      onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, cooldown_seconds: parseInt(e.target.value) || 60 } }))}
+                      className="form-control"
+                      style={{ borderRadius: 8, fontSize: 13 }}
+                    />
+                    <small style={{ color: '#64748b' }}>একবার ওটিপি চাওয়ার পর পরবর্তী ওটিপি চাওয়ার জন্য অপেক্ষা করতে হবে।</small>
+                  </div>
+
+                  <div className="mb-3">
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
+                      ঘণ্টাপ্রতি সর্বোচ্চ ওটিপি কোটা (Max Hourly Limit)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={form.throttle?.max_hourly || 3}
+                      onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, max_hourly: parseInt(e.target.value) || 3 } }))}
+                      className="form-control"
+                      style={{ borderRadius: 8, fontSize: 13 }}
+                    />
+                    <small style={{ color: '#64748b' }}>একই মোবাইল নম্বরে ১ ঘণ্টায় সর্বোচ্চ কতবার ওটিপি পাঠানো যাবে।</small>
+                  </div>
+
+                  <div className="mb-2">
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
+                      দৈনিক সর্বোচ্চ ওটিপি কোটা (Max Daily Limit)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={form.throttle?.max_daily || 5}
+                      onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, max_daily: parseInt(e.target.value) || 5 } }))}
+                      className="form-control"
+                      style={{ borderRadius: 8, fontSize: 13 }}
+                    />
+                    <small style={{ color: '#64748b' }}>একই মোবাইল নম্বরে ২৪ ঘণ্টায় সর্বোচ্চ কতবার ওটিপি পাঠানো যাবে।</small>
+                  </div>
                 </div>
 
-                <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
-                    কুলডাউন সময় (Cooldown Seconds)
-                  </label>
-                  <input
-                    type="number"
-                    min="30"
-                    max="300"
-                    value={form.throttle?.cooldown_seconds || 60}
-                    onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, cooldown_seconds: parseInt(e.target.value) || 60 } }))}
-                    className="form-control"
-                    style={{ borderRadius: 8, fontSize: 13 }}
-                  />
-                  <small style={{ color: '#64748b' }}>একবার ওটিপি চাওয়ার পর নতুন ওটিপি চাওয়ার জন্য অপেক্ষা করতে হবে।</small>
-                </div>
+                {/* Emergency Quota Override Tool (Enterprise Safe: Super Admin Only, Max 2/Day, Full Audit Log) */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <RotateCcw size={18} color="#0D9488" />
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>জরুরি ওটিপি লিমিট আনব্লক</h4>
+                    </div>
+                    <span style={{ fontSize: 11, background: '#F0FDFA', color: '#0F766E', padding: '2px 8px', borderRadius: 6, fontWeight: 600, border: '1px solid #CCFBF1' }}>
+                      Super Admin
+                    </span>
+                  </div>
 
-                <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
-                    ঘণ্টাপ্রতি সর্বোচ্চ ওটিপি কোটা (Max Hourly Limit)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={form.throttle?.max_hourly || 3}
-                    onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, max_hourly: parseInt(e.target.value) || 3 } }))}
-                    className="form-control"
-                    style={{ borderRadius: 8, fontSize: 13 }}
-                  />
-                  <small style={{ color: '#64748b' }}>একই মোবাইল নম্বরে ১ ঘণ্টায় সর্বোচ্চ কতবার ওটিপি পাঠানো যাবে।</small>
-                </div>
+                  <p style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.5, marginBottom: 14 }}>
+                    নেটওয়ার্ক জটিলতার কারণে কোনো রোগীর ওটিপি লিমিট আটকে গেলে এখান থেকে তাৎক্ষণিক আনব্লক করুন (২৪ ঘণ্টায় সর্বোচ্চ ২ বার)।
+                  </p>
 
-                <div className="mb-2">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>
-                    দৈনিক সর্বোচ্চ ওটিপি কোটা (Max Daily Limit)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={form.throttle?.max_daily || 5}
-                    onChange={e => setForm(prev => ({ ...prev, throttle: { ...prev.throttle, max_daily: parseInt(e.target.value) || 5 } }))}
-                    className="form-control"
-                    style={{ borderRadius: 8, fontSize: 13 }}
-                  />
-                  <small style={{ color: '#64748b' }}>একই মোবাইল নম্বরে ২৪ ঘণ্টায় সর্বোচ্চ কতবার ওটিপি পাঠানো যাবে।</small>
+                  <form onSubmit={handleResetMobileQuota}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        maxLength={11}
+                        placeholder="017XXXXXXXX"
+                        value={resetMobile}
+                        onChange={e => setResetMobile(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                        className="form-control"
+                        style={{ borderRadius: 8, fontSize: 13 }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={resettingQuota || !resetMobile || resetMobile.length !== 11}
+                        className="btn"
+                        style={{
+                          background: resettingQuota || !resetMobile || resetMobile.length !== 11 ? '#94A3B8' : '#0D9488',
+                          color: '#fff',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          borderRadius: 8,
+                          padding: '0 18px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {resettingQuota ? (
+                          <>
+                            <RefreshCw size={14} className="spin" />
+                            <span>রিসেট হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw size={14} />
+                            <span>আনব্লক করুন</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+
+                  {resetQuotaResult && (
+                    <div style={{
+                      marginTop: 12,
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      lineHeight: 1.4,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                      background: resetQuotaResult.type === 'success' ? '#ECFDF5' : '#FEF2F2',
+                      border: `1px solid ${resetQuotaResult.type === 'success' ? '#A7F3D0' : '#FECACA'}`,
+                      color: resetQuotaResult.type === 'success' ? '#065F46' : '#991B1B'
+                    }}>
+                      {resetQuotaResult.type === 'success' ? <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} /> : <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />}
+                      <span>{resetQuotaResult.text}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Templates */}
-              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
+              {/* RIGHT COLUMN: SMS TEMPLATES */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
                   <MessageSquare size={18} color="#00A88C" />
                   <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>এসএমএস টেমপ্লেট</h4>
@@ -1634,280 +1754,314 @@ export default function AdminSmsSettingsPage() {
                     style={{ borderRadius: 8, fontSize: 13, fontFamily: 'monospace' }}
                   />
                   <div style={{ marginTop: 6, fontSize: 11.5, color: '#64748b', lineHeight: 1.5 }}>
-                    ব্যবহারযোগ্য ভ্যারিয়েবল: <code>:doctor_name</code>, <code>:serial</code>, <code>:chamber</code>, <code>:date</code>, <code>:time</code>
+                    ব্যবহারযোগ্য ভ্যারিয়েবল: <code>:doctor_name</code>, <code>:serial</code>, <code>:chamber</code>, <code>:date</code>, <code>:time</code>, <code>:fee</code>, <code>:reg_id</code>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: LIVE DIAGNOSTIC TEST */}
+          {/* TAB 4: LIVE DIAGNOSTIC TEST (Spacious 2-Column Split Workbench) */}
           {activeTab === 'test' && (
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 28, maxWidth: 680 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <Send size={18} color="#00A88C" />
-                <h4 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#1e293b' }}>
-                  লাইভ টেস্ট ও ডায়াগনস্টিক
-                </h4>
-              </div>
-              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-                আপনার কাঙ্ক্ষিত অপারেটরে টেস্ট এসএমএস পাঠিয়ে ওটিপি ভেরিফিকেশন ডেলিভারি ও গেটওয়ে রেসপন্স যাচাই করুন।
-              </p>
-
-              <form onSubmit={handleSendTest}>
-                <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'block' }}>
-                    পরীক্ষার জন্য অপারেটর নির্বাচন করুন:
-                  </label>
-                  <select
-                    value={testProvider}
-                    onChange={e => setTestProvider(e.target.value)}
-                    className="form-select"
-                    style={{ borderRadius: 8, fontSize: 13 }}
-                  >
-                    <option value="alphasms">Alpha SMS (sms.net.bd)</option>
-                    <option value="maestrosms">Maestro SMS BD</option>
-                    <option value="mimsms">MiMSMS BD</option>
-                    <option value="log">Local Mock Driver (Log)</option>
-                  </select>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 24, alignItems: 'start' }}>
+              
+              {/* LEFT CARD: TEST CONFIGURATION FORM */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 26, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                  <Send size={18} color="#00A88C" />
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
+                    লাইভ টেস্ট ও ডায়াগনস্টিক
+                  </h4>
                 </div>
+                <p style={{ fontSize: 12.5, color: '#64748b', marginBottom: 18, lineHeight: 1.5 }}>
+                  আপনার কাঙ্ক্ষিত অপারেটরে টেস্ট এসএমএস পাঠিয়ে ওটিপি ভেরিফিকেশন ডেলিভারি ও গেটওয়ে রেসপন্স লাইভ যাচাই করুন।
+                </p>
 
-                <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'block' }}>
-                    মোবাইল নম্বর (যেখানে টেস্ট এসএমএস যাবে):
-                  </label>
-                  <input
-                    type="text"
-                    value={testPhone}
-                    onChange={e => setTestPhone(e.target.value)}
-                    placeholder="017XXXXXXXX"
-                    className="form-control"
-                    style={{ borderRadius: 8, fontSize: 14 }}
-                  />
-                </div>
-
-                {/* Message Mode Selection */}
-                <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 8, display: 'block' }}>
-                    এসএমএস বার্তার ধরন নির্বাচন করুন:
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-                    <div
-                      onClick={() => setTestMode('otp')}
-                      style={{
-                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                        border: testMode === 'otp' ? '2px solid #00A88C' : '1px solid #e2e8f0',
-                        background: testMode === 'otp' ? '#f0fdf9' : '#f8fafc',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <input
-                          type="radio"
-                          name="testMode"
-                          checked={testMode === 'otp'}
-                          onChange={() => setTestMode('otp')}
-                          style={{ accentColor: '#00A88C' }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'otp' ? '#00A88C' : '#334155' }}>
-                          ওটিপি টেমপ্লেট টেস্ট
-                        </span>
-                      </div>
-                      <small style={{ fontSize: 11, color: '#64748b', display: 'block' }}>
-                        আপনার সেভ করা ওটিপি টেমপ্লেটে ডেমো কোড বসিয়ে পাঠাবে
-                      </small>
-                    </div>
-
-                    <div
-                      onClick={() => setTestMode('appointment')}
-                      style={{
-                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                        border: testMode === 'appointment' ? '2px solid #00A88C' : '1px solid #e2e8f0',
-                        background: testMode === 'appointment' ? '#f0fdf9' : '#f8fafc',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <input
-                          type="radio"
-                          name="testMode"
-                          checked={testMode === 'appointment'}
-                          onChange={() => setTestMode('appointment')}
-                          style={{ accentColor: '#00A88C' }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'appointment' ? '#00A88C' : '#334155' }}>
-                          বুকিং কনফার্মেশন টেস্ট
-                        </span>
-                      </div>
-                      <small style={{ fontSize: 11, color: '#64748b', display: 'block' }}>
-                        বুকিং কনফার্মেশন টেমপ্লেটে ডেমো তথ্য বসিয়ে পাঠাবে
-                      </small>
-                    </div>
-
-                    <div
-                      onClick={() => setTestMode('custom')}
-                      style={{
-                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                        border: testMode === 'custom' ? '2px solid #00A88C' : '1px solid #e2e8f0',
-                        background: testMode === 'custom' ? '#f0fdf9' : '#f8fafc',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <input
-                          type="radio"
-                          name="testMode"
-                          checked={testMode === 'custom'}
-                          onChange={() => setTestMode('custom')}
-                          style={{ accentColor: '#00A88C' }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'custom' ? '#00A88C' : '#334155' }}>
-                          কাস্টম বার্তা লিখুন
-                        </span>
-                      </div>
-                      <small style={{ fontSize: 11, color: '#64748b', display: 'block' }}>
-                        নিজের ইচ্ছেমতো কোনো বার্তা লিখে টেস্ট করুন
-                      </small>
-                    </div>
-
-                    <div
-                      onClick={() => setTestMode('ping')}
-                      style={{
-                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                        border: testMode === 'ping' ? '2px solid #00A88C' : '1px solid #e2e8f0',
-                        background: testMode === 'ping' ? '#f0fdf9' : '#f8fafc',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <input
-                          type="radio"
-                          name="testMode"
-                          checked={testMode === 'ping'}
-                          onChange={() => setTestMode('ping')}
-                          style={{ accentColor: '#00A88C' }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'ping' ? '#00A88C' : '#334155' }}>
-                          কানেক্টিভিটি পিং টেস্ট
-                        </span>
-                      </div>
-                      <small style={{ fontSize: 11, color: '#64748b', display: 'block' }}>
-                        সিস্টেম ডায়াগনস্টিক পিং বার্তা
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mode specific preview / input */}
-                {testMode === 'otp' && (
-                  <div style={{
-                    marginBottom: 16, padding: '12px 16px', background: '#f8fafc',
-                    borderRadius: 10, border: '1px dashed #cbd5e1'
-                  }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                      পাঠানো বার্তার প্রিভিউ (লাইভ ওটিপি টেমপ্লেট):
-                    </div>
-                    <div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600, background: '#fff', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                      {(form.templates?.otp || 'আপনার ভেরিফিকেশন কোড: :code।').replace(/::code|:code/g, '582194')}
-                    </div>
-                    <small style={{ fontSize: 11, color: '#00A88C', display: 'block', marginTop: 4 }}>
-                      ✓ এই বার্তাটিই ব্যবহারকারীর মোবাইলে যাবে এবং ডেলিভারি লগে হুবহু রেকর্ড হবে।
-                    </small>
-                  </div>
-                )}
-
-                {testMode === 'appointment' && (
-                  <div style={{
-                    marginBottom: 16, padding: '12px 16px', background: '#f8fafc',
-                    borderRadius: 10, border: '1px dashed #cbd5e1'
-                  }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                      পাঠানো বার্তার প্রিভিউ (লাইভ বুকিং কনফার্মেশন টেমপ্লেট):
-                    </div>
-                    <div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600, background: '#fff', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                      {(form.templates?.appointment_confirmation || 'Booking Successful! Dr: :doctor_name, Serial: :serial, Chamber: :chamber, Date: :date, Time: :time. Details: doctorbooklet.com')
-                        .replace(/:doctor_name/g, 'Dr. Ariful Islam')
-                        .replace(/:serial/g, '5')
-                        .replace(/:chamber/g, 'Popular Diagnostic')
-                        .replace(/:date/g, '10-Jun-2026')
-                        .replace(/:time/g, '06:30 PM')}
-                    </div>
-                    <small style={{ fontSize: 11, color: '#00A88C', display: 'block', marginTop: 4 }}>
-                      ✓ ডেমো ডাক্তার ও সিরিয়াল দিয়ে তৈরি করা এই বার্তাটি টেস্ট নম্বরে পাঠানো হবে।
-                    </small>
-                  </div>
-                )}
-
-                {testMode === 'custom' && (
+                <form onSubmit={handleSendTest}>
                   <div className="mb-3">
                     <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'block' }}>
-                      কাস্টম বার্তার বিষয়বস্তু:
+                      পরীক্ষার জন্য অপারেটর নির্বাচন করুন:
                     </label>
-                    <textarea
-                      rows={3}
-                      value={testCustomMessage}
-                      onChange={e => setTestCustomMessage(e.target.value)}
-                      placeholder="এখানে আপনার মেসেজ লিখুন..."
+                    <select
+                      value={testProvider}
+                      onChange={e => setTestProvider(e.target.value)}
+                      className="form-select"
+                      style={{ borderRadius: 8, fontSize: 13 }}
+                    >
+                      <option value="alphasms">Alpha SMS (sms.net.bd)</option>
+                      <option value="maestrosms">Maestro SMS BD</option>
+                      <option value="mimsms">MiMSMS BD</option>
+                      <option value="log">Local Mock Driver (Log)</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'block' }}>
+                      মোবাইল নম্বর (যেখানে টেস্ট এসএমএস যাবে):
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={11}
+                      value={testPhone}
+                      onChange={e => setTestPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      placeholder="017XXXXXXXX"
                       className="form-control"
                       style={{ borderRadius: 8, fontSize: 13 }}
                     />
                   </div>
-                )}
 
-                {testMode === 'ping' && (
-                  <div style={{
-                    marginBottom: 16, padding: '10px 14px', background: '#f8fafc',
-                    borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#64748b'
-                  }}>
-                    সিস্টেম ডায়াগনস্টিক পিং বার্তা: <code style={{ color: '#0f172a' }}>DoctorBooklet SMS Gateway Test: আপনার টেস্ট এসএমএস সফলভাবে ডেলিভার হয়েছে। Time: ...</code>
+                  {/* Message Mode Selection: 2x2 Balanced Grid */}
+                  <div className="mb-3">
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 8, display: 'block' }}>
+                      এসএমএস বার্তার ধরন নির্বাচন করুন:
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div
+                        onClick={() => setTestMode('otp')}
+                        style={{
+                          padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                          border: testMode === 'otp' ? '2px solid #00A88C' : '1px solid #e2e8f0',
+                          background: testMode === 'otp' ? '#f0fdf9' : '#f8fafc',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <input
+                            type="radio"
+                            name="testMode"
+                            checked={testMode === 'otp'}
+                            onChange={() => setTestMode('otp')}
+                            style={{ accentColor: '#00A88C' }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'otp' ? '#00A88C' : '#334155' }}>
+                            ওটিপি টেস্ট
+                          </span>
+                        </div>
+                        <small style={{ fontSize: 11, color: '#64748b', display: 'block', lineHeight: 1.4 }}>
+                          আপনার সেভ করা ওটিপি টেমপ্লেটে ডেমো কোড বসাবে
+                        </small>
+                      </div>
+
+                      <div
+                        onClick={() => setTestMode('appointment')}
+                        style={{
+                          padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                          border: testMode === 'appointment' ? '2px solid #00A88C' : '1px solid #e2e8f0',
+                          background: testMode === 'appointment' ? '#f0fdf9' : '#f8fafc',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <input
+                            type="radio"
+                            name="testMode"
+                            checked={testMode === 'appointment'}
+                            onChange={() => setTestMode('appointment')}
+                            style={{ accentColor: '#00A88C' }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'appointment' ? '#00A88C' : '#334155' }}>
+                            বুকিং টেস্ট
+                          </span>
+                        </div>
+                        <small style={{ fontSize: 11, color: '#64748b', display: 'block', lineHeight: 1.4 }}>
+                          কনফার্মেশন টেমপ্লেটে ডেমো তথ্য বসিয়ে পাঠাবে
+                        </small>
+                      </div>
+
+                      <div
+                        onClick={() => setTestMode('custom')}
+                        style={{
+                          padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                          border: testMode === 'custom' ? '2px solid #00A88C' : '1px solid #e2e8f0',
+                          background: testMode === 'custom' ? '#f0fdf9' : '#f8fafc',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <input
+                            type="radio"
+                            name="testMode"
+                            checked={testMode === 'custom'}
+                            onChange={() => setTestMode('custom')}
+                            style={{ accentColor: '#00A88C' }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'custom' ? '#00A88C' : '#334155' }}>
+                            কাস্টম বার্তা
+                          </span>
+                        </div>
+                        <small style={{ fontSize: 11, color: '#64748b', display: 'block', lineHeight: 1.4 }}>
+                          নিজের ইচ্ছেমতো কোনো বার্তা লিখে টেস্ট করুন
+                        </small>
+                      </div>
+
+                      <div
+                        onClick={() => setTestMode('ping')}
+                        style={{
+                          padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                          border: testMode === 'ping' ? '2px solid #00A88C' : '1px solid #e2e8f0',
+                          background: testMode === 'ping' ? '#f0fdf9' : '#f8fafc',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <input
+                            type="radio"
+                            name="testMode"
+                            checked={testMode === 'ping'}
+                            onChange={() => setTestMode('ping')}
+                            style={{ accentColor: '#00A88C' }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: testMode === 'ping' ? '#00A88C' : '#334155' }}>
+                            পিং টেস্ট
+                          </span>
+                        </div>
+                        <small style={{ fontSize: 11, color: '#64748b', display: 'block', lineHeight: 1.4 }}>
+                          সিস্টেম ডায়াগনস্টিক পিং বার্তা
+                        </small>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={testing}
-                  className="btn btn-primary w-100"
-                  style={{
-                    background: 'linear-gradient(135deg, #00A88C, #00C9A7)',
-                    border: 'none', borderRadius: 10, padding: '10px 20px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    fontWeight: 600, fontSize: 14
-                  }}
-                >
-                  <Send size={16} />
-                  {testing ? 'টেস্ট এসএমএস পাঠানো হচ্ছে...' : 'টেস্ট এসএমএস পাঠান'}
-                </button>
-              </form>
-
-              {/* Test Result Card */}
-              {testResult && (
-                <div style={{
-                  marginTop: 24, padding: 16, borderRadius: 12,
-                  background: testResult.success ? '#ecfdf5' : '#fef2f2',
-                  border: `1px solid ${testResult.success ? '#a7f3d0' : '#fecaca'}`,
-                  color: testResult.success ? '#065f46' : '#991b1b',
-                  fontSize: 13
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 6 }}>
-                    {testResult.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                    <span>{testResult.success ? 'টেস্ট সফল হয়েছে!' : 'টেস্ট ব্যর্থ হয়েছে!'}</span>
-                  </div>
-                  <p style={{ margin: '0 0 6px' }}>{testResult.message}</p>
-                  
-                  {testResult.data?.sent_message && (
-                    <div style={{ marginTop: 8, background: '#fff', padding: '8px 12px', borderRadius: 8, border: '1px solid #a7f3d0', color: '#1e293b' }}>
-                      <strong style={{ fontSize: 11, color: '#047857', display: 'block', marginBottom: 2 }}>প্রেরিত বার্তা (Sent Message):</strong>
-                      <span style={{ fontSize: 13 }}>{testResult.data.sent_message}</span>
+                  {testMode === 'custom' && (
+                    <div className="mb-3">
+                      <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'block' }}>
+                        কাস্টম বার্তার বিষয়বস্তু:
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={testCustomMessage}
+                        onChange={e => setTestCustomMessage(e.target.value)}
+                        placeholder="এখানে আপনার মেসেজ লিখুন..."
+                        className="form-control"
+                        style={{ borderRadius: 8, fontSize: 13 }}
+                      />
                     </div>
                   )}
 
-                  {testResult.data?.message_id && (
-                    <small style={{ display: 'block', marginTop: 6, color: '#047857' }}>
-                      Message ID: <strong>{testResult.data.message_id}</strong>
-                    </small>
+                  <button
+                    type="submit"
+                    disabled={testing}
+                    className="btn btn-primary w-100"
+                    style={{
+                      background: 'linear-gradient(135deg, #00A88C, #00C9A7)',
+                      border: 'none', borderRadius: 10, padding: '11px 20px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      fontWeight: 600, fontSize: 14, marginTop: 10
+                    }}
+                  >
+                    <Send size={16} />
+                    {testing ? 'টেস্ট এসএমএস পাঠানো হচ্ছে...' : 'টেস্ট এসএমএস পাঠান'}
+                  </button>
+                </form>
+              </div>
+
+              {/* RIGHT CARD: LIVE SMS PREVIEW & GATEWAY DIAGNOSTIC CONSOLE */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* Real-time Message Preview */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Smartphone size={18} color="#00A88C" />
+                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
+                        মোবাইল মেসেজ প্রিভিউ (Live Preview)
+                      </h4>
+                    </div>
+                    <span style={{ fontSize: 11, background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
+                      DoctorBooklet
+                    </span>
+                  </div>
+
+                  {/* Simulated Mobile Chat Bubble */}
+                  <div style={{
+                    background: '#F8FAFC', borderRadius: 12, padding: '16px',
+                    border: '1px solid #E2E8F0', position: 'relative'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, fontSize: 11.5, color: '#64748B' }}>
+                      <span style={{ fontWeight: 600 }}>প্রেরক: DoctorBooklet</span>
+                      <span>এখন</span>
+                    </div>
+
+                    <div style={{
+                      background: '#FFFFFF', padding: '12px 14px', borderRadius: '10px 10px 10px 2px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0',
+                      fontSize: 13, color: '#0F172A', lineHeight: 1.6, wordBreak: 'break-word'
+                    }}>
+                      {testMode === 'otp' && (
+                        (form.templates?.otp || 'আপনার DoctorBooklet ভেরিফিকেশন কোড: :code। কোডটির মেয়াদ ৫ মিনিট।').replace(/::code|:code/g, '582194')
+                      )}
+                      {testMode === 'appointment' && (
+                        (form.templates?.appointment_confirmation || 'Booking Successful! Dr: :doctor_name, Serial: :serial, Chamber: :chamber, Date: :date, Time: :time. Details: doctorbooklet.com')
+                          .replace(/:doctor_name/g, 'ডা. আরিফুল ইসলাম')
+                          .replace(/:serial/g, '০৮')
+                          .replace(/:chamber/g, 'পপুলার ডায়াগনস্টিক')
+                          .replace(/:date/g, '২৮-অক্টোবর')
+                          .replace(/:time/g, '০৬:৩০ PM')
+                      )}
+                      {testMode === 'custom' && (
+                        testCustomMessage.trim() || 'এখানে আপনার কাস্টম বার্তা লিখলে লাইভ প্রিভিউ দেখতে পাবেন...'
+                      )}
+                      {testMode === 'ping' && (
+                        'DoctorBooklet SMS Gateway Test: আপনার টেস্ট এসএমএস সফলভাবে ডেলিভার হয়েছে।'
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11, color: '#64748B' }}>
+                      <span>✓ এই বার্তাটিই ব্যবহারকারীর মোবাইলে পাঠানো হবে</span>
+                      <span style={{ fontWeight: 600, color: '#00A88C' }}>এনকোডিং: Unicode</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gateway Response Console */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                    <Zap size={18} color="#00A88C" />
+                    <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
+                      গেটওয়ে রেসপন্স কনসোল
+                    </h4>
+                  </div>
+
+                  {testResult ? (
+                    <div style={{
+                      padding: 16, borderRadius: 12,
+                      background: testResult.success ? '#ecfdf5' : '#fef2f2',
+                      border: `1px solid ${testResult.success ? '#a7f3d0' : '#fecaca'}`,
+                      color: testResult.success ? '#065f46' : '#991b1b',
+                      fontSize: 13
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 6 }}>
+                        {testResult.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                        <span>{testResult.success ? 'টেস্ট সফল হয়েছে!' : 'টেস্ট ব্যর্থ হয়েছে!'}</span>
+                      </div>
+                      <p style={{ margin: '0 0 8px', lineHeight: 1.4 }}>{testResult.message}</p>
+                      
+                      {testResult.data?.sent_message && (
+                        <div style={{ marginTop: 8, background: '#fff', padding: '8px 12px', borderRadius: 8, border: '1px solid #a7f3d0', color: '#1e293b' }}>
+                          <strong style={{ fontSize: 11, color: '#047857', display: 'block', marginBottom: 2 }}>প্রেরিত বার্তা (Sent Message):</strong>
+                          <span style={{ fontSize: 12.5 }}>{testResult.data.sent_message}</span>
+                        </div>
+                      )}
+
+                      {testResult.data?.message_id && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>Message ID:</span>
+                          <strong style={{ fontFamily: 'monospace', background: '#DCFCE7', padding: '1px 6px', borderRadius: 4 }}>
+                            {testResult.data.message_id}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 12.5 }}>
+                      <Send size={24} style={{ opacity: 0.35, marginBottom: 8, display: 'inline-block' }} />
+                      <p style={{ margin: 0 }}>
+                        টেস্ট এসএমএস পাঠানোর পর এখানে গেটওয়ের লাইভ ডেলিভারি স্ট্যাটাস ও রেসপন্স কোড প্রদর্শিত হবে।
+                      </p>
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
+
             </div>
           )}
 

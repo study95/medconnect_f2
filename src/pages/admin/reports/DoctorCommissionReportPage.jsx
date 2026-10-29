@@ -14,6 +14,7 @@ import CommissionMemo from './CommissionMemo'
 import CommissionPayModal from './CommissionPayModal'
 import PayoutRequestModal from './PayoutRequestModal'
 import CommissionPaymentHistoryTab from './CommissionPaymentHistoryTab'
+import CommissionOverdueBanner from './CommissionOverdueBanner'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import TableFooter from '../../../components/admin/TableFooter'
 import EmptyState from '../../../components/common/EmptyState'
@@ -216,6 +217,32 @@ export default function DoctorCommissionReportPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {Number(summary.pending_commission || 0) > 0 && (
+            <button
+              type="button"
+              className="admin-btn admin-btn-primary"
+              onClick={() => setShowPayModal(true)}
+              style={{
+                height: 42,
+                padding: '0 18px',
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#10B981',
+                borderColor: '#10B981',
+                color: '#ffffff',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                cursor: 'pointer'
+              }}
+            >
+              <CreditCard size={16} />
+              <span>বকেয়া পরিশোধ করুন (৳{Number(summary.pending_commission).toLocaleString()})</span>
+            </button>
+          )}
+
           <button
             type="button"
             className="admin-btn admin-btn-outline"
@@ -229,11 +256,14 @@ export default function DoctorCommissionReportPage() {
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8
+              gap: 8,
+              background: 'var(--admin-card-bg)',
+              color: 'var(--admin-primary, #00A88C)',
+              borderColor: 'rgba(0, 168, 140, 0.4)'
             }}
           >
             <Printer size={16} />
-            <span>Print Official Statement</span>
+            <span>মাসিক ইনভয়েস ও স্টেটমেন্ট</span>
           </button>
         </div>
       </div>
@@ -374,6 +404,14 @@ export default function DoctorCommissionReportPage() {
           </button>
         </div>
       )}
+
+      {/* ── Due & Overdue Settlement Alert Banner ── */}
+      <CommissionOverdueBanner
+        summary={summary}
+        onPayClick={() => setShowPayModal(true)}
+        onMemoClick={() => setShowMemo(true)}
+        providerType="doctor"
+      />
 
       {/* ── 4 Key Metric Summary Cards (Slim & Compact) ── */}
       <div style={{
@@ -922,26 +960,46 @@ export default function DoctorCommissionReportPage() {
 
                       {/* Channel */}
                       <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: 20,
-                          background: isManagerCash ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                          color: isManagerCash ? '#2563EB' : '#059669',
-                          border: isManagerCash ? '1px solid rgba(59, 130, 246, 0.22)' : '1px solid rgba(16, 185, 129, 0.22)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5
-                        }}>
-                          <span style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: isManagerCash ? '#3B82F6' : '#10B981'
-                          }} />
-                          {isManagerCash ? 'Counter' : 'Online'}
-                        </span>
+                        {(() => {
+                          const isCollectorHospital = item.payment_collected_by_role === 'hospital'
+                          const isCollectorDoctor = item.payment_collected_by_role === 'doctor'
+                          const isCollectorAdmin = item.payment_collected_by_role === 'admin'
+                          const isCash = item.payment_method === 'Cash' || isManagerCash
+
+                          const label = isCollectorDoctor ? '🩺 চেম্বার ক্যাশ' :
+                                        isCollectorHospital ? '🏥 কাউন্টার ক্যাশ' :
+                                        isCollectorAdmin ? '🛡️ বুথ ক্যাশ' :
+                                        isCash ? '💵 চেম্বার ক্যাশ' : '🌐 অনলাইন'
+
+                          const color = isCollectorDoctor ? '#059669' :
+                                        isCollectorHospital || isManagerCash ? '#2563EB' :
+                                        isCollectorAdmin ? '#7C3AED' : '#059669'
+
+                          const bg = isCollectorDoctor ? 'rgba(16, 185, 129, 0.08)' :
+                                     isCollectorHospital || isManagerCash ? 'rgba(37, 99, 235, 0.08)' :
+                                     isCollectorAdmin ? 'rgba(124, 58, 237, 0.08)' : 'rgba(16, 185, 129, 0.08)'
+
+                          const border = isCollectorDoctor ? 'rgba(16, 185, 129, 0.22)' :
+                                         isCollectorHospital || isManagerCash ? 'rgba(37, 99, 235, 0.22)' :
+                                         isCollectorAdmin ? 'rgba(124, 58, 237, 0.22)' : 'rgba(16, 185, 129, 0.22)'
+
+                          return (
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '3px 10px',
+                              borderRadius: 20,
+                              background: bg,
+                              color: color,
+                              border: `1px solid ${border}`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5
+                            }}>
+                              {label}
+                            </span>
+                          )
+                        })()}
                       </td>
 
                       {/* Settlement Status */}
@@ -1044,7 +1102,10 @@ export default function DoctorCommissionReportPage() {
           data={filteredData}
           summary={summary}
           filters={appliedFilters}
-          doctor={{ name: 'Doctor Earnings Statement' }}
+          doctor={{
+            name: filteredData[0]?.doctor_name || 'Doctor Earnings Statement',
+            public_id: filteredData[0]?.doctor_public_id || filteredData[0]?.doctor_id
+          }}
         />
       )}
 
@@ -1054,8 +1115,11 @@ export default function DoctorCommissionReportPage() {
           show={showPayModal}
           onClose={() => setShowPayModal(false)}
           dueAmount={summary.pending_commission || 0}
-          pendingCount={summary.total_count ? (summary.counter_cash_count || 0) : 0}
-          onSuccess={() => refetch()}
+          pendingCount={summary.pending_count ?? (summary.total_count ? summary.counter_cash_count : 0)}
+          onSuccess={() => {
+            refetch()
+            setActiveTab('payment_history')
+          }}
           isHospital={false}
         />
       )}

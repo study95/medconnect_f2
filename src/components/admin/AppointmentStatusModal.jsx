@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { CheckCircle2, X, AlertTriangle, Banknote, Smartphone, Clock, RotateCcw, Calendar, User, Stethoscope, Building2 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 export default function AppointmentStatusModal({
   show,
@@ -9,17 +10,30 @@ export default function AppointmentStatusModal({
   onConfirm,
   loading = false,
 }) {
+  const { user, isAdmin, isDoctor, isManager } = useAuth()
   const [paymentOption, setPaymentOption] = useState('cash') // 'cash' | 'digital' | 'unpaid'
   const [digitalMethod, setDigitalMethod] = useState('bKash')
   const [cancellationReason, setCancellationReason] = useState('')
+  const [collectorRole, setCollectorRole] = useState('hospital') // 'hospital' | 'doctor' | 'admin'
 
   useEffect(() => {
-    if (show) {
+    if (show && appointment) {
+      if (isManager) {
+        setCollectorRole('hospital')
+      } else if (isDoctor) {
+        setCollectorRole('doctor')
+      } else if (isAdmin) {
+        const isHosp = Boolean(appointment.hospital_id || appointment.hospital?.id || appointment.chamber?.hospital_id)
+        setCollectorRole(isHosp ? 'hospital' : 'doctor')
+      } else {
+        const isHosp = Boolean(appointment.hospital_id || appointment.hospital?.id || appointment.chamber?.hospital_id)
+        setCollectorRole(isHosp ? 'hospital' : 'doctor')
+      }
       setPaymentOption('cash')
       setDigitalMethod('bKash')
       setCancellationReason('')
     }
-  }, [show, targetStatus])
+  }, [show, appointment, targetStatus, isManager, isDoctor, isAdmin])
 
   if (!show || !appointment) return null
 
@@ -69,11 +83,19 @@ export default function AppointmentStatusModal({
       payment_method = 'Cash'
     }
 
+    let finalCollectorRole = collectorRole
+    if (isManager) {
+      finalCollectorRole = 'hospital'
+    } else if (isDoctor) {
+      finalCollectorRole = 'doctor'
+    }
+
     onConfirm({
       id: appointment.id,
       status: targetStatus,
       payment_status,
       payment_method,
+      payment_collected_by_role: payment_status === 'Paid' ? finalCollectorRole : null,
     })
   }
 
@@ -380,6 +402,187 @@ export default function AppointmentStatusModal({
                   </div>
                 </label>
               </div>
+
+              {/* Collector Role Selector (When Paid) */}
+              {paymentOption !== 'unpaid' && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'var(--admin-bg, #F8FAFC)',
+                  borderRadius: 12,
+                  border: '1.5px solid var(--admin-border, #E2E8F0)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  marginBottom: 16
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--admin-text, #0F172A)' }}>
+                      ফি কে গ্রহণ করেছেন? (Fee Collected By)
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#059669', background: '#DCFCE7', padding: '1px 6px', borderRadius: 4 }}>
+                      স্বয়ংক্রিয় হিসাব
+                    </span>
+                  </div>
+
+                  {/* If Hospital manager is logged in: show locked badge for hospital */}
+                  {isManager ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 14px',
+                      background: 'rgba(0, 168, 140, 0.08)',
+                      border: '1.5px solid #00A88C',
+                      borderRadius: 10
+                    }}>
+                      <div style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 8,
+                        background: 'rgba(0, 168, 140, 0.16)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 20,
+                        flexShrink: 0
+                      }}>
+                        🏦
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 800, color: '#007561', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>হাসপাতাল কাউন্টার</span>
+                          <span style={{ fontSize: 9.5, fontWeight: 700, color: '#047857', background: '#D1FAE5', padding: '1px 6px', borderRadius: 4 }}>
+                            স্বয়ংক্রিয় লক
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#0F172A', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                          {hospitalName || appointment.hospital?.name || user?.name || 'কাউন্টার ক্যাশ রিসিভ'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isDoctor ? (
+                    /* If Doctor is logged in: show locked badge for doctor */
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 14px',
+                      background: 'rgba(37, 99, 235, 0.08)',
+                      border: '1.5px solid #2563EB',
+                      borderRadius: 10
+                    }}>
+                      <div style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 8,
+                        background: 'rgba(37, 99, 235, 0.16)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 20,
+                        flexShrink: 0
+                      }}>
+                        🩺
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 800, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>ডাক্তার / চেম্বার কাউন্টার</span>
+                          <span style={{ fontSize: 9.5, fontWeight: 700, color: '#1E40AF', background: '#DBEAFE', padding: '1px 6px', borderRadius: 4 }}>
+                            স্বয়ংক্রিয় লক
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#0F172A', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                          {doctorName || user?.name || 'চেম্বার ক্যাশ রিসিভ'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* If Super Admin is logged in: keep the 3 choice buttons for manual audit/correction */
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setCollectorRole('hospital')}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          textAlign: 'center',
+                          border: collectorRole === 'hospital' ? '2px solid #00A88C' : '1px solid var(--admin-border, #CBD5E1)',
+                          background: collectorRole === 'hospital' ? 'rgba(0, 168, 140, 0.12)' : 'var(--admin-card-bg, #FFFFFF)',
+                          color: collectorRole === 'hospital' ? '#007561' : 'var(--admin-text, #334155)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>🏦</span>
+                        <span>হাসপাতাল</span>
+                        <span style={{ fontSize: 9.5, opacity: 0.8, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                          {hospitalName || 'কাউন্টার'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCollectorRole('doctor')}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          textAlign: 'center',
+                          border: collectorRole === 'doctor' ? '2px solid #00A88C' : '1px solid var(--admin-border, #CBD5E1)',
+                          background: collectorRole === 'doctor' ? 'rgba(0, 168, 140, 0.12)' : 'var(--admin-card-bg, #FFFFFF)',
+                          color: collectorRole === 'doctor' ? '#007561' : 'var(--admin-text, #334155)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>🩺</span>
+                        <span>ডাক্তার</span>
+                        <span style={{ fontSize: 9.5, opacity: 0.8, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                          {doctorName || 'চেম্বার'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCollectorRole('admin')}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          textAlign: 'center',
+                          border: collectorRole === 'admin' ? '2px solid #00A88C' : '1px solid var(--admin-border, #CBD5E1)',
+                          background: collectorRole === 'admin' ? 'rgba(0, 168, 140, 0.12)' : 'var(--admin-card-bg, #FFFFFF)',
+                          color: collectorRole === 'admin' ? '#007561' : 'var(--admin-text, #334155)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>🛡️</span>
+                        <span>অ্যাডমিন</span>
+                        <span style={{ fontSize: 9.5, opacity: 0.8, fontWeight: 500 }}>
+                          সরাসরি
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Commission Sync Notice */}
               <div

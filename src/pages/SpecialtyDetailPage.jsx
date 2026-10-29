@@ -175,25 +175,120 @@ export default function SpecialtyDetailPage() {
 
       <style>{`
         .specialty-hero-card {
-          padding: 24px 20px;
-          border-radius: 16px;
-          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+          position: relative;
+          padding: 26px 22px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #064E3B 0%, #047857 52%, #059669 100%);
+          box-shadow: 0 16px 40px -10px rgba(4, 120, 87, 0.38), 0 4px 16px rgba(0, 0, 0, 0.08);
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.15);
         }
         @media (min-width: 768px) {
           .specialty-hero-card {
-            padding: 36px 40px;
-            border-radius: 20px;
+            padding: 38px 44px;
+            border-radius: 24px;
           }
         }
+        .specialty-hero-card::before {
+          content: '';
+          position: absolute;
+          top: -90px;
+          right: -60px;
+          width: 300px;
+          height: 300px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, rgba(52, 211, 153, 0) 70%);
+          pointer-events: none;
+        }
+        .specialty-hero-card::after {
+          content: '';
+          position: absolute;
+          bottom: -80px;
+          left: 25%;
+          width: 240px;
+          height: 240px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0) 70%);
+          pointer-events: none;
+        }
         .specialty-title {
-          font-size: 1.45rem;
+          font-size: 1.5rem;
           line-height: 1.35;
           letter-spacing: -0.3px;
         }
         @media (min-width: 768px) {
           .specialty-title {
-            font-size: 2.1rem;
+            font-size: 2.15rem;
           }
+        }
+        .spec-hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 6px 14px;
+          border-radius: 9999px;
+          background: rgba(255, 255, 255, 0.18);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: #E6FFFA;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+        }
+        .spec-hero-badge-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #34D399;
+          box-shadow: 0 0 8px #34D399;
+        }
+        .spec-hero-icon-box {
+          width: 58px;
+          height: 58px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        @media (min-width: 768px) {
+          .spec-hero-icon-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+          }
+        }
+        .spec-hero-stat {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 18px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.14);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .spec-hero-stat:hover {
+          transform: translateY(-2px);
+          background: rgba(255, 255, 255, 0.2);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+        .spec-filter-card {
+          background: rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          border-radius: 18px;
+          padding: 20px 22px;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
         }
         .spec-section-header {
           display: flex;
@@ -247,26 +342,35 @@ export default function SpecialtyDetailPage() {
         </nav>
 
         {/* Dynamic Responsive Hero Card */}
-        <div
-          className="specialty-hero-card mb-4 mb-md-5 text-white position-relative overflow-hidden"
-          style={{
-            background: meta.bg,
-          }}
-        >
-          <Row className="align-items-center g-4">
+        <div className="specialty-hero-card mb-4 mb-md-5 text-white position-relative overflow-hidden">
+          {/* Subtle Background Watermark Icon */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              right: -30,
+              bottom: -35,
+              opacity: 0.07,
+              pointerEvents: 'none',
+              transform: 'rotate(-10deg)',
+              color: '#FFFFFF',
+            }}
+          >
+            <IconComponent size={240} strokeWidth={1.5} />
+          </div>
+
+          <Row className="align-items-center g-4 position-relative" style={{ zIndex: 1 }}>
             <Col lg={8}>
               <div className="d-flex align-items-center gap-3 mb-3">
-                <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 52, height: 52, background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}
-                >
-                  <IconComponent size={28} color="#fff" />
+                <div className="spec-hero-icon-box">
+                  <IconComponent size={32} color="#FFFFFF" strokeWidth={2.2} />
                 </div>
                 <div>
-                  <span className="badge rounded-pill px-3 py-1 fw-bold" style={{ background: meta.badgeBg, color: meta.badgeColor, fontSize: '0.75rem', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                    {meta.label}
-                  </span>
-                  <h1 className="fw-extrabold mb-0 text-white specialty-title mt-1" style={{ fontFamily: "'Hind Siliguri', 'Inter', sans-serif" }}>
+                  <div className="spec-hero-badge mb-1">
+                    <span className="spec-hero-badge-dot"></span>
+                    <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>{meta.label}</span>
+                  </div>
+                  <h1 className="fw-extrabold mb-0 text-white specialty-title" style={{ fontFamily: "'Hind Siliguri', 'Inter', sans-serif" }}>
                     {specialty?.name_bn || specialty?.name || slug}
                     {districtParam ? ` — ${distNameBn || distNameEn}` : ''}
                     {upazilaParam ? ` (${upaNameBn || upaNameEn})` : ''}
@@ -274,33 +378,67 @@ export default function SpecialtyDetailPage() {
                 </div>
               </div>
 
-              <p className="text-white-50 mb-3 mb-md-4" style={{ fontSize: '0.92rem', maxWidth: 650, fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.6 }}>
+              <p className="mb-3 mb-md-4" style={{ color: 'rgba(255, 255, 255, 0.88)', fontSize: '0.94rem', maxWidth: 660, fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.6 }}>
                 {specialty?.description || 'অভিজ্ঞ বিশেষজ্ঞ ডাক্তার এবং শীর্ষ হাসপাতালের তালিকা। সরাসরি অ্যাপয়েন্টমেন্ট বুকিং ও সিরিয়াল সেবা।'}
               </p>
 
               {/* Counts Badge Strip */}
               <div className="d-flex flex-wrap gap-2 gap-sm-3">
-                <div className="px-3 py-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                  <div className="small text-white-50" style={{ fontSize: '0.75rem', fontFamily: "'Hind Siliguri', sans-serif" }}>মোট বিশেষজ্ঞ ডাক্তার</div>
-                  <div className="fw-bold text-white fs-6" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>{toBengaliNumber(doctorTotal)} জন</div>
+                <div className="spec-hero-stat">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.18)', color: '#FFFFFF' }}
+                  >
+                    <IconUsers size={18} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.75)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      মোট বিশেষজ্ঞ ডাক্তার
+                    </div>
+                    <div className="fw-bold text-white fs-6" style={{ fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.2 }}>
+                      {toBengaliNumber(doctorTotal)} জন
+                    </div>
+                  </div>
                 </div>
-                <div className="px-3 py-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                  <div className="small text-white-50" style={{ fontSize: '0.75rem', fontFamily: "'Hind Siliguri', sans-serif" }}>সংশ্লিষ্ট হাসপাতাল</div>
-                  <div className="fw-bold text-white fs-6" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>{toBengaliNumber(hospitalTotal)} টি</div>
+
+                <div className="spec-hero-stat">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.18)', color: '#FFFFFF' }}
+                  >
+                    <IconBuildingHospital size={18} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.75)', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      সংশ্লিষ্ট হাসপাতাল
+                    </div>
+                    <div className="fw-bold text-white fs-6" style={{ fontFamily: "'Hind Siliguri', sans-serif", lineHeight: 1.2 }}>
+                      {toBengaliNumber(hospitalTotal)} টি
+                    </div>
+                  </div>
                 </div>
               </div>
             </Col>
 
             {/* Regional Filter Switcher */}
             <Col lg={4}>
-              <div className="p-3 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.25)' }}>
-                <div className="d-flex align-items-center gap-2 mb-2 text-white fw-semibold small" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  <IconMapPin size={16} />
+              <div className="spec-filter-card">
+                <div className="d-flex align-items-center gap-2 mb-2 text-white fw-semibold small" style={{ fontFamily: "'Hind Siliguri', sans-serif", fontSize: '0.88rem' }}>
+                  <IconMapPin size={18} style={{ color: '#6EE7B7' }} />
                   <span>অন্যান্য জেলা নির্বাচন করুন:</span>
                 </div>
                 <select
                   className="form-select border-0 shadow-sm"
-                  style={{ background: '#FFFFFF', color: '#0F172A', borderRadius: 8, fontSize: '0.88rem', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}
+                  style={{
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    cursor: 'pointer'
+                  }}
                   value={districtParam || ''}
                   onChange={(e) => {
                     const targetDist = e.target.value
@@ -316,6 +454,9 @@ export default function SpecialtyDetailPage() {
                     <option key={d.id} value={d.slug}>{d.bangla_name || d.name_bn || d.name}</option>
                   ))}
                 </select>
+                <div className="mt-2 text-white-50" style={{ fontSize: '0.72rem', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  জেলা পরিবর্তন করে সংশ্লিষ্ট এলাকার ডাক্তারদের খুঁজুন
+                </div>
               </div>
             </Col>
           </Row>

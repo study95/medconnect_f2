@@ -142,6 +142,7 @@ export default function BookAppointmentPage() {
   const [selectedChamberId, setSelectedChamberId] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookedSlots, setBookedSlots] = useState([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
   const isDoctorServiceDisabled = Boolean(doctor && doctor.has_service_access === false)
 
 
@@ -152,6 +153,7 @@ export default function BookAppointmentPage() {
     message: '',
     type: 'warning',
     viewAppointments: false,
+    bookForRelative: false,
     confirmText: 'ঠিক আছে',
     onClose: null
   })
@@ -163,6 +165,7 @@ export default function BookAppointmentPage() {
       message,
       type: options.type || 'warning',
       viewAppointments: options.viewAppointments || false,
+      bookForRelative: options.bookForRelative || false,
       confirmText: options.confirmText || 'ঠিক আছে',
       onClose: options.onClose || null
     })
@@ -305,6 +308,7 @@ export default function BookAppointmentPage() {
   const [otpSending, setOtpSending] = useState(false)
   const [otpVerifying, setOtpVerifying] = useState(false)
   const [otpTimer, setOtpTimer] = useState(0)
+  const [lastOtpSentMobile, setLastOtpSentMobile] = useState('')
   const otpInputRefs = useRef([])
 
   // Countdown timer for OTP resend
@@ -317,9 +321,17 @@ export default function BookAppointmentPage() {
   }, [otpTimer])
 
   const formatOtpTimer = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    const str = `${mins}:${secs < 10 ? '0' : ''}${secs}`
+    const s = Math.max(0, parseInt(seconds, 10) || 0)
+    const h = Math.floor(s / 3600)
+    const mins = Math.floor((s % 3600) / 60)
+    const secs = s % 60
+    if (h > 0) {
+      const hStr = h < 10 ? `0${h}` : `${h}`
+      const mStr = mins < 10 ? `0${mins}` : `${mins}`
+      const sStr = secs < 10 ? `0${secs}` : `${secs}`
+      return toBnNum(`${hStr}:${mStr}:${sStr}`)
+    }
+    const str = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`
     return toBnNum(str)
   }
 
@@ -456,7 +468,14 @@ export default function BookAppointmentPage() {
 
   // Handle Time Slot Selection with auto-forward to Step 3
   const handleSlotSelect = (slot, autoForward = true) => {
-    if (isSlotBooked(slot)) return;
+    if (slotsLoading) {
+      toast.info('স্লটের তথ্য যাচাই করা হচ্ছে, অনুগ্রহ করে এক সেকেন্ড অপেক্ষা করুন...')
+      return
+    }
+    if (isSlotBooked(slot)) {
+      toast.error('এই সময় স্লটটি ইতোমধ্যে বুক করা হয়েছে। অন্য স্লট নির্বাচন করুন।')
+      return
+    }
     setForm(prev => ({ ...prev, appointment_time: slot }));
 
     if (autoForward) {
@@ -480,20 +499,28 @@ export default function BookAppointmentPage() {
     const targetChamber = availableChambers[0]
     if (!selectedChamberId) setSelectedChamberId(targetChamber.id)
     
+    setSlotsLoading(true)
+    setBookedSlots([])
     setForm(prev => ({ ...prev, appointment_date: dateString, appointment_time: '' }))
   }
 
-  // Fetch booked slots for selected doctor, date, and chamber with 15s live poll
+  // Fetch booked slots for selected doctor, date, and chamber with live poll
   useEffect(() => {
     const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
     if (!activeDoctorId || !form.appointment_date) {
       setBookedSlots([])
+      setSlotsLoading(false)
       return
     }
     let active = true
 
-    const fetchSlots = () => {
-      getBookedSlots(activeDoctorId, { date: form.appointment_date, chamber_id: selectedChamberId })
+    const fetchSlots = (isInitial = false) => {
+      if (isInitial) setSlotsLoading(true)
+      getBookedSlots(activeDoctorId, { 
+        date: form.appointment_date, 
+        chamber_id: selectedChamberId,
+        _t: Date.now()
+      })
         .then(res => {
           if (active && res.data?.booked_slots) {
             setBookedSlots(res.data.booked_slots)
@@ -502,10 +529,13 @@ export default function BookAppointmentPage() {
         .catch(() => {
           if (active) setBookedSlots([])
         })
+        .finally(() => {
+          if (active) setSlotsLoading(false)
+        })
     }
 
-    fetchSlots()
-    const interval = setInterval(fetchSlots, 15000)
+    fetchSlots(true)
+    const interval = setInterval(() => fetchSlots(false), 8000)
 
     return () => { 
       active = false
@@ -532,13 +562,15 @@ export default function BookAppointmentPage() {
 
   const isSlotBooked = (slot) => {
     if (!slot) return false
-    const slotMins = toMinutes(slot)
-    if (slotMins < 0) return false
-
     if (Array.isArray(bookedSlots)) {
+      if (bookedSlots.includes(slot)) return true
+      const slotMins = toMinutes(slot)
+      if (slotMins < 0) return false
+
       const chamber = chambers.find(c => c.id === selectedChamberId || c.public_id === selectedChamberId || String(c.id) === String(selectedChamberId))
       const duration = Math.max(1, Number(chamber?.slot_duration_minutes) || 15)
       const isServerBooked = bookedSlots.some(bs => {
+        if (bs === slot) return true
         const bsMins = toMinutes(bs)
         if (bsMins < 0) return false
         if (bsMins === slotMins) return true
@@ -556,6 +588,7 @@ export default function BookAppointmentPage() {
   useEffect(() => {
     if (form.appointment_time && isSlotBooked(form.appointment_time)) {
       setForm(prev => ({ ...prev, appointment_time: '' }))
+      toast.error('আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অন্য স্লট নির্বাচন করুন।', { id: 'slot-taken-toast' })
     }
   }, [bookedSlots, form.appointment_date])
 
@@ -729,7 +762,6 @@ export default function BookAppointmentPage() {
 
     if (targetMobile && /^01[3-9]\d{8}$/.test(targetMobile)) {
       setMobileNumber(targetMobile)
-      setShowAuthModal(true)
       handleSendBookingOtp(targetMobile)
       return
     }
@@ -824,9 +856,9 @@ export default function BookAppointmentPage() {
         patient_phone: resData.patient_phone || payload.patient_phone || form.patient_phone || user?.mobile || null,
         patient_age: payload.patient_age,
         patient_relation: payload.patient_relation,
-        for_patient_name: payload.patient_name,
-        for_patient_age: payload.patient_age,
-        for_patient_relation: payload.patient_relation,
+        for_patient_name: isOther ? payload.patient_name : null,
+        for_patient_age: isOther ? payload.patient_age : null,
+        for_patient_relation: isOther ? payload.patient_relation : null,
         fee: resData.amount || selectedChamber?.fee || doctor?.fee || doctor?.consultation_fee || null,
         payment_status: resData.payment_status || 'Unpaid',
         notes: payload.notes,
@@ -921,12 +953,25 @@ export default function BookAppointmentPage() {
 
   // Auth Functions
   const handleSendBookingOtp = async (phone) => {
+    if (otpSending) return
     const trimmed = (phone || mobileNumber || '').trim().replace(/\D/g, '')
     if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
       setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
       setAuthMode('otp-send')
+      setShowAuthModal(true)
       return
     }
+
+    // Modal Close Guard: If an OTP was already sent to this number and cooldown is active, reopen the OTP modal without hitting the API
+    if (otpTimer > 0 && lastOtpSentMobile === trimmed) {
+      setOtpError('')
+      setMobileWarning('')
+      setAuthMode('otp-verify')
+      setShowAuthModal(true)
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+      return
+    }
+
     setOtpSending(true)
     setOtpError('')
     setMobileWarning('')
@@ -952,9 +997,8 @@ export default function BookAppointmentPage() {
       }
     }
 
-    setAuthMode('otp-verify')
     try {
-      await sendOtp({ 
+      const res = await sendOtp({ 
         mobile: trimmed, 
         phone: trimmed, 
         type: 'appointment',
@@ -966,7 +1010,11 @@ export default function BookAppointmentPage() {
         patient_name: (form.patient_name || '').trim(),
         patient_phone: (form.patient_phone || '').trim() || trimmed
       })
-      setOtpTimer(60)
+      const cooldown = Number(res?.data?.cooldown_seconds || res?.data?.retry_after_seconds) || 60
+      setLastOtpSentMobile(trimmed)
+      setAuthMode('otp-verify')
+      setShowAuthModal(true)
+      setOtpTimer(cooldown)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
@@ -983,10 +1031,15 @@ export default function BookAppointmentPage() {
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         setOtpSending(false)
         setShowAuthModal(false)
+        const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
           err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
-          { type: 'warning' }
+          {
+            type: 'warning',
+            viewAppointments: true,
+            bookForRelative: isMyselfDuplicate
+          }
         )
         return
       }
@@ -1004,12 +1057,15 @@ export default function BookAppointmentPage() {
       const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
 
       if (cooldown > 0) {
+        setLastOtpSentMobile(trimmed)
         setOtpTimer(cooldown)
         setAuthMode('otp-verify')
         setOtpError(errorMsg)
+        setShowAuthModal(true)
       } else {
         setMobileWarning(errorMsg)
         setAuthMode('otp-send')
+        setShowAuthModal(true)
       }
     } finally {
       setOtpSending(false)
@@ -1017,6 +1073,7 @@ export default function BookAppointmentPage() {
   }
 
   const handleSendOtp = async () => {
+    if (otpSending) return
     const trimmed = (mobileNumber || '').trim().replace(/\D/g, '')
     setMobileWarning('')
 
@@ -1035,6 +1092,17 @@ export default function BookAppointmentPage() {
       setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
       return
     }
+
+    // Modal Close Guard: If an OTP was already sent to this number and cooldown is active, switch directly to verify view
+    if (otpTimer > 0 && lastOtpSentMobile === trimmed) {
+      setOtpError('')
+      setMobileWarning('')
+      setAuthMode('otp-verify')
+      setShowAuthModal(true)
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+      return
+    }
+
     setOtpSending(true)
     setOtpError('')
     
@@ -1082,7 +1150,7 @@ export default function BookAppointmentPage() {
     }
 
     try {
-      await sendOtp({ 
+      const res = await sendOtp({ 
         mobile: trimmed, 
         phone: trimmed, 
         type: 'appointment',
@@ -1094,8 +1162,10 @@ export default function BookAppointmentPage() {
         patient_name: (form.patient_name || '').trim(),
         patient_phone: (form.patient_phone || '').trim() || trimmed
       })
+      const cooldown = Number(res?.data?.cooldown_seconds || res?.data?.retry_after_seconds) || 60
+      setLastOtpSentMobile(trimmed)
       setAuthMode('otp-verify')
-      setOtpTimer(60)
+      setOtpTimer(cooldown)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
@@ -1112,10 +1182,15 @@ export default function BookAppointmentPage() {
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         setOtpSending(false)
         setShowAuthModal(false)
+        const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
           err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
-          { type: 'warning' }
+          {
+            type: 'warning',
+            viewAppointments: true,
+            bookForRelative: isMyselfDuplicate
+          }
         )
         return
       }
@@ -1132,6 +1207,7 @@ export default function BookAppointmentPage() {
       const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
       const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
       if (cooldown > 0) {
+        setLastOtpSentMobile(trimmed)
         setOtpTimer(cooldown)
         setAuthMode('otp-verify')
         setOtpError(errorMsg)
@@ -1144,22 +1220,86 @@ export default function BookAppointmentPage() {
   }
 
   const handleSendLoginOtp = async () => {
+    if (otpSending) return
     const trimmed = (mobileNumber || '').trim().replace(/\D/g, '')
+    if (!trimmed || !/^01[3-9]\d{8}$/.test(trimmed)) {
+      setMobileWarning('অনুগ্রহ করে সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।')
+      return
+    }
+
+    if (otpTimer > 0 && lastOtpSentMobile === trimmed) {
+      setIsExistingPatient(true)
+      setOtpError('')
+      setMobileWarning('')
+      setAuthMode('otp-verify')
+      setShowAuthModal(true)
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+      return
+    }
+
     setOtpSending(true)
     setOtpError('')
+    const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
     try {
-      await sendOtp({ mobile: trimmed, phone: trimmed, type: 'appointment' })
+      const res = await sendOtp({
+        mobile: trimmed,
+        phone: trimmed,
+        type: 'appointment',
+        doctor_id: activeDoctorId,
+        chamber_id: selectedChamberId,
+        appointment_date: form.appointment_date,
+        appointment_time: form.appointment_time,
+        booking_for: form.booking_for || 'myself',
+        patient_name: (form.patient_name || '').trim(),
+        patient_phone: (form.patient_phone || '').trim() || trimmed
+      })
+      const cooldown = Number(res?.data?.cooldown_seconds || res?.data?.retry_after_seconds) || 60
+      setLastOtpSentMobile(trimmed)
       setIsExistingPatient(true)
       setAuthMode('otp-verify')
-      setOtpTimer(60)
+      setOtpTimer(cooldown)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
+      if (err.response?.data?.service_disabled) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning(
+          'অনলাইন বুকিং বন্ধ',
+          err.response?.data?.message || 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে হাসপাতাল বা চেম্বার কর্তৃপক্ষের সাথে যোগাযোগ করুন।',
+          { type: 'warning' }
+        )
+        return
+      }
+      if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
+        showWarning(
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
+          {
+            type: 'warning',
+            viewAppointments: true,
+            bookForRelative: isMyselfDuplicate
+          }
+        )
+        return
+      }
+      if (err.response?.data?.slot_booked) {
+        setOtpSending(false)
+        setShowAuthModal(false)
+        showWarning('সময় স্লট ইতোমধ্যে বুক করা হয়েছে', err.response?.data?.message || 'এই সময় স্লটটি ইতোমধ্যে বুক হয়ে গেছে। অনুগ্রহ করে অন্য সময় স্লট নির্বাচন করুন।', {
+          onClose: () => setCurrentStep(2)
+        })
+        return
+      }
       console.error('Login OTP error:', err)
       const rawMsg = err.response?.data?.message || err.response?.data?.error
       const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
       const errorMsg = translateApiError(rawMsg) || rawMsg || 'OTP পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
       if (cooldown > 0) {
+        setLastOtpSentMobile(trimmed)
         setOtpTimer(cooldown)
         setAuthMode('otp-verify')
         setOtpError(errorMsg)
@@ -1182,7 +1322,7 @@ export default function BookAppointmentPage() {
     setOtpError('')
     const activeDoctorId = doctorId || form.doctor_id || doctor?.public_id || doctor?.id
     try {
-      await sendOtp({ 
+      const res = await sendOtp({ 
         mobile: trimmed, 
         phone: trimmed, 
         type: 'appointment',
@@ -1194,17 +1334,24 @@ export default function BookAppointmentPage() {
         patient_name: (form.patient_name || '').trim(),
         patient_phone: (form.patient_phone || '').trim() || trimmed
       })
-      setOtpTimer(60)
+      const cooldown = Number(res?.data?.cooldown_seconds || res?.data?.retry_after_seconds) || 60
+      setLastOtpSentMobile(trimmed)
+      setOtpTimer(cooldown)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
     } catch (err) {
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         setOtpSending(false)
         setShowAuthModal(false)
+        const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
           err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
-          { type: 'warning' }
+          {
+            type: 'warning',
+            viewAppointments: true,
+            bookForRelative: isMyselfDuplicate
+          }
         )
         return
       }
@@ -1256,6 +1403,8 @@ export default function BookAppointmentPage() {
           }
         }
 
+        setLastOtpSentMobile('')
+        setOtpTimer(0)
         setShowAuthModal(false)
         await submitAppointment()
       } else {
@@ -1303,6 +1452,8 @@ export default function BookAppointmentPage() {
 
       const res = await registerPatient(payload)
       if (res.success) {
+        setLastOtpSentMobile('')
+        setOtpTimer(0)
         setShowAuthModal(false)
         await submitAppointment()
       } else {
@@ -1333,6 +1484,8 @@ export default function BookAppointmentPage() {
     try {
       const res = await loginAsPatient(loginForm.identifier.trim(), loginForm.password)
       if (res.success) {
+        setLastOtpSentMobile('')
+        setOtpTimer(0)
         setShowAuthModal(false)
         await submitAppointment()
       } else {
@@ -1813,7 +1966,7 @@ export default function BookAppointmentPage() {
                   </div>
                 </div>
                 <span className={`quick-badge-status ${appt.payment_status === 'Paid' ? 'quick-badge-paid' : 'quick-badge-unpaid'}`}>
-                  {appt.payment_status === 'Paid' ? 'পরিশোধিত' : 'পরিশোধ বাকি (চেম্বারে দিবেন)'}
+                  {appt.payment_status === 'Paid' ? 'পরিশোধিত' : 'বকেয়া (চেম্বারে ক্যাশ প্রদেয়)'}
                 </span>
               </div>
 
@@ -1851,7 +2004,7 @@ export default function BookAppointmentPage() {
                   <div className="quick-row-item">
                     <span className="quick-row-lbl">পরামর্শ ফি:</span>
                     <span className="quick-row-val" style={{ color: '#00B875', fontWeight: 800 }}>
-                      ৳ {toBnNum(feeVal)}
+                      ৳ {toBnNum(feeVal)} <span style={{ fontSize: 11.5, color: '#B45309', fontWeight: 600 }}>({appt.payment_status === 'Paid' ? 'পরিশোধিত' : 'চেম্বারে ক্যাশ প্রদেয়'})</span>
                     </span>
                   </div>
                 )}
@@ -2677,16 +2830,23 @@ export default function BookAppointmentPage() {
             {warningModal.message}
           </p>
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
-            {warningModal.viewAppointments && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {warningModal.bookForRelative && (
               <button
                 type="button"
                 onClick={() => {
                   setWarningModal({ show: false, title: '', message: '' })
-                  navigate('/my-appointments')
+                  setForm(prev => ({
+                    ...prev,
+                    booking_for: 'relative',
+                    patient_name: '',
+                    patient_age: '',
+                    patient_phone: ''
+                  }))
+                  setCurrentStep(3)
                 }}
                 style={{
-                  flex: 1,
+                  width: '100%',
                   minHeight: 46,
                   padding: '10px 16px',
                   borderRadius: 12,
@@ -2694,48 +2854,82 @@ export default function BookAppointmentPage() {
                   color: 'white',
                   border: 'none',
                   fontWeight: 800,
-                  fontSize: 14,
+                  fontSize: 14.5,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 7,
+                  gap: 8,
                   boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
+                  transition: 'all 0.2s',
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}
+              >
+                <IconUsers size={18} />
+                <span>আত্মীয়ের জন্য বুক করুন</span>
+              </button>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+              {warningModal.viewAppointments && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWarningModal({ show: false, title: '', message: '' })
+                    navigate('/my-appointments')
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: 46,
+                    padding: '10px 16px',
+                    borderRadius: 12,
+                    background: warningModal.bookForRelative ? '#F0FDF4' : '#00B875',
+                    color: warningModal.bookForRelative ? '#00966D' : 'white',
+                    border: warningModal.bookForRelative ? '1.5px solid #A7F3D0' : 'none',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    boxShadow: warningModal.bookForRelative ? 'none' : '0 4px 12px rgba(0, 184, 117, 0.25)',
+                    transition: 'all 0.2s',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <IconCalendarEvent size={18} />
+                  <span>অ্যাপয়েন্টমেন্ট তালিকা</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const onClose = warningModal.onClose
+                  setWarningModal({ show: false, title: '', message: '' })
+                  if (onClose) onClose()
+                }}
+                style={{
+                  flex: 1,
+                  minHeight: 46,
+                  padding: '10px 18px',
+                  borderRadius: 12,
+                  background: (warningModal.viewAppointments || warningModal.bookForRelative) ? '#F1F5F9' : '#00B875',
+                  color: (warningModal.viewAppointments || warningModal.bookForRelative) ? '#334155' : 'white',
+                  border: (warningModal.viewAppointments || warningModal.bookForRelative) ? '1.5px solid #E2E8F0' : 'none',
+                  fontWeight: 700,
+                  fontSize: 14.5,
+                  cursor: 'pointer',
                   transition: 'all 0.2s',
                   fontFamily: "'Hind Siliguri', sans-serif",
                   whiteSpace: 'nowrap'
                 }}
               >
-                <IconCalendarEvent size={18} />
-                <span>অ্যাপয়েন্টমেন্ট তালিকা</span>
+                {warningModal.confirmText || 'ঠিক আছে'}
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                const onClose = warningModal.onClose
-                setWarningModal({ show: false, title: '', message: '' })
-                if (onClose) onClose()
-              }}
-              style={{
-                flex: warningModal.viewAppointments ? 1 : 1,
-                minHeight: 46,
-                padding: '10px 18px',
-                borderRadius: 12,
-                background: warningModal.viewAppointments ? '#F1F5F9' : '#00B875',
-                color: warningModal.viewAppointments ? '#334155' : 'white',
-                border: warningModal.viewAppointments ? '1.5px solid #E2E8F0' : 'none',
-                fontWeight: 700,
-                fontSize: 14.5,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontFamily: "'Hind Siliguri', sans-serif",
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {warningModal.confirmText || 'ঠিক আছে'}
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -3140,7 +3334,7 @@ export default function BookAppointmentPage() {
                                   }}
                                 >
                                   {/* Row 1: Day + Time */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                                     <span style={{
                                       fontWeight: 800,
                                       fontSize: 13,
@@ -3153,25 +3347,10 @@ export default function BookAppointmentPage() {
                                       <IconCalendarEvent size={14} color="#00B875" />
                                       {dayToBn[sch.day] || sch.day}
                                     </span>
-                                    <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                                       <IconClock size={13} color="#00B875" />
                                       {formatTimeBn(sch.start_time)} - {formatTimeBn(sch.end_time)}
                                     </span>
-                                    {sch.slot_duration_minutes && (
-                                      <span style={{
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        color: '#0369A1',
-                                        background: '#E0F2FE',
-                                        padding: '1px 7px',
-                                        borderRadius: 6,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 3
-                                      }}>
-                                        ⏱️ {toBnNum(sch.slot_duration_minutes)} মি. স্লট
-                                      </span>
-                                    )}
                                   </div>
 
                                   {/* Row 2: Fee + Select Button */}
@@ -3179,14 +3358,18 @@ export default function BookAppointmentPage() {
                                     {fee ? (
                                       <span style={{
                                         fontSize: 12,
-                                        fontWeight: 800,
+                                        fontWeight: 700,
                                         color: isSchSelected ? '#007A65' : '#00B875',
                                         background: isSchSelected ? '#FFFFFF' : '#E8F8F2',
                                         padding: '3px 10px',
                                         borderRadius: 6,
-                                        border: '1px solid #A7F3D0'
+                                        border: '1px solid #A7F3D0',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5
                                       }}>
-                                        ৳{toBnNum(fee)}
+                                        <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.85 }}>ভিজিট ফি</span>
+                                        <strong style={{ fontSize: 12.5, fontWeight: 800 }}>৳{toBnNum(fee)}</strong>
                                       </span>
                                     ) : <span />}
 
@@ -3302,9 +3485,17 @@ export default function BookAppointmentPage() {
 
                         {/* Right: Time Slots Accordion */}
                         <Col md={6}>
-                           <h6 style={{ fontWeight: 800, color: '#00B875', marginBottom: 4 }}>
-                             সময় স্লট নির্বাচন করুন ({toBnNum(selectedChamber?.slot_duration_minutes || 15)} মিনিট)
-                           </h6>
+                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                             <h6 style={{ fontWeight: 800, color: '#00B875', margin: 0 }}>
+                               সময় স্লট নির্বাচন করুন ({toBnNum(selectedChamber?.slot_duration_minutes || 15)} মিনিট)
+                             </h6>
+                             {slotsLoading && (
+                               <span style={{ fontSize: 11, color: '#00A88C', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}>
+                                 <span className="spinner-border spinner-border-sm" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+                                 স্লট যাচাই হচ্ছে...
+                               </span>
+                             )}
+                           </div>
                            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>একটি সময় স্লট নির্বাচন করুন</p>
                            
                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingRight: '4px' }}>
@@ -3324,10 +3515,11 @@ export default function BookAppointmentPage() {
                                            <button 
                                              key={slot} 
                                              type="button" 
-                                             disabled={booked} 
-                                             onClick={() => !booked && handleSlotSelect(slot)} 
+                                             disabled={booked || slotsLoading} 
+                                             onClick={() => !booked && !slotsLoading && handleSlotSelect(slot)} 
                                              className={`time-slot-btn ${booked ? 'booked' : (isSelected ? 'selected' : 'unselected')}`}
-                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : formatTimeBn(slot)}
+                                             style={{ opacity: booked ? 0.45 : (slotsLoading ? 0.6 : 1), cursor: booked ? 'not-allowed' : (slotsLoading ? 'wait' : 'pointer') }}
+                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : (slotsLoading ? 'যাচাই করা হচ্ছে...' : formatTimeBn(slot))}
                                            >
                                              <span>{formatTimeBn(slot)}</span>
                                              {booked && <span className="booked-tag">(বুকড)</span>}
@@ -3355,10 +3547,11 @@ export default function BookAppointmentPage() {
                                            <button 
                                              key={slot} 
                                              type="button" 
-                                             disabled={booked} 
-                                             onClick={() => !booked && handleSlotSelect(slot)} 
+                                             disabled={booked || slotsLoading} 
+                                             onClick={() => !booked && !slotsLoading && handleSlotSelect(slot)} 
                                              className={`time-slot-btn ${booked ? 'booked' : (isSelected ? 'selected' : 'unselected')}`}
-                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : formatTimeBn(slot)}
+                                             style={{ opacity: booked ? 0.45 : (slotsLoading ? 0.6 : 1), cursor: booked ? 'not-allowed' : (slotsLoading ? 'wait' : 'pointer') }}
+                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : (slotsLoading ? 'যাচাই করা হচ্ছে...' : formatTimeBn(slot))}
                                            >
                                              <span>{formatTimeBn(slot)}</span>
                                              {booked && <span className="booked-tag">(বুকড)</span>}
@@ -3386,10 +3579,11 @@ export default function BookAppointmentPage() {
                                            <button 
                                              key={slot} 
                                              type="button" 
-                                             disabled={booked} 
-                                             onClick={() => !booked && handleSlotSelect(slot)} 
+                                             disabled={booked || slotsLoading} 
+                                             onClick={() => !booked && !slotsLoading && handleSlotSelect(slot)} 
                                              className={`time-slot-btn ${booked ? 'booked' : (isSelected ? 'selected' : 'unselected')}`}
-                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : formatTimeBn(slot)}
+                                             style={{ opacity: booked ? 0.45 : (slotsLoading ? 0.6 : 1), cursor: booked ? 'not-allowed' : (slotsLoading ? 'wait' : 'pointer') }}
+                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : (slotsLoading ? 'যাচাই করা হচ্ছে...' : formatTimeBn(slot))}
                                            >
                                              <span>{formatTimeBn(slot)}</span>
                                              {booked && <span className="booked-tag">(বুকড)</span>}
@@ -3417,10 +3611,11 @@ export default function BookAppointmentPage() {
                                            <button 
                                              key={slot} 
                                              type="button" 
-                                             disabled={booked} 
-                                             onClick={() => !booked && handleSlotSelect(slot)} 
+                                             disabled={booked || slotsLoading} 
+                                             onClick={() => !booked && !slotsLoading && handleSlotSelect(slot)} 
                                              className={`time-slot-btn ${booked ? 'booked' : (isSelected ? 'selected' : 'unselected')}`}
-                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : formatTimeBn(slot)}
+                                             style={{ opacity: booked ? 0.45 : (slotsLoading ? 0.6 : 1), cursor: booked ? 'not-allowed' : (slotsLoading ? 'wait' : 'pointer') }}
+                                             title={booked ? 'ইতিমধ্যে বুক করা হয়েছে' : (slotsLoading ? 'যাচাই করা হচ্ছে...' : formatTimeBn(slot))}
                                            >
                                              <span>{formatTimeBn(slot)}</span>
                                              {booked && <span className="booked-tag">(বুকড)</span>}
@@ -3899,15 +4094,15 @@ export default function BookAppointmentPage() {
                      </button>
                      <button 
                        onClick={handleConfirmClick} 
-                       disabled={submitting || isDoctorServiceDisabled} 
+                       disabled={submitting || otpSending || isDoctorServiceDisabled} 
                        className="btn-confirm"
                        style={{
-                         opacity: (submitting || isDoctorServiceDisabled) ? 0.6 : 1,
-                         cursor: (submitting || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer'
+                         opacity: (submitting || otpSending || isDoctorServiceDisabled) ? 0.6 : 1,
+                         cursor: (submitting || otpSending || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer'
                        }}
                      >
-                       {submitting ? <IconLoader2 className="spin-icon" size={18} /> : <IconCalendarEvent size={18} />}
-                       অ্যাপয়েন্টমেন্ট নিশ্চিত করুন
+                       {(submitting || otpSending) ? <IconLoader2 className="spin-icon" size={18} /> : <IconCalendarEvent size={18} />}
+                       {otpSending ? 'যাচাই করা হচ্ছে...' : submitting ? 'নিশ্চিত করা হচ্ছে...' : 'অ্যাপয়েন্টমেন্ট নিশ্চিত করুন'}
                      </button>
                   </div>
                 </div>

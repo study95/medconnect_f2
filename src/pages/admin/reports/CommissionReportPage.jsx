@@ -5,13 +5,14 @@ import {
   CheckCircle2, ShieldCheck, X, AlertTriangle, RotateCcw, 
   Layers, Stethoscope, Building2, Eye, Search, Filter, 
   Clock, ArrowUpRight, Check, ChevronRight, FileText, Smartphone,
-  CreditCard, ExternalLink, Calendar, CheckCheck, ChevronDown, ChevronUp
+  CreditCard, ExternalLink, Calendar, CheckCheck, ChevronDown, ChevronUp,
+  Printer
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { 
   getCommissionReport, getDoctors, getHospitals, updateAppointment, 
   bulkUpdateCommissionStatus, getCommissionRequests, getCommissionRequestDetails,
-  approveCommissionRequest, rejectCommissionRequest 
+  approveCommissionRequest, rejectCommissionRequest, sendCommissionReminder
 } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import { getErrorMessage } from '../../../utils/errorHelper'
@@ -627,6 +628,29 @@ export default function CommissionReportPage() {
     }
   }
 
+  const [sendingReminder, setSendingReminder] = useState(false)
+
+  const handleSendReminder = async () => {
+    if (!selectedDoctor && !selectedHospital) {
+      toast.error('অনুগ্রহ করে একজন ডাক্তার বা হাসপাতাল ফিল্টার করে নির্বাচন করুন।')
+      return
+    }
+
+    setSendingReminder(true)
+    try {
+      const payload = {
+        doctor_id: selectedDoctor?.id || undefined,
+        hospital_id: selectedHospital?.id || undefined,
+      }
+      const res = await sendCommissionReminder(payload)
+      toast.success(res.data?.message || 'রিমাইন্ডার নোটিফিকেশন সফলভাবে পাঠানো হয়েছে!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'রিমাইন্ডার পাঠাতে ব্যর্থ হয়েছে।')
+    } finally {
+      setSendingReminder(false)
+    }
+  }
+
   const toggleSelect = (id) => {
     setSelectedAppointments(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -1064,6 +1088,35 @@ export default function CommissionReportPage() {
             <strong style={{ color: '#EF4444', fontSize: 14 }}>৳{Number(runningMonth.due_commission || 0).toLocaleString()}</strong>
             <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>({runningMonth.due_count || 0})</span>
           </div>
+
+          <span style={{ color: 'rgba(0, 168, 140, 0.35)', fontWeight: 900 }}>•</span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMemoScope('all')
+              setShowMemo(true)
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 14px',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 800,
+              background: '#00A88C',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0, 168, 140, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+            title="চলতি মাসের অফিশিয়াল বিলিং স্টেটমেন্ট ও ইনভয়েস প্রিভিউ"
+          >
+            <Printer size={13} />
+            <span>মাসিক ইনভয়েস / স্টেটমেন্ট</span>
+          </button>
         </div>
       </div>
 
@@ -1766,6 +1819,26 @@ export default function CommissionReportPage() {
                 📋 Memo for Selected ({selectedAppointments.length})
               </button>
             )}
+            {(selectedDoctor || selectedHospital) && Number(summary.pending_commission || 0) > 0 && (
+              <button 
+                className="admin-btn admin-btn-sm" 
+                style={{ 
+                  background: 'rgba(245, 158, 11, 0.12)', 
+                  color: '#B45309', 
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontWeight: 700 
+                }}
+                onClick={handleSendReminder}
+                disabled={sendingReminder}
+                title="নির্বাচিত ডাক্তার বা হাসপাতালের ড্যাশবোর্ডে বকেয়া কমিশন পরিশোধের রিমাইন্ডার পাঠান"
+              >
+                <span>📢</span>
+                <span>{sendingReminder ? 'পাঠানো হচ্ছে...' : 'রিমাইন্ডার পাঠান'}</span>
+              </button>
+            )}
             <button 
               className="admin-btn admin-btn-outline" 
               onClick={() => {
@@ -1826,6 +1899,19 @@ export default function CommissionReportPage() {
                           }}>
                              {row.created_by_role === 'manager' ? 'hospital' : (row.created_by_role || 'patient')}
                           </span>
+                          {row.payment_collected_by_role && (
+                            <span style={{
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              background: row.payment_collected_by_role === 'hospital' ? 'rgba(37, 99, 235, 0.08)' : 'rgba(5, 150, 105, 0.08)',
+                              color: row.payment_collected_by_role === 'hospital' ? '#2563EB' : '#059669',
+                              border: row.payment_collected_by_role === 'hospital' ? '1px solid rgba(37, 99, 235, 0.2)' : '1px solid rgba(5, 150, 105, 0.2)'
+                            }}>
+                              {row.payment_collector_name || (row.payment_collected_by_role === 'hospital' ? 'হাসপাতাল কাউন্টার' : 'ডাক্তার')}
+                            </span>
+                          )}
                           {(row.booking_phone || row.patient_phone) && (
                             <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
                               {row.booking_phone || row.patient_phone}

@@ -13,7 +13,7 @@ import {
   CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt,
   ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
   Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
-  Tag, Clock, Megaphone, Mail, Activity
+  Tag, Clock, Megaphone, Mail, Activity, Gauge
 } from 'lucide-react'
 
 // ─── Collapsible Section Component ────────────────────────────────────────────
@@ -72,6 +72,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const location = useLocation()
 
   const [openingPulse, setOpeningPulse] = useState(false)
+  const [openingHorizon, setOpeningHorizon] = useState(false)
 
   const handleOpenPulse = async (e) => {
     e.preventDefault()
@@ -86,6 +87,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       toast.error(err.response?.data?.message || 'Monitoring access is restricted to super admins.')
     } finally {
       setOpeningPulse(false)
+    }
+  }
+
+  const handleOpenHorizon = async (e) => {
+    e.preventDefault()
+    if (openingHorizon) return
+    setOpeningHorizon(true)
+    try {
+      const res = await getMonitoringSsoTicket('horizon')
+      if (res.data?.sso_url) {
+        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Horizon access is restricted to super admins.')
+    } finally {
+      setOpeningHorizon(false)
     }
   }
 
@@ -819,6 +836,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </NavLink>
               )}
 
+              {/* System Health & Observability — Admin only */}
+              {isAdmin && (
+                <NavLink
+                  to="/admin/system-health"
+                  className={`sidebar-nav-item ${isActive('/admin/system-health') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'System Health' : undefined}
+                >
+                  <span className="nav-icon"><Activity size={18} color="#00B875" /></span>
+                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span>System Health</span>
+                    <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>100%</span>
+                  </span>
+                </NavLink>
+              )}
+
               {/* System Pulse Live Monitoring — Admin only */}
               {isAdmin && (
                 <button
@@ -829,10 +862,28 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   style={{ width: '100%', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                   title={isCollapsed ? 'System Pulse' : undefined}
                 >
-                  <span className="nav-icon"><Activity size={18} color="#00B875" /></span>
+                  <span className="nav-icon"><Activity size={18} color="#3b82f6" /></span>
                   <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>System Pulse</span>
-                    <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>LIVE</span>
+                    <span>Pulse (APM)</span>
+                    <span style={{ fontSize: 10, background: '#3b82f620', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>SSO ↗</span>
+                  </span>
+                </button>
+              )}
+
+              {/* Laravel Horizon Queue Master — Admin only */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleOpenHorizon}
+                  disabled={openingHorizon}
+                  className="sidebar-nav-item"
+                  style={{ width: '100%', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                  title={isCollapsed ? 'Laravel Horizon' : undefined}
+                >
+                  <span className="nav-icon"><Gauge size={18} color="#8b5cf6" /></span>
+                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span>Horizon (Queues)</span>
+                    <span style={{ fontSize: 10, background: '#8b5cf620', color: '#8b5cf6', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>SSO ↗</span>
                   </span>
                 </button>
               )}

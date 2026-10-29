@@ -148,6 +148,7 @@ const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPag
 
 // Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
+const SystemHealthPage       = lazy(() => import('./pages/admin/SystemHealthPage'))
 
 // Review Moderation, Dispute Reports & Portals
 const ReviewModerationPage   = lazy(() => import('./pages/admin/reviews/ReviewModerationPage'))
@@ -352,7 +353,7 @@ function App() {
             <Route path="medicines/edit/:id" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
 
             {/* Payments */}
-            <Route path="payments" element={<SubscriptionGate moduleName="Payments"><PaymentListPage /></SubscriptionGate>} />
+            <Route path="payments" element={<PaymentListPage />} />
 
             {/* Content Management */}
             <Route path="content" element={<ContentManagerPage />} />
@@ -419,6 +420,9 @@ function App() {
 
             {/* Audit Log */}
             <Route path="audit-logs" element={<AuditLogPage />} />
+
+            {/* Enterprise System Health & Observability */}
+            <Route path="system-health" element={<SystemHealthPage />} />
           </Route>
 
           {/* ===== DOCTOR PORTAL ROUTES ===== */}
@@ -478,7 +482,7 @@ function App() {
             <Route path="medicines/edit/:id" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
 
             {/* Payments */}
-            <Route path="payments" element={<SubscriptionGate moduleName="Payments"><PaymentListPage /></SubscriptionGate>} />
+            <Route path="payments" element={<PaymentListPage />} />
 
             {/* Doctor Earnings & Commission Statement */}
             <Route path="commission-report" element={<DoctorCommissionReportPage />} />
@@ -544,6 +548,9 @@ function App() {
             <Route path="patients/edit/:id" element={<PatientFormPage />} />
             <Route path="patients/view/:id" element={<PatientProfilePage />} />
             <Route path="patients/:id" element={<PatientProfilePage />} />
+
+            {/* Payments */}
+            <Route path="payments" element={<PaymentListPage />} />
 
             {/* Hospital Subscription & Seats */}
             <Route path="hospital-subscription" element={<HospitalSubscriptionExperiencePage />} />

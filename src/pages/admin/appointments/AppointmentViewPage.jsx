@@ -12,6 +12,23 @@ export default function AppointmentViewPage() {
   const { appointment: appt, isLoading: loading } = useAdminAppointmentDetail(id)
   const { updateAppointmentStatus, isUpdatingStatus: updating } = useAdminAppointmentMutations()
 
+  const handleCashCollect = async () => {
+    try {
+      const fee = Number(appt?.amount || appt?.chamber?.fee || 500)
+      const collectorRole = isManager ? 'hospital' : (isDoctor ? 'doctor' : (appt?.hospital_id ? 'hospital' : 'doctor'))
+      await updateAppointmentStatus({
+        id,
+        payment_status: 'Paid',
+        payment_method: 'Cash',
+        amount: fee,
+        payment_collected_by_role: collectorRole,
+        status: appt?.status === 'pending' ? 'confirmed' : appt?.status
+      })
+    } catch (err) {
+      console.error('Failed to collect cash:', err)
+    }
+  }
+
   const handleStatusUpdate = async (newStatus) => {
     try {
       await updateAppointmentStatus({ id, status: newStatus })
@@ -62,7 +79,18 @@ export default function AppointmentViewPage() {
                   🔒 Prescription Finalized & Payment Paid
                 </div>
               ) : (isAdmin || isDoctor || isManager) && (
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {appt.payment_status !== 'Paid' && (
+                    <button
+                      disabled={updating}
+                      onClick={handleCashCollect}
+                      className="admin-btn admin-btn-sm"
+                      style={{ background: 'linear-gradient(135deg, #00A88C, #00C9A7)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title="চেম্বার কাউন্টারে ক্যাশ ফি গ্রহণ করুন"
+                    >
+                      💵 Collect Cash (৳{appt.amount || appt.chamber?.fee || 500})
+                    </button>
+                  )}
                   <button 
                     disabled={updating || appt.status === 'confirmed'} 
                     onClick={() => handleStatusUpdate('confirmed')}
@@ -98,7 +126,7 @@ export default function AppointmentViewPage() {
               <h3 className="admin-card-title">📅 Consultation Schedule</h3>
             </div>
             <div className="admin-card-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 20 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Visit Date</label>
                   <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>
@@ -114,6 +142,23 @@ export default function AppointmentViewPage() {
                   <p style={{ fontSize: 16, fontWeight: 800, color: '#00A88C', margin: '4px 0' }}>
                     {appt.serial_number ? `Serial-${appt.serial_number}` : '—'}
                   </p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>Fee & Payment</label>
+                  <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--admin-text)', margin: '4px 0' }}>
+                    ৳{appt.amount || appt.chamber?.fee || 500}
+                  </p>
+                  <span style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: appt.payment_status === 'Paid' ? '#DCFCE7' : '#FEF3C7',
+                    color: appt.payment_status === 'Paid' ? '#15803D' : '#92400E'
+                  }}>
+                    {appt.payment_status === 'Paid' ? `✓ Paid (${appt.payment_method || 'Cash'})` : '⏳ Unpaid (Cash at chamber)'}
+                  </span>
                 </div>
               </div>
 
@@ -267,6 +312,27 @@ export default function AppointmentViewPage() {
                   <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>Total Amount</span>
                   <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--admin-text)' }}>৳{appt.amount || '0'}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>Payment Status</span>
+                  <span style={{ 
+                    fontSize: 12, 
+                    fontWeight: 800, 
+                    padding: '2px 8px', 
+                    borderRadius: 6,
+                    background: appt.payment_status === 'Paid' ? '#DCFCE7' : '#FEF3C7',
+                    color: appt.payment_status === 'Paid' ? '#15803D' : '#92400E'
+                  }}>
+                    {appt.payment_status === 'Paid' ? `✓ Paid (${appt.payment_method || 'Cash'})` : '⏳ Unpaid'}
+                  </span>
+                </div>
+                {appt.payment_collector_name && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>Collected By</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--admin-text)' }}>
+                      {appt.payment_collected_by_role === 'hospital' ? '🏦' : (appt.payment_collected_by_role === 'doctor' ? '🩺' : '🛡️')} {appt.payment_collector_name}
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                   <span style={{ fontSize: 13, color: 'var(--admin-text-muted)' }}>Platform Fee</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-primary)' }}>৳{appt.commission_amount || '0'} ({appt.commission_rate || 0}%)</span>

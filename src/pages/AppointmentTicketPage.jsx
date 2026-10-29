@@ -5,7 +5,7 @@ import { getAppointmentById, cancelAppointment, sendAppointmentCancelOtp, verify
 import { getDoctorById, getDoctors, getDoctorChambers } from '../api/doctorApi'
 import { getPrescription } from '../api/adminApi'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, CheckCircle2, AlertCircle, FileText, Download, Loader2, Star } from 'lucide-react'
+import { Calendar, Clock, Building, MapPin, Phone, Info, User, X, Headset, CheckCircle2, AlertCircle, FileText, Download, Loader2, Star, Wallet } from 'lucide-react'
 // html2canvas and jsPDF are dynamically imported inside handleDownloadRx()
 // so they don't bloat the initial page load (~600KB saved from first render)
 import PrescriptionPaper from '../components/common/PrescriptionPaper'
@@ -183,21 +183,33 @@ export default function AppointmentTicketPage() {
   }
 
   const handleSendCancelOtp = async () => {
+    if (cancelModal.loading) return
+    if (cancelModal.otpTimer > 0 && cancelModal.maskedMobile) {
+      setCancelModal(prev => ({ ...prev, step: 'otp', error: '' }))
+      return
+    }
     setCancelModal(prev => ({ ...prev, loading: true, error: '' }))
     try {
       const res = await sendAppointmentCancelOtp(id)
       const data = res.data || {}
+      const cooldown = Number(data.cooldown_seconds || data.retry_after_seconds) || 60
       setCancelModal(prev => ({
         ...prev,
         step: 'otp',
-        maskedMobile: data.masked_mobile || '',
-        otpTimer: data.cooldown_seconds || 60,
+        maskedMobile: data.masked_mobile || prev.maskedMobile || '',
+        otpTimer: cooldown,
         loading: false,
         error: ''
       }))
     } catch (err) {
       const msg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
-      setCancelModal(prev => ({ ...prev, loading: false, error: msg }))
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      setCancelModal(prev => ({
+        ...prev,
+        otpTimer: cooldown > 0 ? cooldown : prev.otpTimer,
+        loading: false,
+        error: msg
+      }))
     }
   }
 
@@ -207,16 +219,23 @@ export default function AppointmentTicketPage() {
     try {
       const res = await sendAppointmentCancelOtp(id)
       const data = res.data || {}
+      const cooldown = Number(data.cooldown_seconds || data.retry_after_seconds) || 60
       setCancelModal(prev => ({
         ...prev,
-        otpTimer: data.cooldown_seconds || 60,
+        otpTimer: cooldown,
         loading: false,
         error: ''
       }))
       toast.success('নতুন ওটিপি কোড পাঠানো হয়েছে')
     } catch (err) {
       const msg = err.response?.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।'
-      setCancelModal(prev => ({ ...prev, loading: false, error: msg }))
+      const cooldown = Number(err.response?.data?.cooldown_seconds || err.response?.data?.retry_after_seconds) || (err.response?.status === 429 ? 60 : 0)
+      setCancelModal(prev => ({
+        ...prev,
+        otpTimer: cooldown > 0 ? cooldown : prev.otpTimer,
+        loading: false,
+        error: msg
+      }))
     }
   }
 
@@ -482,11 +501,13 @@ export default function AppointmentTicketPage() {
   const phoneNo = extendedDoctor?.phone || apptData.doctor?.phone || '09638649314'
   const bookingFor = apptData.booking_for || apptData.patient?.booking_for || 'myself'
   const forPatientName = apptData.for_patient_name || apptData.patient_name || apptData.patient?.patient_name
-  const isOther = (bookingFor !== 'myself' && Boolean(forPatientName)) || (Boolean(apptData.for_patient_name))
+  const isOther = bookingFor !== 'myself' && Boolean(forPatientName)
   const patientName = isOther ? forPatientName : (apptData.patient_name || apptData.user_name || apptData.user?.name || apptData.patient?.name || 'রোগী')
   const patientAge = apptData.for_patient_age || apptData.patient_age || apptData.patient?.patient_age
   const patientRelation = apptData.for_patient_relation || apptData.patient_relation || apptData.patient?.patient_relation
   const notes = apptData.notes ? apptData.notes.split('--- PAYMENT INFO ---')[0].trim() : 'N/A'
+  const consultationFee = apptData.amount || apptData.chamber?.fee || extendedDoctor?.fee || extendedDoctor?.consultation_fee || apptData.doctor?.fee || apptData.doctor?.consultation_fee || 500
+  const isPaid = (apptData.payment_status || '').toLowerCase() === 'paid'
 
   return (
     <div className="page-wrapper" style={{ background: '#F0F4F8', minHeight: '100vh', paddingBottom: 72 }}>
@@ -810,6 +831,40 @@ export default function AppointmentTicketPage() {
                 {phoneNo}
               </a>
             </div>
+
+            {/* Consultation Fee & Payment Method */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid #F1F5F9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: isPaid ? '#F0FDF4' : '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Wallet size={15} color={isPaid ? '#00B875' : '#D97706'} />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13.5, color: '#64748B', fontWeight: 600 }}>পরামর্শ ফি</span>
+                  <div style={{ fontSize: 11, color: isPaid ? '#059669' : '#B45309', fontWeight: 600 }}>
+                    {isPaid ? 'পরিশোধিত' : 'চেম্বার কাউন্টারে ক্যাশ প্রদেয়'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 15, color: '#0F172A', fontWeight: 800 }}>
+                  ৳{toBnNum(consultationFee)}
+                </span>
+                <div>
+                  <span style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: isPaid ? '#DCFCE7' : '#FEF3C7',
+                    color: isPaid ? '#15803D' : '#92400E',
+                    marginTop: 2
+                  }}>
+                    {isPaid ? '✓ পরিশোধিত' : 'ক্যাশ পেমেন্ট'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Patient Info Box */}
@@ -888,6 +943,9 @@ export default function AppointmentTicketPage() {
               </li>
               <li>
                 <strong style={{ color: '#0F172A' }}>প্রমাণপত্র:</strong> এই ডিজিটাল টিকিট বা কনফার্মেশন এসএমএসটি চেম্বার/হাসপাতাল কাউন্টারে প্রদর্শন করুন।
+              </li>
+              <li>
+                <strong style={{ color: '#0F172A' }}>পরামর্শ ফি:</strong> বুকিংয়ের জন্য কোনো অগ্রিম টাকা নেওয়া হয় না। নির্ধারিত পরামর্শ ফি (৳{toBnNum(consultationFee)}) চেম্বার বা হাসপাতালের অভ্যর্থনা কাউন্টারে উপস্থিত হয়ে সরাসরি ক্যাশ প্রদান করুন।
               </li>
             </ul>
           </div>

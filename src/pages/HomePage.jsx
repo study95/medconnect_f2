@@ -4255,7 +4255,8 @@ function DarkRegistrationSection() {
       title: 'Doctor Registration',
       subTitle: 'ডাক্তার হিসেবে যোগ দিন',
       desc: 'আপনার চেম্বার ও প্র্যাকটিস পরিচালনা করুন এবং রোগীদের সরাসরি ডিজিটাল সেবা দিন।',
-      link: '/register?role=doctor',
+      infoLink: '/register-doctor',
+      registerLink: '/register?role=doctor',
       icon: <IconStethoscope size={36} color="#059669" stroke={2.2} />,
     },
     {
@@ -4263,7 +4264,8 @@ function DarkRegistrationSection() {
       title: 'Hospital Registration',
       subTitle: 'হাসপাতাল পার্টনার হোন',
       desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অনলাইন অ্যাপয়েন্টমেন্ট ও সার্ভিস ম্যানেজ করুন।',
-      link: '/register?role=hospital',
+      infoLink: '/register-hospital',
+      registerLink: '/register?role=hospital',
       icon: <IconBuildingHospital size={36} color="#059669" stroke={2.2} />,
     },
     {
@@ -4271,7 +4273,8 @@ function DarkRegistrationSection() {
       title: 'Patient Registration',
       subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
       desc: 'বিশেষজ্ঞ ডাক্তার খুঁজুন এবং যেকোনো সময় সহজে অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
-      link: '/register?role=patient',
+      infoLink: '/register-patient',
+      registerLink: '/register?role=patient',
       icon: <IconUserHeart size={36} color="#059669" stroke={2.2} />,
     }
   ]
@@ -4332,8 +4335,11 @@ function DarkRegistrationSection() {
           {roles.map((item, i) => (
             <div key={i} className="reg-card-col">
               <div
-                onClick={() => navigate(item.link)}
+                onClick={() => navigate(item.infoLink)}
                 className="reg-white-card"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(item.infoLink) }}
               >
                 {/* Role Category Badge */}
                 <span className="reg-role-badge">
@@ -4360,8 +4366,22 @@ function DarkRegistrationSection() {
                   {item.desc}
                 </p>
 
-                {/* Action Link */}
-                <div className="reg-card-action">
+                {/* Action Link: stopPropagation routes directly to registration form */}
+                <div
+                  className="reg-card-action"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(item.registerLink)
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation()
+                      navigate(item.registerLink)
+                    }
+                  }}
+                >
                   <span>নিবন্ধন করুন</span>
                   <IconArrowRight size={15} stroke={2.5} />
                 </div>
@@ -4519,6 +4539,14 @@ function DarkRegistrationSection() {
           font-family: 'Hind Siliguri', sans-serif;
           transition: all 0.25s ease;
           margin-top: auto;
+          cursor: pointer;
+        }
+
+        .reg-card-action:hover {
+          background: #047857 !important;
+          color: #FFFFFF !important;
+          border-color: #047857 !important;
+          transform: scale(1.05) !important;
         }
 
         .reg-white-card:hover .reg-card-action {

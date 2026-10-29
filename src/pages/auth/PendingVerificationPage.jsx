@@ -66,8 +66,11 @@ export default function PendingVerificationPage() {
   // Name resolution
   const displayName = location.state?.name ||
     user?.hospital?.name ||
+    user?.hospital?.name_bn ||
+    user?.doctor?.name ||
+    user?.doctor?.name_bn ||
     user?.name ||
-    (isHospital ? 'সম্মানিত হাসপাতাল কর্তৃপক্ষ' : 'সম্মানিত ডাক্তার')
+    (isHospital ? 'হাসপাতাল কর্তৃপক্ষ' : 'ডাক্তার')
 
   // Mobile / Email resolution
   const mobileOrEmail = user?.phone || user?.mobile || user?.email || location.state?.phone || '০১৭********'
@@ -193,6 +196,17 @@ export default function PendingVerificationPage() {
               className="pv-illustration-img"
               loading="eager"
             />
+          </div>
+
+          {/* Applicant Role & Identity Badge */}
+          <div className="pv-applicant-badge-container">
+            <span className="pv-applicant-badge">
+              <span className="pv-applicant-dot" />
+              {isHospital ? <Building2 size={15} className="pv-applicant-icon" /> : <User size={15} className="pv-applicant-icon" />}
+              <span className="pv-applicant-text">
+                {displayName} — {roleLabel} হিসেবে আবেদন
+              </span>
+            </span>
           </div>
 
           {/* Main Headline */}
@@ -436,7 +450,7 @@ export default function PendingVerificationPage() {
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 16px;
+          margin-bottom: 2px;
         }
 
         .pv-illustration-img {
@@ -446,6 +460,50 @@ export default function PendingVerificationPage() {
           max-height: 220px;
           object-fit: contain;
           display: block;
+        }
+
+        /* Applicant Badge */
+        .pv-applicant-badge-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 0;
+          margin-bottom: 14px;
+        }
+
+        .pv-applicant-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: #ECFDF5;
+          border: 1.5px solid #A7F3D0;
+          padding: 5px 15px;
+          border-radius: 999px;
+          color: #065F46;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.08);
+          max-width: 100%;
+        }
+
+        .pv-applicant-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10B981;
+          flex-shrink: 0;
+        }
+
+        .pv-applicant-icon {
+          color: #059669;
+          flex-shrink: 0;
+        }
+
+        .pv-applicant-text {
+          font-size: 13.5px;
+          font-weight: 800;
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         /* Titles */

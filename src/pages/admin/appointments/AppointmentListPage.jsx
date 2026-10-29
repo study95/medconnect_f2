@@ -341,6 +341,10 @@ export default function AppointmentListPage() {
     }
   }
 
+  const handleQuickCashCollect = (appt) => {
+    setStatusModalTarget({ appt, targetStatus: 'confirmed' })
+  }
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
@@ -760,6 +764,7 @@ export default function AppointmentListPage() {
                     <th style={{ minWidth: 170 }}>Facility & Venue</th>
                     <th>Booked By</th>
                     <th>Schedule</th>
+                    <th>Fee & Payment</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                   </tr>
@@ -801,6 +806,12 @@ export default function AppointmentListPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div className="skeleton-box" style={{ width: 85, height: 14, borderRadius: 4 }} />
                             <div className="skeleton-box" style={{ width: 60, height: 11, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-box" style={{ width: 60, height: 14, borderRadius: 4 }} />
+                            <div className="skeleton-box" style={{ width: 75, height: 18, borderRadius: 6 }} />
                           </div>
                         </td>
                         <td>
@@ -930,6 +941,93 @@ export default function AppointmentListPage() {
                           </span>
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>{appt.time || '10:00 AM'}</div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--admin-text)' }}>
+                            ৳{appt.amount || appt.chamber?.fee || 500}
+                          </span>
+                          {appt.payment_status === 'Paid' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                background: '#DCFCE7',
+                                color: '#15803D',
+                                border: '1px solid #BBF7D0',
+                                padding: '2px 7px',
+                                borderRadius: 6,
+                                width: 'fit-content'
+                              }}>
+                                ✓ Paid ({appt.payment_method || 'Cash'})
+                              </span>
+                              {appt.payment_collector_name && (
+                                <span 
+                                  style={{
+                                    fontSize: 10,
+                                    color: 'var(--admin-text-muted)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    maxWidth: 160,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  title={`ক্যাশ গ্রহণকারী: ${appt.payment_collector_name}`}
+                                >
+                                  {appt.payment_collected_by_role === 'hospital' ? '🏦' : (appt.payment_collected_by_role === 'doctor' ? '🩺' : '🛡️')} {appt.payment_collector_name}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                background: '#FEF3C7',
+                                color: '#92400E',
+                                border: '1px solid #FDE68A',
+                                padding: '1px 6px',
+                                borderRadius: 6
+                              }}>
+                                ⏳ Unpaid
+                              </span>
+                              <button
+                                type="button"
+                                disabled={changingStatus === appt.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleQuickCashCollect(appt)
+                                }}
+                                title="চেম্বার কাউন্টারে ক্যাশ ফি গ্রহণ নিশ্চিত করুন"
+                                style={{
+                                  background: 'linear-gradient(135deg, #00A88C, #00C9A7)',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  padding: '2px 8px',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  boxShadow: '0 1px 3px rgba(0, 168, 140, 0.25)',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                💵 ক্যাশ গ্রহণ
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

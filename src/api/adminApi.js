@@ -164,6 +164,7 @@ export const getCommissionRequests = (params) => axiosInstance.get('/admin/commi
 export const getCommissionRequestDetails = (id) => axiosInstance.get(`/admin/commission-requests/${id}`)
 export const approveCommissionRequest = (id, data = {}) => axiosInstance.post(`/admin/commission-requests/${id}/approve`, data)
 export const rejectCommissionRequest = (id, data = {}) => axiosInstance.post(`/admin/commission-requests/${id}/reject`, data)
+export const sendCommissionReminder = (data) => axiosInstance.post('/admin/commission-send-reminder', data)
 export const doctorPayCommission = (data) => axiosInstance.post('/doctor/finance/pay-commission', data)
 export const getDoctorCommissionRequests = (params) => axiosInstance.get('/doctor/finance/commission-requests', { params })
 export const doctorRequestPayout = (data) => axiosInstance.post('/doctor/finance/withdraw', data)
@@ -179,6 +180,7 @@ export const toggleChamberActive = (id) => axiosInstance.put(`/doctor-chambers/$
 export const getAdminSmsSettings = () => axiosInstance.get('/admin/sms/settings')
 export const updateAdminSmsSettings = (data) => axiosInstance.post('/admin/sms/settings', data)
 export const sendAdminTestSms = (data) => axiosInstance.post('/admin/sms/test', data)
+export const resetAdminSmsQuota = (data) => axiosInstance.post('/admin/sms/reset-quota', data)
 export const getAdminSmsLogs = (params = {}) => axiosInstance.get('/admin/sms/logs', { params })
 export const getAdminSmsBalance = (provider) => axiosInstance.get('/admin/sms/balance', { params: { provider } })
 export const previewAdminSmsPrune = (data) => axiosInstance.post('/admin/sms/prune-preview', data)
@@ -187,5 +189,6 @@ export const exportAdminSmsPrune = (params = {}) => axiosInstance.get('/admin/sm
 
 // ===== ENTERPRISE OBSERVABILITY & MONITORING SSO =====
 export const getMonitoringSsoTicket = (target = 'pulse') => axiosInstance.post('/admin/monitoring/sso-ticket', { target })
+export const getSystemTelemetry = (params = {}) => axiosInstance.get('/admin/telemetry', { params })
 
 

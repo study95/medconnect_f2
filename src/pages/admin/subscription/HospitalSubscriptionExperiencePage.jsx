@@ -452,11 +452,14 @@ export default function HospitalSubscriptionExperiencePage() {
   const seatProgressColor = seatPct >= 90 ? 'rose' : seatPct >= 70 ? 'amber' : 'emerald'
 
   // Calculate trial status & days left
-  const isTrial = sub?.status === 'trialing' ||
+  const hasSub = Boolean(sub)
+  const isTrial = hasSub && (
+    sub?.status === 'trialing' ||
     sub?.plan?.tier === 'free' ||
     (sub?.plan?.name && sub.plan.name.toLowerCase().includes('trial')) ||
     (sub?.plan?.name_bn && (sub.plan.name_bn.includes('ট্রায়াল') || sub.plan.name_bn.includes('ট্রায়াল'))) ||
     Number(sub?.current_price ?? sub?.plan?.price_monthly ?? 0) === 0
+  )
 
   let daysRemaining = null
   if (sub?.current_period_ends_at) {
@@ -464,7 +467,9 @@ export default function HospitalSubscriptionExperiencePage() {
     daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
   }
 
-  const isSubExpired = Boolean(banners?.is_expired) || sub?.status === 'expired' || (daysRemaining !== null && daysRemaining <= 0 && isTrial)
+  const isSubExpired = hasSub
+    ? Boolean(banners?.is_expired) || sub?.status === 'expired' || (daysRemaining !== null && daysRemaining <= 0)
+    : false
 
   // Calculate lowest paid plan starting price dynamically
   const lowestPaidPlan = plans
@@ -666,7 +671,17 @@ export default function HospitalSubscriptionExperiencePage() {
         <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-4 position-relative" style={{ zIndex: 1 }}>
           <div>
             <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-              {isSubExpired ? (
+              {!hasSub ? (
+                <>
+                  <span className="hosp-sub-badge-tier">
+                    <Shield size={12} />
+                    কোনো সক্রিয় প্ল্যান নেই
+                  </span>
+                  <span className="hosp-sub-badge-status" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    প্যাকেজ নির্বাচন করুন
+                  </span>
+                </>
+              ) : isSubExpired ? (
                 isTrial ? (
                   <>
                     <span className="hosp-sub-badge-tier" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
@@ -747,10 +762,14 @@ export default function HospitalSubscriptionExperiencePage() {
             </div>
 
             <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '6px 0 6px 0', letterSpacing: '-0.3px', color: 'var(--admin-text, #0f172a)' }}>
-              {sub?.plan?.name_bn || sub?.plan?.name || (isTrial ? 'হাসপাতাল ফ্রি ট্রায়াল' : 'প্রাতিষ্ঠানিক ক্লিনিক্যাল প্ল্যান')}
+              {hasSub
+                ? (sub?.plan?.name_bn || sub?.plan?.name || (isTrial ? 'হাসপাতাল ফ্রি ট্রায়াল' : 'প্রাতিষ্ঠানিক ক্লিনিক্যাল প্ল্যান'))
+                : 'প্রাতিষ্ঠানিক ক্লিনিক্যাল প্ল্যান'}
             </h2>
             <p className="text-muted" style={{ fontSize: '13.5px', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
-              {isSubExpired
+              {!hasSub
+                ? 'আপনার হাসপাতালের জন্য এখনো কোনো সাবস্ক্রিপশন বা ফ্রি ট্রায়াল সক্রিয় করা হয়নি। নিচে থেকে ফ্রি ট্রায়াল অথবা আপনার পছন্দের প্ল্যান নির্বাচন করুন।'
+                : isSubExpired
                 ? (isTrial
                     ? 'আপনার প্রাতিষ্ঠানিক ফ্রি ট্রায়ালের মেয়াদ শেষ হয়েছে। ডাক্তার সিট বরাদ্দ ও ওপিডি সুবিধা সক্রিয় রাখতে প্যাকেজে আপগ্রেড করুন।'
                     : `আপনার ${sub?.plan?.name_bn || sub?.plan?.name || 'প্রাতিষ্ঠানিক'} প্যাকেজের মেয়াদ শেষ হয়েছে। সেবা নিরবচ্ছিন্ন রাখতে অনুগ্রহ করে রিনিউ বা আপগ্রেড করুন।`)
@@ -763,10 +782,21 @@ export default function HospitalSubscriptionExperiencePage() {
           <div className="hosp-sub-hero-price-box">
             <div className="text-end" style={{ whiteSpace: 'nowrap' }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}>
-                {isSubExpired ? (isTrial ? 'প্যাকেজ শুরু' : 'সর্বশেষ প্যাকেজ চার্জ') : isTrial ? 'বর্তমান চার্জ' : 'সাইকেল ফি'}
+                {!hasSub
+                  ? 'প্রারম্ভিক চার্জ'
+                  : isSubExpired
+                  ? (isTrial ? 'প্যাকেজ শুরু' : 'সর্বশেষ প্যাকেজ চার্জ')
+                  : isTrial
+                  ? 'বর্তমান চার্জ'
+                  : 'সাইকেল ফি'}
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--admin-text, #0f172a)', lineHeight: 1.2 }}>
-                {isSubExpired ? (
+                {!hasSub ? (
+                  <span>
+                    ৳ {startingPrice.toLocaleString()}
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}> / মাস</span>
+                  </span>
+                ) : isSubExpired ? (
                   isTrial ? (
                     <span>
                       ৳ {startingPrice.toLocaleString()}
@@ -801,7 +831,7 @@ export default function HospitalSubscriptionExperiencePage() {
               style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontWeight: 700 }}
             >
               <Zap size={14} />
-              <span>{isSubExpired ? (isTrial ? 'আপগ্রেড করুন' : 'রিনিউ / আপগ্রেড') : 'আপগ্রেড করুন'}</span>
+              <span>{!hasSub ? 'প্ল্যান নির্বাচন করুন' : isSubExpired ? (isTrial ? 'আপগ্রেড করুন' : 'রিনিউ / আপগ্রেড') : 'আপগ্রেড করুন'}</span>
             </button>
             {sub?.status === 'active' && !isTrial && !isSubExpired && (
               <button
@@ -946,14 +976,16 @@ export default function HospitalSubscriptionExperiencePage() {
                 বিলিং ও সাবস্ক্রিপশন
               </div>
               <div className="hosp-sub-kpi-value">
-                {isSubExpired
+                {!hasSub
+                  ? 'কোনো প্ল্যান নেই'
+                  : isSubExpired
                   ? 'মেয়াদ উত্তীর্ণ'
                   : isTrial
                   ? 'ফ্রি ট্রায়াল'
                   : sub?.billing_cycle === 'annual'
                   ? 'বাৎসরিক'
                   : 'মাসিক'}
-                {!isSubExpired && (
+                {hasSub && !isSubExpired && (
                   <span style={{ fontSize: '12px', fontWeight: 600, color: isTrial ? '#10b981' : '#6366f1' }}>
                     {' '}({isTrial ? 'সক্রিয়' : 'অটো-পে'})
                   </span>

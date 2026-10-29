@@ -553,7 +553,7 @@ function MyAppointmentsPage() {
                       </div>
 
                       {/* Patient for badge if booked for someone else */}
-                      {((appt.booking_for && appt.booking_for !== 'myself') || appt.for_patient_name) && (
+                      {(appt.booking_for && appt.booking_for !== 'myself') && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                           <User size={12} color="#0284C7" style={{ flexShrink: 0 }} />
                           <span style={{

@@ -2134,7 +2134,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               }}
               className={`hero-mobile-filter-pill ${locationLabel ? 'active' : ''}`}
             >
-              <IconMapPin size={14} color="#00803D" stroke={2.2} />
+              <IconMapPin size={13} color="#00803D" stroke={2.2} />
               <span>{locationLabel ? locationLabel.split('>')[0].trim() : 'অবস্থান'}</span>
               {locationLabel ? (
                 <span
@@ -2145,10 +2145,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                     setLocationParams({})
                   }}
                 >
-                  <IconX size={13} />
+                  <IconX size={12} />
                 </span>
               ) : (
-                <IconChevronDown size={13} color="#64748B" />
+                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
 
@@ -2161,7 +2161,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               }}
               className={`hero-mobile-filter-pill ${specialtyLabel ? 'active' : ''}`}
             >
-              <IconStethoscope size={14} color="#00803D" stroke={2.2} />
+              <IconStethoscope size={13} color="#00803D" stroke={2.2} />
               <span>{specialtyLabel || 'বিশেষজ্ঞতা'}</span>
               {specialtyLabel ? (
                 <span
@@ -2172,10 +2172,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                     setSelectedSpecialty('')
                   }}
                 >
-                  <IconX size={13} />
+                  <IconX size={12} />
                 </span>
               ) : (
-                <IconChevronDown size={13} color="#64748B" />
+                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
 
@@ -2188,7 +2188,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               }}
               className={`hero-mobile-filter-pill ${hospitalLabel ? 'active' : ''}`}
             >
-              <IconBuildingHospital size={14} color="#00803D" stroke={2.2} />
+              <IconBuildingHospital size={13} color="#00803D" stroke={2.2} />
               <span>{hospitalLabel || 'হাসপাতাল'}</span>
               {hospitalLabel ? (
                 <span
@@ -2199,10 +2199,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                     setSelectedHospital('')
                   }}
                 >
-                  <IconX size={14} />
+                  <IconX size={12} />
                 </span>
               ) : (
-                <IconChevronDown size={14} color="#64748B" />
+                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
           </div>
@@ -4710,18 +4710,15 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             box-shadow: 0 0 0 2px #FFFFFF;
           }
 
-          /* ── 3. 4-Pill Filter Bar (Matching user image) ── */
+          /* ── 3. 3-Pill Filter Bar (Full width, merged margins, touch height) ── */
           .hero-mobile-filter-pills-row {
-            display: flex;
-            align-items: center;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 6px;
             margin-top: 10px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            -webkit-overflow-scrolling: touch;
-            padding: 2px 2px 0 2px;
             width: 100%;
+            padding: 0;
+            box-sizing: border-box;
           }
 
           .hero-mobile-filter-pills-row::-webkit-scrollbar {
@@ -4731,22 +4728,38 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           .hero-mobile-filter-pill {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            justify-content: center;
+            gap: 3px;
             background: #FFFFFF;
             border: 1.5px solid #E2E8F0;
             border-radius: 999px;
-            padding: 5px 11px;
-            font-size: 12px;
+            padding: 0 4px;
+            height: 38px;
+            font-size: 11px;
             font-weight: 700;
             color: #1E293B;
             white-space: nowrap;
-            flex-shrink: 0;
+            min-width: 0;
+            width: 100%;
             cursor: pointer;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
             transition: all 0.2s ease;
             user-select: none;
             font-family: 'Hind Siliguri', sans-serif;
-            line-height: 1.2;
+            line-height: 1;
+            letter-spacing: -0.2px;
+            box-sizing: border-box;
+          }
+
+          .hero-mobile-filter-pill svg {
+            flex-shrink: 0;
+          }
+
+          .hero-mobile-filter-pill span:not(.hero-mobile-filter-pill-clear) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
           }
 
           .hero-mobile-filter-pill:active {
@@ -4767,6 +4780,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             align-items: center;
             justify-content: center;
             margin-left: 2px;
+            flex-shrink: 0;
             transition: color 0.15s;
           }
 

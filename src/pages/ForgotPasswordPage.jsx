@@ -78,6 +78,7 @@ export default function ForgotPasswordPage() {
   // ================= STEP 1: SEND OTP =================
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault()
+    if (loading || (step === 2 && timer > 0)) return
     setStatusMsg({ type: '', text: '' })
 
     const cleanMobile = mobile.replace(/[^\d]/g, '').slice(0, 11)
@@ -104,9 +105,10 @@ export default function ForgotPasswordPage() {
       )
 
       if (res.data?.success) {
+        const cooldown = Number(res.data?.cooldown_seconds || res.data?.retry_after_seconds) || 60
         setMobile(cleanMobile)
         setStep(2)
-        setTimer(60)
+        setTimer(cooldown)
         setOtp(['', '', '', '', '', ''])
         setStatusMsg({
           type: 'success',
@@ -122,9 +124,9 @@ export default function ForgotPasswordPage() {
       const status = err.response?.status
       const msg = err.response?.data?.message || ''
 
-      const retryAfter = err.response?.data?.retry_after_seconds || err.response?.data?.cooldown_seconds
-      if (status === 429 && retryAfter) {
-        setTimer(Number(retryAfter))
+      const retryAfter = Number(err.response?.data?.retry_after_seconds || err.response?.data?.cooldown_seconds) || (status === 429 ? 60 : 0)
+      if (status === 429 && retryAfter > 0) {
+        setTimer(retryAfter)
         setStatusMsg({
           type: 'danger',
           text: msg || 'ওটিপি অনুরোধের সীমা পৌঁছেছে।'

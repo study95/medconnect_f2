@@ -214,11 +214,14 @@ export default function DoctorSubscriptionExperiencePage() {
   const pendingPayment = overview?.pending_payment
 
   // Calculate trial status & days remaining
-  const isTrial = sub?.status === 'trialing' ||
+  const hasSub = Boolean(sub)
+  const isTrial = hasSub && (
+    sub?.status === 'trialing' ||
     sub?.plan?.tier === 'free' ||
     (sub?.plan?.name && sub.plan.name.toLowerCase().includes('trial')) ||
     (sub?.plan?.name_bn && (sub.plan.name_bn.includes('ট্রায়াল') || sub.plan.name_bn.includes('ট্রায়াল'))) ||
     Number(sub?.current_price ?? sub?.plan?.price_monthly ?? 0) === 0
+  )
 
   let daysRemaining = banners.days_remaining ?? null
   if (daysRemaining === null && sub?.current_period_ends_at) {
@@ -226,7 +229,9 @@ export default function DoctorSubscriptionExperiencePage() {
     daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
   }
 
-  const isExpired = Boolean(banners?.is_expired) || sub?.status === 'expired' || (daysRemaining !== null && daysRemaining <= 0)
+  const isExpired = hasSub
+    ? Boolean(banners?.is_expired) || sub?.status === 'expired' || (daysRemaining !== null && daysRemaining <= 0)
+    : false
 
   // Calculate lowest paid plan starting price dynamically
   const lowestPaidPlan = plans
