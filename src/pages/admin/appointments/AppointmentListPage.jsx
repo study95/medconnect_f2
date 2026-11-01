@@ -924,7 +924,7 @@ export default function AppointmentListPage() {
                               </span>
                               {(appt.created_by_phone || appt.booker?.phone || appt.user?.phone) && (
                                 <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>
-                                  • {appt.created_by_phone || appt.booker?.phone || appt.user?.phone}
+                                  {appt.created_by_phone || appt.booker?.phone || appt.user?.phone}
                                 </span>
                               )}
                             </div>

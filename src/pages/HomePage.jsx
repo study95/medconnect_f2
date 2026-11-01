@@ -3585,7 +3585,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           .bbl-popup-sheet {
             max-width: 100% !important;
             max-height: 85vh !important;
-            border-radius: 24px 24px 0 0 !important;
+            border-radius: 16px 16px 0 0 !important;
             animation: bblSheetSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
           }
 

@@ -329,8 +329,8 @@ export default function PatientLiveQueueSummaryCard({ appointment }) {
     if (isServingNow || isNoShow) {
       patientsAhead = 0
     } else if (currentServing !== null && currentServing > 0) {
-      // Total consultations before this patient: active patient in room + all preceding waiting patients
-      patientsAhead = Math.max(0, mySerial - currentServing)
+      // Waiting patients ahead in line (excluding active patient in consultation room)
+      patientsAhead = Math.max(0, mySerial - currentServing - 1)
     } else {
       // Chamber has not started serving yet: all serials prior to mySerial are waiting ahead
       patientsAhead = Math.max(0, mySerial - 1)

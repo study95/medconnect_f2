@@ -13,6 +13,7 @@ import AvailabilityDateFilter from '../components/common/AvailabilityDateFilter'
 import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
+import useHospitals from '../hooks/useHospitals'
 import { useQuery } from '@tanstack/react-query'
 import { getHospitalById } from '../api/hospitalApi'
 import useDebounce from '../hooks/useDebounce'
@@ -141,6 +142,42 @@ function DoctorsPage() {
 
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
   const [selectedHospital, setSelectedHospital]   = useState((searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : '')
+
+  const { hospitals } = useHospitals({ per_page: 200 })
+  const [hospitalSearch, setHospitalSearch] = useState('')
+
+  // Auto-resolve department/specialty name or slug from URL to specialty_id
+  useEffect(() => {
+    const rawDept = searchParams.get('department') || searchParams.get('specialty') || searchParams.get('specialty_name')
+    const rawSpecId = searchParams.get('specialty_id')
+    if (rawSpecId) {
+      if (rawSpecId !== selectedSpecialty) setSelectedSpecialty(rawSpecId)
+      return
+    }
+    if (!selectedSpecialty && rawDept && specialties?.length > 0) {
+      const clean = rawDept.trim().toLowerCase()
+      const match = specialties.find(s => 
+        String(s.id) === clean ||
+        (s.slug || '').toLowerCase() === clean ||
+        (s.name_bn || '').trim().toLowerCase() === clean ||
+        (s.name || '').trim().toLowerCase() === clean
+      )
+      if (match) {
+        setSelectedSpecialty(String(match.id))
+      }
+    }
+  }, [searchParams, specialties, selectedSpecialty])
+
+  const filteredHospitals = useMemo(() => {
+    if (!hospitals || hospitals.length === 0) return []
+    let list = hospitals
+    if (!hospitalSearch.trim()) return list
+    const q = hospitalSearch.trim().toLowerCase()
+    return list.filter(h => 
+      (h.name || '').toLowerCase().includes(q) || 
+      (h.name_bn || '').toLowerCase().includes(q)
+    )
+  }, [hospitals, hospitalSearch])
 
   // Lazy single-item fetch for active hospital filter badge ONLY when hospital_id filter is active
   const { data: selectedHospitalData } = useQuery({
@@ -348,10 +385,10 @@ function DoctorsPage() {
   const [openAccordions, setOpenAccordions] = useState({
     distance: true,
     specialty: true,
+    hospital: true,
     location: true,
     fee: true,
     exp: false,
-    hospital: false,
     extras: true
   })
 
@@ -507,6 +544,7 @@ function DoctorsPage() {
     const uniId   = searchParams.get('union_id') || ''
     const qSearch = searchParams.get('search') || ''
     const specId  = searchParams.get('specialty_id') || ''
+    const rawDept = searchParams.get('department') || searchParams.get('specialty') || searchParams.get('specialty_name') || ''
     const hospId  = (searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : ''
     const fee     = searchParams.get('fee_range') || ''
     const exp     = searchParams.get('exp_range') || ''
@@ -514,12 +552,26 @@ function DoctorsPage() {
 
     setAllLocations({ division_id: divId, district_id: distId, upazila_id: upaId, union_id: uniId })
     setSearchText(qSearch)
-    setSelectedSpecialty(specId)
+    if (specId) {
+      setSelectedSpecialty(specId)
+    } else if (rawDept && specialties?.length > 0) {
+      const clean = rawDept.trim().toLowerCase()
+      const match = specialties.find(s => 
+        String(s.id) === clean ||
+        (s.slug || '').toLowerCase() === clean ||
+        (s.name_bn || '').trim().toLowerCase() === clean ||
+        (s.name || '').trim().toLowerCase() === clean
+      )
+      if (match) setSelectedSpecialty(String(match.id))
+      else setSelectedSpecialty('')
+    } else {
+      setSelectedSpecialty('')
+    }
     setSelectedHospital(hospId)
     setSelectedFee(fee)
     setSelectedExp(exp)
     setSelectedDate(qDate)
-  }, [searchParams, setAllLocations])
+  }, [searchParams, setAllLocations, specialties])
 
   // Effective search keyword: immediately empty when searchText is cleared
   const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
@@ -653,13 +705,13 @@ function DoctorsPage() {
     const list = []
     if (selectedSpecialty) {
       const item = specialties.find(s => String(s.id) === String(selectedSpecialty))
-      const passedName = searchParams.get('specialty_name') || searchParams.get('specialty')
+      const passedName = searchParams.get('specialty_name') || searchParams.get('specialty') || searchParams.get('department')
       list.push({
         key: 'specialty',
         label: item ? (item.name_bn || item.name) : (passedName || 'বিশেষজ্ঞতা'),
         clear: () => {
           setSelectedSpecialty('')
-          updateUrlParams({ specialty_id: '', specialty_name: '' })
+          updateUrlParams({ specialty_id: '', specialty_name: '', specialty: '', department: '' })
         }
       })
     }
@@ -715,13 +767,14 @@ function DoctorsPage() {
     }
     if (selectedHospital && selectedHospital !== 'undefined') {
       const passedName = searchParams.get('hospital_name') || searchParams.get('hospital')
-      const hospName = selectedHospitalData?.name || selectedHospitalData?.name_bn || passedName || 'হাসপাতাল'
+      const matchedHosp = hospitals?.find(h => String(h.id) === String(selectedHospital) || String(h.public_id) === String(selectedHospital))
+      const hospName = matchedHosp?.name_bn || matchedHosp?.name || selectedHospitalData?.name || selectedHospitalData?.name_bn || passedName || 'হাসপাতাল'
       list.push({
         key: 'hospital',
         label: hospName,
         clear: () => {
           setSelectedHospital('')
-          updateUrlParams({ hospital_id: '', hospital_name: '' })
+          updateUrlParams({ hospital_id: '', hospital_name: '', hospital: '' })
         }
       })
     }
@@ -779,7 +832,7 @@ function DoctorsPage() {
     selectedSpecialty, selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     selectedHospital, selectedHospitalData, selectedFee, selectedExp, selectedDate, telemedicineOnly, availableToday, searchText,
     isNearMeActive, distanceRadius, handleToggleNearMe,
-    specialties, divisions, districts, upazilas, unions, updateUrlParams, handleDateChange
+    specialties, hospitals, divisions, districts, upazilas, unions, updateUrlParams, handleDateChange, searchParams
   ])
 
   const activeCount = activeFilters.length
@@ -797,6 +850,8 @@ function DoctorsPage() {
     setTelemedicineOnly(false)
     setAvailableToday(false)
     setSearchText('')
+    setSpecialtySearch('')
+    setHospitalSearch('')
     setIsNearMeActive(false)
     setLocationInlineError(false)
     setDistanceRadius('')
@@ -967,7 +1022,7 @@ function DoctorsPage() {
           height: 84vh;
           height: 84dvh;
           max-height: 88vh;
-          border-radius: 24px 24px 0 0;
+          border-radius: 16px 16px 0 0;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1915,7 +1970,52 @@ function DoctorsPage() {
                   )}
                 </div>
 
-                {/* Accordion 2: Location */}
+                {/* Accordion 2: Hospital */}
+                <div style={{ marginBottom: 14, borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  <div onClick={() => toggleAccordion('hospital')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Hospital / হাসপাতাল</span>
+                    {openAccordions.hospital ? <IconChevronUp size={16} color="#64748B" /> : <IconChevronDown size={16} color="#64748B" />}
+                  </div>
+                  {openAccordions.hospital && (
+                    <div style={{ marginTop: 10 }}>
+                      <input
+                        type="text"
+                        placeholder="হাসপাতাল খুঁজুন..."
+                        value={hospitalSearch}
+                        onChange={e => setHospitalSearch(e.target.value)}
+                        style={{ width: '100%', padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12, marginBottom: 8, outline: 'none' }}
+                      />
+                      <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {filteredHospitals.map(h => {
+                          const isChecked = String(selectedHospital) === String(h.id) || (h.public_id && String(selectedHospital) === String(h.public_id))
+                          return (
+                            <label key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                              <CustomCheckbox
+                                checked={isChecked}
+                                onChange={() => {
+                                  const nextVal = isChecked ? '' : String(h.id)
+                                  setSelectedHospital(nextVal)
+                                  updateUrlParams({ hospital_id: nextVal, hospital_name: nextVal ? (h.name || h.name_bn || '') : '' })
+                                }}
+                                size={17}
+                              />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {h.name_bn || h.name}
+                              </span>
+                            </label>
+                          )
+                        })}
+                        {filteredHospitals.length === 0 && (
+                          <div style={{ fontSize: 12, color: '#94A3B8', padding: '8px 0', textAlign: 'center' }}>
+                            কোনো হাসপাতাল পাওয়া যায়নি
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 3: Location */}
                 <div id="doc-location-accordion-desktop" style={{ marginBottom: 4 }}>
                   <div onClick={() => toggleAccordion('location')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Location</span>
@@ -2085,6 +2185,36 @@ function DoctorsPage() {
                     পছন্দের বিভাগ, অবস্থান বা দূরত্ব ফিল্টার করুন
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeMobileFilter}
+                  aria-label="Close"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    padding: 0,
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#E2E8F0'
+                    e.currentTarget.style.color = '#0F172A'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#F1F5F9'
+                    e.currentTarget.style.color = '#475569'
+                  }}
+                >
+                  <IconX size={19} stroke={2.2} />
+                </button>
               </div>
             </div>
 
@@ -2266,6 +2396,43 @@ function DoctorsPage() {
                   </label>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Hospital */}
+          <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল</span>
+            <input
+              type="text"
+              placeholder="হাসপাতাল খুঁজুন..."
+              value={hospitalSearch}
+              onChange={e => setHospitalSearch(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, marginBottom: 10, outline: 'none' }}
+            />
+            <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {filteredHospitals.map(h => {
+                const isChecked = String(selectedHospital) === String(h.id) || (h.public_id && String(selectedHospital) === String(h.public_id))
+                return (
+                  <label key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: isChecked ? '#0F172A' : '#334155', fontWeight: isChecked ? 700 : 500, fontFamily: "'Hind Siliguri', sans-serif", userSelect: 'none' }}>
+                    <CustomCheckbox
+                      checked={isChecked}
+                      onChange={() => {
+                        const nextVal = isChecked ? '' : String(h.id)
+                        setSelectedHospital(nextVal)
+                        updateUrlParams({ hospital_id: nextVal, hospital_name: nextVal ? (h.name || h.name_bn || '') : '' })
+                      }}
+                    />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {h.name_bn || h.name}
+                    </span>
+                  </label>
+                )
+              })}
+              {filteredHospitals.length === 0 && (
+                <div style={{ fontSize: 13, color: '#94A3B8', padding: '10px 0', textAlign: 'center' }}>
+                  কোনো হাসপাতাল পাওয়া যায়নি
+                </div>
+              )}
             </div>
           </div>
 

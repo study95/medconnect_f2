@@ -230,10 +230,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
-        <div className="admin-spinner" style={{ marginRight: 10 }} />
-        <span style={{ color: 'var(--admin-text-muted)', fontSize: 13, fontWeight: 500 }}>
-          লোড হচ্ছে এক্সিকিউটিভ ড্যাশবোর্ড...
+      <div className="admin-loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
+        <div className="admin-spinner" style={{ width: 34, height: 34 }} />
+        <span style={{ color: 'var(--admin-text-muted)', fontSize: 13.5, fontWeight: 600 }}>
+          {isDoctor ? 'ডাক্তার ড্যাশবোর্ড লোড হচ্ছে...' : 'লোড হচ্ছে এক্সিকিউটিভ ড্যাশবোর্ড...'}
         </span>
       </div>
     )

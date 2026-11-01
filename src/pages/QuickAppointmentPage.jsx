@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Container, Modal } from 'react-bootstrap'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import {
@@ -49,6 +50,7 @@ export default function QuickAppointmentPage() {
   const [specialtySearch, setSpecialtySearch] = useState('')
   const [isSpecialtyDropdownOpen, setIsSpecialtyDropdownOpen] = useState(false)
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
+  const [modalSpecialtySearch, setModalSpecialtySearch] = useState('')
 
   // Doctor selection state
   const [doctorsList, setDoctorsList] = useState([])
@@ -1600,8 +1602,8 @@ export default function QuickAppointmentPage() {
                   style={{
                     background: dateMode === 'today' ? '#00B875' : '#FFFFFF',
                     border: dateMode === 'today' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 14,
-                    padding: '10px 4px',
+                    borderRadius: 10,
+                    padding: '6px 4px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1610,25 +1612,25 @@ export default function QuickAppointmentPage() {
                     boxShadow: dateMode === 'today' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.18s ease',
                     outline: 'none',
-                    minHeight: 62
+                    minHeight: 46
                   }}
                 >
                   <span style={{
-                    fontSize: 15,
+                    fontSize: 13.5,
                     fontWeight: dateMode === 'today' ? 800 : 700,
                     color: dateMode === 'today' ? '#FFFFFF' : '#0F172A',
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2
+                    lineHeight: 1.15
                   }}>
                     আজ
                   </span>
                   <span style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: dateMode === 'today' ? 700 : 500,
                     color: dateMode === 'today' ? '#E6F9F0' : '#64748B',
-                    marginTop: 3,
+                    marginTop: 2,
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2
+                    lineHeight: 1.15
                   }}>
                     {dateLabels.today}
                   </span>
@@ -1645,8 +1647,8 @@ export default function QuickAppointmentPage() {
                   style={{
                     background: dateMode === 'tomorrow' ? '#00B875' : '#FFFFFF',
                     border: dateMode === 'tomorrow' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                    borderRadius: 14,
-                    padding: '10px 4px',
+                    borderRadius: 10,
+                    padding: '6px 4px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1655,25 +1657,25 @@ export default function QuickAppointmentPage() {
                     boxShadow: dateMode === 'tomorrow' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                     transition: 'all 0.18s ease',
                     outline: 'none',
-                    minHeight: 62
+                    minHeight: 46
                   }}
                 >
                   <span style={{
-                    fontSize: 15,
+                    fontSize: 13.5,
                     fontWeight: dateMode === 'tomorrow' ? 800 : 700,
                     color: dateMode === 'tomorrow' ? '#FFFFFF' : '#0F172A',
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2
+                    lineHeight: 1.15
                   }}>
                     আগামীকাল
                   </span>
                   <span style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: dateMode === 'tomorrow' ? 700 : 500,
                     color: dateMode === 'tomorrow' ? '#E6F9F0' : '#64748B',
-                    marginTop: 3,
+                    marginTop: 2,
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    lineHeight: 1.2
+                    lineHeight: 1.15
                   }}>
                     {dateLabels.tomorrow}
                   </span>
@@ -1688,8 +1690,8 @@ export default function QuickAppointmentPage() {
                       height: '100%',
                       background: dateMode === 'custom' ? '#00B875' : '#FFFFFF',
                       border: dateMode === 'custom' ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                      borderRadius: 14,
-                      padding: '10px 4px',
+                      borderRadius: 10,
+                      padding: '6px 4px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -1698,25 +1700,25 @@ export default function QuickAppointmentPage() {
                       boxShadow: dateMode === 'custom' ? '0 4px 14px rgba(0, 184, 117, 0.32)' : 'none',
                       transition: 'all 0.18s ease',
                       outline: 'none',
-                      minHeight: 62
+                      minHeight: 46
                     }}
                   >
                     <span style={{
-                      fontSize: 15,
+                      fontSize: 13.5,
                       fontWeight: dateMode === 'custom' ? 800 : 700,
                       color: dateMode === 'custom' ? '#FFFFFF' : '#0F172A',
                       fontFamily: "'Hind Siliguri', sans-serif",
-                      lineHeight: 1.2
+                      lineHeight: 1.15
                     }}>
                       অন্য তারিখ
                     </span>
                     <span style={{
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: dateMode === 'custom' ? 700 : 500,
                       color: dateMode === 'custom' ? '#E6F9F0' : '#64748B',
-                      marginTop: 3,
+                      marginTop: 2,
                       fontFamily: "'Hind Siliguri', sans-serif",
-                      lineHeight: 1.2,
+                      lineHeight: 1.15,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -1777,10 +1779,13 @@ export default function QuickAppointmentPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsAllSpecialtiesModalOpen(true)}
+                  onClick={() => {
+                    setModalSpecialtySearch('')
+                    setIsAllSpecialtiesModalOpen(true)
+                  }}
                   style={{ background: 'none', border: 'none', color: '#00B875', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" }}
                 >
-                  সকল স্পেশালিটি দেখুন ❯
+                  সকল স্পেশালিটি ❯
                 </button>
               </div>
 
@@ -2525,63 +2530,213 @@ export default function QuickAppointmentPage() {
         </Modal.Body>
       </Modal>
 
-      {/* ── ALL SPECIALTIES MODAL ── */}
-      <Modal show={isAllSpecialtiesModalOpen} onHide={() => setIsAllSpecialtiesModalOpen(false)} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ padding: 20, maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
-            {specialties.map(spec => {
-              const docCount = spec.doctors_count ?? spec.doctor_count ?? (Array.isArray(spec.doctors) ? spec.doctors.length : 0)
-              return (
-                <button
-                  key={spec.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSpecialtyId(String(spec.id))
-                    setIsAllSpecialtiesModalOpen(false)
-                  }}
+      {/* ── ALL SPECIALTIES MOBILE BOTTOM SHEET (Portal to body) ── */}
+      {isAllSpecialtiesModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            animation: 'quickSheetFadeIn 0.22s ease'
+          }}
+          onClick={() => {
+            setIsAllSpecialtiesModalOpen(false)
+            setModalSpecialtySearch('')
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              width: '100%',
+              maxWidth: 540,
+              height: '84vh',
+              maxHeight: '88vh',
+              borderRadius: '16px 16px 0 0',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 -12px 48px rgba(0, 0, 0, 0.28)',
+              animation: 'quickSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar */}
+            <div style={{ padding: '10px 0 4px', display: 'flex', justifyContent: 'center', cursor: 'pointer' }}>
+              <div style={{ width: 44, height: 4.5, borderRadius: 3, background: '#CBD5E1' }} />
+            </div>
+
+            {/* Header with Title and YouTube-style circular Close button */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 18px 14px',
+              borderBottom: '1px solid #F1F5F9'
+            }}>
+              <div>
+                <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
+                </h5>
+                <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 500, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  আপনার পছন্দের বিশেষজ্ঞ বিভাগ নির্বাচন করুন
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAllSpecialtiesModalOpen(false)
+                  setModalSpecialtySearch('')
+                }}
+                aria-label="Close"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  padding: 0,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#E2E8F0'
+                  e.currentTarget.style.color = '#0F172A'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#F1F5F9'
+                  e.currentTarget.style.color = '#475569'
+                }}
+              >
+                <IconX size={19} stroke={2.2} />
+              </button>
+            </div>
+
+            {/* Search Input Bar */}
+            <div style={{ padding: '12px 18px', borderBottom: '1px solid #F1F5F9' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="বিশেষজ্ঞ বিভাগের নাম দিয়ে খুঁজুন..."
+                  value={modalSpecialtySearch}
+                  onChange={(e) => setModalSpecialtySearch(e.target.value)}
                   style={{
-                    background: String(spec.id) === selectedSpecialtyId ? '#F0FDF4' : 'white',
-                    border: String(spec.id) === selectedSpecialtyId ? '2px solid #00B875' : '1px solid #E2E8F0',
+                    width: '100%',
+                    height: 42,
                     borderRadius: 10,
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                >
-                  <span style={{
-                    fontWeight: 700,
-                    fontSize: 13.5,
-                    color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#1E293B',
-                    textAlign: 'left'
-                  }}>
-                    {spec.name_bn || spec.name}
-                  </span>
-                  <span style={{
-                    fontSize: 11.5,
+                    border: '1.5px solid #CBD5E1',
+                    padding: '0 36px 0 14px',
+                    fontSize: 14,
+                    color: '#0F172A',
                     fontWeight: 600,
-                    color: String(spec.id) === selectedSpecialtyId ? '#00B875' : '#64748B',
-                    background: String(spec.id) === selectedSpecialtyId ? '#DCFCE7' : '#F1F5F9',
-                    padding: '3px 8px',
-                    borderRadius: 12,
-                    flexShrink: 0
-                  }}>
-                    {toBengaliNumber(docCount)} জন
+                    outline: 'none',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {modalSpecialtySearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setModalSpecialtySearch('')}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
+                  >
+                    <IconX size={18} />
+                  </button>
+                ) : (
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
+                    <IconSearch size={18} />
                   </span>
-                </button>
-              )
-            })}
+                )}
+              </div>
+            </div>
+
+            {/* Specialties List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px calc(18px + env(safe-area-inset-bottom))' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                {specialties
+                  ?.filter(spec => {
+                    if (!modalSpecialtySearch.trim()) return true
+                    const q = modalSpecialtySearch.toLowerCase()
+                    return (spec.name || '').toLowerCase().includes(q) || (spec.name_bn || '').includes(q)
+                  })
+                  .map(spec => {
+                    const isSelected = String(spec.id) === String(selectedSpecialtyId)
+                    const docCount = spec.doctors_count ?? spec.doctor_count ?? (Array.isArray(spec.doctors) ? spec.doctors.length : 0)
+                    return (
+                      <button
+                        key={spec.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSpecialtyId(String(spec.id))
+                          setIsAllSpecialtiesModalOpen(false)
+                          setModalSpecialtySearch('')
+                        }}
+                        style={{
+                          background: isSelected ? '#F0FDF4' : 'white',
+                          border: isSelected ? '2px solid #00B875' : '1px solid #E2E8F0',
+                          borderRadius: 10,
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          cursor: 'pointer',
+                          fontFamily: "'Hind Siliguri', sans-serif",
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: 13.5,
+                          color: isSelected ? '#00B875' : '#1E293B',
+                          textAlign: 'left'
+                        }}>
+                          {spec.name_bn || spec.name}
+                        </span>
+                        <span style={{
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          color: isSelected ? '#00B875' : '#64748B',
+                          background: isSelected ? '#DCFCE7' : '#F1F5F9',
+                          padding: '3px 8px',
+                          borderRadius: 12,
+                          flexShrink: 0
+                        }}>
+                          {toBengaliNumber(docCount)} জন
+                        </span>
+                      </button>
+                    )
+                  })}
+              </div>
+            </div>
           </div>
-        </Modal.Body>
-      </Modal>
+
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes quickSheetFadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes quickSheetSlideUp {
+              from { transform: translateY(100%); }
+              to { transform: translateY(0); }
+            }
+          `}} />
+        </div>,
+        document.body
+      )}
 
       {/* ── 5-STEP APPOINTMENT BOOKING WIZARD MODAL ── */}
       <Modal

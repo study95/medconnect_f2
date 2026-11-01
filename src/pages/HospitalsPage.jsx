@@ -769,7 +769,7 @@ function HospitalsPage() {
           height: 84vh;
           height: 84dvh;
           max-height: 88vh;
-          border-radius: 24px 24px 0 0;
+          border-radius: 16px 16px 0 0;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1689,6 +1689,36 @@ function HospitalsPage() {
                     পছন্দের ধরন, অবস্থান বা দূরত্ব ফিল্টার করুন
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeMobileFilter}
+                  aria-label="Close"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    padding: 0,
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#E2E8F0'
+                    e.currentTarget.style.color = '#0F172A'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#F1F5F9'
+                    e.currentTarget.style.color = '#475569'
+                  }}
+                >
+                  <IconX size={19} stroke={2.2} />
+                </button>
               </div>
             </div>
 

@@ -1920,7 +1920,8 @@ function HospitalDetailPage() {
                           onClick={() => {
                             const hId = hospital?.id || hospital?.public_id || id;
                             const hName = hospital?.name || hospital?.name_bn || '';
-                            navigate(`/doctors?hospital_id=${hId}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
+                            const sId = (dept.specialty_id || (typeof dept.id === 'number' || /^\d+$/.test(String(dept.id))) ? dept.id : '');
+                            navigate(`/doctors?hospital_id=${hId}${sId ? `&specialty_id=${sId}` : ''}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
                           }}
                           style={{ 
                             padding: '18px 14px', 
@@ -2770,9 +2771,10 @@ function HospitalDetailPage() {
                 <div 
                   onClick={() => {
                     setDeptModalOpen(false)
-                    if (hospital?.id) {
-                      navigate(`/doctors?hospital_id=${hospital?.id || hospital?.public_id || id}&department=${encodeURIComponent(dept.name)}${hospital?.name ? `&hospital_name=${encodeURIComponent(hospital.name)}` : ''}`)
-                    }
+                    const hId = hospital?.id || hospital?.public_id || id;
+                    const hName = hospital?.name || hospital?.name_bn || '';
+                    const sId = (dept.specialty_id || (typeof dept.id === 'number' || /^\d+$/.test(String(dept.id))) ? dept.id : '');
+                    navigate(`/doctors?hospital_id=${hId}${sId ? `&specialty_id=${sId}` : ''}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
                   }}
                   style={{ 
                     padding: '16px 18px', 

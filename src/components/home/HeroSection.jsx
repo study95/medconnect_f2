@@ -2514,6 +2514,36 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                   পছন্দের বিভাগ, অবস্থান বা হাসপাতাল বেছে নিন
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={closeUnifiedSheet}
+                aria-label="Close"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  padding: 0,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#E2E8F0'
+                  e.currentTarget.style.color = '#0F172A'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#F1F5F9'
+                  e.currentTarget.style.color = '#475569'
+                }}
+              >
+                <IconX size={19} stroke={2.2} />
+              </button>
             </div>
 
             {/* Segmented Tab Bar */}
@@ -5393,7 +5423,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             width: 100%;
             max-width: 480px;
             max-height: 85vh;
-            border-radius: 24px 24px 0 0;
+            border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -5547,7 +5577,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             width: 100%;
             max-width: 480px;
-            border-radius: 24px 24px 0 0;
+            border-radius: 16px 16px 0 0;
             padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
             box-shadow: 0 -10px 40px rgba(0,0,0,0.18);
             animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -5683,7 +5713,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             height: 82vh;
             height: 82dvh;
             max-height: 85vh;
-            border-radius: 24px 24px 0 0;
+            border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
