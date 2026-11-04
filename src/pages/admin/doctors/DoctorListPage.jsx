@@ -842,7 +842,7 @@ export default function DoctorListPage() {
         {/* Pending Hospital Invitations Banner */}
         {(() => {
           const pendingInvitations = seatInvitations.filter(
-            (i) => i.status === 'pending' || i.status?.value === 'pending'
+            (i) => (i.status === 'pending' || i.status?.value === 'pending') && (!i.expires_at || new Date(i.expires_at) > new Date())
           )
           if (pendingInvitations.length === 0) return null
 
@@ -924,10 +924,10 @@ export default function DoctorListPage() {
                             lineHeight: 1.5,
                           }}
                         >
-                          <span style={{ fontWeight: 700, display: 'block', fontSize: 11.5, color: '#047857', marginBottom: 2 }}>
+                          <span style={{ fontWeight: 700, display: 'inline', fontSize: 12, color: '#047857', marginRight: 4 }}>
                             💬 হাসপাতালের বিশেষ বার্তা / অফার:
                           </span>
-                          &ldquo;{inv.notes || inv.response_note}&rdquo;
+                          &ldquo;{(inv.notes || inv.response_note)?.replace(/\r?\n+/g, ' ').trim()}&rdquo;
                         </div>
                       )}
                     </div>

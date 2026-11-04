@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMediaUrl } from '../../utils/mediaUtils'
+import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../../utils/mediaUtils'
 import { getHospitalUrl } from '../../utils/identifierHelper'
 import { IconMapPin, IconPhone, IconMail, IconWorld, IconShieldCheck, IconHeart, IconPlus, IconShare, IconCamera, IconEye, IconCalendarEvent, IconCheck, IconNavigation, IconDirections, IconStethoscope } from '@tabler/icons-react'
 import { toast } from 'react-hot-toast'
@@ -8,22 +8,15 @@ import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl, toBengaliNumerals } from '../../utils/geoUtils'
 
-const DEMO_HOSPITAL = 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80'
-
-const DEFAULT_HOSPITAL_GALLERY = [
-  'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=600&q=80'
-]
+const DEMO_HOSPITAL = DEFAULT_HOSPITAL_IMAGE
 
 function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
-  const photos = hospital.photos && hospital.photos.length > 0
-    ? hospital.photos.map(p => getMediaUrl(p))
+  const hasPhotos = Array.isArray(hospital.photos) && hospital.photos.length > 0
+  const photos = hasPhotos
+    ? hospital.photos.map(p => getMediaUrl(p, DEFAULT_HOSPITAL_IMAGE))
     : hospital.photo_url
-      ? [getMediaUrl(hospital.photo_url), ...DEFAULT_HOSPITAL_GALLERY.slice(1)]
-      : DEFAULT_HOSPITAL_GALLERY
+      ? [getMediaUrl(hospital.photo_url, DEFAULT_HOSPITAL_IMAGE)]
+      : [DEFAULT_HOSPITAL_IMAGE]
 
   const [activeIdx, setActiveIdx] = useState(0)
 
@@ -52,7 +45,7 @@ function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
       <OptimizedImage
         className="hosp-list-img-wrapper"
         src={photos[activeIdx]}
-        fallback={DEFAULT_HOSPITAL_GALLERY[0]}
+        fallback={DEFAULT_HOSPITAL_IMAGE}
         alt={hospital.name}
         width="100%"
         height="100%"
@@ -60,82 +53,88 @@ function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
         style={{ objectFit: 'cover', width: '100%', height: '100%', minHeight: '100%', flex: 1, transition: 'all 0.3s ease' }}
       />
 
-      {/* Prev Arrow Button */}
-      <button
-        type="button"
-        onClick={handlePrev}
-        style={{
+      {/* Prev Arrow Button (Only when multiple photos exist) */}
+      {photos.length > 1 && (
+        <button
+          type="button"
+          onClick={handlePrev}
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: 24,
+            height: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 6,
+            fontSize: 14,
+            backdropFilter: 'blur(4px)'
+          }}
+          title="আগের ছবি"
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Next Arrow Button (Only when multiple photos exist) */}
+      {photos.length > 1 && (
+        <button
+          type="button"
+          onClick={handleNext}
+          style={{
+            position: 'absolute',
+            right: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: 24,
+            height: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 6,
+            fontSize: 14,
+            backdropFilter: 'blur(4px)'
+          }}
+          title="পরের ছবি"
+        >
+          ›
+        </button>
+      )}
+
+      {/* Photo Count Badge (Bottom Right of Image - only when multiple photos exist) */}
+      {photos.length > 1 && (
+        <div style={{
           position: 'absolute',
-          left: 6,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'rgba(15, 23, 42, 0.65)',
+          bottom: 8,
+          right: 8,
+          background: 'rgba(15, 23, 42, 0.75)',
           color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: 24,
-          height: 24,
+          borderRadius: 4,
+          padding: '3px 7px',
+          fontSize: 11,
+          fontWeight: 700,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 6,
-          fontSize: 14,
+          gap: 4,
+          zIndex: 5,
           backdropFilter: 'blur(4px)'
-        }}
-        title="আগের ছবি"
-      >
-        ‹
-      </button>
-
-      {/* Next Arrow Button */}
-      <button
-        type="button"
-        onClick={handleNext}
-        style={{
-          position: 'absolute',
-          right: 6,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'rgba(15, 23, 42, 0.65)',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: 24,
-          height: 24,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 6,
-          fontSize: 14,
-          backdropFilter: 'blur(4px)'
-        }}
-        title="পরের ছবি"
-      >
-        ›
-      </button>
-
-      {/* Photo Count Badge (Bottom Right of Image) */}
-      <div style={{
-        position: 'absolute',
-        bottom: 8,
-        right: 8,
-        background: 'rgba(15, 23, 42, 0.75)',
-        color: 'white',
-        borderRadius: 4,
-        padding: '3px 7px',
-        fontSize: 11,
-        fontWeight: 700,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        zIndex: 5,
-        backdropFilter: 'blur(4px)'
-      }}>
-        <IconCamera size={13} />
-        <span>{photos.length}</span>
-      </div>
+        }}>
+          <IconCamera size={13} />
+          <span>{photos.length}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -240,7 +239,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
         }}
       >
         <OptimizedImage
-          src={getMediaUrl(hospital.photo_url)}
+          src={getMediaUrl(hospital.photo_url, DEMO_HOSPITAL)}
           fallback={DEMO_HOSPITAL}
           alt={hospital.name}
           width={105}
@@ -671,7 +670,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         <div style={{ flexShrink: 0, position: 'relative' }}>
           <OptimizedImage
-            src={getMediaUrl(hospital.photo_url)}
+            src={getMediaUrl(hospital.photo_url, DEMO_HOSPITAL)}
             fallback={DEMO_HOSPITAL}
             alt={hospital.name}
             width={90}

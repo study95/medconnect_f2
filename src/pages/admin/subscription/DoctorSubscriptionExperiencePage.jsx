@@ -1187,6 +1187,29 @@ export default function DoctorSubscriptionExperiencePage() {
                       <CheckCircle2 size={15} />
                       <span>বর্তমান সক্রিয় প্ল্যান</span>
                     </button>
+                  ) : isFree && hasSub ? (
+                    <button
+                      disabled
+                      title="ফ্রি ট্রায়াল শুধুমাত্র একবার প্রযোজ্য এবং ইতিপূর্বে ব্যবহৃত হয়েছে"
+                      className="w-100"
+                      style={{
+                        padding: '12px',
+                        background: '#f1f5f9',
+                        border: '1px solid #e2e8f0',
+                        color: '#94a3b8',
+                        fontWeight: 700,
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        cursor: 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Lock size={14} />
+                      <span>{isExpired ? 'ট্রায়াল সমাপ্ত (ইতিমধ্যে ব্যবহৃত)' : 'ট্রায়াল ইতিপূর্বে ব্যবহৃত'}</span>
+                    </button>
                   ) : overview?.is_checkout_locked ? (
                     <button
                       disabled
@@ -1230,7 +1253,7 @@ export default function DoctorSubscriptionExperiencePage() {
                       {isCurrent && isExpired ? (
                         <>
                           <Zap size={14} />
-                          <span>{isFree ? 'আপগ্রেড করুন' : 'প্ল্যানটি রিনিউ করুন'}</span>
+                          <span>প্ল্যানটি রিনিউ করুন</span>
                         </>
                       ) : isFree ? (
                         <>

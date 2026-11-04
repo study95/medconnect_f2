@@ -373,6 +373,12 @@ export default function CheckoutPage() {
           return
         }
       } catch (err) {
+        const validationMsg = err.response?.data?.errors?.plan_id?.[0] || err.response?.data?.message
+        if (validationMsg) {
+          setErrorMsg(validationMsg)
+          setLoading(false)
+          return
+        }
         console.warn('Enterprise summary check note:', err.response?.data?.message || err.message)
       }
     }

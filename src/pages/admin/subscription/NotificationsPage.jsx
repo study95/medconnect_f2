@@ -52,6 +52,19 @@ const getNotificationTeaser = (html, maxChars = 130) => {
   return clean
 }
 
+// Format message HTML so that custom notes render cleanly inline without awkward multi-line break
+function formatNotificationMessage(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== 'string') return ''
+  let html = rawHtml
+  // 1. Remove line break immediately following custom note header so it renders inline
+  html = html.replace(/(<strong>💬\s*হাসপাতালের বিশেষ বার্তা[^<]*<\/strong>)\s*<br\s*\/?>/gi, '$1 ')
+  // 2. Remove line breaks inside the quote block &ldquo;...&rdquo;
+  html = html.replace(/(&ldquo;[\s\S]*?&rdquo;)/gi, (match) => {
+    return match.replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n+/g, ' ')
+  })
+  return sanitizeHtml(html)
+}
+
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -689,7 +702,8 @@ export default function NotificationsPage() {
                           alignItems: 'center',
                           gap: 6,
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}
                       >
                         আমন্ত্রণ দেখুন
@@ -709,7 +723,8 @@ export default function NotificationsPage() {
                           alignItems: 'center',
                           gap: 6,
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}
                       >
                         বিস্তারিত পড়ুন
@@ -745,16 +760,25 @@ export default function NotificationsPage() {
           )
         )
 
-        const matchingInvitation = isIncomingDoctorInvitation
+        const anyMatchingInvitation = isIncomingDoctorInvitation
           ? seatInvitations.find(inv => 
-              (inv.status === 'pending' || inv.status?.value === 'pending') &&
               (
                 (selectedNotification.hospital_id && String(inv.hospital_id) === String(selectedNotification.hospital_id)) ||
                 (selectedNotification.sent_by && String(inv.invited_by) === String(selectedNotification.sent_by)) ||
                 (inv.hospital?.name && selectedNotification.title?.includes(inv.hospital.name)) ||
                 (inv.hospital?.name && selectedNotification.message?.includes(inv.hospital.name))
               )
-            ) || seatInvitations.find(inv => inv.status === 'pending' || inv.status?.value === 'pending')
+            ) || seatInvitations[0]
+          : null
+
+        const isInviteExpired = Boolean(
+          anyMatchingInvitation &&
+          (anyMatchingInvitation.status === 'expired' || 
+           (anyMatchingInvitation.expires_at && new Date(anyMatchingInvitation.expires_at) < new Date()))
+        )
+
+        const matchingInvitation = (anyMatchingInvitation && !isInviteExpired && (anyMatchingInvitation.status === 'pending' || anyMatchingInvitation.status?.value === 'pending'))
+          ? anyMatchingInvitation
           : null
 
         return (
@@ -849,7 +873,7 @@ export default function NotificationsPage() {
                     lineHeight: 1.7,
                     wordBreak: 'break-word'
                   }}
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedNotification.message) }}
+                  dangerouslySetInnerHTML={{ __html: formatNotificationMessage(selectedNotification.message) }}
                 />
 
                 {/* Fallback Custom Note Display if not already in message HTML */}
@@ -865,10 +889,10 @@ export default function NotificationsPage() {
                     color: '#065F46',
                     lineHeight: 1.5
                   }}>
-                    <strong style={{ display: 'block', fontSize: 12, color: '#047857', marginBottom: 3 }}>
+                    <strong style={{ display: 'inline', fontSize: 12, color: '#047857', marginRight: 4 }}>
                       💬 হাসপাতালের বিশেষ বার্তা / অফার:
                     </strong>
-                    &ldquo;{matchingInvitation.notes || matchingInvitation.response_note}&rdquo;
+                    &ldquo;{(matchingInvitation.notes || matchingInvitation.response_note)?.replace(/\r?\n+/g, ' ').trim()}&rdquo;
                   </div>
                 )}
 
@@ -892,7 +916,7 @@ export default function NotificationsPage() {
                         userSelect: 'none'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1, marginRight: 8 }}>
                         <span style={{ fontSize: 16 }}>🎁</span>
                         <span style={{ fontWeight: 800, fontSize: 13.5, color: '#065f46' }}>
                           এই প্রাতিষ্ঠানিক সিটের আওতায় প্রাপ্ত সুবিধাসমূহ
@@ -905,13 +929,15 @@ export default function NotificationsPage() {
                           background: 'rgba(5, 150, 105, 0.12)',
                           color: '#047857',
                           borderRadius: 6,
-                          padding: '3px 8px',
+                          padding: '4px 10px',
                           fontSize: 11.5,
                           fontWeight: 700,
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           gap: 4,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}
                       >
                         {showFacilities ? 'সংক্ষিপ্ত করুন' : 'সুবিধাসমূহ দেখুন'}
@@ -997,6 +1023,8 @@ export default function NotificationsPage() {
                           fontWeight: 600,
                           fontSize: 13,
                           cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
                           background: '#FEF2F2',
                           border: '1px solid #FCA5A5',
                           color: '#DC2626',
@@ -1020,6 +1048,8 @@ export default function NotificationsPage() {
                           fontWeight: 700,
                           fontSize: 13,
                           cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
                           background: '#00B875',
                           border: 'none',
                           color: '#FFFFFF',
@@ -1036,6 +1066,31 @@ export default function NotificationsPage() {
                       </button>
                     </div>
                   </>
+                ) : (isIncomingDoctorInvitation && isInviteExpired) ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 10 }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#FEF2F2',
+                      border: '1px solid #FCA5A5',
+                      color: '#DC2626',
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: 700
+                    }}>
+                      ⚠️ এই আমন্ত্রণের মেয়াদ উত্তীর্ণ হয়েছে (Expired)
+                    </span>
+                    <button 
+                      type="button"
+                      className="admin-btn admin-btn-outline" 
+                      style={{ padding: '7px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                      onClick={handleCloseModal}
+                    >
+                      বন্ধ করুন
+                    </button>
+                  </div>
                 ) : (
                   <button 
                     type="button"

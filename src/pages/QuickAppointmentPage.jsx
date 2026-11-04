@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Container, Modal } from 'react-bootstrap'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
@@ -173,6 +173,7 @@ export default function QuickAppointmentPage() {
   const [registeredPhoneNotice, setRegisteredPhoneNotice] = useState(null)
   const [step2Error, setStep2Error] = useState('')
   const [otpNotice, setOtpNotice] = useState('')
+  const [otpSuccessNotice, setOtpSuccessNotice] = useState('')
 
   // Confirmed appointment ticket result
   const [confirmedAppointmentData, setConfirmedAppointmentData] = useState(null)
@@ -571,6 +572,166 @@ export default function QuickAppointmentPage() {
   const slotRef = useRef(null)
   const customDateInputRef = useRef(null)
 
+  // All Specialties Bottom Sheet Refs & Swipe-down handlers
+  const allSpecSheetRef = useRef(null)
+  const allSpecOverlayRef = useRef(null)
+  const allSpecTouchStartY = useRef(0)
+  const allSpecCurrentY = useRef(0)
+  const isAllSpecDragging = useRef(false)
+  const isPointerActive = useRef(false)
+
+  const closeAllSpecialtiesSheet = useCallback(() => {
+    if (allSpecSheetRef.current) {
+      allSpecSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      allSpecSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (allSpecOverlayRef.current) {
+      allSpecOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      allSpecOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setIsAllSpecialtiesModalOpen(false)
+      setModalSpecialtySearch('')
+      allSpecCurrentY.current = 0
+      if (allSpecSheetRef.current) {
+        allSpecSheetRef.current.style.transform = ''
+      }
+    }, 260)
+  }, [])
+
+  const handleAllSpecPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return
+    isPointerActive.current = true
+    allSpecTouchStartY.current = e.clientY
+    allSpecCurrentY.current = 0
+    isAllSpecDragging.current = true
+    if (allSpecSheetRef.current) {
+      allSpecSheetRef.current.style.transition = 'none'
+    }
+    if (allSpecOverlayRef.current) {
+      allSpecOverlayRef.current.style.transition = 'none'
+    }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const handleAllSpecPointerMove = (e) => {
+    if (!isAllSpecDragging.current) return
+    const deltaY = e.clientY - allSpecTouchStartY.current
+    if (deltaY > 0) {
+      allSpecCurrentY.current = deltaY
+      if (allSpecSheetRef.current) {
+        allSpecSheetRef.current.style.transform = `translateY(${deltaY}px)`
+      }
+      if (allSpecOverlayRef.current) {
+        const opacity = Math.max(0, 1 - deltaY / 450)
+        allSpecOverlayRef.current.style.opacity = opacity
+      }
+    }
+  }
+
+  const handleAllSpecPointerUp = (e) => {
+    if (!isAllSpecDragging.current) return
+    isAllSpecDragging.current = false
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {}
+
+    if (allSpecSheetRef.current) {
+      allSpecSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (allSpecOverlayRef.current) {
+      allSpecOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (allSpecCurrentY.current > 75) {
+      closeAllSpecialtiesSheet()
+    } else {
+      if (allSpecSheetRef.current) {
+        allSpecSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (allSpecOverlayRef.current) {
+        allSpecOverlayRef.current.style.opacity = '1'
+      }
+      allSpecCurrentY.current = 0
+    }
+    setTimeout(() => {
+      isPointerActive.current = false
+    }, 100)
+  }
+
+  const handleAllSpecTouchStart = (e) => {
+    if (isPointerActive.current) return
+    if (e.touches && e.touches[0]) {
+      allSpecTouchStartY.current = e.touches[0].clientY
+      allSpecCurrentY.current = 0
+      isAllSpecDragging.current = true
+      if (allSpecSheetRef.current) {
+        allSpecSheetRef.current.style.transition = 'none'
+      }
+      if (allSpecOverlayRef.current) {
+        allSpecOverlayRef.current.style.transition = 'none'
+      }
+    }
+  }
+
+  const handleAllSpecTouchMove = (e) => {
+    if (isPointerActive.current) return
+    if (!isAllSpecDragging.current) return
+    if (e.touches && e.touches[0]) {
+      const deltaY = e.touches[0].clientY - allSpecTouchStartY.current
+      if (deltaY > 0) {
+        allSpecCurrentY.current = deltaY
+        if (allSpecSheetRef.current) {
+          allSpecSheetRef.current.style.transform = `translateY(${deltaY}px)`
+        }
+        if (allSpecOverlayRef.current) {
+          const opacity = Math.max(0, 1 - deltaY / 450)
+          allSpecOverlayRef.current.style.opacity = opacity
+        }
+      }
+    }
+  }
+
+  const handleAllSpecTouchEnd = () => {
+    if (isPointerActive.current) return
+    if (!isAllSpecDragging.current) return
+    isAllSpecDragging.current = false
+
+    if (allSpecSheetRef.current) {
+      allSpecSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+    }
+    if (allSpecOverlayRef.current) {
+      allSpecOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    }
+
+    if (allSpecCurrentY.current > 75) {
+      closeAllSpecialtiesSheet()
+    } else {
+      if (allSpecSheetRef.current) {
+        allSpecSheetRef.current.style.transform = 'translateY(0px)'
+      }
+      if (allSpecOverlayRef.current) {
+        allSpecOverlayRef.current.style.opacity = '1'
+      }
+      allSpecCurrentY.current = 0
+    }
+  }
+
+  // Prevent background scroll when All Specialties bottom sheet is open
+  useEffect(() => {
+    if (isAllSpecialtiesModalOpen) {
+      const prevOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = prevOverflow
+      }
+    }
+  }, [isAllSpecialtiesModalOpen])
+
   // Form errors state for inline field validation
   const [formErrors, setFormErrors] = useState({
     doctor: '',
@@ -660,6 +821,7 @@ export default function QuickAppointmentPage() {
     setModalStep(1)
     setOtp('')
     setOtpNotice('')
+    setOtpSuccessNotice('')
     setStep2Error('')
     setIsBookingModalOpen(true)
   }
@@ -669,6 +831,7 @@ export default function QuickAppointmentPage() {
     setIsBookingModalOpen(false)
     setOtp('')
     setOtpNotice('')
+    setOtpSuccessNotice('')
     setStep2Error('')
     setRegisteredPhoneNotice(null)
     setRelativeErrors({ name: '', age: '', phone: '' })
@@ -857,7 +1020,7 @@ export default function QuickAppointmentPage() {
       const cooldown = res.data?.cooldown_seconds || 60
       setOtpTimer(cooldown)
       setOtp('')
-      toast.success('আপনার মোবাইলে ওটিপি কোড পাঠানো হয়েছে', { id: 'otp-ok' })
+      setOtpSuccessNotice('')
       setModalStep(3)
     } catch (err) {
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
@@ -866,7 +1029,7 @@ export default function QuickAppointmentPage() {
         setStep2Error(msg)
         setBookingErrorModal({
           isOpen: true,
-          title: 'ইতিমধ্যে বুক করা হয়েছে',
+          title: err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           message: msg,
           viewAppointments: true,
           confirmText: 'ঠিক আছে',
@@ -988,14 +1151,17 @@ export default function QuickAppointmentPage() {
       const cooldown = res.data?.cooldown_seconds || 60
       setOtpTimer(cooldown)
       setOtp('')
-      toast.success('নতুন ওটিপি কোড পাঠানো হয়েছে', { id: 'resend-ok' })
+      setOtpSuccessNotice('নতুন ওটিপি কোড সফলভাবে পাঠানো হয়েছে ✓')
+      setTimeout(() => {
+        setOtpSuccessNotice('')
+      }, 3500)
     } catch (err) {
       if (err.response?.data?.duplicate_booking || err.response?.data?.limit_exceeded) {
         const msg = err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট বুক করা রয়েছে।'
         setOtpNotice(msg)
         setBookingErrorModal({
           isOpen: true,
-          title: 'ইতিমধ্যে বুক করা হয়েছে',
+          title: err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           message: msg,
           viewAppointments: true,
           confirmText: 'ঠিক আছে',
@@ -1122,11 +1288,6 @@ export default function QuickAppointmentPage() {
       } catch (authErr) {
         console.warn('Session store warning:', authErr)
       }
-
-      // 3. Optional non-blocking toast
-      try {
-        toast.success('ওটিপি সফলভাবে যাচাই করা হয়েছে', { id: 'otp-v-ok' })
-      } catch {}
     } catch (err) {
       console.error('Verify OTP failed:', err)
       const rawMsg = err.response?.data?.message || err.response?.data?.error
@@ -2533,6 +2694,7 @@ export default function QuickAppointmentPage() {
       {/* ── ALL SPECIALTIES MOBILE BOTTOM SHEET (Portal to body) ── */}
       {isAllSpecialtiesModalOpen && typeof document !== 'undefined' && createPortal(
         <div
+          ref={allSpecOverlayRef}
           style={{
             position: 'fixed',
             inset: 0,
@@ -2546,18 +2708,16 @@ export default function QuickAppointmentPage() {
             alignItems: 'center',
             animation: 'quickSheetFadeIn 0.22s ease'
           }}
-          onClick={() => {
-            setIsAllSpecialtiesModalOpen(false)
-            setModalSpecialtySearch('')
-          }}
+          onClick={closeAllSpecialtiesSheet}
         >
           <div
+            ref={allSpecSheetRef}
             style={{
               background: '#FFFFFF',
               width: '100%',
               maxWidth: 540,
-              height: '84vh',
-              maxHeight: '88vh',
+              height: '75vh',
+              maxHeight: '78vh',
               borderRadius: '16px 16px 0 0',
               display: 'flex',
               flexDirection: 'column',
@@ -2568,20 +2728,48 @@ export default function QuickAppointmentPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar */}
-            <div style={{ padding: '10px 0 4px', display: 'flex', justifyContent: 'center', cursor: 'pointer' }}>
-              <div style={{ width: 44, height: 4.5, borderRadius: 3, background: '#CBD5E1' }} />
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            <div
+              style={{
+                padding: '12px 0 8px',
+                display: 'flex',
+                justifyContent: 'center',
+                cursor: 'grab',
+                touchAction: 'none',
+                userSelect: 'none',
+                width: '100%'
+              }}
+              onTouchStart={handleAllSpecTouchStart}
+              onTouchMove={handleAllSpecTouchMove}
+              onTouchEnd={handleAllSpecTouchEnd}
+              onPointerDown={handleAllSpecPointerDown}
+              onPointerMove={handleAllSpecPointerMove}
+              onPointerUp={handleAllSpecPointerUp}
+              onPointerCancel={handleAllSpecPointerUp}
+            >
+              <div style={{ width: 44, height: 4.5, borderRadius: 3, background: '#CBD5E1', pointerEvents: 'none' }} />
             </div>
 
-            {/* Header with Title and YouTube-style circular Close button */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 18px 14px',
-              borderBottom: '1px solid #F1F5F9'
-            }}>
-              <div>
+            {/* Header with Title and YouTube-style circular Close button (Also draggable) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '4px 18px 14px',
+                borderBottom: '1px solid #F1F5F9',
+                touchAction: 'none',
+                userSelect: 'none'
+              }}
+              onTouchStart={handleAllSpecTouchStart}
+              onTouchMove={handleAllSpecTouchMove}
+              onTouchEnd={handleAllSpecTouchEnd}
+              onPointerDown={handleAllSpecPointerDown}
+              onPointerMove={handleAllSpecPointerMove}
+              onPointerUp={handleAllSpecPointerUp}
+              onPointerCancel={handleAllSpecPointerUp}
+            >
+              <div style={{ pointerEvents: 'none' }}>
                 <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
                   সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
                 </h5>
@@ -2591,10 +2779,9 @@ export default function QuickAppointmentPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsAllSpecialtiesModalOpen(false)
-                  setModalSpecialtySearch('')
-                }}
+                onClick={closeAllSpecialtiesSheet}
+                onPointerDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 aria-label="Close"
                 style={{
                   width: 34,
@@ -2680,8 +2867,7 @@ export default function QuickAppointmentPage() {
                         type="button"
                         onClick={() => {
                           setSelectedSpecialtyId(String(spec.id))
-                          setIsAllSpecialtiesModalOpen(false)
-                          setModalSpecialtySearch('')
+                          closeAllSpecialtiesSheet()
                         }}
                         style={{
                           background: isSelected ? '#F0FDF4' : 'white',
@@ -3579,8 +3765,27 @@ export default function QuickAppointmentPage() {
                   />
                 </div>
 
-                {/* Single Clean Timer / Resend Action (Never double timer) */}
-                <div style={{ textAlign: 'center', marginBottom: 20, minHeight: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Single Clean Timer / Resend Action with Contextual Inline Feedback */}
+                <div style={{ textAlign: 'center', marginBottom: 20, minHeight: 34, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {otpSuccessNotice && (
+                    <div style={{
+                      background: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 20,
+                      padding: '4px 14px',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: '#15803D',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontFamily: "'Hind Siliguri', sans-serif"
+                    }}>
+                      <IconCircleCheck size={15} color="#16A34A" />
+                      <span>{otpSuccessNotice}</span>
+                    </div>
+                  )}
+
                   {otpTimer > 0 ? (
                     <div style={{
                       fontSize: 13,

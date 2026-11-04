@@ -5422,7 +5422,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             width: 100%;
             max-width: 480px;
-            max-height: 85vh;
+            max-height: 75vh;
             border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;
@@ -5710,9 +5710,9 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             width: 100%;
             max-width: 480px;
-            height: 82vh;
-            height: 82dvh;
-            max-height: 85vh;
+            height: 75vh;
+            height: 75dvh;
+            max-height: 78vh;
             border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;

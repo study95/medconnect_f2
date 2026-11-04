@@ -4,13 +4,12 @@ import { Link } from 'react-router-dom'
 import { 
   Stethoscope, Calendar, Clock, Tv, FileText, Users, 
   ShieldCheck, ArrowRight, Sparkles, TrendingUp, CheckCircle2,
-  Laptop, ChevronDown, ChevronUp, Activity, 
+  Laptop, Activity, 
   Award, Database, Shield, Check, Plus, Minus
 } from 'lucide-react'
 
 export default function DoctorInfoPage() {
   const [activeTab, setActiveTab] = useState('chamber')
-  const [openFaq, setOpenFaq] = useState(0)
 
   // 6 Core Doctor Benefits (Short, punchy & non-repetitive)
   const doctorServices = [
@@ -146,26 +145,6 @@ export default function DoctorInfoPage() {
       num: '৩',
       title: 'ভেরিফিকেশন ও রোগী গ্রহণ',
       desc: 'দ্রুত ভেরিফিকেশনের পর রোগীরা সরাসরি সিরিয়াল বুক করা শুরু করবে।'
-    }
-  ]
-
-  // Direct, 1-2 line FAQs
-  const faqs = [
-    {
-      q: 'Doctor Booklet-এ ডাক্তার হিসেবে রেজিস্ট্রেশন করতে কি কোনো ফি লাগে?',
-      a: 'না, ডাক্তারদের জন্য রেজিস্ট্রেশন সম্পূর্ণ বিনামূল্যে। কোনো প্রকার হিডেন বা সাইন-আপ চার্জ নেই।'
-    },
-    {
-      q: 'আমার চেম্বারের সহকারী কি এই সিস্টেম ব্যবহার করতে পারবে?',
-      a: 'হ্যাঁ, সহকারীর জন্য আলাদা সুরক্ষিত অপারেটর অ্যাকাউন্ট রয়েছে। তিনি সিরিয়াল এন্ট্রি ও টিভি ডিসপ্লে অপারেট করতে পারবেন কিন্তু গোপনীয় তথ্য দেখতে পারবেন না।'
-    },
-    {
-      q: 'একাধিক চেম্বার বা হাসপাতাল কি একসাথে চালানো সম্ভব?',
-      a: 'হ্যাঁ, Doctor Booklet মাল্টি-চেম্বার সাপোর্ট করে। প্রতিটি চেম্বারের জন্য আলাদা দিন, সময় ও ফি কনফিগার করতে পারবেন।'
-    },
-    {
-      q: 'স্মার্ট টিভি ডিসপ্লে বোর্ডের জন্য কি কোনো ডিভাইস কিনতে হবে?',
-      a: 'একেবারেই না। চেম্বারে থাকা যেকোনো সাধারণ স্মার্ট টিভি বা ল্যাপটপের ব্রাউজারে একটি লিংক ওপেন করলেই ফুল-স্ক্রিন ডিসপ্লে চালু হয়ে যাবে।'
     }
   ]
 
@@ -448,7 +427,7 @@ export default function DoctorInfoPage() {
 
         /* Steps Section */
         .doctor-steps-section {
-          padding: 60px 0 50px;
+          padding: 55px 0 0;
         }
         .doctor-step-card {
           background: white;
@@ -486,7 +465,7 @@ export default function DoctorInfoPage() {
 
         /* Security Section (Soft Mint Clean Card) */
         .doctor-security-section {
-          padding: 45px 0;
+          padding: 48px 0;
           background: #F8FAFC;
         }
         .doctor-security-card {
@@ -543,49 +522,6 @@ export default function DoctorInfoPage() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-        }
-
-        /* FAQ Section */
-        .doctor-faq-section {
-          padding: 55px 0;
-        }
-        .doctor-faq-btn {
-          width: 100%;
-          padding: 14px 20px;
-          background: transparent;
-          border: none;
-          text-align: left;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          cursor: pointer;
-        }
-        .doctor-faq-q-badge {
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 13px;
-          font-weight: 800;
-          flex-shrink: 0;
-        }
-        .doctor-faq-question {
-          font-weight: 700;
-          font-size: 15px;
-          line-height: 1.35;
-          flex: 1;
-        }
-        .doctor-faq-answer {
-          padding: 0 20px 16px;
-        }
-        .doctor-faq-answer p {
-          margin: 0;
-          color: #475569;
-          font-size: 13.5px;
-          line-height: 1.55;
         }
 
         /* Bottom CTA */
@@ -668,10 +604,10 @@ export default function DoctorInfoPage() {
             padding: 16px 12px !important;
           }
           .doctor-steps-section {
-            padding: 30px 0 !important;
+            padding: 30px 0 0 !important;
           }
           .doctor-security-section {
-            padding: 22px 0 !important;
+            padding: 26px 0 !important;
           }
           .doctor-security-card {
             padding: 18px 12px !important;
@@ -1021,69 +957,7 @@ export default function DoctorInfoPage() {
         </Container>
       </section>
 
-      {/* ── 7. DOCTOR FAQS (4 Direct Questions) ── */}
-      <section className="doctor-faq-section">
-        <Container>
-          <div className="text-center mb-4">
-            <h2 style={{ fontSize: 'clamp(22px, 2.8vw, 30px)', fontWeight: 950, color: '#0F172A', marginBottom: '6px' }}>
-              সচরাচর জিজ্ঞাসা
-            </h2>
-            <p style={{ color: '#64748B', fontSize: '14px' }}>ডাক্তারদের সাধারণ প্রশ্নের দ্রুত ও পরিষ্কার উত্তর।</p>
-          </div>
-
-          <Row className="justify-content-center">
-            <Col lg={8} md={10}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {faqs.map((faq, idx) => {
-                  const isOpen = openFaq === idx
-                  return (
-                    <div 
-                      key={idx}
-                      style={{ 
-                        background: 'white',
-                        borderRadius: '14px',
-                        border: isOpen ? '1.5px solid #00B875' : '1px solid #E2E8F0',
-                        overflow: 'hidden',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <button 
-                        className="doctor-faq-btn"
-                        onClick={() => setOpenFaq(isOpen ? null : idx)}
-                      >
-                        <span 
-                          className="doctor-faq-q-badge"
-                          style={{ 
-                            background: isOpen ? '#00B875' : '#F1F5F9',
-                            color: isOpen ? 'white' : '#64748B'
-                          }}
-                        >
-                          ?
-                        </span>
-                        <span 
-                          className="doctor-faq-question"
-                          style={{ color: isOpen ? '#00B875' : '#0F172A' }}
-                        >
-                          {faq.q}
-                        </span>
-                        {isOpen ? <ChevronUp size={16} color="#00B875" /> : <ChevronDown size={16} color="#94A3B8" />}
-                      </button>
-
-                      {isOpen && (
-                        <div className="doctor-faq-answer">
-                          <p>{faq.a}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </Col>
-          </Row>
-        </Container>
-      </section>
-
-      {/* ── 8. BOTTOM CTA BANNER ── */}
+      {/* ── 7. BOTTOM CTA BANNER ── */}
       <section className="doctor-bottom-cta">
         <Container style={{ position: 'relative', zIndex: 2 }}>
           <h2 className="doctor-bottom-cta-title">

@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import { useSubscription } from '../../context/SubscriptionContext'
 import { getDashboardStats, getDashboardAnalytics } from '../../api/adminApi'
 import { queryKeys } from '../../lib/queryKeys'
 import {
@@ -13,7 +15,7 @@ import {
   DollarSign, Calendar, Stethoscope, Users, Building2,
   CheckCircle2, AlertCircle, ArrowUpRight, RefreshCw, ShieldCheck,
   ChevronRight, Clock, FileText, ArrowRight, Activity, ShieldAlert,
-  MessageSquare
+  MessageSquare, Zap
 } from 'lucide-react'
 
 const RANGE_OPTIONS = [
@@ -60,7 +62,11 @@ function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPo
       justifyContent: 'space-between',
       transition: 'all 0.2s ease',
       cursor: to ? 'pointer' : 'default',
-      position: 'relative'
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      minHeight: 160,
+      boxSizing: 'border-box'
     }}
     onMouseEnter={e => { if (to) e.currentTarget.style.borderColor = 'var(--admin-primary)' }}
     onMouseLeave={e => { if (to) e.currentTarget.style.borderColor = 'var(--admin-border)' }}
@@ -79,7 +85,7 @@ function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPo
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, margin: 'auto 0' }}>
         <div style={{
           fontSize: 26, fontWeight: 800, color: 'var(--admin-text)',
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px', lineHeight: 1.1
@@ -99,7 +105,7 @@ function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPo
       </div>
 
       <div style={{
-        marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--admin-border)',
+        marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--admin-border)',
         fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
@@ -109,15 +115,164 @@ function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPo
     </div>
   )
 
-  return to ? <Link to={to} style={{ textDecoration: 'none' }}>{card}</Link> : card
+  return to ? <Link to={to} style={{ textDecoration: 'none', display: 'flex', width: '100%', height: '100%' }}>{card}</Link> : card
+}
+
+// Executive Subscription Cycle Tracker Card
+function SubscriptionCycleCard({ info, to }) {
+  const {
+    planName = 'ফ্রি ট্রায়াল',
+    totalDays = 30,
+    daysUsed = 0,
+    daysRemaining = 30,
+    percentUsed = 0,
+    isTrial = false,
+    isExpired = false,
+    isInstitutional = false,
+    hospitalName = null,
+  } = info || {}
+
+  // Determine status color theme
+  let statusBadgeColor = '#10B981'
+  let statusBadgeBg = 'rgba(16, 185, 129, 0.1)'
+  let statusBadgeText = 'সক্রিয়'
+  let progressGradient = 'linear-gradient(90deg, #00A88C, #00C9A7)'
+
+  if (isExpired) {
+    statusBadgeColor = '#EF4444'
+    statusBadgeBg = 'rgba(239, 68, 68, 0.1)'
+    statusBadgeText = 'মেয়াদোত্তীর্ণ'
+    progressGradient = '#EF4444'
+  } else if (daysRemaining <= 3) {
+    statusBadgeColor = '#EF4444'
+    statusBadgeBg = 'rgba(239, 68, 68, 0.1)'
+    statusBadgeText = `${daysRemaining} দিন বাকি`
+    progressGradient = 'linear-gradient(90deg, #F87171, #EF4444)'
+  } else if (daysRemaining <= 7) {
+    statusBadgeColor = '#D97706'
+    statusBadgeBg = 'rgba(245, 158, 11, 0.1)'
+    statusBadgeText = `${daysRemaining} দিন বাকি`
+    progressGradient = 'linear-gradient(90deg, #FBBF24, #F59E0B)'
+  } else if (isTrial) {
+    statusBadgeColor = '#00A88C'
+    statusBadgeBg = 'rgba(0, 168, 140, 0.1)'
+    statusBadgeText = 'ট্রায়াল চলছে'
+    progressGradient = 'linear-gradient(90deg, #00A88C, #00C9A7)'
+  }
+
+  const card = (
+    <div
+      style={{
+        background: 'var(--admin-card-bg)',
+        border: '1px solid var(--admin-border)',
+        borderRadius: 14,
+        padding: '18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer',
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        minHeight: 160,
+        boxSizing: 'border-box'
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--admin-primary)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--admin-border)' }}
+    >
+      {/* Top Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text-muted)', letterSpacing: '0.2px' }}>
+          সক্রিয় প্যাকেজ
+        </span>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(0, 168, 140, 0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#00A88C'
+        }}>
+          <Zap size={16} />
+        </div>
+      </div>
+
+      {/* Plan Name & Status Badge + Progress (Middle section) */}
+      <div style={{ margin: 'auto 0', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+          <div
+            title={planName}
+            style={{
+              fontSize: 16, fontWeight: 800, color: 'var(--admin-text)',
+              letterSpacing: '-0.3px', lineHeight: 1.2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '62%'
+            }}
+          >
+            {planName}
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+            background: statusBadgeBg,
+            color: statusBadgeColor,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            whiteSpace: 'nowrap'
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusBadgeColor }} />
+            {statusBadgeText}
+          </span>
+        </div>
+
+        {/* Progress Bar & Day Usage */}
+        <div>
+          <div style={{
+            width: '100%', height: 6, borderRadius: 999,
+            background: 'var(--admin-border)',
+            overflow: 'hidden', position: 'relative'
+          }}>
+            <div style={{
+              width: `${percentUsed}%`, height: '100%',
+              borderRadius: 999,
+              background: progressGradient,
+              transition: 'width 0.4s ease'
+            }} />
+          </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 6, fontSize: 11, color: 'var(--admin-text-muted)'
+          }}>
+            <span>
+              <strong style={{ color: 'var(--admin-text)', fontWeight: 700 }}>{daysUsed}</strong>/{totalDays} দিন ব্যবহৃত
+            </span>
+            <span style={{ fontWeight: 600, color: isExpired ? '#EF4444' : undefined }}>
+              {isExpired ? 'মেয়াদ শেষ (০ দিন)' : `${daysRemaining} দিন বাকি (${percentUsed}%)`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Link */}
+      <div style={{
+        marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--admin-border)',
+        fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <span>{isExpired ? (isInstitutional ? 'হাসপাতালের প্যাকেজের মেয়াদ শেষ' : 'প্যাকেজের মেয়াদ শেষ') : (isInstitutional ? 'প্রাতিষ্ঠানিক সিট বিস্তারিত' : 'প্ল্যান ও রিনিউয়াল ম্যানেজ')}</span>
+        <ArrowUpRight size={13} color="var(--admin-text-muted)" />
+      </div>
+    </div>
+  )
+
+  return to ? <Link to={to} style={{ textDecoration: 'none', display: 'flex', width: '100%', height: '100%' }}>{card}</Link> : card
 }
 
 export default function DashboardPage() {
   const { isAdmin, isDoctor, isManager, user } = useAuth()
+  const subscriptionContext = useSubscription()
   const [range, setRange] = useState('month')
   const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports'
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
-  const { data: stats = null, isLoading: loading, refetch: refetchStats } = useQuery({
+  const { data: stats = null, isLoading: loading, isFetching: statsFetching, refetch: refetchStats } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
     queryFn: async () => {
       try {
@@ -131,7 +286,78 @@ export default function DashboardPage() {
     staleTime: 60 * 1000,
   })
 
-  const { data: analytics = null, isLoading: analyticsLoading } = useQuery({
+  const subInfo = useMemo(() => {
+    // 1. From backend stats API if available
+    if (stats?.subscription?.has_subscription) {
+      const s = stats.subscription
+      const totalDays = Math.max(1, Number(s.total_days) || 30)
+      const daysRemaining = Math.max(0, Number(s.days_remaining ?? 0))
+      const daysUsed = Math.max(0, Math.min(totalDays, Number(s.days_used ?? (totalDays - daysRemaining))))
+      const percentUsed = Math.min(100, Math.max(0, Math.round((daysUsed / totalDays) * 100)))
+
+      return {
+        planName: s.plan_name || (s.is_trial ? 'ফ্রি ট্রায়াল' : 'স্ট্যান্ডার্ড প্যাকেজ'),
+        totalDays,
+        daysUsed,
+        daysRemaining,
+        percentUsed,
+        isTrial: Boolean(s.is_trial),
+        isExpired: Boolean(s.is_expired),
+        isInstitutional: Boolean(s.is_institutional),
+        hospitalName: s.hospital_name || null,
+        status: s.status || 'active'
+      }
+    }
+
+    // 2. From SubscriptionContext
+    if (subscriptionContext) {
+      const sub = subscriptionContext.subscription
+      const isTrial = Boolean(subscriptionContext.isTrial)
+      const isExpired = Boolean(subscriptionContext.isExpired)
+
+      let totalDays = isTrial ? 14 : 30
+      const startsAt = sub?.current_period_starts_at ? new Date(sub.current_period_starts_at) : null
+      const endsAt = sub?.current_period_ends_at ? new Date(sub.current_period_ends_at) : null
+      const now = new Date()
+
+      if (startsAt && endsAt) {
+        const diffMs = endsAt.getTime() - startsAt.getTime()
+        totalDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+      }
+
+      let remaining = subscriptionContext.daysRemaining
+      if (remaining === null && endsAt) {
+        remaining = Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      }
+      const safeRemaining = Math.max(0, Number(remaining ?? (isTrial ? 14 : 30)))
+      const safeUsed = Math.max(0, Math.min(totalDays, totalDays - safeRemaining))
+      const percentUsed = Math.min(100, Math.max(0, Math.round((safeUsed / totalDays) * 100)))
+
+      return {
+        planName: subscriptionContext.planName || (isTrial ? 'ফ্রি ট্রায়াল' : 'স্ট্যান্ডার্ড প্যাকেজ'),
+        totalDays,
+        daysUsed: safeUsed,
+        daysRemaining: safeRemaining,
+        percentUsed,
+        isTrial,
+        isExpired,
+        status: isExpired ? 'expired' : (isTrial ? 'trialing' : 'active')
+      }
+    }
+
+    return {
+      planName: isDoctor ? 'ডাক্তার ফ্রি ট্রায়াল' : 'হাসপাতাল ফ্রি ট্রায়াল',
+      totalDays: 14,
+      daysUsed: 1,
+      daysRemaining: 13,
+      percentUsed: 7,
+      isTrial: true,
+      isExpired: false,
+      status: 'trialing'
+    }
+  }, [stats?.subscription, subscriptionContext, isDoctor])
+
+  const { data: analytics = null, isLoading: analyticsLoading, isFetching: analyticsFetching, refetch: refetchAnalytics } = useQuery({
     queryKey: queryKeys.dashboard.analytics({ range }),
     queryFn: async () => {
       try {
@@ -144,6 +370,27 @@ export default function DashboardPage() {
     },
     staleTime: 60 * 1000,
   })
+
+  const isRefreshing = isManualRefreshing || statsFetching || analyticsFetching
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return
+    setIsManualRefreshing(true)
+    try {
+      await Promise.all([
+        refetchStats ? refetchStats() : Promise.resolve(),
+        refetchAnalytics ? refetchAnalytics() : Promise.resolve(),
+        subscriptionContext?.refreshSubscription ? subscriptionContext.refreshSubscription() : Promise.resolve()
+      ])
+      toast.success('ড্যাশবোর্ড তথ্য আপডেট হয়েছে', { id: 'dash-refresh', duration: 2500 })
+    } catch {
+      toast.error('তথ্য রিফ্রেশ করতে সমস্যা হয়েছে')
+    } finally {
+      setTimeout(() => {
+        setIsManualRefreshing(false)
+      }, 500)
+    }
+  }
 
   // Format label for chart timeline
   const formatLabel = (period) => {
@@ -311,19 +558,28 @@ export default function DashboardPage() {
           </div>
 
           <button
-            onClick={() => refetchStats()}
-            title="রিফ্রেশ"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title={isRefreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ করুন'}
             style={{
               width: 32, height: 32, borderRadius: 8,
-              border: '1px solid var(--admin-border)',
-              background: 'var(--admin-card-bg)', color: 'var(--admin-text-muted)',
+              border: isRefreshing ? '1px solid #00B875' : '1px solid var(--admin-border)',
+              background: isRefreshing ? 'rgba(0, 184, 117, 0.08)' : 'var(--admin-card-bg)',
+              color: isRefreshing ? '#00B875' : 'var(--admin-text-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: '0.15s'
+              cursor: isRefreshing ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease'
             }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--admin-text)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--admin-text-muted)'}
+            onMouseEnter={e => { if (!isRefreshing) e.currentTarget.style.color = 'var(--admin-text)' }}
+            onMouseLeave={e => { if (!isRefreshing) e.currentTarget.style.color = 'var(--admin-text-muted)' }}
           >
-            <RefreshCw size={14} />
+            <RefreshCw
+              size={14}
+              style={{
+                animation: isRefreshing ? 'dashSpin 0.75s linear infinite' : 'none',
+                transformOrigin: 'center'
+              }}
+            />
           </button>
         </div>
       </div>
@@ -331,7 +587,7 @@ export default function DashboardPage() {
       {/* 2. THE 4 NORTH STAR METRICS (STRIPE-STYLE) */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: 14, marginBottom: 20
+        gap: 14, marginBottom: 20, alignItems: 'stretch'
       }}>
         {isAdmin && (
           <>
@@ -397,12 +653,9 @@ export default function DashboardPage() {
               icon={Building2}
               to="/doctor/chambers"
             />
-            <ExecutiveMetricCard
-              title="ডিজিটাল প্রেসক্রিপশন"
-              value={`${stats?.total_prescriptions || 0} টি`}
-              subtext="তৈরিকৃত চিকিৎসা পরামর্শপত্র"
-              icon={FileText}
-              to="/doctor/prescriptions"
+            <SubscriptionCycleCard
+              info={subInfo}
+              to={subInfo?.isInstitutional ? '/doctor/my-profile' : '/doctor/subscription'}
             />
           </>
         )}
@@ -430,12 +683,9 @@ export default function DashboardPage() {
               icon={Building2}
               to="/hospital/chambers"
             />
-            <ExecutiveMetricCard
-              title="হাসপাতাল প্রোফাইল"
-              value="অ্যাক্টিভ"
-              subtext="হাসপাতালের বিবরণ ও সেবা"
-              icon={Activity}
-              to="/hospital/my-hospital"
+            <SubscriptionCycleCard
+              info={subInfo}
+              to="/hospital/hospital-subscription"
             />
           </>
         )}
@@ -844,6 +1094,7 @@ export default function DashboardPage() {
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes dashSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}} />
     </div>
   )

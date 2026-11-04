@@ -263,11 +263,62 @@ export const disconnectEcho = () => {
   }
 }
 
+/**
+ * Subscribe to personal user notifications & status updates.
+ */
+export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate) => {
+  if (!userId) return () => {}
+  const echo = getEcho()
+  const channel = echo.private(`user.${userId}`)
+
+  if (onDoctorUpdate) {
+    channel.listen('.doctor.status.updated', onDoctorUpdate)
+  }
+  if (onHospitalUpdate) {
+    channel.listen('.hospital.status.updated', onHospitalUpdate)
+  }
+
+  return () => {
+    if (onDoctorUpdate) {
+      channel.stopListening('.doctor.status.updated', onDoctorUpdate)
+    }
+    if (onHospitalUpdate) {
+      channel.stopListening('.hospital.status.updated', onHospitalUpdate)
+    }
+  }
+}
+
+/**
+ * Subscribe to public directory updates (for doctors and hospitals listings).
+ */
+export const subscribeToPublicDirectory = (onDoctorUpdate, onHospitalUpdate) => {
+  const echo = getEcho()
+  const channel = echo.channel('public-directory')
+
+  if (onDoctorUpdate) {
+    channel.listen('.doctor.status.updated', onDoctorUpdate)
+  }
+  if (onHospitalUpdate) {
+    channel.listen('.hospital.status.updated', onHospitalUpdate)
+  }
+
+  return () => {
+    if (onDoctorUpdate) {
+      channel.stopListening('.doctor.status.updated', onDoctorUpdate)
+    }
+    if (onHospitalUpdate) {
+      channel.stopListening('.hospital.status.updated', onHospitalUpdate)
+    }
+  }
+}
+
 export default {
   getEcho,
   subscribeToAppointment,
   subscribeToChamber,
   subscribeToPublicChamber,
+  subscribeToUserChannel,
+  subscribeToPublicDirectory,
   leaveChannel,
   disconnectEcho,
   onConnectionStateChange,

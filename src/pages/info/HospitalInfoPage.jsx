@@ -4,14 +4,13 @@ import { Link } from 'react-router-dom'
 import { 
   Building2, Users, Calendar, Clock, Tv, FileText, 
   ShieldCheck, ArrowRight, Sparkles, TrendingUp, CheckCircle2,
-  Laptop, ChevronDown, ChevronUp, Activity, 
+  Laptop, Activity, 
   Award, Database, Shield, Check,
   UserCheck, Stethoscope, HeartPulse, Plus, Minus
 } from 'lucide-react'
 
 export default function HospitalInfoPage() {
   const [activeTab, setActiveTab] = useState('roster')
-  const [openFaq, setOpenFaq] = useState(0)
 
   // 6 Core Hospital Benefits (Short, punchy & non-repetitive)
   const hospitalServices = [
@@ -147,26 +146,6 @@ export default function HospitalInfoPage() {
       num: '৩',
       title: 'কাউন্টার ও ডিসপ্লে সক্রিয়',
       desc: 'ফ্রন্টডেস্ক অপারেটর ও স্মার্ট টিভি কিউ বোর্ড চালু করুন।'
-    }
-  ]
-
-  // Direct, 1-2 line FAQs
-  const faqs = [
-    {
-      q: 'হাসপাতাল পার্টনার হিসেবে যুক্ত হতে কোনো চার্জ লাগে?',
-      a: 'প্রাথমিক রেজিস্ট্রেশন ও প্রোফাইল সেটআপ সম্পূর্ণ ফ্রি। আপনি ট্রায়াল দিয়ে সুবিধাগুলো যাচাই করতে পারবেন।'
-    },
-    {
-      q: 'হাসপাতালের একাধিক কাউন্টার স্টাফ কি একসাথে চালাতে পারবে?',
-      a: 'হ্যাঁ, মাল্টি-অপারেটর সাপোর্ট রয়েছে। রিসেপশনিস্ট ও ক্যাশিয়ারদের জন্য আলাদা সুরক্ষিত লগইন দেওয়া যাবে।'
-    },
-    {
-      q: 'স্মার্ট টিভি কিউ ডিসপ্লে চালুর জন্য বিশেষ সফটওয়্যার লাগবে?',
-      a: 'না, কোনো বিশেষ সফটওয়্যার বা ডিভাইসের প্রয়োজন নেই। সাধারণ স্মার্ট টিভির ব্রাউজারে লিংক ওপেন করলেই চলবে।'
-    },
-    {
-      q: 'আমাদের রোগী ও আর্থিক তথ্যের নিরাপত্তা কেমন?',
-      a: 'আন্তর্জাতিক মানসম্মত ২৫৬-বিট SSL এনক্রিপশন ও সার্বক্ষণিক ক্লাউড ব্যাকআপের মাধ্যমে ডেটা শতভাগ সুরক্ষিত থাকে।'
     }
   ]
 
@@ -449,7 +428,7 @@ export default function HospitalInfoPage() {
 
         /* Steps Section */
         .hospital-steps-section {
-          padding: 60px 0 50px;
+          padding: 55px 0 0;
         }
         .hospital-step-card {
           background: white;
@@ -487,7 +466,7 @@ export default function HospitalInfoPage() {
 
         /* Security Section (Soft Mint Clean Card) */
         .hospital-security-section {
-          padding: 45px 0;
+          padding: 48px 0;
           background: #F8FAFC;
         }
         .hospital-security-card {
@@ -544,49 +523,6 @@ export default function HospitalInfoPage() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-        }
-
-        /* FAQ Section */
-        .hospital-faq-section {
-          padding: 55px 0;
-        }
-        .hospital-faq-btn {
-          width: 100%;
-          padding: 14px 20px;
-          background: transparent;
-          border: none;
-          text-align: left;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          cursor: pointer;
-        }
-        .hospital-faq-q-badge {
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 13px;
-          font-weight: 800;
-          flex-shrink: 0;
-        }
-        .hospital-faq-question {
-          font-weight: 700;
-          font-size: 15px;
-          line-height: 1.35;
-          flex: 1;
-        }
-        .hospital-faq-answer {
-          padding: 0 20px 16px;
-        }
-        .hospital-faq-answer p {
-          margin: 0;
-          color: #475569;
-          font-size: 13.5px;
-          line-height: 1.55;
         }
 
         /* Bottom CTA */
@@ -669,10 +605,10 @@ export default function HospitalInfoPage() {
             padding: 16px 12px !important;
           }
           .hospital-steps-section {
-            padding: 30px 0 !important;
+            padding: 30px 0 0 !important;
           }
           .hospital-security-section {
-            padding: 22px 0 !important;
+            padding: 26px 0 !important;
           }
           .hospital-security-card {
             padding: 18px 12px !important;
@@ -1022,69 +958,7 @@ export default function HospitalInfoPage() {
         </Container>
       </section>
 
-      {/* ── 7. HOSPITAL FAQS (4 Direct Questions) ── */}
-      <section className="hospital-faq-section">
-        <Container>
-          <div className="text-center mb-4">
-            <h2 style={{ fontSize: 'clamp(22px, 2.8vw, 30px)', fontWeight: 950, color: '#0F172A', marginBottom: '6px' }}>
-              সচরাচর জিজ্ঞাসা
-            </h2>
-            <p style={{ color: '#64748B', fontSize: '14px' }}>হাসপাতাল ম্যানেজমেন্টের সাধারণ প্রশ্নের দ্রুত ও পরিষ্কার উত্তর।</p>
-          </div>
-
-          <Row className="justify-content-center">
-            <Col lg={8} md={10}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {faqs.map((faq, idx) => {
-                  const isOpen = openFaq === idx
-                  return (
-                    <div 
-                      key={idx}
-                      style={{ 
-                        background: 'white',
-                        borderRadius: '14px',
-                        border: isOpen ? '1.5px solid #00B875' : '1px solid #E2E8F0',
-                        overflow: 'hidden',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <button 
-                        className="hospital-faq-btn"
-                        onClick={() => setOpenFaq(isOpen ? null : idx)}
-                      >
-                        <span 
-                          className="hospital-faq-q-badge"
-                          style={{ 
-                            background: isOpen ? '#00B875' : '#F1F5F9',
-                            color: isOpen ? 'white' : '#64748B'
-                          }}
-                        >
-                          ?
-                        </span>
-                        <span 
-                          className="hospital-faq-question"
-                          style={{ color: isOpen ? '#00B875' : '#0F172A' }}
-                        >
-                          {faq.q}
-                        </span>
-                        {isOpen ? <ChevronUp size={16} color="#00B875" /> : <ChevronDown size={16} color="#94A3B8" />}
-                      </button>
-
-                      {isOpen && (
-                        <div className="hospital-faq-answer">
-                          <p>{faq.a}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </Col>
-          </Row>
-        </Container>
-      </section>
-
-      {/* ── 8. BOTTOM CTA BANNER ── */}
+      {/* ── 7. BOTTOM CTA BANNER ── */}
       <section className="hospital-bottom-cta">
         <Container style={{ position: 'relative', zIndex: 2 }}>
           <h2 className="hospital-bottom-cta-title">

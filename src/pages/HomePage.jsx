@@ -19,7 +19,7 @@ import {
   IconChevronLeft, IconChevronRight, IconChevronDown, IconStethoscope, IconHeart, IconDental, IconUsers, IconEye, IconScissors,
   IconLock, IconDeviceMobile, IconBuildingHospital, IconInfoCircle, IconShare,
   IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus,
-  IconSearch, IconX, IconActivity, IconUserHeart, IconHelp, IconLoader2
+  IconSearch, IconX, IconActivity, IconUserHeart, IconHelp, IconLoader2, IconCheck
 } from '@tabler/icons-react'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -911,34 +911,46 @@ function DigitalDashboardBanner() {
 
   const features = [
     {
-      icon: <IconCalendar size={19} stroke={2.2} />,
+      icon: <IconCalendar size={18} stroke={2.2} />,
       title: 'ডিজিটাল অ্যাপয়েন্টমেন্ট',
-      subtitle: 'অনলাইন সিডিউল, রোগী তালিকা, অটো স্লট'
+      subtitle: 'অনলাইন স্লট বুকিং ও পেশেন্ট হিস্ট্রি',
+      chips: ['অটো স্লট ক্যালেন্ডার', 'পেশেন্ট ডাটাবেজ'],
+      link: '/services'
     },
     {
-      icon: <IconFileText size={19} stroke={2.2} />,
-      title: 'ই-প্রেসক্রিপশন ও ইনভয়েস',
-      subtitle: 'এক ক্লিকে ডিজিটাল প্রেসক্রিপশন, PDF রসিদ'
+      icon: <IconFileText size={18} stroke={2.2} />,
+      title: 'স্মার্ট ই-প্রেসক্রিপশন',
+      subtitle: '৫০,০০০+ ড্রাগ ডিরেক্টরি ও প্রেসক্রিপশন প্রিন্ট',
+      chips: ['১-ক্লিকে প্রেসক্রিপশন', 'ডিজিটাল প্যাড ও PDF'],
+      link: '/services'
     },
     {
-      icon: <IconBell size={19} stroke={2.2} />,
-      title: 'অটো SMS রিমাইন্ডার',
-      subtitle: 'অ্যাপয়েন্টমেন্টের আগে ও পরে অটো SMS'
+      icon: <IconBell size={18} stroke={2.2} />,
+      title: 'স্বয়ংক্রিয় SMS রিমাইন্ডার',
+      subtitle: 'রোগীর অনুপস্থিতি ও মিসড ভিজিট রোধের ব্যবস্থা',
+      chips: ['বুকিং নিশ্চিতকরণ SMS', 'শিডিউল অ্যালার্ট'],
+      link: '/services'
     },
     {
-      icon: <IconActivity size={19} stroke={2.2} />,
-      title: 'লাইভ কিউ ডিসপ্লে',
-      subtitle: 'চেম্বারের জন্য রিয়েল-টাইম সিরিয়াল বোর্ড'
+      icon: <IconActivity size={18} stroke={2.2} />,
+      title: 'লাইভ কিউ স্মার্ট টিভি',
+      subtitle: 'ওয়েটিং রুমে রিয়েল-টাইম সিরিয়াল ও নেক্সট কল',
+      chips: ['যেকোনো স্মার্ট টিভিতে চলে', 'নো-হার্ডওয়্যার সেটআপ'],
+      link: '/services'
     },
     {
-      icon: <IconBuildingHospital size={19} stroke={2.2} />,
-      title: 'চেম্বার ও হাসপাতাল পেজ',
-      subtitle: 'ডাক্তার তালিকা, ইউনিট ও পাবলিক পেজ'
+      icon: <IconBuildingHospital size={18} stroke={2.2} />,
+      title: 'ডক্টর ও চেম্বার পেজ',
+      subtitle: 'গুগল ও সোশ্যাল মিডিয়া থেকে সরাসরি পেশেন্ট বুকিং',
+      chips: ['নিজস্ব প্রোফাইল লিঙ্ক', 'রেটিং ও রিভিউ'],
+      link: '/services'
     },
     {
-      icon: <IconChartBar size={19} stroke={2.2} />,
-      title: 'আয়-ব্যয় অ্যানালিটিক্স',
-      subtitle: 'চার্ট, রিপোর্ট ও হিসাব এক্সপোর্ট'
+      icon: <IconChartBar size={18} stroke={2.2} />,
+      title: 'দৈনিক আয়-ব্যয় রিপোর্ট',
+      subtitle: 'রোগী দেখা ও কনসালটেন্সি ফি লাইভ হিসাব',
+      chips: ['ডেইলি কালেকশন সামারি', 'PDF / এক্সেল রিপোর্ট'],
+      link: '/services'
     }
   ]
 
@@ -959,31 +971,70 @@ function DigitalDashboardBanner() {
           </p>
         </div>
 
-        {/* Feature Cards Grid (2 cols on mobile, 3 cols on desktop) */}
+        {/* Feature Cards Grid (1 col on mobile, 2 cols on tablet, 3 cols on desktop) */}
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <Row className="g-2 g-md-3 justify-content-center mb-3 mb-md-4">
+          <Row className="g-2 g-md-3 justify-content-center mb-2 mb-md-3">
             {features.map((item, i) => (
-              <Col key={i} xs={6} md={6} lg={4}>
-                <div className="dashboard-feature-card">
+              <Col key={i} xs={12} sm={6} lg={4}>
+                <div
+                  className="dashboard-feature-card"
+                  onClick={() => navigate(item.link || '/services')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(item.link || '/services') }}
+                >
                   {/* Green Square Icon Badge */}
                   <div className="dashboard-feature-icon-badge">
                     {item.icon}
                   </div>
                   <div className="dashboard-feature-text-box">
-                    <h4 className="dashboard-feature-title">
-                      {item.title}
-                    </h4>
-                    <p className="dashboard-feature-sub d-none d-sm-block">
+                    <div className="dashboard-feature-top-row">
+                      <h4 className="dashboard-feature-title">
+                        {item.title}
+                      </h4>
+                      <IconArrowUpRight size={14} className="dash-feat-arrow" />
+                    </div>
+                    <p className="dashboard-feature-sub">
                       {item.subtitle}
                     </p>
+                    <div className="dash-feat-chips">
+                      {item.chips.map((chip, ci) => (
+                        <span key={ci} className="dash-feat-chip">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </Col>
             ))}
           </Row>
+
+          {/* Slim Trust Strip */}
+          <div className="dash-trust-strip">
+            <span className="trust-item">
+              <IconCheck size={14} style={{ color: '#059669', strokeWidth: 3 }} />
+              স্মার্ট টিভি ও পিসিতে চলে
+            </span>
+            <span className="trust-divider">•</span>
+            <span className="trust-item">
+              <IconCheck size={14} style={{ color: '#059669', strokeWidth: 3 }} />
+              তাত্ক্ষণিক ক্লাউড সেটআপ
+            </span>
+            <span className="trust-divider">•</span>
+            <span className="trust-item">
+              <IconCheck size={14} style={{ color: '#059669', strokeWidth: 3 }} />
+              মোবাইল ফ্রেন্ডলি পোর্টাল
+            </span>
+            <span className="trust-divider">•</span>
+            <span className="trust-item">
+              <IconCheck size={14} style={{ color: '#059669', strokeWidth: 3 }} />
+              ১০০% সুরক্ষিত পেশেন্ট ডাটা
+            </span>
+          </div>
         </div>
 
-        {/* Action Buttons (Side by side on mobile) */}
+        {/* Action Buttons (Side by side) */}
         <div className="dash-banner-btns-row">
           <button
             onClick={() => navigate('/services')}
@@ -1006,14 +1057,14 @@ function DigitalDashboardBanner() {
         .dashboard-promo-section {
           background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #E6F4EA 100%);
           padding: 38px 0 36px;
-          color: '#0F172A';
+          color: #0F172A;
           position: relative;
           overflow: hidden;
         }
 
         .dashboard-promo-header {
           text-align: center;
-          margin-bottom: 28px;
+          margin-bottom: 26px;
         }
 
         .dashboard-promo-pill {
@@ -1062,22 +1113,29 @@ function DigitalDashboardBanner() {
 
         .dashboard-feature-card {
           background: #FFFFFF;
-          border: 1.5px solid #A7F3D0;
+          border: 1px solid #E2E8F0;
           border-radius: 12px;
-          padding: 14px 16px;
+          padding: 13px 15px;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 12px;
-          transition: all 0.25s ease;
+          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
           height: 100%;
-          box-shadow: 0 4px 14px rgba(5, 150, 105, 0.05);
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(5, 150, 105, 0.03);
+          cursor: pointer;
+          position: relative;
         }
 
         .dashboard-feature-card:hover {
           background: #FFFFFF !important;
-          border-color: #059669 !important;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(5, 150, 105, 0.12) !important;
+          border-color: #10B981 !important;
+          transform: translateY(-2.5px);
+          box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12) !important;
+        }
+
+        .dashboard-feature-card:hover .dash-feat-arrow {
+          color: #059669;
+          transform: translate(2px, -2px);
         }
 
         .dashboard-feature-icon-badge {
@@ -1085,12 +1143,13 @@ function DigitalDashboardBanner() {
           height: 38px;
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
           color: #FFFFFF;
-          border-radius: 8px;
+          border-radius: 9px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          box-shadow: 0 3px 8px rgba(5, 150, 105, 0.25);
+          margin-top: 2px;
+          box-shadow: 0 3px 8px rgba(5, 150, 105, 0.2);
         }
 
         .dashboard-feature-text-box {
@@ -1098,22 +1157,94 @@ function DigitalDashboardBanner() {
           min-width: 0;
         }
 
+        .dashboard-feature-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          margin-bottom: 2px;
+        }
+
         .dashboard-feature-title {
           font-size: 14px;
           font-weight: 800;
           color: #0F172A;
-          margin-bottom: 2px;
+          margin: 0;
           font-family: 'Hind Siliguri', sans-serif;
           line-height: 1.3;
+        }
+
+        .dash-feat-arrow {
+          color: #94A3B8;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
         }
 
         .dashboard-feature-sub {
           font-size: 12px;
           color: #64748B;
-          margin: 0;
+          margin: 0 0 7px 0;
           font-weight: 500;
           font-family: 'Hind Siliguri', sans-serif;
           line-height: 1.35;
+        }
+
+        .dash-feat-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+
+        .dash-feat-chip {
+          display: inline-flex;
+          align-items: center;
+          background: #F8FAFC;
+          color: #334155;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 7px;
+          border-radius: 5px;
+          font-family: 'Hind Siliguri', sans-serif;
+          letter-spacing: -0.1px;
+          line-height: 1.25;
+          border: 1px solid #E2E8F0;
+          white-space: nowrap;
+        }
+
+        .dashboard-feature-card:hover .dash-feat-chip {
+          background: #F0FDF4;
+          border-color: #BBF7D0;
+          color: #065F46;
+        }
+
+        .dash-trust-strip {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 8px 16px;
+          margin: 18px auto 20px;
+          padding: 8px 18px;
+          background: rgba(255, 255, 255, 0.75);
+          backdrop-filter: blur(6px);
+          border: 1px dashed #A7F3D0;
+          border-radius: 999px;
+          max-width: 780px;
+          font-size: 12.5px;
+          color: #334155;
+          font-weight: 600;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .trust-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .trust-divider {
+          color: #CBD5E1;
+          font-size: 10px;
         }
 
         .dash-banner-btns-row {
@@ -1189,22 +1320,21 @@ function DigitalDashboardBanner() {
           }
 
           .dashboard-promo-subtitle {
-            font-size: 12.5px !important;
+            font-size: 12px !important;
             line-height: 1.4 !important;
             padding: 0 8px;
           }
 
           .dashboard-feature-card {
-            padding: 10px 9px !important;
-            gap: 8px !important;
+            padding: 11px 13px !important;
+            gap: 10px !important;
             border-radius: 10px !important;
-            min-height: 58px !important;
           }
 
           .dashboard-feature-icon-badge {
-            width: 32px !important;
-            height: 32px !important;
-            border-radius: 7px !important;
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 8px !important;
           }
 
           .dashboard-feature-icon-badge svg {
@@ -1213,10 +1343,29 @@ function DigitalDashboardBanner() {
           }
 
           .dashboard-feature-title {
-            font-size: 12px !important;
-            line-height: 1.25 !important;
-            margin: 0 !important;
-            font-weight: 800 !important;
+            font-size: 13.5px !important;
+          }
+
+          .dashboard-feature-sub {
+            font-size: 11.5px !important;
+            margin-bottom: 5px !important;
+          }
+
+          .dash-feat-chip {
+            font-size: 10.5px !important;
+            padding: 1.5px 6px !important;
+          }
+
+          .dash-trust-strip {
+            border-radius: 12px !important;
+            padding: 8px 12px !important;
+            font-size: 11px !important;
+            gap: 6px 10px !important;
+            margin: 14px auto 16px !important;
+          }
+
+          .trust-divider {
+            display: none;
           }
 
           .dash-banner-btns-row {
@@ -4255,6 +4404,11 @@ function DarkRegistrationSection() {
       title: 'Doctor Registration',
       subTitle: 'ডাক্তার হিসেবে যোগ দিন',
       desc: 'আপনার চেম্বার ও প্র্যাকটিস পরিচালনা করুন এবং রোগীদের সরাসরি ডিজিটাল সেবা দিন।',
+      features: [
+        'মাল্টি-চেম্বার ও শিফট কন্ট্রোল',
+        'চেম্বার স্মার্ট টিভি ডিসপ্লে বোর্ড',
+        'ডিজিটাল ই-প্রেসক্রিপশন বিল্ডার'
+      ],
       infoLink: '/register-doctor',
       registerLink: '/register?role=doctor',
       icon: <IconStethoscope size={36} color="#059669" stroke={2.2} />,
@@ -4264,6 +4418,11 @@ function DarkRegistrationSection() {
       title: 'Hospital Registration',
       subTitle: 'হাসপাতাল পার্টনার হোন',
       desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অনলাইন অ্যাপয়েন্টমেন্ট ও সার্ভিস ম্যানেজ করুন।',
+      features: [
+        'সেন্ট্রাল ওপিডি ও টোকেন কাউন্টার',
+        'বিশেষজ্ঞ ডাক্তার প্যানেল ম্যানেজমেন্ট',
+        'লাইভ পেশেন্ট কিউ মনিটর'
+      ],
       infoLink: '/register-hospital',
       registerLink: '/register?role=hospital',
       icon: <IconBuildingHospital size={36} color="#059669" stroke={2.2} />,
@@ -4273,6 +4432,11 @@ function DarkRegistrationSection() {
       title: 'Patient Registration',
       subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
       desc: 'বিশেষজ্ঞ ডাক্তার খুঁজুন এবং যেকোনো সময় সহজে অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
+      features: [
+        'যাচাইকৃত বিশেষজ্ঞ ডাক্তারের সন্ধান',
+        'তাৎক্ষণিক ডিজিটাল সিরিয়াল বুকিং',
+        'অনলাইন টিকিট ও লাইভ কিউ ট্র্যাক'
+      ],
       infoLink: '/register-patient',
       registerLink: '/register?role=patient',
       icon: <IconUserHeart size={36} color="#059669" stroke={2.2} />,
@@ -4301,9 +4465,9 @@ function DarkRegistrationSection() {
     <section className="registration-section" style={{ padding: '38px 0 36px', background: '#F8FAFC' }}>
       <Container>
         {/* Header Title & Subtitle (Clean, Compact & Premium) */}
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.78rem', fontWeight: 700 }}>
-            ক্যাটাগরি নির্বাচন
+            ক্যাটাগরি নির্বাচন ও বিস্তারিত গাইড
           </span>
           <h2 style={{
             fontSize: 'clamp(20px, 3.2vw, 30px)',
@@ -4318,11 +4482,12 @@ function DarkRegistrationSection() {
             fontSize: 14,
             color: '#64748B',
             fontWeight: 500,
-            maxWidth: 480,
+            maxWidth: 520,
             margin: '0 auto',
-            fontFamily: "'Hind Siliguri', sans-serif"
+            fontFamily: "'Hind Siliguri', sans-serif",
+            lineHeight: 1.5
           }}>
-            সহজেই আপনার সংশ্লিষ্ট ক্যাটাগরিতে যুক্ত হোন
+            প্রতিটি ক্যাটাগরির বিস্তারিত সুবিধা ও ফিচার জেনে নিন অথবা সরাসরি যুক্ত হোন
           </p>
         </div>
 
@@ -4340,11 +4505,25 @@ function DarkRegistrationSection() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(item.infoLink) }}
+                title="বিস্তারিত ফিচার ও সুবিধা পড়তে ক্লিক করুন"
               >
-                {/* Role Category Badge */}
-                <span className="reg-role-badge">
-                  {item.badge}
-                </span>
+                {/* Top Header Row with Category Badge & Clickable Details Indicator */}
+                <div className="reg-card-top-bar">
+                  <span className="reg-role-badge">
+                    {item.badge}
+                  </span>
+                  <span
+                    className="reg-details-tag"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(item.infoLink)
+                    }}
+                    title="বিস্তারিত সুবিধা ও গাইড দেখুন"
+                  >
+                    <IconInfoCircle size={13} stroke={2.2} />
+                    <span>বিস্তারিত দেখুন ↗</span>
+                  </span>
+                </div>
 
                 {/* Icon Wrapper */}
                 <div className="reg-icon-wrap">
@@ -4366,24 +4545,45 @@ function DarkRegistrationSection() {
                   {item.desc}
                 </p>
 
-                {/* Action Link: stopPropagation routes directly to registration form */}
-                <div
-                  className="reg-card-action"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(item.registerLink)
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                {/* Core Feature Highlights */}
+                <div className="reg-features-box">
+                  {item.features.map((feat, fIdx) => (
+                    <div key={fIdx} className="reg-feature-item">
+                      <span className="reg-check-dot">
+                        <IconCheck size={11} stroke={3} />
+                      </span>
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dual Action Buttons Row */}
+                <div className="reg-card-actions-row">
+                  <button
+                    type="button"
+                    className="reg-btn-details"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(item.infoLink)
+                    }}
+                    title="সকল ফিচার ও সুবিধা বিস্তারিত জানুন"
+                  >
+                    <span>বিস্তারিত সুবিধা</span>
+                    <IconArrowUpRight size={14} stroke={2.5} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="reg-btn-register"
+                    onClick={(e) => {
                       e.stopPropagation()
                       navigate(item.registerLink)
-                    }
-                  }}
-                >
-                  <span>নিবন্ধন করুন</span>
-                  <IconArrowRight size={15} stroke={2.5} />
+                    }}
+                    title="সরাসরি নিবন্ধন ফর্মে যান"
+                  >
+                    <span>নিবন্ধন করুন</span>
+                    <IconArrowRight size={14} stroke={2.5} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -4457,12 +4657,134 @@ function DarkRegistrationSection() {
           font-weight: 700;
           color: #059669;
           letter-spacing: 0.3px;
-          margin-bottom: 18px;
           font-family: 'Hind Siliguri', sans-serif;
           background: #E8F8F2;
           padding: 4px 14px;
           border-radius: 999px;
           border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        .reg-card-top-bar {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .reg-details-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #059669;
+          background: #ECFDF5;
+          padding: 3px 10px;
+          border-radius: 999px;
+          border: 1px solid #A7F3D0;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+
+        .reg-white-card:hover .reg-details-tag {
+          background: #059669;
+          color: #FFFFFF;
+          border-color: #059669;
+          transform: translateY(-1px);
+        }
+
+        .reg-features-box {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin: 0 0 20px 0;
+          text-align: left;
+          background: #F8FAFC;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid #F1F5F9;
+        }
+
+        .reg-feature-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: #334155;
+          font-weight: 600;
+          font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .reg-check-dot {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #DCFCE7;
+          color: #059669;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .reg-card-actions-row {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: auto;
+        }
+
+        .reg-btn-details {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #059669;
+          background: #FFFFFF;
+          padding: 8px 8px;
+          border-radius: 10px;
+          border: 1.5px solid #A7F3D0;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .reg-btn-details:hover {
+          background: #ECFDF5;
+          border-color: #059669;
+          transform: translateY(-1px);
+        }
+
+        .reg-btn-register {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #FFFFFF;
+          background: linear-gradient(135deg, #059669, #10B981);
+          padding: 8px 8px;
+          border-radius: 10px;
+          border: none;
+          font-family: 'Hind Siliguri', sans-serif;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+          white-space: nowrap;
+        }
+
+        .reg-btn-register:hover {
+          background: linear-gradient(135deg, #047857, #059669);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
         }
 
         .reg-icon-wrap {
@@ -4525,37 +4847,6 @@ function DarkRegistrationSection() {
           justify-content: center;
         }
 
-        .reg-card-action {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 13px;
-          font-weight: 700;
-          color: #059669;
-          background: #F0FDF4;
-          padding: 7px 18px;
-          border-radius: 999px;
-          border: 1px solid #A7F3D0;
-          font-family: 'Hind Siliguri', sans-serif;
-          transition: all 0.25s ease;
-          margin-top: auto;
-          cursor: pointer;
-        }
-
-        .reg-card-action:hover {
-          background: #047857 !important;
-          color: #FFFFFF !important;
-          border-color: #047857 !important;
-          transform: scale(1.05) !important;
-        }
-
-        .reg-white-card:hover .reg-card-action {
-          background: #059669;
-          color: #FFFFFF;
-          border-color: #059669;
-          transform: translateX(3px);
-        }
-
         .reg-bottom-cta-btn {
           background: #059669;
           color: #FFFFFF;
@@ -4599,8 +4890,8 @@ function DarkRegistrationSection() {
           }
 
           .reg-card-col {
-            flex: 0 0 78% !important;
-            max-width: 295px !important;
+            flex: 0 0 82% !important;
+            max-width: 310px !important;
             scroll-snap-align: center !important;
             scroll-snap-stop: always !important;
             display: flex !important;
@@ -4609,7 +4900,7 @@ function DarkRegistrationSection() {
           }
 
           .reg-white-card {
-            padding: 22px 16px 18px !important;
+            padding: 20px 14px 16px !important;
             border-radius: 18px !important;
             box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
             display: flex !important;
@@ -4619,44 +4910,72 @@ function DarkRegistrationSection() {
             min-height: 335px !important;
           }
 
+          .reg-card-top-bar {
+            margin-bottom: 8px !important;
+          }
+
+          .reg-details-tag {
+            font-size: 10px !important;
+            padding: 2px 7px !important;
+          }
+
           .reg-role-badge {
             font-size: 11px !important;
-            margin-bottom: 12px !important;
-            padding: 3px 12px !important;
+            margin-bottom: 0 !important;
+            padding: 3px 10px !important;
           }
 
           .reg-icon-wrap {
-            width: 58px !important;
-            height: 58px !important;
+            width: 54px !important;
+            height: 54px !important;
             border-radius: 16px !important;
-            margin-bottom: 12px !important;
+            margin-bottom: 10px !important;
           }
 
           .reg-card-title {
             font-size: 16px !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 5px !important;
           }
 
           .reg-sub-pill {
             font-size: 11px !important;
-            padding: 3px 12px !important;
+            padding: 3px 10px !important;
             margin-bottom: 8px !important;
           }
 
           .reg-card-desc {
             font-size: 12px !important;
-            margin-bottom: 16px !important;
+            margin-bottom: 12px !important;
             line-height: 1.45 !important;
-            min-height: 36px !important;
+            min-height: 34px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
           }
 
-          .reg-card-action {
-            font-size: 12px !important;
-            padding: 6px 16px !important;
-            margin-top: auto !important;
+          .reg-features-box {
+            padding: 8px 10px !important;
+            margin-bottom: 14px !important;
+            gap: 5px !important;
+          }
+
+          .reg-feature-item {
+            font-size: 11px !important;
+          }
+
+          .reg-check-dot {
+            width: 15px !important;
+            height: 15px !important;
+          }
+
+          .reg-card-actions-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+          }
+
+          .reg-btn-details, .reg-btn-register {
+            font-size: 11px !important;
+            padding: 6px 6px !important;
           }
 
           .reg-dot {

@@ -766,9 +766,9 @@ function HospitalsPage() {
           background: #FFFFFF;
           width: 100%;
           max-width: 520px;
-          height: 84vh;
-          height: 84dvh;
-          max-height: 88vh;
+          height: 75vh;
+          height: 75dvh;
+          max-height: 78vh;
           border-radius: 16px 16px 0 0;
           display: flex;
           flex-direction: column;

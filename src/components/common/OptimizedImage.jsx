@@ -120,7 +120,7 @@ const OptimizedImage = memo(function OptimizedImage({
             height: '100%',
             objectFit,
             display: 'block',
-            opacity: (!hasMainSrc || loaded) ? 1 : 0,
+            opacity: (!hasMainSrc || loaded || errored) ? 1 : 0,
             transition: 'opacity 0.25s ease-in-out',
             borderRadius: 'inherit',
             // Prevent CLS — image always takes full container

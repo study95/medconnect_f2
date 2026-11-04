@@ -16,7 +16,7 @@ import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../utils/dialogMessages'
 import SeoHead from '../components/common/SeoHead'
 import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
-import { getMediaUrl } from '../utils/mediaUtils'
+import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../utils/mediaUtils'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useFavorites } from '../context/FavoritesContext'
@@ -35,7 +35,7 @@ import {
   IconNavigation, IconArrowLeft
 } from '@tabler/icons-react'
 
-const DEMO_BANNER = 'https://images.unsplash.com/photo-1587350859728-1176c2bc003f?q=80&w=2070&auto=format&fit=crop'
+const DEMO_BANNER = DEFAULT_HOSPITAL_IMAGE
 
 function HospitalDetailPage() {
   const { district, upazila, slug, id } = useParams()
@@ -557,24 +557,17 @@ function HospitalDetailPage() {
                         flexShrink: 0
                       }}
                     >
-                      {(hospital?.logo_url || hospital?.photo_url) ? (
-                        <img
-                          src={hospital.logo_url || hospital.photo_url}
-                          alt={hospital.name || 'Hospital Logo'}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.style.display = 'none';
-                            if (e.target.parentElement) {
-                              e.target.parentElement.innerHTML = '<div style="color:#00B875;display:flex;align-items:center;justify-content:center;width:100%;height:100%"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/><line x1="10" y1="9" x2="14" y2="9"/><line x1="12" y1="7" x2="12" y2="11"/></svg></div>';
-                            }
-                          }}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        />
-                      ) : (
-                        <IconBuildingHospital size={36} color={primaryGreen} />
-                      )}
+                      <img
+                        src={getMediaUrl(hospital?.logo_url || hospital?.photo_url, DEFAULT_HOSPITAL_IMAGE)}
+                        alt={hospital?.name || 'Hospital Logo'}
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = DEFAULT_HOSPITAL_IMAGE;
+                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
                     </div>
 
                     {/* Hospital Name, Verified Badge, Subtitle, Rating */}
@@ -988,21 +981,17 @@ function HospitalDetailPage() {
                   padding: (hospital?.logo_url || hospital?.photo_url) ? 4 : 8
                 }}
               >
-                {(hospital?.logo_url || hospital?.photo_url) ? (
-                  <img
-                    src={hospital.logo_url || hospital.photo_url}
-                    alt={hospital.name || 'Hospital Logo'}
-                    loading="lazy"
-                    decoding="async"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.style.display = 'none';
-                    }}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                ) : (
-                  <IconBuildingHospital size={36} color={primaryGreen} />
-                )}
+                <img
+                  src={getMediaUrl(hospital?.logo_url || hospital?.photo_url, DEFAULT_HOSPITAL_IMAGE)}
+                  alt={hospital?.name || 'Hospital Logo'}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = DEFAULT_HOSPITAL_IMAGE;
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
 
               {/* Verified Badge Icon on Logo Corner */}

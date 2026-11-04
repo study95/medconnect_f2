@@ -37,39 +37,94 @@ export default function ExpiryWarningBanner() {
     }
   })
 
-  // Defer rendering until the current page data has finished loading (prevent lonely banner on empty/spinner screen)
-  const [hasPageLoaded, setHasPageLoaded] = useState(false)
+  // Defer rendering until the current page data has finished loading + 3.5s grace period (Proposal 1)
+  const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
-    setHasPageLoaded(false)
+    // Immediately hide banner on route change
+    setShowBanner(false)
 
-    let intervalId
-    let timeoutId
+    let delayTimer = null
+    let pollInterval = null
+    let isSettled = false
 
-    const checkLoading = () => {
-      // Check if page content still has active loading spinner or skeleton
-      const spinner = document.querySelector('.admin-content .admin-spinner, .admin-content .admin-loading')
-      if (!spinner) {
-        setHasPageLoaded(true)
-        if (intervalId) clearInterval(intervalId)
+    const isPageStillLoading = () => {
+      // 1. Subscription data itself must be loaded
+      if (!loaded) return true
+
+      // 2. Check if there is an active spinner or loading container in .admin-content
+      const container = document.querySelector('.admin-content')
+      if (!container) return true
+
+      const spinner = container.querySelector(
+        '.admin-spinner, .admin-loading, .spin-animation, [data-loading="true"], .loading-skeleton, .table-skeleton'
+      )
+      if (spinner) return true
+
+      // 3. Check text indicators like "লোড হচ্ছে..." inside container
+      const text = container.textContent || ''
+      if (text.includes('ড্যাশবোর্ড লোড হচ্ছে') || text.includes('লোড হচ্ছে...')) {
+        return true
+      }
+
+      // 4. Ensure there is actual child content rendered inside .admin-content
+      const children = Array.from(container.children).filter(el => !el.classList.contains('admin-expiry-banner'))
+      if (children.length === 0) return true
+
+      // 5. Ensure the page container has rendered with real height
+      const pageEl = children[0]
+      if (pageEl && pageEl.offsetHeight === 0 && pageEl.offsetWidth === 0) {
+        return true
+      }
+
+      return false
+    }
+
+    const checkAndSchedule = () => {
+      if (isPageStillLoading()) {
+        // Still loading, cancel any pending delay timer
+        if (delayTimer) {
+          clearTimeout(delayTimer)
+          delayTimer = null
+        }
+        isSettled = false
+      } else {
+        // Page is fully loaded! Start the 3.5s grace timer if not already running
+        if (!isSettled && !delayTimer) {
+          isSettled = true
+          delayTimer = setTimeout(() => {
+            // Double check before showing that page is STILL not loading
+            if (!isPageStillLoading()) {
+              setShowBanner(true)
+            } else {
+              isSettled = false
+            }
+          }, 3500) // 3.5 seconds grace period after page fully loads
+        }
       }
     }
 
-    timeoutId = setTimeout(checkLoading, 100)
-    intervalId = setInterval(checkLoading, 150)
+    // Check periodically until settled & shown
+    pollInterval = setInterval(checkAndSchedule, 250)
+    const initialCheck = setTimeout(checkAndSchedule, 100)
 
-    // Fallback: reveal after 2.5s anyway to ensure important notice is never permanently hidden
-    const fallbackTimeout = setTimeout(() => {
-      setHasPageLoaded(true)
-      if (intervalId) clearInterval(intervalId)
-    }, 2500)
+    // MutationObserver to react instantly when spinner unmounts from DOM
+    let observer = null
+    const container = document.querySelector('.admin-content')
+    if (container && typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(() => {
+        checkAndSchedule()
+      })
+      observer.observe(container, { childList: true, subtree: true })
+    }
 
     return () => {
-      clearTimeout(timeoutId)
-      clearTimeout(fallbackTimeout)
-      if (intervalId) clearInterval(intervalId)
+      clearTimeout(initialCheck)
+      if (pollInterval) clearInterval(pollInterval)
+      if (delayTimer) clearTimeout(delayTimer)
+      if (observer) observer.disconnect()
     }
-  }, [location.pathname])
+  }, [location.pathname, loaded])
 
   const handleDismiss = () => {
     setDismissed(true)
@@ -78,8 +133,8 @@ export default function ExpiryWarningBanner() {
     } catch (e) {}
   }
 
-  // Don't render while the page is still loading its initial data
-  if (!hasPageLoaded) {
+  // Don't render while the page is still loading its initial data or during the 3.5s grace period
+  if (!showBanner) {
     return null
   }
 
@@ -124,7 +179,7 @@ export default function ExpiryWarningBanner() {
         @keyframes bannerSlideIn {
           from {
             opacity: 0;
-            transform: translateY(-8px);
+            transform: translateY(-10px);
           }
           to {
             opacity: 1;
@@ -132,7 +187,7 @@ export default function ExpiryWarningBanner() {
           }
         }
         .expiry-banner-animate {
-          animation: bannerSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: bannerSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
 

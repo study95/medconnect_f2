@@ -6,6 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api
 const BASE_DOMAIN = API_BASE.replace('/api', '');
 
 export const DEFAULT_DOCTOR_AVATAR = '/images/default-doctor.png';
+export const DEFAULT_HOSPITAL_IMAGE = '/images/default-hospital.png';
 
 /**
  * Ensures a media URL is absolute and correctly points to backend storage.

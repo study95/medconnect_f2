@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { Container, Row, Col, Nav } from 'react-bootstrap'
 import { createAppointment, getBookedSlots } from '../api/appointmentApi'
 import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
@@ -469,7 +470,7 @@ export default function BookAppointmentPage() {
   // Handle Time Slot Selection with auto-forward to Step 3
   const handleSlotSelect = (slot, autoForward = true) => {
     if (slotsLoading) {
-      toast.info('স্লটের তথ্য যাচাই করা হচ্ছে, অনুগ্রহ করে এক সেকেন্ড অপেক্ষা করুন...')
+      toast('স্লটের তথ্য যাচাই করা হচ্ছে, অনুগ্রহ করে এক সেকেন্ড অপেক্ষা করুন...', { icon: 'ℹ️' })
       return
     }
     if (isSlotBooked(slot)) {
@@ -1033,7 +1034,7 @@ export default function BookAppointmentPage() {
         setShowAuthModal(false)
         const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
-          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
           {
             type: 'warning',
@@ -1184,7 +1185,7 @@ export default function BookAppointmentPage() {
         setShowAuthModal(false)
         const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
-          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
           {
             type: 'warning',
@@ -1276,7 +1277,7 @@ export default function BookAppointmentPage() {
         setShowAuthModal(false)
         const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
-          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
           {
             type: 'warning',
@@ -1345,7 +1346,7 @@ export default function BookAppointmentPage() {
         setShowAuthModal(false)
         const isMyselfDuplicate = Boolean(err.response?.data?.duplicate_booking && (!form.booking_for || form.booking_for === 'myself'))
         showWarning(
-          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা অতিক্রান্ত',
+          err.response?.data?.duplicate_booking ? 'ডুপ্লিকেট বুকিং রোধ' : 'বুকিং সীমা সংক্রান্ত তথ্য',
           err.response?.data?.message || 'এই তারিখে এই ডাক্তারের জন্য ইতিমধ্যে একটি অ্যাপয়েন্টমেন্ট রয়েছে।',
           {
             type: 'warning',

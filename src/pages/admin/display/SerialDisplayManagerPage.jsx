@@ -809,7 +809,7 @@ export default function SerialDisplayManagerPage() {
     }
 
     if (!nextPatient && !currentChamberQueue.currently_serving) {
-      toast.info('কিউ-তে কোনো অপেক্ষমাণ রোগী নেই')
+      toast('কিউ-তে কোনো অপেক্ষমাণ রোগী নেই', { icon: 'ℹ️' })
       return
     }
 
@@ -947,7 +947,7 @@ export default function SerialDisplayManagerPage() {
       }
     })
 
-    toast.info('রোগীকে অনুপস্থিত মার্ক করা হয়েছে')
+    toast('রোগীকে অনুপস্থিত মার্ক করা হয়েছে', { icon: 'ℹ️' })
 
     try {
       setActionLoading(true)

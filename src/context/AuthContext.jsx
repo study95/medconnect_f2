@@ -5,6 +5,10 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { loginApi, registerApi, patientLoginApi, doctorLoginApi, patientRegisterApi, doctorRegisterApi, hospitalLoginApi, hospitalRegisterApi } from '../api/authApi'
 import axiosInstance from '../api/axiosInstance'
 import { getErrorMessage } from '../utils/errorHelper'
+import { toast } from 'react-hot-toast'
+import { subscribeToUserChannel, subscribeToPublicDirectory } from '../utils/echoService'
+import { queryClient } from '../lib/queryClient'
+import { invalidateDoctors, invalidateHospitals } from '../lib/cacheInvalidation'
 
 // Singleton pattern for AuthContext to prevent duplicate instances during HMR or module resolution mismatches
 if (!window.__AuthContext) {
@@ -86,6 +90,64 @@ export function AuthProvider({ children }) {
       }
     }
   }
+
+  // Live Status Synchronization (WebSockets via Reverb & Laravel Echo)
+  useEffect(() => {
+    // 1. Subscribe to Public Directory Channel (Updates cached directory lists for everyone live)
+    const unsubPublic = subscribeToPublicDirectory(
+      (e) => {
+        invalidateDoctors(queryClient, { doctorId: e.doctor_id, includeChambers: true })
+        queryClient.invalidateQueries({ queryKey: ['doctors-infinite'] })
+        queryClient.invalidateQueries({ queryKey: ['doctors'] })
+        window.dispatchEvent(new CustomEvent('directory-doctor-updated', { detail: e }))
+      },
+      (e) => {
+        invalidateHospitals(queryClient, { hospitalId: e.hospital_id, includeChambers: true })
+        queryClient.invalidateQueries({ queryKey: ['hospitals-infinite'] })
+        queryClient.invalidateQueries({ queryKey: ['hospitals'] })
+        window.dispatchEvent(new CustomEvent('directory-hospital-updated', { detail: e }))
+      }
+    )
+
+    // 2. Subscribe to Private User Channel (Only if user is logged in)
+    let unsubUser = null
+    if (user?.id) {
+      unsubUser = subscribeToUserChannel(
+        user.id,
+        (e) => {
+          fetchCurrentUser()
+          invalidateDoctors(queryClient, { doctorId: e.doctor_id, includeChambers: true })
+          queryClient.invalidateQueries({ queryKey: ['doctor', 'my-profile'] })
+          queryClient.invalidateQueries({ queryKey: ['doctor', 'dashboard'] })
+          window.dispatchEvent(new CustomEvent('profile-status-updated', { detail: e }))
+
+          if (e.is_active) {
+            toast.success(e.message || 'আপনার ডাক্তার প্রোফাইলটি সক্রিয় করা হয়েছে এবং ১৪ দিনের ফ্রি ট্রায়াল চালু হয়েছে!', { duration: 6000, id: `doc-active-${e.doctor_id}` })
+          } else {
+            toast.error(e.message || 'আপনার ডাক্তার প্রোফাইলটি নিষ্ক্রিয় করা হয়েছে।', { duration: 6000, id: `doc-inactive-${e.doctor_id}` })
+          }
+        },
+        (e) => {
+          fetchCurrentUser()
+          invalidateHospitals(queryClient, { hospitalId: e.hospital_id, includeChambers: true })
+          queryClient.invalidateQueries({ queryKey: ['hospital', 'billing', 'overview'] })
+          queryClient.invalidateQueries({ queryKey: ['hospital', 'subscription'] })
+          window.dispatchEvent(new CustomEvent('profile-status-updated', { detail: e }))
+
+          if (e.is_active) {
+            toast.success(e.message || 'আপনার হাসপাতাল প্রোফাইলটি সক্রিয় করা হয়েছে এবং ১৪ দিনের ফ্রি ট্রায়াল চালু হয়েছে!', { duration: 6000, id: `hosp-active-${e.hospital_id}` })
+          } else {
+            toast.error(e.message || 'আপনার হাসপাতাল প্রোফাইলটি নিষ্ক্রিয় করা হয়েছে।', { duration: 6000, id: `hosp-inactive-${e.hospital_id}` })
+          }
+        }
+      )
+    }
+
+    return () => {
+      if (typeof unsubPublic === 'function') unsubPublic()
+      if (typeof unsubUser === 'function') unsubUser()
+    }
+  }, [user?.id])
 
   const storeAuth = (token, userData, type = null) => {
     localStorage.setItem('token', token)

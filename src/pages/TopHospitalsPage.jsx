@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { getMediaUrl } from '../utils/mediaUtils'
+import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../utils/mediaUtils'
 import { getHospitalUrl } from '../utils/identifierHelper'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
@@ -204,10 +204,10 @@ function TopHospitalsPage() {
 
                   <div style={{ height: 200, position: 'relative' }}>
                     <img
-                      src={getMediaUrl(h.photo_url) || '/images/hospitals/hospital-1.jpg'}
+                      src={getMediaUrl(h.photo_url, DEFAULT_HOSPITAL_IMAGE)}
                       alt={h.name}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                      onError={(e) => { e.target.src = DEFAULT_HOSPITAL_IMAGE; }}
                     />
                     <div style={{ display: 'none', height: '100%', background: FALLBACK_COLORS[i % FALLBACK_COLORS.length], alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🏥</div>
                   </div>

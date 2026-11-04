@@ -20,7 +20,7 @@ import {
   IconHeart
 } from '@tabler/icons-react'
 import { useFavorites } from '../../context/FavoritesContext'
-import { getMediaUrl } from '../../utils/mediaUtils'
+import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../../utils/mediaUtils'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/effect-fade'
@@ -34,8 +34,8 @@ function HospitalBannerCard({ hospital }) {
   const isFavorite = isHospitalFavorite(hospital?.id)
 
   const photo = hospital?.photo_url
-    ? getMediaUrl(hospital.photo_url)
-    : 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80'
+    ? getMediaUrl(hospital.photo_url, DEFAULT_HOSPITAL_IMAGE)
+    : DEFAULT_HOSPITAL_IMAGE
 
   const locationText = [
     hospital?.upazila?.name_bn || hospital?.upazila?.name,
