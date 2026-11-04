@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormSkeleton } from '../../components/common/Skeletons'
 import {
   getAdminSmsSettings,
   updateAdminSmsSettings,
@@ -730,9 +731,8 @@ export default function AdminSmsSettingsPage() {
 
       {/* Loading Skeleton for Settings */}
       {loading && activeTab !== 'logs' ? (
-        <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
-          <RefreshCw size={32} className="fa-spin" style={{ margin: '0 auto 12px' }} />
-          <p>এসএমএস সেটিংস লোড হচ্ছে...</p>
+        <div style={{ padding: '20px 0' }}>
+          <FormSkeleton />
         </div>
       ) : (
         <div>

@@ -128,6 +128,27 @@ export default function PendingVerificationPage() {
     }
   }, [loading, isLoggedIn, isAdmin, isDoctor, isManager, isPatient, user, location.state, navigate])
 
+  // Real-time status sync: Periodic polling fallback & tab focus listener
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchCurrentUser?.()
+      }
+    }, 5000)
+
+    const handleFocus = () => {
+      fetchCurrentUser?.()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [isLoggedIn, fetchCurrentUser])
+
   // Live status check
   const handleCheckStatus = async () => {
     setRefreshing(true)

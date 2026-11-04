@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 // PatientProfilePage.jsx — Premium Patient Profile & Clinical History
 import { useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
@@ -60,7 +61,7 @@ export default function PatientProfilePage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Patient History...</div>
+  if (loading) return <DetailSkeleton />
   
   if (!patient) {
     return (

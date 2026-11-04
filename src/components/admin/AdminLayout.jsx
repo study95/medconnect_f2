@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Outlet, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
 import NotificationPopup from './NotificationPopup'
 import NotificationDropdown from '../layout/NotificationDropdown'
+import { AdminContentSkeleton } from '../common/Skeletons'
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconExternalLink } from '@tabler/icons-react'
 import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon } from 'lucide-react'
 import { useSubscription } from '../../context/SubscriptionContext'
@@ -166,10 +167,12 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        {/* Page Content — rendered by nested routes via <Outlet /> */}
+        {/* Page Content — rendered by nested routes via <Outlet /> with Zero-Layout-Shift Suspense */}
         <main className="admin-content">
           <ExpiryWarningBanner />
-          <Outlet />
+          <Suspense fallback={<AdminContentSkeleton />}>
+            <Outlet />
+          </Suspense>
         </main>
 
         {/* Fixed White Copyright Footer (Always in bottom just like header) */}

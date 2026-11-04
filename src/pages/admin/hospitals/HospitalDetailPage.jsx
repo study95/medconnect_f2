@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 // HospitalDetailPage.jsx — Premium Hospital Profile View for Admin
 import { useState, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
@@ -41,7 +42,11 @@ export default function HospitalDetailPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Hospital Profile...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 1000, margin: '20px auto', padding: '0 16px' }}>
+      <DetailSkeleton />
+    </div>
+  )
   if (!hospital) return <div className="admin-empty" style={{ color: 'var(--admin-text)' }}>Hospital profile not found.</div>
 
   return (

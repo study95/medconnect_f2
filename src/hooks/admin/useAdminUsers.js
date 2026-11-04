@@ -33,19 +33,34 @@ export function useAdminUsers(filters = {}) {
   const query = useQuery({
     queryKey: queryKeys.users.adminList(filters),
     queryFn: async () => {
-      const res = await getUsers({ per_page: 500, ...filters })
+      const params = { per_page: 20, ...filters }
+      const res = await getUsers(params)
       const raw =
         res.data?.data?.data ||
         res.data?.data ||
         res.data?.users ||
         (Array.isArray(res.data) ? res.data : [])
-      return Array.isArray(raw) ? raw : []
+      const items = Array.isArray(raw) ? raw : []
+      const meta = res.data?.meta || res.data?.data?.meta || {
+        total: res.data?.total ?? res.data?.data?.total ?? items.length,
+        current_page: res.data?.current_page ?? res.data?.data?.current_page ?? (params.page || 1),
+        last_page: res.data?.last_page ?? res.data?.data?.last_page ?? 1,
+        per_page: res.data?.per_page ?? res.data?.data?.per_page ?? params.per_page,
+      }
+      return { items, meta }
     },
     placeholderData: keepPreviousData,
   })
 
+  const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])
+  const meta = query.data?.meta || null
+
   return {
-    users: query.data || [],
+    users: items,
+    total: meta?.total ?? items.length,
+    currentPage: meta?.current_page ?? 1,
+    lastPage: meta?.last_page ?? 1,
+    meta,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

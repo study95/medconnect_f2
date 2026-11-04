@@ -27,7 +27,7 @@ const BTN_ACTIVE = {
 }
 const BTN_DISABLED = { ...BTN_BASE, opacity: 0.4, cursor: 'not-allowed' }
 
-const PER_PAGE_OPTIONS = [10, 25, 50, 100, 500, 1000, 2000, 5000]
+const PER_PAGE_OPTIONS = [10, 25, 50, 100]
 
 /**
  * TableFooter — drop-in replacement for per-page/summary/pagination spread across admin pages.

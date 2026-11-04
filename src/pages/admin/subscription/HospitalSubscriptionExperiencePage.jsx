@@ -193,12 +193,12 @@ export default function HospitalSubscriptionExperiencePage() {
   }, [showAllocateModal])
 
   // Doctor Public ID format validation helper:
-  // Must be exact 'DR-XXXXXX' (exact 9 characters) or numeric primary ID
+  // Must be exact 'DR-XXXXXX' Public ID or 11-digit registered BD mobile number (never sequential primary IDs)
   const isDoctorPublicIdValid = (id) => {
     if (!id) return false
     const trimmed = id.trim().toUpperCase()
-    if (/^DR-[A-Z0-9]{6}$/.test(trimmed)) return true
-    if (/^\d{1,8}$/.test(trimmed)) return true
+    if (/^DR-[A-Z0-9]{6,12}$/.test(trimmed)) return true
+    if (/^01[3-9]\d{8}$/.test(trimmed)) return true
     return false
   }
 

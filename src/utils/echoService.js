@@ -43,6 +43,10 @@ export const getEcho = () => {
       return {
         authorize: (socketId, callback) => {
           const token = localStorage.getItem('token')
+          if (!token) {
+            callback(new Error('Unauthenticated WebSocket channel subscription'), null)
+            return
+          }
           axiosInstance
             .post(
               '/broadcasting/auth',
@@ -52,7 +56,7 @@ export const getEcho = () => {
               },
               {
                 headers: {
-                  Authorization: token ? `Bearer ${token}` : '',
+                  Authorization: `Bearer ${token}`,
                 },
                 skipGlobalToast: true,
               }
@@ -284,6 +288,9 @@ export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate)
     }
     if (onHospitalUpdate) {
       channel.stopListening('.hospital.status.updated', onHospitalUpdate)
+    }
+    if (echoInstance) {
+      echoInstance.leave(`user.${userId}`)
     }
   }
 }

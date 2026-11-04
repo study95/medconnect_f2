@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getSystemTelemetry, getMonitoringSsoTicket } from '../../api/adminApi'
+import { AdminContentSkeleton } from '../../components/common/Skeletons'
 import {
   Activity,
   Server,
@@ -121,6 +122,10 @@ export default function SystemHealthPage() {
   const queues = telemetry?.queues || { high: 0, default: 0, low: 0, total_pending: 0, status: 'idle' }
   const runtime = telemetry?.runtime || {}
   const flags = telemetry?.feature_flags || []
+
+  if (loading && !telemetry) {
+    return <AdminContentSkeleton />
+  }
 
   return (
     <div className="system-health-dashboard" style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto' }}>

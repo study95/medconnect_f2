@@ -1,3 +1,4 @@
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -155,7 +156,7 @@ export default function DistrictFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Data...</div>
+  if (loading) return <FormSkeleton />
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', paddingBottom: 160 }}>

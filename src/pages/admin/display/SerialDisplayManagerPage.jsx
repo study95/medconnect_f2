@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
-import { getHospitals, getDoctors, getChambers } from '../../../api/adminApi'
+import { getHospitals, getMyHospitalProfile, getHospitalLookup, getDoctors, getChambers } from '../../../api/adminApi'
 import { 
   getHospitalLiveQueue, 
   getLiveQueue, 
@@ -17,6 +17,9 @@ import {
 } from '../../../api/appointmentApi'
 import { soundService } from '../../../utils/soundUtils'
 import { subscribeToPublicChamber, onConnectionStateChange, isWebSocketConnected } from '../../../utils/echoService'
+import { queryClient } from '../../../lib/queryClient'
+import { queryKeys } from '../../../lib/queryKeys'
+import { AdminContentSkeleton } from '../../../components/common/Skeletons'
 import { 
   Tv, 
   Volume2, 
@@ -48,7 +51,8 @@ import {
   PlayCircle,
   X,
   MessageSquare,
-  FileText
+  FileText,
+  Edit2
 } from 'lucide-react'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
@@ -307,11 +311,14 @@ export default function SerialDisplayManagerPage() {
 
   // Break / Pause notice modal states
   const [showBreakModal, setShowBreakModal] = useState(false)
+  const [isClosingBreakModal, setIsClosingBreakModal] = useState(false)
+  const [isDismissingBreakBanner, setIsDismissingBreakBanner] = useState(false)
   const [breakTargetChamber, setBreakTargetChamber] = useState(null)
   const [breakReason, setBreakReason] = useState('নামাজের বিরতি')
   const [breakResumeTime, setBreakResumeTime] = useState('১৫ মিনিট পর')
   const [breakCustomMessage, setBreakCustomMessage] = useState('')
-  const [breakLoading, setBreakLoading] = useState(false)
+  const [isSavingBreak, setIsSavingBreak] = useState(false)
+  const [isEndingBreak, setIsEndingBreak] = useState(false)
   const [wsConnected, setWsConnected] = useState(() => isWebSocketConnected())
 
   const isMountedRef = useRef(true)
@@ -321,6 +328,32 @@ export default function SerialDisplayManagerPage() {
   viewModeRef.current = viewMode
   const hospitalQueueDataRef = useRef(hospitalQueueData)
   hospitalQueueDataRef.current = hospitalQueueData
+  const optimisticBreakLocksRef = useRef({})
+
+  // Shield optimistic state against stale background polling / WebSocket races
+  const applyOptimisticShield = (queues) => {
+    if (!Array.isArray(queues)) return queues
+    const locks = optimisticBreakLocksRef.current || {}
+    const now = Date.now()
+
+    return queues.map(dq => {
+      const chId = String(dq.chamber?.id)
+      const lock = locks[chId]
+      if (lock && (now - lock.timestamp < 6000)) {
+        return {
+          ...dq,
+          chamber: {
+            ...dq.chamber,
+            is_on_break: lock.is_on_break,
+            break_reason: lock.is_on_break ? (lock.break_reason || dq.chamber?.break_reason) : null,
+            break_message: lock.is_on_break ? (lock.break_message || dq.chamber?.break_message) : null,
+            break_resume_time: lock.is_on_break ? (lock.break_resume_time || dq.chamber?.break_resume_time) : null
+          }
+        }
+      }
+      return dq
+    })
+  }
 
   useEffect(() => {
     isMountedRef.current = true
@@ -342,8 +375,8 @@ export default function SerialDisplayManagerPage() {
         setLoading(true)
 
         if (isDoctorOnly) {
-          // Doctor role: fetch strictly this doctor's chambers
-          const chamberRes = await getChambers({ per_page: 1000 })
+          // Doctor role: fetch strictly this doctor's chambers (backend scopes automatically)
+          const chamberRes = await getChambers()
           const chambers = chamberRes.data?.data?.data || chamberRes.data?.data || chamberRes.data || []
           setDoctorChambersList(chambers)
 
@@ -374,18 +407,21 @@ export default function SerialDisplayManagerPage() {
           } else if (chambers[0]) {
             setSelectedChamberId(chambers[0].id.toString())
           }
-        } else {
-          // Admin / Manager: fetch all hospitals
-          const hospRes = await getHospitals({ per_page: 1000 })
-          const list = hospRes.data?.data?.data || hospRes.data?.data || hospRes.data || []
+        } else if (isManager || (!isAdmin && user?.registration_type === 'hospital')) {
+          // Hospital Manager: fetch strictly own facility (/hospital/me — zero directory over-fetching)
+          const myHospRes = await getMyHospitalProfile()
+          const myHosp = myHospRes.data?.data ?? null
+          const list = myHosp ? [myHosp] : []
           setHospitals(list)
-
-          if (isManager || (!isAdmin && user?.registration_type === 'hospital')) {
-            const myHosp = list.find(h => h.user_id === user?.id || (user?.email && h.email === user?.email)) || list[0]
-            if (myHosp) {
-              setSelectedHospitalId(myHosp.id.toString())
-            }
-          } else if (list.length > 0 && !selectedHospitalId) {
+          if (myHosp) {
+            setSelectedHospitalId(myHosp.id.toString())
+          }
+        } else {
+          // Admin: fetch lightweight hospital lookup options
+          const hospRes = await getHospitalLookup({ limit: 200 })
+          const list = hospRes.data?.data || hospRes.data || []
+          setHospitals(list)
+          if (list.length > 0 && !selectedHospitalId) {
             setSelectedHospitalId(list[0].id.toString())
           }
         }
@@ -511,9 +547,13 @@ export default function SerialDisplayManagerPage() {
       }
 
       if (isMountedRef.current && data) {
-        setHospitalQueueData(data)
+        const shieldedData = {
+          ...data,
+          doctor_queues: applyOptimisticShield(data.doctor_queues || [])
+        }
+        setHospitalQueueData(shieldedData)
         
-        let doctorQueues = data?.doctor_queues || []
+        let doctorQueues = shieldedData.doctor_queues || []
 
         // If doctor only, guarantee strictly own profile filter
         if (isDoctorOnly) {
@@ -577,9 +617,10 @@ export default function SerialDisplayManagerPage() {
           if (!prev) return prev
           const prevQueues = prev.doctor_queues || []
           const exists = prevQueues.some(dq => String(dq.chamber?.id) === String(chamberId))
-          const updatedQueues = exists
+          const rawUpdated = exists
             ? prevQueues.map(dq => String(dq.chamber?.id) === String(chamberId) ? { ...dq, ...freshChamberData } : dq)
             : [...prevQueues, freshChamberData]
+          const updatedQueues = applyOptimisticShield(rawUpdated)
 
           const totalWaiting = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_waiting || (q.waiting_patients?.length || 0)), 0)
           const totalCompleted = updatedQueues.reduce((acc, q) => acc + (q.statistics?.total_completed || (q.completed_patients?.length || 0)), 0)
@@ -842,7 +883,7 @@ export default function SerialDisplayManagerPage() {
         soundService.announceSerial({
           serialNumber: nextPatient.serial_number,
           roomNumber: currentChamberQueue.chamber?.room_number,
-          doctorName: currentChamberQueue.doctor?.name_bn || currentChamberQueue.doctor?.name,
+          doctorName: currentChamberQueue.doctor?.name || currentChamberQueue.doctor?.name_bn,
           lang: 'bn'
         })
       }
@@ -856,6 +897,7 @@ export default function SerialDisplayManagerPage() {
         toast.success(`সিরিয়াল ${formatSerial3(patient.serial_number)} (${patient.patient_name || 'রোগী'}) কে ডাকা হয়েছে`)
       }
       await fetchSingleChamber(chamberId, true)
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
     } catch (err) {
       console.error(err)
       toast.error('রোগীকে ডাকতে সমস্যা হয়েছে, পূর্বের অবস্থায় ফিরিয়ে নেওয়া হচ্ছে')
@@ -905,6 +947,8 @@ export default function SerialDisplayManagerPage() {
       setActionLoading(true)
       await completeConsultation(appointmentId)
       await fetchSingleChamber(chamberId, true)
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
     } catch (err) {
       console.error(err)
       toast.error('সম্পন্ন করতে সমস্যা হয়েছে')
@@ -953,6 +997,7 @@ export default function SerialDisplayManagerPage() {
       setActionLoading(true)
       await markNoShow(appointmentId)
       await fetchSingleChamber(chamberId, true)
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
     } catch (err) {
       console.error(err)
       toast.error('অনুপস্থিত মার্ক করতে সমস্যা হয়েছে')
@@ -995,6 +1040,7 @@ export default function SerialDisplayManagerPage() {
       setActionLoading(true)
       await recallNoShow(appointmentId)
       await fetchSingleChamber(chamberId, true)
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
     } catch (err) {
       console.error(err)
       toast.error('পুনরায় ডাকতে সমস্যা হয়েছে')
@@ -1033,7 +1079,67 @@ export default function SerialDisplayManagerPage() {
     setBreakReason(ch.break_reason || 'নামাজের বিরতি')
     setBreakResumeTime(ch.break_resume_time || '১৫ মিনিট পর')
     setBreakCustomMessage(ch.break_message || '')
+    setIsClosingBreakModal(false)
     setShowBreakModal(true)
+  }
+
+  const handleCloseBreakModalSmooth = () => {
+    setIsClosingBreakModal(true)
+    setTimeout(() => {
+      setShowBreakModal(false)
+      setIsClosingBreakModal(false)
+    }, 180)
+  }
+
+  const updateOptimisticBreakState = (chamberId, isOnBreak, reason = null, message = null, resumeTime = null) => {
+    // Record optimistic shield lock to protect against stale background polling / WebSocket races
+    optimisticBreakLocksRef.current[String(chamberId)] = {
+      is_on_break: isOnBreak,
+      break_reason: isOnBreak ? reason : null,
+      break_message: isOnBreak ? message : null,
+      break_resume_time: isOnBreak ? resumeTime : null,
+      timestamp: Date.now()
+    }
+
+    setHospitalQueueData(prev => {
+      if (!prev) return prev
+      const updatedQueues = (prev.doctor_queues || []).map(dq => {
+        if (String(dq.chamber?.id) === String(chamberId)) {
+          return {
+            ...dq,
+            chamber: {
+              ...dq.chamber,
+              is_on_break: isOnBreak,
+              break_reason: isOnBreak ? reason : null,
+              break_message: isOnBreak ? message : null,
+              break_resume_time: isOnBreak ? resumeTime : null
+            }
+          }
+        }
+        return dq
+      })
+      return {
+        ...prev,
+        doctor_queues: updatedQueues
+      }
+    })
+
+    setBreakTargetChamber(prev => {
+      if (!prev) return prev
+      if (String(prev.chamber?.id) === String(chamberId)) {
+        return {
+          ...prev,
+          chamber: {
+            ...prev.chamber,
+            is_on_break: isOnBreak,
+            break_reason: isOnBreak ? reason : null,
+            break_message: isOnBreak ? message : null,
+            break_resume_time: isOnBreak ? resumeTime : null
+          }
+        }
+      }
+      return prev
+    })
   }
 
   const handleSaveBreak = async () => {
@@ -1046,20 +1152,27 @@ export default function SerialDisplayManagerPage() {
       return
     }
 
+    // Smooth modal close and optimistic update for fluid UX
+    handleCloseBreakModalSmooth()
+    updateOptimisticBreakState(targetChamberId, true, breakReason, breakCustomMessage, breakResumeTime)
+    toast.success('টিভি স্ক্রিনে বিরতি নোটিশ দেখানো হয়েছে!')
+
     try {
-      setBreakLoading(true)
+      setIsSavingBreak(true)
       await setChamberBreak(targetChamberId, {
         is_on_break: true,
         break_reason: breakReason,
         break_resume_time: breakResumeTime,
         break_message: breakCustomMessage
       })
-      setShowBreakModal(false)
-      await fetchSingleChamber(targetChamberId, true)
+      // Silently sync latest state in the background
+      fetchSingleChamber(targetChamberId, true)
     } catch (err) {
-      console.error(err)
+      console.error('Failed to set break:', err)
+      toast.error('বিরতি সংরক্ষণ করতে সমস্যা হয়েছে।')
+      fetchSingleChamber(targetChamberId, true)
     } finally {
-      setBreakLoading(false)
+      setIsSavingBreak(false)
     }
   }
 
@@ -1067,17 +1180,33 @@ export default function SerialDisplayManagerPage() {
     const targetChamberId = chamberId || breakTargetChamber?.chamber?.id || currentChamberQueue?.chamber?.id
     if (!targetChamberId) return
 
+    // If modal is open, close it smoothly
+    if (showBreakModal) {
+      handleCloseBreakModalSmooth()
+    }
+
+    // Smoothly animate the exit of the break banner
+    setIsDismissingBreakBanner(true)
+    toast.success('বিরতি শেষ এবং সেশন পুনরায় চালু করা হয়েছে!')
+
+    setTimeout(() => {
+      updateOptimisticBreakState(targetChamberId, false)
+      setIsDismissingBreakBanner(false)
+    }, 240)
+
     try {
-      setBreakLoading(true)
+      setIsEndingBreak(true)
       await setChamberBreak(targetChamberId, {
         is_on_break: false
       })
-      setShowBreakModal(false)
-      await fetchSingleChamber(targetChamberId, true)
+      // Silently sync latest state in the background
+      fetchSingleChamber(targetChamberId, true)
     } catch (err) {
-      console.error(err)
+      console.error('Failed to end break:', err)
+      toast.error('সেশন চালু করতে সমস্যা হয়েছে।')
+      fetchSingleChamber(targetChamberId, true)
     } finally {
-      setBreakLoading(false)
+      setIsEndingBreak(false)
     }
   }
 
@@ -1121,6 +1250,10 @@ export default function SerialDisplayManagerPage() {
   const chamberDelayStatus = isSelectedDateToday 
     ? getChamberScheduleDelay(currentlyServing, waitingPatients, currentChamberQueue?.chamber)
     : null
+
+  if (loading && !hospitalQueueData) {
+    return <AdminContentSkeleton />
+  }
 
   return (
     <div className="admin-container" style={{ maxWidth: 1400, margin: '0 auto', paddingBottom: 60 }}>
@@ -1177,40 +1310,7 @@ export default function SerialDisplayManagerPage() {
         </div>
 
         {/* Top Control Tools */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Break & Notice Button */}
-          {currentChamberQueue && (
-            <button
-              onClick={() => handleOpenBreakModal()}
-              className="admin-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 40,
-                borderRadius: 10,
-                background: currentChamberQueue.chamber?.is_on_break ? '#FEF3C7' : 'transparent',
-                color: currentChamberQueue.chamber?.is_on_break ? '#92400E' : 'var(--admin-text)',
-                border: currentChamberQueue.chamber?.is_on_break ? '1.5px solid #F59E0B' : '1px solid var(--admin-border)',
-                fontWeight: 700,
-                fontSize: 13
-              }}
-              title="টিভি স্ক্রিনে সাময়িক বিরতির নোটিশ দেখান"
-            >
-              {currentChamberQueue.chamber?.is_on_break ? (
-                <>
-                  <Pause size={16} color="#B45309" className="pulse-anim" />
-                  <span>বিরতি চলছে ({currentChamberQueue.chamber?.break_reason || 'বিরতি'})</span>
-                </>
-              ) : (
-                <>
-                  <Coffee size={16} />
-                  <span>সেশন বিরতি / নোটিশ</span>
-                </>
-              )}
-            </button>
-          )}
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Sound Toggle */}
           <button
             onClick={() => {
@@ -1221,29 +1321,11 @@ export default function SerialDisplayManagerPage() {
               toast.success(next ? 'সাউন্ড এলার্ট চালু হয়েছে' : 'সাউন্ড এলার্ট বন্ধ')
             }}
             className={`admin-btn ${soundEnabled ? 'admin-btn-primary' : 'admin-btn-outline'}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, borderRadius: 10 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, borderRadius: 9 }}
             title={soundEnabled ? 'সাউন্ড বন্ধ করুন' : 'সাউন্ড চালু করুন'}
           >
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span style={{ fontSize: 13 }}>{soundEnabled ? 'সাউন্ড অন' : 'মিউট'}</span>
-          </button>
-
-          {/* Auto Refresh Toggle */}
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className="admin-btn admin-btn-outline"
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: 6, height: 40, borderRadius: 10,
-              borderColor: autoRefresh ? '#00B875' : 'var(--admin-border)',
-              color: autoRefresh ? '#00B875' : 'var(--admin-text)'
-            }}
-          >
-            <span style={{ 
-              width: 8, height: 8, borderRadius: '50%', 
-              background: autoRefresh ? '#00B875' : '#94A3B8',
-              boxShadow: autoRefresh ? '0 0 8px #00B875' : 'none'
-            }} />
-            <span style={{ fontSize: 13 }}>{autoRefresh ? 'লাইভ সিঙ্ক' : 'পজ'}</span>
+            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            <span style={{ fontSize: 12.5 }}>{soundEnabled ? 'সাউন্ড অন' : 'মিউট'}</span>
           </button>
 
           {/* Manual Refresh */}
@@ -1253,10 +1335,10 @@ export default function SerialDisplayManagerPage() {
             disabled={loading}
             className="admin-btn admin-btn-outline"
             style={{
-              height: 40,
-              width: 40,
+              height: 38,
+              width: 38,
               padding: 0,
-              borderRadius: 10,
+              borderRadius: 9,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1264,25 +1346,116 @@ export default function SerialDisplayManagerPage() {
             }}
             title="রিফ্রেশ করুন"
           >
-            <RefreshCw size={16} className={loading ? 'spin-anim' : ''} />
+            <RefreshCw size={15} className={loading ? 'spin-anim' : ''} />
           </button>
         </div>
       </div>
 
-      {/* ── Filters & View Switcher Bar ── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: 16,
-        marginBottom: 24,
-        background: 'var(--admin-card-bg)',
-        padding: '16px 20px',
-        borderRadius: 14,
-        border: '1px solid var(--admin-border)'
-      }}>
+      {/* ── Filters & View Switcher Bar (Always Single Row on Desktop) ── */}
+      <style>{`
+        .serial-filter-bar-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.95fr);
+          gap: 10px;
+          margin-bottom: 24px;
+          background: var(--admin-card-bg);
+          padding: 12px 16px;
+          border-radius: 14px;
+          border: 1px solid var(--admin-border);
+          align-items: end;
+        }
+        @media (max-width: 900px) {
+          .serial-filter-bar-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+          }
+        }
+        @media (max-width: 580px) {
+          .serial-filter-bar-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @keyframes breakBannerEnter {
+          0% {
+            opacity: 0;
+            transform: translateY(-16px) scale(0.98);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+          }
+          40% {
+            opacity: 0.7;
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            max-height: 250px;
+            padding-top: 20px;
+            padding-bottom: 20px;
+            margin-bottom: 16px;
+          }
+        }
+        @keyframes breakBannerExit {
+          0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            max-height: 250px;
+            padding-top: 16px;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-12px) scale(0.98);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+          }
+        }
+        .break-banner-enter {
+          animation: breakBannerEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          overflow: hidden;
+        }
+        .break-banner-exit {
+          animation: breakBannerExit 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          overflow: hidden;
+        }
+        @keyframes modalBackdropFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes modalContentZoomIn {
+          from {
+            opacity: 0;
+            transform: scale(0.94) translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        .break-modal-backdrop-in {
+          animation: modalBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .break-modal-content-in {
+          animation: modalContentZoomIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .break-modal-backdrop-out {
+          opacity: 0 !important;
+          transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .break-modal-content-out {
+          opacity: 0 !important;
+          transform: scale(0.94) translateY(12px) !important;
+          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+      `}</style>
+      <div className="serial-filter-bar-grid">
         {/* Hospital / Branch Selector */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+        <div style={{ minWidth: 0 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>
             {isDoctorOnly ? 'চেম্বার হাসপাতাল / লোকেশন' : 'হাসপাতাল নির্বাচন (Hospital)'}
           </label>
           <div style={{ position: 'relative' }}>
@@ -1294,14 +1467,14 @@ export default function SerialDisplayManagerPage() {
               }}
               disabled={isManager}
               style={{
-                width: '100%', height: 42, borderRadius: 10, border: '1px solid var(--admin-border)',
-                background: 'var(--admin-bg)', color: 'var(--admin-text)', padding: '0 12px', fontSize: 13,
+                width: '100%', height: 38, borderRadius: 9, border: '1px solid var(--admin-border)',
+                background: 'var(--admin-bg)', color: 'var(--admin-text)', padding: '0 10px', fontSize: 12.5,
                 fontWeight: 700, outline: 'none', cursor: isManager ? 'not-allowed' : 'pointer'
               }}
             >
               {hospitals.length > 0 && (
                 <option value="all">
-                  {isDoctorOnly ? '✨ সকল চেম্বার ও হাসপাতাল (All Locations)' : '✨ সকল হাসপাতাল (All Locations)'}
+                  {isDoctorOnly ? '✨ সকল চেম্বার ও হাসপাতাল' : '✨ সকল হাসপাতাল'}
                 </option>
               )}
               {hospitals.length === 0 ? (
@@ -1318,23 +1491,23 @@ export default function SerialDisplayManagerPage() {
         </div>
 
         {/* Date Selector */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
               তারিখ (Date)
             </label>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#00B875', background: 'rgba(0, 184, 117, 0.1)', padding: '1px 8px', borderRadius: 6 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#00B875', background: 'rgba(0, 184, 117, 0.1)', padding: '1px 6px', borderRadius: 5 }}>
               • {selectedDayBn}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               style={{
-                flex: 1, height: 42, borderRadius: 10, border: '1px solid var(--admin-border)',
-                background: 'var(--admin-bg)', color: 'var(--admin-text)', padding: '0 12px', fontSize: 13,
+                flex: 1, minWidth: 0, height: 38, borderRadius: 9, border: '1px solid var(--admin-border)',
+                background: 'var(--admin-bg)', color: 'var(--admin-text)', padding: '0 8px', fontSize: 12,
                 fontWeight: 600, outline: 'none'
               }}
             />
@@ -1342,129 +1515,138 @@ export default function SerialDisplayManagerPage() {
               type="button"
               onClick={handleSelectToday}
               style={{
-                height: 42,
-                padding: '0 16px',
-                borderRadius: 10,
-                fontSize: 12,
+                height: 38,
+                padding: '0 10px',
+                borderRadius: 9,
+                fontSize: 11.5,
                 fontWeight: 800,
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 4,
                 background: selectedDate === getLocalDateString() ? '#00B875' : 'var(--admin-bg)',
                 color: selectedDate === getLocalDateString() ? '#FFFFFF' : 'var(--admin-text)',
                 border: selectedDate === getLocalDateString() ? '1.5px solid #009661' : '1px solid var(--admin-border)',
-                boxShadow: selectedDate === getLocalDateString() ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
+                boxShadow: selectedDate === getLocalDateString() ? '0 2px 6px rgba(0, 184, 117, 0.28)' : 'none',
+                flexShrink: 0
               }}
               title="আজকের তারিখে যান"
             >
-              <CalendarCheck size={14} />
+              <CalendarCheck size={13} />
               <span>আজ</span>
             </button>
           </div>
         </div>
 
         {/* View Mode Switcher */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+        <div style={{ minWidth: 0 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>
             ভিউ মোড (Display Mode)
           </label>
           <div style={{
             display: 'flex',
-            height: 42,
+            height: 38,
             background: 'var(--admin-bg)',
-            padding: 4,
-            borderRadius: 12,
+            padding: 3,
+            borderRadius: 9,
             border: '1px solid var(--admin-border)',
-            gap: 6,
-            boxSizing: 'border-box'
+            gap: 3,
+            boxSizing: 'border-box',
+            overflow: 'hidden'
           }}>
             <button
               type="button"
               onClick={() => setViewMode('controller')}
               style={{
                 flex: 1,
+                minWidth: 0,
                 border: 'none',
-                borderRadius: 8,
-                fontSize: 12,
+                borderRadius: 7,
+                fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 4,
                 whiteSpace: 'nowrap',
-                padding: '0 12px',
+                padding: '0 6px',
                 background: viewMode === 'controller'
                   ? 'linear-gradient(135deg, #00B875 0%, #009661 100%)'
                   : 'transparent',
                 color: viewMode === 'controller' ? '#FFFFFF' : 'var(--admin-text-muted)',
                 boxShadow: viewMode === 'controller'
-                  ? '0 3px 10px rgba(0, 184, 117, 0.35)'
+                  ? '0 2px 6px rgba(0, 184, 117, 0.3)'
                   : 'none',
               }}
             >
-              <Stethoscope size={15} />
-              <span>{isDoctorOnly ? 'কিউ কন্ট্রোলার' : 'ডাক্তার কন্ট্রোলার'}</span>
+              <Stethoscope size={13} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isDoctorOnly ? 'কিউ কন্ট্রোলার' : 'ডাক্তার কন্ট্রোলার'}</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('overview')}
               style={{
                 flex: 1,
+                minWidth: 0,
                 border: 'none',
-                borderRadius: 8,
-                fontSize: 12,
+                borderRadius: 7,
+                fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 4,
                 whiteSpace: 'nowrap',
-                padding: '0 12px',
+                padding: '0 6px',
                 background: viewMode === 'overview'
                   ? 'linear-gradient(135deg, #00B875 0%, #009661 100%)'
                   : 'transparent',
                 color: viewMode === 'overview' ? '#FFFFFF' : 'var(--admin-text-muted)',
                 boxShadow: viewMode === 'overview'
-                  ? '0 3px 10px rgba(0, 184, 117, 0.35)'
+                  ? '0 2px 6px rgba(0, 184, 117, 0.3)'
                   : 'none',
               }}
             >
-              <Building2 size={15} />
-              <span>{isDoctorOnly ? 'চেম্বার ওভারভিউ' : 'হাসপাতাল মাস্টার বোর্ড'}</span>
+              <Building2 size={13} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isDoctorOnly ? 'চেম্বার ওভারভিউ' : 'হাসপাতাল মাস্টার'}</span>
             </button>
           </div>
         </div>
 
         {/* Master TV Launch Button */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+        <div style={{ minWidth: 0 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>
             পাবলিক টিভি বোর্ড (TV Screens)
           </label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
             <a
               href={isDoctorOnly && singleTvUrl ? singleTvUrl : hospitalTvUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="admin-btn admin-btn-primary"
-              style={{ flex: 1, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, textDecoration: 'none', fontSize: 13 }}
+              style={{
+                flex: 1, minWidth: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 5, borderRadius: 9, textDecoration: 'none', fontSize: 11.5, padding: '0 8px',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              }}
             >
-              <ExternalLink size={15} /> {isDoctorOnly ? 'রুম টিভি স্ক্রিন' : 'হাসপাতাল টিভি'}
+              <ExternalLink size={13} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isDoctorOnly ? 'রুম টিভি' : 'হাসপাতাল টিভি'}</span>
             </a>
             <button
               type="button"
               onClick={() => openQrModal(isDoctorOnly ? 'রুম টিভি ডিসপ্লে বোর্ড' : 'হাসপাতাল মাস্টার টিভি বোর্ড', isDoctorOnly && singleTvUrl ? singleTvUrl : hospitalTvUrl)}
               className="admin-btn admin-btn-outline"
               style={{
-                height: 42,
-                width: 42,
+                height: 38,
+                width: 38,
                 padding: 0,
-                borderRadius: 10,
+                borderRadius: 9,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1472,7 +1654,7 @@ export default function SerialDisplayManagerPage() {
               }}
               title="QR কোড দেখুন"
             >
-              <QrCode size={18} />
+              <QrCode size={16} />
             </button>
           </div>
         </div>
@@ -1598,7 +1780,7 @@ export default function SerialDisplayManagerPage() {
                     <ExternalLink size={13} /> রুমের টিভি স্ক্রিন
                   </a>
                   <button
-                    onClick={() => openQrModal(`${currentChamberQueue.doctor?.name_bn || currentChamberQueue.doctor?.name} - রুম ডিসপ্লে`, singleTvUrl)}
+                    onClick={() => openQrModal(`${currentChamberQueue.doctor?.name || currentChamberQueue.doctor?.name_bn} - রুম ডিসপ্লে`, singleTvUrl)}
                     style={{ background: 'none', border: 'none', color: 'var(--admin-text-muted)', cursor: 'pointer', padding: 0 }}
                     title="রুম QR কোড"
                   >
@@ -1680,7 +1862,7 @@ export default function SerialDisplayManagerPage() {
                           <div style={{ fontWeight: 800, fontSize: 14, color: isSelected ? '#00B875' : 'var(--admin-text)' }}>
                             {isDoctorOnly 
                               ? getChamberDisplayName(dq) 
-                              : (dq.doctor?.name_bn || dq.doctor?.name)}
+                              : (dq.doctor?.name || dq.doctor?.name_bn)}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
                             {getChamberSubtitle(dq)}
@@ -1798,7 +1980,7 @@ export default function SerialDisplayManagerPage() {
                     </div>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--admin-text)' }}>
-                        {currentChamberQueue.doctor?.name_bn || currentChamberQueue.doctor?.name}
+                        {currentChamberQueue.doctor?.name || currentChamberQueue.doctor?.name_bn}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 600 }}>
                         {currentChamberQueue.doctor?.degree_bn || currentChamberQueue.doctor?.degree || currentChamberQueue.doctor?.specialty?.name || 'বিশেষজ্ঞ'}
@@ -1822,67 +2004,162 @@ export default function SerialDisplayManagerPage() {
                 </div>
 
                 {/* Break Notification Banner when Chamber is on break */}
-                {currentChamberQueue.chamber?.is_on_break && (
-                  <div style={{
-                    background: 'linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)',
-                    border: '2px solid #F59E0B',
-                    borderRadius: 18,
-                    padding: '20px 24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 16,
-                    boxShadow: '0 8px 25px rgba(245,158,11,0.18)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{
-                        width: 48, height: 48, borderRadius: 14,
-                        background: '#F59E0B', color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        <Coffee size={26} />
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 900, fontSize: 16, color: '#92400E' }}>
-                            {currentChamberQueue.chamber.break_reason || 'সেশন সাময়িক বিরতি'}
-                          </span>
-                          <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#FDE68A', color: '#78350F' }}>
-                            টিভি ডিসপ্লেতে লাইভ রয়েছে
-                          </span>
+                {(currentChamberQueue.chamber?.is_on_break || isDismissingBreakBanner) && (
+                  <div
+                    key={`break-banner-${currentChamberQueue.chamber?.id}`}
+                    className={isDismissingBreakBanner ? 'break-banner-exit' : ''}
+                    style={{
+                      background: 'linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)',
+                      border: '2px solid #F59E0B',
+                      borderRadius: 18,
+                      padding: '16px 20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                      boxShadow: '0 8px 25px rgba(245,158,11,0.18)',
+                      transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}
+                  >
+                    {/* Row 1: Header (Icon + Reason + Live Badge) and Edit Button */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                        <div style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          boxShadow: '0 3px 10px rgba(245, 158, 11, 0.35)'
+                        }}>
+                          <Coffee size={22} />
                         </div>
-                        {currentChamberQueue.chamber.break_message && (
-                          <div style={{ fontSize: 13, color: '#78350F', marginTop: 2, fontWeight: 600 }}>
-                            বার্তা: {currentChamberQueue.chamber.break_message}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 900, fontSize: 16, color: '#92400E', letterSpacing: '-0.2px' }}>
+                              {currentChamberQueue.chamber?.break_reason || 'সেশন সাময়িক বিরতি'}
+                            </span>
+                            <span style={{
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: '#FDE68A',
+                              color: '#78350F',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', display: 'inline-block' }} className="pulse-anim" />
+                              টিভি ডিসপ্লেতে লাইভ রয়েছে
+                            </span>
                           </div>
-                        )}
-                        {currentChamberQueue.chamber.break_resume_time && (
-                          <div style={{ fontSize: 12, color: '#B45309', marginTop: 2, fontWeight: 700 }}>
-                            ⏰ সম্ভাব্য ফেরার সময়: <strong style={{ color: '#92400E' }}>{currentChamberQueue.chamber.break_resume_time}</strong>
-                          </div>
-                        )}
+                          {currentChamberQueue.chamber?.break_message && (
+                            <div style={{ fontSize: 12, color: '#78350F', marginTop: 3, fontWeight: 600 }}>
+                              বার্তা: {currentChamberQueue.chamber.break_message}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div style={{ display: 'flex', gap: 10 }}>
+                      {/* Edit Button on Top Right */}
                       <button
+                        type="button"
                         onClick={() => handleOpenBreakModal()}
-                        className="admin-btn admin-btn-sm admin-btn-outline"
-                        style={{ borderRadius: 8 }}
-                      >
-                        এডিট
-                      </button>
-                      <button
-                        onClick={() => handleEndBreak()}
-                        disabled={breakLoading}
                         className="admin-btn admin-btn-sm"
                         style={{
-                          background: '#059669', color: '#fff', border: 'none',
-                          borderRadius: 8, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6
+                          height: 32,
+                          padding: '0 12px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: '#FFFFFF',
+                          color: '#92400E',
+                          border: '1px solid #FCD34D',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          transition: 'all 0.15s ease'
                         }}
                       >
-                        <PlayCircle size={15} /> বিরতি শেষ ও সেশন চালু
+                        <Edit2 size={12} />
+                        <span>এডিট</span>
+                      </button>
+                    </div>
+
+                    {/* Row 2: Bottom Status (Return Time Pill) and Resume Button */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      paddingTop: 10,
+                      borderTop: '1px solid rgba(245, 158, 11, 0.22)'
+                    }}>
+                      {/* Estimated return time pill */}
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 12,
+                        color: '#92400E',
+                        fontWeight: 700,
+                        background: 'rgba(254, 243, 199, 0.85)',
+                        padding: '5px 11px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(245, 158, 11, 0.25)'
+                      }}>
+                        <span>⏰</span>
+                        <span>সম্ভাব্য ফেরার সময়:</span>
+                        <strong style={{ color: '#B45309', fontWeight: 900 }}>
+                          {currentChamberQueue.chamber?.break_resume_time || '১৫ মিনিট পর'}
+                        </strong>
+                      </div>
+
+                      {/* Resume Session Button on Bottom Right */}
+                      <button
+                        type="button"
+                        onClick={() => handleEndBreak(currentChamberQueue?.chamber?.id)}
+                        disabled={isEndingBreak}
+                        className="admin-btn admin-btn-sm"
+                        style={{
+                          height: 35,
+                          padding: '0 16px',
+                          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 9,
+                          fontWeight: 800,
+                          fontSize: 12.5,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          cursor: isEndingBreak ? 'not-allowed' : 'pointer',
+                          opacity: isEndingBreak ? 0.75 : 1,
+                          boxShadow: '0 3px 10px rgba(5, 150, 105, 0.28)',
+                          flexShrink: 0
+                        }}
+                      >
+                        {isEndingBreak ? (
+                          <>
+                            <RefreshCw size={14} className="spin-anim" /> সেশন চালু হচ্ছে...
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle size={15} /> বিরতি শেষ ও সেশন চালু
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -2122,20 +2399,21 @@ export default function SerialDisplayManagerPage() {
                         height: 48,
                         padding: '0 16px',
                         borderRadius: 12,
-                        background: currentChamberQueue.chamber?.is_on_break ? '#F59E0B' : 'rgba(255,255,255,0.08)',
-                        color: currentChamberQueue.chamber?.is_on_break ? '#000000' : '#FFFFFF',
-                        border: currentChamberQueue.chamber?.is_on_break ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.15)',
+                        background: (currentChamberQueue.chamber?.is_on_break && !isDismissingBreakBanner) ? '#F59E0B' : 'rgba(255,255,255,0.08)',
+                        color: (currentChamberQueue.chamber?.is_on_break && !isDismissingBreakBanner) ? '#000000' : '#FFFFFF',
+                        border: (currentChamberQueue.chamber?.is_on_break && !isDismissingBreakBanner) ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.15)',
                         fontWeight: 800,
                         fontSize: 13,
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                       }}
-                      title={currentChamberQueue.chamber?.is_on_break ? 'বিরতি সেটিংস' : 'সেশন বিরতি দিন'}
+                      title={(currentChamberQueue.chamber?.is_on_break && !isDismissingBreakBanner) ? 'বিরতি সেটিংস' : 'সেশন বিরতি দিন'}
                     >
                       <Coffee size={17} />
-                      {currentChamberQueue.chamber?.is_on_break ? 'বিরতি চলছে' : 'বিরতি'}
+                      {(currentChamberQueue.chamber?.is_on_break && !isDismissingBreakBanner) ? 'বিরতি চলছে' : 'বিরতি'}
                     </button>
                   </div>
                 </div>
@@ -2487,7 +2765,7 @@ export default function SerialDisplayManagerPage() {
                         <h4 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--admin-text)' }}>
                           {isDoctorOnly 
                             ? getChamberDisplayName(dq) 
-                            : (dq.doctor?.name_bn || dq.doctor?.name)}
+                            : (dq.doctor?.name || dq.doctor?.name_bn)}
                         </h4>
                         <div style={{ fontSize: 12, color: '#00B875', fontWeight: 700, marginTop: 2 }}>
                           {isDoctorOnly ? `${chamberDayBn} • ${formatTime12h(dq.chamber?.start_time)} - ${formatTime12h(dq.chamber?.end_time)}` : (dq.doctor?.specialty?.name_bn || dq.doctor?.specialty?.name || 'বিশেষজ্ঞ')}
@@ -2603,33 +2881,42 @@ export default function SerialDisplayManagerPage() {
 
       {/* ── Session Break & Notice Modal ── */}
       {showBreakModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.65)',
-          backdropFilter: 'blur(5px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '16px'
-        }}>
-          <div style={{
-            background: 'var(--admin-card-bg)',
-            width: '100%',
-            maxWidth: 540,
-            maxHeight: '92vh',
-            borderRadius: 20,
-            border: '1px solid var(--admin-border)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
-            position: 'relative',
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseBreakModalSmooth()
+          }}
+          className={isClosingBreakModal ? 'break-modal-backdrop-out' : 'break-modal-backdrop-in'}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(5px)',
             display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px'
+          }}
+        >
+          <div
+            className={isClosingBreakModal ? 'break-modal-content-out' : 'break-modal-content-in'}
+            style={{
+              background: 'var(--admin-card-bg)',
+              width: '100%',
+              maxWidth: 540,
+              maxHeight: '92vh',
+              borderRadius: 20,
+              border: '1px solid var(--admin-border)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
             {/* Modal Sticky Header */}
             <div style={{
               display: 'flex',
@@ -2664,7 +2951,7 @@ export default function SerialDisplayManagerPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowBreakModal(false)}
+                onClick={handleCloseBreakModalSmooth}
                 style={{
                   background: 'var(--admin-bg)',
                   border: '1px solid var(--admin-border)',
@@ -2718,7 +3005,7 @@ export default function SerialDisplayManagerPage() {
                   <button
                     type="button"
                     onClick={() => handleEndBreak(breakTargetChamber?.chamber?.id || currentChamberQueue?.chamber?.id)}
-                    disabled={breakLoading}
+                    disabled={isEndingBreak}
                     className="admin-btn admin-btn-sm"
                     style={{
                       background: '#059669',
@@ -2731,11 +3018,20 @@ export default function SerialDisplayManagerPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      cursor: 'pointer',
-                      flexShrink: 0
+                      cursor: isEndingBreak ? 'not-allowed' : 'pointer',
+                      flexShrink: 0,
+                      opacity: isEndingBreak ? 0.75 : 1
                     }}
                   >
-                    <PlayCircle size={14} /> বিরতি শেষ করুন
+                    {isEndingBreak ? (
+                      <>
+                        <RefreshCw size={13} className="spin-anim" /> সেশন চালু হচ্ছে...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle size={14} /> বিরতি শেষ করুন
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -2755,7 +3051,7 @@ export default function SerialDisplayManagerPage() {
                     ডাক্তার ও চেম্বার:
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--admin-text)', marginTop: 2 }}>
-                    {breakTargetChamber?.doctor?.name_bn || breakTargetChamber?.doctor?.name || currentChamberQueue?.doctor?.name_bn || currentChamberQueue?.doctor?.name} 
+                    {breakTargetChamber?.doctor?.name || breakTargetChamber?.doctor?.name_bn || currentChamberQueue?.doctor?.name || currentChamberQueue?.doctor?.name_bn} 
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#00B875', marginLeft: 8 }}>
                       ({breakTargetChamber?.chamber?.hospital_name || currentHospital?.name || 'হাসপাতাল চেম্বার'})
                     </span>
@@ -2870,7 +3166,7 @@ export default function SerialDisplayManagerPage() {
             }}>
               <button
                 type="button"
-                onClick={() => setShowBreakModal(false)}
+                onClick={handleCloseBreakModalSmooth}
                 className="admin-btn admin-btn-outline"
                 style={{ height: 40, padding: '0 18px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}
               >
@@ -2880,7 +3176,7 @@ export default function SerialDisplayManagerPage() {
               <button
                 type="button"
                 onClick={handleSaveBreak}
-                disabled={breakLoading}
+                disabled={isSavingBreak}
                 className="admin-btn"
                 style={{
                   background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
@@ -2895,10 +3191,19 @@ export default function SerialDisplayManagerPage() {
                   alignItems: 'center',
                   gap: 6,
                   boxShadow: '0 4px 14px rgba(245,158,11,0.3)',
-                  cursor: 'pointer'
+                  cursor: isSavingBreak ? 'not-allowed' : 'pointer',
+                  opacity: isSavingBreak ? 0.75 : 1
                 }}
               >
-                <Radio size={15} /> বিরতি ঘোষণা ও টিভিতে দেখান
+                {isSavingBreak ? (
+                  <>
+                    <RefreshCw size={15} className="spin-anim" /> ঘোষণা হচ্ছে...
+                  </>
+                ) : (
+                  <>
+                    <Radio size={15} /> বিরতি ঘোষণা ও টিভিতে দেখান
+                  </>
+                )}
               </button>
             </div>
           </div>

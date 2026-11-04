@@ -7,6 +7,7 @@ import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getDoctor } from '../../../api/adminApi'
 import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { Award, Plus, Trash2 } from 'lucide-react'
 
 // Premium Searchable Select Component
@@ -261,6 +262,7 @@ export default function DoctorFormPage() {
     divisionId: form.division_id,
     districtId: form.district_id,
     upazilaId: form.upazila_id,
+    includeHospitals: true,
   })
   const { createDoctor: saveNewDoctor, updateDoctor: saveUpdatedDoctor } = useAdminDoctorMutations()
 
@@ -640,7 +642,13 @@ export default function DoctorFormPage() {
     return <div className="admin-form-error">{message}</div>
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Preparing Doctor Profile...</div>
+  if (loading) {
+    return (
+      <div className="admin-container" style={{ maxWidth: 1100, margin: '20px auto', padding: '0 16px' }}>
+        <FormSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div className="admin-container" style={{ maxWidth: 1100, margin: '0 auto' }}>

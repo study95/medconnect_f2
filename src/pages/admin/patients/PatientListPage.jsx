@@ -3,6 +3,7 @@ import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
+import { useDebounce } from '../../../hooks/useDebounce'
 import { useAdminPatients, useAdminPatientLookups, useAdminPatientMutations } from '../../../features/patients/useAdminPatients'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -209,11 +210,16 @@ export default function PatientListPage() {
   
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const debouncedSearch = useDebounce(search, 300)
 
   const hasFilters = Boolean(
     search || divisionId || districtId || upazilaId || unionId || 
     bloodGroupFilter || genderFilter || dateFrom || dateTo
   )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
 
   // Cached cascading location lookups
   const { divisions, districts, upazilas, unions } = useAdminPatientLookups({
@@ -222,9 +228,13 @@ export default function PatientListPage() {
     upazilaId,
   })
 
-  // Memoized server filters for TanStack Query
+  // Memoized server filters for TanStack Query (true server-side pagination + search)
   const serverFilters = useMemo(() => {
-    const params = {}
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+    }
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     if (divisionId) params.division_id = divisionId
     if (districtId) params.district_id = districtId
     if (upazilaId) params.upazila_id = upazilaId
@@ -234,10 +244,10 @@ export default function PatientListPage() {
     if (dateFrom) params.date_from = dateFrom
     if (dateTo) params.date_to = dateTo
     return params
-  }, [divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
+  }, [currentPage, perPage, debouncedSearch, divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
 
   // Enterprise TanStack Query Hooks
-  const { patients, isLoading: loading, refetch: fetchPatients } = useAdminPatients(serverFilters)
+  const { patients, total, isLoading: loading, refetch: fetchPatients } = useAdminPatients(serverFilters)
   const {
     deletePatient,
     isDeleting: deleting,
@@ -280,64 +290,9 @@ export default function PatientListPage() {
     }
   }
 
-  // Client-side real-time filtering
-  const filtered = useMemo(() => {
-    return patients.filter(patient => {
-      // Blood group filter
-      if (bloodGroupFilter && patient.blood_group !== bloodGroupFilter) {
-        return false
-      }
-
-      // Gender filter
-      if (genderFilter && (patient.gender || '').toLowerCase() !== genderFilter.toLowerCase()) {
-        return false
-      }
-
-      // Date range filter
-      if (patient.created_at) {
-        const pDate = patient.created_at.substring(0, 10)
-        if (dateFrom && pDate < dateFrom) return false
-        if (dateTo && pDate > dateTo) return false
-      }
-
-      const searchLower = search.trim().toLowerCase()
-      if (!searchLower) return true
-
-      const id = String(patient.public_id || patient.id || '').toLowerCase()
-      const regNo = String(patient.registration_number || patient.user?.registration_number || '').toLowerCase()
-      const patientId = String(patient.patient_id || patient.user?.patient_id || '').toLowerCase()
-      const name = String(patient.name || patient.user?.name || '').toLowerCase()
-      const phone = String(patient.phone || patient.mobile || patient.user?.phone || patient.user?.mobile || '').toLowerCase()
-      const email = String(patient.email || patient.user?.email || '').toLowerCase()
-      const blood = String(patient.blood_group || '').toLowerCase()
-      const gender = String(patient.gender || '').toLowerCase()
-      const occupation = String(patient.occupation || '').toLowerCase()
-      const divisionName = String(patient.division?.name || '').toLowerCase()
-      const districtName = String(patient.district?.name || '').toLowerCase()
-      const upazilaName = String(patient.upazila?.name || '').toLowerCase()
-      const unionName = String(patient.union?.name || '').toLowerCase()
-
-      return id.includes(searchLower) ||
-        regNo.includes(searchLower) ||
-        patientId.includes(searchLower) ||
-        name.includes(searchLower) ||
-        phone.includes(searchLower) ||
-        email.includes(searchLower) ||
-        blood.includes(searchLower) ||
-        gender.includes(searchLower) ||
-        occupation.includes(searchLower) ||
-        divisionName.includes(searchLower) ||
-        districtName.includes(searchLower) ||
-        upazilaName.includes(searchLower) ||
-        unionName.includes(searchLower)
-    })
-  }, [patients, search, bloodGroupFilter, genderFilter, dateFrom, dateTo])
-
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
-
-  useEffect(() => { 
-    setCurrentPage(1) 
-  }, [filtered.length])
+  // Server-side filtered & paginated dataset
+  const filtered = patients
+  const paginatedData = patients
 
   const isAllSelected = paginatedData.length > 0 && paginatedData.every(p => selectedIds.includes(p.id))
   const isSomeSelected = paginatedData.some(p => selectedIds.includes(p.id))
@@ -629,14 +584,14 @@ export default function PatientListPage() {
               {loading ? (
                 <span className="skeleton-box" style={{ width: 22, height: 14, borderRadius: 4 }} />
               ) : (
-                <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong>
+                <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong>
               )}
               <span>Accounts Found</span>
             </div>
           </div>
         </div>
 
-        {!loading && filtered.length === 0 ? (
+        {!loading && total === 0 ? (
           <EmptyState hasFilters={hasFilters} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👤" title="No patients found" description="Try changing your search keywords or clear applied filters." primaryAction={isAdmin ? { label: '+ Register New Patient', to: '/admin/patients/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
@@ -862,7 +817,7 @@ export default function PatientListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={total}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

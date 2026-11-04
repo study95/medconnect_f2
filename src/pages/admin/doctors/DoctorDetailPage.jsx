@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 // DoctorDetailPage.jsx — Premium Detailed View for Admin
 import { useState, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
@@ -51,7 +52,11 @@ export default function DoctorDetailPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Practitioner...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 1000, margin: '20px auto', padding: '0 16px' }}>
+      <DetailSkeleton />
+    </div>
+  )
   if (!doctor) return <div className="admin-empty" style={{ color: 'var(--admin-text)' }}>Doctor not found</div>
 
   const expertiseList = getExpertise()

@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect } from 'react'
 import { getAdminPackages, createAdminPackage, updateAdminPackage, deleteAdminPackage } from '../../../api/subscriptionApi'
 import { useDialog } from '../../../hooks/useDialog'
@@ -103,7 +104,7 @@ export default function AdminPackagesPage() {
 
       <div className="admin-card">
         {loading ? (
-          <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+          <div style={{ padding: "16px" }}><TableSkeleton rows={5} columns={5} /></div>
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">

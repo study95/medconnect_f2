@@ -7,6 +7,8 @@ export const getDashboardAnalytics = (params) => axiosInstance.get('/admin/analy
 
 // ===== DOCTORS =====
 export const getDoctors = (params) => axiosInstance.get('/doctors', { params })
+export const getMyDoctorProfile = () => axiosInstance.get('/doctor/me')
+export const getDoctorLookup = (params) => axiosInstance.get('/lookup/doctors', { params })
 export const getDoctor = (id) => axiosInstance.get(`/doctors/${id}`)
 export const createDoctor = (data) => axiosInstance.post('/doctors', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateDoctor = (id, data) => axiosInstance.post(`/doctors/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -15,6 +17,8 @@ export const bulkDeleteDoctors = (ids) => axiosInstance.post('/doctors/bulk-dele
 
 // ===== HOSPITALS =====
 export const getHospitals = (params) => axiosInstance.get('/hospitals', { params })
+export const getMyHospitalProfile = () => axiosInstance.get('/hospital/me')
+export const getHospitalLookup = (params) => axiosInstance.get('/lookup/hospitals', { params })
 export const getHospital = (id) => axiosInstance.get(`/hospitals/${id}`)
 export const createHospital = (data) => axiosInstance.post('/hospitals', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateHospital = (id, data) => axiosInstance.post(`/hospitals/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -83,6 +87,7 @@ export const updateUserPermissions = (id, permissions) => axiosInstance.put(`/us
 
 // ===== PATIENTS (Separate registration table) =====
 export const getPatients = (params) => axiosInstance.get('/admin/patients', { params })
+export const getPatientLookup = (params) => axiosInstance.get('/lookup/patients', { params })
 export const getAdminPatient = (id) => axiosInstance.get(`/admin/patients/${id}`)
 export const createAdminPatient = (data) => axiosInstance.post('/admin/patients', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateAdminPatient = (id, data) => axiosInstance.post(`/admin/patients/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })

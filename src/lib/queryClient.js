@@ -8,13 +8,13 @@ import { getHomepage } from '../api/homepageApi'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000,              // 30 seconds: Fresh data window, revalidates on change
-      gcTime: 30 * 60 * 1000,            // 30 minutes: Cache retention in memory across unmounts
-      retry: 2,                          // 2 retries on network/server errors
-      refetchOnWindowFocus: false,        // Prevents excessive API calls on browser tab switching
-      refetchOnReconnect: true,          // Automatically revalidates when network recovers
-      refetchOnMount: true,               // Automatically refetches on mount when query is stale/invalidated
-      placeholderData: keepPreviousData,  // Prevents UI flashing during pagination and filter changes
+      staleTime: 2 * 60 * 1000,          // 2 minutes: Fresh data window for instant 0ms tab navigation
+      gcTime: 60 * 60 * 1000,            // 60 minutes: Retain cache in memory across unmounts
+      retry: 1,                          // 1 retry on network/server errors for swift error handling
+      refetchOnWindowFocus: false,        // Prevents unnecessary background re-fetches on tab focus
+      refetchOnReconnect: true,          // Automatically revalidates when internet recovers
+      refetchOnMount: true,               // Automatically refetches on mount when query is stale
+      placeholderData: keepPreviousData,  // Retains previous data while fetching next page/filter (zero layout flash)
     },
     mutations: {
       retry: 0,                          // Prevents duplicate mutation execution on failure

@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
@@ -265,10 +266,7 @@ export default function HighlightManagementPage() {
 
         <div className="admin-card-body">
           {loading ? (
-            <div style={{ padding: '60px 0', textAlign: 'center' }}>
-              <div className="admin-spinner" style={{ margin: '0 auto 16px' }} />
-              <p style={{ color: '#64748B' }}>Syncing highlighted items...</p>
-            </div>
+            <TableSkeleton rows={6} columns={5} />
           ) : items.length === 0 ? (
             <div style={{ padding: '80px 0', textAlign: 'center' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✨</div>

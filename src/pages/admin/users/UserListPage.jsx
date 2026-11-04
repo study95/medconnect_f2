@@ -4,6 +4,7 @@ import { Search, RotateCcw, X, Filter, ShieldCheck } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
+import { useDebounce } from '../../../hooks/useDebounce'
 import { useAdminUsers, useAdminPermissions, useAdminUserMutations } from '../../../hooks/admin/useAdminUsers'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -150,18 +151,26 @@ export default function UserListPage() {
   // Pagination state
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const debouncedSearch = useDebounce(search, 300)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, roleFilter, typeFilter])
 
   // Server-side filter memo for TanStack Query
   const serverFilters = useMemo(() => {
-    const params = {}
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+    }
     if (roleFilter) params.role = roleFilter
     if (typeFilter) params.registration_type = typeFilter
-    if (search) params.search = search
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     return params
-  }, [roleFilter, typeFilter, search])
+  }, [currentPage, perPage, roleFilter, typeFilter, debouncedSearch])
 
   // Enterprise TanStack Query Hooks
-  const { users, isLoading: loading, refetch: fetchUsers } = useAdminUsers(serverFilters)
+  const { users, total, isLoading: loading, refetch: fetchUsers } = useAdminUsers(serverFilters)
   const { permissions: availablePermissions } = useAdminPermissions()
   const {
     updateUserRole: saveUserRole,
@@ -330,37 +339,9 @@ export default function UserListPage() {
     }
   }
 
-  const filtered = users.filter(u => {
-    const searchLower = search.trim().toLowerCase()
-    const id = String(u.public_id || u.id || '').toLowerCase()
-    const name = String(u.name || '').toLowerCase()
-    const email = String(u.email || '').toLowerCase()
-    const phone = String(u.phone || '').toLowerCase()
-    const regNum = String(u.registration_number || '').toLowerCase()
-    const regType = String(u.registration_type || '').toLowerCase()
-    const role = String(getUserRole(u) || '').toLowerCase()
-
-    const matchesSearch = !searchLower || 
-      id.includes(searchLower) ||
-      name.includes(searchLower) ||
-      email.includes(searchLower) ||
-      phone.includes(searchLower) ||
-      regNum.includes(searchLower) ||
-      regType.includes(searchLower) ||
-      role.includes(searchLower)
-
-    const matchesType = !typeFilter || 
-      (typeFilter === 'patient' 
-        ? (u.registration_type === 'patient' || u.registration_type === 'user' || !u.registration_type)
-        : u.registration_type?.toLowerCase() === typeFilter.toLowerCase())
-
-    const currentRole = getUserRole(u)
-    const matchesRole = !roleFilter || (currentRole.toLowerCase() === roleFilter.toLowerCase())
-
-    return matchesSearch && matchesType && matchesRole
-  })
-
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+  // Server-side filtered & paginated dataset
+  const filtered = users
+  const paginatedData = users
 
   const selectableData = paginatedData.filter(u => u.id !== currentUser?.id)
   const isAllSelected = selectableData.length > 0 && selectableData.every(u => selectedIds.includes(u.id))
@@ -382,10 +363,6 @@ export default function UserListPage() {
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     )
   }
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filtered.length])
 
   return (
     <div className="admin-container">
@@ -575,7 +552,7 @@ export default function UserListPage() {
                 border: '1px solid var(--admin-border, #E2E8F0)',
               }}
             >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Users Found
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong> Users Found
             </div>
           </div>
         </div>
@@ -583,7 +560,7 @@ export default function UserListPage() {
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '18%', '16%', '14%', '10%']} headers={['', 'User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(roleFilter || typeFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." />
         ) : (
             <div className="admin-table-wrapper">
@@ -718,7 +695,7 @@ export default function UserListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={total}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

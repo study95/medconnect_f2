@@ -1,8 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useAuth } from '../../../context/AuthContext'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { queryKeys } from '../../../lib/queryKeys'
-import { getHospitals } from '../../../api/hospitalApi'
+import { useMyHospitalProfile } from '../../../features/hospitals/useAdminHospitals'
 import { useHospitalReviews } from '../../../features/reviews/useReviews'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewSkeleton } from '../../../components/reviews'
 import { Building2, AlertCircle, Star, Clock, CheckCircle2, MessageSquare } from 'lucide-react'
@@ -12,34 +9,11 @@ import { Building2, AlertCircle, Star, Clock, CheckCircle2, MessageSquare } from
  * Allows authenticated hospital managers to inspect live patient ratings, KPI analytics, and respond with official replies.
  */
 export default function HospitalReviewsPage() {
-  const { user } = useAuth()
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
   const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
 
-  // 1. Fetch hospitals using TanStack Query (matching HospitalListPage / AppointmentListPage pattern)
-  const { data: hospitalList, isLoading: loadingHospitals } = useQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
-    queryFn: async () => {
-      const res = await getHospitals({ per_page: 500 })
-      const raw = res.data
-      if (raw?.data && Array.isArray(raw.data)) return raw.data
-      if (Array.isArray(raw)) return raw
-      return []
-    },
-    staleTime: 5 * 60 * 1000,
-    placeholderData: keepPreviousData,
-  })
-
-  // 2. Resolve active hospital belonging to the authenticated manager
-  const myHospital = useMemo(() => {
-    if (!hospitalList?.length || !user) return null
-    return hospitalList.find(
-      (h) =>
-        String(h.user_id) === String(user?.id) ||
-        (user?.email && h.email?.toLowerCase() === user?.email?.toLowerCase()) ||
-        (user?.phone && h.phone === user?.phone)
-    )
-  }, [hospitalList, user])
+  // 1. Fetch authenticated hospital's own profile directly (/hospital/me — zero directory over-fetching)
+  const { hospital: myHospital, isLoading: loadingHospitals } = useMyHospitalProfile()
 
   const hospitalId = myHospital?.id || myHospital?.public_id || null
 

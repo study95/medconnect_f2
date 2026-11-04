@@ -1,8 +1,9 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 // PurchaseReportPage.jsx — Admin Purchase Income Report
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
-import { getPurchaseReport, getDoctors, getHospitals } from '../../../api/adminApi'
+import { getPurchaseReport, getDoctorLookup, getHospitalLookup } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
@@ -126,19 +127,19 @@ export default function PurchaseReportPage() {
   const hasFilters = Boolean(filters.subscriber_id || filters.plan_name || filters.month || filters.date_from || filters.date_to)
 
   const { data: doctors = [] } = useQuery({
-    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500 })
-      return res.data?.data?.data || res.data?.data || []
+      const res = await getDoctorLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
     staleTime: 5 * 60 * 1000,
   })
 
   const { data: hospitals = [] } = useQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500 })
-      return res.data?.data?.data || res.data?.data || []
+      const res = await getHospitalLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -344,7 +345,7 @@ export default function PurchaseReportPage() {
         </div>
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Syncing data...</div>
+            <TableSkeleton rows={8} columns={6} />
           ) : data.length === 0 ? (
             <div className="admin-empty" style={{ padding: 60 }}><h4 style={{ color: 'var(--admin-text)' }}>No purchases found for this period</h4></div>
           ) : (

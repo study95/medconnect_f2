@@ -1,3 +1,4 @@
+import { CardSkeleton } from '../../../components/common/Skeletons'
 // SubscriptionPage.jsx — Marketing page with package selection
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -115,7 +116,7 @@ export default function SubscriptionPage() {
       </p>
 
       {loading ? (
-        <div className="admin-loading"><div className="admin-spinner" /> প্যাকেজ লোড হচ্ছে...</div>
+        <div style={{ padding: "16px" }}><CardSkeleton count={3} /></div>
       ) : (
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',

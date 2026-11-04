@@ -1,3 +1,4 @@
+import { TableSkeleton, AdminContentSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +14,7 @@ import {
   getServiceEnablements, updateServiceEnablement,
   getHospitalCommissions, updateHospitalCommission,
   getPatientBookingCommission, updatePatientBookingCommission,
-  getDoctors, getHospitals,
+  getDoctorLookup, getHospitalLookup,
   getDivisions, getDistricts, getUpazilas, getUnions
 } from '../../../api/adminApi'
 
@@ -185,14 +186,14 @@ function DoctorServiceTab() {
 
   const loadOptions = async () => {
     try {
-      const params = { per_page: 500, is_active: 1 }
+      const params = { limit: 200, is_active: 1 }
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
       if (upazilaId) params.upazila_id = upazilaId
       if (unionId) params.union_id = unionId
 
-      const res = await getDoctors(params)
-      setDoctorsOptions(res.data?.data?.data || res.data?.data || [])
+      const res = await getDoctorLookup(params)
+      setDoctorsOptions(res.data?.data || [])
     } catch (err) { console.error(err) }
   }
 
@@ -453,7 +454,7 @@ function DoctorServiceTab() {
           </span>
         </div>
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading...</div>
+          <TableSkeleton rows={6} columns={5} />
         ) : filtered.length === 0 ? (
           <div className="admin-empty" style={{ padding: 60 }}><h4 style={{ color: 'var(--admin-text)' }}>No doctors matching criteria</h4></div>
         ) : (
@@ -953,13 +954,13 @@ function HospitalCommissionTab() {
 
   const loadOptions = async () => {
     try {
-      const params = { per_page: 500, is_active: 1 }
+      const params = { limit: 200, is_active: 1 }
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
       if (upazilaId) params.upazila_id = upazilaId
       if (unionId) params.union_id = unionId
-      const res = await getHospitals(params)
-      setHospitalsOptions(res.data?.data?.data || res.data?.data || [])
+      const res = await getHospitalLookup(params)
+      setHospitalsOptions(res.data?.data || [])
     } catch (err) { console.error(err) }
   }
 
@@ -1212,7 +1213,7 @@ function HospitalCommissionTab() {
           </span>
         </div>
         {loading ? (
-          <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading...</div>
+          <TableSkeleton rows={6} columns={5} />
         ) : filtered.length === 0 ? (
           <div className="admin-empty" style={{ padding: 60 }}><h4 style={{ color: 'var(--admin-text)' }}>No hospitals matching filters</h4></div>
         ) : (
@@ -1693,14 +1694,7 @@ function PatientBookingTab() {
     { label: '20% Premium', value: 20 },
   ]
 
-  if (loading) {
-    return (
-      <div className="admin-loading" style={{ padding: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <div className="admin-spinner" />
-        <span style={{ color: 'var(--admin-text-muted)', fontSize: 13, fontWeight: 600 }}>Loading commission settings...</span>
-      </div>
-    )
-  }
+  if (loading) return <AdminContentSkeleton />
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>

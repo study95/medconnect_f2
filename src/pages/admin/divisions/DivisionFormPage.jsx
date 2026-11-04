@@ -1,3 +1,4 @@
+import { FormSkeleton } from '../../../components/common/Skeletons'
 // DivisionFormPage.jsx — Premium Division Create/Edit Form
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect } from 'react'
@@ -54,7 +55,7 @@ export default function DivisionFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+  if (loading) return <FormSkeleton />
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 160 }}>

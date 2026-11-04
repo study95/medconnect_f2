@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect } from 'react'
 import { getAdminTrialDays, grantTrialDays, deleteTrialDay } from '../../../api/subscriptionApi'
 import { getDoctors } from '../../../api/adminApi'
@@ -86,7 +87,7 @@ export default function AdminTrialDaysPage() {
 
       <div className="admin-card">
         {loading ? (
-          <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+          <div style={{ padding: "16px" }}><TableSkeleton rows={4} columns={5} /></div>
         ) : trials.length === 0 ? (
           <div className="admin-empty">
             <div className="admin-empty-icon">🎁</div>

@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect } from 'react'
 import { getAdminPromoCodes, createAdminPromoCode, updateAdminPromoCode, deleteAdminPromoCode } from '../../../api/subscriptionApi'
 import { useDialog } from '../../../hooks/useDialog'
@@ -104,7 +105,7 @@ export default function AdminPromoCodesPage() {
 
       <div className="admin-card">
         {loading ? (
-          <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+          <div style={{ padding: "16px" }}><TableSkeleton rows={5} columns={6} /></div>
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">

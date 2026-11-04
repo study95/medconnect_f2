@@ -488,3 +488,111 @@ export function FormSkeleton() {
     </div>
   )
 }
+
+// ─── Dashboard Skeleton (Stripe / Google Cloud Executive Console) ───
+export function DashboardSkeleton() {
+  return (
+    <div style={{ animation: 'fadeIn 0.2s ease-out', maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <ShimmerStyle />
+      {/* Top Header Placeholder */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="skeleton-box" style={{ height: 24, width: 260, borderRadius: 6 }} />
+          <div className="skeleton-box" style={{ height: 14, width: 340, borderRadius: 4 }} />
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="skeleton-box" style={{ height: 36, width: 90, borderRadius: 8 }} />
+          <div className="skeleton-box" style={{ height: 36, width: 110, borderRadius: 8 }} />
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
+        {[1, 2, 3, 4].map(i => (
+          <div
+            key={i}
+            style={{
+              background: 'var(--admin-card-bg, #fff)',
+              border: '1px solid var(--admin-border, #e2e8f0)',
+              borderRadius: 14,
+              padding: '18px 20px',
+              height: 160,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="skeleton-box" style={{ height: 14, width: '55%', borderRadius: 4 }} />
+              <div className="skeleton-box" style={{ height: 32, width: 32, borderRadius: 8 }} />
+            </div>
+            <div>
+              <div className="skeleton-box" style={{ height: 30, width: '45%', borderRadius: 6, marginBottom: 8 }} />
+              <div className="skeleton-box" style={{ height: 12, width: '70%', borderRadius: 4 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts & Operational Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+        {/* Chart Box */}
+        <div style={{
+          background: 'var(--admin-card-bg, #fff)',
+          border: '1px solid var(--admin-border, #e2e8f0)',
+          borderRadius: 14,
+          padding: 24,
+          minHeight: 320
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div className="skeleton-box" style={{ height: 18, width: 160 }} />
+            <div className="skeleton-box" style={{ height: 28, width: 120, borderRadius: 6 }} />
+          </div>
+          <div className="skeleton-box" style={{ height: 220, width: '100%', borderRadius: 8 }} />
+        </div>
+
+        {/* Action / Quick List Box */}
+        <div style={{
+          background: 'var(--admin-card-bg, #fff)',
+          border: '1px solid var(--admin-border, #e2e8f0)',
+          borderRadius: 14,
+          padding: 24,
+          minHeight: 320
+        }}>
+          <div className="skeleton-box" style={{ height: 18, width: 140, marginBottom: 20 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[1, 2, 3, 4].map(k => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="skeleton-box" style={{ height: 36, width: 36, borderRadius: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="skeleton-box" style={{ height: 14, width: '85%' }} />
+                  <div className="skeleton-box" style={{ height: 11, width: '50%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Admin Content Skeleton (For Seamless Inner Route Transitions) ───
+export function AdminContentSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.15s ease-out' }}>
+      <ShimmerStyle />
+      {/* Header bar placeholder */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="skeleton-box" style={{ height: 22, width: 220, borderRadius: 6 }} />
+          <div className="skeleton-box" style={{ height: 13, width: 300, borderRadius: 4 }} />
+        </div>
+        <div className="skeleton-box" style={{ height: 38, width: 120, borderRadius: 8 }} />
+      </div>
+
+      {/* Table Skeleton Placeholder */}
+      <TableSkeleton rows={7} columns={5} />
+    </div>
+  )
+}

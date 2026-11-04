@@ -7,6 +7,7 @@ import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getHospital } from '../../../api/adminApi'
 import { useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
+import { FormSkeleton } from '../../../components/common/Skeletons'
 
 const HOSPITAL_TYPES = [
   { id: 'Private Hospital', name: 'Private Hospital (বেসরকারি হাসপাতাল)' },
@@ -501,7 +502,11 @@ export default function HospitalFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Data...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 1000, margin: '20px auto', padding: '0 16px' }}>
+      <FormSkeleton />
+    </div>
+  )
 
   return (
     <div className="admin-container" style={{ maxWidth: 1000, margin: '0 auto' }}>

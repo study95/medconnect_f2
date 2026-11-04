@@ -1,3 +1,4 @@
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -167,7 +168,7 @@ export default function UpazilaFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Initializing Form...</div>
+  if (loading) return <FormSkeleton />
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 160 }}>

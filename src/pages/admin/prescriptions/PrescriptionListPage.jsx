@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
 import { useSubscription } from '../../../context/SubscriptionContext'
 import UpgradePromptModal from '../../../components/admin/UpgradePromptModal'
-import { getPrescriptions, deletePrescription, getDoctors } from '../../../api/adminApi'
+import { getPrescriptions, deletePrescription, getDoctorLookup } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -164,12 +164,12 @@ export default function PrescriptionListPage() {
     staleTime: 45 * 1000,
   })
 
-  // Doctor lookup for Admin filter
+  // Lightweight Doctor lookup for Admin filter
   const { data: doctorsData = [] } = useQuery({
-    queryKey: ['admin', 'doctors', 'lookup'],
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500 })
-      return res.data?.data?.data || res.data?.data || res.data || []
+      const res = await getDoctorLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
     enabled: !!isAdmin,
     staleTime: 5 * 60 * 1000,

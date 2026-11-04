@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { getAuditLogs, getAuditStats, exportAuditLogs, previewAuditPrune, clearOldAuditLogs, getSecurityAlerts } from '../../../api/auditApi'
 import toast from 'react-hot-toast'
+import { TableSkeleton } from '../../../components/common/Skeletons'
 
 // ── Configuration & Metadata Mappings ──────────────────────────────────────────
 
@@ -2766,9 +2767,8 @@ export default function AuditLogPage() {
 
         {/* Table Body Content */}
         {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--admin-text-muted, #64748b)' }}>
-            <RefreshCw size={24} className="spin-icon" style={{ marginBottom: 12, display: 'block', margin: '0 auto 12px', color: '#4f46e5' }} />
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Loading enterprise audit trail...</span>
+          <div style={{ padding: '16px' }}>
+            <TableSkeleton rows={8} columns={4} />
           </div>
         ) : logs.length === 0 ? (
           <div style={{ padding: '64px 20px', textAlign: 'center' }}>

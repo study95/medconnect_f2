@@ -7,6 +7,7 @@ import {
   Stethoscope, MapPin, Layers, ShieldCheck, ChevronDown
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { toast } from 'react-hot-toast'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
@@ -609,9 +610,8 @@ export default function ChamberFormPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
-        <div className="admin-spinner" style={{ margin: '0 auto 16px', borderColor: '#00A88C transparent #00A88C transparent' }} />
-        <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Loading Chamber Schedule...</h4>
+      <div style={{ maxWidth: 940, margin: '20px auto', padding: '0 16px' }}>
+        <FormSkeleton />
       </div>
     )
   }

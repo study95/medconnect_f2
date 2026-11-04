@@ -521,7 +521,7 @@ function App() {
             <Route path="hospital-profile" element={<HospitalListPage />} />
             <Route path="hospitals" element={<Navigate to="/hospital/my-hospital" replace />} />
             <Route path="my-hospital/edit/:id" element={<HospitalFormPage />} />
-            <Route path="hospitals/create" element={<HospitalFormPage />} />
+            <Route path="hospitals/create" element={<Navigate to="/hospital/my-hospital" replace />} />
             <Route path="hospitals/edit/:id" element={<HospitalFormPage />} />
             <Route path="hospitals/view/:id" element={<HospitalDetailPageAdmin />} />
 
@@ -568,7 +568,7 @@ function App() {
             <Route path="commission-report" element={<HospitalCommissionReportPage />} />
             <Route path="settlements" element={<HospitalCommissionReportPage />} />
             <Route path="hospital-commission-report" element={<HospitalCommissionReportPage />} />
-            <Route path="doctor-commission-report" element={<DoctorCommissionReportPage />} />
+            <Route path="doctor-commission-report" element={<Navigate to="/hospital/commission-report" replace />} />
 
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />

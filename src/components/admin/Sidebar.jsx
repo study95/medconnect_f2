@@ -5,7 +5,9 @@ import { getMediaUrl } from '../../utils/mediaUtils'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
-import { getPrescriptions, getMonitoringSsoTicket } from '../../api/adminApi'
+import { getPrescriptions, getMonitoringSsoTicket, getDashboardStats } from '../../api/adminApi'
+import { queryClient } from '../../lib/queryClient'
+import { queryKeys } from '../../lib/queryKeys'
 
 import {
   Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
@@ -54,8 +56,24 @@ function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed,
   )
 }
 
+
+// ─── Instant Prefetch NavLink (Hover-ahead caching) ───────────────────────────
+function PrefetchNavLink({ to, onMouseEnter, onHoverPrefetch, ...props }) {
+  return (
+    <NavLink
+      to={to}
+      onMouseEnter={(e) => {
+        if (onHoverPrefetch && to) onHoverPrefetch(to)
+        if (onMouseEnter) onMouseEnter(e)
+      }}
+      {...props}
+    />
+  )
+}
+
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const { user, isAdmin, isDoctor, isManager, getRoles, hasPermission, logout } = useAuth()
+  const portalBase = isDoctor ? '/doctor' : (isManager ? '/hospital' : '/admin')
   const { theme, toggleTheme } = useTheme()
 
   const handleToggleTheme = () => {
@@ -69,6 +87,31 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   }
 
   const { unreadCount } = useSubscription()
+
+  const handleHoverPrefetch = useCallback((targetPath) => {
+    try {
+      if (!targetPath) return
+      const cleanPath = String(targetPath).toLowerCase()
+      if (cleanPath.includes('dashboard') || targetPath === portalBase) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.dashboard.stats(), queryFn: getDashboardStats, staleTime: 60000 })
+      } else if (cleanPath.includes('appointments')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.appointments.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('doctors')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.doctors.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('hospitals')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.hospitals.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('chambers')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.chambers.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('patients')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.patients.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('prescriptions')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.prescriptions.adminLists(), staleTime: 60000 })
+      } else if (cleanPath.includes('specialties')) {
+        queryClient.prefetchQuery({ queryKey: queryKeys.specialties.adminLists(), staleTime: 60000 })
+      }
+    } catch {}
+  }, [portalBase])
+
   const location = useLocation()
 
   const [openingPulse, setOpeningPulse] = useState(false)
@@ -106,7 +149,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     }
   }
 
-  const portalBase = isDoctor ? '/doctor' : (isManager ? '/hospital' : '/admin')
   const pLink = (subpath) => `${portalBase}${subpath.startsWith('/') ? subpath : '/' + subpath}`
 
   const isActive = (path) => {
@@ -284,7 +326,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         {/* ===== ZONE 2: Navigation (Scrollable) ===== */}
         <nav className="sidebar-nav">
           {/* Dashboard — visible to all staff */}
-          <NavLink
+          <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
             to={portalBase}
             end
             className={`sidebar-nav-item ${(location.pathname === portalBase || location.pathname === `${portalBase}/` || location.pathname === `${portalBase}/dashboard`) ? 'active' : ''}`}
@@ -293,13 +335,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           >
             <span className="nav-icon"><LayoutDashboard size={18} /></span>
             <span className="nav-text">Dashboard</span>
-          </NavLink>
+          </PrefetchNavLink>
 
           {/* ── GEOGRAPHY ── Admin only */}
           {(isAdmin || hasPermission('division.view') || hasPermission('district.view') || hasPermission('specialty.view')) && (
             <SidebarSection id="geography" label="Geography" routes={['/admin/divisions', '/admin/districts', '/admin/upazilas', '/admin/unions']} {...sectionProps}>
               {(isAdmin || hasPermission('division.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/divisions"
                   className={`sidebar-nav-item ${isActive('/admin/divisions') ? 'active' : ''}`}
                   onClick={onClose}
@@ -307,11 +349,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Map size={18} /></span>
                   <span className="nav-text">Divisions</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {(isAdmin || hasPermission('district.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/districts"
                   className={`sidebar-nav-item ${isActive('/admin/districts') ? 'active' : ''}`}
                   onClick={onClose}
@@ -319,11 +361,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><MapPin size={18} /></span>
                   <span className="nav-text">Districts</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {(isAdmin || hasPermission('upazila.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/upazilas"
                   className={`sidebar-nav-item ${isActive('/admin/upazilas') ? 'active' : ''}`}
                   onClick={onClose}
@@ -331,11 +373,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Building size={18} /></span>
                   <span className="nav-text">Upazilas</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {(isAdmin || hasPermission('union.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/unions"
                   className={`sidebar-nav-item ${isActive('/admin/unions') ? 'active' : ''}`}
                   onClick={onClose}
@@ -343,7 +385,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Building2 size={18} /></span>
                   <span className="nav-text">Unions</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
             </SidebarSection>
           )}
@@ -352,7 +394,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {(isAdmin || hasPermission('specialty.view') || hasPermission('medicine.view')) && (
             <SidebarSection id="configuration" label="Configuration" routes={['/admin/specialties', '/admin/medicines', '/doctor/medicines', '/hospital/medicines']} {...sectionProps}>
               {(isAdmin || hasPermission('specialty.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/specialties"
                   className={`sidebar-nav-item ${isActive('/admin/specialties') ? 'active' : ''}`}
                   onClick={onClose}
@@ -360,11 +402,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Sparkles size={18} /></span>
                   <span className="nav-text">Specialties</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {(isAdmin || hasPermission('medicine.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/medicines')}
                   className={`sidebar-nav-item ${isActive(pLink('/medicines')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -372,7 +414,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Pill size={18} /></span>
                   <span className="nav-text">Medicines</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
             </SidebarSection>
           )}
@@ -391,7 +433,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             >
               {/* Doctors */}
               {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')}
                   className={`sidebar-nav-item ${isActive(isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -399,12 +441,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Stethoscope size={18} /></span>
                   <span className="nav-text">{isDoctor ? 'My Profile' : 'Doctors'}</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Hospitals */}
               {(isAdmin || isManager || hasPermission('hospital.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={isManager ? pLink('/my-hospital') : '/admin/hospitals'}
                   className={`sidebar-nav-item ${isActive(isManager ? pLink('/my-hospital') : '/admin/hospitals') ? 'active' : ''}`}
                   onClick={onClose}
@@ -412,12 +454,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Building2 size={18} /></span>
                   <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Chambers */}
               {(isAdmin || isManager || isDoctor || hasPermission('doctor_chamber.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/chambers')}
                   className={`sidebar-nav-item ${isActive(pLink('/chambers')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -425,12 +467,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><BriefcaseMedical size={18} /></span>
                   <span className="nav-text">{isDoctor ? 'My Chambers' : 'Chambers'}</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Doctor Leaves */}
               {isDoctor && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/my-leaves')}
                   className={`sidebar-nav-item ${isActive(pLink('/my-leaves')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -438,11 +480,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><CalendarOff size={18} /></span>
                   <span className="nav-text">My Leaves</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {(isAdmin || isManager || hasPermission('doctor_leave.view')) && !isDoctor && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/doctor-leaves"
                   className={`sidebar-nav-item ${isActive('/admin/doctor-leaves') ? 'active' : ''}`}
                   onClick={onClose}
@@ -450,13 +492,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><CalendarOff size={18} /></span>
                   <span className="nav-text">Doctor Leaves</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Manager-only hospital extras */}
               {isManager && (
                 <>
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to={pLink('/hospital-subscription')}
                     className={`sidebar-nav-item ${isActive(pLink('/hospital-subscription')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -464,9 +506,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Zap size={18} /></span>
                     <span className="nav-text">Hospital Plan & Seats</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to={pLink('/subscription/history')}
                     className={`sidebar-nav-item ${isActive(pLink('/subscription/history')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -474,9 +516,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><History size={18} /></span>
                     <span className="nav-text">Subscription History</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to={pLink('/hospital-reviews')}
                     className={`sidebar-nav-item ${isActive(pLink('/hospital-reviews')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -484,7 +526,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><MessageSquare size={18} /></span>
                     <span className="nav-text">Hospital Reviews</span>
-                  </NavLink>
+                  </PrefetchNavLink>
                 </>
               )}
             </SidebarSection>
@@ -504,7 +546,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             >
               {/* Patients */}
               {(isAdmin || isManager || isDoctor || hasPermission('patient.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/patients')}
                   className={`sidebar-nav-item ${isActive(pLink('/patients')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -512,13 +554,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Users size={18} /></span>
                   <span className="nav-text">{isDoctor ? 'My Patients' : 'Patients'}</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Appointments + Serial Display */}
               {(isAdmin || isManager || isDoctor || hasPermission('appointment.view')) && (
                 <>
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to={pLink('/appointments')}
                     className={`sidebar-nav-item ${isActive(pLink('/appointments')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -526,9 +568,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><CalendarCheck size={18} /></span>
                     <span className="nav-text">Appointments</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to={pLink('/serial-display')}
                     className={`sidebar-nav-item ${isActive(pLink('/serial-display')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -536,7 +578,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Tv size={18} /></span>
                     <span className="nav-text">Serial Display</span>
-                  </NavLink>
+                  </PrefetchNavLink>
                 </>
               )}
 
@@ -598,7 +640,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
               {/* Doctor-only extras */}
               {isDoctor && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/notes')}
                   className={`sidebar-nav-item ${isActive(pLink('/notes')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -606,11 +648,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><ClipboardPlus size={18} /></span>
                   <span className="nav-text">My Notes</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {isDoctor && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/doctor-reviews')}
                   className={`sidebar-nav-item ${isActive(pLink('/doctor-reviews')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -618,7 +660,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><MessageSquare size={18} /></span>
                   <span className="nav-text">Patient Reviews</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
             </SidebarSection>
           )}
@@ -628,7 +670,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <SidebarSection id="finance" label="Finance" routes={['/admin/payments', '/admin/commission', '/admin/reports', '/admin/billing', '/doctor/payments', '/hospital/payments']} {...sectionProps}>
               {/* Payments */}
               {(isAdmin || isManager || isDoctor || hasPermission('payment.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to={pLink('/payments')}
                   className={`sidebar-nav-item ${isActive(pLink('/payments')) ? 'active' : ''}`}
                   onClick={onClose}
@@ -636,14 +678,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><CreditCard size={18} /></span>
                   <span className="nav-text">Patient Payments</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Commission & Reports — Admin, Manager, Doctor */}
               {(isAdmin || isManager || isDoctor || hasPermission('commission.view')) && (
                 <>
                   {isAdmin && (
-                    <NavLink
+                    <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                       to="/admin/commission"
                       className={`sidebar-nav-item ${isActive('/admin/commission') ? 'active' : ''}`}
                       onClick={onClose}
@@ -651,11 +693,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     >
                       <span className="nav-icon"><Settings size={18} /></span>
                       <span className="nav-text">Commission Controls</span>
-                    </NavLink>
+                    </PrefetchNavLink>
                   )}
 
                   {isAdmin && (
-                    <NavLink
+                    <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                       to="/admin/reports/commission"
                       className={`sidebar-nav-item ${isActive('/admin/reports/commission') ? 'active' : ''}`}
                       onClick={onClose}
@@ -663,11 +705,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     >
                       <span className="nav-icon"><FileText size={18} /></span>
                       <span className="nav-text">Commission Report</span>
-                    </NavLink>
+                    </PrefetchNavLink>
                   )}
 
                   {isManager && (
-                    <NavLink
+                    <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                       to={pLink('/commission-report')}
                       className={`sidebar-nav-item ${isActive(pLink('/commission-report')) ? 'active' : ''}`}
                       onClick={onClose}
@@ -675,11 +717,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     >
                       <span className="nav-icon"><FileText size={18} /></span>
                       <span className="nav-text">Commission & Settlement</span>
-                    </NavLink>
+                    </PrefetchNavLink>
                   )}
 
                   {isDoctor && (
-                    <NavLink
+                    <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                       to={pLink('/commission-report')}
                       className={`sidebar-nav-item ${isActive(pLink('/commission-report')) ? 'active' : ''}`}
                       onClick={onClose}
@@ -687,7 +729,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     >
                       <span className="nav-icon"><FileText size={18} /></span>
                       <span className="nav-text">Earnings & Commission</span>
-                    </NavLink>
+                    </PrefetchNavLink>
                   )}
                 </>
               )}
@@ -695,7 +737,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               {/* Enterprise Billing & Subscriber Management — Admin only */}
               {isAdmin && (
                 <>
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to="/admin/billing/subscribers"
                     className={`sidebar-nav-item ${isActive('/admin/billing/subscribers') ? 'active' : ''}`}
                     onClick={onClose}
@@ -703,9 +745,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Users size={18} /></span>
                     <span className="nav-text">Subscriber Management</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to="/admin/billing/dashboard"
                     className={`sidebar-nav-item ${isActive('/admin/billing/dashboard') || (isActive('/admin/billing') && !isActive('/admin/billing/subscribers')) ? 'active' : ''}`}
                     onClick={onClose}
@@ -713,7 +755,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Layers size={18} /></span>
                     <span className="nav-text">Enterprise Billing Suite</span>
-                  </NavLink>
+                  </PrefetchNavLink>
                 </>
               )}
             </SidebarSection>
@@ -722,7 +764,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {/* ── PROMOTION ── Admin + Manager */}
           {(isAdmin || isManager || hasPermission('commission.view')) && (
             <SidebarSection id="promotion" label="Promotion" routes={['/admin/highlights']} {...sectionProps}>
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to="/admin/highlights"
                 className={`sidebar-nav-item ${isActive('/admin/highlights') ? 'active' : ''}`}
                 onClick={onClose}
@@ -730,14 +772,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><Sparkles size={18} /></span>
                 <span className="nav-text">Highlights</span>
-              </NavLink>
+              </PrefetchNavLink>
             </SidebarSection>
           )}
 
           {/* ── MODERATION ── Admin only */}
           {isAdmin && (
             <SidebarSection id="moderation" label="Moderation" routes={['/admin/reviews']} {...sectionProps}>
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to="/admin/reviews/moderation"
                 className={`sidebar-nav-item ${isActive('/admin/reviews/moderation') ? 'active' : ''}`}
                 onClick={onClose}
@@ -745,9 +787,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><MessageSquare size={18} /></span>
                 <span className="nav-text">Review Moderation</span>
-              </NavLink>
+              </PrefetchNavLink>
 
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to="/admin/reviews/reports"
                 className={`sidebar-nav-item ${isActive('/admin/reviews/reports') ? 'active' : ''}`}
                 onClick={onClose}
@@ -755,7 +797,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><Shield size={18} /></span>
                 <span className="nav-text">Dispute Reports</span>
-              </NavLink>
+              </PrefetchNavLink>
             </SidebarSection>
           )}
 
@@ -764,7 +806,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/audit-logs']} {...sectionProps}>
               {/* Users — Admin only */}
               {(isAdmin || hasPermission('user.view')) && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/users"
                   className={`sidebar-nav-item ${isActive('/admin/users') ? 'active' : ''}`}
                   onClick={onClose}
@@ -772,13 +814,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><UserPlus size={18} /></span>
                   <span className="nav-text">Users</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Content CMS, Support Ticket & Contact Messages */}
               {(isAdmin || hasPermission('content.update')) && (
                 <>
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to="/admin/content"
                     className={`sidebar-nav-item ${isActive('/admin/content') ? 'active' : ''}`}
                     onClick={onClose}
@@ -786,9 +828,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><FileEdit size={18} /></span>
                     <span className="nav-text">Content CMS</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to="/admin/services"
                     className={`sidebar-nav-item ${isActive('/admin/services') ? 'active' : ''}`}
                     onClick={onClose}
@@ -796,9 +838,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Ticket size={18} /></span>
                     <span className="nav-text">Support Ticket</span>
-                  </NavLink>
+                  </PrefetchNavLink>
 
-                  <NavLink
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                     to="/admin/contact-messages"
                     className={`sidebar-nav-item ${isActive('/admin/contact-messages') ? 'active' : ''}`}
                     onClick={onClose}
@@ -806,13 +848,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Mail size={18} /></span>
                     <span className="nav-text">Contact Messages</span>
-                  </NavLink>
+                  </PrefetchNavLink>
                 </>
               )}
 
               {/* SMS Settings — Admin only */}
               {isAdmin && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/sms-settings"
                   className={`sidebar-nav-item ${isActive('/admin/sms-settings') ? 'active' : ''}`}
                   onClick={onClose}
@@ -820,12 +862,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><MessageSquare size={18} /></span>
                   <span className="nav-text">SMS & OTP Settings</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* Audit Log — Admin only */}
               {isAdmin && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/audit-logs"
                   className={`sidebar-nav-item ${isActive('/admin/audit-logs') ? 'active' : ''}`}
                   onClick={onClose}
@@ -833,12 +875,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Shield size={18} /></span>
                   <span className="nav-text">Audit Log</span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* System Health & Observability — Admin only */}
               {isAdmin && (
-                <NavLink
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/system-health"
                   className={`sidebar-nav-item ${isActive('/admin/system-health') ? 'active' : ''}`}
                   onClick={onClose}
@@ -849,7 +891,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     <span>System Health</span>
                     <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>100%</span>
                   </span>
-                </NavLink>
+                </PrefetchNavLink>
               )}
 
               {/* System Pulse Live Monitoring — Admin only */}
@@ -893,7 +935,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {/* ── COMMUNICATION ── Admin only */}
           {isAdmin && (
             <SidebarSection id="communication" label="Communication" routes={['/admin/messages']} {...sectionProps}>
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to="/admin/messages"
                 className={`sidebar-nav-item ${isActive('/admin/messages') ? 'active' : ''}`}
                 onClick={onClose}
@@ -901,14 +943,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><Megaphone size={18} /></span>
                 <span className="nav-text">Notices & Broadcasts</span>
-              </NavLink>
+              </PrefetchNavLink>
             </SidebarSection>
           )}
 
           {/* ── SUBSCRIPTION ── Doctor only */}
           {isDoctor && (
             <SidebarSection id="subscription" label="Subscription" routes={['/doctor/subscription', '/doctor/subscription/history']} {...sectionProps}>
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to={pLink('/subscription')}
                 end
                 className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
@@ -917,9 +959,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><Zap size={18} /></span>
                 <span className="nav-text">Plans</span>
-              </NavLink>
+              </PrefetchNavLink>
 
-              <NavLink
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                 to={pLink('/subscription/history')}
                 end
                 className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
@@ -928,7 +970,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><History size={18} /></span>
                 <span className="nav-text">My Subscriptions</span>
-              </NavLink>
+              </PrefetchNavLink>
             </SidebarSection>
           )}
 

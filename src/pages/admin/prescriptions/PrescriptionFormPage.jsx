@@ -43,6 +43,9 @@ import { getErrorMessage } from '../../../utils/errorHelper'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
+import { queryClient } from '../../../lib/queryClient'
+import { queryKeys } from '../../../lib/queryKeys'
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import '../../../styles/prescription.css'
 import {
   STRENGTH_OPTIONS,
@@ -3300,6 +3303,9 @@ export default function PrescriptionFormPage() {
           }
         } catch (e) {}
         window.dispatchEvent(new CustomEvent('rx-draft-count-updated'))
+        queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.all })
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
         if (newId) {
           navigate(`/admin/prescriptions/view/${newId}?return_to=${encodeURIComponent(returnTo)}&template=${selectedTemplate}`)
         } else {
@@ -3659,8 +3665,8 @@ export default function PrescriptionFormPage() {
 
   if (loading) {
     return (
-      <div className="admin-loading">
-        <div className="admin-spinner" /> Loading...
+      <div className="admin-container" style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+        <FormSkeleton />
       </div>
     )
   }

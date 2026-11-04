@@ -17,6 +17,7 @@ import { invalidateDoctors } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
 import {
   getDoctors,
+  getMyDoctorProfile,
   getDoctor,
   createDoctor,
   updateDoctor,
@@ -28,27 +29,65 @@ import {
   getUnions,
   getSpecialties,
   getChambers,
-  getHospitals,
+  getHospitalLookup,
 } from '../../api/adminApi'
 import { getErrorMessage } from '../../utils/errorHelper'
 
 /**
- * Hook to fetch admin doctor listings with server filter caching
+ * Dedicated hook for authenticated Doctor portal to load ONLY own profile (/doctor/me)
  */
-export function useAdminDoctors(filters = {}) {
+export function useMyDoctorProfile({ enabled = true } = {}) {
   const query = useQuery({
-    queryKey: queryKeys.doctors.adminList(filters),
+    queryKey: queryKeys.doctors.me(),
     queryFn: async () => {
-      const params = { per_page: 5000, admin_view: 1, ...filters }
-      const res = await getDoctors(params)
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
-      return Array.isArray(raw) ? raw : []
+      const res = await getMyDoctorProfile()
+      return res.data?.data ?? null
     },
-    placeholderData: keepPreviousData,
+    enabled,
   })
 
   return {
-    doctors: query.data || [],
+    doctor: query.data ?? null,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error ? getErrorMessage(query.error, 'Failed to load doctor profile.') : null,
+    refetch: query.refetch,
+  }
+}
+
+/**
+ * Hook to fetch admin doctor listings with true server-side pagination & filter caching
+ */
+export function useAdminDoctors(filters = {}, { enabled = true } = {}) {
+  const query = useQuery({
+    queryKey: queryKeys.doctors.adminList(filters),
+    queryFn: async () => {
+      const params = { per_page: 20, admin_view: 1, ...filters }
+      const res = await getDoctors(params)
+      const raw = res.data?.data?.data || res.data?.data || res.data || []
+      const items = Array.isArray(raw) ? raw : []
+      const meta = res.data?.meta || res.data?.data?.meta || {
+        total: res.data?.total ?? res.data?.data?.total ?? items.length,
+        current_page: res.data?.current_page ?? res.data?.data?.current_page ?? (params.page || 1),
+        last_page: res.data?.last_page ?? res.data?.data?.last_page ?? 1,
+        per_page: res.data?.per_page ?? res.data?.data?.per_page ?? params.per_page,
+      }
+      return { items, meta }
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+  })
+
+  const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])
+  const meta = query.data?.meta || null
+
+  return {
+    doctors: items,
+    total: meta?.total ?? items.length,
+    currentPage: meta?.current_page ?? 1,
+    lastPage: meta?.last_page ?? 1,
+    meta,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
@@ -91,7 +130,13 @@ export function useAdminDoctorDetail(id) {
 /**
  * Hook for cached doctor filter & form lookups (divisions, districts, upazilas, unions, specialties)
  */
-export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}) {
+export function useAdminDoctorLookups({
+  divisionId,
+  districtId,
+  upazilaId,
+  enabled = true,
+  includeHospitals = false,
+} = {}) {
   // Master Divisions
   const divisionsQuery = useLookupQuery({
     queryKey: queryKeys.locations.divisions(),
@@ -99,15 +144,17 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
       const res = await getDivisions()
       return res.data?.data || res.data || []
     },
+    enabled,
   })
 
   // Master Specialties
   const specialtiesQuery = useLookupQuery({
     queryKey: queryKeys.specialties.lists(),
     queryFn: async () => {
-      const res = await getSpecialties({ per_page: 5000 })
+      const res = await getSpecialties({ per_page: 200 })
       return res.data?.data?.data || res.data?.data || res.data || []
     },
+    enabled,
   })
 
   // Cascading Districts
@@ -118,7 +165,7 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
       const res = await getDistricts({ division_id: divisionId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(divisionId),
+    enabled: enabled && Boolean(divisionId),
   })
 
   // Cascading Upazilas
@@ -129,7 +176,7 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
       const res = await getUpazilas({ district_id: districtId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(districtId),
+    enabled: enabled && Boolean(districtId),
   })
 
   // Cascading Unions
@@ -140,16 +187,17 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
       const res = await getUnions({ upazila_id: upazilaId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(upazilaId),
+    enabled: enabled && Boolean(upazilaId),
   })
 
-  // Master Hospitals
+  // Lightweight Hospitals Lookup (opt-in — only fetched on DoctorFormPage)
   const hospitalsQuery = useLookupQuery({
-    queryKey: queryKeys.hospitals.lists(),
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 5000, admin_view: 1 })
-      return res.data?.data?.data || res.data?.data || res.data || []
+      const res = await getHospitalLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
+    enabled: enabled && Boolean(includeHospitals),
   })
 
   return {
@@ -159,7 +207,10 @@ export function useAdminDoctorLookups({ divisionId, districtId, upazilaId } = {}
     upazilas: upazilasQuery.data || [],
     unions: unionsQuery.data || [],
     hospitals: hospitalsQuery.data || [],
-    loadingLookups: divisionsQuery.isLoading || specialtiesQuery.isLoading || hospitalsQuery.isLoading,
+    loadingLookups:
+      divisionsQuery.isLoading ||
+      specialtiesQuery.isLoading ||
+      (includeHospitals && hospitalsQuery.isLoading),
   }
 }
 
@@ -189,8 +240,16 @@ export function useAdminDoctorMutations() {
 
       // Optimistically update all matching admin lists in cache
       queryClient.setQueriesData({ queryKey: queryKeys.doctors.adminLists() }, (old) => {
-        if (!Array.isArray(old)) return old
-        return old.map((doc) => (doc.id === id ? { ...doc, is_active } : doc))
+        if (Array.isArray(old)) {
+          return old.map((doc) => (doc.id === id ? { ...doc, is_active } : doc))
+        }
+        if (old && Array.isArray(old.items)) {
+          return {
+            ...old,
+            items: old.items.map((doc) => (doc.id === id ? { ...doc, is_active } : doc)),
+          }
+        }
+        return old
       })
 
       return { previousQueries }

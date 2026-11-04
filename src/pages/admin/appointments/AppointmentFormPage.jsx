@@ -1,3 +1,4 @@
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Link, useSearchParams, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -132,7 +133,11 @@ export default function AppointmentFormPage() {
     return null
   }
 
-  if (loading) return <div className="admin-loading" style={{ padding: 100 }}><div className="admin-spinner"></div> Loading...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 1000, margin: '20px auto', padding: '0 16px' }}>
+      <FormSkeleton />
+    </div>
+  )
 
   return (
     <div className="admin-container" style={{ maxWidth: 1000 }}>

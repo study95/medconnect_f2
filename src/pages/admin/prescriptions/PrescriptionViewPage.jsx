@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, Printer, Download, ArrowLeft, Edit2 } from 'lucide-react'
 import { getPrescription } from '../../../api/adminApi'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 import '../../../styles/prescription.css'
 
 const DIGITAL_PRESCRIPTION_TEMPLATES = [
@@ -375,7 +376,13 @@ export default function PrescriptionViewPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 960, margin: '20px auto', padding: '0 16px' }}>
+        <DetailSkeleton />
+      </div>
+    )
+  }
   if (!prescription) return <div className="admin-empty">Prescription not found</div>
 
   const rx = prescription

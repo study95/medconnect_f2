@@ -2,13 +2,47 @@
 // Every component can call useAuth() to check user role
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginApi, registerApi, patientLoginApi, doctorLoginApi, patientRegisterApi, doctorRegisterApi, hospitalLoginApi, hospitalRegisterApi } from '../api/authApi'
+import { loginApi, logoutApi, registerApi, patientLoginApi, doctorLoginApi, patientRegisterApi, doctorRegisterApi, hospitalLoginApi, hospitalRegisterApi } from '../api/authApi'
 import axiosInstance from '../api/axiosInstance'
 import { getErrorMessage } from '../utils/errorHelper'
 import { toast } from 'react-hot-toast'
-import { subscribeToUserChannel, subscribeToPublicDirectory } from '../utils/echoService'
+import { subscribeToUserChannel, subscribeToPublicDirectory, disconnectEcho } from '../utils/echoService'
 import { queryClient } from '../lib/queryClient'
 import { invalidateDoctors, invalidateHospitals } from '../lib/cacheInvalidation'
+
+/**
+ * Purge all client-side session, draft, WebSocket, and TanStack Query caches.
+ * Prevents cross-tenant data leakage when switching between Admin, Doctor,
+ * Hospital, and Patient accounts in the same browser.
+ */
+function purgeClientSessionState() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('userType')
+
+  try {
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && (key.startsWith('dr_rx_draft_') || key.startsWith('dr_notes_'))) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
+  } catch {}
+
+  try {
+    sessionStorage.clear()
+  } catch {}
+
+  try {
+    queryClient.clear()
+  } catch {}
+
+  try {
+    disconnectEcho()
+  } catch {}
+}
 
 // Singleton pattern for AuthContext to prevent duplicate instances during HMR or module resolution mismatches
 if (!window.__AuthContext) {
@@ -37,9 +71,7 @@ export function AuthProvider({ children }) {
           fetchCurrentUser()
         } catch (e) {
           console.error("Auth init error:", e)
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          localStorage.removeItem('userType')
+          purgeClientSessionState()
           setLoading(false)
         }
       } else {
@@ -50,6 +82,7 @@ export function AuthProvider({ children }) {
     init()
 
     const handleAuthExpired = () => {
+      purgeClientSessionState()
       setUser(null)
       setUserType(null)
     }
@@ -62,7 +95,6 @@ export function AuthProvider({ children }) {
       const response = await axiosInstance.get('/me')
       if (response.data?.success) {
         const userData = response.data.user
-        setUser(userData)
         const rolesList = Array.isArray(userData.roles) 
           ? userData.roles.map(r => typeof r === 'object' ? (r.name || '') : String(r)).map(s => s.toLowerCase())
           : (userData.role ? [String(userData.role).toLowerCase()] : ['user'])
@@ -70,26 +102,61 @@ export function AuthProvider({ children }) {
           : rolesList.includes('doctor') ? 'doctor' 
           : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
           : 'user'
+
+        setUser((prevUser) => {
+          if (prevUser && prevUser.id === userData.id) {
+            const prevDocActive = prevUser.doctor?.is_active
+            const newDocActive = userData.doctor?.is_active
+            if (prevDocActive !== undefined && newDocActive !== undefined && prevDocActive !== newDocActive) {
+              invalidateDoctors(queryClient, { doctorId: userData?.doctor?.id, includeChambers: true })
+              queryClient.invalidateQueries({ queryKey: ['doctor', 'my-profile'] })
+              queryClient.invalidateQueries({ queryKey: ['doctor', 'dashboard'] })
+              window.dispatchEvent(new CustomEvent('profile-status-updated', { detail: { is_active: newDocActive, doctor_id: userData?.doctor?.id, role: resolvedType } }))
+            }
+          }
+          return userData
+        })
+
         setUserType(resolvedType)
         localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem('userType', resolvedType)
       }
     } catch (err) {
-      if (err.response?.status === 401) {
-        console.warn('Unauthorized. Clearing session.')
+      if (err.response?.status === 401 || (err.response?.status === 403 && err.response?.data?.code === 'ACCOUNT_BLOCKED')) {
+        console.warn('Session unauthorized or blocked. Clearing session.')
         logout()
         return
       }
       if (err.response?.status === 500) {
         console.warn('Backend crashed reading token on /me. Forcing logout to self-heal.')
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('userType')
+        purgeClientSessionState()
         setUser(null)
         setUserType(null)
       }
     }
   }
+
+  // Automatic Background Fallback & Tab Focus Sync (Guarantee zero-reload updates)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const handleFocus = () => {
+      fetchCurrentUser()
+    }
+    window.addEventListener('focus', handleFocus)
+
+    // Fallback polling every 8s when the tab is visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchCurrentUser()
+      }
+    }, 8000)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
+    }
+  }, [user?.id])
 
   // Live Status Synchronization (WebSockets via Reverb & Laravel Echo)
   useEffect(() => {
@@ -150,6 +217,17 @@ export function AuthProvider({ children }) {
   }, [user?.id])
 
   const storeAuth = (token, userData, type = null) => {
+    // If switching between different user accounts in the same browser tab,
+    // immediately purge the previous account's TanStack Query cache & WebSocket channels.
+    try {
+      const prevRaw = localStorage.getItem('user')
+      const prevUser = prevRaw ? JSON.parse(prevRaw) : null
+      if (prevUser?.id && String(prevUser.id) !== String(userData?.id)) {
+        queryClient.clear()
+        disconnectEcho()
+      }
+    } catch {}
+
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     const rolesList = Array.isArray(userData?.roles) 
@@ -325,22 +403,15 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('userType')
-    // Purge any cached clinical prescription drafts or patient notes from shared browser storage
-    try {
-      const keysToRemove = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && (key.startsWith('dr_rx_draft_') || key.startsWith('dr_notes_'))) {
-          keysToRemove.push(key)
-        }
-      }
-      keysToRemove.forEach(k => localStorage.removeItem(k))
-    } catch (e) {}
+    const activeToken = localStorage.getItem('token')
+    purgeClientSessionState()
     setUser(null)
     setUserType(null)
+
+    // Revoke Sanctum token(s) server-side asynchronously without blocking UI navigation
+    if (activeToken) {
+      logoutApi(activeToken).catch(() => {})
+    }
   }
 
   const isLoggedIn = !!user
@@ -368,8 +439,7 @@ export function AuthProvider({ children }) {
   const hasRole = (role) => getRoles().includes(role.toLowerCase())
   
   const isAdmin = 
-    hasRole('admin') || hasRole('super-admin') || user?.role_id === 1 || String(user?.role_id) === 'admin' || 
-    Boolean(user?.is_admin) || Boolean(user?.isAdmin);
+    hasRole('admin') || hasRole('super-admin') || user?.role_id === 1;
     
   const isDoctor = 
     !isAdmin && (hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 

@@ -39,15 +39,31 @@ export function useAdminPatients(filters = {}) {
   const query = useQuery({
     queryKey: queryKeys.patients.adminList(filters),
     queryFn: async () => {
-      const res = await getPatients({ per_page: 500, ...filters })
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
-      return Array.isArray(raw) ? raw : []
+      const params = { per_page: 20, ...filters }
+      const res = await getPatients(params)
+      const paginator = res.data?.data
+      const raw = paginator?.data || res.data?.data || res.data || []
+      const items = Array.isArray(raw) ? raw : []
+      const meta = res.data?.meta || paginator?.meta || {
+        total: paginator?.total ?? res.data?.total ?? items.length,
+        current_page: paginator?.current_page ?? res.data?.current_page ?? (params.page || 1),
+        last_page: paginator?.last_page ?? res.data?.last_page ?? 1,
+        per_page: paginator?.per_page ?? res.data?.per_page ?? params.per_page,
+      }
+      return { items, meta }
     },
     placeholderData: keepPreviousData,
   })
 
+  const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])
+  const meta = query.data?.meta || null
+
   return {
-    patients: query.data || [],
+    patients: items,
+    total: meta?.total ?? items.length,
+    currentPage: meta?.current_page ?? 1,
+    lastPage: meta?.last_page ?? 1,
+    meta,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

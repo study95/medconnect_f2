@@ -4,10 +4,11 @@ import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check, AlertTriang
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { useAdminDoctors, useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
+import { useDebounce } from '../../../hooks/useDebounce'
+import { useMyDoctorProfile, useAdminDoctors, useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
-import { TableSkeleton } from '../../../components/common/Skeletons'
+import { TableSkeleton, DetailSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
@@ -205,9 +206,23 @@ export default function DoctorListPage() {
   const [telemedicineFilter, setTelemedicineFilter] = useState('')
   const [specialtyId, setSpecialtyId] = useState('')
 
-  // Server-side filter memo for TanStack Query
+  const isDoctorOnly = !isAdmin && !isManager && isDoctor
+  const [perPage, setPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const debouncedSearch = useDebounce(search, 300)
+
+  // Reset pagination to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
+
+  // Server-side filter memo for TanStack Query (Admin / Hospital views)
   const serverFilters = useMemo(() => {
-    const params = {}
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+    }
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     if (divisionId) params.division_id = divisionId
     if (districtId) params.district_id = districtId
     if (upazilaId) params.upazila_id = upazilaId
@@ -217,11 +232,34 @@ export default function DoctorListPage() {
     if (telemedicineFilter !== '') params.available_telemedicine = telemedicineFilter
     if (specialtyId) params.specialty_id = specialtyId
     return params
-  }, [divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
+  }, [currentPage, perPage, debouncedSearch, divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
 
-  // Enterprise TanStack Query Hooks
-  const { doctors, isLoading: loading, isFetching: refreshing, refetch: fetchDoctors } = useAdminDoctors(serverFilters)
-  const { divisions, specialties, districts, upazilas, unions } = useAdminDoctorLookups({ divisionId, districtId, upazilaId })
+  // Dedicated lightweight own-profile query for Doctor Portal (/doctor/me)
+  const {
+    doctor: myDoctorProfile,
+    isLoading: loadingMyProfile,
+    refetch: refetchMyProfile,
+  } = useMyDoctorProfile({ enabled: isDoctorOnly })
+
+  // Enterprise TanStack Query Hooks (disabled for Doctor-only portal to prevent 5,000-row directory fetches)
+  const {
+    doctors,
+    total,
+    isLoading: loadingList,
+    isFetching: refreshing,
+    refetch: refetchDoctorsList,
+  } = useAdminDoctors(serverFilters, { enabled: !isDoctorOnly })
+
+  const { divisions, specialties, districts, upazilas, unions } = useAdminDoctorLookups({
+    divisionId,
+    districtId,
+    upazilaId,
+    enabled: !isDoctorOnly,
+    includeHospitals: false,
+  })
+
+  const loading = isDoctorOnly ? loadingMyProfile : loadingList
+  const fetchDoctors = isDoctorOnly ? refetchMyProfile : refetchDoctorsList
   const {
     deleteDoctor,
     isDeleting: deleting,
@@ -295,55 +333,8 @@ export default function DoctorListPage() {
     }
   }
 
-  const isDoctorOnly = !isAdmin && !isManager && isDoctor
-  let allowedDoctors = doctors
-  if (isDoctorOnly) {
-    allowedDoctors = doctors.filter(d =>
-      String(d.user_id) === String(user?.id) ||
-      d.email?.toLowerCase() === user?.email?.toLowerCase()
-    )
-  }
-
-  const filtered = useMemo(() => {
-    return allowedDoctors.filter(d => {
-      if (!search || !search.trim()) return true
-      const q = search.trim().toLowerCase()
-      const id = String(d.public_id || d.id || '').toLowerCase()
-      const name = String(d.name || '').toLowerCase()
-      const nameBn = String(d.name_bn || '').toLowerCase()
-      const specialtyName = String(d.specialty?.name || '').toLowerCase()
-      const specialtyBn = String(d.specialty?.name_bn || d.specialty?.bangla_name || '').toLowerCase()
-      const workplace = String(d.workplace || '').toLowerCase()
-      const workplaceBn = String(d.workplace_bn || '').toLowerCase()
-      const bmdc = String(d.bmdc || '').toLowerCase()
-      const email = String(d.email || '').toLowerCase()
-      const phone = String(d.phone || '').toLowerCase()
-      const degree = String(d.degree || '').toLowerCase()
-      const hospitalName = String(d.hospital?.name || '').toLowerCase()
-      const location = [
-        d.division?.name,
-        d.district?.name,
-        d.upazila?.name,
-        d.union?.name
-      ].filter(Boolean).join(' ').toLowerCase()
-
-      return id.includes(q) ||
-        name.includes(q) ||
-        nameBn.includes(q) ||
-        specialtyName.includes(q) ||
-        specialtyBn.includes(q) ||
-        workplace.includes(q) ||
-        workplaceBn.includes(q) ||
-        bmdc.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q) ||
-        degree.includes(q) ||
-        hospitalName.includes(q) ||
-        location.includes(q)
-    })
-  }, [allowedDoctors, search])
-
-  const myProfile = isDoctorOnly ? allowedDoctors[0] : null
+  const filtered = doctors
+  const myProfile = isDoctorOnly ? myDoctorProfile : null
 
   // Doctor Institutional Seat Invitations State
   const [seatInvitations, setSeatInvitations] = useState([])
@@ -414,21 +405,15 @@ export default function DoctorListPage() {
     }
   }
 
-  // Ensure doctor's own profile view is always freshly fetched on mount
+  // Ensure doctor's own profile view and invitations are freshly fetched on mount
   useEffect(() => {
     if (isDoctorOnly) {
-      fetchDoctors()
       loadDoctorInvitations()
     }
   }, [isDoctorOnly])
 
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-
-  useEffect(() => { setCurrentPage(1) }, [filtered.length])
-
   if (isDoctorOnly) {
-    if (loading) return <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading profile...</div>
+    if (loading) return <DetailSkeleton />
 
     if (!myProfile) {
       return (
@@ -1653,7 +1638,7 @@ export default function DoctorListPage() {
     )
   }
 
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const paginatedData = doctors
 
   const isAllSelected = paginatedData.length > 0 && paginatedData.every(d => selectedIds.includes(d.id))
   const isSomeSelected = paginatedData.some(d => selectedIds.includes(d.id))
@@ -1913,14 +1898,14 @@ export default function DoctorListPage() {
                 border: '1px solid var(--admin-border, #E2E8F0)',
               }}
             >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Records Found
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong> Records Found
             </div>
           </div>
         </div>
 
         {loading ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '135px', '80px', '22%', '18%', '16%', '12%', '14%', '6%']} headers={['', 'ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
@@ -2108,7 +2093,7 @@ export default function DoctorListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={total}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

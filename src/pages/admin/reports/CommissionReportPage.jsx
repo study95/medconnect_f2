@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 // CommissionReportPage.jsx — Admin Commission Report & Request-Wise Approval Inbox
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +11,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { 
-  getCommissionReport, getDoctors, getHospitals, updateAppointment, 
+  getCommissionReport, getDoctorLookup, getHospitalLookup, updateAppointment, 
   bulkUpdateCommissionStatus, getCommissionRequests, getCommissionRequestDetails,
   approveCommissionRequest, rejectCommissionRequest, sendCommissionReminder
 } from '../../../api/adminApi'
@@ -278,9 +279,9 @@ export default function CommissionReportPage() {
   }, [filters])
 
   const { data: doctors = [] } = useQuery({
-    queryKey: ['admin-doctors-commission-list'],
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500, admin_view: 1 })
+      const res = await getDoctorLookup({ limit: 200 })
       const raw = res.data?.data || res.data
       return Array.isArray(raw) ? raw : (raw?.data || [])
     },
@@ -288,9 +289,9 @@ export default function CommissionReportPage() {
   })
 
   const { data: hospitals = [] } = useQuery({
-    queryKey: ['admin-hospitals-commission-list'],
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500, admin_view: 1 })
+      const res = await getHospitalLookup({ limit: 200 })
       const raw = res.data?.data || res.data
       return Array.isArray(raw) ? raw : (raw?.data || [])
     },
@@ -1515,9 +1516,7 @@ export default function CommissionReportPage() {
           {/* Requests Table Body */}
           <div className="admin-card-body" style={{ padding: 0 }}>
             {requestsLoading ? (
-              <div className="admin-loading" style={{ padding: 50 }}>
-                <div className="admin-spinner" /> Loading payment requests...
-              </div>
+              <TableSkeleton rows={6} columns={6} />
             ) : requestList.length === 0 ? (
               <div className="admin-empty" style={{ padding: 50, textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
@@ -1854,7 +1853,7 @@ export default function CommissionReportPage() {
 
         <div className="admin-card-body" style={{ padding: 0 }}>
           {loading ? (
-            <div className="admin-loading" style={{ padding: 60 }}><div className="admin-spinner" /> Loading report...</div>
+            <TableSkeleton rows={8} columns={6} />
           ) : filteredData.length === 0 ? (
             <div className="admin-empty" style={{ padding: 60 }}><h4 style={{ color: 'var(--admin-text)' }}>No records found for selected filters</h4></div>
           ) : (

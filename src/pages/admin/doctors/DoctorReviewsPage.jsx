@@ -1,6 +1,5 @@
-﻿import React, { useState, useMemo } from 'react'
-import { useAuth } from '../../../context/AuthContext'
-import useDoctors from '../../../hooks/useDoctors'
+import React, { useState, useMemo } from 'react'
+import { useMyDoctorProfile } from '../../../features/doctors/useAdminDoctors'
 import { useDoctorReviews } from '../../../features/reviews/useReviews'
 import { ReviewList, ReviewReplyModal, ReviewReportModal, ReviewSkeleton } from '../../../components/reviews'
 import { MessageSquare, AlertCircle, Star, Clock, CheckCircle2, Award } from 'lucide-react'
@@ -10,21 +9,9 @@ import { MessageSquare, AlertCircle, Star, Clock, CheckCircle2, Award } from 'lu
  * Allows authenticated physicians to inspect live patient ratings, KPI analytics, and respond with official replies.
  */
 export default function DoctorReviewsPage() {
-  const { user } = useAuth()
-  const { doctors, loading: loadingDoctors } = useDoctors()
+  const { doctor: myDoctor, isLoading: loadingDoctors } = useMyDoctorProfile()
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
   const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
-
-  // Exact matching pattern reused from DoctorListPage.jsx and ChamberFormPage.jsx
-  const myDoctor = useMemo(() => {
-    if (!doctors?.length || !user) return null
-    return doctors.find(
-      (d) =>
-        String(d.user_id) === String(user?.id) ||
-        (user?.email && d.email?.toLowerCase() === user?.email?.toLowerCase()) ||
-        (user?.phone && d.phone === user?.phone)
-    )
-  }, [doctors, user])
 
   const doctorId = myDoctor?.id || myDoctor?.public_id || null
 

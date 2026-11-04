@@ -45,8 +45,9 @@ export function invalidateDoctors(queryClient, { doctorId = null, includeChamber
 export function invalidateHospitals(queryClient, { hospitalId = null, includeChambers = false, includeReviews = false } = {}) {
   if (!queryClient) return
 
-  queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.lists() })
-  queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.adminLists() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.lists(), refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.adminLists(), refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.all, refetchType: 'all' })
 
   if (hospitalId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.detail(hospitalId) })

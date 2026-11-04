@@ -1,3 +1,4 @@
+import { FormSkeleton } from '../../../components/common/Skeletons'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import toast from 'react-hot-toast'
 import { useState, useEffect, useRef } from 'react'
@@ -231,7 +232,11 @@ export default function PatientFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Preparing Patient Profile...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 900, margin: '20px auto', padding: '0 16px' }}>
+      <FormSkeleton />
+    </div>
+  )
 
   return (
     <div className="admin-container" style={{ maxWidth: 900, margin: '0 auto' }}>

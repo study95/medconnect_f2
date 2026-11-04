@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -6,7 +7,7 @@ import {
   updateAdminNotification, 
   deleteAdminNotification 
 } from '../../../api/subscriptionApi'
-import { getDoctors, getHospitals } from '../../../api/adminApi'
+import { getDoctorLookup, getHospitalLookup } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES, DIALOG_BUTTONS } from '../../../utils/dialogMessages'
@@ -225,9 +226,9 @@ export default function AdminMessagesPage() {
   })
 
   const { data: doctors = [] } = useQuery({
-    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500 })
+      const res = await getDoctorLookup({ limit: 200 })
       const data = res.data?.data || res.data || []
       return Array.isArray(data) ? data : data.data || []
     },
@@ -235,9 +236,9 @@ export default function AdminMessagesPage() {
   })
 
   const { data: hospitals = [] } = useQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500 })
+      const res = await getHospitalLookup({ limit: 200 })
       const data = res.data?.data || res.data || []
       return Array.isArray(data) ? data : data.data || []
     },
@@ -596,9 +597,7 @@ export default function AdminMessagesPage() {
       {/* Table Card */}
       <div className="admin-card" style={{ background: 'var(--admin-card-bg, #ffffff)', borderRadius: 14, border: '1px solid var(--admin-border, #E2E8F0)', overflow: 'hidden' }}>
         {loading ? (
-          <div className="admin-loading" style={{ padding: 48, textAlign: 'center' }}>
-            <div className="admin-spinner" /> Loading notices...
-          </div>
+          <div style={{ padding: "16px" }}><TableSkeleton rows={5} columns={4} /></div>
         ) : filteredNotifications.length === 0 ? (
           <div className="admin-empty" style={{ padding: '60px 20px', textAlign: 'center' }}>
             <div className="admin-empty-icon" style={{ fontSize: 44, marginBottom: 12 }}>📢</div>

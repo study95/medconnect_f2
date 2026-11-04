@@ -17,6 +17,8 @@ import { invalidateHospitals } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
 import {
   getHospitals,
+  getMyHospitalProfile,
+  getHospitalLookup,
   getHospital,
   createHospital,
   updateHospital,
@@ -32,22 +34,60 @@ import {
 import { getErrorMessage } from '../../utils/errorHelper'
 
 /**
- * Hook to fetch admin hospital listings with server-side caching
+ * Dedicated hook for authenticated Hospital portal to load ONLY own facility (/hospital/me)
  */
-export function useAdminHospitals(filters = {}) {
+export function useMyHospitalProfile({ enabled = true } = {}) {
   const query = useQuery({
-    queryKey: queryKeys.hospitals.adminList(filters),
+    queryKey: queryKeys.hospitals.me(),
     queryFn: async () => {
-      const params = { per_page: 1000, admin_view: 1, ...filters }
-      const res = await getHospitals(params)
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
-      return Array.isArray(raw) ? raw : []
+      const res = await getMyHospitalProfile()
+      return res.data?.data ?? null
     },
-    placeholderData: keepPreviousData,
+    enabled,
   })
 
   return {
-    hospitals: query.data || [],
+    hospital: query.data ?? null,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error ? getErrorMessage(query.error, 'Failed to load hospital profile.') : null,
+    refetch: query.refetch,
+  }
+}
+
+/**
+ * Hook to fetch admin hospital listings with true server-side pagination & caching
+ */
+export function useAdminHospitals(filters = {}, { enabled = true } = {}) {
+  const query = useQuery({
+    queryKey: queryKeys.hospitals.adminList(filters),
+    queryFn: async () => {
+      const params = { per_page: 20, admin_view: 1, ...filters }
+      const res = await getHospitals(params)
+      const raw = res.data?.data?.data || res.data?.data || res.data || []
+      const items = Array.isArray(raw) ? raw : []
+      const meta = res.data?.meta || res.data?.data?.meta || {
+        total: res.data?.total ?? res.data?.data?.total ?? items.length,
+        current_page: res.data?.current_page ?? res.data?.data?.current_page ?? (params.page || 1),
+        last_page: res.data?.last_page ?? res.data?.data?.last_page ?? 1,
+        per_page: res.data?.per_page ?? res.data?.data?.per_page ?? params.per_page,
+      }
+      return { items, meta }
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+  })
+
+  const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])
+  const meta = query.data?.meta || null
+
+  return {
+    hospitals: items,
+    total: meta?.total ?? items.length,
+    currentPage: meta?.current_page ?? 1,
+    lastPage: meta?.last_page ?? 1,
+    meta,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
@@ -59,13 +99,13 @@ export function useAdminHospitals(filters = {}) {
 /**
  * Hook to fetch single hospital profile details, associated doctors, and chambers
  */
-export function useAdminHospitalDetail(id) {
+export function useAdminHospitalDetail(id, { initialHospital = null } = {}) {
   const query = useQuery({
     queryKey: queryKeys.hospitals.detail(id),
     queryFn: async () => {
       const [hospRes, docRes, chamRes] = await Promise.all([
-        getHospital(id),
-        getDoctors({ hospital_id: id }),
+        initialHospital ? Promise.resolve({ data: { data: initialHospital } }) : getHospital(id),
+        getDoctors({ hospital_id: id, admin_view: 1, per_page: 100 }),
         getChambers({ hospital_id: id }),
       ])
       const hospital = hospRes.data?.data || hospRes.data
@@ -78,7 +118,7 @@ export function useAdminHospitalDetail(id) {
   })
 
   return {
-    hospital: query.data?.hospital || null,
+    hospital: query.data?.hospital || initialHospital || null,
     doctors: query.data?.doctors || [],
     chambers: query.data?.chambers || [],
     isLoading: query.isLoading,
@@ -92,7 +132,7 @@ export function useAdminHospitalDetail(id) {
 /**
  * Hook for cached hospital location lookups and dropdown options
  */
-export function useAdminHospitalLookups({ divisionId, districtId, upazilaId } = {}) {
+export function useAdminHospitalLookups({ divisionId, districtId, upazilaId, enabled = true } = {}) {
   // Master Divisions
   const divisionsQuery = useLookupQuery({
     queryKey: queryKeys.locations.divisions(),
@@ -100,6 +140,7 @@ export function useAdminHospitalLookups({ divisionId, districtId, upazilaId } = 
       const res = await getDivisions()
       return res.data?.data || res.data || []
     },
+    enabled,
   })
 
   // Cascading Districts
@@ -110,7 +151,7 @@ export function useAdminHospitalLookups({ divisionId, districtId, upazilaId } = 
       const res = await getDistricts({ division_id: divisionId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(divisionId),
+    enabled: enabled && Boolean(divisionId),
   })
 
   // Cascading Upazilas
@@ -121,7 +162,7 @@ export function useAdminHospitalLookups({ divisionId, districtId, upazilaId } = 
       const res = await getUpazilas({ district_id: districtId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(districtId),
+    enabled: enabled && Boolean(districtId),
   })
 
   // Cascading Unions
@@ -132,25 +173,26 @@ export function useAdminHospitalLookups({ divisionId, districtId, upazilaId } = 
       const res = await getUnions({ upazila_id: upazilaId })
       return res.data?.data || res.data || []
     },
-    enabled: Boolean(upazilaId),
+    enabled: enabled && Boolean(upazilaId),
   })
 
-  // Filter option hospitals list (scoped by geographical hierarchy)
+  // Lightweight filter option hospitals list (scoped by geographical hierarchy)
   const hospitalOptionsQuery = useLookupQuery({
-    queryKey: queryKeys.hospitals.list({
-      per_page: 500,
+    queryKey: queryKeys.hospitals.lookup({
+      limit: 200,
       division_id: divisionId || undefined,
       district_id: districtId || undefined,
       upazila_id: upazilaId || undefined,
     }),
     queryFn: async () => {
-      const params = { per_page: 500 }
+      const params = { limit: 200 }
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
       if (upazilaId) params.upazila_id = upazilaId
-      const res = await getHospitals(params)
-      return res.data?.data?.data || res.data?.data || res.data || []
+      const res = await getHospitalLookup(params)
+      return res.data?.data || res.data || []
     },
+    enabled,
   })
 
   return {
@@ -189,8 +231,16 @@ export function useAdminHospitalMutations() {
 
       // Optimistically update matching admin lists in cache
       queryClient.setQueriesData({ queryKey: queryKeys.hospitals.adminLists() }, (old) => {
-        if (!Array.isArray(old)) return old
-        return old.map((hosp) => (hosp.id === id ? { ...hosp, is_active } : hosp))
+        if (Array.isArray(old)) {
+          return old.map((hosp) => (hosp.id === id ? { ...hosp, is_active } : hosp))
+        }
+        if (old && Array.isArray(old.items)) {
+          return {
+            ...old,
+            items: old.items.map((hosp) => (hosp.id === id ? { ...hosp, is_active } : hosp)),
+          }
+        }
+        return old
       })
 
       return { previousQueries }

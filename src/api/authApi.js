@@ -10,6 +10,17 @@ import axiosInstance from './axiosInstance'
 export const loginApi = (credentials) =>
   axiosInstance.post('/login', credentials)
 
+// POST /api/logout — revokes active Sanctum token(s) on server
+export const logoutApi = (token = null) =>
+  axiosInstance.post(
+    '/logout',
+    {},
+    {
+      skipGlobalToast: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }
+  )
+
 // POST /api/register — simple name+email+password
 export const registerApi = (userData) =>
   axiosInstance.post('/register', userData)

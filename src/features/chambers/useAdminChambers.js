@@ -23,8 +23,8 @@ import {
   updateChamber,
   deleteChamber,
   toggleChamberActive,
-  getDoctors,
-  getHospitals,
+  getDoctorLookup,
+  getHospitalLookup,
 } from '../../api/adminApi'
 import { getErrorMessage } from '../../utils/errorHelper'
 
@@ -80,36 +80,36 @@ export function useAdminChamberDetail(id) {
  * Hook for cached doctor and hospital lookups in the Chamber module
  */
 export function useAdminChamberLookups() {
-  // Reusable Doctor Lookup Query
+  // Lightweight tenant-scoped Doctor Lookup Query
   const doctorsQuery = useLookupQuery({
-    queryKey: queryKeys.doctors.list({ per_page: 500 }),
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500 })
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
+      const res = await getDoctorLookup({ limit: 200 })
+      const raw = res.data?.data || res.data || []
       return Array.isArray(raw)
         ? raw.map((d) => ({
             ...d,
             id: String(d.public_id || d.id),
             public_id: d.public_id,
-            doctor_id: d.id,
+            doctor_id: d.numeric_id || d.id,
             subtext: [d.specialty?.name, d.bmdc ? `BMDC: ${d.bmdc}` : null].filter(Boolean).join(' • '),
           }))
         : []
     },
   })
 
-  // Reusable Hospital Lookup Query
+  // Lightweight tenant-scoped Hospital Lookup Query
   const hospitalsQuery = useLookupQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500 }),
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500 })
-      const raw = res.data?.data?.data || res.data?.data || res.data || []
+      const res = await getHospitalLookup({ limit: 200 })
+      const raw = res.data?.data || res.data || []
       return Array.isArray(raw)
         ? raw.map((h) => ({
             ...h,
             id: String(h.public_id || h.id),
             public_id: h.public_id,
-            hospital_id: h.id,
+            hospital_id: h.numeric_id || h.id,
             subtext: [h.district?.name, h.upazila?.name, h.address].filter(Boolean).join(', '),
           }))
         : []

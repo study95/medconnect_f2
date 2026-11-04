@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { getDashboardStats, getDashboardAnalytics } from '../../api/adminApi'
 import { queryKeys } from '../../lib/queryKeys'
+import { DashboardSkeleton } from '../../components/common/Skeletons'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
@@ -476,14 +477,7 @@ export default function DashboardPage() {
   }, [stats])
 
   if (loading) {
-    return (
-      <div className="admin-loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
-        <div className="admin-spinner" style={{ width: 34, height: 34 }} />
-        <span style={{ color: 'var(--admin-text-muted)', fontSize: 13.5, fontWeight: 600 }}>
-          {isDoctor ? 'ডাক্তার ড্যাশবোর্ড লোড হচ্ছে...' : 'লোড হচ্ছে এক্সিকিউটিভ ড্যাশবোর্ড...'}
-        </span>
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   return (

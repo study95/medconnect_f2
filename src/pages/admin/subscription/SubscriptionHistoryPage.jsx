@@ -1,3 +1,4 @@
+import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect } from 'react'
 import { getSubscriptionHistory } from '../../../api/subscriptionApi'
 import axiosInstance from '../../../api/axiosInstance'
@@ -57,24 +58,38 @@ export default function SubscriptionHistoryPage() {
   useEffect(() => { loadHistory() }, [])
 
   useEffect(() => {
-    if (!selectedRecord) {
-      if (slipBlobUrl) URL.revokeObjectURL(slipBlobUrl)
+    let activeBlobUrl = null
+    let cancelled = false
+
+    if (slipBlobUrl) {
+      URL.revokeObjectURL(slipBlobUrl)
       setSlipBlobUrl(null)
-      return
     }
 
-    if (selectedRecord.has_slip && (selectedRecord.transaction_id || selectedRecord.slip_url)) {
+    if (selectedRecord?.has_slip && (selectedRecord.transaction_id || selectedRecord.slip_url)) {
       setSlipLoading(true)
       const targetUrl = selectedRecord.transaction_id 
         ? `/billing/manual-payment/${selectedRecord.transaction_id}/slip`
         : selectedRecord.slip_url
       axiosInstance.get(targetUrl, { responseType: 'blob' })
         .then(res => {
-          const url = URL.createObjectURL(res.data)
-          setSlipBlobUrl(url)
+          if (cancelled) return
+          activeBlobUrl = URL.createObjectURL(res.data)
+          setSlipBlobUrl(activeBlobUrl)
         })
-        .catch(() => setSlipBlobUrl(null))
-        .finally(() => setSlipLoading(false))
+        .catch(() => {
+          if (!cancelled) setSlipBlobUrl(null)
+        })
+        .finally(() => {
+          if (!cancelled) setSlipLoading(false)
+        })
+    }
+
+    return () => {
+      cancelled = true
+      if (activeBlobUrl) {
+        URL.revokeObjectURL(activeBlobUrl)
+      }
     }
   }, [selectedRecord])
 
@@ -161,7 +176,7 @@ export default function SubscriptionHistoryPage() {
 
       <div className="admin-card">
         {loading ? (
-          <div className="admin-loading"><div className="admin-spinner" /> লোড হচ্ছে...</div>
+          <div style={{ padding: "16px" }}><TableSkeleton rows={5} columns={5} /></div>
         ) : items.length === 0 ? (
           <div className="admin-empty">
             <div className="admin-empty-icon">📋</div>

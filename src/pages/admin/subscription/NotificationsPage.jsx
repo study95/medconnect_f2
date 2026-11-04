@@ -1,3 +1,4 @@
+import { CardSkeleton } from '../../../components/common/Skeletons'
 // NotificationsPage.jsx — Doctor notification inbox
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -445,7 +446,7 @@ export default function NotificationsPage() {
       </div>
 
       {loading ? (
-        <div className="admin-loading"><div className="admin-spinner" /> Loading notifications...</div>
+        <div style={{ padding: "16px" }}><CardSkeleton count={4} /></div>
       ) : filteredNotifications.length === 0 ? (
         <div className="admin-card" style={{ padding: '60px 24px', textAlign: 'center', borderRadius: 16 }}>
           <div style={{ fontSize: 48, marginBottom: 14 }}>

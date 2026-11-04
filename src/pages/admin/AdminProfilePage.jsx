@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../components/common/Skeletons'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -189,13 +190,7 @@ function AdminProfilePage() {
     unions.find(u => String(u.id) === String(form.union_id))?.name
   ].filter(Boolean).join(', ')
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="spinner-border" style={{ color: 'var(--admin-primary)' }} />
-      </div>
-    )
-  }
+  if (loading) return <DetailSkeleton />
 
   return (
     <div style={{ padding: '24px 32px' }}>

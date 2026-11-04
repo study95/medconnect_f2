@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
 import { getMedicine, createMedicine, updateMedicine, getMedicineSuggestions } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { FormSkeleton } from '../../../components/common/Skeletons'
+import { queryClient } from '../../../lib/queryClient'
 
 const DOSAGE_TYPES = [
   'Tablet',
@@ -588,6 +590,8 @@ export default function MedicineFormPage() {
         await createMedicine(form)
         toast.success('Medicine created successfully')
       }
+      queryClient.invalidateQueries({ queryKey: ['medicines'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-medicines'] })
       setTimeout(() => navigate('/admin/medicines'), 500)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to save medicine'))
@@ -597,7 +601,13 @@ export default function MedicineFormPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading...</div>
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 900, margin: '20px auto', padding: '0 16px' }}>
+        <FormSkeleton />
+      </div>
+    )
+  }
 
   const typeColor = dosageColors[form.dosage_type] || { bg: '#F1F5F9', color: '#475569', border: '#E2E8F0' }
 

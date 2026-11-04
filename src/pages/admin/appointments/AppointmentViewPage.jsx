@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 // AppointmentViewPage.jsx — Premium Detailed Appointment View
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminAppointmentDetail, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
@@ -37,7 +38,11 @@ export default function AppointmentViewPage() {
     }
   }
 
-  if (loading) return <div className="admin-loading"><div className="admin-spinner" /> Loading Details...</div>
+  if (loading) return (
+    <div className="admin-container" style={{ maxWidth: 800, margin: '20px auto', padding: '0 16px' }}>
+      <DetailSkeleton />
+    </div>
+  )
   if (!appt) return <div className="admin-empty">Appointment not found.</div>
 
   return (

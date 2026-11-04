@@ -5,10 +5,11 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import { useAdminHospitals, useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
+import { useDebounce } from '../../../hooks/useDebounce'
+import { useMyHospitalProfile, useAdminHospitals, useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
-import { TableSkeleton } from '../../../components/common/Skeletons'
+import { TableSkeleton, DetailSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
@@ -200,8 +201,11 @@ export default function HospitalListPage() {
   const [perPage, setPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
+  const isManagerOnly = Boolean(isManager && !isAdmin)
+
   // Filters
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
   const [hospitalIdFilter, setHospitalIdFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState(initialStatus)
 
@@ -211,20 +215,50 @@ export default function HospitalListPage() {
   const [upazilaId, setUpazilaId] = useState('')
   const [unionId, setUnionId] = useState('')
 
-  // Server-side filter memo for TanStack Query
+  // Reset pagination to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, hospitalIdFilter, statusFilter, divisionId, districtId, upazilaId, unionId])
+
+  // Server-side filter memo for TanStack Query (Admin view)
   const serverFilters = useMemo(() => {
-    const params = {}
+    const params = {
+      page: currentPage,
+      per_page: perPage,
+    }
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
+    if (hospitalIdFilter) params.hospital_id = hospitalIdFilter
     if (divisionId) params.division_id = divisionId
     if (districtId) params.district_id = districtId
     if (upazilaId) params.upazila_id = upazilaId
     if (unionId) params.union_id = unionId
     if (statusFilter !== '') params.is_active = statusFilter === 'active' ? 1 : 0
     return params
-  }, [divisionId, districtId, upazilaId, unionId, statusFilter])
+  }, [currentPage, perPage, debouncedSearch, hospitalIdFilter, divisionId, districtId, upazilaId, unionId, statusFilter])
 
-  // Enterprise TanStack Query Hooks
-  const { hospitals, isLoading: loading, isFetching: refreshing, refetch: fetchHospitals } = useAdminHospitals(serverFilters)
-  const { divisions, districts, upazilas, unions, hospitalsOptions } = useAdminHospitalLookups({ divisionId, districtId, upazilaId })
+  // Dedicated own-facility query for Hospital Portal (/hospital/me)
+  const {
+    hospital: myHospital,
+    isLoading: loadingMyHospital,
+    refetch: refetchMyHospital,
+  } = useMyHospitalProfile({ enabled: isManagerOnly })
+
+  // Enterprise TanStack Query Hooks (disabled for Manager-only portal to prevent 1,000-row directory fetches)
+  const {
+    hospitals,
+    total,
+    isLoading: loadingList,
+    isFetching: refreshing,
+    refetch: refetchHospitalsList,
+  } = useAdminHospitals(serverFilters, { enabled: !isManagerOnly })
+  const { divisions, districts, upazilas, unions, hospitalsOptions } = useAdminHospitalLookups({
+    divisionId,
+    districtId,
+    upazilaId,
+    enabled: !isManagerOnly,
+  })
+  const loading = isManagerOnly ? loadingMyHospital : loadingList
+  const fetchHospitals = isManagerOnly ? refetchMyHospital : refetchHospitalsList
   const {
     deleteHospital,
     isDeleting: deleting,
@@ -299,48 +333,9 @@ export default function HospitalListPage() {
     setStatusFilter('')
   }
 
-  const filtered = hospitals.filter(h => {
-    if (search && search.trim()) {
-      const q = search.trim().toLowerCase()
-      const publicId = String(h.public_id || '').toLowerCase()
-      const rawId = String(h.id || '').toLowerCase()
-      const name = String(h.name || '').toLowerCase()
-      const nameBn = String(h.name_bn || '').toLowerCase()
-      const phone = String(h.phone || h.hotline || h.emergency_phone || '').toLowerCase()
-      const email = String(h.email || h.official_email || '').toLowerCase()
-      const address = String(h.address || '').toLowerCase()
-      const branchName = String(h.branch_name || '').toLowerCase()
-      const license = String(h.license_number || '').toLowerCase()
-      const type = String(h.hospital_type || h.type || '').toLowerCase()
-
-      const matchesSearch =
-        publicId.includes(q) ||
-        rawId.includes(q) ||
-        name.includes(q) ||
-        nameBn.includes(q) ||
-        phone.includes(q) ||
-        email.includes(q) ||
-        address.includes(q) ||
-        branchName.includes(q) ||
-        license.includes(q) ||
-        type.includes(q)
-
-      if (!matchesSearch) return false
-    }
-
-    if (hospitalIdFilter && String(h.id) !== String(hospitalIdFilter) && String(h.public_id) !== String(hospitalIdFilter)) return false
-    if (statusFilter && (statusFilter === 'active' ? !h.is_active : h.is_active)) return false
-
-    if (divisionId && String(h.division_id || h.division?.id) !== String(divisionId)) return false
-    if (districtId && String(h.district_id || h.district?.id) !== String(districtId)) return false
-    if (upazilaId && String(h.upazila_id || h.upazila?.id) !== String(upazilaId)) return false
-    if (unionId && String(h.union_id || h.union?.id) !== String(unionId)) return false
-
-    return true
-  })
-
-  useEffect(() => { setCurrentPage(1) }, [filtered.length])
-  const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+  // Server-side filtered & paginated dataset
+  const filtered = hospitals
+  const paginatedData = hospitals
 
   const isAllSelected = paginatedData.length > 0 && paginatedData.every(h => selectedIds.includes(h.id))
   const isSomeSelected = paginatedData.some(h => selectedIds.includes(h.id))
@@ -362,17 +357,10 @@ export default function HospitalListPage() {
   }
 
   // If the user is a hospital manager (not admin), show the dedicated executive profile dashboard directly
-  if (isManager && !isAdmin) {
-    if (loading) {
-      return (
-        <div className="admin-loading" style={{ padding: '80px 20px', textAlign: 'center' }}>
-          <div className="admin-spinner" style={{ margin: '0 auto 16px' }} />
-          <div style={{ color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 600 }}>Loading My Hospital Profile...</div>
-        </div>
-      )
-    }
+  if (isManagerOnly) {
+    if (loading) return <DetailSkeleton />
 
-    if (hospitals.length === 0) {
+    if (!myHospital) {
       return (
         <div className="admin-card" style={{ textAlign: 'center', padding: '60px 20px', margin: '40px auto', maxWidth: 600 }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>🏥</div>
@@ -384,7 +372,7 @@ export default function HospitalListPage() {
       )
     }
 
-    return <HospitalManagerProfileView hospitalId={hospitals[0]?.id} />
+    return <HospitalManagerProfileView hospitalId={myHospital.id} initialHospital={myHospital} />
   }
 
   return (
@@ -396,7 +384,7 @@ export default function HospitalListPage() {
             {isManager ? 'My Hospital' : 'Hospital Management'}
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>
-            {isManager ? 'Manage facility details and clinical settings' : `${hospitals.length} total facilities registered`}
+            {isManager ? 'Manage facility details and clinical settings' : `${total} total facilities registered`}
           </p>
         </div>
       </div>
@@ -577,14 +565,14 @@ export default function HospitalListPage() {
                 border: '1px solid var(--admin-border, #E2E8F0)',
               }}
             >
-              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{filtered.length}</strong> Facilities Found
+              <strong style={{ color: 'var(--admin-text, #0F172A)' }}>{total}</strong> Facilities Found
             </div>
           </div>
         </div>
 
         {loading ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '30%', '20%', '15%', '15%', '8%']} headers={['', 'Logo', 'Hospital Details', 'Location', 'Branch Info', 'Status', 'Actions']} />
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
@@ -752,7 +740,7 @@ export default function HospitalListPage() {
       </div>
 
       <TableFooter
-        total={filtered.length}
+        total={total}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         perPage={perPage}

@@ -588,7 +588,10 @@ export default function CheckoutPage() {
       return
     }
     setSlipFile(file)
-    setSlipPreviewUrl(URL.createObjectURL(file))
+    setSlipPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
     setManualErrorMsg('')
   }
 

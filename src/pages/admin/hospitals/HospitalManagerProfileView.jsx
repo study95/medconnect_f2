@@ -1,3 +1,4 @@
+import { DetailSkeleton } from '../../../components/common/Skeletons'
 // src/pages/admin/hospitals/HospitalManagerProfileView.jsx
 import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -24,12 +25,12 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useAdminHospitalDetail } from '../../../features/hospitals/useAdminHospitals'
 import CompactUlid from '../../../components/common/CompactUlid'
 
-export default function HospitalManagerProfileView({ hospitalId }) {
+export default function HospitalManagerProfileView({ hospitalId, initialHospital = null }) {
   const navigate = useNavigate()
   const printRef = useRef(null)
   const [exporting, setExporting] = useState(false)
 
-  const { hospital, doctors, chambers, isLoading: loading } = useAdminHospitalDetail(hospitalId)
+  const { hospital, doctors, chambers, isLoading: loading } = useAdminHospitalDetail(hospitalId, { initialHospital })
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return
@@ -58,14 +59,7 @@ export default function HospitalManagerProfileView({ hospitalId }) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="admin-loading" style={{ padding: '80px 20px', textAlign: 'center' }}>
-        <div className="admin-spinner" style={{ margin: '0 auto 16px' }} />
-        <div style={{ color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 600 }}>Loading Hospital Facility Profile...</div>
-      </div>
-    )
-  }
+  if (loading) return <DetailSkeleton />
 
   if (!hospital) {
     return (

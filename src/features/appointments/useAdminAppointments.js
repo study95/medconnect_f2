@@ -25,9 +25,9 @@ import {
   deleteAppointment,
   bulkDeleteAppointments,
   createWalkInPatient,
-  getDoctors,
-  getHospitals,
-  getPatients,
+  getDoctorLookup,
+  getHospitalLookup,
+  getPatientLookup,
   getChambers,
 } from '../../api/adminApi'
 import { getErrorMessage } from '../../utils/errorHelper'
@@ -113,30 +113,30 @@ export function useAdminAppointmentDetail(id) {
  * Hook for cached lookup data used across Appointment forms & filters
  */
 export function useAdminAppointmentLookups({ doctorId = '' } = {}) {
-  // Doctors lookup
+  // Lightweight Doctors lookup (tenant-scoped)
   const doctorsQuery = useLookupQuery({
-    queryKey: queryKeys.doctors.list({ per_page: 500, admin_view: 1 }),
+    queryKey: queryKeys.doctors.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getDoctors({ per_page: 500, admin_view: 1 })
-      return res.data?.data?.data || res.data?.data || []
+      const res = await getDoctorLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
   })
 
-  // Hospitals lookup
+  // Lightweight Hospitals lookup (tenant-scoped)
   const hospitalsQuery = useLookupQuery({
-    queryKey: queryKeys.hospitals.list({ per_page: 500, admin_view: 1 }),
+    queryKey: queryKeys.hospitals.lookup({ limit: 200 }),
     queryFn: async () => {
-      const res = await getHospitals({ per_page: 500, admin_view: 1 })
-      return res.data?.data?.data || res.data?.data || []
+      const res = await getHospitalLookup({ limit: 200 })
+      return res.data?.data || res.data || []
     },
   })
 
-  // Patients lookup
+  // Lightweight Patients lookup (tenant-scoped)
   const patientsQuery = useLookupQuery({
-    queryKey: queryKeys.patients.list({ per_page: 1000 }),
+    queryKey: queryKeys.patients.lookup({ limit: 100 }),
     queryFn: async () => {
-      const res = await getPatients({ per_page: 1000 })
-      return res.data?.data?.data || res.data?.data || []
+      const res = await getPatientLookup({ limit: 100 })
+      return res.data?.data || res.data || []
     },
   })
 
@@ -144,7 +144,7 @@ export function useAdminAppointmentLookups({ doctorId = '' } = {}) {
   const chambersQuery = useLookupQuery({
     queryKey: queryKeys.chambers.byDoctor(doctorId),
     queryFn: async () => {
-      const res = await getChambers(doctorId)
+      const res = await getChambers({ doctor_id: doctorId })
       return res.data?.data || []
     },
     enabled: Boolean(doctorId),
