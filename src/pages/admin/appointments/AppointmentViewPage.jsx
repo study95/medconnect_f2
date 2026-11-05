@@ -59,7 +59,7 @@ export default function AppointmentViewPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <Link to="/admin/appointments" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← List</Link>
+          <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1) } else { navigate('/admin/appointments') } }} className="admin-btn admin-btn-outline" style={{ borderRadius: 12, cursor: 'pointer' }}>← List</button>
           {isAdmin && (
             <Link to={`/admin/appointments/edit/${appt.public_id || appt.id || id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit</Link>
           )}

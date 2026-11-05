@@ -165,7 +165,7 @@ export default function DistrictFormPage() {
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit District' : '🏙️ Add New District'}</h2>
           <p className="admin-page-subtitle">Define secondary administrative boundaries for clinical mapping</p>
         </div>
-        <Link to="/admin/districts" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/districts'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ borderRadius: 12 }) }}>← Back</button>
       </div>
 
       <div className="admin-card" style={{ borderTop: '4px solid #F59E0B', overflow: 'visible' }}>
@@ -208,7 +208,7 @@ export default function DistrictFormPage() {
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update District' : '🚀 Create District'}
               </button>
-              <Link to="/admin/districts" className="admin-btn admin-btn-outline" style={{ padding: '14px 24px', borderRadius: 12 }}>Cancel</Link>
+              <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/districts'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ padding: '14px 24px', borderRadius: 12 }) }}>Cancel</button>
             </div>
           </form>
         </div>

@@ -665,8 +665,7 @@ export default function ChamberFormPage() {
           </div>
         </div>
 
-        <Link 
-          to="/admin/chambers" 
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/chambers'); } }} 
           style={{ 
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 10,
@@ -679,7 +678,7 @@ export default function ChamberFormPage() {
           }}
         >
           <ArrowLeft size={15} /> Back to Chambers
-        </Link>
+        </button>
       </div>
 
       {/* ── Server Alert / Feedback ── */}
@@ -1681,8 +1680,7 @@ export default function ChamberFormPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 12
         }}>
-          <Link 
-            to="/admin/chambers"
+          <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/chambers'); } }}
             style={{ 
               padding: '11px 22px', borderRadius: 10,
               border: '1.5px solid #cbd5e1',
@@ -1692,7 +1690,7 @@ export default function ChamberFormPage() {
             }}
           >
             Cancel
-          </Link>
+          </button>
 
           <button 
             type="submit" 

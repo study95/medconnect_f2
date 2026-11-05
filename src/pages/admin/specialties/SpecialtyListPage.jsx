@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { useAdminSpecialties, useAdminSpecialtyMutations } from '../../../hooks/admin/useAdminSpecialties'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -14,11 +15,20 @@ import { getErrorMessage } from '../../../utils/errorHelper'
 
 export default function SpecialtyListPage() {
   const { isAdmin } = useAuth()
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const {
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    resetFilters
+  } = useTableUrlFilters({
+    storageKey: 'admin_specialties_filters'
+  })
 
   // Enterprise TanStack Query Hooks
   const { specialties: items, isLoading: loading, isFetching: refreshing, refetch: fetchData } = useAdminSpecialties()

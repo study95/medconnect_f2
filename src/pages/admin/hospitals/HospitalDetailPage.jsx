@@ -69,7 +69,20 @@ export default function HospitalDetailPage() {
             {exporting ? '⌛ Processing...' : '📥 Download PDF'}
           </button>
           <Link to={`/admin/hospitals/edit/${id}`} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>✏️ Edit Info</Link>
-          <Link to="/admin/hospitals" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back to List</Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1)
+              } else {
+                navigate('/admin/hospitals')
+              }
+            }}
+            className="admin-btn admin-btn-outline"
+            style={{ borderRadius: 12, cursor: 'pointer' }}
+          >
+            ← Back to List
+          </button>
         </div>
       </div>
 

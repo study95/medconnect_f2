@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import axiosInstance from '../../../api/axiosInstance'
 import { queryKeys } from '../../../lib/queryKeys'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
@@ -61,15 +62,55 @@ function StatCard({ label, value, icon, color }) {
 
 export default function ServiceListPage() {
   const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [filterPriority, setFilterPriority] = useState('all')
-  const [filterCategory, setFilterCategory] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      filterStatus: 'all',
+      filterPriority: 'all',
+      filterCategory: 'all',
+      dateFrom: '',
+      dateTo: '',
+    },
+    aliases: {
+      filterStatus: ['status'],
+      filterPriority: ['priority'],
+      filterCategory: ['category'],
+      dateFrom: ['date_from'],
+      dateTo: ['date_to']
+    },
+    storageKey: 'admin_services_filters'
+  })
+
+  const {
+    filterStatus,
+    filterPriority,
+    filterCategory,
+    dateFrom,
+    dateTo,
+  } = filters
+
+  const setFilterStatus = (val) => setFilter('filterStatus', val)
+  const setFilterPriority = (val) => setFilter('filterPriority', val)
+  const setFilterCategory = (val) => setFilter('filterCategory', val)
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    (filterStatus && filterStatus !== 'all') || (filterPriority && filterPriority !== 'all') || (filterCategory && filterCategory !== 'all') || dateFrom || dateTo
+  ))
+
   const [viewTicket, setViewTicket] = useState(null)
   const [adminNote, setAdminNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
@@ -90,28 +131,22 @@ export default function ServiceListPage() {
 
     if (preset === 'today') {
       const t = fmt(now)
-      setDateFrom(t)
-      setDateTo(t)
+      setFilters({ dateFrom: t, dateTo: t })
     } else if (preset === 'yesterday') {
       const y = new Date(now)
       y.setDate(y.getDate() - 1)
       const yt = fmt(y)
-      setDateFrom(yt)
-      setDateTo(yt)
+      setFilters({ dateFrom: yt, dateTo: yt })
     } else if (preset === 'last7') {
       const past = new Date(now)
       past.setDate(past.getDate() - 6)
-      setDateFrom(fmt(past))
-      setDateTo(fmt(now))
+      setFilters({ dateFrom: fmt(past), dateTo: fmt(now) })
     } else if (preset === 'this_month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      setDateFrom(fmt(firstDay))
-      setDateTo(fmt(now))
+      setFilters({ dateFrom: fmt(firstDay), dateTo: fmt(now) })
     } else if (preset === 'all') {
-      setDateFrom('')
-      setDateTo('')
+      setFilters({ dateFrom: '', dateTo: '' })
     }
-    setCurrentPage(1)
   }
 
   const openTicketModal = (ticket) => {
@@ -277,20 +312,20 @@ export default function ServiceListPage() {
 
       <ListToolbar
         search={search}
-        onSearchChange={val => { setSearch(val); setCurrentPage(1) }}
+        onSearchChange={setSearch}
         searchPlaceholder="টিকিট নম্বর, নাম, ফোন বা ইমেইল খুঁজুন..."
         onRefresh={() => refetch()}
         refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all' || dateFrom || dateTo)}
-        onClearFilters={() => { setFilterStatus('all'); setFilterPriority('all'); setFilterCategory('all'); setDateFrom(''); setDateTo(''); setCurrentPage(1) }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
-          filterStatus !== 'all' && { key: 'status', label: `স্ট্যাটাস: ${STATUS_CONFIG[filterStatus]?.label || filterStatus}`, onRemove: () => { setFilterStatus('all'); setCurrentPage(1) } },
-          filterPriority !== 'all' && { key: 'priority', label: `অগ্রাধিকার: ${filterPriority}`, onRemove: () => { setFilterPriority('all'); setCurrentPage(1) } },
-          filterCategory !== 'all' && { key: 'category', label: `বিভাগ: ${filterCategory}`, onRemove: () => { setFilterCategory('all'); setCurrentPage(1) } },
-          dateFrom && { key: 'date_from', label: `শুরুর তারিখ: ${dateFrom}`, onRemove: () => { setDateFrom(''); setCurrentPage(1) } },
-          dateTo && { key: 'date_to', label: `শেষ তারিখ: ${dateTo}`, onRemove: () => { setDateTo(''); setCurrentPage(1) } },
+          filterStatus !== 'all' && { key: 'status', label: `স্ট্যাটাস: ${STATUS_CONFIG[filterStatus]?.label || filterStatus}`, onRemove: () => setFilterStatus('all') },
+          filterPriority !== 'all' && { key: 'priority', label: `অগ্রাধিকার: ${filterPriority}`, onRemove: () => setFilterPriority('all') },
+          filterCategory !== 'all' && { key: 'category', label: `বিভাগ: ${filterCategory}`, onRemove: () => setFilterCategory('all') },
+          dateFrom && { key: 'date_from', label: `শুরুর তারিখ: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          dateTo && { key: 'date_to', label: `শেষ তারিখ: ${dateTo}`, onRemove: () => setDateTo('') },
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 150 }}>

@@ -8,6 +8,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { useAdminDoctorLeaves, useAdminDoctorLeaveLookups, useAdminDoctorLeaveMutations } from '../../../hooks/admin/useAdminDoctorLeaves'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import TableFooter from '../../../components/admin/TableFooter'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
@@ -21,9 +22,18 @@ export default function DoctorLeavePage() {
   const doctor = user?.doctor || (user?.doctor_id ? { id: user.doctor_id } : null)
   const doctorId = doctor?.id || null
 
-  const [search, setSearch] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(10)
+  const {
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters,
+    resetFilters
+  } = useTableUrlFilters({
+    storageKey: 'doctor_leaves_filters'
+  })
 
   // Modal & Actions State
   const [showCreateModal, setShowCreateModal] = useState(false)

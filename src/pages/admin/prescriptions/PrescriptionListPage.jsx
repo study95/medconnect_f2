@@ -13,6 +13,7 @@ import SearchableSelect from '../../../components/common/SearchableSelect'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { FileText, PenLine, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 
@@ -20,20 +21,57 @@ export default function PrescriptionListPage() {
   const { user, isAdmin, isDoctor } = useAuth()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const activeTabParam = searchParams.get('tab') || 'all'
 
-  const [statusTab, setStatusTab] = useState(activeTabParam)
-  const [search, setSearch] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [doctorFilter, setDoctorFilter] = useState('')
-  const [sourceTypeFilter, setSourceTypeFilter] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusTab: 'all',
+      dateFrom: '',
+      dateTo: '',
+      doctorFilter: '',
+      sourceTypeFilter: 'all',
+    },
+    aliases: {
+      statusTab: ['tab', 'status'],
+      doctorFilter: ['doctor_id', 'doctor'],
+      sourceTypeFilter: ['source_type', 'source'],
+      dateFrom: ['date_from'],
+      dateTo: ['date_to']
+    },
+    storageKey: 'admin_prescriptions_filters'
+  })
+
+  const {
+    statusTab,
+    dateFrom,
+    dateTo,
+    doctorFilter,
+    sourceTypeFilter,
+  } = filters
+
+  const setStatusTab = (val) => setFilter('statusTab', val)
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+  const setDoctorFilter = (val) => setFilter('doctorFilter', val)
+  const setSourceTypeFilter = (val) => setFilter('sourceTypeFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    dateFrom || dateTo || (isAdmin && doctorFilter) || (sourceTypeFilter && sourceTypeFilter !== 'all')
+  ))
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
 
   const { hasActiveSubscription, isExpired } = useSubscription()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -48,20 +86,8 @@ export default function PrescriptionListPage() {
     }
   }
 
-  useEffect(() => {
-    if (activeTabParam && ['all', 'draft', 'finalized'].includes(activeTabParam)) {
-      setStatusTab(activeTabParam)
-    }
-  }, [activeTabParam])
-
   const handleTabChange = (tab) => {
     setStatusTab(tab)
-    if (tab === 'all') {
-      searchParams.delete('tab')
-    } else {
-      searchParams.set('tab', tab)
-    }
-    setSearchParams(searchParams)
   }
 
   const doctorScopeId = user?.doctor?.id 
@@ -411,13 +437,8 @@ export default function PrescriptionListPage() {
         refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(dateFrom || dateTo || (isAdmin && doctorFilter) || (sourceTypeFilter && sourceTypeFilter !== 'all'))}
-        onClearFilters={() => {
-          setDateFrom('')
-          setDateTo('')
-          setDoctorFilter('')
-          setSourceTypeFilter('all')
-        }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
           dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
           dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },

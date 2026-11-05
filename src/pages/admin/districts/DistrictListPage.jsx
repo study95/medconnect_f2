@@ -7,6 +7,7 @@ import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useDivisions, useDistricts, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -120,15 +121,34 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function DistrictListPage() {
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [divisionFilter, setDivisionFilter] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  const hasFilters = Boolean(search || divisionFilter)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      divisionFilter: '',
+    },
+    aliases: {
+      divisionFilter: ['division', 'division_id']
+    },
+    storageKey: 'admin_districts_filters'
+  })
+
+  const { divisionFilter } = filters
+  const setDivisionFilter = (val) => setFilter('divisionFilter', val)
+  const [showFilters, setShowFilters] = useState(Boolean(divisionFilter))
 
   // Enterprise TanStack Query Hooks
   const { divisions } = useDivisions()
@@ -177,8 +197,8 @@ export default function DistrictListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionFilter)}
-        onClearFilters={() => setDivisionFilter('')}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
           divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => setDivisionFilter('') },
         ].filter(Boolean)}

@@ -13,6 +13,7 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import TableFooter from '../../../components/admin/TableFooter'
 import CompactUlid from '../../../components/common/CompactUlid'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 
 // Premium Searchable Select for Filters
 function SearchableSelect({ label, options, value, onChange, placeholder, disabled = false }) {
@@ -393,21 +394,57 @@ export default function ChamberListPage() {
   const { user, isAdmin, isManager, isDoctor, hasPermission } = useAuth()
   const { showDialog } = useDialog()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [viewTarget, setViewTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  
-  // Advanced Filters
-  const [searchParams, setSearchParams] = useSearchParams()
-  const initialStatus = searchParams.get('status') || 'all'
-  const [doctorId, setDoctorId] = useState('')
-  const [hospitalId, setHospitalId] = useState('')
-  const [statusFilter, setStatusFilter] = useState(initialStatus)
-  const [dayFilter, setDayFilter] = useState('')
-  const [venueTypeFilter, setVenueTypeFilter] = useState('all') // 'all' | 'hospital' | 'private'
+
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: 'all',
+      doctorId: '',
+      hospitalId: '',
+      dayFilter: '',
+      venueTypeFilter: 'all',
+    },
+    aliases: {
+      statusFilter: ['status'],
+      doctorId: ['doctor_id', 'doctor'],
+      hospitalId: ['hospital_id', 'hospital'],
+      dayFilter: ['day'],
+      venueTypeFilter: ['venue', 'venue_type']
+    },
+    storageKey: 'admin_chambers_filters'
+  })
+
+  const {
+    statusFilter,
+    doctorId,
+    hospitalId,
+    dayFilter,
+    venueTypeFilter,
+  } = filters
+
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setDoctorId = (val) => setFilter('doctorId', val)
+  const setHospitalId = (val) => setFilter('hospitalId', val)
+  const setDayFilter = (val) => setFilter('dayFilter', val)
+  const setVenueTypeFilter = (val) => setFilter('venueTypeFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    (statusFilter && statusFilter !== 'all') || doctorId || hospitalId || dayFilter || (venueTypeFilter && venueTypeFilter !== 'all')
+  ))
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
 
@@ -418,13 +455,6 @@ export default function ChamberListPage() {
 
   const handleStatusChange = (newStatus) => {
     setStatusFilter(newStatus)
-    const newParams = new URLSearchParams(searchParams)
-    if (newStatus && newStatus !== 'all') {
-      newParams.set('status', newStatus)
-    } else {
-      newParams.delete('status')
-    }
-    setSearchParams(newParams, { replace: true })
   }
 
   // Server-side filter memo for TanStack Query
@@ -446,15 +476,7 @@ export default function ChamberListPage() {
   const { deleteChamber, isDeleting: deleting, toggleChamberActive } = useAdminChamberMutations()
 
   const clearFilters = () => {
-    setSearch('')
-    setDoctorId('')
-    setHospitalId('')
-    setStatusFilter('all')
-    setDayFilter('')
-    setVenueTypeFilter('all')
-    const newParams = new URLSearchParams(searchParams)
-    newParams.delete('status')
-    setSearchParams(newParams, { replace: true })
+    resetFilters()
   }
 
   const handleDelete = async () => {
@@ -535,8 +557,6 @@ export default function ChamberListPage() {
       })
     }
   }
-
-  const hasActiveFilters = Boolean(search || doctorId || hospitalId || (statusFilter && statusFilter !== 'all') || dayFilter || (venueTypeFilter && venueTypeFilter !== 'all'))
 
   const filtered = items.filter(i => {
     const isPrivate = !i.hospital_id || i.consultation_type === 'physical' || !i.hospital

@@ -13,6 +13,7 @@ import {
 } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -115,17 +116,42 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function UnionListPage() {
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  
-  // Filtering States
-  const [divisionFilter, setDivisionFilter] = useState('')
-  const [districtFilter, setDistrictFilter] = useState('')
-  const [upazilaFilter, setUpazilaFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      divisionFilter: '',
+      districtFilter: '',
+      upazilaFilter: '',
+    },
+    aliases: {
+      divisionFilter: ['division', 'division_id'],
+      districtFilter: ['district', 'district_id'],
+      upazilaFilter: ['upazila', 'upazila_id']
+    },
+    storageKey: 'admin_unions_filters'
+  })
+
+  const { divisionFilter, districtFilter, upazilaFilter } = filters
+  const setDivisionFilter = (val) => setFilter('divisionFilter', val)
+  const setDistrictFilter = (val) => setFilter('districtFilter', val)
+  const setUpazilaFilter = (val) => setFilter('upazilaFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(divisionFilter || districtFilter || upazilaFilter))
 
   // Enterprise TanStack Query Hooks
   const { divisions } = useDivisions()
@@ -135,14 +161,11 @@ export default function UnionListPage() {
   const { deleteUnion: saveDeleteUnion, isDeletingUnion: deleting } = useAdminLocationMutations()
 
   const handleDivisionChange = (val) => {
-    setDivisionFilter(val)
-    setDistrictFilter('')
-    setUpazilaFilter('')
+    setFilters({ divisionFilter: val, districtFilter: '', upazilaFilter: '' })
   }
 
   const handleDistrictChange = (val) => {
-    setDistrictFilter(val)
-    setUpazilaFilter('')
+    setFilters({ districtFilter: val, upazilaFilter: '' })
   }
 
   const handleDelete = async () => {
@@ -170,8 +193,6 @@ export default function UnionListPage() {
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
-  const hasActiveFilters = Boolean(search || divisionFilter || districtFilter || upazilaFilter)
-
   return (
     <div className="admin-container">
       <div className="admin-page-header">
@@ -192,8 +213,8 @@ export default function UnionListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionFilter || districtFilter || upazilaFilter)}
-        onClearFilters={() => { setDivisionFilter(''); setDistrictFilter(''); setUpazilaFilter('') }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
           divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => handleDivisionChange('') },
           districtFilter && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtFilter))?.name || districtFilter}`, onRemove: () => handleDistrictChange('') },

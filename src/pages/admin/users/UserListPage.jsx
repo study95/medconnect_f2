@@ -5,6 +5,7 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { useAdminUsers, useAdminPermissions, useAdminUserMutations } from '../../../hooks/admin/useAdminUsers'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -133,10 +134,6 @@ const getTypeStyles = (type) => {
 
 export default function UserListPage() {
   const { user: currentUser, hasPermission, isAdmin } = useAuth()
-  const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [typeFilter, setTypeFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
@@ -148,14 +145,41 @@ export default function UserListPage() {
   const [userPermissions, setUserPermissions] = useState([]) 
   const [permSearch, setPermSearch] = useState('')
 
-  // Pagination state
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const debouncedSearch = useDebounce(search, 300)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      roleFilter: '',
+      typeFilter: '',
+    },
+    aliases: {
+      roleFilter: ['role'],
+      typeFilter: ['type', 'registration_type']
+    },
+    storageKey: 'admin_users_filters'
+  })
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, roleFilter, typeFilter])
+  const {
+    roleFilter,
+    typeFilter,
+  } = filters
+
+  const setRoleFilter = (val) => setFilter('roleFilter', val)
+  const setTypeFilter = (val) => setFilter('typeFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(roleFilter || typeFilter))
 
   // Server-side filter memo for TanStack Query
   const serverFilters = useMemo(() => {
@@ -183,9 +207,7 @@ export default function UserListPage() {
   } = useAdminUserMutations()
 
   const clearFilters = () => {
-    setRoleFilter('')
-    setTypeFilter('')
-    setSearch('')
+    resetFilters()
   }
 
   const getUserRole = (u) => {

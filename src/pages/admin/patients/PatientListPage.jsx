@@ -4,6 +4,7 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { useAdminPatients, useAdminPatientLookups, useAdminPatientMutations } from '../../../features/patients/useAdminPatients'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -193,33 +194,73 @@ function calculateAge(dobString) {
 export default function PatientListPage() {
   const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [bloodGroupFilter, setBloodGroupFilter] = useState('')
-  const [genderFilter, setGenderFilter] = useState('')
-  const [divisionId, setDivisionId] = useState('')
-  const [districtId, setDistrictId] = useState('')
-  const [upazilaId, setUpazilaId] = useState('')
-  const [unionId, setUnionId] = useState('')
-  
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const debouncedSearch = useDebounce(search, 300)
 
-  const hasFilters = Boolean(
-    search || divisionId || districtId || upazilaId || unionId || 
-    bloodGroupFilter || genderFilter || dateFrom || dateTo
-  )
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      dateFrom: '',
+      dateTo: '',
+      bloodGroupFilter: '',
+      genderFilter: '',
+      divisionId: '',
+      districtId: '',
+      upazilaId: '',
+      unionId: '',
+    },
+    aliases: {
+      dateFrom: ['date_from'],
+      dateTo: ['date_to'],
+      bloodGroupFilter: ['blood_group', 'bloodGroup'],
+      genderFilter: ['gender'],
+      divisionId: ['division_id'],
+      districtId: ['district_id'],
+      upazilaId: ['upazila_id'],
+      unionId: ['union_id']
+    },
+    storageKey: 'admin_patients_filters'
+  })
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
+  const {
+    dateFrom,
+    dateTo,
+    bloodGroupFilter,
+    genderFilter,
+    divisionId,
+    districtId,
+    upazilaId,
+    unionId,
+  } = filters
+
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+  const setBloodGroupFilter = (val) => setFilter('bloodGroupFilter', val)
+  const setGenderFilter = (val) => setFilter('genderFilter', val)
+  const setDivisionId = (val) => setFilter('divisionId', val)
+  const setDistrictId = (val) => setFilter('districtId', val)
+  const setUpazilaId = (val) => setFilter('upazilaId', val)
+  const setUnionId = (val) => setFilter('unionId', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    dateFrom || dateTo || bloodGroupFilter || genderFilter || divisionId || districtId || upazilaId || unionId
+  ))
+
+  const hasFilters = hasActiveFilters
 
   // Cached cascading location lookups
   const { divisions, districts, upazilas, unions } = useAdminPatientLookups({
@@ -256,12 +297,7 @@ export default function PatientListPage() {
   } = useAdminPatientMutations()
 
   const clearFilters = () => {
-    setSearch('')
-    setBloodGroupFilter('')
-    setGenderFilter('')
-    setDateFrom('')
-    setDateTo('')
-    setDivisionId(''); setDistrictId(''); setUpazilaId(''); setUnionId('')
+    resetFilters()
   }
 
   const handleDelete = async () => {

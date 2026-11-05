@@ -5,6 +5,7 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { useMyDoctorProfile, useAdminDoctors, useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -187,34 +188,74 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function DoctorListPage() {
   const { user, isAdmin, isManager, isDoctor } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const initialStatusParam = searchParams.get('is_active')
-  const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [showFilters, setShowFilters] = useState(initialStatusParam !== null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [copiedDoctorId, setCopiedDoctorId] = useState(false)
 
-  // Filters State
-  const [divisionId, setDivisionId] = useState('')
-  const [districtId, setDistrictId] = useState('')
-  const [upazilaId, setUpazilaId] = useState('')
-  const [unionId, setUnionId] = useState('')
-  const [statusFilter, setStatusFilter] = useState(initialStatusParam !== null ? initialStatusParam : '')
-  const [top10Filter, setTop10Filter] = useState('')
-  const [telemedicineFilter, setTelemedicineFilter] = useState('')
-  const [specialtyId, setSpecialtyId] = useState('')
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters: hasTableFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      divisionId: '',
+      districtId: '',
+      upazilaId: '',
+      unionId: '',
+      statusFilter: '',
+      top10Filter: '',
+      telemedicineFilter: '',
+      specialtyId: '',
+    },
+    aliases: {
+      statusFilter: ['is_active', 'status'],
+      divisionId: ['division_id'],
+      districtId: ['district_id'],
+      upazilaId: ['upazila_id'],
+      unionId: ['union_id'],
+      specialtyId: ['specialty_id'],
+      top10Filter: ['top_10_doctor'],
+      telemedicineFilter: ['available_telemedicine']
+    },
+    storageKey: 'admin_doctors_filters'
+  })
+
+  const {
+    divisionId,
+    districtId,
+    upazilaId,
+    unionId,
+    statusFilter,
+    top10Filter,
+    telemedicineFilter,
+    specialtyId,
+  } = filters
+
+  const setDivisionId = (val) => setFilter('divisionId', val)
+  const setDistrictId = (val) => setFilter('districtId', val)
+  const setUpazilaId = (val) => setFilter('upazilaId', val)
+  const setUnionId = (val) => setFilter('unionId', val)
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setTop10Filter = (val) => setFilter('top10Filter', val)
+  const setTelemedicineFilter = (val) => setFilter('telemedicineFilter', val)
+  const setSpecialtyId = (val) => setFilter('specialtyId', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId
+  ))
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const debouncedSearch = useDebounce(search, 300)
-
-  // Reset pagination to page 1 when search or filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
 
   // Server-side filter memo for TanStack Query (Admin / Hospital views)
   const serverFilters = useMemo(() => {
@@ -269,21 +310,15 @@ export default function DoctorListPage() {
   } = useAdminDoctorMutations()
 
   const handleDivisionChange = (val) => {
-    setDivisionId(val)
-    setDistrictId('')
-    setUpazilaId('')
-    setUnionId('')
+    setFilters({ divisionId: val, districtId: '', upazilaId: '', unionId: '' })
   }
 
   const handleDistrictChange = (val) => {
-    setDistrictId(val)
-    setUpazilaId('')
-    setUnionId('')
+    setFilters({ districtId: val, upazilaId: '', unionId: '' })
   }
 
   const handleUpazilaChange = (val) => {
-    setUpazilaId(val)
-    setUnionId('')
+    setFilters({ upazilaId: val, unionId: '' })
   }
 
   const handleDelete = async () => {
@@ -314,15 +349,7 @@ export default function DoctorListPage() {
   }
 
   const clearFilters = () => {
-    setSearch('')
-    setDivisionId('')
-    setDistrictId('')
-    setUpazilaId('')
-    setUnionId('')
-    setStatusFilter('')
-    setTop10Filter('')
-    setTelemedicineFilter('')
-    setSpecialtyId('')
+    resetFilters()
   }
 
   const handleToggleStatus = async (doctor) => {

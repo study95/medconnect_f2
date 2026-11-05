@@ -12,6 +12,7 @@ import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import SearchableSelect from '../../../components/common/SearchableSelect'
 import useDebounce from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { CalendarCheck, Printer, CalendarDays, FileText, CheckCircle2, Sparkles, Clock, XCircle } from 'lucide-react'
 import AppointmentPrintModal from '../../../components/admin/AppointmentPrintModal'
 import AppointmentStatusModal from '../../../components/admin/AppointmentStatusModal'
@@ -95,29 +96,70 @@ function TableCheckbox({ checked, indeterminate, onChange, title }) {
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const initialStatus = searchParams.get('status') || ''
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [changingStatus, setChangingStatus] = useState(null)
   const [statusModalTarget, setStatusModalTarget] = useState(null)
-  const [showFilters, setShowFilters] = useState(Boolean(initialStatus))
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showPrintModal, setShowPrintModal] = useState(false)
 
-  // Filters State
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 350)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [month, setMonth] = useState('')
-  const [year, setYear] = useState('')
-  const [doctorId, setDoctorId] = useState('')
-  const [hospitalId, setHospitalId] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState(initialStatus)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  // Filters State synchronized with URL Query Parameters and SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters: hasTableFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: '',
+      dateFrom: '',
+      dateTo: '',
+      month: '',
+      year: '',
+      doctorId: '',
+      hospitalId: '',
+      roleFilter: '',
+    },
+    aliases: {
+      statusFilter: ['status'],
+      roleFilter: ['role'],
+      doctorId: ['doctor_id'],
+      hospitalId: ['hospital_id'],
+      dateFrom: ['date_from'],
+      dateTo: ['date_to']
+    },
+    storageKey: 'admin_appointments_filters'
+  })
+
+  const {
+    statusFilter,
+    dateFrom,
+    dateTo,
+    month,
+    year,
+    doctorId,
+    hospitalId,
+    roleFilter,
+  } = filters
+
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+  const setMonth = (val) => setFilter('month', val)
+  const setYear = (val) => setFilter('year', val)
+  const setDoctorId = (val) => setFilter('doctorId', val)
+  const setHospitalId = (val) => setFilter('hospitalId', val)
+  const setRoleFilter = (val) => setFilter('roleFilter', val)
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(statusFilter || dateFrom || dateTo || month || year || doctorId || hospitalId || roleFilter))
 
   // Today's local date in 'YYYY-MM-DD'
   const todayStr = useMemo(() => {
@@ -149,36 +191,37 @@ export default function AppointmentListPage() {
 
   const handleToggleToday = () => {
     if (isTodayActive) {
-      setDateFrom('')
-      setDateTo('')
+      setFilters({ dateFrom: '', dateTo: '' })
     } else {
-      setDateFrom(todayStr)
-      setDateTo(todayStr)
-      setMonth('')
-      setYear('')
-      setCurrentPage(1)
+      setFilters({
+        dateFrom: todayStr,
+        dateTo: todayStr,
+        month: '',
+        year: ''
+      })
     }
   }
 
   const handleSelectTotal = () => {
-    setStatusFilter('')
-    setDateFrom('')
-    setDateTo('')
-    setMonth('')
-    setYear('')
-    setCurrentPage(1)
+    setFilters({
+      statusFilter: '',
+      dateFrom: '',
+      dateTo: '',
+      month: '',
+      year: ''
+    })
   }
 
   const handleToggleMonthly = () => {
     if (isMonthlyActive) {
-      setMonth('')
-      setYear('')
+      setFilters({ month: '', year: '' })
     } else {
-      setDateFrom('')
-      setDateTo('')
-      setMonth(currentMonthStr)
-      setYear(currentYearStr)
-      setCurrentPage(1)
+      setFilters({
+        dateFrom: '',
+        dateTo: '',
+        month: currentMonthStr,
+        year: currentYearStr
+      })
     }
   }
 
@@ -187,14 +230,8 @@ export default function AppointmentListPage() {
       setStatusFilter('')
     } else {
       setStatusFilter(status)
-      setCurrentPage(1)
     }
   }
-
-  // Reset to page 1 whenever any filter or search changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, dateFrom, dateTo, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Memoized server filters for TanStack Query
   const serverFilters = useMemo(() => {
@@ -392,15 +429,7 @@ export default function AppointmentListPage() {
   }
 
   const clearFilters = () => {
-    setSearch('')
-    setDateFrom('')
-    setDateTo('')
-    setMonth('')
-    setYear('')
-    setDoctorId('')
-    setHospitalId('')
-    setRoleFilter('')
-    setStatusFilter('')
+    resetFilters()
   }
 
   const statusOptions = [
@@ -551,10 +580,10 @@ export default function AppointmentListPage() {
         onClearFilters={clearFilters}
         activeFilters={[
           isTodayActive
-            ? { key: 'today', label: '📅 ফিল্টার: আজকের অ্যাপয়েন্টমেন্ট', onRemove: () => { setDateFrom(''); setDateTo('') } }
+            ? { key: 'today', label: '📅 ফিল্টার: আজকের অ্যাপয়েন্টমেন্ট', onRemove: () => setFilters({ dateFrom: '', dateTo: '' }) }
             : null,
           isMonthlyActive
-            ? { key: 'monthly', label: `📅 ফিল্টার: চলতি মাসের (${months.find(m => String(m.id) === currentMonthStr)?.name || ''})`, onRemove: () => { setMonth(''); setYear('') } }
+            ? { key: 'monthly', label: `📅 ফিল্টার: চলতি মাসের (${months.find(m => String(m.id) === currentMonthStr)?.name || ''})`, onRemove: () => setFilters({ month: '', year: '' }) }
             : null,
           !isTodayActive && dateFrom && { key: 'date_from', label: `From: ${dateFrom}`, onRemove: () => setDateFrom('') },
           !isTodayActive && dateTo && { key: 'date_to', label: `To: ${dateTo}`, onRemove: () => setDateTo('') },
@@ -887,7 +916,6 @@ export default function AppointmentListPage() {
                       </td>
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.doctor?.name || appt.doctor_name || 'No Doctor assigned'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--admin-primary)', fontWeight: 600 }}>{appt.doctor?.specialty?.name || 'General Practitioner'}</div>
                         {(appt.doctor_public_id || appt.doctor?.public_id || appt.doctor?.id) && (
                           <div style={{ marginTop: 4 }}>
                             <CompactUlid value={appt.doctor_public_id || appt.doctor?.public_id || appt.doctor?.id} />
@@ -898,11 +926,6 @@ export default function AppointmentListPage() {
                         <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>
                           {appt.hospital?.name || appt.hospital_name || appt.chamber?.name || appt.chamber?.chamber_name || appt.chamber_name || '—'}
                         </div>
-                        {(appt.chamber?.address || appt.hospital_address || appt.chamber_address) && (
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>
-                            {appt.chamber?.address || appt.hospital_address || appt.chamber_address}
-                          </div>
-                        )}
                         {(appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id || appt.hospital?.id) && (
                           <div style={{ marginTop: 4 }}>
                             <CompactUlid value={appt.hospital_public_id || appt.hospital?.public_id || appt.chamber_public_id || appt.chamber?.public_id || appt.hospital?.id} />

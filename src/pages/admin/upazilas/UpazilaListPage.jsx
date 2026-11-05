@@ -7,6 +7,7 @@ import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useDivisions, useDistricts, useUpazilas, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -109,16 +110,39 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function UpazilaListPage() {
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  
-  // Filtering States
-  const [divisionFilter, setDivisionFilter] = useState('')
-  const [districtFilter, setDistrictFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      divisionFilter: '',
+      districtFilter: '',
+    },
+    aliases: {
+      divisionFilter: ['division', 'division_id'],
+      districtFilter: ['district', 'district_id']
+    },
+    storageKey: 'admin_upazilas_filters'
+  })
+
+  const { divisionFilter, districtFilter } = filters
+  const setDivisionFilter = (val) => setFilter('divisionFilter', val)
+  const setDistrictFilter = (val) => setFilter('districtFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(divisionFilter || districtFilter))
 
   // Enterprise TanStack Query Hooks
   const { divisions } = useDivisions()
@@ -127,8 +151,7 @@ export default function UpazilaListPage() {
   const { deleteUpazila: saveDeleteUpazila, isDeletingUpazila: deleting } = useAdminLocationMutations()
 
   const handleDivisionChange = (val) => {
-    setDivisionFilter(val)
-    setDistrictFilter('')
+    setFilters({ divisionFilter: val, districtFilter: '' })
   }
 
   const handleDelete = async () => {
@@ -155,8 +178,6 @@ export default function UpazilaListPage() {
 
   const paginatedData = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
 
-  const hasActiveFilters = Boolean(search || divisionFilter || districtFilter)
-
   return (
     <div className="admin-container">
       <div className="admin-page-header">
@@ -177,8 +198,8 @@ export default function UpazilaListPage() {
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionFilter || districtFilter)}
-        onClearFilters={() => { setDivisionFilter(''); setDistrictFilter('') }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
           divisionFilter && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionFilter))?.name || divisionFilter}`, onRemove: () => handleDivisionChange('') },
           districtFilter && { key: 'district', label: `District: ${districts.find(d => String(d.id) === String(districtFilter))?.name || districtFilter}`, onRemove: () => setDistrictFilter('') },

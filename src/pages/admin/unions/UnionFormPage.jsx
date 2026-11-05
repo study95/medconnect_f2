@@ -188,7 +188,7 @@ export default function UnionFormPage() {
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Union' : '🏘️ Add New Union'}</h2>
           <p className="admin-page-subtitle">Configure rural administrative units for village-level targeting</p>
         </div>
-        <Link to="/admin/unions" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back to List</Link>
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/unions'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ borderRadius: 12 }) }}>← Back to List</button>
       </div>
 
       <div className="admin-card" style={{ borderTop: '4px solid #4F46E5', overflow: 'visible' }}>
@@ -265,7 +265,7 @@ export default function UnionFormPage() {
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update Union' : '🚀 Create Union'}
               </button>
-              <Link to="/admin/unions" className="admin-btn admin-btn-outline" style={{ padding: '14px 24px', borderRadius: 12 }}>Cancel</Link>
+              <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/unions'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ padding: '14px 24px', borderRadius: 12 }) }}>Cancel</button>
             </div>
           </form>
         </div>

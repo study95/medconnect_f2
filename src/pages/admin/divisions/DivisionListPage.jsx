@@ -6,17 +6,27 @@ import toast from 'react-hot-toast'
 import { useDivisions, useAdminLocationMutations } from '../../../hooks/admin/useAdminLocations'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 
 export default function DivisionListPage() {
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const {
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    resetFilters
+  } = useTableUrlFilters({
+    storageKey: 'admin_divisions_filters'
+  })
 
   // Enterprise TanStack Query Hooks
   const { divisions: items, isLoading: loading, refetch: fetchDivisions } = useDivisions()

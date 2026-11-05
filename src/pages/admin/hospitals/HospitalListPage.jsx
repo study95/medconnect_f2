@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { useMyHospitalProfile, useAdminHospitals, useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
@@ -191,34 +192,65 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 export default function HospitalListPage() {
   const { isAdmin, isManager } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const initialIsActive = searchParams.get('is_active')
-  const initialStatus = searchParams.get('status') || (initialIsActive !== null ? (initialIsActive === '0' ? 'inactive' : 'active') : '')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  const [showFilters, setShowFilters] = useState(initialStatus !== '')
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
 
   const isManagerOnly = Boolean(isManager && !isAdmin)
 
-  // Filters
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 300)
-  const [hospitalIdFilter, setHospitalIdFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState(initialStatus)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters: hasTableFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: '',
+      hospitalIdFilter: '',
+      divisionId: '',
+      districtId: '',
+      upazilaId: '',
+      unionId: '',
+    },
+    aliases: {
+      statusFilter: ['status', 'is_active'],
+      hospitalIdFilter: ['hospital_id'],
+      divisionId: ['division_id'],
+      districtId: ['district_id'],
+      upazilaId: ['upazila_id'],
+      unionId: ['union_id']
+    },
+    storageKey: 'admin_hospitals_filters'
+  })
 
-  // Location Filters
-  const [divisionId, setDivisionId] = useState('')
-  const [districtId, setDistrictId] = useState('')
-  const [upazilaId, setUpazilaId] = useState('')
-  const [unionId, setUnionId] = useState('')
+  const {
+    statusFilter,
+    hospitalIdFilter,
+    divisionId,
+    districtId,
+    upazilaId,
+    unionId,
+  } = filters
 
-  // Reset pagination to page 1 when search or filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, hospitalIdFilter, statusFilter, divisionId, districtId, upazilaId, unionId])
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setHospitalIdFilter = (val) => setFilter('hospitalIdFilter', val)
+  const setDivisionId = (val) => setFilter('divisionId', val)
+  const setDistrictId = (val) => setFilter('districtId', val)
+  const setUpazilaId = (val) => setFilter('upazilaId', val)
+  const setUnionId = (val) => setFilter('unionId', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    statusFilter || hospitalIdFilter || divisionId || districtId || upazilaId || unionId
+  ))
 
   // Server-side filter memo for TanStack Query (Admin view)
   const serverFilters = useMemo(() => {
@@ -268,24 +300,15 @@ export default function HospitalListPage() {
   } = useAdminHospitalMutations()
 
   const handleDivisionChange = (val) => {
-    setDivisionId(val)
-    setDistrictId('')
-    setUpazilaId('')
-    setUnionId('')
-    setHospitalIdFilter('')
+    setFilters({ divisionId: val, districtId: '', upazilaId: '', unionId: '', hospitalIdFilter: '' })
   }
 
   const handleDistrictChange = (val) => {
-    setDistrictId(val)
-    setUpazilaId('')
-    setUnionId('')
-    setHospitalIdFilter('')
+    setFilters({ districtId: val, upazilaId: '', unionId: '', hospitalIdFilter: '' })
   }
 
   const handleUpazilaChange = (val) => {
-    setUpazilaId(val)
-    setUnionId('')
-    setHospitalIdFilter('')
+    setFilters({ upazilaId: val, unionId: '', hospitalIdFilter: '' })
   }
 
   const handleDelete = async () => {
@@ -324,13 +347,7 @@ export default function HospitalListPage() {
   }
 
   const clearFilters = () => {
-    setSearch('')
-    setDivisionId('')
-    setDistrictId('')
-    setUpazilaId('')
-    setUnionId('')
-    setHospitalIdFilter('')
-    setStatusFilter('')
+    resetFilters()
   }
 
   // Server-side filtered & paginated dataset

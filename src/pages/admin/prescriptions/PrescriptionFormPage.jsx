@@ -912,7 +912,6 @@ export default function PrescriptionFormPage() {
 
   const [newAdviceInput, setNewAdviceInput] = useState('')
   const [diagnosisSearchInput, setDiagnosisSearchInput] = useState('')
-  const [tableSearchFilter, setTableSearchFilter] = useState('')
   const [investigationSearchQuery, setInvestigationSearchQuery] = useState('')
 
   // Multi-Diagnosis Management Helpers
@@ -963,7 +962,7 @@ export default function PrescriptionFormPage() {
     }
   }
 
-  // Medicine Autocomplete
+  // Medicine Autocomplete & Instant Memory Cache
   const [medicineSuggestions, setMedicineSuggestions] = useState([])
   const [activeMedicineIndex, setActiveMedicineIndex] = useState(null)
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(-1)
@@ -972,6 +971,88 @@ export default function PrescriptionFormPage() {
   const medicineInputRefs = useRef([])
   const genericCacheRef = useRef({})
   const formRef = useRef(null)
+  const localMedicineCacheRef = useRef([])
+  const recentMedicineSearchCacheRef = useRef({})
+
+  // Preload top essential medicines on mount for 0ms instant suggestion
+  useEffect(() => {
+    let isMounted = true
+    const preloadMedicines = async () => {
+      try {
+        const res = await searchMedicines({ typeahead: 1, limit: 30 })
+        const list = res.data?.data || res.data || []
+        if (isMounted && Array.isArray(list) && list.length > 0) {
+          localMedicineCacheRef.current = list
+          list.forEach(m => {
+            const mName = m.name || m.medicine_name
+            if (mName && m.generic_name) {
+              genericCacheRef.current[mName.trim().toLowerCase()] = m.generic_name
+            }
+          })
+        }
+      } catch (e) {
+        // Fallback silently if offline or network error
+      }
+    }
+    preloadMedicines()
+    return () => { isMounted = false }
+  }, [])
+
+  // Helper to compile instant suggestions from doctor favorites + pre-cached top medicines
+  const getTopOrFavoriteMedicines = () => {
+    const list = []
+    const seen = new Set()
+
+    if (Array.isArray(favoriteMedicines)) {
+      favoriteMedicines.slice(0, 10).forEach(f => {
+        const name = f.name || f.medicine_name
+        if (name && !seen.has(name.toLowerCase())) {
+          seen.add(name.toLowerCase())
+          list.push({
+            id: f.id || f.medicine_id,
+            medicine_name: name,
+            name: name,
+            generic_name: f.generic_name,
+            dosage_type: f.dosage_type || f.type,
+            type: f.dosage_type || f.type,
+            strength: f.strength,
+            company_name: f.company_name,
+            dosage: f.dosage,
+            frequency: f.dosage,
+            duration: f.duration,
+            meal: f.meal,
+            instructions: f.instructions,
+            is_favorite: true
+          })
+        }
+      })
+    }
+
+    if (Array.isArray(localMedicineCacheRef.current)) {
+      localMedicineCacheRef.current.forEach(m => {
+        const name = m.name || m.medicine_name
+        if (name && !seen.has(name.toLowerCase()) && list.length < 12) {
+          seen.add(name.toLowerCase())
+          list.push(m)
+        }
+      })
+    }
+
+    return list
+  }
+
+  // Instant onFocus handler: shows doctor favorites & top medicines immediately on click
+  const handleMedicineFocus = (index) => {
+    setActiveMedicineIndex(index)
+    setHighlightedSuggestion(-1)
+    const currentVal = form.medicines[index]?.medicine_name || ''
+    if (currentVal.trim().length >= 1) {
+      handleMedicineSearch(currentVal, index)
+    } else {
+      const topList = getTopOrFavoriteMedicines()
+      setMedicineSuggestions(topList)
+    }
+  }
 
   // Floating coordinates for Medicine Autocomplete Dropdown (bypasses table overflow clipping)
   const [dropdownCoords, setDropdownCoords] = useState(null)
@@ -1550,23 +1631,26 @@ export default function PrescriptionFormPage() {
       || walkInPatientInfo?.registration_no
       || appointmentInfo?.patient_public_id
       || appointmentInfo?.patient?.public_id
-      || form.patient_public_id
-      || form.patient_id
       || appointmentInfo?.patient?.patient_id
       || appointmentInfo?.patient_id
       || appointmentInfo?.user?.patient_id
       || appointmentInfo?.patient?.id
       || appointmentInfo?.user_id
+      || form.patient_public_id
+      || form.patient_id
 
-    if (!activePatientId || activePatientId === '—') return
+    if (!activePatientId || activePatientId === '—') {
+      setTimelineLoading(false)
+      return
+    }
 
-    let isMounted = true
+    let isCurrent = true
     setTimelineLoading(true)
     setTimelineError(null)
 
     getPatientClinicalTimeline(activePatientId, { per_page: 20 })
       .then(res => {
-        if (!isMounted) return
+        if (!isCurrent) return
         const timelineEvents = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
         setClinicalTimeline(timelineEvents)
 
@@ -1574,25 +1658,33 @@ export default function PrescriptionFormPage() {
         if (!isEdit) {
           const rxEvents = timelineEvents.filter(ev => ev.type === 'prescription')
           const nextVisit = String(rxEvents.length + 1).padStart(2, '0')
-          setForm(prev => ({
+          setForm(prev => (prev.visit_no === nextVisit ? prev : {
             ...prev,
             visit_no: nextVisit
           }))
         }
       })
       .catch(err => {
-        if (!isMounted) return
+        if (!isCurrent) return
         console.warn('Could not load patient clinical timeline:', err)
         setTimelineError(getErrorMessage(err, 'Timeline unavailable'))
       })
       .finally(() => {
-        if (isMounted) setTimelineLoading(false)
+        setTimelineLoading(false)
       })
 
     return () => {
-      isMounted = false
+      isCurrent = false
+      setTimelineLoading(false)
     }
-  }, [appointmentInfo, form.patient_id, form.patient_public_id, walkInPatientInfo, isEdit])
+  }, [
+    appointmentInfo?.patient_public_id,
+    appointmentInfo?.patient?.public_id,
+    appointmentInfo?.patient_id,
+    appointmentInfo?.user_id,
+    walkInPatientInfo?.patient_id,
+    isEdit
+  ])
 
   // Load Doctor Personal Favorites & Quick Templates from Database (Cloud-Synced)
   useEffect(() => {
@@ -3062,27 +3154,115 @@ export default function PrescriptionFormPage() {
 
     if (medicineSearchTimeout.current) clearTimeout(medicineSearchTimeout.current)
 
-    if (!query || query.trim().length < 2) {
-      setMedicineSuggestions([])
+    const trimmed = (query || '').trim()
+    if (!trimmed) {
+      const topList = getTopOrFavoriteMedicines()
+      setMedicineSuggestions(topList)
       return
     }
 
+    const normalizedQuery = trimmed.toLowerCase()
+
+    // 1. INSTANT 0ms LOCAL IN-MEMORY FILTER & RANK
+    const localPool = [
+      ...(favoriteMedicines || []).map(f => ({
+        id: f.id || f.medicine_id,
+        medicine_name: f.name || f.medicine_name,
+        name: f.name || f.medicine_name,
+        generic_name: f.generic_name,
+        dosage_type: f.dosage_type || f.type,
+        type: f.dosage_type || f.type,
+        strength: f.strength,
+        company_name: f.company_name,
+        dosage: f.dosage,
+        frequency: f.dosage,
+        duration: f.duration,
+        meal: f.meal,
+        instructions: f.instructions,
+        is_favorite: true
+      })),
+      ...(localMedicineCacheRef.current || [])
+    ]
+
+    const localMatches = []
+    const seenKeys = new Set()
+    for (const med of localPool) {
+      const mName = (med.medicine_name || med.name || '').toLowerCase()
+      const gName = (med.generic_name || '').toLowerCase()
+      const key = med.id ? `id_${med.id}` : mName
+      if (seenKeys.has(key)) continue
+
+      if (
+        mName.startsWith(normalizedQuery) ||
+        gName.startsWith(normalizedQuery) ||
+        mName.includes(normalizedQuery) ||
+        gName.includes(normalizedQuery)
+      ) {
+        seenKeys.add(key)
+        localMatches.push(med)
+      }
+      if (localMatches.length >= 12) break
+    }
+
+    // Rank prefix matches first
+    localMatches.sort((a, b) => {
+      const aName = (a.medicine_name || a.name || '').toLowerCase()
+      const bName = (b.medicine_name || b.name || '').toLowerCase()
+      const aStarts = aName.startsWith(normalizedQuery) ? 0 : 1
+      const bStarts = bName.startsWith(normalizedQuery) ? 0 : 1
+      if (aStarts !== bStarts) return aStarts - bStarts
+      return 0
+    })
+
+    // If local match found, show IMMEDIATELY with 0ms latency
+    if (localMatches.length > 0) {
+      setMedicineSuggestions(localMatches)
+    }
+
+    // Check query cache
+    if (recentMedicineSearchCacheRef.current[normalizedQuery]) {
+      const cached = recentMedicineSearchCacheRef.current[normalizedQuery]
+      if (cached && cached.length > 0) {
+        setMedicineSuggestions(cached)
+        return
+      }
+    }
+
+    // 2. High-speed 100ms Debounce (reduced from 250ms) for background server fetch
     medicineSearchTimeout.current = setTimeout(async () => {
       try {
-        const res = await searchMedicines({ search: query.trim(), per_page: 8 })
+        const res = await searchMedicines({ search: trimmed, typeahead: 1, limit: 12 })
         const meds = res.data?.data || res.data || []
         const arr = Array.isArray(meds) ? meds : []
+
+        recentMedicineSearchCacheRef.current[normalizedQuery] = arr
+
         arr.forEach(m => {
           const mName = m.name || m.medicine_name
           if (mName && m.generic_name) {
             genericCacheRef.current[mName.trim().toLowerCase()] = m.generic_name
           }
         })
-        setMedicineSuggestions(arr)
+
+        // Also add unique results into localMedicineCacheRef so next keystrokes are 0ms
+        const curLocal = localMedicineCacheRef.current || []
+        const curKeys = new Set(curLocal.map(c => c.id || c.medicine_name))
+        const newItems = arr.filter(m => !curKeys.has(m.id || m.medicine_name))
+        if (newItems.length > 0) {
+          localMedicineCacheRef.current = [...curLocal, ...newItems]
+        }
+
+        if (arr.length > 0) {
+          setMedicineSuggestions(arr)
+        } else if (localMatches.length === 0) {
+          setMedicineSuggestions([])
+        }
       } catch (err) {
-        setMedicineSuggestions([])
+        if (localMatches.length === 0) {
+          setMedicineSuggestions([])
+        }
       }
-    }, 250)
+    }, 100)
   }
 
   const selectMedicine = async (index, med) => {
@@ -3090,6 +3270,10 @@ export default function PrescriptionFormPage() {
     const type = med.type || med.dosage_type || med.form || ''
     const strength = med.strength || ''
     const generic = med.generic_name || ''
+    const dosage = med.dosage || med.frequency || ''
+    const duration = med.duration || ''
+    const meal = med.meal || ''
+    const instructions = med.instructions || ''
 
     // Immediately hide & clear autocomplete dropdown box
     setActiveMedicineIndex(null)
@@ -3111,13 +3295,25 @@ export default function PrescriptionFormPage() {
       }
     }
 
+    // Smart default dosage if doctor has no previous custom dosage
+    const isBn = tableLanguage === 'bn'
+    const defaultFreq = dosage || (isBn ? '১+০+১' : '1+0+1')
+    const defaultDur = duration || (isBn ? '৩ দিন' : '3 Days')
+    const defaultMeal = meal || (isBn ? 'খাওয়ার পর' : 'After Meal')
+
     const updated = [...form.medicines]
+    const cur = updated[index] || {}
     updated[index] = {
-      ...updated[index],
+      ...cur,
       medicine_name: name,
       generic_name: generic,
-      type: type,
-      strength: strength
+      type: type || cur.type || 'Tablet',
+      strength: strength || cur.strength || '',
+      frequency: defaultFreq,
+      dosage: defaultFreq,
+      duration: defaultDur,
+      meal: defaultMeal,
+      instructions: instructions || cur.instructions || ''
     }
     setForm({ ...form, medicines: updated })
   }
@@ -3138,7 +3334,7 @@ export default function PrescriptionFormPage() {
 
       if (!generic) {
         try {
-          const res = await searchMedicines({ search: trimmed, per_page: 5 })
+          const res = await searchMedicines({ search: trimmed, typeahead: 1, limit: 5 })
           const list = res.data?.data || res.data || []
           const directMatch = list.find(s => 
             (s.name || s.medicine_name || '').trim().toLowerCase() === trimmed.toLowerCase()
@@ -3161,32 +3357,73 @@ export default function PrescriptionFormPage() {
           handleMedicineChange(index, 'generic_name', '')
         }
       }
-    }, 250)
+    }, 200)
+  }
+
+  // Advances focus to the next medicine row, or automatically appends a new row if on the last row
+  const moveToNextMedicineRow = (currentIndex) => {
+    // If not the last row, focus the next existing row
+    if (currentIndex < form.medicines.length - 1) {
+      setTimeout(() => {
+        const nextInput = medicineInputRefs.current[currentIndex + 1]
+        if (nextInput) {
+          nextInput.focus()
+          nextInput.select?.()
+        }
+      }, 50)
+      return
+    }
+
+    // If on the last row, check if the current row has a medicine name
+    const curMed = form.medicines[currentIndex]
+    if (curMed && curMed.medicine_name && curMed.medicine_name.trim()) {
+      setForm(prev => ({
+        ...prev,
+        medicines: [...prev.medicines, emptyMedicine()]
+      }))
+      setTimeout(() => {
+        const nextInput = medicineInputRefs.current[currentIndex + 1]
+        if (nextInput) {
+          nextInput.focus()
+        }
+      }, 60)
+    }
   }
 
   const handleMedicineKeyDown = (e, index) => {
-    if (activeMedicineIndex !== index || medicineSuggestions.length === 0) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightedSuggestion(prev => (prev < medicineSuggestions.length - 1 ? prev + 1 : 0))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedSuggestion(prev => (prev > 0 ? prev - 1 : medicineSuggestions.length - 1))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const chosen = highlightedSuggestion >= 0 && medicineSuggestions[highlightedSuggestion]
-        ? medicineSuggestions[highlightedSuggestion]
-        : (medicineSuggestions.length > 0 ? medicineSuggestions[0] : null)
-      if (chosen) {
-        selectMedicine(index, chosen)
-      } else {
+    if (activeMedicineIndex === index && medicineSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setHighlightedSuggestion(prev => (prev < medicineSuggestions.length - 1 ? prev + 1 : 0))
+        return
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setHighlightedSuggestion(prev => (prev > 0 ? prev - 1 : medicineSuggestions.length - 1))
+        return
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        const chosen = highlightedSuggestion >= 0 && medicineSuggestions[highlightedSuggestion]
+          ? medicineSuggestions[highlightedSuggestion]
+          : (medicineSuggestions.length > 0 ? medicineSuggestions[0] : null)
+        if (chosen) {
+          selectMedicine(index, chosen)
+        } else {
+          setActiveMedicineIndex(null)
+          setMedicineSuggestions([])
+        }
+        return
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
         setActiveMedicineIndex(null)
         setMedicineSuggestions([])
+        return
       }
-    } else if (e.key === 'Escape') {
-      setActiveMedicineIndex(null)
-      setMedicineSuggestions([])
+    }
+
+    // If suggestions are closed, pressing Enter advances straight to the next medicine row!
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      moveToNextMedicineRow(index)
     }
   }
 
@@ -3423,7 +3660,8 @@ export default function PrescriptionFormPage() {
   const bookerName = appointmentInfo?.user_name || appointmentInfo?.user?.name || appointmentInfo?.booker?.name || null
   const patientRelation = appointmentInfo?.for_patient_relation || appointmentInfo?.patient_relation || null
 
-  const appointmentPaymentStatus = appointmentInfo?.payment_status || (appointmentInfo ? 'unpaid' : null)
+  const isPaymentPaid = String(appointmentInfo?.payment_status || '').toLowerCase() === 'paid'
+  const paymentMethodName = appointmentInfo?.payment_method || null
   const appointmentAmount = appointmentInfo?.amount || appointmentInfo?.chamber?.fee || null
   const appointmentCollector = appointmentInfo?.payment_collector_name || null
 
@@ -3460,25 +3698,27 @@ export default function PrescriptionFormPage() {
     : (form.visit_no || (pastPrescriptions.length > 0 ? String(pastPrescriptions.length + 1).padStart(2, '0') : '01'))
   const visitNo = String(rawVisitNo).replace(/^#+/, '')
 
-  // Accurate Appointment Scheduled Time
-  const apptTimeDisplay = useMemo(() => {
-    const rawTime = appointmentInfo?.time || appointmentInfo?.appointment_time || appointmentInfo?.time_slot || null
-    if (!rawTime) {
-      return appointmentId ? '—' : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  // Actual Visit / Consultation Time (matches the clinical encounter when the patient visits)
+  const [liveVisitTime] = useState(() => {
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  })
+
+  const visitTimeDisplay = useMemo(() => {
+    // 1. If editing an existing prescription, display its recorded visit time
+    if (isEdit) {
+      if (form.visiting_time_display) return form.visiting_time_display
+      if (form.visited_at) {
+        try {
+          const d = new Date(form.visited_at)
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+          }
+        } catch (e) {}
+      }
     }
-    if (/[ap]m/i.test(rawTime)) {
-      return rawTime
-    }
-    const match = String(rawTime).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
-    if (match) {
-      let hours = parseInt(match[1], 10)
-      const minutes = match[2]
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      hours = hours % 12 || 12
-      return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`
-    }
-    return String(rawTime)
-  }, [appointmentInfo?.time, appointmentInfo?.appointment_time, appointmentInfo?.time_slot, appointmentId])
+    // 2. For active prescription, display the actual encounter consultation time
+    return liveVisitTime
+  }, [isEdit, form.visiting_time_display, form.visited_at, liveVisitTime])
 
   // Real-time Active Counters — only counted when doctor has written/added items
   const activeMedicinesCount = form.medicines.filter(m => (m.medicine_name || '').trim().length > 0).length
@@ -4320,10 +4560,10 @@ export default function PrescriptionFormPage() {
             <div className="dr-patient-meta-block">
               <span className="dr-meta-label">Visit & Time</span>
               <span className="dr-meta-value" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0d9488', fontWeight: 700 }}>
-                <span>Visit {visitNo}</span>
+                <span>Visit: {visitNo}</span>
                 <span style={{ color: '#64748b', fontWeight: 500 }}>
                   <Clock size={11} style={{ display: 'inline', marginRight: 2 }} />
-                  {apptTimeDisplay}
+                  {visitTimeDisplay}
                 </span>
               </span>
             </div>
@@ -4700,18 +4940,6 @@ export default function PrescriptionFormPage() {
                   </div>
                 </div>
 
-                {/* Medicine Instant Search Bar */}
-                <div className="dr-med-search-bar">
-                  <Search size={14} color="#94a3b8" />
-                  <input
-                    type="text"
-                    placeholder="Search medicine (type at least 2 characters)"
-                    className="dr-med-search-input"
-                    value={tableSearchFilter}
-                    onChange={(e) => setTableSearchFilter(e.target.value)}
-                  />
-                </div>
-
                 {/* Structured Medicines Table */}
                 <div className="dr-table-wrapper">
                   <table className="dr-table">
@@ -4739,6 +4967,7 @@ export default function PrescriptionFormPage() {
                               placeholder="e.g. Paracetamol"
                               value={med.medicine_name}
                               onChange={(e) => handleMedicineSearch(e.target.value, index)}
+                              onFocus={() => handleMedicineFocus(index)}
                               onBlur={() => handleMedicineBlur(index)}
                               onKeyDown={(e) => handleMedicineKeyDown(e, index)}
                             />
@@ -4791,6 +5020,7 @@ export default function PrescriptionFormPage() {
                                   const medType = item.type || item.dosage_type || item.form || ''
                                   const medStrength = item.strength || ''
                                   const medGeneric = item.generic_name || ''
+                                  const medDose = item.dosage || item.frequency || ''
 
                                   return (
                                     <div
@@ -4799,13 +5029,23 @@ export default function PrescriptionFormPage() {
                                       onClick={() => selectMedicine(index, item)}
                                     >
                                       <div className="dr-med-item-top">
-                                        <span className="dr-med-item-name">{medName}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                          {item.is_favorite && (
+                                            <Star size={11} color="#f59e0b" fill="#f59e0b" title="Doctor Favorite" />
+                                          )}
+                                          <span className="dr-med-item-name">{medName}</span>
+                                        </div>
                                         <div className="dr-med-item-badges">
                                           {medType && (
                                             <span className="dr-med-item-type-badge">{medType}</span>
                                           )}
                                           {medStrength && (
                                             <span className="dr-med-item-strength">{medStrength}</span>
+                                          )}
+                                          {medDose && (
+                                            <span style={{ fontSize: '10px', background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }} title="Auto-fill Dosage">
+                                              {medDose}
+                                            </span>
                                           )}
                                         </div>
                                       </div>
@@ -4836,6 +5076,12 @@ export default function PrescriptionFormPage() {
                               className="dr-select-box"
                               value={matchOptionValue(FREQUENCY_OPTIONS, med.dosage)}
                               onChange={(e) => handleMedicineChange(index, 'dosage', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  moveToNextMedicineRow(index)
+                                }
+                              }}
                             >
                               <option value="">{tableLanguage === 'bn' ? '— মাত্রা —' : '— Frequency —'}</option>
                               {tableLanguage === 'bn' ? (
@@ -4865,6 +5111,12 @@ export default function PrescriptionFormPage() {
                               className="dr-select-box"
                               value={matchOptionValue(DURATION_OPTIONS, med.duration)}
                               onChange={(e) => handleMedicineChange(index, 'duration', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  moveToNextMedicineRow(index)
+                                }
+                              }}
                             >
                               <option value="">{tableLanguage === 'bn' ? '— মেয়াদ —' : '— Duration —'}</option>
                               {tableLanguage === 'bn' ? (
@@ -4890,6 +5142,12 @@ export default function PrescriptionFormPage() {
                               className="dr-select-box"
                               value={matchOptionValue(MEAL_OPTIONS, med.meal)}
                               onChange={(e) => handleMedicineChange(index, 'meal', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  moveToNextMedicineRow(index)
+                                }
+                              }}
                             >
                               <option value="">{tableLanguage === 'bn' ? '— খাওয়ার নিয়ম —' : '— Meal —'}</option>
                               {tableLanguage === 'bn' ? (
@@ -4917,6 +5175,12 @@ export default function PrescriptionFormPage() {
                               placeholder={tableLanguage === 'bn' ? 'যেমন: জ্বর আসলে' : 'e.g. If fever'}
                               value={med.instructions || ''}
                               onChange={(e) => handleMedicineChange(index, 'instructions', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  moveToNextMedicineRow(index)
+                                }
+                              }}
                             />
                           </td>
 
@@ -7348,9 +7612,9 @@ export default function PrescriptionFormPage() {
                 <div className="dr-detail-item" style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                   <span className="dr-meta-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>পেমেন্ট স্ট্যাটাস</span>
                   <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {appointmentPaymentStatus === 'paid' ? (
+                    {isPaymentPaid ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 700 }}>
-                        <Check size={13} /> Paid {appointmentAmount ? `(৳${parseFloat(appointmentAmount).toFixed(0)})` : ''}
+                        <Check size={13} /> Paid {paymentMethodName ? `(${paymentMethodName})` : ''} {appointmentAmount ? `(৳${parseFloat(appointmentAmount).toFixed(0)})` : ''}
                       </span>
                     ) : (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: '#fef3c7', color: '#b45309', fontSize: 12, fontWeight: 700 }}>
@@ -7373,11 +7637,11 @@ export default function PrescriptionFormPage() {
                     <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
                       {appointmentInfo?.serial_number && (
                         <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
-                          Serial: #{appointmentInfo.serial_number}
+                          Serial: {appointmentInfo.serial_number}
                         </span>
                       )}
                       <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
-                        Visit: #{visitNo}
+                        Visit: {visitNo}
                       </span>
                       {formattedApptDate && (
                         <span style={{ background: '#ffffff', color: '#166534', border: '1px solid #86efac', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>

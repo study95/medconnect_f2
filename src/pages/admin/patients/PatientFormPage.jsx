@@ -245,7 +245,20 @@ export default function PatientFormPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>{isEdit ? '👤 Edit Patient Profile' : '🆕 Register New Patient'}</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure medical background, contact details, and location</p>
         </div>
-        <Link to="/admin/patients" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1)
+            } else {
+              navigate('/admin/patients')
+            }
+          }}
+          className="admin-btn admin-btn-outline"
+          style={{ borderRadius: 12, cursor: 'pointer' }}
+        >
+          ← Back
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 32 }}>
@@ -367,7 +380,20 @@ export default function PatientFormPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginBottom: 60 }}>
-          <Link to="/admin/patients" className="admin-btn admin-btn-outline" style={{ padding: '14px 32px' }}>Cancel</Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1)
+              } else {
+                navigate('/admin/patients')
+              }
+            }}
+            className="admin-btn admin-btn-outline"
+            style={{ padding: '14px 32px', cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
           <button type="submit" className="admin-btn admin-btn-primary" disabled={saving} style={{ padding: '14px 48px', fontSize: 16, fontWeight: 800, borderRadius: 14, boxShadow: '0 10px 15px -3px rgba(236, 72, 153, 0.2)', background: '#EC4899', borderColor: '#EC4899' }}>
             {saving ? 'Processing...' : isEdit ? '💾 Update Patient' : '🚀 Register Patient'}
           </button>

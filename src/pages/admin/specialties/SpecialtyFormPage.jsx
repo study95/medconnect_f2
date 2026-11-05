@@ -99,7 +99,20 @@ export default function SpecialtyFormPage() {
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Specialty' : '🏷️ New Specialty'}</h2>
           <p className="admin-page-subtitle">Define professional medical categories for doctor indexing</p>
         </div>
-        <Link to="/admin/specialties" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1)
+            } else {
+              navigate('/admin/specialties')
+            }
+          }}
+          className="admin-btn admin-btn-outline"
+          style={{ borderRadius: 12, cursor: 'pointer' }}
+        >
+          ← Back
+        </button>
       </div>
 
       <div className="admin-card" style={{ borderTop: '4px solid #0EA5E9' }}>
@@ -157,7 +170,20 @@ export default function SpecialtyFormPage() {
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update Specialty' : '🚀 Create Specialty'}
               </button>
-              <Link to="/admin/specialties" className="admin-btn admin-btn-outline" style={{ padding: '14px 24px', borderRadius: 12 }}>Cancel</Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.history.state && window.history.state.idx > 0) {
+                    navigate(-1)
+                  } else {
+                    navigate('/admin/specialties')
+                  }
+                }}
+                className="admin-btn admin-btn-outline"
+                style={{ padding: '14px 24px', borderRadius: 12, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         </div>

@@ -515,7 +515,20 @@ export default function HospitalFormPage() {
           <h2 className="admin-page-title" style={{ color: 'var(--admin-text)' }}>{isEdit ? '🏢 Edit Hospital Profile' : '🏥 Register New Hospital'}</h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Configure facility details, license, capacity, and geographical location</p>
         </div>
-        <Link to={isManager ? '/hospital/my-hospital' : '/admin/hospitals'} className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1)
+            } else {
+              navigate(isManager ? '/hospital/my-hospital' : '/admin/hospitals')
+            }
+          }}
+          className="admin-btn admin-btn-outline"
+          style={{ borderRadius: 12, cursor: 'pointer' }}
+        >
+          ← Back
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 32 }}>
@@ -1280,7 +1293,20 @@ export default function HospitalFormPage() {
         )}
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginBottom: 60 }}>
-          <Link to={isManager ? '/hospital/my-hospital' : '/admin/hospitals'} className="admin-btn admin-btn-outline" style={{ padding: '14px 32px' }}>Discard Changes</Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1)
+              } else {
+                navigate(isManager ? '/hospital/my-hospital' : '/admin/hospitals')
+              }
+            }}
+            className="admin-btn admin-btn-outline"
+            style={{ padding: '14px 32px', cursor: 'pointer' }}
+          >
+            Discard Changes
+          </button>
           <button type="submit" className="admin-btn admin-btn-primary" disabled={saving} style={{ padding: '14px 48px', fontSize: 16, fontWeight: 800, borderRadius: 14, boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)' }}>
             {saving ? 'Processing...' : isEdit ? '💾 Update Hospital Profile' : '🚀 Register Hospital'}
           </button>

@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { getPayments, updatePayment } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
@@ -38,15 +39,51 @@ export default function PaymentListPage() {
   const { isAdmin } = useAuth()
   const queryClient = useQueryClient()
 
-  // Filters State
-  const [search, setSearch] = useState('')
-  const [methodFilter, setMethodFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      methodFilter: 'all',
+      statusFilter: 'all',
+      dateFrom: '',
+      dateTo: '',
+    },
+    aliases: {
+      methodFilter: ['method', 'payment_method'],
+      statusFilter: ['status', 'payment_status'],
+      dateFrom: ['date_from'],
+      dateTo: ['date_to']
+    },
+    storageKey: 'admin_payments_filters'
+  })
+
+  const {
+    methodFilter,
+    statusFilter,
+    dateFrom,
+    dateTo,
+  } = filters
+
+  const setMethodFilter = (val) => setFilter('methodFilter', val)
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    (methodFilter && methodFilter !== 'all') || (statusFilter && statusFilter !== 'all') || dateFrom || dateTo
+  ))
 
   // Receipt Modal State
   const [receiptPayment, setReceiptPayment] = useState(null)
@@ -197,11 +234,7 @@ export default function PaymentListPage() {
   }
 
   const clearFilters = () => {
-    setSearch('')
-    setMethodFilter('all')
-    setStatusFilter('all')
-    setDateFrom('')
-    setDateTo('')
+    resetFilters()
   }
 
   // Interactive KPI Cards Definition

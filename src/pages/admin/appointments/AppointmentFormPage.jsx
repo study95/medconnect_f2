@@ -149,7 +149,7 @@ export default function AppointmentFormPage() {
           </h2>
           <p className="admin-page-subtitle" style={{ color: 'var(--admin-text-muted)' }}>Fill in the details to schedule a new clinical visit</p>
         </div>
-        <Link to="/admin/appointments" className="admin-btn admin-btn-outline">Cancel</Link>
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1) } else { navigate('/admin/appointments') } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer' }}>Cancel</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 32 }}>
@@ -261,7 +261,7 @@ export default function AppointmentFormPage() {
                 <button type="submit" className="admin-btn admin-btn-primary" disabled={saving} style={{ padding: '12px 32px' }}>
                   {saving ? 'Saving...' : isEdit ? 'Update Appointment' : 'Confirm Booking'}
                 </button>
-                <Link to="/admin/appointments" className="admin-btn admin-btn-outline" style={{ padding: '12px 32px' }}>Discard Changes</Link>
+                <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1) } else { navigate('/admin/appointments') } }} className="admin-btn admin-btn-outline" style={{ padding: '12px 32px', cursor: 'pointer' }}>Discard Changes</button>
               </div>
             </form>
           </div>

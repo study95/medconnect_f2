@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast'
 import axiosInstance from '../../../api/axiosInstance'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
@@ -62,14 +63,51 @@ function StatCard({ label, value, icon, color }) {
 
 export default function ContactMessageListPage() {
   const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [filterDept, setFilterDept] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      filterStatus: 'all',
+      filterDept: 'all',
+      dateFrom: '',
+      dateTo: '',
+    },
+    aliases: {
+      filterStatus: ['status'],
+      filterDept: ['dept', 'department'],
+      dateFrom: ['date_from'],
+      dateTo: ['date_to']
+    },
+    storageKey: 'admin_contact_messages_filters'
+  })
+
+  const {
+    filterStatus,
+    filterDept,
+    dateFrom,
+    dateTo,
+  } = filters
+
+  const setFilterStatus = (val) => setFilter('filterStatus', val)
+  const setFilterDept = (val) => setFilter('filterDept', val)
+  const setDateFrom = (val) => setFilter('dateFrom', val)
+  const setDateTo = (val) => setFilter('dateTo', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    (filterStatus && filterStatus !== 'all') || (filterDept && filterDept !== 'all') || dateFrom || dateTo
+  ))
+
   const [viewMsg, setViewMsg] = useState(null)
   const [adminNote, setAdminNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
@@ -99,28 +137,22 @@ export default function ContactMessageListPage() {
 
     if (preset === 'today') {
       const t = fmt(now)
-      setDateFrom(t)
-      setDateTo(t)
+      setFilters({ dateFrom: t, dateTo: t })
     } else if (preset === 'yesterday') {
       const y = new Date(now)
       y.setDate(y.getDate() - 1)
       const yt = fmt(y)
-      setDateFrom(yt)
-      setDateTo(yt)
+      setFilters({ dateFrom: yt, dateTo: yt })
     } else if (preset === 'last7') {
       const past = new Date(now)
       past.setDate(past.getDate() - 6)
-      setDateFrom(fmt(past))
-      setDateTo(fmt(now))
+      setFilters({ dateFrom: fmt(past), dateTo: fmt(now) })
     } else if (preset === 'this_month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      setDateFrom(fmt(firstDay))
-      setDateTo(fmt(now))
+      setFilters({ dateFrom: fmt(firstDay), dateTo: fmt(now) })
     } else if (preset === 'all') {
-      setDateFrom('')
-      setDateTo('')
+      setFilters({ dateFrom: '', dateTo: '' })
     }
-    setCurrentPage(1)
   }
 
   const {
@@ -269,19 +301,19 @@ export default function ContactMessageListPage() {
 
       <ListToolbar
         search={search}
-        onSearchChange={val => { setSearch(val); setCurrentPage(1) }}
+        onSearchChange={setSearch}
         searchPlaceholder="CID (উদাঃ CID-123456), প্রেরকের নাম, মোবাইল নম্বর, ইমেইল বা বার্তা খুঁজুন..."
         onRefresh={() => refetch()}
         refreshing={isFetching}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(filterStatus !== 'all' || filterDept !== 'all' || dateFrom || dateTo)}
-        onClearFilters={() => { setFilterStatus('all'); setFilterDept('all'); setDateFrom(''); setDateTo(''); setCurrentPage(1) }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
-          filterStatus !== 'all' && { key: 'status', label: `স্ট্যাটাস: ${STATUS_CONFIG[filterStatus]?.label || filterStatus}`, onRemove: () => { setFilterStatus('all'); setCurrentPage(1) } },
-          filterDept !== 'all' && { key: 'dept', label: `বিভাগ: ${filterDept}`, onRemove: () => { setFilterDept('all'); setCurrentPage(1) } },
-          dateFrom && { key: 'date_from', label: `শুরুর তারিখ: ${dateFrom}`, onRemove: () => { setDateFrom(''); setCurrentPage(1) } },
-          dateTo && { key: 'date_to', label: `শেষ তারিখ: ${dateTo}`, onRemove: () => { setDateTo(''); setCurrentPage(1) } },
+          filterStatus !== 'all' && { key: 'status', label: `স্ট্যাটাস: ${STATUS_CONFIG[filterStatus]?.label || filterStatus}`, onRemove: () => setFilterStatus('all') },
+          filterDept !== 'all' && { key: 'dept', label: `বিভাগ: ${filterDept}`, onRemove: () => setFilterDept('all') },
+          dateFrom && { key: 'date_from', label: `শুরুর তারিখ: ${dateFrom}`, onRemove: () => setDateFrom('') },
+          dateTo && { key: 'date_to', label: `শেষ তারিখ: ${dateTo}`, onRemove: () => setDateTo('') },
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 150 }}>

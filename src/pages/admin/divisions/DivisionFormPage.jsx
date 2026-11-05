@@ -64,7 +64,7 @@ export default function DivisionFormPage() {
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Division' : '🏢 Add New Division'}</h2>
           <p className="admin-page-subtitle">Configure top-level administrative territories for national health coverage</p>
         </div>
-        <Link to="/admin/divisions" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back</Link>
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/divisions'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ borderRadius: 12 }) }}>← Back</button>
       </div>
 
       <div className="admin-card" style={{ borderTop: '4px solid #EF4444' }}>
@@ -96,7 +96,7 @@ export default function DivisionFormPage() {
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update Division' : '🚀 Create Division'}
               </button>
-              <Link to="/admin/divisions" className="admin-btn admin-btn-outline" style={{ padding: '14px 24px', borderRadius: 12 }}>Cancel</Link>
+              <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/divisions'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ padding: '14px 24px', borderRadius: 12 }) }}>Cancel</button>
             </div>
           </form>
         </div>

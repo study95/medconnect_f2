@@ -177,7 +177,7 @@ export default function UpazilaFormPage() {
           <h2 className="admin-page-title">{isEdit ? '✏️ Edit Upazila' : '📍 Add New Upazila'}</h2>
           <p className="admin-page-subtitle">Configure administrative regions for geographic filtering</p>
         </div>
-        <Link to="/admin/upazilas" className="admin-btn admin-btn-outline" style={{ borderRadius: 12 }}>← Back to List</Link>
+        <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/upazilas'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ borderRadius: 12 }) }}>← Back to List</button>
       </div>
 
       <div className="admin-card" style={{ borderTop: '4px solid #00A88C', overflow: 'visible' }}>
@@ -241,7 +241,7 @@ export default function UpazilaFormPage() {
               >
                 {saving ? 'Processing...' : isEdit ? '💾 Update Upazila' : '🚀 Create Upazila'}
               </button>
-              <Link to="/admin/upazilas" className="admin-btn admin-btn-outline" style={{ padding: '14px 24px', borderRadius: 12 }}>Cancel</Link>
+              <button type="button" onClick={() => { if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/admin/upazilas'); } }} className="admin-btn admin-btn-outline" style={{ cursor: 'pointer', ...({ padding: '14px 24px', borderRadius: 12 }) }}>Cancel</button>
             </div>
           </form>
         </div>

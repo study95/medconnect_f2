@@ -8,6 +8,7 @@ import {
   useAdminMedicineMutations,
 } from '../../../features/medicines/useAdminMedicines'
 import useDebounce from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import { TableSkeleton } from '../../../components/common/Skeletons'
@@ -650,26 +651,54 @@ function ReviewApproveModal({ medicine, onClose, onSuccess }) {
 export default function MedicineListPage() {
   const navigate = useNavigate()
   const { isAdmin, hasPermission } = useAuth()
-  const [activeTab, setActiveTab] = useState('active') // 'active' | 'pending'
   const [reviewTarget, setReviewTarget] = useState(null)
-  const [search, setSearch] = useState('')
-  const [dosageFilter, setDosageFilter] = useState('ALL')
-  const [companyFilter, setCompanyFilter] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(25)
-  const [currentPage, setCurrentPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [viewTarget, setViewTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
-  const debouncedSearch = useDebounce(search, 400)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    setFilters,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      activeTab: 'active',
+      dosageFilter: 'ALL',
+      companyFilter: '',
+    },
+    defaultPerPage: 25,
+    aliases: {
+      activeTab: ['tab', 'status'],
+      dosageFilter: ['dosage', 'dosage_type'],
+      companyFilter: ['company']
+    },
+    storageKey: 'admin_medicines_filters'
+  })
 
-  // Reset page when filters or tabs change
-  useEffect(() => {
-    setCurrentPage(1)
-    setSelectedIds([])
-  }, [activeTab, debouncedSearch, dosageFilter, companyFilter, perPage])
+  const {
+    activeTab,
+    dosageFilter,
+    companyFilter,
+  } = filters
+
+  const setActiveTab = (val) => setFilter('activeTab', val)
+  const setDosageFilter = (val) => setFilter('dosageFilter', val)
+  const setCompanyFilter = (val) => setFilter('companyFilter', val)
+
+  const [showFilters, setShowFilters] = useState(Boolean(
+    (dosageFilter && dosageFilter !== 'ALL') || companyFilter
+  ))
 
   // Query Parameters
   const queryParams = useMemo(() => {
@@ -792,17 +821,17 @@ export default function MedicineListPage() {
 
       <ListToolbar
         search={search}
-        onSearchChange={(val) => { setSearch(val); setCurrentPage(1); }}
+        onSearchChange={setSearch}
         searchPlaceholder="Search medicine or generic name..."
         onRefresh={() => { refetch(); refetchPendingCount(); }}
         refreshing={loading || refreshing}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(dosageFilter !== 'ALL' || companyFilter)}
-        onClearFilters={() => { setDosageFilter('ALL'); setCompanyFilter(''); setCurrentPage(1); }}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
-          dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => { setDosageFilter('ALL'); setCurrentPage(1); } },
-          companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => { setCompanyFilter(''); setCurrentPage(1); } },
+          dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => setDosageFilter('ALL') },
+          companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => setCompanyFilter('') },
         ].filter(Boolean)}
         actions={
           (isAdmin || hasPermission('medicine.create')) && (

@@ -7,6 +7,7 @@ import {
 import { useAdminDoctorLeaves, useAdminDoctorLeaveLookups, useAdminDoctorLeaveMutations } from '../../../hooks/admin/useAdminDoctorLeaves'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import TableFooter from '../../../components/admin/TableFooter'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
@@ -15,11 +16,31 @@ import '../../../styles/admin.css'
 import '../../../styles/dialog.css'
 
 export default function AdminDoctorLeavePage() {
-  const [selectedDoctorId, setSelectedDoctorId] = useState('')
-  const [search, setSearch] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(10)
+  // Filters State synchronized with URL Query Parameters & SessionStorage
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      selectedDoctorId: '',
+    },
+    aliases: {
+      selectedDoctorId: ['doctor_id', 'doctor']
+    },
+    storageKey: 'admin_doctor_leaves_filters'
+  })
+
+  const { selectedDoctorId } = filters
+  const setSelectedDoctorId = (val) => setFilter('selectedDoctorId', val)
+  const [showFilters, setShowFilters] = useState(Boolean(selectedDoctorId))
 
   // Modal State
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -146,8 +167,8 @@ export default function AdminDoctorLeavePage() {
         refreshing={refreshing}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters((prev) => !prev)}
-        hasActiveFilters={Boolean(selectedDoctorId)}
-        onClearFilters={() => setSelectedDoctorId('')}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         filterCount={selectedDoctorId ? 1 : 0}
         activeFilters={activeFilters}
       >
