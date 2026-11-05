@@ -21,7 +21,7 @@ export default function SpecialtyListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   // Enterprise TanStack Query Hooks
-  const { specialties: items, isLoading: loading, refetch: fetchData } = useAdminSpecialties()
+  const { specialties: items, isLoading: loading, isFetching: refreshing, refetch: fetchData } = useAdminSpecialties()
   const { deleteSpecialty, isDeleting: deleting } = useAdminSpecialtyMutations()
 
   const handleDelete = async () => {
@@ -62,7 +62,7 @@ export default function SpecialtyListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search specialty by name, slug..."
         onRefresh={fetchData}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         actions={
           isAdmin && (
             <Link to="/admin/specialties/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>

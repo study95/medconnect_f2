@@ -6,6 +6,7 @@ import { soundService } from '../utils/soundUtils'
 import { subscribeToPublicChamber, onConnectionStateChange, isWebSocketConnected } from '../utils/echoService'
 import { QRCodeSVG } from 'qrcode.react'
 import { 
+  Coffee,
   Clock, 
   User, 
   CheckCircle, 
@@ -109,10 +110,10 @@ const LiveDisplayClock = React.memo(function LiveDisplayClock() {
           <Calendar size={22} />
         </div>
         <div>
-          <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#F1F5F9', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2 }}>
             {dateBn}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>
+          <div style={{ fontSize: '0.92rem', color: '#CBD5E1', fontWeight: 700 }}>
             {dayNameBn}
           </div>
         </div>
@@ -131,7 +132,7 @@ const LiveDisplayClock = React.memo(function LiveDisplayClock() {
         <div style={{ color: '#00B875', display: 'flex', alignItems: 'center' }}>
           <Clock size={22} />
         </div>
-        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#F1F5F9', fontFamily: 'monospace', letterSpacing: '1px', lineHeight: 1 }}>
+        <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#34D399', fontFamily: 'monospace', letterSpacing: '1.5px', lineHeight: 1, textShadow: '0 0 15px rgba(52,211,153,0.35)' }}>
           {timeBnDigits}
         </div>
       </div>
@@ -271,18 +272,39 @@ export default function PublicDisplayBoardPage() {
       })
     }
 
-    // Resilient safety heartbeat (every 45 seconds instead of aggressive 3.5s) to guarantee zero desync on network blinks
-    const heartbeatInterval = setInterval(() => {
-      fetchQueue.current(true)
-    }, 45000)
-    cleanupFns.push(() => clearInterval(heartbeatInterval))
-
     return () => {
       cleanupFns.forEach(fn => {
         try { fn() } catch (e) {}
       })
     }
   }, [token, hospitalId, isHospitalMaster, soundEnabled, data?.doctor_queues?.length])
+
+  // 3. Smart Adaptive Polling & Heartbeat:
+  // - When WebSocket is connected: relaxed 45s safety heartbeat
+  // - When WebSocket is disconnected: rapid 3.5s fallback polling (zero delay on break & queue updates)
+  useEffect(() => {
+    const pollInterval = isWsConnected ? 45000 : 3500
+    const timer = setInterval(() => {
+      fetchQueue.current(true)
+    }, pollInterval)
+
+    return () => clearInterval(timer)
+  }, [isWsConnected])
+
+  // Window visibility & focus listener: immediate refresh when tab is foregrounded
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchQueue.current(true)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleVisibility)
+    }
+  }, [])
 
 
   if (loading && !data) {
@@ -486,23 +508,24 @@ export default function PublicDisplayBoardPage() {
             gap: 7,
             padding: '7px 14px',
             borderRadius: 999,
-            background: isWsConnected ? 'rgba(5, 150, 105, 0.2)' : 'rgba(217, 119, 6, 0.2)',
-            border: `1px solid ${isWsConnected ? '#059669' : '#D97706'}`,
+            background: 'rgba(5, 150, 105, 0.18)',
+            border: '1px solid #059669',
             fontSize: '0.82rem',
             fontWeight: 800,
-            color: isWsConnected ? '#34D399' : '#FBBF24'
+            color: '#34D399',
+            boxShadow: '0 0 10px rgba(5, 150, 105, 0.15)'
           }}>
             <span
               style={{
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: isWsConnected ? '#10B981' : '#F59E0B',
+                background: '#10B981',
                 display: 'inline-block'
               }}
-              className={isWsConnected ? "pulse-live-dot" : ""}
+              className="pulse-live-dot"
             />
-            <span>{isWsConnected ? 'লাইভ ইঞ্জিন সংযুক্ত' : 'সংযোগ হচ্ছে...'}</span>
+            <span>লাইভ ডিসপ্লে</span>
           </div>
 
           <button
@@ -574,20 +597,24 @@ export default function PublicDisplayBoardPage() {
           gap: 12
         }}>
           <div>
-            {/* 1. Centered Doctor Image with Green Ring & Presence Badge */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ position: 'relative', width: 92, height: 92 }}>
+            {/* 1. Seamless Circular Avatar with Face-Focus Centering (Solution 1) */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ position: 'relative', width: 124, height: 124 }}>
+                {/* Seamless Circular Frame with Glow */}
                 <div style={{
-                  width: 92, height: 92,
+                  width: 124,
+                  height: 124,
                   borderRadius: '50%',
-                  border: `3px solid ${isOnBreak ? '#F59E0B' : '#10B981'}`,
-                  padding: 3,
-                  background: '#080C14',
-                  boxShadow: isOnBreak ? '0 0 20px rgba(245,158,11,0.35)' : '0 0 20px rgba(16,185,129,0.35)',
+                  border: `3.5px solid ${isOnBreak ? '#F59E0B' : '#10B981'}`,
+                  padding: 0,
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  boxShadow: isOnBreak 
+                    ? '0 0 25px rgba(245,158,11,0.45)' 
+                    : '0 0 25px rgba(16,185,129,0.45)',
+                  transition: 'all 0.3s ease'
                 }}>
                   {doctorPhoto ? (
                     <img 
@@ -597,68 +624,78 @@ export default function PublicDisplayBoardPage() {
                         e.target.style.display = 'none'
                         if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
                       }}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
                     />
                   ) : null}
                   <div style={{
-                    width: '100%', height: '100%',
+                    width: '100%',
+                    height: '100%',
                     borderRadius: '50%',
                     background: 'linear-gradient(135deg, #00B875, #047857)',
                     color: '#FFFFFF',
                     display: doctorPhoto ? 'none' : 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 32,
+                    fontSize: 40,
                     fontWeight: 900
                   }}>
                     {getInitials(doctor.name_bn || doctor.name)}
                   </div>
                 </div>
-              </div>
 
-              {/* Status Badge below photo */}
-              <div style={{
-                marginTop: 8,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: isOnBreak ? '#78350F' : '#044E38',
-                color: isOnBreak ? '#FDE68A' : '#A7F3D0',
-                border: `1px solid ${isOnBreak ? '#B45309' : '#059669'}`,
-                padding: '3px 12px',
-                borderRadius: 999,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: isOnBreak ? '#F59E0B' : '#10B981',
-                  boxShadow: isOnBreak ? '0 0 6px #F59E0B' : '0 0 6px #10B981'
-                }} />
-                <span>{isOnBreak ? 'বিরতিতে রয়েছেন' : 'আজ উপস্থিত'}</span>
+                {/* Small, Sleek Proportioned Status Dot */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    right: 8,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    background: isOnBreak ? '#F59E0B' : '#10B981',
+                    border: '2.5px solid #0E1422',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: isOnBreak ? '0 0 10px #F59E0B' : '0 0 10px #10B981',
+                    transition: 'all 0.3s ease'
+                  }}
+                  title={isOnBreak ? 'বিরতিতে রয়েছেন' : 'রোগী দেখছেন'}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#FFFFFF',
+                      boxShadow: '0 0 6px #FFFFFF'
+                    }}
+                    className={isOnBreak ? "" : "pulse-live-dot"}
+                  />
+                </div>
               </div>
             </div>
 
             {/* 2. Centered Doctor Title, Name, Degree, Specialty */}
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: '0.82rem', color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>
+              <div style={{ fontSize: '0.95rem', color: '#CBD5E1', fontWeight: 700, marginBottom: 2 }}>
                 {doctor.designation || 'সহযোগী অধ্যাপক ডা.'}
               </div>
               <h2 style={{
-                fontSize: '1.45rem',
+                fontSize: '1.75rem',
                 fontWeight: 900,
                 color: '#FFFFFF',
-                margin: '0 0 3px 0',
+                margin: '0 0 4px 0',
                 lineHeight: 1.25,
-                letterSpacing: '0.2px'
+                letterSpacing: '0.3px',
+                textShadow: '0 2px 8px rgba(0,0,0,0.4)'
               }}>
                 {doctor.name_bn || doctor.name || 'ডা. প্রিয়তোষ'}
               </h2>
-              <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#00E699', marginBottom: 3 }}>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#34D399', marginBottom: 4 }}>
                 {doctor.specialty?.name_bn || doctor.specialty?.name || 'কার্ডিওলজি বিশেষজ্ঞ'}
               </div>
-              <div style={{ fontSize: '0.76rem', color: '#94A3B8', fontWeight: 500, lineHeight: 1.35, padding: '0 4px' }}>
+              <div style={{ fontSize: '0.92rem', color: '#E2E8F0', fontWeight: 600, lineHeight: 1.35, padding: '0 4px' }}>
                 {doctor.degree || 'এমবিবিএস, এফসিপিএস (কার্ডিওলজি)'}
               </div>
             </div>
@@ -676,22 +713,22 @@ export default function PublicDisplayBoardPage() {
             }}>
               {/* 1. Chamber No */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
-                  <Building2 size={15} color="#00B875" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0', fontSize: '0.96rem', fontWeight: 700 }}>
+                  <Building2 size={18} color="#00E699" />
                   <span>চেম্বার নং</span>
                 </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#00E699', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#00E699', fontFamily: 'monospace', background: 'rgba(0, 230, 153, 0.12)', border: '1px solid rgba(0, 230, 153, 0.35)', padding: '2px 12px', borderRadius: 8 }}>
                   {formatSerial3(chamber.room_number || '003')}
                 </div>
               </div>
 
               {/* 2. Current Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
-                  <User size={15} color="#00B875" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0', fontSize: '0.96rem', fontWeight: 700 }}>
+                  <User size={18} color="#00E699" />
                   <span>বর্তমান অবস্থা</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.86rem', fontWeight: 800, color: isOnBreak ? '#F59E0B' : '#34D399' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.98rem', fontWeight: 800, color: isOnBreak ? '#F59E0B' : '#34D399' }}>
                   <span style={{
                     width: 7, height: 7, borderRadius: '50%',
                     background: isOnBreak ? '#F59E0B' : '#10B981',
@@ -704,33 +741,33 @@ export default function PublicDisplayBoardPage() {
 
               {/* 3. Total Patients Today */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
-                  <Users size={15} color="#00B875" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0', fontSize: '0.96rem', fontWeight: 700 }}>
+                  <Users size={18} color="#00E699" />
                   <span>আজকের মোট রোগী</span>
                 </div>
-                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#00E699' }}>
+                <div style={{ fontSize: '1.12rem', fontWeight: 900, color: '#00E699' }}>
                   {toBn(totalPatientsCount)} জন
                 </div>
               </div>
 
               {/* 4. Completed Patients */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
-                  <CheckCircle size={15} color="#00B875" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0', fontSize: '0.96rem', fontWeight: 700 }}>
+                  <CheckCircle size={18} color="#00E699" />
                   <span>সম্পন্ন হয়েছে</span>
                 </div>
-                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#00E699' }}>
+                <div style={{ fontSize: '1.12rem', fontWeight: 900, color: '#00E699' }}>
                   {toBn(completedCount)} জন
                 </div>
               </div>
 
               {/* 5. Avg Time */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#94A3B8', fontSize: '0.86rem', fontWeight: 600 }}>
-                  <Clock size={15} color="#FB923C" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0', fontSize: '0.96rem', fontWeight: 700 }}>
+                  <Clock size={18} color="#FB923C" />
                   <span>গড় সময়</span>
                 </div>
-                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#FB923C' }}>
+                <div style={{ fontSize: '1.12rem', fontWeight: 900, color: '#FB923C' }}>
                   {toBn(avgTimeMinutes)} মিনিট
                 </div>
               </div>
@@ -821,27 +858,30 @@ export default function PublicDisplayBoardPage() {
 
             {isOnBreak ? (
               <div style={{ padding: '20px 10px', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#FCD34D', margin: '8px 0', textShadow: '0 0 25px rgba(251,191,36,0.5)' }}>
+                <div style={{ fontSize: '3.4rem', fontWeight: 900, color: '#FDE047', margin: '10px 0', textShadow: '0 0 35px rgba(250,204,21,0.65)', letterSpacing: '0.5px' }}>
                   {breakReason}
                 </div>
                 {breakMessage && (
-                  <div style={{ fontSize: '1.15rem', color: '#FEF3C7', margin: '8px 0', fontWeight: 700 }}>
+                  <div style={{ fontSize: '1.45rem', color: '#FEF08A', margin: '10px 0', fontWeight: 700, lineHeight: 1.3 }}>
                     {breakMessage}
                   </div>
                 )}
                 {breakResumeTime && (
                   <div style={{
-                    display: 'inline-block',
-                    marginTop: 10,
-                    background: 'rgba(0,0,0,0.45)',
-                    border: '1px solid rgba(245,158,11,0.4)',
-                    padding: '8px 20px',
-                    borderRadius: 12,
-                    color: '#FDE68A',
-                    fontSize: '1rem',
-                    fontWeight: 800
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    marginTop: 14,
+                    background: 'rgba(245, 158, 11, 0.16)',
+                    border: '2px solid #F59E0B',
+                    padding: '10px 24px',
+                    borderRadius: 14,
+                    boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)'
                   }}>
-                    ⏰ ফেরার সময়: <span style={{ color: '#fff', fontSize: '1.15rem' }}>{breakResumeTime}</span>
+                    <span style={{ color: '#FDE68A', fontSize: '1.25rem', fontWeight: 800 }}>⏰ সম্ভাব্য ফেরার সময়:</span>
+                    <span style={{ color: '#FFFFFF', fontSize: '1.55rem', fontWeight: 900, background: '#78350F', padding: '4px 14px', borderRadius: 8, border: '1px solid #F59E0B' }}>
+                      {breakResumeTime}
+                    </span>
                   </div>
                 )}
               </div>
@@ -903,14 +943,14 @@ export default function PublicDisplayBoardPage() {
                       <User size={22} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        বর্তমান রোগী
+                      <div style={{ fontSize: '0.88rem', color: '#CBD5E1', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        বর্তমান সেবাগ্রহণকারী রোগী
                       </div>
-                      <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>
+                      <div style={{ fontSize: '2.05rem', fontWeight: 900, color: '#FFFFFF', lineHeight: 1.25, margin: '2px 0' }}>
                         {currentlyServing.patient_name || 'রোগীর নাম'}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#6EE7B7', fontWeight: 600, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
+                      <div style={{ fontSize: '0.98rem', color: '#A7F3D0', fontWeight: 700, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399', display: 'inline-block', boxShadow: '0 0 8px #34D399' }} />
                         ডাক্তারের পরামর্শ চলছে
                       </div>
                     </div>
@@ -925,8 +965,8 @@ export default function PublicDisplayBoardPage() {
                       textAlign: 'center',
                       flexShrink: 0
                     }}>
-                      <div style={{ fontSize: '0.7rem', color: '#A7F3D0', fontWeight: 600 }}>নির্ধারিত সময়</div>
-                      <div style={{ fontSize: '0.94rem', fontWeight: 900, color: '#34D399', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '0.82rem', color: '#A7F3D0', fontWeight: 700 }}>নির্ধারিত সময়</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#34D399', fontFamily: 'monospace' }}>
                         {formatTime12h(currentlyServing.appointment_time)}
                       </div>
                     </div>
@@ -935,10 +975,10 @@ export default function PublicDisplayBoardPage() {
               </div>
             ) : (
               <div style={{ padding: '40px 10px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ fontSize: '2.6rem', color: '#6EE7B7', fontWeight: 900, marginBottom: 8 }}>
+                <div style={{ fontSize: '3.4rem', color: '#34D399', fontWeight: 900, marginBottom: 10, textShadow: '0 0 30px rgba(52,211,153,0.45)' }}>
                   অপেক্ষারত...
                 </div>
-                <p style={{ color: '#A7F3D0', fontSize: '1.1rem', margin: 0, fontWeight: 600 }}>
+                <p style={{ color: '#F1F5F9', fontSize: '1.4rem', margin: 0, fontWeight: 700 }}>
                   পরবর্তী সিরিয়াল শীঘ্রই ডাকা হবে
                 </p>
               </div>
@@ -1032,12 +1072,14 @@ export default function PublicDisplayBoardPage() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: '0.8fr 1.6fr 1fr 1fr',
-              padding: '6px 12px',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              color: '#64748B',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
-              marginBottom: 6
+              padding: '8px 12px',
+              fontSize: '0.96rem',
+              fontWeight: 900,
+              color: '#E2E8F0',
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: 8,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              marginBottom: 8
             }}>
               <div>সিরিয়াল নং</div>
               <div>রোগীর নাম</div>
@@ -1084,9 +1126,10 @@ export default function PublicDisplayBoardPage() {
 
               {/* 2. Waiting Patients Rows */}
               {waitingPatients.length === 0 && !currentlyServing ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
-                  <CheckCircle size={38} style={{ marginBottom: 8, opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700 }}>বর্তমানে কোনো অপেক্ষমাণ রোগী নেই</p>
+                <div style={{ textAlign: 'center', padding: '50px 0', color: '#94A3B8' }}>
+                  <CheckCircle size={46} style={{ marginBottom: 12, color: '#34D399', opacity: 0.8 }} />
+                  <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#E2E8F0' }}>বর্তমানে কোনো অপেক্ষমাণ রোগী নেই</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.95rem', color: '#94A3B8' }}>নতুন সিরিয়াল যুক্ত হলে এখানে দেখা যাবে</p>
                 </div>
               ) : (
                 waitingPatients.map((item, idx) => {
@@ -1104,25 +1147,25 @@ export default function PublicDisplayBoardPage() {
                         border: `1px solid ${isNext ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.04)'}`
                       }}
                     >
-                      <div style={{ fontSize: '1rem', fontWeight: 800, color: isNext ? '#FCD34D' : '#CBD5E1', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 900, color: isNext ? '#FDE047' : '#FFFFFF', fontFamily: 'monospace' }}>
                         {formatSerial3(item.serial_number)}
                       </div>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '1.12rem', fontWeight: 800, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.patient_name}
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '0.74rem',
+                          fontSize: '0.88rem',
                           fontWeight: 800,
                           background: isNext ? '#78350F' : '#1E293B',
-                          color: isNext ? '#FDE68A' : '#94A3B8',
-                          padding: '2px 8px',
+                          color: isNext ? '#FDE68A' : '#CBD5E1',
+                          padding: '4px 10px',
                           borderRadius: 6
                         }}>
                           {isNext ? 'পরবর্তী' : 'অপেক্ষমান'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#94A3B8', textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#E2E8F0', textAlign: 'right', fontFamily: 'monospace' }}>
                         {item.appointment_time ? item.appointment_time.slice(0, 8) : '08:15 AM'}
                       </div>
                     </div>

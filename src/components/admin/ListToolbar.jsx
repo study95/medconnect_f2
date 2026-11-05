@@ -41,6 +41,37 @@ export default function ListToolbar({
   const effectiveFilterCount = activeFilters.length > 0 ? activeFilters.length : filterCount
   const isFilterActive = hasActiveFilters || effectiveFilterCount > 0
 
+  const [manualSpinning, setManualSpinning] = useState(false)
+  const spinTimerRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current)
+    }
+  }, [])
+
+  const handleRefreshClick = async (e) => {
+    if (manualSpinning || refreshing) return
+    setManualSpinning(true)
+    const startTime = Date.now()
+
+    try {
+      if (typeof onRefresh === 'function') {
+        await onRefresh(e)
+      }
+    } catch (err) {
+      console.error('ListToolbar refresh failed:', err)
+    } finally {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 650 - elapsed)
+      spinTimerRef.current = setTimeout(() => {
+        setManualSpinning(false)
+      }, remaining)
+    }
+  }
+
+  const isRefreshing = Boolean(refreshing || manualSpinning)
+
   return (
     <div
       className={`admin-list-toolbar-container ${className}`}
@@ -224,8 +255,8 @@ export default function ListToolbar({
           {onRefresh && (
             <button
               type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
+              onClick={handleRefreshClick}
+              disabled={isRefreshing}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -233,25 +264,25 @@ export default function ListToolbar({
                 height: 38,
                 padding: '0 13px',
                 borderRadius: 9,
-                border: '1px solid var(--admin-border, #e2e8f0)',
-                background: 'var(--admin-card-bg, #ffffff)',
-                color: 'var(--admin-text, #334155)',
+                border: isRefreshing ? '1px solid var(--mc-primary, #00A88C)' : '1px solid var(--admin-border, #e2e8f0)',
+                background: isRefreshing ? 'rgba(0, 168, 140, 0.06)' : 'var(--admin-card-bg, #ffffff)',
+                color: isRefreshing ? 'var(--mc-primary, #00A88C)' : 'var(--admin-text, #334155)',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: refreshing ? 'not-allowed' : 'pointer',
-                opacity: refreshing ? 0.7 : 1,
+                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                opacity: isRefreshing ? 0.85 : 1,
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                if (!refreshing) e.currentTarget.style.background = '#f8fafc'
+                if (!isRefreshing) e.currentTarget.style.background = '#f8fafc'
               }}
               onMouseLeave={(e) => {
-                if (!refreshing) e.currentTarget.style.background = 'var(--admin-card-bg, #ffffff)'
+                if (!isRefreshing) e.currentTarget.style.background = 'var(--admin-card-bg, #ffffff)'
               }}
-              title="Refresh data"
+              title={isRefreshing ? 'Refreshing data...' : 'Refresh data'}
             >
-              <RefreshCw size={13} className={refreshing ? 'spin-icon' : ''} />
-              <span className="hide-on-mobile">Refresh</span>
+              <RefreshCw size={13} className={isRefreshing ? 'spin-icon' : ''} />
+              <span className="hide-on-mobile">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           )}
 

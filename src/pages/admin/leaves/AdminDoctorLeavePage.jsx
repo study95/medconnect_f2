@@ -38,9 +38,7 @@ export default function AdminDoctorLeavePage() {
   const { doctors } = useAdminDoctorLeaveLookups()
   const { deleteLeave, isDeleting: deleting } = useAdminDoctorLeaveMutations()
 
-  const handleRefresh = () => {
-    fetchLeaves()
-  }
+  const handleRefresh = () => fetchLeaves()
 
   // Handle Delete
   const handleDeleteLeave = async () => {

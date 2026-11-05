@@ -215,7 +215,7 @@ export default function AppointmentListPage() {
   }, [currentPage, perPage, debouncedSearch, dateFrom, dateTo, month, year, doctorId, hospitalId, roleFilter, statusFilter])
 
   // Enterprise TanStack Query Hooks
-  const { appointments, total, isLoading: loading, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
+  const { appointments, total, isLoading: loading, isFetching: refreshing, refetch: fetchAppointments } = useAdminAppointments(serverFilters)
   const { doctors, hospitals } = useAdminAppointmentLookups()
   const {
     deleteAppointment,
@@ -544,7 +544,7 @@ export default function AppointmentListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search by ID, patient name, doctor, hospital, serial, phone..."
         onRefresh={fetchAppointments}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(dateFrom || dateTo || month || year || doctorId || hospitalId || roleFilter || statusFilter || search)}
@@ -1126,6 +1126,7 @@ export default function AppointmentListPage() {
                             return (
                               <Link 
                                 to={`/admin/prescriptions/create?appointment_id=${appt.public_id || appt.id}`}
+                                state={{ appointment: appt }}
                                 className="admin-btn admin-btn-outline admin-btn-sm"
                                 style={{ color: 'var(--admin-primary)', borderColor: 'rgba(0, 168, 140, 0.2)', background: 'rgba(0, 168, 140, 0.05)', fontWeight: 800 }}
                                 title="Write Prescription"

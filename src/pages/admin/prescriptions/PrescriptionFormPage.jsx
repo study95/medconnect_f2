@@ -1,7 +1,7 @@
 // PrescriptionFormPage.jsx — Modern Clinical Prescription Workspace (Interactive Markable Sections)
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom'
 import { 
   User, Calendar, Clock, Phone, Activity, Scale, 
   FileText, MapPin, Stethoscope, Pill, AlertCircle, 
@@ -40,6 +40,7 @@ import {
   getChambers
 } from '../../../api/adminApi'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
@@ -98,7 +99,9 @@ export default function PrescriptionFormPage() {
   const appointmentId = searchParams.get('appointment_id')
   const returnTo = searchParams.get('return_to') || (searchParams.get('from') === 'serial-display' ? '/admin/serial-display' : null) || '/admin/appointments'
   const navigate = useNavigate()
-  const { user, fetchCurrentUser } = useAuth()
+  const { user, isDoctor, isManager, getRoles, fetchCurrentUser } = useAuth()
+  const roleName = getRoles ? (getRoles()[0] || 'admin') : 'admin'
+  const portalBase = isDoctor ? '/doctor' : ((roleName === 'manager' || roleName === 'hospital' || isManager) ? '/hospital' : '/admin')
   const { showSuccess, showError, confirm } = useDialog()
   const isEdit = !!id
 
@@ -122,7 +125,11 @@ export default function PrescriptionFormPage() {
   const [activeTab, setActiveTab] = useState('prescription')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [appointmentInfo, setAppointmentInfo] = useState(null)
+  const location = useLocation()
+  const initialAppointment = location.state?.appointment || null
+  const [appointmentInfo, setAppointmentInfo] = useState(initialAppointment)
+  const [appointmentLoading, setAppointmentLoading] = useState(Boolean(appointmentId && !initialAppointment))
+  const [appointmentError, setAppointmentError] = useState(null)
 
   // Patient Clinical Timeline & Historical EMR States
   const [clinicalTimeline, setClinicalTimeline] = useState([])
@@ -205,7 +212,8 @@ export default function PrescriptionFormPage() {
 
   // Walk-in Patient State — only used when creating prescription directly (no appointment)
   const isWalkIn = !appointmentId && !isEdit
-  const [walkInPatientInfo, setWalkInPatientInfo] = useState(null) // null = not filled yet
+  const [walkInPatientInfo, setWalkInPatientInfo] = useState(null)
+  const [patientAvatarError, setPatientAvatarError] = useState(false) // null = not filled yet
   const [showWalkInModal, setShowWalkInModal] = useState(false)
   // Doctor's Own Chambers for Walk-in Consultation
   const [doctorChambers, setDoctorChambers] = useState(() => {
@@ -1368,8 +1376,13 @@ export default function PrescriptionFormPage() {
         })
         .finally(() => setLoading(false))
     } else if (appointmentId) {
+      if (!initialAppointment) {
+        setAppointmentLoading(true)
+      }
+      setAppointmentError(null)
       getAppointment(appointmentId)
         .then(res => {
+          setAppointmentLoading(false)
           const a = res.data?.data || res.data
           if (a) {
             setAppointmentInfo(a)
@@ -1521,7 +1534,13 @@ export default function PrescriptionFormPage() {
             }
           }
         })
-        .catch(() => {})
+        .catch(err => {
+          setAppointmentLoading(false)
+          if (!initialAppointment) {
+            const errorMsg = err?.response?.data?.message || err?.message || 'এই অ্যাপয়েন্টমেন্টটির তথ্য লোড করা যায়নি অথবা এটি দেখার অনুমতি নেই।'
+            setAppointmentError(errorMsg)
+          }
+        })
     }
   }, [id, isEdit, appointmentId])
 
@@ -3331,7 +3350,11 @@ export default function PrescriptionFormPage() {
     }
   }
 
-  const patientName = walkInPatientInfo?.name || appointmentInfo?.patient?.name || appointmentInfo?.patient_name || form.patient_name || 'Walk-in Patient'
+  const patientName = walkInPatientInfo?.name 
+    || appointmentInfo?.patient?.name 
+    || appointmentInfo?.patient_name 
+    || form.patient_name 
+    || (appointmentId ? 'রোগীর তথ্য লোড হচ্ছে...' : 'Walk-in Patient')
   const patientId = walkInPatientInfo?.patient_id 
     || walkInPatientInfo?.registration_no 
     || appointmentInfo?.patient_public_id 
@@ -3344,6 +3367,30 @@ export default function PrescriptionFormPage() {
     || appointmentInfo?.patient?.id 
     || appointmentInfo?.registration_id 
     || form.registration_no 
+
+  const patientPhoto = walkInPatientInfo?.photo 
+    || walkInPatientInfo?.profile_pic 
+    || appointmentInfo?.patient?.photo 
+    || appointmentInfo?.patient?.photo_url 
+    || appointmentInfo?.patient?.profile_pic 
+    || appointmentInfo?.patient_photo 
+    || appointmentInfo?.patient_photo_url 
+    || appointmentInfo?.user?.photo 
+    || appointmentInfo?.user?.photo_url 
+    || null
+
+  useEffect(() => {
+    setPatientAvatarError(false)
+  }, [patientPhoto])
+
+  const patientPublicId = appointmentInfo?.patient_public_id 
+    || appointmentInfo?.patient?.public_id 
+    || appointmentInfo?.booker_patient_public_id 
+    || walkInPatientInfo?.patient_public_id 
+    || walkInPatientInfo?.registration_no 
+    || form.patient_public_id 
+    || appointmentInfo?.registration_id 
+    || patientId 
   const rawDob = appointmentInfo?.patient_dob 
     || appointmentInfo?.patient?.dob 
     || appointmentInfo?.patient?.date_of_birth 
@@ -3354,6 +3401,42 @@ export default function PrescriptionFormPage() {
   const patientSex = form.sex || walkInPatientInfo?.sex || appointmentInfo?.patient_sex || appointmentInfo?.patient?.gender || '—'
   const patientPhone = walkInPatientInfo?.phone || appointmentInfo?.patient?.phone || appointmentInfo?.patient_phone || '—'
   const patientAddress = walkInPatientInfo?.address || appointmentInfo?.patient?.address || '—'
+  const realBloodGroup = appointmentInfo?.patient_blood_group 
+    || appointmentInfo?.patient?.blood_group 
+    || walkInPatientInfo?.blood_group 
+    || form.blood_group 
+    || null
+
+  const bookingCreatedAt = appointmentInfo?.created_at || appointmentInfo?.booked_at || null
+  const bookingDateDisplay = useMemo(() => {
+    if (!bookingCreatedAt) return null
+    try {
+      const d = new Date(bookingCreatedAt)
+      if (isNaN(d.getTime())) return String(bookingCreatedAt)
+      return d.toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) + ' • ' + d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', hour12: true })
+    } catch (e) {
+      return String(bookingCreatedAt)
+    }
+  }, [bookingCreatedAt])
+
+  const isBookingForOther = appointmentInfo?.booking_for && appointmentInfo.booking_for !== 'myself'
+  const bookerName = appointmentInfo?.user_name || appointmentInfo?.user?.name || appointmentInfo?.booker?.name || null
+  const patientRelation = appointmentInfo?.for_patient_relation || appointmentInfo?.patient_relation || null
+
+  const appointmentPaymentStatus = appointmentInfo?.payment_status || (appointmentInfo ? 'unpaid' : null)
+  const appointmentAmount = appointmentInfo?.amount || appointmentInfo?.chamber?.fee || null
+  const appointmentCollector = appointmentInfo?.payment_collector_name || null
+
+  const pastPrescriptions = useMemo(() => {
+    if (!Array.isArray(clinicalTimeline)) return []
+    return clinicalTimeline.filter(ev => {
+      if (ev.type !== 'prescription') return false
+      const evId = String(ev.id || ev.payload?.public_id || '')
+      if (id && evId === String(id)) return false
+      return true
+    })
+  }, [clinicalTimeline, id])
+
   const patientDobDisplay = (() => {
     if (rawDob) {
       try {
@@ -3371,8 +3454,31 @@ export default function PrescriptionFormPage() {
     }
     return 'DOB: Not specified'
   })()
-  const rawVisitNo = form.visit_no || appointmentInfo?.visit_no || appointmentInfo?.serial_number || appointmentInfo?.serial_no || (appointmentInfo?.appointment_number ? String(appointmentInfo.appointment_number) : '01')
+  // Visit number is strictly clinical: only previous completed prescriptions increment the count (Appointments alone NEVER increment visits)
+  const rawVisitNo = isEdit 
+    ? (form.visit_no || appointmentInfo?.prescription?.visit_no || '01')
+    : (form.visit_no || (pastPrescriptions.length > 0 ? String(pastPrescriptions.length + 1).padStart(2, '0') : '01'))
   const visitNo = String(rawVisitNo).replace(/^#+/, '')
+
+  // Accurate Appointment Scheduled Time
+  const apptTimeDisplay = useMemo(() => {
+    const rawTime = appointmentInfo?.time || appointmentInfo?.appointment_time || appointmentInfo?.time_slot || null
+    if (!rawTime) {
+      return appointmentId ? '—' : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    }
+    if (/[ap]m/i.test(rawTime)) {
+      return rawTime
+    }
+    const match = String(rawTime).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+    if (match) {
+      let hours = parseInt(match[1], 10)
+      const minutes = match[2]
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      hours = hours % 12 || 12
+      return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`
+    }
+    return String(rawTime)
+  }, [appointmentInfo?.time, appointmentInfo?.appointment_time, appointmentInfo?.time_slot, appointmentId])
 
   // Real-time Active Counters — only counted when doctor has written/added items
   const activeMedicinesCount = form.medicines.filter(m => (m.medicine_name || '').trim().length > 0).length
@@ -3849,27 +3955,135 @@ export default function PrescriptionFormPage() {
       {/* PAST APPOINTMENT BACKLOG BANNER */}
       {isPastAppointment && !isFutureAppointment && (
         <div style={{
-          background: '#fffbeb',
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
           border: '1px solid #fde68a',
-          borderRadius: 8,
-          padding: '10px 18px',
-          margin: '12px 24px 0',
+          borderLeft: '4px solid #f59e0b',
+          borderRadius: 10,
+          padding: '8px 16px',
+          margin: '10px 24px 12px',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 12,
           color: '#92400e',
           fontSize: 12.5,
-          fontWeight: 600
+          fontWeight: 600,
+          boxShadow: '0 1px 3px rgba(245, 158, 11, 0.08)'
         }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          <span>
-            <strong>Retrospective / Backlog Prescription (অতীতের সাক্ষাতের প্রেসক্রিপশন):</strong> This appointment was scheduled for <strong>{formattedApptDate}</strong>. The prescription encounter date will be recorded as the scheduled consultation day.
-          </span>
+          <div style={{
+            width: 26,
+            height: 26,
+            borderRadius: '50%',
+            background: 'rgba(245, 158, 11, 0.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: '#b45309'
+          }}>
+            <AlertTriangle size={14} />
+          </div>
+          <div style={{ lineHeight: 1.45, flex: 1, fontSize: 12.5 }}>
+            <strong style={{ color: '#b45309', marginRight: 6 }}>
+              Retrospective / Backlog Prescription (অতীতের সাক্ষাতের প্রেসক্রিপশন):
+            </strong>
+            <span>
+              This appointment was scheduled for <strong>{formattedApptDate}</strong>. The prescription encounter date will be recorded as the scheduled consultation day.
+            </span>
+          </div>
         </div>
       )}
 
       {/* 2. FULL-WIDTH PATIENT DEMOGRAPHIC STRIP */}
-      <section className="dr-patient-banner">
+      {appointmentLoading ? (
+        <section 
+          className="dr-patient-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'nowrap',
+            gap: 16,
+            padding: '12px 18px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            margin: '0 24px 16px',
+            minHeight: 68
+          }}
+        >
+          {/* Avatar Skeleton */}
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#f1f5f9', animation: 'shimmerPulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+          
+          {/* Name & ID Skeleton */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 130 }}>
+            <div style={{ width: 110, height: 16, borderRadius: 4, background: '#e2e8f0', animation: 'shimmerPulse 1.2s ease-in-out infinite' }} />
+            <div style={{ width: 75, height: 12, borderRadius: 4, background: '#f1f5f9', animation: 'shimmerPulse 1.2s ease-in-out infinite' }} />
+          </div>
+
+          {/* Demographic Blocks Skeleton */}
+          {[60, 50, 95, 80, 120, 85].map((w, idx) => (
+            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6, borderLeft: '1px solid #f1f5f9', paddingLeft: 12, flexShrink: 0 }}>
+              <div style={{ width: 35, height: 10, borderRadius: 4, background: '#f1f5f9', animation: 'shimmerPulse 1.2s ease-in-out infinite' }} />
+              <div style={{ width: w, height: 14, borderRadius: 4, background: '#e2e8f0', animation: 'shimmerPulse 1.2s ease-in-out infinite' }} />
+            </div>
+          ))}
+
+          {/* Right Action Button Skeleton */}
+          <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+            <div style={{ width: 95, height: 32, borderRadius: 8, background: '#f1f5f9', animation: 'shimmerPulse 1.2s ease-in-out infinite' }} />
+          </div>
+        </section>
+      ) : appointmentError ? (
+        <section 
+          className="dr-patient-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 18px',
+            background: '#fff1f2',
+            border: '1px solid #fecdd3',
+            borderLeft: '4px solid #f43f5e',
+            borderRadius: 12,
+            margin: '0 24px 16px',
+            color: '#9f1239'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <AlertTriangle size={18} color="#e11d48" />
+            <span style={{ fontSize: 13, fontWeight: 700 }}>
+              {appointmentError}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(returnTo || '/admin/appointments')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              border: '1px solid #fecdd3',
+              background: '#ffffff',
+              color: '#e11d48',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            ← অ্যাপয়েন্টমেন্ট তালিকায় ফিরে যান
+          </button>
+        </section>
+      ) : (
+        <section 
+          className="dr-patient-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'nowrap',
+            gap: 12,
+            padding: '10px 18px',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap'
+          }}
+        >
         {/* ── WALK-IN MODE: info not yet provided ── */}
         {isWalkIn && !walkInPatientInfo ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, width: '100%' }}>
@@ -3911,18 +4125,61 @@ export default function PrescriptionFormPage() {
         ) : (
           /* ── APPOINTMENT or WALK-IN with info filled ── */
           <>
-            <div className="dr-patient-avatar-box">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="Patient"
-                className="dr-patient-avatar-img"
-                onError={(e) => { e.target.style.display = 'none' }}
-              />
+            <div className="dr-patient-avatar-box" title={patientName}>
+              {patientPhoto && !patientAvatarError ? (
+                <img
+                  src={getMediaUrl(patientPhoto)}
+                  alt={patientName}
+                  className="dr-patient-avatar-img"
+                  onError={() => setPatientAvatarError(true)}
+                />
+              ) : (
+                patientName && !['Walk-in Patient', 'রোগীর তথ্য লোড হচ্ছে...'].includes(patientName.trim()) ? (
+                  <span>{patientName.trim().charAt(0).toUpperCase()}</span>
+                ) : (
+                  <User size={20} />
+                )
+              )}
             </div>
 
-            <div className="dr-patient-primary-info">
-              <h2 className="dr-patient-name">{patientName}</h2>
-              {patientId && <span className="dr-patient-id">ID: {patientId}</span>}
+            <div className="dr-patient-primary-info" style={{ flexShrink: 0 }}>
+              <h2 className="dr-patient-name" style={{ whiteSpace: 'nowrap' }}>{patientName}</h2>
+              {patientPublicId && (
+                <Link
+                  to={`${portalBase}/patients/view/${patientPublicId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="dr-patient-id-link"
+                  title="রোগীর সম্পূর্ণ প্রোফাইল ও মেডিকেল হিস্ট্রি নতুন ট্যাবে দেখুন"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3.5,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#0284c7',
+                    background: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    padding: '1.5px 6px',
+                    borderRadius: 5,
+                    textDecoration: 'none',
+                    marginTop: 3,
+                    width: 'fit-content',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#e0f2fe'
+                    e.currentTarget.style.borderColor = '#7dd3fc'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#f0f9ff'
+                    e.currentTarget.style.borderColor = '#bae6fd'
+                  }}
+                >
+                  <span>ID: {patientPublicId}</span>
+                  <ExternalLink size={10} style={{ opacity: 0.8 }} />
+                </Link>
+              )}
             </div>
 
             <div 
@@ -4066,7 +4323,7 @@ export default function PrescriptionFormPage() {
                 <span>Visit {visitNo}</span>
                 <span style={{ color: '#64748b', fontWeight: 500 }}>
                   <Clock size={11} style={{ display: 'inline', marginRight: 2 }} />
-                  {appointmentInfo?.appointment_time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  {apptTimeDisplay}
                 </span>
               </span>
             </div>
@@ -4080,7 +4337,7 @@ export default function PrescriptionFormPage() {
               </div>
             )}
 
-            <div className="dr-patient-badges-group">
+            <div className="dr-patient-badges-group" style={{ marginLeft: 'auto', flexShrink: 0 }}>
               {/* Walk-in: show edit button instead of View Profile */}
               {isWalkIn && walkInPatientInfo ? (
                 <button
@@ -4091,6 +4348,7 @@ export default function PrescriptionFormPage() {
                     setWalkInForm({ ...walkInPatientInfo })
                     setShowWalkInModal(true)
                   }}
+                  style={{ whiteSpace: 'nowrap' }}
                 >
                   <User size={13} /> Edit Info
                 </button>
@@ -4099,6 +4357,7 @@ export default function PrescriptionFormPage() {
                   type="button"
                   className="dr-view-profile-btn"
                   onClick={() => setShowProfileModal(true)}
+                  style={{ whiteSpace: 'nowrap' }}
                 >
                   <User size={13} /> View Profile
                 </button>
@@ -4107,6 +4366,7 @@ export default function PrescriptionFormPage() {
           </>
         )}
       </section>
+      )}
 
       {/* 3. SUB-NAVIGATION TABS */}
       <nav className="dr-nav-tabs" role="tablist">
@@ -7011,59 +7271,246 @@ export default function PrescriptionFormPage() {
           ======================================================== */}
       {showProfileModal && (
         <div className="dr-modal-backdrop" onClick={() => setShowProfileModal(false)}>
-          <div className="dr-modal-card" onClick={e => e.stopPropagation()}>
+          <div className="dr-modal-card" style={{ maxWidth: 580 }} onClick={e => e.stopPropagation()}>
             <div className="dr-modal-header">
-              <div className="dr-modal-title">
-                <User size={18} color="#2563eb" /> Patient Medical Profile
+              <div className="dr-modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                <User size={18} color="#2563eb" /> রোগীর সম্পূর্ণ প্রোফাইল ও হিস্ট্রি
               </div>
               <button type="button" className="dr-chip-remove" onClick={() => setShowProfileModal(false)}>
                 <X size={16} />
               </button>
             </div>
-            <div className="dr-modal-body">
-              <div className="dr-patient-profile-full">
+            
+            <div className="dr-modal-body" style={{ maxHeight: '78vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 20px' }}>
+              {/* Patient Header Banner */}
+              <div className="dr-patient-profile-full" style={{ paddingBottom: 14 }}>
                 <div className="dr-profile-avatar-large">
-                  {patientName.charAt(0)}
+                  {patientPhoto && !patientAvatarError ? (
+                    <img
+                      src={getMediaUrl(patientPhoto)}
+                      alt={patientName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={() => setPatientAvatarError(true)}
+                    />
+                  ) : (
+                    patientName && !['Walk-in Patient', 'রোগীর তথ্য লোড হচ্ছে...'].includes(patientName.trim()) ? (
+                      patientName.trim().charAt(0).toUpperCase()
+                    ) : (
+                      <User size={30} />
+                    )
+                  )}
                 </div>
-                <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 16 }}>{patientName}</h3>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>Patient ID: {patientId}</div>
-                  <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
-                    {patientAge} Y • {patientSex} • Blood Group: O+ve
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0f172a' }}>{patientName}</h3>
+                    {patientPublicId && (
+                      <span style={{ fontSize: 11, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontFamily: 'monospace' }}>
+                        ID: {patientPublicId}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <span>বয়স: <strong>{patientAge} Y</strong> ({patientDobDisplay})</span>
+                    <span>•</span>
+                    <span>লিঙ্গ: <strong>{patientSex}</strong></span>
+                    <span>•</span>
+                    <span>রক্তের গ্রুপ: <strong style={{ color: realBloodGroup ? '#dc2626' : 'inherit' }}>{realBloodGroup || 'উল্লেখ নেই'}</strong></span>
                   </div>
                 </div>
               </div>
 
-              <div className="dr-profile-details-grid">
-                <div className="dr-detail-item">
-                  <span className="dr-meta-label">Contact Phone</span>
-                  <span className="dr-meta-value">{patientPhone}</span>
+              {/* Patient Key Information Grid */}
+              <div className="dr-profile-details-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                <div className="dr-detail-item" style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span className="dr-meta-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>যোগাযোগের মোবাইল</span>
+                  <span className="dr-meta-value" style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>{patientPhone}</span>
                 </div>
-                <div className="dr-detail-item">
-                  <span className="dr-meta-label">Home Address</span>
-                  <span className="dr-meta-value">{patientAddress}</span>
+
+                <div className="dr-detail-item" style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span className="dr-meta-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>রোগীর ঠিকানা</span>
+                  <span className="dr-meta-value" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 2 }}>{patientAddress}</span>
                 </div>
-                <div className="dr-detail-item">
-                  <span className="dr-meta-label">Known Allergies</span>
-                  <span className="dr-meta-value" style={{ color: '#dc2626' }}>Penicillin, Aspirin</span>
+
+                {/* Booking Information */}
+                <div className="dr-detail-item" style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span className="dr-meta-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>বুকিংয়ের তারিখ ও সময়</span>
+                  <span className="dr-meta-value" style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>
+                    {bookingDateDisplay || 'সরাসরি ওয়াক-ইন'}
+                  </span>
+                  {isBookingForOther && bookerName && (
+                    <span style={{ fontSize: 11, color: '#2563eb', marginTop: 2 }}>
+                      বুক করেছেন: {bookerName} {patientRelation ? `(${patientRelation})` : ''}
+                    </span>
+                  )}
                 </div>
-                <div className="dr-detail-item">
-                  <span className="dr-meta-label">Past Medical History</span>
-                  <span className="dr-meta-value">Non-diabetic, non-hypertensive</span>
+
+                {/* Payment Status */}
+                <div className="dr-detail-item" style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span className="dr-meta-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>পেমেন্ট স্ট্যাটাস</span>
+                  <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {appointmentPaymentStatus === 'paid' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 700 }}>
+                        <Check size={13} /> Paid {appointmentAmount ? `(৳${parseFloat(appointmentAmount).toFixed(0)})` : ''}
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: '#fef3c7', color: '#b45309', fontSize: 12, fontWeight: 700 }}>
+                        <Clock size={13} /> Unpaid {appointmentAmount ? `(৳${parseFloat(appointmentAmount).toFixed(0)})` : ''}
+                      </span>
+                    )}
+                    {appointmentCollector && (
+                      <span style={{ fontSize: 11, color: '#64748b' }}>• {appointmentCollector}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Current Chamber & Serial */}
+                <div className="dr-detail-item" style={{ gridColumn: 'span 2', background: '#f0fdf4', padding: '10px 12px', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                  <span className="dr-meta-label" style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>বর্তমান সাক্ষাত ও চেম্বার</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#14532d' }}>
+                      {appointmentInfo?.chamber_name || appointmentInfo?.hospital_name || (user?.doctor?.name ? 'চেম্বার কনসালটেশন' : 'ক্লিনিক্যাল চেম্বার')}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                      {appointmentInfo?.serial_number && (
+                        <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                          Serial: #{appointmentInfo.serial_number}
+                        </span>
+                      )}
+                      <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                        Visit: #{visitNo}
+                      </span>
+                      {formattedApptDate && (
+                        <span style={{ background: '#ffffff', color: '#166534', border: '1px solid #86efac', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
+                          {formattedApptDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Previous Prescriptions Section */}
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>
+                    <FileText size={16} color="#2563eb" />
+                    <span>পূর্ববর্তী প্রেসক্রিপশন সমূহ</span>
+                    <span style={{ fontSize: 11, background: '#eff6ff', color: '#2563eb', padding: '2px 7px', borderRadius: 12, fontWeight: 800 }}>
+                      {pastPrescriptions.length}
+                    </span>
+                  </div>
+                  {timelineLoading && (
+                    <span style={{ fontSize: 11, color: '#64748b' }}>লোড হচ্ছে...</span>
+                  )}
+                </div>
+
+                {timelineLoading ? (
+                  <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 8, textAlign: 'center', color: '#64748b', fontSize: 12 }}>
+                    পূর্ববর্তী প্রেসক্রিপশন লোড হচ্ছে...
+                  </div>
+                ) : pastPrescriptions.length === 0 ? (
+                  <div style={{ padding: '16px', background: '#f8fafc', borderRadius: 8, textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+                    <div style={{ fontSize: 12.5, color: '#64748b', fontWeight: 600 }}>
+                      পূর্ববর্তী কোনো প্রেসক্রিপশন পাওয়া যায়নি
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      (এই রোগীর জন্য এটি প্রথম ভিজিট / নতুন প্রেসক্রিপশন)
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto', paddingRight: 4 }}>
+                    {pastPrescriptions.map((ev, idx) => {
+                      const rxPublicId = ev.id || ev.payload?.public_id
+                      const rxDate = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) : 'তারিখ নেই'
+                      const docName = ev.payload?.doctor_name ? `ডা. ${ev.payload.doctor_name}` : null
+                      const diagnosis = ev.payload?.diagnosis
+                      const medCount = ev.payload?.medicines_count || (ev.payload?.medicines || []).length || 0
+
+                      return (
+                        <div
+                          key={rxPublicId || idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            padding: '10px 12px',
+                            background: '#f8fafc',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                                📅 {rxDate}
+                              </span>
+                              {ev.visit_no && (
+                                <span style={{ fontSize: 11, background: '#e0e7ff', color: '#3730a3', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                  Visit {String(ev.visit_no).padStart(2, '0')}
+                                </span>
+                              )}
+                              {docName && (
+                                <span style={{ fontSize: 11.5, color: '#475569' }}>• {docName}</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              {diagnosis && (
+                                <span>রোগ: <strong>{diagnosis}</strong></span>
+                              )}
+                              <span>ঔষধ: <strong>{medCount} টি</strong></span>
+                            </div>
+                          </div>
+
+                          <Link
+                            to={`${portalBase}/prescriptions/view/${rxPublicId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '6px 12px',
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}
+                          >
+                            প্রেসক্রিপশন দেখুন <ExternalLink size={12} />
+                          </Link>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="dr-modal-footer">
+
+            <div className="dr-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '12px 16px', borderTop: '1px solid #e2e8f0' }}>
               <button 
                 type="button" 
-                className="dr-btn-primary" 
-                onClick={() => {
-                  setShowProfileModal(false)
-                  if (appointmentInfo?.patient?.id) navigate(`/admin/patients/${appointmentInfo.patient.id}`)
-                }}
+                className="dr-btn-white" 
+                onClick={() => setShowProfileModal(false)}
               >
-                Open Full Patient Record →
+                বন্ধ করুন
               </button>
+
+              <Link
+                to={`${portalBase}/patients/view/${patientPublicId || patientId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="dr-btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13 }}
+                onClick={() => setShowProfileModal(false)}
+              >
+                সম্পূর্ণ পেশেন্ট রেকর্ড দেখুন <ExternalLink size={14} />
+              </Link>
             </div>
           </div>
         </div>

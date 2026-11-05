@@ -777,3 +777,30 @@ a:hover {
 img[loading="lazy"] {
   min-height: 1px;
 }
+
+/* =====================================================================
+   UNIVERSAL REFRESH & SPINNER ANIMATIONS
+   Ensures all spin classes spin reliably across Admin, Doctor & Hospital
+   ===================================================================== */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-icon,
+.spin-anim,
+.spin-animation,
+.animate-spin,
+.dr-spin,
+.fa-spin,
+.pv-spin-anim,
+.spin {
+  animation: spin 0.8s linear infinite !important;
+  display: inline-block !important;
+  transform-origin: 50% 50% !important;
+}
+

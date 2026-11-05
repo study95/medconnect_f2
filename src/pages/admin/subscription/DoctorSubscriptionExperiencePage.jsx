@@ -39,6 +39,7 @@ export default function DoctorSubscriptionExperiencePage() {
   const [cancellingSub, setCancellingSub] = useState(false)
 
   const loadData = async (isRefresh = false) => {
+    const startTime = Date.now()
     try {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
@@ -49,6 +50,12 @@ export default function DoctorSubscriptionExperiencePage() {
       ])
       setOverview(overviewRes.data)
       setPlans(plansRes.data || [])
+      if (isRefresh) {
+        setActionFeedback({
+          type: 'success',
+          text: 'সাবস্ক্রিপশন ও বিলিং তথ্য সফলভাবে রিফ্রেশ হয়েছে।'
+        })
+      }
     } catch (err) {
       console.error('Failed to load doctor subscription data:', err)
       setActionFeedback({
@@ -56,8 +63,12 @@ export default function DoctorSubscriptionExperiencePage() {
         text: err.response?.data?.message || 'বিলিং ও সাবস্ক্রিপশন তথ্য লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
       })
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      const elapsed = Date.now() - startTime
+      const remaining = isRefresh ? Math.max(0, 600 - elapsed) : 0
+      setTimeout(() => {
+        setLoading(false)
+        setRefreshing(false)
+      }, remaining)
     }
   }
 

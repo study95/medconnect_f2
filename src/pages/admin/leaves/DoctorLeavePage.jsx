@@ -44,9 +44,7 @@ export default function DoctorLeavePage() {
   const { chambers } = useAdminDoctorLeaveLookups({ doctorId })
   const { createLeave, isCreating: isSubmitting, deleteLeave, isDeleting: deleting } = useAdminDoctorLeaveMutations()
 
-  const handleRefresh = () => {
-    fetchLeaves()
-  }
+  const handleRefresh = () => fetchLeaves()
 
   // Handle Leave Submission
   const handleCreateLeave = async (payload) => {

@@ -322,6 +322,19 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
               )}
             </div>
 
+            {/* Created Date */}
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--admin-bg, #f8fafc)', border: '1px solid var(--admin-border, #e2e8f0)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>
+                📅 Created At
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text, #0f172a)' }}>
+                {chamber.created_at ? new Date(chamber.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748b)', marginTop: 2 }}>
+                {chamber.created_at ? new Date(chamber.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -587,7 +600,7 @@ export default function ChamberListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search chamber by doctor, hospital, day, room..."
         onRefresh={fetchData}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={hasActiveFilters}
@@ -673,7 +686,7 @@ export default function ChamberListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['130px', '22%', '22%', '16%', '14%', '10%', '16%']} headers={['Chamber ID', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['130px', '20%', '20%', '15%', '12%', '10%', '13%', '10%']} headers={['Chamber ID', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Created At', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState
             hasFilters={hasActiveFilters}
@@ -713,6 +726,7 @@ export default function ChamberListPage() {
                   <th style={{ color: 'var(--admin-text-muted)' }}>Schedule & Capacity</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Consultation Fee</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Active Status</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Created At</th>
                   <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
@@ -873,6 +887,14 @@ export default function ChamberListPage() {
                             <span>{chamber.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
                           </div>
                         )}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 600 }}>
+                        {chamber.created_at ? new Date(chamber.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                        {chamber.created_at ? new Date(chamber.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>

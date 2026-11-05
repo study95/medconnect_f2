@@ -127,6 +127,7 @@ export default function DoctorDetailPage() {
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid var(--admin-border)' }}>
                 <InfoItem label="Doctor ID (Public ID)" value={doctor.public_id || doctor.id} icon="🆔" />
                 <InfoItem label="BMDC Registration" value={doctor.bmdc} icon="🪪" />
+                <InfoItem label="Registration Date" value={doctor.created_at ? new Date(doctor.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + new Date(doctor.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null} icon="📅" />
                 <InfoItem label="Primary Phone" value={doctor.phone} icon="📞" />
                 <InfoItem label="Official Email" value={doctor.email} icon="✉️" />
                 <InfoItem label="Gender" value={doctor.gender} icon="👤" />

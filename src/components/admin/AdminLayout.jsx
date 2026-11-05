@@ -31,6 +31,7 @@ export default function AdminLayout() {
   const { unreadCount } = useSubscription()
   const { theme, toggleTheme } = useTheme()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [avatarImgError, setAvatarImgError] = useState(false)
 
   return (
     <div className="admin-wrapper">
@@ -118,8 +119,13 @@ export default function AdminLayout() {
                     <span style={{ fontSize: 10, fontWeight: 800, color: '#00B875', textTransform: 'uppercase' }}>{roleName === 'manager' ? 'hospital' : roleName}</span>
                   </div>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(0, 184, 117, 0.3)', background: 'rgba(0, 184, 117, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {user?.photo ? (
-                      <img src={getMediaUrl(user.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {user?.photo && !avatarImgError ? (
+                      <img
+                        src={getMediaUrl(user.photo)}
+                        alt=""
+                        onError={() => setAvatarImgError(true)}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
                       <span style={{ fontWeight: 800, color: '#00B875', fontSize: 14 }}>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
                     )}

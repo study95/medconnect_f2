@@ -1676,7 +1676,7 @@ export default function DoctorListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search doctor by ID, name, BMDC, phone, specialty..."
         onRefresh={fetchDoctors}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '')}
@@ -1904,7 +1904,7 @@ export default function DoctorListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '135px', '80px', '22%', '18%', '16%', '12%', '14%', '6%']} headers={['', 'ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '135px', '80px', '20%', '16%', '14%', '11%', '11%', '11%', '6%']} headers={['', 'ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Registered', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
@@ -1927,6 +1927,7 @@ export default function DoctorListPage() {
                   <th style={{ color: 'var(--admin-text-muted)' }}>Location Profile</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Account Status</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Contact Info</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
                   <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
@@ -2028,7 +2029,7 @@ export default function DoctorListPage() {
                                 width: 34, height: 18, borderRadius: 10, padding: 2, cursor: 'pointer',
                                 background: doctor.is_active ? '#10B981' : '#CBD5E1',
                                 display: 'flex', transition: '0.2s',
-                                justifyContent: doctor.is_active ? 'flex-end' : 'flex-start'
+                                justifyConent: doctor.is_active ? 'flex-end' : 'flex-start'
                               }}
                             >
                               <div style={{ width: 14, height: 14, borderRadius: '50%', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }} />
@@ -2053,6 +2054,14 @@ export default function DoctorListPage() {
                     <td>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{doctor.phone || '—'}</div>
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{doctor.email || '—'}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 600 }}>
+                        {doctor.created_at ? new Date(doctor.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                        {doctor.created_at ? new Date(doctor.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end', gap: 10 }}>

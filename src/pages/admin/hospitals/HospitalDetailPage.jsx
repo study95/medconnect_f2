@@ -112,6 +112,7 @@ export default function HospitalDetailPage() {
               </div>
 
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid var(--admin-border)' }}>
+                <InfoItem label="Registration Date" value={hospital.created_at ? new Date(hospital.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + new Date(hospital.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null} icon="📅" />
                 <InfoItem label="Official Email" value={hospital.email} icon="✉️" />
                 <InfoItem label="Contact Hotline" value={hospital.phone} icon="📞" />
                 <InfoItem label="Website URL" value={hospital.url} icon="🌐" isLink />

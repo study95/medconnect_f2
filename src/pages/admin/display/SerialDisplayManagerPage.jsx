@@ -302,6 +302,7 @@ export default function SerialDisplayManagerPage() {
   const [hospitalQueueData, setHospitalQueueData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
   // Settings
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -641,6 +642,29 @@ export default function SerialDisplayManagerPage() {
     } catch (err) {
       console.warn('Single chamber fetch failed, falling back to hospital fetch', err)
       await fetchHospitalData(silent)
+    }
+  }
+
+  // Manual User Refresh with guaranteed tactile animation & success feedback
+  const handleManualRefresh = async () => {
+    if (isManualRefreshing || loading) return
+    setIsManualRefreshing(true)
+    const startTime = Date.now()
+    try {
+      if (selectedChamberId && selectedChamberId !== 'all') {
+        await fetchSingleChamber(selectedChamberId, false)
+      } else {
+        await fetchHospitalData(false)
+      }
+      toast.success('সিরিয়াল ও কিউ তথ্য সফলভাবে রিফ্রেশ হয়েছে', { id: 'serial-refresh-toast', duration: 2500 })
+    } catch (err) {
+      console.error('Manual refresh failed', err)
+    } finally {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 650 - elapsed)
+      setTimeout(() => {
+        if (isMountedRef.current) setIsManualRefreshing(false)
+      }, remaining)
     }
   }
 
@@ -1155,7 +1179,14 @@ export default function SerialDisplayManagerPage() {
     // Smooth modal close and optimistic update for fluid UX
     handleCloseBreakModalSmooth()
     updateOptimisticBreakState(targetChamberId, true, breakReason, breakCustomMessage, breakResumeTime)
-    toast.success('টিভি স্ক্রিনে বিরতি নোটিশ দেখানো হয়েছে!')
+    if (wsConnected) {
+      toast.success('টিভি স্ক্রিনে বিরতি নোটিশ দেখানো হয়েছে!')
+    } else {
+      toast('টিভি স্ক্রিনে বিরতি নোটিশ সিঙ্ক হচ্ছে (~৩ সেকেন্ডে আপডেট হবে)...', {
+        icon: '⏳',
+        duration: 4000
+      })
+    }
 
     try {
       setIsSavingBreak(true)
@@ -1331,8 +1362,8 @@ export default function SerialDisplayManagerPage() {
           {/* Manual Refresh */}
           <button
             type="button"
-            onClick={() => fetchHospitalData(false)}
-            disabled={loading}
+            onClick={handleManualRefresh}
+            disabled={loading || isManualRefreshing}
             className="admin-btn admin-btn-outline"
             style={{
               height: 38,
@@ -1342,11 +1373,16 @@ export default function SerialDisplayManagerPage() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexShrink: 0
+              flexShrink: 0,
+              borderColor: isManualRefreshing ? 'var(--mc-primary, #00A88C)' : undefined,
+              color: isManualRefreshing ? 'var(--mc-primary, #00A88C)' : undefined,
+              background: isManualRefreshing ? 'rgba(0, 168, 140, 0.08)' : undefined,
+              cursor: (loading || isManualRefreshing) ? 'not-allowed' : 'pointer',
+              transition: 'all 0.18s ease'
             }}
-            title="রিফ্রেশ করুন"
+            title={isManualRefreshing ? 'তথ্য রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ করুন'}
           >
-            <RefreshCw size={15} className={loading ? 'spin-anim' : ''} />
+            <RefreshCw size={15} className={(loading || isManualRefreshing) ? 'spin-anim' : ''} />
           </button>
         </div>
       </div>
@@ -1771,6 +1807,33 @@ export default function SerialDisplayManagerPage() {
               </div>
               {currentChamberQueue && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      background: wsConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: wsConnected ? '#10B981' : '#D97706',
+                      border: `1px solid ${wsConnected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                    title={wsConnected ? 'টিভি রিয়েল-টাইম পুশ সংযুক্ত (০ms)' : 'সকেট সার্ভার অফলাইন: টিভি ব্যাকআপ সিঙ্কে রয়েছে (৩ সে.)'}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: wsConnected ? '#10B981' : '#F59E0B',
+                        display: 'inline-block'
+                      }}
+                      className={wsConnected ? "pulse-anim" : ""}
+                    />
+                    {wsConnected ? 'টিভি লাইভ' : 'টিভি সিঙ্ক (~৩ সে.)'}
+                  </span>
                   <a
                     href={singleTvUrl}
                     target="_blank"
@@ -2052,14 +2115,16 @@ export default function SerialDisplayManagerPage() {
                               fontWeight: 800,
                               padding: '2px 8px',
                               borderRadius: 6,
-                              background: '#FDE68A',
-                              color: '#78350F',
+                              background: wsConnected ? '#DCFCE7' : '#FDE68A',
+                              color: wsConnected ? '#15803D' : '#78350F',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4
-                            }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', display: 'inline-block' }} className="pulse-anim" />
-                              টিভি ডিসপ্লেতে লাইভ রয়েছে
+                            }}
+                            title={wsConnected ? 'টিভি স্ক্রিনে তাৎক্ষণিক পুশ সক্রিয়' : 'টিভি স্ক্রিন ব্যাকআপ সিঙ্কে রয়েছে (৩-৪ সেকেন্ড লাগবে)'}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: wsConnected ? '#16A34A' : '#D97706', display: 'inline-block' }} className="pulse-anim" />
+                              {wsConnected ? 'টিভি ডিসপ্লেতে লাইভ রয়েছে' : 'টিভি সিঙ্ক হচ্ছে (~৩ সেকেন্ড)'}
                             </span>
                           </div>
                           {currentChamberQueue.chamber?.break_message && (

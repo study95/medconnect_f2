@@ -170,7 +170,7 @@ export default function UserListPage() {
   }, [currentPage, perPage, roleFilter, typeFilter, debouncedSearch])
 
   // Enterprise TanStack Query Hooks
-  const { users, total, isLoading: loading, refetch: fetchUsers } = useAdminUsers(serverFilters)
+  const { users, total, isLoading: loading, isFetching: refreshing, refetch: fetchUsers } = useAdminUsers(serverFilters)
   const { permissions: availablePermissions } = useAdminPermissions()
   const {
     updateUserRole: saveUserRole,
@@ -378,7 +378,7 @@ export default function UserListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search by ID, name, email, phone, role..."
         onRefresh={fetchUsers}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(typeFilter || roleFilter || search)}

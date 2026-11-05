@@ -247,7 +247,7 @@ export default function PatientListPage() {
   }, [currentPage, perPage, debouncedSearch, divisionId, districtId, upazilaId, unionId, bloodGroupFilter, genderFilter, dateFrom, dateTo])
 
   // Enterprise TanStack Query Hooks
-  const { patients, total, isLoading: loading, refetch: fetchPatients } = useAdminPatients(serverFilters)
+  const { patients, total, isLoading: loading, isFetching: refreshing, refetch: fetchPatients } = useAdminPatients(serverFilters)
   const {
     deletePatient,
     isDeleting: deleting,
@@ -330,7 +330,7 @@ export default function PatientListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search by ID, patient name, phone, email, blood group, location..."
         onRefresh={fetchPatients}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={hasFilters}

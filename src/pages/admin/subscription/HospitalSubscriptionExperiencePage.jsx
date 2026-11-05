@@ -84,6 +84,7 @@ export default function HospitalSubscriptionExperiencePage() {
   const [emailingInvoiceId, setEmailingInvoiceId] = useState(null)
 
   const loadData = async (isRefresh = false) => {
+    const startTime = Date.now()
     try {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
@@ -110,6 +111,12 @@ export default function HospitalSubscriptionExperiencePage() {
       if (allocatedDocsRes?.data) {
         setLiveAllocatedDoctors(Array.isArray(allocatedDocsRes.data) ? allocatedDocsRes.data : null)
       }
+      if (isRefresh) {
+        setActionFeedback({
+          type: 'success',
+          text: 'হাসপাতাল বিলিং ও সিট বরাদ্দ তথ্য সফলভাবে রিফ্রেশ হয়েছে।'
+        })
+      }
     } catch (err) {
       console.error('Failed to load hospital billing data:', err)
       setActionFeedback({
@@ -117,8 +124,12 @@ export default function HospitalSubscriptionExperiencePage() {
         text: err.response?.data?.message || 'Failed to load institutional billing details. Please try again.'
       })
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      const elapsed = Date.now() - startTime
+      const remaining = isRefresh ? Math.max(0, 600 - elapsed) : 0
+      setTimeout(() => {
+        setLoading(false)
+        setRefreshing(false)
+      }, remaining)
     }
   }
 

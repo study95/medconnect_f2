@@ -394,7 +394,7 @@ export default function HospitalListPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search hospital by ID, name, phone, branch, email..."
         onRefresh={fetchHospitals}
-        refreshing={loading}
+        refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
         hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter !== '')}
@@ -571,7 +571,7 @@ export default function HospitalListPage() {
         </div>
 
         {loading ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '30%', '20%', '15%', '15%', '8%']} headers={['', 'Logo', 'Hospital Details', 'Location', 'Branch Info', 'Status', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '28%', '22%', '16%', '12%', '14%', '8%']} headers={['', 'Facility Name', 'Location Profile', 'Contact Details', 'Status', 'Registered', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />
         ) : (
@@ -591,6 +591,7 @@ export default function HospitalListPage() {
                   <th style={{ color: 'var(--admin-text-muted)' }}>Location Profile</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Contact Details</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Status</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
                   <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
@@ -709,6 +710,14 @@ export default function HospitalListPage() {
                           {h.is_active ? 'Active' : 'Inactive'}
                         </span>
                       )}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 600 }}>
+                        {h.created_at ? new Date(h.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                        {h.created_at ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>

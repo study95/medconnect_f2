@@ -126,6 +126,7 @@ export default function HospitalCommissionReportPage() {
   const {
     data: report = { data: [], summary: {} },
     isLoading,
+    isFetching,
     refetch
   } = useQuery({
     queryKey: queryKeys.commissions.hospitalCommissionReport(appliedFilters),
@@ -587,7 +588,7 @@ export default function HospitalCommissionReportPage() {
         onSearchChange={(val) => setFilters(prev => ({ ...prev, search: val }))}
         searchPlaceholder="Search serial, patient, doctor..."
         onRefresh={refetch}
-        refreshing={isLoading}
+        refreshing={isFetching || isLoading}
         showFilters={showFilterPanel}
         onToggleFilters={() => setShowFilterPanel(prev => !prev)}
         hasActiveFilters={activeFilterCount > 0}
