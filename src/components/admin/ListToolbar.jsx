@@ -23,6 +23,7 @@ export default function ListToolbar({
   onToggleFilters,
   hasActiveFilters = false,
   onClearFilters,
+  showClearButton = false,
   filterCount = 0,
   activeFilters = [], // Array of { key, label, onRemove }
   children, // Advanced filter fields (selects, datepickers, etc.)
@@ -225,7 +226,7 @@ export default function ListToolbar({
           {middleActions}
 
           {/* Reset / Clear Filters */}
-          {isFilterActive && onClearFilters && activeFilters.length === 0 && (
+          {showClearButton && isFilterActive && onClearFilters && activeFilters.length === 0 && (
             <button
               type="button"
               onClick={onClearFilters}

@@ -10,6 +10,7 @@ function useInfiniteDoctors(filters = {}) {
   const {
     data,
     isLoading,
+    isFetching,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -52,7 +53,7 @@ function useInfiniteDoctors(filters = {}) {
   return {
     doctors,
     total,
-    loading: isLoading,
+    loading: isLoading || (isFetching && !isFetchingNextPage),
     fetchingNext: isFetchingNextPage,
     hasMore: hasNextPage,
     fetchMore: fetchNextPage,

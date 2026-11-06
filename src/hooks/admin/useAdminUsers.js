@@ -19,6 +19,7 @@ import {
   getUsers,
   getUser,
   updateUserRole,
+  toggleBlockUser,
   deleteUser,
   bulkDeleteUsers,
   getAllPermissions,
@@ -110,6 +111,15 @@ export function useAdminUserMutations() {
     },
   })
 
+  // Toggle Block Mutation
+  const toggleBlockMutation = useMutation({
+    mutationFn: ({ userId, isBlocked }) => toggleBlockUser(userId, isBlocked),
+    onSuccess: (res, { userId }) => {
+      invalidateUsers(queryClient, { userId })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all, refetchType: 'all' })
+    },
+  })
+
   // Delete User Mutation
   const deleteMutation = useMutation({
     mutationFn: (userId) => deleteUser(userId),
@@ -130,6 +140,8 @@ export function useAdminUserMutations() {
   return {
     updateUserRole: roleMutation.mutateAsync,
     isUpdatingRole: roleMutation.isPending,
+    toggleBlockUser: toggleBlockMutation.mutateAsync,
+    isTogglingBlock: toggleBlockMutation.isPending,
     updateUserPermissions: permissionsMutation.mutateAsync,
     isUpdatingPermissions: permissionsMutation.isPending,
     deleteUser: deleteMutation.mutateAsync,

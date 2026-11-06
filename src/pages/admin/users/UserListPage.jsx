@@ -163,10 +163,12 @@ export default function UserListPage() {
     initialFilters: {
       roleFilter: '',
       typeFilter: '',
+      statusFilter: '',
     },
     aliases: {
       roleFilter: ['role'],
-      typeFilter: ['type', 'registration_type']
+      typeFilter: ['type', 'registration_type'],
+      statusFilter: ['status', 'is_blocked']
     },
     storageKey: 'admin_users_filters'
   })
@@ -174,12 +176,14 @@ export default function UserListPage() {
   const {
     roleFilter,
     typeFilter,
+    statusFilter,
   } = filters
 
   const setRoleFilter = (val) => setFilter('roleFilter', val)
   const setTypeFilter = (val) => setFilter('typeFilter', val)
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
 
-  const [showFilters, setShowFilters] = useState(Boolean(roleFilter || typeFilter))
+  const [showFilters, setShowFilters] = useState(Boolean(roleFilter || typeFilter || statusFilter))
 
   // Server-side filter memo for TanStack Query
   const serverFilters = useMemo(() => {
@@ -189,15 +193,18 @@ export default function UserListPage() {
     }
     if (roleFilter) params.role = roleFilter
     if (typeFilter) params.registration_type = typeFilter
+    if (statusFilter === 'active') params.is_blocked = 0
+    if (statusFilter === 'blocked') params.is_blocked = 1
     if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     return params
-  }, [currentPage, perPage, roleFilter, typeFilter, debouncedSearch])
+  }, [currentPage, perPage, roleFilter, typeFilter, statusFilter, debouncedSearch])
 
   // Enterprise TanStack Query Hooks
   const { users, total, isLoading: loading, isFetching: refreshing, refetch: fetchUsers } = useAdminUsers(serverFilters)
   const { permissions: availablePermissions } = useAdminPermissions()
   const {
     updateUserRole: saveUserRole,
+    toggleBlockUser: saveToggleBlockUser,
     updateUserPermissions: saveUserPermissions,
     isUpdatingPermissions: savingPerms,
     deleteUser: saveDeleteUser,
@@ -205,6 +212,40 @@ export default function UserListPage() {
     bulkDeleteUsers,
     isBulkDeleting: bulkDeleting,
   } = useAdminUserMutations()
+
+  const [togglingBlockId, setTogglingBlockId] = useState(null)
+  const [blockTarget, setBlockTarget] = useState(null)
+
+  const initiateToggleBlock = (targetUser) => {
+    if (targetUser.id === currentUser?.id) {
+      toast.error('আপনি নিজের অ্যাকাউন্ট ব্লক করতে পারবেন না।')
+      return
+    }
+    setBlockTarget(targetUser)
+  }
+
+  const confirmToggleBlock = async () => {
+    if (!blockTarget) return
+    const targetUser = blockTarget
+    const nextStatus = !targetUser.is_blocked
+    const actionText = nextStatus ? 'ব্লক' : 'আনব্লক'
+
+    setTogglingBlockId(targetUser.id)
+    try {
+      await saveToggleBlockUser({ userId: targetUser.id, isBlocked: nextStatus })
+      toast.success(`${targetUser.name}-কে সফলভাবে ${actionText} করা হয়েছে।`)
+    } catch (err) {
+      console.error('Failed to toggle block status:', err)
+      toast.error(getErrorMessage(err, `${actionText} করতে ব্যর্থ হয়েছে।`))
+    } finally {
+      setTogglingBlockId(null)
+      setBlockTarget(null)
+    }
+  }
+
+  const cancelToggleBlock = () => {
+    setBlockTarget(null)
+  }
 
   const clearFilters = () => {
     resetFilters()
@@ -403,11 +444,12 @@ export default function UserListPage() {
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(typeFilter || roleFilter || search)}
+        hasActiveFilters={Boolean(typeFilter || roleFilter || statusFilter || search)}
         onClearFilters={clearFilters}
         activeFilters={[
           typeFilter && { key: 'type', label: `Type: ${typeFilter.toUpperCase()}`, onRemove: () => setTypeFilter('') },
           roleFilter && { key: 'role', label: `Role: ${ROLE_LABELS[roleFilter] || roleFilter.toUpperCase()}`, onRemove: () => setRoleFilter('') },
+          statusFilter && { key: 'status', label: `Status: ${statusFilter === 'blocked' ? 'BLOCKED' : 'ACTIVE'}`, onRemove: () => setStatusFilter('') },
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 160 }}>
@@ -439,6 +481,20 @@ export default function UserListPage() {
                 {ROLE_LABELS[r] || r.toUpperCase()}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div style={{ minWidth: 160 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+          <select 
+            className="admin-form-select" 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}
+          >
+            <option value="">All Status</option>
+            <option value="active">🟢 Active Only</option>
+            <option value="blocked">🔴 Blocked Only</option>
           </select>
         </div>
       </ListToolbar>
@@ -601,6 +657,7 @@ export default function UserListPage() {
                     <th>Contact Info</th>
                     <th>Identity Type</th>
                     <th>Access Role</th>
+                    <th>Status</th>
                     <th style={{ textAlign: 'right', paddingRight: 24 }}>Manage</th>
                   </tr>
                 </thead>
@@ -690,6 +747,40 @@ export default function UserListPage() {
                           >
                             {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
                           </select>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            disabled={isSelf || togglingBlockId === u.id}
+                            onClick={() => initiateToggleBlock(u)}
+                            title={isSelf ? 'You cannot block your own account' : (u.is_blocked ? 'Click to unblock user' : 'Click to block user')}
+                            style={{
+                              background: u.is_blocked ? '#FEF2F2' : '#ECFDF5',
+                              color: u.is_blocked ? '#DC2626' : '#059669',
+                              border: u.is_blocked ? '1px solid #FECACA' : '1px solid #A7F3D0',
+                              padding: '4px 10px',
+                              borderRadius: '99px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              letterSpacing: '0.04em',
+                              cursor: isSelf ? 'not-allowed' : 'pointer',
+                              opacity: isSelf ? 0.6 : (togglingBlockId === u.id ? 0.7 : 1),
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              transition: 'all 0.15s ease',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                            }}
+                          >
+                            <span style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              backgroundColor: u.is_blocked ? '#DC2626' : '#10B981',
+                              display: 'inline-block'
+                            }} />
+                            {togglingBlockId === u.id ? 'UPDATING...' : (u.is_blocked ? 'BLOCKED' : 'ACTIVE')}
+                          </button>
                         </td>
                         <td style={{ textAlign: 'right', paddingRight: 24 }}>
                           <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
@@ -1061,6 +1152,201 @@ export default function UserListPage() {
                 }}
               >
                 {Boolean(changingRole) ? 'Updating Role...' : 'Confirm Change'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Block / Unblock Confirmation Modal */}
+      {blockTarget && (
+        <div className="modal-overlay" onClick={cancelToggleBlock}>
+          <div 
+            className="admin-card" 
+            style={{ 
+              maxWidth: 480, 
+              width: '100%', 
+              margin: '0 16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              animation: 'fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div 
+              style={{ 
+                padding: '20px 24px 16px', 
+                borderBottom: '1px solid var(--admin-border)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                background: 'var(--admin-bg)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div 
+                  style={{ 
+                    width: 42, 
+                    height: 42, 
+                    borderRadius: 12, 
+                    background: blockTarget.is_blocked ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                    color: blockTarget.is_blocked ? '#10B981' : '#EF4444',
+                    border: `1px solid ${blockTarget.is_blocked ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontSize: 20
+                  }}
+                >
+                  {blockTarget.is_blocked ? '🔓' : '🔒'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--admin-text)' }}>
+                    {blockTarget.is_blocked ? 'অ্যাকাউন্ট আনব্লক (Unblock) নিশ্চিতকরণ' : 'অ্যাকাউন্ট ব্লক (Block) নিশ্চিতকরণ'}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--admin-text-muted)' }}>
+                    {blockTarget.is_blocked ? 'সিস্টেমে লগইন সুবিধা পুনরায় চালু করা হবে' : 'সিস্টেমে লগইন অ্যাক্সেস স্থগিত করা হবে'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="admin-btn admin-btn-sm" 
+                onClick={cancelToggleBlock}
+                style={{ borderRadius: 8, padding: '4px 8px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px' }}>
+              {/* User Identity Card */}
+              <div 
+                style={{ 
+                  background: 'var(--admin-bg)', 
+                  border: '1px solid var(--admin-border)', 
+                  borderRadius: 12, 
+                  padding: '14px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 16
+                }}
+              >
+                <div 
+                  style={{ 
+                    width: 44, 
+                    height: 44, 
+                    borderRadius: 12, 
+                    background: 'var(--admin-primary)', 
+                    color: '#fff', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    flexShrink: 0
+                  }}
+                >
+                  {getInitials(blockTarget.name)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--admin-text)', marginBottom: 2 }}>
+                    {blockTarget.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--admin-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {blockTarget.email || blockTarget.phone || 'N/A'}
+                  </div>
+                </div>
+                <span 
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    background: blockTarget.is_blocked ? '#FEE2E2' : '#D1FAE5',
+                    color: blockTarget.is_blocked ? '#DC2626' : '#059669'
+                  }}
+                >
+                  {blockTarget.is_blocked ? 'বর্তমানে ব্লকড' : 'বর্তমানে অ্যাক্টিভ'}
+                </span>
+              </div>
+
+              {/* Explanatory Warning Box */}
+              <div 
+                style={{ 
+                  background: blockTarget.is_blocked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                  border: `1px solid ${blockTarget.is_blocked ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                  color: blockTarget.is_blocked ? '#065F46' : '#991B1B',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  fontSize: 13,
+                  lineHeight: '1.5',
+                  display: 'flex',
+                  gap: 10
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>
+                  {blockTarget.is_blocked ? '💡' : '⚠️'}
+                </span>
+                <div>
+                  {blockTarget.is_blocked ? (
+                    <span>
+                      আনব্লক করার পর ব্যবহারকারী পুনরায় তার আগের ইউজারনেম/মোবাইল ও পাসওয়ার্ড দিয়ে ড্যাশবোর্ডে লগইন করতে পারবেন।
+                    </span>
+                  ) : (
+                    <span>
+                      <strong>সতর্কতা:</strong> অ্যাকাউন্টটি ব্লক করলে এই ব্যবহারকারী সাথে সাথে লগআউট হয়ে যাবেন এবং পুনরায় আনব্লক না করা পর্যন্ত আর সিস্টেমে প্রবেশ করতে পারবেন না।
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Buttons */}
+            <div 
+              style={{ 
+                padding: '14px 24px 18px', 
+                borderTop: '1px solid var(--admin-border)',
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 10,
+                background: 'var(--admin-bg)'
+              }}
+            >
+              <button 
+                type="button" 
+                className="admin-btn admin-btn-outline" 
+                onClick={cancelToggleBlock}
+                disabled={Boolean(togglingBlockId)}
+                style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+              >
+                বাতিল করুন
+              </button>
+              <button 
+                type="button" 
+                className="admin-btn" 
+                onClick={confirmToggleBlock}
+                disabled={Boolean(togglingBlockId)}
+                style={{ 
+                  padding: '8px 20px', 
+                  borderRadius: 8, 
+                  fontSize: 13, 
+                  fontWeight: 700,
+                  background: blockTarget.is_blocked ? '#10B981' : '#DC2626',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: Boolean(togglingBlockId) ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                {togglingBlockId ? 'প্রক্রিয়াধীন...' : (blockTarget.is_blocked ? '🔓 হ্যাঁ, আনব্লক করুন' : '🔒 হ্যাঁ, ব্লক করুন')}
               </button>
             </div>
           </div>

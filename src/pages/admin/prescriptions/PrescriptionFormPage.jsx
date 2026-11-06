@@ -4964,23 +4964,13 @@ export default function PrescriptionFormPage() {
                               ref={el => medicineInputRefs.current[index] = el}
                               type="text"
                               className="dr-med-input-title"
-                              placeholder="e.g. Paracetamol"
+                              placeholder="🔍 Type medicine name..."
                               value={med.medicine_name}
                               onChange={(e) => handleMedicineSearch(e.target.value, index)}
                               onFocus={() => handleMedicineFocus(index)}
                               onBlur={() => handleMedicineBlur(index)}
                               onKeyDown={(e) => handleMedicineKeyDown(e, index)}
                             />
-                            {(med.type || med.strength || med.generic_name) && (
-                              <div className="dr-med-input-type" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
-                                {[med.type, med.strength].filter(Boolean).join(' • ')}
-                                {med.generic_name && (
-                                  <span style={{ color: '#64748b', fontSize: '11px', fontStyle: 'italic' }}>
-                                    ({med.generic_name})
-                                  </span>
-                                )}
-                              </div>
-                            )}
                             {duplicateWarnings[index] && (
                               <div style={{
                                 display: 'inline-flex',

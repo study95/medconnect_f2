@@ -23,14 +23,25 @@ function Footer() {
     return () => window.removeEventListener('cms-updated', handleUpdate)
   }, [])
 
-  const site = cms.site || {}
-  const copyrightText = (site.copyright || `কপিরাইট © ${currentYear}, Doctor Booklet. সর্বস্বত্ব সংরক্ষিত।`).replace('২০২৪', '২০২৬')
-
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 992)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Two-pane infinite scroll listing pages (Doctors & Hospitals) do not display desktop footer
+  const isListingPage = location.pathname === '/doctors' || 
+                        location.pathname === '/hospitals' || 
+                        location.pathname.startsWith('/doctors/') || 
+                        location.pathname.startsWith('/hospitals/')
+  const isDetailPage = (location.pathname.startsWith('/doctors/') && location.pathname.split('/').length > 3) ||
+                       (location.pathname.startsWith('/hospitals/') && location.pathname.split('/').length > 3)
+  if (isListingPage && !isDetailPage) {
+    return null
+  }
+
+  const site = cms.site || {}
+  const copyrightText = (site.copyright || `কপিরাইট © ${currentYear}, Doctor Booklet. সর্বস্বত্ব সংরক্ষিত।`).replace('২০২৪', '২০২৬')
 
   const isAuthPage = location.pathname.startsWith('/login') ||
                      (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||

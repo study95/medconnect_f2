@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Navbar, Nav, NavDropdown, Container, Button } from 'react-bootstrap'
 import { useAuth } from '../../context/AuthContext'
 import { getColor, getInitials } from '../../utils/avatar'
@@ -7,10 +7,26 @@ import {
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X,
-  Bell
+  Bell, Search
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent } from '../../utils/contentService'
+import { useTypewriter } from '../../hooks/useTypewriter'
+
+const NAV_DOCTOR_SEARCH_PHRASES = [
+  'ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...',
+  'ডাক্তারের নাম লিখুন... (যেমন: ডাঃ শফিকুল ইসলাম)',
+  'বিশেষজ্ঞতা দিয়ে খুঁজুন... (যেমন: মেডিসিন, হৃদরোগ)',
+  'হাসপাতাল লিখুন... (যেমন: স্কয়ার, পপুলার)',
+  'এলাকা বা শহর দিয়ে খুঁজুন... (যেমন: ধানমন্ডি, সিলেট)'
+]
+
+const NAV_HOSPITAL_SEARCH_PHRASES = [
+  'হাসপাতাল বা ক্লিনিক খুঁজুন...',
+  'হাসপাতালের নাম লিখুন... (যেমন: অ্যাপোলো, ঢাকা মেডিকেল)',
+  'ধরন লিখুন... (যেমন: ডায়াগনস্টিক, ক্লিনিক, ট্রমা)',
+  'এলাকা দিয়ে খুঁজুন... (যেমন: উত্তরা, সিলেট সদর)'
+]
 
 function AppNavbar() {
   const { user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isPatient, logout } = useAuth()
@@ -32,6 +48,77 @@ function AppNavbar() {
   const isHospitalDetailPage = isDetailPath('/hospitals')
   const isDoctorDetailPage = isDetailPath('/doctors')
   const isAppViewDetailPage = isHospitalDetailPage || isDoctorDetailPage
+  const isDoctorsPage = location.pathname === '/doctors' || location.pathname.startsWith('/doctors/')
+  const isHospitalsPage = location.pathname === '/hospitals' || location.pathname.startsWith('/hospitals/')
+  const isDoctorListing = isDoctorsPage && !isDoctorDetailPage
+  const isHospitalListing = isHospitalsPage && !isHospitalDetailPage
+  const isSearchableListing = isDoctorListing || isHospitalListing
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [navSearchText, setNavSearchText] = useState('')
+  const [navSearching, setNavSearching] = useState(false)
+
+  useEffect(() => {
+    const handleLoading = (e) => {
+      setNavSearching(Boolean(e.detail))
+    }
+    window.addEventListener('listing-search-loading', handleLoading)
+    return () => window.removeEventListener('listing-search-loading', handleLoading)
+  }, [])
+
+  const searchPhrases = isHospitalListing ? NAV_HOSPITAL_SEARCH_PHRASES : NAV_DOCTOR_SEARCH_PHRASES
+  const animatedPlaceholder = useTypewriter(searchPhrases, 70, 35, 1800)
+
+  useEffect(() => {
+    if (isSearchableListing) {
+      setNavSearchText(searchParams.get('search') || '')
+    } else {
+      setNavSearchText('')
+    }
+  }, [searchParams, isSearchableListing])
+
+  // Synchronize search text in real time with the listing page's search input
+  useEffect(() => {
+    const handleSyncFromPage = (e) => {
+      if (typeof e.detail === 'string') {
+        setNavSearchText(e.detail)
+      }
+    }
+    window.addEventListener('sync-listing-search', handleSyncFromPage)
+    if (isSearchableListing) {
+      window.dispatchEvent(new CustomEvent('request-listing-search'))
+    }
+    return () => window.removeEventListener('sync-listing-search', handleSyncFromPage)
+  }, [isSearchableListing, scrolled])
+
+  const handleNavSearchChange = (val) => {
+    setNavSearchText(val)
+    window.dispatchEvent(new CustomEvent('sync-nav-search', { detail: val }))
+  }
+
+  const handleNavSearchSubmit = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    setNavSearching(true)
+    const q = navSearchText.trim()
+    const next = new URLSearchParams(searchParams)
+    if (q) {
+      next.set('search', q)
+    } else {
+      next.delete('search')
+    }
+    setSearchParams(next)
+    window.dispatchEvent(new CustomEvent('submit-listing-search', { detail: q }))
+    setTimeout(() => setNavSearching(false), 700)
+  }
+
+  const handleNavClearSearch = () => {
+    setNavSearchText('')
+    window.dispatchEvent(new CustomEvent('sync-nav-search', { detail: '' }))
+    window.dispatchEvent(new CustomEvent('submit-listing-search', { detail: '' }))
+    const next = new URLSearchParams(searchParams)
+    next.delete('search')
+    setSearchParams(next)
+  }
   const isAuthPage = location.pathname.startsWith('/login') ||
                      (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||
                      location.pathname.startsWith('/pending-verification') ||
@@ -50,15 +137,49 @@ function AppNavbar() {
     }
   }, [expanded])
 
+  const [topbarVisible, setTopbarVisible] = useState(true)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
+  const lastScrollYRef = useRef(0)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   useEffect(() => {
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 20
-      setScrolled(prev => prev !== isScrolled ? isScrolled : prev)
+      const currentScrollY = window.scrollY
+
+      if (isSearchableListing) {
+        // On doctor & hospital listing pages, hide topbar when scrolled down to expand listing viewport
+        if (currentScrollY <= 40) {
+          setTopbarVisible(true)
+          setScrolled(false)
+        } else {
+          setTopbarVisible(false)
+          setScrolled(true)
+        }
+      } else {
+        // On all other pages (Home, About, Services, Contact, etc.), topbar stays permanently visible
+        setTopbarVisible(true)
+        setScrolled(currentScrollY > 20)
+      }
+
+      lastScrollYRef.current = currentScrollY
     }
+
     window.addEventListener('scroll', handleScroll, { passive: true })
     handleScroll()
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isSearchableListing])
 
   const closeMenu = () => setExpanded(false)
 
@@ -103,14 +224,15 @@ function AppNavbar() {
       <style>{`
         :root {
           --header-height: ${isAuthPage ? '0px' : '102px'};
+          --sticky-top: ${topbarVisible ? '134px' : '98px'};
         }
         .page-wrapper {
           padding-top: var(--header-height) !important;
-          transition: padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         @media (max-width: 991px) {
           :root {
             --header-height: ${isAppViewDetailPage ? '0px !important' : '68px !important'};
+            --sticky-top: 68px !important;
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;
@@ -128,6 +250,15 @@ function AppNavbar() {
           border-bottom: 1px solid rgba(255, 255, 255, 0.2);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
           font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+          transition: margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+          position: relative;
+          z-index: 1060;
+        }
+
+        .db-topbar.topbar-hidden {
+          margin-top: -36px;
+          opacity: 0;
+          pointer-events: none;
         }
 
         .db-topbar-link {
@@ -239,6 +370,37 @@ function AppNavbar() {
           color: #ffffff;
           transform: translateY(-2px);
           box-shadow: 0 8px 22px rgba(0, 184, 117, 0.45);
+        }
+
+        .db-nav-search-btn {
+          background: #00B875;
+          color: white;
+          border: none;
+          border-radius: 99px;
+          padding: 5px 16px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: 'Hind Siliguri', sans-serif;
+          transition: all 0.15s ease;
+          box-shadow: 0 2px 6px rgba(0, 184, 117, 0.3);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .db-nav-search-btn:hover {
+          background: #009E64 !important;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 10px rgba(0, 184, 117, 0.4) !important;
+        }
+        .db-nav-search-btn:active {
+          transform: scale(0.94) !important;
+          background: #008754 !important;
+        }
+        .db-nav-search-btn:disabled {
+          opacity: 0.8 !important;
+          cursor: not-allowed !important;
+          transform: none !important;
         }
 
         .db-btn-outline {
@@ -370,7 +532,7 @@ function AppNavbar() {
       <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isAppViewDetailPage ? 'd-none d-lg-block' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
         
         {/* DESKTOP TOP HEADER (DARK GREEN BAR) */}
-        <div className="db-topbar d-none d-lg-flex">
+        <div className={`db-topbar d-none d-lg-flex ${!topbarVisible ? 'topbar-hidden' : ''}`}>
           <Container className="d-flex justify-content-between align-items-center">
             {/* Left Info */}
             <div className="d-flex align-items-center gap-3">
@@ -407,38 +569,72 @@ function AppNavbar() {
               )}
 
               {isLoggedIn ? (
-                <NavDropdown
-                  align="end"
-                  title={
-                    <span className="db-topbar-auth-btn">
-                      <User size={14} strokeWidth={2.2} />
-                      <span>{user?.name || 'প্রোফাইল'}</span>
-                    </span>
-                  }
-                  id="topbar-user-dropdown"
-                >
-                  <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, #003820 0%, #005A34 100%)', color: 'white' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14.5 }}>{user?.name}</div>
-                    <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>{getUserTypeLabel()}</div>
-                  </div>
-                  <div style={{ padding: '6px' }}>
-                    <NavDropdown.Item as={Link} to="/profile" className="user-dropdown-item">
-                      <User size={15} className="me-2" /> প্রোফাইল
-                    </NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to="/my-appointments" className="user-dropdown-item">
-                      <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
-                    </NavDropdown.Item>
-                    {isStaff && (
-                      <NavDropdown.Item as={Link} to={getDashboardPath()} className="user-dropdown-item">
-                        <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
-                      </NavDropdown.Item>
-                    )}
-                    <NavDropdown.Divider style={{ margin: '4px 0' }} />
-                    <NavDropdown.Item onClick={handleLogout} className="user-dropdown-logout">
-                      <LogOut size={15} className="me-2" /> সাইন আউট
-                    </NavDropdown.Item>
-                  </div>
-                </NavDropdown>
+                <div ref={userMenuRef} style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen(prev => !prev)}
+                    className="db-topbar-auth-btn"
+                    style={{
+                      cursor: 'pointer',
+                      border: '1px solid rgba(255, 255, 255, 0.38)',
+                      background: userMenuOpen ? '#FFFFFF' : 'rgba(255, 255, 255, 0.18)',
+                      color: userMenuOpen ? '#00803D' : '#FFFFFF',
+                      boxShadow: userMenuOpen ? '0 2px 10px rgba(0,0,0,0.15)' : 'none'
+                    }}
+                  >
+                    <User size={14} strokeWidth={2.2} />
+                    <span>{user?.name || 'প্রোফাইল'}</span>
+                    <ChevronDown size={13} style={{ transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                  </button>
+
+                  {userMenuOpen && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        width: 230,
+                        background: '#FFFFFF',
+                        borderRadius: 14,
+                        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                        border: '1px solid #E2E8F0',
+                        overflow: 'hidden',
+                        zIndex: 9999,
+                        animation: 'fadeInMenu 0.18s ease-out'
+                      }}
+                    >
+                      <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, #003820 0%, #005A34 100%)', color: 'white' }}>
+                        <div style={{ fontWeight: 800, fontSize: 14.5 }}>{user?.name}</div>
+                        <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>{getUserTypeLabel()}</div>
+                      </div>
+                      <div style={{ padding: '6px' }}>
+                        <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                          <User size={15} className="me-2" /> প্রোফাইল
+                        </Link>
+                        <Link to="/my-appointments" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                          <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
+                        </Link>
+                        {isStaff && (
+                          <Link to={getDashboardPath()} onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                            <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
+                          </Link>
+                        )}
+                        <div style={{ height: 1, background: '#E2E8F0', margin: '4px 0' }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false)
+                            handleLogout()
+                          }}
+                          className="user-dropdown-logout"
+                          style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                        >
+                          <LogOut size={15} className="me-2" /> সাইন আউট
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Link to="/login" className="db-topbar-auth-btn">
                   <User size={14} strokeWidth={2.2} />
@@ -465,25 +661,88 @@ function AppNavbar() {
               />
             </Link>
 
-            {/* Menu Items */}
-            <Nav className="mx-auto d-flex align-items-center" style={{ gap: '8px' }}>
-              {NAV_LINKS.map(item => {
-                const isActive = location.pathname === item.path
-                return (
-                  <Nav.Link
-                    key={item.path}
-                    as={Link}
-                    to={item.path}
-                    className={`db-nav-item ${isActive ? 'active-item' : ''}`}
+            {/* Menu Items or Sticky Listing Search Bar */}
+            {isSearchableListing && scrolled ? (
+              <form
+                onSubmit={handleNavSearchSubmit}
+                className="db-nav-search-bar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#F8FAFC',
+                  border: '1.5px solid #00B875',
+                  borderRadius: 99,
+                  padding: '4px 8px 4px 14px',
+                  width: '100%',
+                  maxWidth: 480,
+                  margin: '0 auto',
+                  transition: 'all 0.25s ease',
+                  boxShadow: '0 2px 10px rgba(0, 184, 117, 0.12)'
+                }}
+              >
+                <Search size={17} color="#00B875" style={{ flexShrink: 0 }} />
+                <input
+                  type="text"
+                  value={navSearchText}
+                  onChange={e => handleNavSearchChange(e.target.value)}
+                  placeholder={animatedPlaceholder || (isHospitalListing ? "হাসপাতাল বা ক্লিনিক খুঁজুন..." : "ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...")}
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    fontSize: 13.5,
+                    fontWeight: 500,
+                    color: '#0F172A',
+                    fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+                  }}
+                />
+                {navSearchText && (
+                  <button
+                    type="button"
+                    onClick={handleNavClearSearch}
+                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                    title="মুছুন"
                   >
-                    {item.isHome && (
-                      <Home size={16} strokeWidth={2.2} style={{ color: isActive ? '#00B875' : '#475569' }} />
-                    )}
-                    <span>{item.label}</span>
-                  </Nav.Link>
-                )
-              })}
-            </Nav>
+                    <X size={15} />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={navSearching}
+                  className="db-nav-search-btn"
+                >
+                  {navSearching ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                      <span>খোঁজা হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <span>খুঁজুন</span>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <Nav className="mx-auto d-flex align-items-center" style={{ gap: '8px' }}>
+                {NAV_LINKS.map(item => {
+                  const isActive = location.pathname === item.path
+                  return (
+                    <Nav.Link
+                      key={item.path}
+                      as={Link}
+                      to={item.path}
+                      className={`db-nav-item ${isActive ? 'active-item' : ''}`}
+                    >
+                      {item.isHome && (
+                        <Home size={16} strokeWidth={2.2} style={{ color: isActive ? '#00B875' : '#475569' }} />
+                      )}
+                      <span>{item.label}</span>
+                    </Nav.Link>
+                  )
+                })}
+              </Nav>
+            )}
 
             {/* Action Buttons */}
             <div className="d-flex align-items-center" style={{ gap: '14px' }}>

@@ -38,6 +38,17 @@ axiosInstance.interceptors.response.use(
     const method = (error.config?.method || '').toLowerCase()
     const url = error.config?.url || ''
 
+    const isPublicAuthRoute = 
+      url.includes('/login') ||
+      url.includes('/register') ||
+      url.includes('/forgot-password') ||
+      url.includes('/reset-password') ||
+      url.includes('/send-otp') ||
+      url.includes('/verify-otp') ||
+      url.includes('/cancel-send-otp') ||
+      url.includes('/cancel-verify') ||
+      url.includes('/check-identifier')
+
     // Immediately terminate session if backend reports the user account has been blocked
     if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BLOCKED') {
       localStorage.removeItem('token')
@@ -46,7 +57,9 @@ axiosInstance.interceptors.response.use(
       window.dispatchEvent(new Event('auth-expired'))
 
       const blockedMsg = error.response?.data?.message || 'আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত (Blocked) করা হয়েছে।'
-      toast.error(blockedMsg, { id: 'account-blocked-alert' })
+      if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
+        toast.error(blockedMsg, { id: 'account-blocked-alert' })
+      }
       return Promise.reject(error)
     }
 
@@ -60,17 +73,6 @@ axiosInstance.interceptors.response.use(
       // Dispatch custom event to notify React app
       window.dispatchEvent(new Event('auth-expired'))
     }
-
-    const isPublicAuthRoute = 
-      url.includes('/login') ||
-      url.includes('/register') ||
-      url.includes('/forgot-password') ||
-      url.includes('/reset-password') ||
-      url.includes('/send-otp') ||
-      url.includes('/verify-otp') ||
-      url.includes('/cancel-send-otp') ||
-      url.includes('/cancel-verify') ||
-      url.includes('/check-identifier')
 
     const skipGlobalToast = error.config?.skipGlobalToast || isPublicAuthRoute
 

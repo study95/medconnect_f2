@@ -195,6 +195,8 @@ function DoctorsPage() {
   const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
   const [selectedDate, setSelectedDate]           = useState(searchParams.get('date') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
+  const [appliedSearch, setAppliedSearch]         = useState(searchParams.get('search') || '')
+  const [isSearching, setIsSearching]             = useState(false)
   const debouncedSearchText                       = useDebounce(searchText, 350)
   const [availableToday, setAvailableToday]       = useState(() => searchParams.get('available_today') === '1' || searchParams.get('available_today') === 'true')
   const [telemedicineOnly, setTelemedicineOnly]   = useState(() => searchParams.get('telemedicine') === '1' || searchParams.get('available_telemedicine') === 'yes')
@@ -611,8 +613,8 @@ function DoctorsPage() {
     setIfVal('fee_range', selectedFee)
     setIfVal('exp_range', selectedExp)
     setIfVal('date', selectedDate)
-    if (debouncedSearchText && debouncedSearchText.trim()) {
-      next.set('search', debouncedSearchText.trim())
+    if (appliedSearch && appliedSearch.trim()) {
+      next.set('search', appliedSearch.trim())
     }
     if (availableToday) next.set('available_today', '1')
     if (telemedicineOnly) next.set('telemedicine', '1')
@@ -640,7 +642,7 @@ function DoctorsPage() {
     selectedFee,
     selectedExp,
     selectedDate,
-    debouncedSearchText,
+    appliedSearch,
     availableToday,
     telemedicineOnly,
     sortBy,
@@ -650,8 +652,8 @@ function DoctorsPage() {
     setSearchParams
   ])
 
-  // Effective search keyword: immediately empty when searchText is cleared
-  const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
+  // Effective search keyword: only triggers when user submits search or clears it
+  const effectiveSearch = appliedSearch.trim()
 
   const appliedFilters = useMemo(() => {
     const p = {}
@@ -747,9 +749,16 @@ function DoctorsPage() {
     return item.name || item.name_bn || item.bangla_name || fallback
   }
 
+  const handleSearchChange = (val) => {
+    setSearchText(val)
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: val }))
+  }
+
   // Clear single search handler
   const handleClearSearch = () => {
     setSearchText('')
+    setAppliedSearch('')
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     updateUrlParams({ search: '' })
   }
 
@@ -764,6 +773,8 @@ function DoctorsPage() {
           const text = event.results?.[0]?.[0]?.transcript
           if (text) {
             setSearchText(text)
+            setAppliedSearch(text)
+            window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: text }))
             updateUrlParams({ search: text })
           }
         }
@@ -927,6 +938,7 @@ function DoctorsPage() {
     setTelemedicineOnly(false)
     setAvailableToday(false)
     setSearchText('')
+    setAppliedSearch('')
     setSpecialtySearch('')
     setHospitalSearch('')
     setIsNearMeActive(false)
@@ -934,25 +946,111 @@ function DoctorsPage() {
     setDistanceRadius('')
     setSortBy('relevance')
     prevParamsRef.current = ''
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     setSearchParams({}, { replace: true })
   }
 
   const handleSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
-    updateUrlParams({ search: searchText.trim() })
+    setIsSearching(true)
+    const q = searchText.trim()
+    setAppliedSearch(q)
+    updateUrlParams({ search: q })
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: true }))
+    setTimeout(() => {
+      setIsSearching(false)
+      window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: false }))
+    }, 600)
   }
 
-  // Infinite scroll sentinel
+  // Real-time bidirectional search sync with sticky navbar
+  useEffect(() => {
+    const handleSyncFromNav = (e) => {
+      if (typeof e.detail === 'string') {
+        setSearchText(e.detail)
+      }
+    }
+    const handleRequestSearch = () => {
+      window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    }
+    const handleExternalSubmit = (e) => {
+      setIsSearching(true)
+      const q = typeof e.detail === 'string' ? e.detail : searchText
+      const trimmed = q.trim()
+      setSearchText(q)
+      setAppliedSearch(trimmed)
+      updateUrlParams({ search: trimmed })
+      setTimeout(() => setIsSearching(false), 600)
+    }
+
+    window.addEventListener('sync-nav-search', handleSyncFromNav)
+    window.addEventListener('request-listing-search', handleRequestSearch)
+    window.addEventListener('submit-listing-search', handleExternalSubmit)
+
+    if (searchText) {
+      window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    }
+
+    return () => {
+      window.removeEventListener('sync-nav-search', handleSyncFromNav)
+      window.removeEventListener('request-listing-search', handleRequestSearch)
+      window.removeEventListener('submit-listing-search', handleExternalSubmit)
+    }
+  }, [searchText, updateUrlParams])
+
+  // Dual-scroll and layout refs
+  const headerBlockRef = useRef(null)
+  const leftPaneRef = useRef(null)
+  const rightPaneRef = useRef(null)
   const sentinelRef = useRef(null)
+
+  // Infinite scroll sentinel
   useEffect(() => {
     if (!sentinelRef.current) return
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 992
+    const rootEl = isDesktop && rightPaneRef.current ? rightPaneRef.current : null
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting && hasMore && !fetchingNext) fetchMore() },
-      { threshold: 0.1 }
+      { root: rootEl, rootMargin: '250px', threshold: 0.05 }
     )
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [hasMore, fetchingNext, fetchMore])
+
+  // Coordinate mousewheel scrolling between the top header and dual-scroll panes on desktop
+  useEffect(() => {
+    const handleWheelCoordination = (e) => {
+      if (window.innerWidth < 992) return
+      const headerEl = headerBlockRef.current
+      if (!headerEl) return
+
+      const headerRect = headerEl.getBoundingClientRect()
+      const stickyThreshold = 98 // 66px navbar + 32px gap
+
+      if (headerRect.bottom <= stickyThreshold) {
+        // Sticky dual-pane mode is active
+        const rightEl = rightPaneRef.current
+        const leftEl = leftPaneRef.current
+        const isOverRight = rightEl && rightEl.contains(e.target)
+        const isOverLeft = leftEl && leftEl.contains(e.target)
+
+        if (e.deltaY < 0) {
+          // Scrolling UP
+          if (isOverRight && rightEl.scrollTop <= 0) {
+            // Reached top of cards: scroll window back up to reveal header
+            window.scrollBy({ top: e.deltaY, behavior: 'auto' })
+          } else if (isOverLeft && leftEl.scrollTop <= 0) {
+            // Reached top of filters: scroll window back up to reveal header
+            window.scrollBy({ top: e.deltaY, behavior: 'auto' })
+          }
+        }
+      }
+    }
+
+    window.addEventListener('wheel', handleWheelCoordination, { passive: true })
+    return () => window.removeEventListener('wheel', handleWheelCoordination)
+  }, [])
 
   // Dynamic location title for heading
   const locationHeadingText = useMemo(() => {
@@ -1259,6 +1357,100 @@ function DoctorsPage() {
           .doc-chips-wrapper {
             display: none !important;
           }
+          .doc-main-row {
+            margin: 0 !important;
+          }
+          .doc-col-left {
+            padding-left: 0 !important;
+            padding-right: 12px !important;
+          }
+          .doc-col-right {
+            padding-left: 12px !important;
+            padding-right: 0 !important;
+          }
+          .doc-filter-sidebar {
+            position: sticky !important;
+            top: var(--sticky-top, 98px) !important;
+            height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
+            max-height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain !important;
+            padding-right: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: #CBD5E1 transparent;
+          }
+          .doc-filter-sidebar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .doc-filter-sidebar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .doc-filter-sidebar::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 99px;
+          }
+          .doc-filter-sidebar::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+          }
+
+          .doc-results-scroll-pane {
+            position: sticky !important;
+            top: var(--sticky-top, 98px) !important;
+            height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
+            max-height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain !important;
+            padding-right: 8px;
+            padding-bottom: 24px;
+            scrollbar-width: thin;
+            scrollbar-color: #CBD5E1 transparent;
+          }
+          .doc-results-scroll-pane::-webkit-scrollbar {
+            width: 6px;
+          }
+          .doc-results-scroll-pane::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .doc-results-scroll-pane::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 99px;
+          }
+          .doc-results-scroll-pane::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+          }
+
+          .doc-desktop-search-btn {
+            background: #00B875;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 184, 117, 0.3);
+          }
+          .doc-desktop-search-btn:hover {
+            background: #009E64 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 184, 117, 0.4) !important;
+          }
+          .doc-desktop-search-btn:active {
+            transform: scale(0.95) !important;
+            background: #008754 !important;
+          }
+          .doc-desktop-search-btn:disabled {
+            opacity: 0.82 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+          }
         }
         @media (max-width: 767px) {
           .doc-results-bar {
@@ -1405,7 +1597,7 @@ function DoctorsPage() {
                 type="text"
                 placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."
                 value={searchText}
-                onChange={e => setSearchText(e.target.value)}
+                onChange={e => handleSearchChange(e.target.value)}
                 className="doc-mobile-search-input"
               />
               {searchText && (
@@ -1489,89 +1681,92 @@ function DoctorsPage() {
 
       <Container fluid className="doc-main-container" style={{ maxWidth: 1380 }}>
         
-        {/* ── BREADCRUMB ── */}
-        <div className="doc-breadcrumb">
-          <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-          <span>/</span>
-          <span style={{ color: '#0F172A', fontWeight: 600 }}>Doctor Listings</span>
-        </div>
-
-        {/* ── HEADING TITLE + INLINE AVAILABILITY DATE FILTER BAR (DESKTOP) ── */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-          marginBottom: 16
-        }}>
-          <h1 className="doc-page-heading" style={{ margin: 0 }}>
-            {locationHeadingText ? (
-              <>
-                <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
-              </>
-            ) : (
-              <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
-            )}
-          </h1>
-
-          <div className="d-none d-lg-block">
-            <AvailabilityDateFilter
-              value={selectedDate}
-              onChange={handleDateChange}
-              inline
-            />
+        {/* ── HEADER BLOCK (Breadcrumb, Heading, Desktop Search, Chips, Results Bar) ── */}
+        <div ref={headerBlockRef} className="doc-header-block">
+          {/* ── BREADCRUMB ── */}
+          <div className="doc-breadcrumb">
+            <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
+            <span>/</span>
+            <span style={{ color: '#0F172A', fontWeight: 600 }}>Doctor Listings</span>
           </div>
-        </div>
 
-        {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-        <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
-          background: 'white',
-          borderRadius: 8,
-          border: '1px solid #CBD5E1',
-          padding: '4px 6px 4px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-          marginBottom: 20
-        }}>
-          <IconSearch size={18} color="#94A3B8" />
-          <input
-            type="text"
-            placeholder="Search by doctor name, specialty, hospital, area..."
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            style={{
-              flex: 1,
-              border: 'none',
-              outline: 'none',
-              fontSize: 14,
-              color: '#0F172A',
-              fontWeight: 500,
-              background: 'transparent',
-              padding: '10px 0'
-            }}
-          />
-          {searchText && (
-            <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
-              <IconX size={16} />
-            </button>
-          )}
-          <button type="submit" style={{
-            background: '#00B875',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            padding: '10px 24px',
-            fontWeight: 800,
-            fontSize: 14,
-            cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif"
+          {/* ── HEADING TITLE + INLINE AVAILABILITY DATE FILTER BAR (DESKTOP) ── */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+            marginBottom: 16
           }}>
-            Search
-          </button>
-        </form>
+            <h1 className="doc-page-heading" style={{ margin: 0 }}>
+              {locationHeadingText ? (
+                <>
+                  <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
+                </>
+              ) : (
+                <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
+              )}
+            </h1>
+
+            <div className="d-none d-lg-block">
+              <AvailabilityDateFilter
+                value={selectedDate}
+                onChange={handleDateChange}
+                inline
+              />
+            </div>
+          </div>
+
+          {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
+          <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
+            background: 'white',
+            borderRadius: 8,
+            border: '1px solid #CBD5E1',
+            padding: '4px 6px 4px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            marginBottom: 20
+          }}>
+            <IconSearch size={18} color="#94A3B8" />
+            <input
+              type="text"
+              placeholder="Search by doctor name, specialty, hospital, area..."
+              value={searchText}
+              onChange={e => handleSearchChange(e.target.value)}
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: 14,
+                color: '#0F172A',
+                fontWeight: 500,
+                background: 'transparent',
+                padding: '10px 0'
+              }}
+            />
+            {searchText && (
+              <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+                <IconX size={16} />
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={loading || isSearching}
+              className="doc-desktop-search-btn"
+            >
+              {(loading || isSearching) ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <span>Search</span>
+              )}
+            </button>
+          </form>
 
         {/* ── POPULAR DEPARTMENTS CHIP STRIP (DYNAMIC WITH DESKTOP SCROLL & ARROWS) ── */}
         <div className="doc-chips-wrapper">
@@ -1802,19 +1997,18 @@ function DoctorsPage() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* ── MAIN CONTENT AREA (2 COLUMNS IN DESKTOP) ── */}
-        <Row className="g-4">
+        <Row className="doc-main-row g-4">
 
           {/* ── LEFT COLUMN: FILTERS SIDEBAR PANEL (Desktop Only ≥992px) ── */}
-          <Col xs={12} lg={3} className="d-none d-lg-block">
-            <div style={{
+          <Col xs={12} lg={3} className="d-none d-lg-block doc-col-left">
+            <div ref={leftPaneRef} className="doc-filter-sidebar" style={{
               background: 'white',
               borderRadius: 8,
               border: '1px solid #E2E8F0',
               padding: '16px',
-              position: 'sticky',
-              top: 'calc(var(--header-height, 110px) + 16px)',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
             }}>
               {/* Filter Sidebar Header */}
@@ -2165,46 +2359,48 @@ function DoctorsPage() {
           </Col>
 
           {/* ── RIGHT COLUMN: DOCTORS GRID / LIST ── */}
-          <Col xs={12} lg={9}>
-            {loading && <DoctorGridSkeleton count={6} />}
+          <Col xs={12} lg={9} className="doc-col-right">
+            <div ref={rightPaneRef} className="doc-results-scroll-pane">
+              {loading && <DoctorGridSkeleton count={6} />}
 
-            {error && !loading && (
-              <ErrorState
-                title="ডাক্তারদের তথ্য লোড করা যায়নি"
-                message={error}
-                onRetry={refresh}
-                retryText="পুনরায় চেষ্টা করুন"
-                onSecondary={handleClearAllFilters}
-                secondaryText="ফিল্টার রিসেট করুন"
-              />
-            )}
+              {error && !loading && (
+                <ErrorState
+                  title="ডাক্তারদের তথ্য লোড করা যায়নি"
+                  message={error}
+                  onRetry={refresh}
+                  retryText="পুনরায় চেষ্টা করুন"
+                  onSecondary={handleClearAllFilters}
+                  secondaryText="ফিল্টার রিসেট করুন"
+                />
+              )}
 
-            {!loading && sortedDoctors.length > 0 && (
-              <Row className="g-3">
-                {sortedDoctors.map(doctor => (
-                  <Col key={doctor.id} xs={12} md={viewMode === 'grid' ? 6 : 12} xl={viewMode === 'grid' ? 4 : 12}>
-                    <DoctorCard doctor={doctor} showBookingButton={true} viewMode={viewMode} userLocation={userLocation} />
-                  </Col>
-                ))}
-              </Row>
-            )}
+              {!loading && sortedDoctors.length > 0 && (
+                <Row className="g-3">
+                  {sortedDoctors.map(doctor => (
+                    <Col key={doctor.id} xs={12} md={viewMode === 'grid' ? 6 : 12} xl={viewMode === 'grid' ? 4 : 12}>
+                      <DoctorCard doctor={doctor} showBookingButton={true} viewMode={viewMode} userLocation={userLocation} />
+                    </Col>
+                  ))}
+                </Row>
+              )}
 
-            {!loading && !error && sortedDoctors.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 12, border: '1px solid #E2E8F0' }}>
-                <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <IconStethoscope size={36} color="#64748B" />
+              {!loading && !error && sortedDoctors.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                  <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <IconStethoscope size={36} color="#64748B" />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>কোনো ডাক্তার পাওয়া যায়নি</h3>
+                  <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px', fontFamily: "'Hind Siliguri', sans-serif" }}>আপনার নির্বাচিত ফিল্টার অনুযায়ী কোনো ডাক্তার খুঁজে পাওয়া যায়নি।</p>
+                  <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                    ফিল্টার মুছুন
+                  </button>
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>কোনো ডাক্তার পাওয়া যায়নি</h3>
-                <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px', fontFamily: "'Hind Siliguri', sans-serif" }}>আপনার নির্বাচিত ফিল্টার অনুযায়ী কোনো ডাক্তার খুঁজে পাওয়া যায়নি।</p>
-                <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: "'Hind Siliguri', sans-serif" }}>
-                  ফিল্টার মুছুন
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Infinite scroll sentinel */}
-            <div ref={sentinelRef} style={{ height: 30, marginTop: 20 }} />
-            {fetchingNext && <div style={{ paddingTop: 10 }}><DoctorGridSkeleton count={3} /></div>}
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} style={{ height: 30, marginTop: 20 }} />
+              {fetchingNext && <div style={{ paddingTop: 10 }}><DoctorGridSkeleton count={3} /></div>}
+            </div>
           </Col>
         </Row>
       </Container>

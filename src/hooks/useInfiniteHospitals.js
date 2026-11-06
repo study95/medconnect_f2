@@ -10,6 +10,7 @@ function useInfiniteHospitals(filters = {}) {
   const {
     data,
     isLoading,
+    isFetching,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -55,7 +56,7 @@ function useInfiniteHospitals(filters = {}) {
   return {
     hospitals,
     total,
-    loading:      isLoading,
+    loading:      isLoading || (isFetching && !isFetchingNextPage),
     fetchingNext: isFetchingNextPage,
     hasMore:      hasNextPage,
     fetchMore:    fetchNextPage,

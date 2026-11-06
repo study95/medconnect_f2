@@ -20,6 +20,7 @@ import {
   deleteMedicine,
   bulkDeleteMedicines,
   getMedicinesPendingCount,
+  getMedicineCompanies,
   approveMedicine,
   rejectMedicine,
 } from '../../api/adminApi'
@@ -74,6 +75,25 @@ export function useAdminMedicinesPendingCount() {
     pendingCount: query.data ?? 0,
     isLoading: query.isLoading,
     refetch: query.refetch,
+  }
+}
+
+/**
+ * Hook to fetch distinct pharmaceutical companies list (cached for 1 hour)
+ */
+export function useMedicineCompanies() {
+  const query = useQuery({
+    queryKey: ['medicines', 'companies'],
+    queryFn: async () => {
+      const res = await getMedicineCompanies()
+      return res.data?.data || []
+    },
+    staleTime: 60 * 60 * 1000,
+  })
+
+  return {
+    companies: query.data || [],
+    isLoading: query.isLoading,
   }
 }
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
-import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole, Smartphone } from 'lucide-react'
+import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, AlertCircle, LockKeyhole, Smartphone } from 'lucide-react'
 import '../styles/auth-premium.css'
 
 function LoginPage() {
@@ -194,7 +194,9 @@ function LoginPage() {
       const errMsg = result.message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
       const lower = errMsg.toLowerCase()
 
-      if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
+      if (lower.includes('স্থগিত') || lower.includes('blocked') || lower.includes('suspend') || lower.includes('ban')) {
+        setFieldErrors({ form: errMsg })
+      } else if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
         setFieldErrors({ role: errMsg })
       } else if (lower.includes('নিবন্ধিত নয়') || lower.includes('নিবন্ধন করুন') || lower.includes('পাওয়া যায়নি') || lower.includes('not find') || lower.includes('found') || lower.includes('email') || lower.includes('phone') || lower.includes('mobile')) {
         setFieldErrors({ identifier: errMsg })
@@ -516,7 +518,7 @@ function LoginPage() {
                     value={identifier}
                     onChange={e => {
                       setIdentifier(e.target.value)
-                      setFieldErrors(prev => ({ ...prev, identifier: '' }))
+                      setFieldErrors(prev => ({ ...prev, identifier: '', form: '', general: '' }))
                     }}
                     required
                     className="auth-input-premium"
@@ -561,7 +563,7 @@ function LoginPage() {
                     value={password}
                     onChange={e => {
                       setPassword(e.target.value)
-                      setFieldErrors(prev => ({ ...prev, password: '' }))
+                      setFieldErrors(prev => ({ ...prev, password: '', form: '', general: '' }))
                     }}
                     required
                     className="auth-input-premium"
@@ -605,10 +607,29 @@ function LoginPage() {
                 </div>
               </Form.Group>
 
-              {fieldErrors.general && (
-                <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.general}
-                </p>
+              {/* Form/General Error Banner directly above login button */}
+              {(fieldErrors.form || fieldErrors.general) && (
+                <div
+                  className="fade-in-up"
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    marginBottom: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    color: '#991B1B',
+                    fontSize: 13,
+                    lineHeight: '1.45',
+                    fontWeight: 500,
+                    textAlign: 'left'
+                  }}
+                >
+                  <AlertCircle size={18} color="#DC2626" style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{fieldErrors.form || fieldErrors.general}</span>
+                </div>
               )}
 
               {/* Submit Button */}

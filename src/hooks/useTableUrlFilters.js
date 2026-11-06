@@ -41,6 +41,7 @@ export function useTableUrlFilters({
   // Flag to avoid overwriting URL when internal state is being updated FROM the URL (back/forward)
   const isSyncingFromUrl = useRef(false)
   const isInitialMount = useRef(true)
+  const lastSyncedUrlQuery = useRef(searchParams.toString())
 
   // 1. Helper to cast URL string values to match initialFilters types
   const parseParamValue = useCallback((key, strVal, fallback) => {
@@ -194,6 +195,7 @@ export function useTableUrlFilters({
     const currentQueryStr = searchParams.toString()
     const newQueryStr = newParams.toString()
     if (currentQueryStr !== newQueryStr) {
+      lastSyncedUrlQuery.current = newQueryStr
       setSearchParams(newParams, { replace: true })
     }
 
@@ -215,49 +217,38 @@ export function useTableUrlFilters({
 
   // 5. Handle Browser Back / Forward navigation (Listen to external URL changes)
   useEffect(() => {
+    const currentQueryStr = searchParams.toString()
+
+    // If query string matches what we last wrote or initialized, ignore (internal update)
+    if (currentQueryStr === lastSyncedUrlQuery.current) {
+      return
+    }
+
+    lastSyncedUrlQuery.current = currentQueryStr
+
     const initFilters = initialFiltersRef.current
 
     const currentUrlSearch = getParamWithAlias('search', searchParams) || ''
     const currentUrlPage = Math.max(1, parseInt(getParamWithAlias('page', searchParams) || '1', 10))
     const currentUrlPerPage = Math.max(1, parseInt(getParamWithAlias('perPage', searchParams) || String(defaultPerPage), 10))
 
-    let hasDiff = false
-
-    if (currentUrlSearch !== debouncedSearch) {
-      hasDiff = true
-      setSearchInput(currentUrlSearch)
-      setDebouncedSearch(currentUrlSearch)
-    }
-
-    if (currentUrlPage !== page) {
-      hasDiff = true
-      setPageState(currentUrlPage)
-    }
-
-    if (currentUrlPerPage !== perPage) {
-      hasDiff = true
-      setPerPageState(currentUrlPerPage)
-    }
+    setSearchInput(currentUrlSearch)
+    setDebouncedSearch(currentUrlSearch)
+    setPageState(currentUrlPage)
+    setPerPageState(currentUrlPerPage)
 
     // Check custom filters against URL
-    const nextFilters = { ...filters }
+    const nextFilters = { ...initFilters }
     Object.keys(initFilters).forEach((key) => {
       const urlVal = getParamWithAlias(key, searchParams)
-      const parsedVal = urlVal !== null 
-        ? parseParamValue(key, urlVal, initFilters[key])
-        : initFilters[key]
-
-      if (nextFilters[key] !== parsedVal) {
-        nextFilters[key] = parsedVal
-        hasDiff = true
+      if (urlVal !== null) {
+        nextFilters[key] = parseParamValue(key, urlVal, initFilters[key])
       }
     })
 
-    if (hasDiff) {
-      isSyncingFromUrl.current = true
-      setFiltersState(nextFilters)
-    }
-  }, [searchParams, debouncedSearch, page, perPage, filters, defaultPerPage, getParamWithAlias, parseParamValue])
+    isSyncingFromUrl.current = true
+    setFiltersState(nextFilters)
+  }, [searchParams, defaultPerPage, getParamWithAlias, parseParamValue])
 
   // 6. Public Actions
   const setFilter = useCallback((key, value) => {

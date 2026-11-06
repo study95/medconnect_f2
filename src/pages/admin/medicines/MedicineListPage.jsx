@@ -6,7 +6,9 @@ import {
   useAdminMedicines,
   useAdminMedicinesPendingCount,
   useAdminMedicineMutations,
+  useMedicineCompanies,
 } from '../../../features/medicines/useAdminMedicines'
+import { Search, ChevronDown, X } from 'lucide-react'
 import useDebounce from '../../../hooks/useDebounce'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import DeleteModal from '../../../components/admin/DeleteModal'
@@ -17,7 +19,23 @@ import TableFooter from '../../../components/admin/TableFooter'
 import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
 
-const DOSAGE_TYPES = ['ALL', 'TAB', 'SYP', 'DROP', 'CAP', 'INJ', 'SUSP', 'SUPP']
+const DOSAGE_TYPES = [
+  'ALL',
+  'Tablet',
+  'Capsule',
+  'Syrup',
+  'Suspension',
+  'Injection',
+  'Drop',
+  'Cream',
+  'Ointment',
+  'Suppository',
+  'IV Infusion',
+  'Inhaler',
+  'Gel',
+  'Spray',
+  'Powder'
+]
 
 const dosageColors = {
   TAB: { bg: '#DBEAFE', color: '#2563EB' },
@@ -512,6 +530,217 @@ function MedicineDetailModal({ medicine, onClose, onEdit, canEdit, dosageColors,
   )
 }
 
+function SearchableCompanyDropdown({ value, onChange, companies = [] }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const dropdownRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const normalizedCompanies = useMemo(() => {
+    return companies.map(c => {
+      if (typeof c === 'string') return { name: c, count: null }
+      return { name: c.name || '', count: c.count || null }
+    }).filter(c => c.name.trim() !== '')
+  }, [companies])
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return normalizedCompanies
+    const q = searchQuery.toLowerCase().trim()
+    return normalizedCompanies.filter(c => c.name.toLowerCase().includes(q))
+  }, [normalizedCompanies, searchQuery])
+
+  const handleSelect = (compName) => {
+    onChange(compName)
+    setIsOpen(false)
+    setSearchQuery('')
+  }
+
+  const handleClear = (e) => {
+    e.stopPropagation()
+    onChange('')
+    setSearchQuery('')
+  }
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', minWidth: 200, maxWidth: 300, flex: '1 1 200px' }}>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>
+        Company
+      </label>
+      <div
+        onClick={() => {
+          setIsOpen(!isOpen)
+          setTimeout(() => inputRef.current?.focus(), 50)
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 38,
+          padding: '0 10px',
+          borderRadius: 8,
+          border: isOpen ? '1px solid #6366f1' : '1px solid var(--admin-border)',
+          background: 'var(--admin-card-bg)',
+          color: value ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+          fontSize: 13,
+          cursor: 'pointer',
+          userSelect: 'none',
+          boxShadow: isOpen ? '0 0 0 3px rgba(99, 102, 241, 0.12)' : 'none',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: value ? 600 : 400 }}>
+          {value || 'All Companies'}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {value && (
+            <button
+              type="button"
+              onClick={handleClear}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 2,
+                cursor: 'pointer',
+                color: 'var(--admin-text-muted)',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title="Clear company"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <ChevronDown size={14} style={{ color: 'var(--admin-text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: 'var(--admin-card-bg, #ffffff)',
+            borderRadius: 8,
+            border: '1px solid var(--admin-border, #e2e8f0)',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden',
+            minWidth: 260
+          }}
+        >
+          <div style={{ padding: 8, borderBottom: '1px solid var(--admin-border)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: 8, color: 'var(--admin-text-muted)' }} />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search 400+ companies..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onClick={e => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  height: 32,
+                  paddingLeft: 28,
+                  paddingRight: 10,
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: '1px solid var(--admin-border)',
+                  background: 'var(--admin-input-bg, #f8fafc)',
+                  color: 'var(--admin-text)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            <div
+              onClick={() => handleSelect('')}
+              style={{
+                padding: '8px 12px',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: !value ? 700 : 500,
+                color: !value ? '#6366f1' : 'var(--admin-text)',
+                background: !value ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                borderBottom: '1px solid var(--admin-border)'
+              }}
+            >
+              All Companies (Reset)
+            </div>
+            {filtered.length === 0 ? (
+              <div style={{ padding: 12, fontSize: 12, color: 'var(--admin-text-muted)', textAlign: 'center' }}>
+                No company found matching "{searchQuery}"
+              </div>
+            ) : (
+              filtered.map((item) => {
+                const isSelected = value === item.name
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => handleSelect(item.name)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#6366f1' : 'var(--admin-text)',
+                      background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                      transition: 'background 0.1s ease',
+                      gap: 8,
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) e.currentTarget.style.background = 'var(--admin-hover-bg, #f1f5f9)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) e.currentTarget.style.background = 'transparent'
+                    }}
+                    title={item.name}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {item.name}
+                    </span>
+                    {item.count !== null && item.count !== undefined && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: isSelected ? '#4338ca' : 'var(--admin-text-muted, #64748b)',
+                          background: isSelected ? 'rgba(99, 102, 241, 0.16)' : 'rgba(0, 0, 0, 0.05)',
+                          padding: '1px 7px',
+                          borderRadius: 9999,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.count.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ReviewApproveModal({ medicine, onClose, onSuccess }) {
   if (!medicine) return null
 
@@ -676,12 +905,20 @@ export default function MedicineListPage() {
       activeTab: 'active',
       dosageFilter: 'ALL',
       companyFilter: '',
+      genericFilter: '',
+      strengthFilter: '',
+      sortBy: 'id',
+      sortDir: 'desc'
     },
     defaultPerPage: 25,
     aliases: {
       activeTab: ['tab', 'status'],
       dosageFilter: ['dosage', 'dosage_type'],
-      companyFilter: ['company']
+      companyFilter: ['company', 'company_name'],
+      genericFilter: ['generic', 'generic_name'],
+      strengthFilter: ['strength'],
+      sortBy: ['sort', 'sort_by'],
+      sortDir: ['dir', 'sort_dir']
     },
     storageKey: 'admin_medicines_filters'
   })
@@ -690,14 +927,29 @@ export default function MedicineListPage() {
     activeTab,
     dosageFilter,
     companyFilter,
+    genericFilter,
+    strengthFilter,
+    sortBy,
+    sortDir
   } = filters
 
   const setActiveTab = (val) => setFilter('activeTab', val)
   const setDosageFilter = (val) => setFilter('dosageFilter', val)
   const setCompanyFilter = (val) => setFilter('companyFilter', val)
+  const setGenericFilter = (val) => setFilter('genericFilter', val)
+  const setStrengthFilter = (val) => setFilter('strengthFilter', val)
+  const setSortBy = (val) => setFilter('sortBy', val)
+  const setSortDir = (val) => setFilter('sortDir', val)
+
+  const { companies = [] } = useMedicineCompanies()
 
   const [showFilters, setShowFilters] = useState(Boolean(
-    (dosageFilter && dosageFilter !== 'ALL') || companyFilter
+    (dosageFilter && dosageFilter !== 'ALL') ||
+    companyFilter ||
+    genericFilter ||
+    strengthFilter ||
+    sortBy !== 'id' ||
+    sortDir !== 'desc'
   ))
 
   // Query Parameters
@@ -707,11 +959,15 @@ export default function MedicineListPage() {
       per_page: perPage,
       status: activeTab,
     }
-    if (debouncedSearch.trim()) params.search = debouncedSearch.trim()
+    if (debouncedSearch && debouncedSearch.trim()) params.search = debouncedSearch.trim()
     if (dosageFilter && dosageFilter !== 'ALL') params.dosage_type = dosageFilter
-    if (companyFilter.trim()) params.company = companyFilter.trim()
+    if (companyFilter && companyFilter.trim()) params.company_name = companyFilter.trim()
+    if (genericFilter && genericFilter.trim()) params.generic_name = genericFilter.trim()
+    if (strengthFilter && strengthFilter.trim()) params.strength = strengthFilter.trim()
+    if (sortBy) params.sort_by = sortBy
+    if (sortDir) params.sort_dir = sortDir
     return params
-  }, [currentPage, perPage, activeTab, debouncedSearch, dosageFilter, companyFilter])
+  }, [currentPage, perPage, activeTab, debouncedSearch, dosageFilter, companyFilter, genericFilter, strengthFilter, sortBy, sortDir])
 
   // TanStack Query Hooks
   const {
@@ -803,7 +1059,22 @@ export default function MedicineListPage() {
     const cleanType = (med.dosage_type || '').replace(/\s*\(.*?\)/, '').trim()
     const prefix = cleanType ? `${cleanType}|` : ''
     const regex = new RegExp(`^(${prefix}tab|cap|syp|inj|drop|susp|supp|tablet|capsule|syrup|injection)\\s+`, 'i')
-    name = name.replace(regex, '')
+    name = name.replace(regex, '').trim()
+
+    // Clean duplicate strength from brand name if strength is already provided separately
+    if (med.strength) {
+      const cleanStrength = String(med.strength).trim()
+      if (cleanStrength) {
+        const escaped = cleanStrength.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const flexible = escaped.replace(/\\\s+/g, '\\s*')
+        const strengthRegex = new RegExp(`\\s*${flexible}\\s*$`, 'i')
+        const stripped = name.replace(strengthRegex, '').trim()
+        if (stripped.length > 0) {
+          name = stripped
+        }
+      }
+    }
+
     return name || med.medicine_name || '—'
   }
 
@@ -832,6 +1103,9 @@ export default function MedicineListPage() {
         activeFilters={[
           dosageFilter !== 'ALL' && { key: 'dosage', label: `Type: ${dosageFilter}`, onRemove: () => setDosageFilter('ALL') },
           companyFilter && { key: 'company', label: `Company: ${companyFilter}`, onRemove: () => setCompanyFilter('') },
+          genericFilter && { key: 'generic', label: `Generic: ${genericFilter}`, onRemove: () => setGenericFilter('') },
+          strengthFilter && { key: 'strength', label: `Strength: ${strengthFilter}`, onRemove: () => setStrengthFilter('') },
+          (sortBy !== 'id' || sortDir !== 'desc') && { key: 'sort', label: `Sort: ${sortBy} (${sortDir})`, onRemove: () => { setSortBy('id'); setSortDir('desc'); } },
         ].filter(Boolean)}
         actions={
           (isAdmin || hasPermission('medicine.create')) && (
@@ -841,15 +1115,69 @@ export default function MedicineListPage() {
           )
         }
       >
-        <div style={{ minWidth: 160 }}>
+        {/* Dosage Type Filter */}
+        <div style={{ minWidth: 140, flex: '1 1 140px' }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Dosage Type</label>
           <select className="status-select" value={dosageFilter} onChange={e => { setDosageFilter(e.target.value); setCurrentPage(1); }} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             {DOSAGE_TYPES.map(t => <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>)}
           </select>
         </div>
-        <div style={{ minWidth: 180 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Company</label>
-          <input type="text" placeholder="Filter company..." value={companyFilter} onChange={e => { setCompanyFilter(e.target.value); setCurrentPage(1); }} className="admin-form-input" style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }} />
+
+        {/* Searchable Company Dropdown */}
+        <SearchableCompanyDropdown
+          value={companyFilter}
+          onChange={(val) => { setCompanyFilter(val); setCurrentPage(1); }}
+          companies={companies}
+        />
+
+        {/* Generic / Molecule Filter */}
+        <div style={{ minWidth: 160, flex: '1 1 160px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Generic / Molecule</label>
+          <input
+            type="text"
+            placeholder="e.g. Paracetamol, Cefixime..."
+            value={genericFilter}
+            onChange={e => { setGenericFilter(e.target.value); setCurrentPage(1); }}
+            className="admin-form-input"
+            style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+          />
+        </div>
+
+        {/* Strength Filter */}
+        <div style={{ minWidth: 120, flex: '1 1 120px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Strength</label>
+          <input
+            type="text"
+            placeholder="e.g. 500 mg, 20 mg..."
+            value={strengthFilter}
+            onChange={e => { setStrengthFilter(e.target.value); setCurrentPage(1); }}
+            className="admin-form-input"
+            style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
+          />
+        </div>
+
+        {/* Sort Order */}
+        <div style={{ minWidth: 150, flex: '1 1 150px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Sort Order</label>
+          <select
+            className="status-select"
+            value={`${sortBy}_${sortDir}`}
+            onChange={e => {
+              const [s, d] = e.target.value.split('_')
+              setSortBy(s)
+              setSortDir(d)
+              setCurrentPage(1)
+            }}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}
+          >
+            <option value="id_desc">Newest First</option>
+            <option value="id_asc">Oldest First</option>
+            <option value="name_asc">Name (A → Z)</option>
+            <option value="name_desc">Name (Z → A)</option>
+            <option value="prescribed_desc">Most Prescribed</option>
+            <option value="company_asc">Company (A → Z)</option>
+            <option value="generic_asc">Generic (A → Z)</option>
+          </select>
         </div>
       </ListToolbar>
 
@@ -1066,7 +1394,7 @@ export default function MedicineListPage() {
                   <th style={{ width: 60, textAlign: 'center' }}>SL</th>
                   <th>Medicine Name</th>
                   <th>Generic Name</th>
-                  <th>Type / Strength</th>
+                  <th>Dosage Type</th>
                   {activeTab === 'pending' ? (
                     <>
                       <th>Suggested By</th>

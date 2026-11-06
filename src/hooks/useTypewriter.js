@@ -1,25 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
- * Custom hook to create a typewriter effect for placeholders
- * @param {string[]} words - Array of words to cycle through
- * @param {number} typingSpeed - Speed of typing in ms
- * @param {number} deletingSpeed - Speed of deleting in ms
- * @param {number} delayBetweenWords - Delay before deleting or switching words
+ * Custom hook to create a smooth typewriter effect for placeholders
+ * @param {string[]} words - Array of strings to cycle through
+ * @param {number} typingSpeed - Speed of typing each character in ms
+ * @param {number} deletingSpeed - Speed of backspacing each character in ms
+ * @param {number} delayBetweenWords - Pause duration when full phrase is typed in ms
+ * @param {boolean} showCursor - Whether to append a typing cursor '|'
  */
 export function useTypewriter(
-  words, 
-  typingSpeed = 100, 
-  deletingSpeed = 50, 
-  delayBetweenWords = 2000
+  words = [], 
+  typingSpeed = 70, 
+  deletingSpeed = 35, 
+  delayBetweenWords = 1800,
+  showCursor = false
 ) {
   const [index, setIndex] = useState(0);
   const [subIndex, setSubIndex] = useState(0);
   const [reverse, setReverse] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
+  const wordsKey = Array.isArray(words) ? words.join('~|~') : '';
+  const prevWordsKeyRef = useRef(wordsKey);
+
+  // Reset indices smoothly when the words list changes
   useEffect(() => {
-    if (words.length === 0) return;
+    if (prevWordsKeyRef.current !== wordsKey) {
+      prevWordsKeyRef.current = wordsKey;
+      setIndex(0);
+      setSubIndex(0);
+      setReverse(false);
+      setIsPaused(false);
+    }
+  }, [wordsKey]);
+
+  useEffect(() => {
+    if (!words || words.length === 0) return;
+
+    const currentWord = words[index % words.length] || '';
 
     if (isPaused) {
       const timer = setTimeout(() => {
@@ -29,7 +47,7 @@ export function useTypewriter(
       return () => clearTimeout(timer);
     }
 
-    if (subIndex === words[index].length + 1 && !reverse) {
+    if (subIndex === currentWord.length && !reverse) {
       setIsPaused(true);
       return;
     }
@@ -45,7 +63,12 @@ export function useTypewriter(
     }, reverse ? deletingSpeed : typingSpeed);
 
     return () => clearTimeout(timeout);
-  }, [subIndex, index, reverse, words, isPaused, typingSpeed, deletingSpeed, delayBetweenWords]);
+  }, [subIndex, index, reverse, isPaused, wordsKey, typingSpeed, deletingSpeed, delayBetweenWords]);
 
-  return `${words[index].substring(0, subIndex)}${isPaused ? '' : '|'}`;
+  if (!words || words.length === 0) return '';
+  const currentWord = words[index % words.length] || '';
+  const cursor = showCursor ? (isPaused ? '' : '|') : '';
+  return `${currentWord.substring(0, subIndex)}${cursor}`;
 }
+
+export default useTypewriter;

@@ -14,6 +14,14 @@ import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
 import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
 import useDebounce from '../hooks/useDebounce'
+import { useTypewriter } from '../hooks/useTypewriter'
+
+const HOSPITAL_SEARCH_PHRASES = [
+  'হাসপাতালের নাম লিখুন... (যেমন: অ্যাপোলো, ঢাকা মেডিকেল)',
+  'ধরন লিখুন... (যেমন: ডায়াগনস্টিক, ক্লিনিক, ট্রমা)',
+  'এলাকা দিয়ে খুঁজুন... (যেমন: উত্তরা, সিলেট সদর)',
+  'হাসপাতাল বা ক্লিনিক খুঁজুন...'
+]
 import useUserLocation from '../hooks/useUserLocation'
 import LocationPromptBanner from '../components/common/LocationPromptBanner'
 import { calculateDistance } from '../utils/geoUtils'
@@ -85,7 +93,9 @@ function HospitalsPage() {
   const [emergencyOnly, setEmergencyOnly]         = useState(() => searchParams.get('emergency') === '1' || searchParams.get('emergency_24h') === '1')
   const [openTodayOnly, setOpenTodayOnly]         = useState(() => searchParams.get('open_today') === '1')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
-  const debouncedSearchText                       = useDebounce(searchText, 400)
+  const [appliedSearch, setAppliedSearch]         = useState(searchParams.get('search') || '')
+  const [isSearching, setIsSearching]             = useState(false)
+  const animatedPlaceholder                       = useTypewriter(HOSPITAL_SEARCH_PHRASES, 70, 35, 1800)
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'newest')
@@ -223,6 +233,7 @@ function HospitalsPage() {
           const text = event.results?.[0]?.[0]?.transcript
           if (text) {
             setSearchText(text)
+            setAppliedSearch(text)
             updateUrlParams({ search: text })
           }
         }
@@ -408,6 +419,7 @@ function HospitalsPage() {
     setSelectedUpazila(upaId)
     setSelectedUnion(uniId)
     setSearchText(qSearch)
+    setAppliedSearch(qSearch)
     setHospitalType(type)
     setSelectedSpecialty(specId)
     setSelectedBeds(beds)
@@ -440,8 +452,8 @@ function HospitalsPage() {
     setIfVal('type', hospitalType)
     setIfVal('specialty_id', selectedSpecialty)
     setIfVal('beds', selectedBeds)
-    if (debouncedSearchText && debouncedSearchText.trim()) {
-      next.set('search', debouncedSearchText.trim())
+    if (appliedSearch && appliedSearch.trim()) {
+      next.set('search', appliedSearch.trim())
     }
     if (emergencyOnly) next.set('emergency', '1')
     if (openTodayOnly) next.set('open_today', '1')
@@ -467,7 +479,7 @@ function HospitalsPage() {
     hospitalType,
     selectedSpecialty,
     selectedBeds,
-    debouncedSearchText,
+    appliedSearch,
     emergencyOnly,
     openTodayOnly,
     sortBy,
@@ -477,8 +489,8 @@ function HospitalsPage() {
     setSearchParams
   ])
 
-  // Effective search keyword: immediately empty when searchText is cleared
-  const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()
+  // Effective search keyword: only triggers when user submits search or clears it
+  const effectiveSearch = appliedSearch.trim()
 
   const appliedFilters = useMemo(() => {
     const p = {}
@@ -534,15 +546,67 @@ function HospitalsPage() {
     return item.name || item.name_bn || item.bangla_name || fallback
   }
 
+  const handleSearchChange = (val) => {
+    setSearchText(val)
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: val }))
+  }
+
   const handleClearSearch = () => {
     setSearchText('')
+    setAppliedSearch('')
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     updateUrlParams({ search: '' })
   }
 
   const handleSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
-    updateUrlParams({ search: searchText.trim() })
+    setIsSearching(true)
+    const q = searchText.trim()
+    setAppliedSearch(q)
+    updateUrlParams({ search: q })
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: true }))
+    setTimeout(() => {
+      setIsSearching(false)
+      window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: false }))
+    }, 600)
   }
+
+  // Real-time bidirectional search sync with sticky navbar
+  useEffect(() => {
+    const handleSyncFromNav = (e) => {
+      if (typeof e.detail === 'string') {
+        setSearchText(e.detail)
+      }
+    }
+    const handleRequestSearch = () => {
+      window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    }
+    const handleExternalSubmit = (e) => {
+      setIsSearching(true)
+      const q = typeof e.detail === 'string' ? e.detail : searchText
+      const trimmed = q.trim()
+      setSearchText(q)
+      setAppliedSearch(trimmed)
+      updateUrlParams({ search: trimmed })
+      setTimeout(() => setIsSearching(false), 600)
+    }
+
+    window.addEventListener('sync-nav-search', handleSyncFromNav)
+    window.addEventListener('request-listing-search', handleRequestSearch)
+    window.addEventListener('submit-listing-search', handleExternalSubmit)
+
+    if (searchText) {
+      window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: searchText }))
+    }
+
+    return () => {
+      window.removeEventListener('sync-nav-search', handleSyncFromNav)
+      window.removeEventListener('request-listing-search', handleRequestSearch)
+      window.removeEventListener('submit-listing-search', handleExternalSubmit)
+    }
+  }, [searchText, updateUrlParams])
 
   // Active filters list
   const activeFilters = useMemo(() => {
@@ -648,17 +712,17 @@ function HospitalsPage() {
         }
       })
     }
-    if (searchText.trim()) {
+    if (appliedSearch.trim()) {
       list.push({
         key: 'search',
-        label: `"${searchText.trim()}"`,
+        label: `"${appliedSearch.trim()}"`,
         clear: handleClearSearch
       })
     }
     return list
   }, [
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
-    hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, searchText,
+    hospitalType, selectedSpecialty, selectedBeds, emergencyOnly, openTodayOnly, appliedSearch,
     divisions, districts, upazilas, unions, specialties, updateUrlParams,
     isNearMeActive, userLocation, distanceRadius, sortBy
   ])
@@ -676,6 +740,8 @@ function HospitalsPage() {
     setEmergencyOnly(false)
     setOpenTodayOnly(false)
     setSearchText('')
+    setAppliedSearch('')
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     setIsNearMeActive(false)
     setLocationInlineError(false)
     setDistanceRadius('')
@@ -684,17 +750,49 @@ function HospitalsPage() {
     setSearchParams({}, { replace: true })
   }
 
-  // Infinite scroll sentinel
+  // Dual-scroll and layout refs
+  const headerBlockRef = useRef(null)
+  const leftPaneRef = useRef(null)
+  const rightPaneRef = useRef(null)
   const sentinelRef = useRef(null)
+
+  // Infinite scroll sentinel (desktop: observe inside the results pane; mobile: observe the viewport)
   useEffect(() => {
     if (!sentinelRef.current) return
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 992
+    const rootEl = isDesktop && rightPaneRef.current ? rightPaneRef.current : null
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting && hasMore && !fetchingNext) fetchMore() },
-      { threshold: 0.1 }
+      { root: rootEl, rootMargin: '250px', threshold: 0.05 }
     )
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [hasMore, fetchingNext, fetchMore])
+
+  // Desktop wheel coordination for the dual-pane layout:
+  //  - Scrolling DOWN over either pane: first scroll the page until the header block is hidden
+  //    (panes then rest just below the navbar), after that the pane itself scrolls.
+  //  - Scrolling UP: the pane scrolls first; once it reaches its top, the browser naturally
+  //    chains the scroll to the page and the header block is revealed again.
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (window.innerWidth < 992 || e.deltaY <= 0) return
+      const leftEl = leftPaneRef.current
+      const rightEl = rightPaneRef.current
+      const overPane = (leftEl && leftEl.contains(e.target)) || (rightEl && rightEl.contains(e.target))
+      if (!overPane) return
+
+      const maxPageScroll = document.documentElement.scrollHeight - window.innerHeight
+      const remaining = maxPageScroll - window.scrollY
+      if (remaining > 1) {
+        e.preventDefault()
+        window.scrollBy({ top: Math.min(e.deltaY, remaining), behavior: 'auto' })
+      }
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [])
 
   // Dynamic location title for heading
   const locationHeadingText = useMemo(() => {
@@ -802,7 +900,7 @@ function HospitalsPage() {
   }, [districtParam, matchedDivision, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, hospitals])
 
   return (
-    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
+    <div className="page-wrapper hosp-page-root" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
       <SeoHead
         title={seoData.title}
         description={seoData.description}
@@ -969,6 +1067,98 @@ function HospitalsPage() {
           .hosp-mobile-search-bar {
             display: none !important;
           }
+          .hosp-main-row {
+            margin: 0 !important;
+          }
+          .hosp-col-left {
+            padding-left: 0 !important;
+            padding-right: 12px !important;
+          }
+          .hosp-col-right {
+            padding-left: 12px !important;
+            padding-right: 0 !important;
+          }
+          /* ── Desktop dual-pane layout ──
+             Both panes have a fixed height = viewport - (66px scrolled navbar + 24px gap) - 20px container bottom padding.
+             The page itself only scrolls far enough to hide the header block; at that point both panes rest
+             exactly 24px below the navbar, and each pane scrolls independently inside itself. */
+          .hosp-page-root {
+            padding-bottom: 0 !important;
+          }
+          .hosp-filter-sidebar,
+          .hosp-results-scroll-pane {
+            height: calc(100vh - 90px - 20px) !important;
+            max-height: calc(100vh - 90px - 20px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            scrollbar-width: thin;
+            scrollbar-color: #CBD5E1 transparent;
+          }
+          .hosp-filter-sidebar {
+            padding-right: 6px;
+          }
+          .hosp-filter-sidebar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .hosp-filter-sidebar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .hosp-filter-sidebar::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 99px;
+          }
+          .hosp-filter-sidebar::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+          }
+
+          .hosp-results-scroll-pane {
+            padding-right: 8px;
+            padding-bottom: 24px;
+          }
+          .hosp-results-scroll-pane::-webkit-scrollbar {
+            width: 6px;
+          }
+          .hosp-results-scroll-pane::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .hosp-results-scroll-pane::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 99px;
+          }
+          .hosp-results-scroll-pane::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+          }
+
+          .hosp-desktop-search-btn {
+            background: #00B875;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 184, 117, 0.3);
+          }
+          .hosp-desktop-search-btn:hover {
+            background: #009E64 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 184, 117, 0.4) !important;
+          }
+          .hosp-desktop-search-btn:active {
+            transform: scale(0.95) !important;
+            background: #008754 !important;
+          }
+          .hosp-desktop-search-btn:disabled {
+            opacity: 0.82 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+          }
         }
         @media (max-width: 767px) {
           .hosp-results-bar {
@@ -1106,12 +1296,25 @@ function HospitalsPage() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
             <div className="hosp-mobile-search-pill">
-              <IconSearch size={20} className="hosp-mobile-search-icon" />
+              <button
+                type="submit"
+                title="সার্চ করুন"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <IconSearch size={20} className="hosp-mobile-search-icon" />
+              </button>
               <input
                 type="text"
-                placeholder="হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."
+                placeholder={animatedPlaceholder || "হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."}
                 value={searchText}
-                onChange={e => setSearchText(e.target.value)}
+                onChange={e => handleSearchChange(e.target.value)}
                 className="hosp-mobile-search-input"
               />
               {searchText && (
@@ -1195,166 +1398,182 @@ function HospitalsPage() {
 
       <Container fluid className="hosp-main-container" style={{ maxWidth: 1380 }}>
         
-        {/* ── BREADCRUMB ── */}
-        <div className="hosp-breadcrumb">
-          <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-          <span>/</span>
-          <span style={{ color: '#0F172A', fontWeight: 600 }}>Hospital Listings</span>
-        </div>
-
-        {/* ── HEADING TITLE ── */}
-        <h1 className="hosp-page-heading">
-          {locationHeadingText ? (
-            <>
-              <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
-            </>
-          ) : (
-            <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল তালিকা</span>
-          )}
-        </h1>
-
-        {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-        <form onSubmit={handleSearchSubmit} className="hosp-desktop-search" style={{
-          background: 'white',
-          borderRadius: 8,
-          border: '1px solid #CBD5E1',
-          padding: '4px 6px 4px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-          marginBottom: 20
-        }}>
-          <IconSearch size={18} color="#94A3B8" />
-          <input
-            type="text"
-            placeholder="Search by area, hospital type, keyword..."
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            style={{
-              flex: 1,
-              border: 'none',
-              outline: 'none',
-              fontSize: 14,
-              color: '#0F172A',
-              fontWeight: 500,
-              background: 'transparent',
-              padding: '10px 0'
-            }}
-          />
-          {searchText && (
-            <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
-              <IconX size={16} />
-            </button>
-          )}
-          <button type="submit" style={{
-            background: '#00B875',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            padding: '10px 24px',
-            fontWeight: 800,
-            fontSize: 14,
-            cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif"
-          }}>
-            Search
-          </button>
-        </form>
-
-        {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
-        <div className="hosp-results-bar">
-          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
-            {loading ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
-                <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
-                হাসপাতাল খোঁজা হচ্ছে...
-              </span>
-            ) : (
-              <>
-                <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
-              </>
-            )}
+        {/* ── HEADER BLOCK (Breadcrumb, Heading, Desktop Search, Results Bar) ── */}
+        <div ref={headerBlockRef} className="hosp-header-block">
+          {/* ── BREADCRUMB ── */}
+          <div className="hosp-breadcrumb">
+            <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
+            <span>/</span>
+            <span style={{ color: '#0F172A', fontWeight: 600 }}>Hospital Listings</span>
           </div>
 
-          <div className="hosp-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {/* Sort Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
-              <select
-                value={sortBy}
-                onChange={e => handleSortChange(e.target.value)}
-                style={{
-                  background: 'white',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 6,
-                  padding: '6px 10px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#0F172A',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}
-              >
-                <option value="newest">সর্বশেষ যুক্ত</option>
-                <option value="nearest">নিকটবর্তী হাসপাতাল</option>
-                <option value="name_asc">নাম (A - Z)</option>
-                <option value="name_desc">নাম (Z - A)</option>
-              </select>
+          {/* ── HEADING TITLE ── */}
+          <h1 className="hosp-page-heading">
+            {locationHeadingText ? (
+              <>
+                <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
+              </>
+            ) : (
+              <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল তালিকা</span>
+            )}
+          </h1>
+
+          {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
+          <form onSubmit={handleSearchSubmit} className="hosp-desktop-search" style={{
+            background: 'white',
+            borderRadius: 8,
+            border: '1px solid #CBD5E1',
+            padding: '4px 6px 4px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            marginBottom: 20
+          }}>
+            <button
+              type="submit"
+              title="সার্চ করুন"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                color: '#94A3B8'
+              }}
+            >
+              <IconSearch size={18} />
+            </button>
+            <input
+              type="text"
+              placeholder={animatedPlaceholder || "হাসপাতাল বা ক্লিনিক খুঁজুন..."}
+              value={searchText}
+              onChange={e => handleSearchChange(e.target.value)}
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: 14,
+                color: '#0F172A',
+                fontWeight: 500,
+                background: 'transparent',
+                padding: '10px 0'
+              }}
+            />
+            {searchText && (
+              <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+                <IconX size={16} />
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={loading || isSearching}
+              className="hosp-desktop-search-btn"
+            >
+              {(loading || isSearching) ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <span>Search</span>
+              )}
+            </button>
+          </form>
+
+          {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
+          <div className="hosp-results-bar">
+            <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
+              {loading ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
+                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                  হাসপাতাল খোঁজা হচ্ছে...
+                </span>
+              ) : (
+                <>
+                  <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
+                </>
+              )}
             </div>
 
-            {/* View Mode Toggle Buttons (List :== , Grid :::) */}
-            <div className="hosp-view-toggle" style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                title="List View"
-                style={{
-                  padding: '6px 10px',
-                  background: viewMode === 'list' ? '#00B875' : 'white',
-                  color: viewMode === 'list' ? 'white' : '#64748B',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <IconListDetails size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                title="Grid View"
-                style={{
-                  padding: '6px 10px',
-                  background: viewMode === 'grid' ? '#00B875' : 'white',
-                  color: viewMode === 'grid' ? 'white' : '#64748B',
-                  border: 'none',
-                  borderLeft: '1px solid #CBD5E1',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <IconGridDots size={18} />
-              </button>
+            <div className="hosp-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Sort Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
+                <select
+                  value={sortBy}
+                  onChange={e => handleSortChange(e.target.value)}
+                  style={{
+                    background: 'white',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 6,
+                    padding: '6px 10px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}
+                >
+                  <option value="newest">সর্বশেষ যুক্ত</option>
+                  <option value="nearest">নিকটবর্তী হাসপাতাল</option>
+                  <option value="name_asc">নাম (A - Z)</option>
+                  <option value="name_desc">নাম (Z - A)</option>
+                </select>
+              </div>
+
+              {/* View Mode Toggle Buttons (List :== , Grid :::) */}
+              <div className="hosp-view-toggle" style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                  style={{
+                    padding: '6px 10px',
+                    background: viewMode === 'list' ? '#00B875' : 'white',
+                    color: viewMode === 'list' ? 'white' : '#64748B',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <IconListDetails size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  title="Grid View"
+                  style={{
+                    padding: '6px 10px',
+                    background: viewMode === 'grid' ? '#00B875' : 'white',
+                    color: viewMode === 'grid' ? 'white' : '#64748B',
+                    border: 'none',
+                    borderLeft: '1px solid #CBD5E1',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <IconGridDots size={18} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* ── MAIN CONTENT AREA (LIST & GRID VIEW) ── */}
-        <Row className="g-4">
+        <Row className="hosp-main-row g-4">
 
             {/* ── LEFT COLUMN: FILTERS PANEL (Desktop Only ≥992px) ── */}
-            <Col xs={12} lg={3} className="d-none d-lg-block">
-              <div style={{
+            <Col xs={12} lg={3} className="d-none d-lg-block hosp-col-left">
+              <div ref={leftPaneRef} className="hosp-filter-sidebar" style={{
                 background: 'white',
                 borderRadius: 8,
                 border: '1px solid #E2E8F0',
                 padding: '16px',
-                position: 'sticky',
-                top: 'calc(var(--header-height, 110px) + 16px)',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
               }}>
                 {/* Filter Sidebar Header */}
@@ -1654,57 +1873,59 @@ function HospitalsPage() {
             </Col>
 
             {/* ── RIGHT COLUMN: LIST / GRID HOSPITAL LISTINGS AREA ── */}
-            <Col xs={12} lg={9}>
-              {loading && <HospitalGridSkeleton count={4} />}
+            <Col xs={12} lg={9} className="hosp-col-right">
+              <div ref={rightPaneRef} className="hosp-results-scroll-pane">
+                {loading && <HospitalGridSkeleton count={4} />}
 
-              {error && !loading && (
-                <ErrorState
-                  title="হাসপাতালের তথ্য লোড করা যায়নি"
-                  message={error}
-                  onRetry={refresh}
-                  retryText="পুনরায় চেষ্টা করুন"
-                  onSecondary={handleClearAllFilters}
-                  secondaryText="ফিল্টার রিসেট করুন"
-                />
-              )}
+                {error && !loading && (
+                  <ErrorState
+                    title="হাসপাতালের তথ্য লোড করা যায়নি"
+                    message={error}
+                    onRetry={refresh}
+                    retryText="পুনরায় চেষ্টা করুন"
+                    onSecondary={handleClearAllFilters}
+                    secondaryText="ফিল্টার রিসেট করুন"
+                  />
+                )}
 
-              {!loading && sortedHospitals.length > 0 && (
-                <>
-                  {viewMode === 'grid' ? (
-                    <Row className="g-3">
-                      {sortedHospitals.map((h, i) => (
-                        <Col key={h.id} xs={12} md={6} xl={4}>
-                          <HospitalCard hospital={h} index={i} viewMode="grid" userLocation={userLocation} />
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    /* DEFAULT LIST VIEW (Matching screenshot) */
-                    <div>
-                      {sortedHospitals.map((h, i) => (
-                        <HospitalCard key={h.id} hospital={h} index={i} viewMode="list" userLocation={userLocation} />
-                      ))}
+                {!loading && sortedHospitals.length > 0 && (
+                  <>
+                    {viewMode === 'grid' ? (
+                      <Row className="g-3">
+                        {sortedHospitals.map((h, i) => (
+                          <Col key={h.id} xs={12} md={6} xl={4}>
+                            <HospitalCard hospital={h} index={i} viewMode="grid" userLocation={userLocation} />
+                          </Col>
+                        ))}
+                      </Row>
+                    ) : (
+                      /* DEFAULT LIST VIEW (Matching screenshot) */
+                      <div>
+                        {sortedHospitals.map((h, i) => (
+                          <HospitalCard key={h.id} hospital={h} index={i} viewMode="list" userLocation={userLocation} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!loading && !error && sortedHospitals.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                    <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <IconBuildingHospital size={36} color="#64748B" />
                     </div>
-                  )}
-                </>
-              )}
-
-              {!loading && !error && sortedHospitals.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 12, border: '1px solid #E2E8F0' }}>
-                  <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <IconBuildingHospital size={36} color="#64748B" />
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>No hospitals found</h3>
+                    <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px' }}>No hospital listings matched your selected filters.</p>
+                    <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                      Clear All Filters
+                    </button>
                   </div>
-                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>No hospitals found</h3>
-                  <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px' }}>No hospital listings matched your selected filters.</p>
-                  <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-                    Clear All Filters
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* Infinite scroll sentinel */}
-              <div ref={sentinelRef} style={{ height: 30, marginTop: 20 }} />
-              {fetchingNext && <div style={{ paddingTop: 10 }}><HospitalGridSkeleton count={2} /></div>}
+                {/* Infinite scroll sentinel */}
+                <div ref={sentinelRef} style={{ height: 30, marginTop: 20 }} />
+                {fetchingNext && <div style={{ paddingTop: 10 }}><HospitalGridSkeleton count={2} /></div>}
+              </div>
             </Col>
           </Row>
       </Container>
