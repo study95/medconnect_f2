@@ -1,5 +1,6 @@
 // AdminSubscriptionListPage.jsx — Admin view for doctor subscriptions with approval tools
 import { useState, useEffect } from 'react'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { getAdminSubscriptions, updateAdminSubscription, deleteAdminSubscription } from '../../../api/subscriptionApi'
 import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
@@ -14,16 +15,35 @@ export default function AdminSubscriptionListPage() {
   const { isAdmin } = useAuth()
   const [subscriptions, setSubscriptions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState({ status: '', payment_status: '', search: '' })
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [showFilters, setShowFilters] = useState(false)
+
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters
+  } = useTableUrlFilters({
+    initialFilters: {
+      status: '',
+      payment_status: '',
+    },
+    storageKey: 'admin_subscriptions_filters'
+  })
+
+  const { status, payment_status } = filters
+  const [showFilters, setShowFilters] = useState(Boolean(status || payment_status))
 
   useEffect(() => {
     fetchSubscriptions()
-  }, [filter])
+  }, [debouncedSearch, status, payment_status])
 
   const filtered = subscriptions
 
@@ -34,7 +54,11 @@ export default function AdminSubscriptionListPage() {
   const fetchSubscriptions = async () => {
     try {
       setLoading(true)
-      const res = await getAdminSubscriptions(filter)
+      const res = await getAdminSubscriptions({
+        search: debouncedSearch.trim() || undefined,
+        status: status || undefined,
+        payment_status: payment_status || undefined,
+      })
       const data = res.data?.data?.data || res.data?.data || []
       setSubscriptions(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -82,23 +106,23 @@ export default function AdminSubscriptionListPage() {
       </div>
 
       <ListToolbar
-        search={filter.search}
-        onSearchChange={val => setFilter(prev => ({ ...prev, search: val }))}
+        search={search}
+        onSearchChange={setSearch}
         searchPlaceholder="Search subscription by user, package, transaction..."
         onRefresh={fetchSubscriptions}
         refreshing={loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(filter.status || filter.payment_status)}
-        onClearFilters={() => setFilter({ status: '', payment_status: '', search: '' })}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={resetFilters}
         activeFilters={[
-          filter.payment_status && { key: 'payment_status', label: `Payment: ${filter.payment_status.toUpperCase()}`, onRemove: () => setFilter(prev => ({ ...prev, payment_status: '' })) },
-          filter.status && { key: 'status', label: `Status: ${filter.status.toUpperCase()}`, onRemove: () => setFilter(prev => ({ ...prev, status: '' })) },
+          payment_status && { key: 'payment_status', label: `Payment: ${payment_status.toUpperCase()}`, onRemove: () => setFilter('payment_status', '') },
+          status && { key: 'status', label: `Status: ${status.toUpperCase()}`, onRemove: () => setFilter('status', '') },
         ].filter(Boolean)}
       >
         <div style={{ minWidth: 150 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Payment Status</label>
-          <select className="status-select" value={filter.payment_status} onChange={e => setFilter(prev => ({ ...prev, payment_status: e.target.value }))} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+          <select className="status-select" value={payment_status} onChange={e => setFilter('payment_status', e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             <option value="">All Payments</option>
             <option value="pending">Pending</option>
             <option value="verified">Verified</option>
@@ -107,7 +131,7 @@ export default function AdminSubscriptionListPage() {
         </div>
         <div style={{ minWidth: 150 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Subscription Status</label>
-          <select className="status-select" value={filter.status} onChange={e => setFilter(prev => ({ ...prev, status: e.target.value }))} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+          <select className="status-select" value={status} onChange={e => setFilter('status', e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>

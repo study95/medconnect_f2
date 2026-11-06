@@ -1,7 +1,7 @@
 // HospitalSubscriptionExperiencePage.jsx — Phase 4.2, 4.4 & Phase 6 Enterprise Hospital Subscription & Capacity Experience
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   getHospitalBillingOverview,
   getHospitalAvailablePlans,
@@ -45,10 +45,46 @@ export default function HospitalSubscriptionExperiencePage() {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
 
   // Doctor Seat Management states (Phase 6)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [seatSummary, setSeatSummary] = useState(null)
-  const [seatTab, setSeatTab] = useState('roster') // 'roster' | 'invitations' | 'history'
+  const [seatTab, setSeatTab] = useState(() => searchParams.get('tab') || 'roster') // 'roster' | 'invitations' | 'history'
   const [invitations, setInvitations] = useState([])
-  const [invitationsFilter, setInvitationsFilter] = useState('all')
+  const [invitationsFilter, setInvitationsFilter] = useState(() => searchParams.get('inv_filter') || 'all')
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const t = searchParams.get('tab') || 'roster'
+    const inf = searchParams.get('inv_filter') || 'all'
+    setSeatTab(t)
+    setInvitationsFilter(inf)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams(searchParams)
+    if (seatTab && seatTab !== 'roster') params.set('tab', seatTab)
+    else params.delete('tab')
+
+    if (invitationsFilter && invitationsFilter !== 'all') params.set('inv_filter', invitationsFilter)
+    else params.delete('inv_filter')
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [seatTab, invitationsFilter, searchParams, setSearchParams])
   const [invitationNotes, setInvitationNotes] = useState('')
   const invitationWordCount = useMemo(() => {
     if (!invitationNotes || !invitationNotes.trim()) return 0

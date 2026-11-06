@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../utils/mediaUtils'
 import { getHospitalUrl } from '../utils/identifierHelper'
 import { Container, Row, Col } from 'react-bootstrap'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import useHospitals from '../hooks/useHospitals'
 import useDistricts from '../hooks/useDistricts'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
@@ -22,10 +22,27 @@ const FALLBACK_COLORS = [
 
 function TopHospitalsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { t, i18n } = useTranslation()
   const language = i18n.language
 
-  const [districtId, setDistrictId] = useState('')
+  const [districtId, setDistrictId] = useState(() => searchParams.get('district_id') || searchParams.get('district') || '')
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const d = searchParams.get('district_id') || searchParams.get('district') || ''
+    setDistrictId(d)
+  }, [searchParams])
+
+  // Sync state changes to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (districtId) next.set('district_id', districtId)
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [districtId, searchParams, setSearchParams])
 
   // TanStack Query — cached 30min, shared across pages
   const { districts } = useDistricts()

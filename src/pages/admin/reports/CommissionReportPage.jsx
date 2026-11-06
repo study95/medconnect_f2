@@ -1,6 +1,7 @@
 import { TableSkeleton } from '../../../components/common/Skeletons'
 // CommissionReportPage.jsx — Admin Commission Report & Request-Wise Approval Inbox
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   CheckCircle2, ShieldCheck, X, AlertTriangle, RotateCcw, 
@@ -181,23 +182,24 @@ function SearchableSelect({ label, options = [], value = '', onChange, placehold
 }
 
 export default function CommissionReportPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [updating, setUpdating] = useState(null)
   const [bulking, setBulking] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
   
   // Instant Auto-Filters
   const [filters, setFilters] = useState({
-    doctor_id: '',
-    hospital_id: '',
-    date_from: '',
-    date_to: '',
-    month: '',
-    year: new Date().getFullYear(),
-    status: '',
-    commission_source: '',
-    payment_method: ''
+    doctor_id: searchParams.get('doctor_id') || '',
+    hospital_id: searchParams.get('hospital_id') || '',
+    date_from: searchParams.get('date_from') || '',
+    date_to: searchParams.get('date_to') || '',
+    month: searchParams.get('month') || '',
+    year: searchParams.get('year') || new Date().getFullYear(),
+    status: searchParams.get('status') || '',
+    commission_source: searchParams.get('commission_source') || '',
+    payment_method: searchParams.get('payment_method') || ''
   })
 
   const [selectedAppointments, setSelectedAppointments] = useState([])
@@ -218,14 +220,85 @@ export default function CommissionReportPage() {
   const [rejectTargetAppointments, setRejectTargetAppointments] = useState([])
   const [rejectNote, setRejectNote] = useState('')
 
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [perPage, setPerPage] = useState(() => Math.max(1, parseInt(searchParams.get('perPage') || '10', 10)))
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   // View Mode: 'requests' (Batch Verification Inbox) or 'appointments' (Individual Consultation Breakdown)
-  const [activeTab, setActiveTab] = useState('requests')
-  const [requestFilterStatus, setRequestFilterStatus] = useState('pending') // 'pending', 'approved', 'rejected', 'all'
-  const [requestSearch, setRequestSearch] = useState('')
-  const [requestProviderType, setRequestProviderType] = useState('all') // 'all', 'doctor', 'hospital'
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'requests')
+  const [requestFilterStatus, setRequestFilterStatus] = useState(() => searchParams.get('req_status') || 'pending') // 'pending', 'approved', 'rejected', 'all'
+  const [requestSearch, setRequestSearch] = useState(() => searchParams.get('req_search') || '')
+  const [requestProviderType, setRequestProviderType] = useState(() => searchParams.get('provider_type') || 'all') // 'all', 'doctor', 'hospital'
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const pp = Math.max(1, parseInt(searchParams.get('perPage') || '10', 10))
+    const tab = searchParams.get('tab') || 'requests'
+    const rStat = searchParams.get('req_status') || 'pending'
+    const rSearch = searchParams.get('req_search') || ''
+    const rProv = searchParams.get('provider_type') || 'all'
+
+    setSearch(s)
+    setCurrentPage(p)
+    setPerPage(pp)
+    setActiveTab(tab)
+    setRequestFilterStatus(rStat)
+    setRequestSearch(rSearch)
+    setRequestProviderType(rProv)
+    setFilters({
+      doctor_id: searchParams.get('doctor_id') || '',
+      hospital_id: searchParams.get('hospital_id') || '',
+      date_from: searchParams.get('date_from') || '',
+      date_to: searchParams.get('date_to') || '',
+      month: searchParams.get('month') || '',
+      year: searchParams.get('year') || new Date().getFullYear(),
+      status: searchParams.get('status') || '',
+      commission_source: searchParams.get('commission_source') || '',
+      payment_method: searchParams.get('payment_method') || ''
+    })
+  }, [searchParams])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (activeTab && activeTab !== 'requests') next.set('tab', activeTab)
+    if (requestFilterStatus && requestFilterStatus !== 'pending') next.set('req_status', requestFilterStatus)
+    if (requestSearch) next.set('req_search', requestSearch)
+    if (requestProviderType && requestProviderType !== 'all') next.set('provider_type', requestProviderType)
+    if (search) next.set('search', search)
+    if (filters.doctor_id) next.set('doctor_id', filters.doctor_id)
+    if (filters.hospital_id) next.set('hospital_id', filters.hospital_id)
+    if (filters.date_from) next.set('date_from', filters.date_from)
+    if (filters.date_to) next.set('date_to', filters.date_to)
+    if (filters.month) next.set('month', filters.month)
+    if (filters.year && filters.year !== new Date().getFullYear()) next.set('year', String(filters.year))
+    if (filters.status) next.set('status', filters.status)
+    if (filters.commission_source) next.set('commission_source', filters.commission_source)
+    if (filters.payment_method) next.set('payment_method', filters.payment_method)
+    if (currentPage > 1) next.set('page', String(currentPage))
+    if (perPage !== 10) next.set('perPage', String(perPage))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [activeTab, requestFilterStatus, requestSearch, requestProviderType, search, filters, currentPage, perPage, searchParams, setSearchParams])
 
   // Modals for Request-Wise actions
   const [viewingRequest, setViewingRequest] = useState(null)

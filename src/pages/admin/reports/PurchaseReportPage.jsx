@@ -1,6 +1,7 @@
 import { TableSkeleton } from '../../../components/common/Skeletons'
 // PurchaseReportPage.jsx — Admin Purchase Income Report
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { getPurchaseReport, getDoctorLookup, getHospitalLookup } from '../../../api/adminApi'
@@ -109,22 +110,77 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 }
 
 export default function PurchaseReportPage() {
-  const [showFilters, setShowFilters] = useState(false)
-  const [perPage, setPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentYear = new Date().getFullYear().toString()
 
-  const [filters, setFilters] = useState({ 
-    subscriber_id: '',
-    subscriber_role: '',
-    plan_name: '',
-    date_from: '', 
-    date_to: '', 
-    month: '', 
-    year: new Date().getFullYear().toString() 
-  })
+  const [showFilters, setShowFilters] = useState(false)
+  const [perPage, setPerPage] = useState(() => Math.max(1, parseInt(searchParams.get('perPage') || '10', 10)))
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
+
+  const [filters, setFilters] = useState(() => ({ 
+    subscriber_id: searchParams.get('subscriber_id') || '',
+    subscriber_role: searchParams.get('subscriber_role') || '',
+    plan_name: searchParams.get('plan_name') || '',
+    date_from: searchParams.get('date_from') || '', 
+    date_to: searchParams.get('date_to') || '', 
+    month: searchParams.get('month') || '', 
+    year: searchParams.get('year') || currentYear 
+  }))
   const [appliedFilters, setAppliedFilters] = useState(filters)
 
-  const hasFilters = Boolean(filters.subscriber_id || filters.plan_name || filters.month || filters.date_from || filters.date_to)
+  const hasFilters = Boolean(appliedFilters.subscriber_id || appliedFilters.plan_name || appliedFilters.month || appliedFilters.date_from || appliedFilters.date_to)
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const pp = Math.max(1, parseInt(searchParams.get('perPage') || '10', 10))
+    const nextF = {
+      subscriber_id: searchParams.get('subscriber_id') || '',
+      subscriber_role: searchParams.get('subscriber_role') || '',
+      plan_name: searchParams.get('plan_name') || '',
+      date_from: searchParams.get('date_from') || '',
+      date_to: searchParams.get('date_to') || '',
+      month: searchParams.get('month') || '',
+      year: searchParams.get('year') || currentYear
+    }
+    setFilters(nextF)
+    setAppliedFilters(nextF)
+    setCurrentPage(p)
+    setPerPage(pp)
+  }, [searchParams, currentYear])
+
+  // Sync state changes back to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (appliedFilters.subscriber_id) params.set('subscriber_id', appliedFilters.subscriber_id)
+    if (appliedFilters.subscriber_role) params.set('subscriber_role', appliedFilters.subscriber_role)
+    if (appliedFilters.plan_name) params.set('plan_name', appliedFilters.plan_name)
+    if (appliedFilters.date_from) params.set('date_from', appliedFilters.date_from)
+    if (appliedFilters.date_to) params.set('date_to', appliedFilters.date_to)
+    if (appliedFilters.month) params.set('month', appliedFilters.month)
+    if (appliedFilters.year && appliedFilters.year !== currentYear) params.set('year', appliedFilters.year)
+    if (currentPage > 1) params.set('page', String(currentPage))
+    if (perPage !== 10) params.set('perPage', String(perPage))
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [appliedFilters, currentPage, perPage, setSearchParams, currentYear, searchParams])
 
   const { data: doctors = [] } = useQuery({
     queryKey: queryKeys.doctors.lookup({ limit: 200 }),
@@ -164,10 +220,15 @@ export default function PurchaseReportPage() {
   const data = report.data
   const summary = report.summary
 
-  useEffect(() => { setCurrentPage(1) }, [data.length])
+  useEffect(() => {
+    if (data.length > 0 && currentPage > Math.ceil(data.length / perPage)) {
+      setCurrentPage(Math.ceil(data.length / perPage))
+    }
+  }, [data.length, perPage, currentPage])
 
   const fetchReport = () => {
     setAppliedFilters({ ...filters })
+    setCurrentPage(1)
   }
 
   const handleReset = () => {
@@ -178,10 +239,11 @@ export default function PurchaseReportPage() {
       date_from: '', 
       date_to: '', 
       month: '', 
-      year: new Date().getFullYear().toString() 
+      year: currentYear 
     }
     setFilters(emptyFilters)
     setAppliedFilters(emptyFilters)
+    setCurrentPage(1)
   }
 
   const handleFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))

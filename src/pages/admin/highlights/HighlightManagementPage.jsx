@@ -1,7 +1,7 @@
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getDoctors, updateDoctor,
@@ -18,8 +18,31 @@ const TABS = {
 }
 
 export default function HighlightManagementPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState(TABS.DOCTORS)
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    initialTab && Object.values(TABS).includes(initialTab) ? initialTab : TABS.DOCTORS
+  )
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t && Object.values(TABS).includes(t) && t !== activeTab) {
+      setActiveTab(t)
+    }
+  }, [searchParams])
+
+  // Sync tab changes to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (activeTab && activeTab !== TABS.DOCTORS) {
+      next.set('tab', activeTab)
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [activeTab, searchParams, setSearchParams])
 
   // Search state for "Add" feature
   const [searchQuery, setSearchQuery] = useState('')

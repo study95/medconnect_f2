@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Container, Row, Col, Form, InputGroup, Nav, Badge } from 'react-bootstrap'
 import { useSearchParams, Link } from 'react-router-dom'
 import {
@@ -26,22 +26,54 @@ export default function SearchPage() {
   const [activeType, setActiveType] = useState(initialType)
   const [selectedDistrict, setSelectedDistrict] = useState(initialDistrict)
   const [selectedUpazila, setSelectedUpazila] = useState(initialUpazila)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   const { districts, upazilas } = useLocations()
 
-  // Sync state when URL params change
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Sync state when URL params change from external navigation (e.g. Browser Back/Forward)
   useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
     const q = searchParams.get('query') || searchParams.get('search') || searchParams.get('q') || ''
     const t = searchParams.get('type') || 'all'
     const d = searchParams.get('district') || searchParams.get('district_slug') || ''
     const u = searchParams.get('upazila') || searchParams.get('upazila_slug') || ''
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
 
     setInputText(q)
     setActiveType(t)
     setSelectedDistrict(d)
     setSelectedUpazila(u)
+    setPage(p)
   }, [searchParams])
+
+  // Synchronize state changes to URL query parameters
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (debouncedQuery.trim()) next.set('query', debouncedQuery.trim())
+    if (activeType && activeType !== 'all') next.set('type', activeType)
+    if (selectedDistrict) next.set('district', selectedDistrict)
+    if (selectedUpazila) next.set('upazila', selectedUpazila)
+    if (page > 1) next.set('page', String(page))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [debouncedQuery, activeType, selectedDistrict, selectedUpazila, page, searchParams, setSearchParams])
 
   // Update URL helper
   const updateUrl = useCallback((updates) => {
@@ -54,6 +86,7 @@ export default function SearchPage() {
           next.delete(k)
         }
       })
+      prevParamsRef.current = next.toString()
       return next
     }, { replace: true })
   }, [setSearchParams])

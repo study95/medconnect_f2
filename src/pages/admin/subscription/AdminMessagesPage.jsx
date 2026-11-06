@@ -1,5 +1,6 @@
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   getAdminNotifications, 
@@ -197,13 +198,42 @@ function SearchableSelect({
 export default function AdminMessagesPage() {
   const queryClient = useQueryClient()
   const { confirm, showSuccess, showError } = useDialog()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showModal, setShowModal] = useState(false)
   const [editNotice, setEditNotice] = useState(null)
   const [viewNotice, setViewNotice] = useState(null)
   const [viewReadersFor, setViewReadersFor] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
-  const [activeTabFilter, setActiveTabFilter] = useState('all') // 'all', 'doctors', 'hospitals'
+  const [activeTabFilter, setActiveTabFilter] = useState(() => searchParams.get('tab') || 'all') // 'all', 'doctors', 'hospitals'
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevTabRef = useRef(searchParams.get('tab') || 'all')
+
+  useEffect(() => {
+    const currentTab = searchParams.get('tab') || 'all'
+    if (prevTabRef.current !== currentTab) {
+      prevTabRef.current = currentTab
+      isSyncingFromUrlRef.current = true
+      setActiveTabFilter(currentTab)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (activeTabFilter && activeTabFilter !== 'all') params.set('tab', activeTabFilter)
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevTabRef.current = activeTabFilter
+      setSearchParams(params, { replace: true })
+    }
+  }, [activeTabFilter, searchParams, setSearchParams])
 
   // Modal form state
   const [targetCategory, setTargetCategory] = useState('doctor') // 'doctor' | 'hospital'

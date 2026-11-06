@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminInvoices,
@@ -38,22 +38,56 @@ import '../../../styles/admin-billing.css'
 import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminInvoicesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || searchParams.get('statusFilter') || '')
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [actionProcessing, setActionProcessing] = useState(false)
   const [actionMessage, setActionMessage] = useState(null)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   const debouncedSearch = useDebounce(search, 400)
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
 
-  // Reset to page 1 whenever filters/search change
+  // Sync state when URL changes externally (Back / Forward)
   useEffect(() => {
-    setPage(1)
-  }, [statusFilter, debouncedSearch])
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const stat = searchParams.get('status') || searchParams.get('statusFilter') || ''
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+
+    setSearch(s)
+    setStatusFilter(stat)
+    setPage(p)
+  }, [searchParams])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (debouncedSearch && debouncedSearch.trim()) next.set('search', debouncedSearch.trim())
+    if (statusFilter) next.set('status', statusFilter)
+    if (page > 1) next.set('page', String(page))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [debouncedSearch, statusFilter, page, searchParams, setSearchParams])
 
   // TanStack Query for Invoices
   const {

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Container, Row, Col, Form, InputGroup } from 'react-bootstrap'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   IconSearch, IconStethoscope, IconHeart, IconBrain,
   IconBabyCarriage, IconDroplet, IconBone, IconDental,
@@ -24,8 +24,28 @@ const ICON_MAP = {
 }
 
 export default function SpecialtiesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { specialties, loading, error } = useSpecialties()
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || searchParams.get('q') || '')
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q') || ''
+    if (q !== searchTerm) {
+      setSearchTerm(q)
+    }
+  }, [searchParams])
+
+  // Sync searchTerm to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (searchTerm.trim()) {
+      next.set('search', searchTerm.trim())
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchTerm, searchParams, setSearchParams])
 
   const filteredSpecialties = useMemo(() => {
     if (!searchTerm.trim()) return specialties

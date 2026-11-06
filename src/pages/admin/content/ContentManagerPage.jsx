@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Row, Col, Form } from 'react-bootstrap'
 import { getContent, saveContent } from '../../../utils/contentService'
 import {
@@ -1119,11 +1120,44 @@ function SupportTicketTab({ data, onChange }) {
 
 /* ── MAIN CONTENT MANAGER PAGE ── */
 export default function ContentManagerPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [content, setContent] = useState(getContent())
-  const [activeTab, setActiveTab] = useState('about_us')
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'about_us')
   const [saved, setSaved] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [tabFilter, setTabFilter] = useState('')
+  const [tabFilter, setTabFilter] = useState(() => searchParams.get('search') || '')
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const t = searchParams.get('tab') || 'about_us'
+    const s = searchParams.get('search') || ''
+    setActiveTab(t)
+    setTabFilter(s)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (activeTab && activeTab !== 'about_us') params.set('tab', activeTab)
+    if (tabFilter) params.set('search', tabFilter)
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [activeTab, tabFilter, searchParams, setSearchParams])
 
   const handleSave = async () => {
     setIsSaving(true)

@@ -1,6 +1,6 @@
 import { TableSkeleton, AdminContentSkeleton } from '../../../components/common/Skeletons'
 import { useState, useEffect, useRef } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Filter, ChevronDown, ChevronUp, RotateCcw, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -26,7 +26,28 @@ const TABS = [
 
 export default function ServiceEnablementPage() {
   const { isAdmin, loading } = useAuth()
-  const [activeTab, setActiveTab] = useState('doctor')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'doctor')
+
+  const prevTabRef = useRef(searchParams.get('tab') || 'doctor')
+
+  useEffect(() => {
+    const currentTab = searchParams.get('tab') || 'doctor'
+    if (prevTabRef.current !== currentTab) {
+      prevTabRef.current = currentTab
+      setActiveTab(currentTab)
+    }
+  }, [searchParams])
+
+  const handleTabChange = (tabKey) => {
+    setActiveTab(tabKey)
+    prevTabRef.current = tabKey
+    const nextParams = new URLSearchParams()
+    if (tabKey !== 'doctor') {
+      nextParams.set('tab', tabKey)
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
 
   if (!loading && !isAdmin) {
     return <Navigate to="/admin" replace />
@@ -51,7 +72,7 @@ export default function ServiceEnablementPage() {
         {TABS.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
             style={{
               flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none', cursor: 'pointer',
               fontWeight: 800, fontSize: 14, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -113,11 +134,12 @@ export default function ServiceEnablementPage() {
 function DoctorServiceTab() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [doctorsOptions, setDoctorsOptions] = useState([])
   const [saving, setSaving] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   
-  const [statusFilter, setStatusFilter] = useState('') // '', 'package', 'commission', 'disabled'
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '') // '', 'package', 'commission', 'disabled'
   const [enableTarget, setEnableTarget] = useState(null)
   const [disableTarget, setDisableTarget] = useState(null)
   const [packageInfoTarget, setPackageInfoTarget] = useState(null)
@@ -125,18 +147,60 @@ function DoctorServiceTab() {
   const [customReason, setCustomReason] = useState('')
   const [editingRates, setEditingRates] = useState({})
 
-  const [search, setSearch] = useState('')
-  const [doctorFilter, setDoctorFilter] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [doctorFilter, setDoctorFilter] = useState(() => searchParams.get('doctor_id') || '')
   
-  const [divisionId, setDivisionId] = useState('')
-  const [districtId, setDistrictId] = useState('')
-  const [upazilaId, setUpazilaId] = useState('')
-  const [unionId, setUnionId] = useState('')
+  const [divisionId, setDivisionId] = useState(() => searchParams.get('division_id') || '')
+  const [districtId, setDistrictId] = useState(() => searchParams.get('district_id') || '')
+  const [upazilaId, setUpazilaId] = useState(() => searchParams.get('upazila_id') || '')
+  const [unionId, setUnionId] = useState(() => searchParams.get('union_id') || '')
   
   const [divisions, setDivisions] = useState([])
   const [districts, setDistricts] = useState([])
   const [upazilas, setUpazilas] = useState([])
   const [unions, setUnions] = useState([])
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    setSearch(searchParams.get('search') || '')
+    setStatusFilter(searchParams.get('status') || '')
+    setDoctorFilter(searchParams.get('doctor_id') || '')
+    setDivisionId(searchParams.get('division_id') || '')
+    setDistrictId(searchParams.get('district_id') || '')
+    setUpazilaId(searchParams.get('upazila_id') || '')
+    setUnionId(searchParams.get('union_id') || '')
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    const currentTab = searchParams.get('tab')
+    if (currentTab && currentTab !== 'doctor') params.set('tab', currentTab)
+    if (search) params.set('search', search)
+    if (statusFilter) params.set('status', statusFilter)
+    if (doctorFilter) params.set('doctor_id', doctorFilter)
+    if (divisionId) params.set('division_id', divisionId)
+    if (districtId) params.set('district_id', districtId)
+    if (upazilaId) params.set('upazila_id', upazilaId)
+    if (unionId) params.set('union_id', unionId)
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [search, statusFilter, doctorFilter, divisionId, districtId, upazilaId, unionId, searchParams, setSearchParams])
 
   const { data: doctorsData = [], isLoading: loading, isFetching, refetch } = useQuery({
     queryKey: queryKeys.commissions.serviceEnablements(),
@@ -885,6 +949,7 @@ function DoctorServiceTab() {
 function HospitalCommissionTab() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [hospitalsOptions, setHospitalsOptions] = useState([])
   const [saving, setSaving] = useState(null)
   const [enableTarget, setEnableTarget] = useState(null)
@@ -893,18 +958,60 @@ function HospitalCommissionTab() {
   const [disableReason, setDisableReason] = useState('Payment / Commission Overdue')
   const [customReason, setCustomReason] = useState('')
   const [editingRates, setEditingRates] = useState({})
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '')
   const [showFilters, setShowFilters] = useState(false)
-  const [hospitalFilter, setHospitalFilter] = useState('')
-  const [divisionId, setDivisionId] = useState('')
-  const [districtId, setDistrictId] = useState('')
-  const [upazilaId, setUpazilaId] = useState('')
-  const [unionId, setUnionId] = useState('')
+  const [hospitalFilter, setHospitalFilter] = useState(() => searchParams.get('hospital_id') || '')
+  const [divisionId, setDivisionId] = useState(() => searchParams.get('division_id') || '')
+  const [districtId, setDistrictId] = useState(() => searchParams.get('district_id') || '')
+  const [upazilaId, setUpazilaId] = useState(() => searchParams.get('upazila_id') || '')
+  const [unionId, setUnionId] = useState(() => searchParams.get('union_id') || '')
   const [divisions, setDivisions] = useState([])
   const [districts, setDistricts] = useState([])
   const [upazilas, setUpazilas] = useState([])
   const [unions, setUnions] = useState([])
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    setSearch(searchParams.get('search') || '')
+    setStatusFilter(searchParams.get('status') || '')
+    setHospitalFilter(searchParams.get('hospital_id') || '')
+    setDivisionId(searchParams.get('division_id') || '')
+    setDistrictId(searchParams.get('district_id') || '')
+    setUpazilaId(searchParams.get('upazila_id') || '')
+    setUnionId(searchParams.get('union_id') || '')
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    const currentTab = searchParams.get('tab')
+    if (currentTab) params.set('tab', currentTab)
+    if (search) params.set('search', search)
+    if (statusFilter) params.set('status', statusFilter)
+    if (hospitalFilter) params.set('hospital_id', hospitalFilter)
+    if (divisionId) params.set('division_id', divisionId)
+    if (districtId) params.set('district_id', districtId)
+    if (upazilaId) params.set('upazila_id', upazilaId)
+    if (unionId) params.set('union_id', unionId)
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [search, statusFilter, hospitalFilter, divisionId, districtId, upazilaId, unionId, searchParams, setSearchParams])
 
   const { data: hospitalsData = [], isLoading: loading, isFetching, refetch } = useQuery({
     queryKey: queryKeys.commissions.hospitalCommissions(),

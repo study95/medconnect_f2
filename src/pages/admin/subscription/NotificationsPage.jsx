@@ -1,7 +1,7 @@
 import { CardSkeleton } from '../../../components/common/Skeletons'
 // NotificationsPage.jsx — Doctor notification inbox
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { 
   getNotifications, 
   markNotificationRead, 
@@ -69,6 +69,7 @@ function formatNotificationMessage(rawHtml) {
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { refreshUnreadCount } = useSubscription()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -76,8 +77,43 @@ export default function NotificationsPage() {
   const [seatInvitations, setSeatInvitations] = useState([])
   const [respondingInviteId, setRespondingInviteId] = useState(null)
   const [showFacilities, setShowFacilities] = useState(true)
-  const [filterTab, setFilterTab] = useState('all') // 'all' | 'unread' | 'invitations' | 'system'
-  const [searchTerm, setSearchTerm] = useState('')
+  const [filterTab, setFilterTab] = useState(() => searchParams.get('tab') || 'all') // 'all' | 'unread' | 'invitations' | 'system'
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const t = searchParams.get('tab') || 'all'
+    const s = searchParams.get('search') || ''
+    setFilterTab(t)
+    setSearchTerm(s)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams(searchParams)
+    if (filterTab && filterTab !== 'all') params.set('tab', filterTab)
+    else params.delete('tab')
+
+    if (searchTerm) params.set('search', searchTerm)
+    else params.delete('search')
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [filterTab, searchTerm, searchParams, setSearchParams])
 
   // Rejection reason modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false)

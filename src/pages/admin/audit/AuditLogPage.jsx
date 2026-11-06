@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Shield, Search, Download, Trash2, RefreshCw, ChevronDown, ChevronUp,
   Eye, AlertTriangle, CheckCircle, XCircle, Activity, LogIn, LogOut,
@@ -1872,6 +1873,7 @@ function playSecurityChime() {
 // ── Main AuditLogPage Component ───────────────────────────────────────────────
 
 export default function AuditLogPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [logs, setLogs] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1890,15 +1892,73 @@ export default function AuditLogPage() {
   const [dismissedThreatIds, setDismissedThreatIds] = useState(() => new Set())
 
   // Filters
-  const [search, setSearch] = useState('')
-  const [moduleFilter, setModuleFilter] = useState('')
-  const [actionFilter, setActionFilter] = useState('')
-  const [riskFilter, setRiskFilter] = useState('')
-  const [datePreset, setDatePreset] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [perPage, setPerPage] = useState(10)
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10, from: 1, to: 10 })
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [moduleFilter, setModuleFilter] = useState(() => searchParams.get('module') || '')
+  const [actionFilter, setActionFilter] = useState(() => searchParams.get('action') || '')
+  const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') || searchParams.get('risk_level') || '')
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('date_from') || '')
+  const [dateTo, setDateTo] = useState(() => searchParams.get('date_to') || '')
+  const [datePreset, setDatePreset] = useState(() => searchParams.get('preset') || (searchParams.get('date_from') ? 'custom' : 'all'))
+  const [perPage, setPerPage] = useState(() => Math.max(1, parseInt(searchParams.get('perPage') || '10', 10)))
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const [pagination, setPagination] = useState({ current_page: initialPage, last_page: 1, total: 0, per_page: 10, from: 1, to: 10 })
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const mod = searchParams.get('module') || ''
+    const act = searchParams.get('action') || ''
+    const rsk = searchParams.get('risk') || searchParams.get('risk_level') || ''
+    const df = searchParams.get('date_from') || ''
+    const dt = searchParams.get('date_to') || ''
+    const pr = searchParams.get('preset') || (df ? 'custom' : 'all')
+    const pp = Math.max(1, parseInt(searchParams.get('perPage') || '10', 10))
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+
+    setSearch(s)
+    setModuleFilter(mod)
+    setActionFilter(act)
+    setRiskFilter(rsk)
+    setDateFrom(df)
+    setDateTo(dt)
+    setDatePreset(pr)
+    setPerPage(pp)
+    setPagination(prev => ({ ...prev, current_page: p, per_page: pp }))
+  }, [searchParams])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (search.trim()) next.set('search', search.trim())
+    if (moduleFilter) next.set('module', moduleFilter)
+    if (actionFilter) next.set('action', actionFilter)
+    if (riskFilter) next.set('risk', riskFilter)
+    if (datePreset && datePreset !== 'all') next.set('preset', datePreset)
+    if (dateFrom) next.set('date_from', dateFrom)
+    if (dateTo) next.set('date_to', dateTo)
+    if (perPage !== 10) next.set('perPage', String(perPage))
+    if (pagination.current_page > 1) next.set('page', String(pagination.current_page))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [search, moduleFilter, actionFilter, riskFilter, datePreset, dateFrom, dateTo, perPage, pagination.current_page, searchParams, setSearchParams])
 
   const handleDatePresetChange = (preset) => {
     setDatePreset(preset)

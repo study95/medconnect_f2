@@ -196,8 +196,8 @@ function DoctorsPage() {
   const [selectedDate, setSelectedDate]           = useState(searchParams.get('date') || '')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
   const debouncedSearchText                       = useDebounce(searchText, 350)
-  const [availableToday, setAvailableToday]       = useState(false)
-  const [telemedicineOnly, setTelemedicineOnly]   = useState(false)
+  const [availableToday, setAvailableToday]       = useState(() => searchParams.get('available_today') === '1' || searchParams.get('available_today') === 'true')
+  const [telemedicineOnly, setTelemedicineOnly]   = useState(() => searchParams.get('telemedicine') === '1' || searchParams.get('available_telemedicine') === 'yes')
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
@@ -532,11 +532,15 @@ function DoctorsPage() {
     updateUrlParams({ date: dateVal })
   }, [updateUrlParams])
 
-  // Sync state when URL params change from external navigation
+  // Flag to avoid loop when syncing internal state FROM external URL navigation
+  const isSyncingFromUrlRef = useRef(false)
+
+  // Sync state when URL params change from external navigation (e.g. Browser Back / Forward)
   useEffect(() => {
     const currentStr = searchParams.toString()
     if (prevParamsRef.current === currentStr) return
     prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
 
     const divId   = searchParams.get('division_id') || ''
     const distId  = searchParams.get('district_id') || ''
@@ -549,6 +553,11 @@ function DoctorsPage() {
     const fee     = searchParams.get('fee_range') || ''
     const exp     = searchParams.get('exp_range') || ''
     const qDate   = searchParams.get('date') || ''
+    const availToday = searchParams.get('available_today') === '1' || searchParams.get('available_today') === 'true'
+    const teleOnly   = searchParams.get('telemedicine') === '1' || searchParams.get('available_telemedicine') === 'yes'
+    const qSort      = searchParams.get('sort') || 'relevance'
+    const nearMe     = searchParams.get('near_me') === '1' || qSort === 'nearest'
+    const radius     = searchParams.get('radius') || ''
 
     setAllLocations({ division_id: divId, district_id: distId, upazila_id: upaId, union_id: uniId })
     setSearchText(qSearch)
@@ -571,7 +580,75 @@ function DoctorsPage() {
     setSelectedFee(fee)
     setSelectedExp(exp)
     setSelectedDate(qDate)
+    setAvailableToday(availToday)
+    setTelemedicineOnly(teleOnly)
+    setSortBy(qSort)
+    setIsNearMeActive(nearMe)
+    setDistanceRadius(radius)
   }, [searchParams, setAllLocations, specialties])
+
+  // Synchronize state changes to URL query parameters
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+
+    const setIfVal = (key, val) => {
+      if (val !== undefined && val !== null && val !== '') {
+        next.set(key, String(val))
+      }
+    }
+
+    setIfVal('division_id', selectedDivision)
+    setIfVal('district_id', selectedDistrict)
+    setIfVal('upazila_id', selectedUpazila)
+    setIfVal('union_id', selectedUnion)
+    setIfVal('specialty_id', selectedSpecialty)
+    setIfVal('hospital_id', selectedHospital)
+    setIfVal('fee_range', selectedFee)
+    setIfVal('exp_range', selectedExp)
+    setIfVal('date', selectedDate)
+    if (debouncedSearchText && debouncedSearchText.trim()) {
+      next.set('search', debouncedSearchText.trim())
+    }
+    if (availableToday) next.set('available_today', '1')
+    if (telemedicineOnly) next.set('telemedicine', '1')
+    if (sortBy && sortBy !== 'relevance') {
+      next.set('sort', sortBy)
+    }
+    if (isNearMeActive) {
+      next.set('near_me', '1')
+      if (distanceRadius) next.set('radius', distanceRadius)
+    }
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [
+    selectedDivision,
+    selectedDistrict,
+    selectedUpazila,
+    selectedUnion,
+    selectedSpecialty,
+    selectedHospital,
+    selectedFee,
+    selectedExp,
+    selectedDate,
+    debouncedSearchText,
+    availableToday,
+    telemedicineOnly,
+    sortBy,
+    isNearMeActive,
+    distanceRadius,
+    searchParams,
+    setSearchParams
+  ])
 
   // Effective search keyword: immediately empty when searchText is cleared
   const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, memo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import RatingBreakdown from './RatingBreakdown'
 import ReviewCard from './ReviewCard'
 import ReviewSkeleton from './ReviewSkeleton'
@@ -40,10 +41,57 @@ const ReviewList = memo(function ReviewList({
   showReplyFilter = false,
   className = '',
 }) {
-  const [selectedStar, setSelectedStar] = useState(null)
-  const [sortBy, setSortBy] = useState('newest')
-  const [page, setPage] = useState(1)
-  const [replyFilter, setReplyFilter] = useState('all') // 'all' | 'needs_reply' | 'replied'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedStar, setSelectedStar] = useState(() => searchParams.get('rev_rating') ? Number(searchParams.get('rev_rating')) : null)
+  const [sortBy, setSortBy] = useState(() => searchParams.get('rev_sort') || 'newest')
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('rev_page') || '1', 10)))
+  const [replyFilter, setReplyFilter] = useState(() => searchParams.get('rev_reply') || 'all') // 'all' | 'needs_reply' | 'replied'
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const rStar = searchParams.get('rev_rating') ? Number(searchParams.get('rev_rating')) : null
+    const rSort = searchParams.get('rev_sort') || 'newest'
+    const rPage = Math.max(1, parseInt(searchParams.get('rev_page') || '1', 10))
+    const rReply = searchParams.get('rev_reply') || 'all'
+
+    setSelectedStar(rStar)
+    setSortBy(rSort)
+    setPage(rPage)
+    setReplyFilter(rReply)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams(searchParams)
+    if (selectedStar) params.set('rev_rating', String(selectedStar))
+    else params.delete('rev_rating')
+
+    if (sortBy && sortBy !== 'newest') params.set('rev_sort', sortBy)
+    else params.delete('rev_sort')
+
+    if (page > 1) params.set('rev_page', String(page))
+    else params.delete('rev_page')
+
+    if (replyFilter && replyFilter !== 'all') params.set('rev_reply', replyFilter)
+    else params.delete('rev_reply')
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [selectedStar, sortBy, page, replyFilter, searchParams, setSearchParams])
 
   const filterParams = useMemo(() => {
     const params = {

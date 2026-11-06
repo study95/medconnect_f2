@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import DoctorCard from '../components/common/DoctorCard'
 import ErrorState from '../components/common/ErrorState'
 import { DoctorGridSkeleton } from '../components/common/Skeletons'
@@ -11,9 +11,30 @@ import useDistricts from '../hooks/useDistricts'
 
 function TopDoctorsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { t } = useTranslation()
-  const [page, setPage] = useState(1)
-  const [districtId, setDistrictId] = useState('')
+
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
+  const [districtId, setDistrictId] = useState(() => searchParams.get('district_id') || searchParams.get('district') || '')
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const d = searchParams.get('district_id') || searchParams.get('district') || ''
+    setPage(p)
+    setDistrictId(d)
+  }, [searchParams])
+
+  // Sync state changes to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (districtId) next.set('district_id', districtId)
+    if (page > 1) next.set('page', String(page))
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [districtId, page, searchParams, setSearchParams])
 
   // TanStack Query — cached 30min, shared across pages
   const { districts } = useDistricts()

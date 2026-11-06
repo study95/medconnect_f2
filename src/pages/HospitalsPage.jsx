@@ -82,8 +82,8 @@ function HospitalsPage() {
   const [hospitalType, setHospitalType]           = useState(searchParams.get('type') || '')
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
   const [selectedBeds, setSelectedBeds]           = useState(searchParams.get('beds') || '')
-  const [emergencyOnly, setEmergencyOnly]         = useState(false)
-  const [openTodayOnly, setOpenTodayOnly]         = useState(false)
+  const [emergencyOnly, setEmergencyOnly]         = useState(() => searchParams.get('emergency') === '1' || searchParams.get('emergency_24h') === '1')
+  const [openTodayOnly, setOpenTodayOnly]         = useState(() => searchParams.get('open_today') === '1')
   const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
   const debouncedSearchText                       = useDebounce(searchText, 400)
   const [specialtySearch, setSpecialtySearch]     = useState('')
@@ -380,10 +380,14 @@ function HospitalsPage() {
     }
   }, [upazilaParam, upazilas, selectedUpazila, setSelectedUpazila])
 
+  // Flag to avoid loop when syncing internal state FROM external URL navigation
+  const isSyncingFromUrlRef = useRef(false)
+
   useEffect(() => {
     const currentStr = searchParams.toString()
     if (prevParamsRef.current === currentStr) return
     prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
 
     const divId   = searchParams.get('division_id') || ''
     const distId  = searchParams.get('district_id') || ''
@@ -393,6 +397,11 @@ function HospitalsPage() {
     const type    = searchParams.get('type') || ''
     const specId  = searchParams.get('specialty_id') || ''
     const beds    = searchParams.get('beds') || ''
+    const emerg   = searchParams.get('emergency') === '1' || searchParams.get('emergency_24h') === '1'
+    const openTod = searchParams.get('open_today') === '1'
+    const qSort   = searchParams.get('sort') || 'newest'
+    const nearMe  = searchParams.get('near_me') === '1' || qSort === 'nearest'
+    const radius  = searchParams.get('radius') || ''
 
     setSelectedDivision(divId)
     setSelectedDistrict(distId)
@@ -402,7 +411,71 @@ function HospitalsPage() {
     setHospitalType(type)
     setSelectedSpecialty(specId)
     setSelectedBeds(beds)
+    setEmergencyOnly(emerg)
+    setOpenTodayOnly(openTod)
+    setSortBy(qSort)
+    setIsNearMeActive(nearMe)
+    setDistanceRadius(radius)
   }, [searchParams, setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion])
+
+  // Synchronize state changes to URL query parameters
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+
+    const setIfVal = (key, val) => {
+      if (val !== undefined && val !== null && val !== '') {
+        next.set(key, String(val))
+      }
+    }
+
+    setIfVal('division_id', selectedDivision)
+    setIfVal('district_id', selectedDistrict)
+    setIfVal('upazila_id', selectedUpazila)
+    setIfVal('union_id', selectedUnion)
+    setIfVal('type', hospitalType)
+    setIfVal('specialty_id', selectedSpecialty)
+    setIfVal('beds', selectedBeds)
+    if (debouncedSearchText && debouncedSearchText.trim()) {
+      next.set('search', debouncedSearchText.trim())
+    }
+    if (emergencyOnly) next.set('emergency', '1')
+    if (openTodayOnly) next.set('open_today', '1')
+    if (sortBy && sortBy !== 'newest') {
+      next.set('sort', sortBy)
+    }
+    if (isNearMeActive) {
+      next.set('near_me', '1')
+      if (distanceRadius) next.set('radius', distanceRadius)
+    }
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [
+    selectedDivision,
+    selectedDistrict,
+    selectedUpazila,
+    selectedUnion,
+    hospitalType,
+    selectedSpecialty,
+    selectedBeds,
+    debouncedSearchText,
+    emergencyOnly,
+    openTodayOnly,
+    sortBy,
+    isNearMeActive,
+    distanceRadius,
+    searchParams,
+    setSearchParams
+  ])
 
   // Effective search keyword: immediately empty when searchText is cleared
   const effectiveSearch = searchText.trim() === '' ? '' : debouncedSearchText.trim()

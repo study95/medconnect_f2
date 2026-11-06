@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Container } from 'react-bootstrap'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getAppointments } from '../api/appointmentApi'
 import { getPrescription } from '../api/adminApi'
@@ -120,11 +120,33 @@ function MyAppointmentsPage() {
     },
   })
 
+  const [searchParams, setSearchParams] = useSearchParams()
   const [downloadingRxId, setDownloadingRxId] = useState(null)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
   const [reviewAppt, setReviewAppt] = useState(null)
   const [existingReviewToEdit, setExistingReviewToEdit] = useState(null)
-  const [activeTab, setActiveTab] = useState('all') // 'all' | 'upcoming' | 'past'
+  const validTabs = ['all', 'upcoming', 'past']
+  const initialTab = searchParams.get('tab') || 'all'
+  const [activeTab, setActiveTab] = useState(validTabs.includes(initialTab) ? initialTab : 'all')
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const t = searchParams.get('tab') || 'all'
+    if (validTabs.includes(t) && t !== activeTab) {
+      setActiveTab(t)
+    }
+  }, [searchParams])
+
+  // Sync tab change to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (activeTab && activeTab !== 'all') {
+      next.set('tab', activeTab)
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [activeTab, searchParams, setSearchParams])
   const rxPaperRef = useRef(null)
 
   const upcomingCount = appointments.filter(a => getAppointmentStatusInfo(a).category === 'upcoming').length

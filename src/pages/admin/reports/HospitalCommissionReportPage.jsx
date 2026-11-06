@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   FileText, Calendar, Filter, RotateCcw, CheckCircle2,
@@ -97,16 +97,17 @@ function CopyButton({ text, title = "Copy ID" }) {
 
 export default function HospitalCommissionReportPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const currentYear = new Date().getFullYear()
 
-  const [filters, setFilters] = useState({
-    date_from: '',
-    date_to: '',
-    month: '',
-    year: currentYear.toString(),
-    commission_status: '',
-    search: '',
-  })
+  const [filters, setFilters] = useState(() => ({
+    date_from: searchParams.get('date_from') || '',
+    date_to: searchParams.get('date_to') || '',
+    month: searchParams.get('month') || '',
+    year: searchParams.get('year') || currentYear.toString(),
+    commission_status: searchParams.get('status') || '',
+    search: searchParams.get('search') || '',
+  }))
   const [appliedFilters, setAppliedFilters] = useState(filters)
   const [showFilterPanel, setShowFilterPanel] = useState(false)
 
@@ -116,12 +117,72 @@ export default function HospitalCommissionReportPage() {
     (appliedFilters.date_from ? 1 : 0) +
     (appliedFilters.date_to ? 1 : 0)
 
-  const [perPage, setPerPage] = useState(15)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [activeTab, setActiveTab] = useState('statement') // 'statement', 'payment_history'
+  const [perPage, setPerPage] = useState(() => Math.max(1, parseInt(searchParams.get('perPage') || '15', 10)))
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'statement') // 'statement', 'payment_history'
   const [showMemo, setShowMemo] = useState(false)
   const [showPayModal, setShowPayModal] = useState(false)
   const [showPayoutModal, setShowPayoutModal] = useState(false)
+
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
+
+  // Sync state when URL changes externally (Back / Forward)
+  useEffect(() => {
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const pp = Math.max(1, parseInt(searchParams.get('perPage') || '15', 10))
+    const tab = searchParams.get('tab') || 'statement'
+    const df = searchParams.get('date_from') || ''
+    const dt = searchParams.get('date_to') || ''
+    const m = searchParams.get('month') || ''
+    const y = searchParams.get('year') || currentYear.toString()
+    const st = searchParams.get('status') || ''
+
+    const nextF = {
+      date_from: df,
+      date_to: dt,
+      month: m,
+      year: y,
+      commission_status: st,
+      search: s,
+    }
+    setFilters(nextF)
+    setAppliedFilters(nextF)
+    setActiveTab(tab)
+    setCurrentPage(p)
+    setPerPage(pp)
+  }, [searchParams, currentYear])
+
+  // Sync state changes back to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (activeTab && activeTab !== 'statement') params.set('tab', activeTab)
+    if (appliedFilters.search) params.set('search', appliedFilters.search)
+    if (appliedFilters.date_from) params.set('date_from', appliedFilters.date_from)
+    if (appliedFilters.date_to) params.set('date_to', appliedFilters.date_to)
+    if (appliedFilters.month) params.set('month', appliedFilters.month)
+    if (appliedFilters.year && appliedFilters.year !== currentYear.toString()) params.set('year', appliedFilters.year)
+    if (appliedFilters.commission_status) params.set('status', appliedFilters.commission_status)
+    if (currentPage > 1) params.set('page', String(currentPage))
+    if (perPage !== 15) params.set('perPage', String(perPage))
+
+    const newQueryStr = params.toString()
+    if (newQueryStr !== searchParams.toString()) {
+      prevParamsRef.current = newQueryStr
+      setSearchParams(params, { replace: true })
+    }
+  }, [activeTab, appliedFilters, currentPage, perPage, setSearchParams, currentYear, searchParams])
 
   const {
     data: report = { data: [], summary: {} },
@@ -177,20 +238,24 @@ export default function HospitalCommissionReportPage() {
   })
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [filteredData.length, perPage])
+    if (filteredData.length > 0 && currentPage > Math.ceil(filteredData.length / perPage)) {
+      setCurrentPage(Math.ceil(filteredData.length / perPage))
+    }
+  }, [filteredData.length, perPage, currentPage])
 
   const paginatedData = filteredData.slice((currentPage - 1) * perPage, currentPage * perPage)
 
   const handleApply = (e) => {
     e?.preventDefault()
     setAppliedFilters({ ...filters })
+    setCurrentPage(1)
   }
 
   const handleFilterChange = (key, val) => {
     const nextFilters = { ...filters, [key]: val }
     setFilters(nextFilters)
     setAppliedFilters(nextFilters)
+    setCurrentPage(1)
   }
 
   const handleReset = () => {
@@ -204,6 +269,7 @@ export default function HospitalCommissionReportPage() {
     }
     setFilters(defaultF)
     setAppliedFilters(defaultF)
+    setCurrentPage(1)
   }
 
   return (
@@ -585,7 +651,11 @@ export default function HospitalCommissionReportPage() {
       {/* ── Enterprise ListToolbar matching standard admin listings ── */}
       <ListToolbar
         search={filters.search}
-        onSearchChange={(val) => setFilters(prev => ({ ...prev, search: val }))}
+        onSearchChange={(val) => {
+          setFilters(prev => ({ ...prev, search: val }))
+          setAppliedFilters(prev => ({ ...prev, search: val }))
+          setCurrentPage(1)
+        }}
         searchPlaceholder="Search serial, patient, doctor..."
         onRefresh={refetch}
         refreshing={isFetching || isLoading}
@@ -639,7 +709,7 @@ export default function HospitalCommissionReportPage() {
           }}>
             <button
               type="button"
-              onClick={() => setActiveTab('statement')}
+              onClick={() => { setActiveTab('statement'); setCurrentPage(1); }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -663,7 +733,7 @@ export default function HospitalCommissionReportPage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('payment_history')}
+              onClick={() => { setActiveTab('payment_history'); setCurrentPage(1); }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -791,7 +861,11 @@ export default function HospitalCommissionReportPage() {
           <EmptyState
             variant={filters.search ? 'no-search-results' : 'no-data'}
             searchQuery={filters.search}
-            onClearSearch={() => setFilters(prev => ({ ...prev, search: '' }))}
+            onClearSearch={() => {
+              setFilters(prev => ({ ...prev, search: '' }))
+              setAppliedFilters(prev => ({ ...prev, search: '' }))
+              setCurrentPage(1)
+            }}
             icon={<FileText size={28} />}
             title={filters.search ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No commission records found'}
             description={filters.search ? `"${filters.search}" এর সাথে মিলে এমন কোনো অ্যাপয়েন্টমেন্ট পাওয়া যায়নি।` : 'No appointment bookings match your filter criteria for this period.'}

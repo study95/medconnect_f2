@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAdminSubscribers,
@@ -45,15 +45,18 @@ import '../../../styles/admin-billing.css'
 import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminSubscribersPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [entityFilter, setEntityFilter] = useState('all')
-  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || searchParams.get('statusFilter') || '')
+  const [entityFilter, setEntityFilter] = useState(() => searchParams.get('entity') || 'all')
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   const debouncedSearch = useDebounce(search, 400)
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
 
   // Drawer state
   const [selectedSub, setSelectedSub] = useState(null)
@@ -68,10 +71,44 @@ export default function AdminSubscribersPage() {
   const [slipBlobUrl, setSlipBlobUrl] = useState(null)
   const [slipBlobLoading, setSlipBlobLoading] = useState(false)
 
-  // Reset page to 1 whenever filters or search change
+  // Sync state when URL changes externally (Back / Forward)
   useEffect(() => {
-    setPage(1)
-  }, [statusFilter, entityFilter, debouncedSearch])
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const stat = searchParams.get('status') || searchParams.get('statusFilter') || ''
+    const ent = searchParams.get('entity') || 'all'
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+
+    setSearch(s)
+    setStatusFilter(stat)
+    setEntityFilter(ent)
+    setPage(p)
+  }, [searchParams])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (debouncedSearch && debouncedSearch.trim()) next.set('search', debouncedSearch.trim())
+    if (statusFilter) next.set('status', statusFilter)
+    if (entityFilter && entityFilter !== 'all') next.set('entity', entityFilter)
+    if (page > 1) next.set('page', String(page))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [debouncedSearch, statusFilter, entityFilter, page, searchParams, setSearchParams])
 
   // TanStack Query for Subscribers
   const {

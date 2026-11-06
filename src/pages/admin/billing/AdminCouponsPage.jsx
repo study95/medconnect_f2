@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -39,15 +39,16 @@ import '../../../styles/admin-billing.css'
 import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
 
 export default function AdminCouponsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
 
   const [showModal, setShowModal] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [search, setSearch] = useState('')
-  const [entityFilter, setEntityFilter] = useState('all')
-  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [entityFilter, setEntityFilter] = useState(() => searchParams.get('entity') || 'all')
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   const [form, setForm] = useState({
     code: '',
@@ -61,11 +62,44 @@ export default function AdminCouponsPage() {
   })
 
   const debouncedSearch = useDebounce(search, 400)
+  const isSyncingFromUrlRef = useRef(false)
+  const prevParamsRef = useRef(searchParams.toString())
 
-  // Reset to page 1 when search query changes
+  // Sync state when URL changes externally (Back / Forward)
   useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch])
+    const currentStr = searchParams.toString()
+    if (prevParamsRef.current === currentStr) return
+    prevParamsRef.current = currentStr
+    isSyncingFromUrlRef.current = true
+
+    const s = searchParams.get('search') || ''
+    const ent = searchParams.get('entity') || 'all'
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+
+    setSearch(s)
+    setEntityFilter(ent)
+    setPage(p)
+  }, [searchParams])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current) {
+      isSyncingFromUrlRef.current = false
+      return
+    }
+
+    const next = new URLSearchParams()
+    if (debouncedSearch && debouncedSearch.trim()) next.set('search', debouncedSearch.trim())
+    if (entityFilter && entityFilter !== 'all') next.set('entity', entityFilter)
+    if (page > 1) next.set('page', String(page))
+
+    const currentStr = searchParams.toString()
+    const nextStr = next.toString()
+    if (currentStr !== nextStr) {
+      prevParamsRef.current = nextStr
+      setSearchParams(next, { replace: true })
+    }
+  }, [debouncedSearch, entityFilter, page, searchParams, setSearchParams])
 
   // TanStack Query for Coupons
   const {
