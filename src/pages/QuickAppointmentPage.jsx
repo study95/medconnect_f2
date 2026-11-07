@@ -9,7 +9,8 @@ import {
   IconBabyCarriage, IconDroplet, IconDental, IconActivity, IconCalendar,
   IconUsers, IconShieldCheck, IconLock, IconDeviceMobile, IconMail, IconLoader2,
   IconTicket, IconPrinter, IconEdit, IconCircleCheck, IconAlertTriangle, IconAlertCircle,
-  IconChevronLeft, IconChevronRight, IconCopy, IconPhone, IconCash, IconInfoCircle
+  IconChevronLeft, IconChevronRight, IconCopy, IconPhone, IconCash, IconInfoCircle,
+  IconBolt
 } from '@tabler/icons-react'
 import useSpecialties from '../hooks/useSpecialties'
 import { getDoctors, getDoctorById } from '../api/doctorApi'
@@ -1679,6 +1680,14 @@ export default function QuickAppointmentPage() {
     }
   }
 
+  // Stepper dynamic progress calculations
+  const isStep1Done = Boolean(selectedDoctor)
+  const isStep2Done = Boolean(selectedDoctor && selectedTimeSlot)
+  const isStep3Done = Boolean(confirmedAppointmentData || modalStep === 5)
+  const isStep2Active = Boolean(selectedDoctor && !selectedTimeSlot)
+  const isStep3Active = Boolean(selectedDoctor && selectedTimeSlot && !isStep3Done)
+  const lineProgressWidth = isStep2Done ? '100%' : (isStep1Done ? '50%' : '0%')
+
   return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 100px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
       <SeoHead
@@ -1696,42 +1705,316 @@ export default function QuickAppointmentPage() {
           border: '1px solid #E2E8F0',
           overflow: 'hidden'
         }}>
-          {/* ── TOP HERO HEADER BANNER ── */}
+          {/* ── OPTION B: CLEAN MINIMALIST HEADER & CONNECTED TIMELINE ── */}
           <div style={{
-            backgroundImage: "url('/images/quick-appointment-hero.png')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center right',
-            backgroundRepeat: 'no-repeat',
-            padding: '22px 18px',
-            minHeight: 125,
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            overflow: 'hidden'
+            padding: '22px 22px 18px',
+            background: 'linear-gradient(180deg, #F0FDF8 0%, #FFFFFF 100%)',
+            borderBottom: '1px solid #F1F5F9',
           }}>
-            <div style={{ maxWidth: '62%', zIndex: 2 }}>
-              <h1 style={{
-                fontSize: 'clamp(16px, 4.3vw, 21px)',
-                fontWeight: 800,
-                color: '#064E3B',
-                marginBottom: 5,
-                letterSpacing: '-0.3px',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.25,
-                fontFamily: "'Hind Siliguri', sans-serif"
+            {/* Top row: Info + Emblem */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 16
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '2px 9px',
+                    borderRadius: 99,
+                    background: '#E8F8F2',
+                    border: '1px solid #A7F3D0',
+                    color: '#009E64',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    fontFamily: "'Hind Siliguri', sans-serif"
+                  }}>
+                    <IconBolt size={13} stroke={2.5} />
+                    <span>কুইক বুকিং</span>
+                  </div>
+                </div>
+                <h1 style={{
+                  fontSize: 'clamp(19px, 4.3vw, 23px)',
+                  fontWeight: 900,
+                  margin: '0 0 5px',
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  letterSpacing: '-0.3px',
+                  lineHeight: 1.25,
+                  background: 'linear-gradient(135deg, #0A2540 0%, #008754 65%, #00B875 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  display: 'block'
+                }}>
+                  দ্রুত অ্যাপয়েন্টমেন্ট নিন
+                </h1>
+                <p style={{
+                  fontSize: 'clamp(11.5px, 2.9vw, 13px)',
+                  color: '#64748B',
+                  margin: 0,
+                  fontWeight: 500,
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  lineHeight: 1.3,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  <span className="d-sm-none">মাত্র ৩ ধাপে ডাক্তারের সিরিয়াল নিশ্চিত করুন</span>
+                  <span className="d-none d-sm-inline">মাত্র ৩টি ধাপে সহজে ডাক্তারের সিরিয়াল নিশ্চিত করুন</span>
+                </p>
+              </div>
+
+              {/* Realistic 3D Medical Calendar Appointment Emblem */}
+              <div style={{
+                position: 'relative',
+                width: 46,
+                height: 48,
+                flexShrink: 0,
+                filter: 'drop-shadow(0 4px 10px rgba(0, 184, 117, 0.22)) drop-shadow(0 2px 4px rgba(15, 23, 42, 0.08))',
               }}>
-                দ্রুত অ্যাপয়েন্টমেন্ট নিন
-              </h1>
-              <p style={{
-                fontSize: 'clamp(11px, 3.1vw, 13px)',
-                color: '#1E3A2F',
-                margin: 0,
-                fontWeight: 600,
-                lineHeight: 1.4,
-                fontFamily: "'Hind Siliguri', sans-serif"
+                {/* Stacked Paper Bottom Sheet */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 2,
+                  right: 2,
+                  height: 40,
+                  background: '#E2E8F0',
+                  borderRadius: 10,
+                }} />
+                
+                {/* Front Calendar Card */}
+                <div style={{
+                  position: 'absolute',
+                  top: 4,
+                  left: 0,
+                  right: 0,
+                  bottom: 2,
+                  background: '#FFFFFF',
+                  borderRadius: 9,
+                  overflow: 'hidden',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                }}>
+                  {/* Calendar Header: Emerald gradient bar */}
+                  <div style={{
+                    height: 14,
+                    background: 'linear-gradient(135deg, #00B875 0%, #008754 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                  </div>
+                  {/* Calendar Sheet: Verified Checkmark */}
+                  <div style={{
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="#E8F8F2" stroke="#00B875" strokeWidth="1.8"/>
+                      <path d="M7.5 12l3 3l6 -6" stroke="#009E64" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Realistic Chrome Binder Rings */}
+                <div style={{
+                  position: 'absolute',
+                  top: 1,
+                  left: 9,
+                  width: 4,
+                  height: 8,
+                  background: 'linear-gradient(180deg, #94A3B8 0%, #475569 50%, #E2E8F0 100%)',
+                  borderRadius: 2,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  zIndex: 5,
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  top: 1,
+                  right: 9,
+                  width: 4,
+                  height: 8,
+                  background: 'linear-gradient(180deg, #94A3B8 0%, #475569 50%, #E2E8F0 100%)',
+                  borderRadius: 2,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  zIndex: 5,
+                }} />
+
+                {/* Active Status Pulse Badge */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: -1,
+                  right: -2,
+                  width: 13,
+                  height: 13,
+                  borderRadius: '50%',
+                  background: '#00B875',
+                  border: '2px solid #FFFFFF',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  zIndex: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#FFFFFF' }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Connected Modern Timeline Bar (Dynamic Progress Stepper) */}
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 12px'
+            }}>
+              {/* Connector Track & Animated Fill Line */}
+              <div style={{
+                position: 'absolute',
+                top: 13,
+                left: 28,
+                right: 28,
+                height: 2,
+                background: '#E2E8F0',
+                zIndex: 1,
+                overflow: 'hidden',
+                borderRadius: 99
               }}>
-                আপনার পরিচিত ডাক্তারের সিরিয়াল সহজে বুক করুন
-              </p>
+                <div style={{
+                  width: lineProgressWidth,
+                  height: '100%',
+                  background: '#00B875',
+                  borderRadius: 99,
+                  transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} />
+              </div>
+
+              {/* Step 1: ডাক্তার নির্বাচন */}
+              <div style={{
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  background: isStep1Done ? '#00B875' : '#FFFFFF',
+                  color: isStep1Done ? '#FFFFFF' : '#00A86B',
+                  border: isStep1Done ? '2px solid #FFFFFF' : '2.5px solid #00B875',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  boxShadow: isStep1Done ? '0 2px 6px rgba(0, 184, 117, 0.35)' : '0 0 0 3px rgba(0, 184, 117, 0.16)',
+                  transition: 'all 0.3s ease'
+                }}>
+                  {isStep1Done ? <IconCheck size={14} stroke={3.2} /> : '১'}
+                </div>
+                <span style={{
+                  fontSize: 'clamp(11px, 2.8vw, 12px)',
+                  fontWeight: 700,
+                  color: isStep1Done ? '#009E64' : '#0F172A',
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  whiteSpace: 'nowrap',
+                  transition: 'color 0.3s ease'
+                }}>
+                  <span className="d-sm-none">ডাক্তার</span>
+                  <span className="d-none d-sm-inline">ডাক্তার নির্বাচন</span>
+                </span>
+              </div>
+
+              {/* Step 2: তারিখ ও সময় */}
+              <div style={{
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  background: isStep2Done ? '#00B875' : (isStep2Active ? '#FFFFFF' : '#F8FAFC'),
+                  color: isStep2Done ? '#FFFFFF' : (isStep2Active ? '#00A86B' : '#94A3B8'),
+                  border: isStep2Done ? '2px solid #FFFFFF' : (isStep2Active ? '2.5px solid #00B875' : '2px solid #CBD5E1'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: (isStep2Done || isStep2Active) ? 800 : 600,
+                  boxShadow: isStep2Done ? '0 2px 6px rgba(0, 184, 117, 0.35)' : (isStep2Active ? '0 0 0 3px rgba(0, 184, 117, 0.16)' : 'none'),
+                  transition: 'all 0.3s ease'
+                }}>
+                  {isStep2Done ? <IconCheck size={14} stroke={3.2} /> : '২'}
+                </div>
+                <span style={{
+                  fontSize: 'clamp(11px, 2.8vw, 12px)',
+                  fontWeight: (isStep2Done || isStep2Active) ? 700 : 500,
+                  color: isStep2Done ? '#009E64' : (isStep2Active ? '#0F172A' : '#94A3B8'),
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  whiteSpace: 'nowrap',
+                  transition: 'color 0.3s ease'
+                }}>
+                  <span className="d-sm-none">তারিখ</span>
+                  <span className="d-none d-sm-inline">তারিখ ও সময়</span>
+                </span>
+              </div>
+
+              {/* Step 3: কনফার্মেশন */}
+              <div style={{
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  background: isStep3Done ? '#00B875' : (isStep3Active ? '#FFFFFF' : '#F8FAFC'),
+                  color: isStep3Done ? '#FFFFFF' : (isStep3Active ? '#00A86B' : '#94A3B8'),
+                  border: isStep3Done ? '2px solid #FFFFFF' : (isStep3Active ? '2.5px solid #00B875' : '2px solid #CBD5E1'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: (isStep3Done || isStep3Active) ? 800 : 600,
+                  boxShadow: isStep3Done ? '0 2px 6px rgba(0, 184, 117, 0.35)' : (isStep3Active ? '0 0 0 3px rgba(0, 184, 117, 0.16)' : 'none'),
+                  transition: 'all 0.3s ease'
+                }}>
+                  {isStep3Done ? <IconCheck size={14} stroke={3.2} /> : '৩'}
+                </div>
+                <span style={{
+                  fontSize: 'clamp(11px, 2.8vw, 12px)',
+                  fontWeight: (isStep3Done || isStep3Active) ? 700 : 500,
+                  color: isStep3Done ? '#009E64' : (isStep3Active ? '#0F172A' : '#94A3B8'),
+                  fontFamily: "'Hind Siliguri', sans-serif",
+                  whiteSpace: 'nowrap',
+                  transition: 'color 0.3s ease'
+                }}>
+                  <span className="d-sm-none">কনফার্ম</span>
+                  <span className="d-none d-sm-inline">কনফার্মেশন</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -2283,51 +2566,69 @@ export default function QuickAppointmentPage() {
                 </span>
               </div>
 
-              <select
-                value={selectedChamberId}
-                onChange={(e) => setSelectedChamberId(e.target.value)}
-                disabled={!selectedDoctor || isDoctorServiceDisabled}
-                style={{
-                  width: '100%',
-                  height: 46,
-                  borderRadius: 12,
-                  border: formErrors.chamber ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
-                  padding: '0 14px',
-                  fontSize: 14,
-                  fontWeight: selectedChamberId ? 700 : 500,
-                  color: selectedChamberId ? '#0F172A' : '#94A3B8',
-                  background: (!selectedDoctor || isDoctorServiceDisabled) ? '#F8FAFC' : 'white',
-                  outline: 'none',
-                  cursor: (!selectedDoctor || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer',
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}
-              >
-                <option value="" disabled hidden style={{ color: '#94A3B8' }}>
-                  {!selectedDoctor
-                    ? 'ডাক্তারের চেম্বার সিলেক্ট করুন...'
-                    : isDoctorServiceDisabled
-                      ? 'অনলাইন বুকিং সেবা সাময়িকভাবে বন্ধ'
-                      : filteredChambers.length === 0
-                        ? 'এই তারিখে চেম্বার খোলা নেই (তালিকা নিচে দেখুন)'
-                        : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
-                </option>
-                {filteredChambers.length > 0 ? (
-                  filteredChambers.map(ch => (
-                    <option key={ch.id} value={ch.id} style={{ color: '#0F172A', fontWeight: 600 }}>
-                      {getChamberLabel(ch)}
-                    </option>
-                  ))
-                ) : (
-                  doctorChambers.map(ch => {
-                    const dayNameBn = dayNameToBn[ch.day] || ch.day || ''
-                    return (
-                      <option key={ch.id} value="" disabled style={{ color: '#64748B' }}>
-                        {getChamberLabel(ch)} {dayNameBn ? `(${dayNameBn}বার খোলা)` : ''}
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={selectedChamberId}
+                  onChange={(e) => setSelectedChamberId(e.target.value)}
+                  disabled={!selectedDoctor || isDoctorServiceDisabled}
+                  style={{
+                    width: '100%',
+                    height: 46,
+                    borderRadius: 12,
+                    border: formErrors.chamber ? '1.5px solid #EF4444' : '1.5px solid #CBD5E1',
+                    padding: '0 38px 0 14px',
+                    fontSize: 14,
+                    fontWeight: selectedChamberId ? 700 : 500,
+                    color: selectedChamberId ? '#0F172A' : '#94A3B8',
+                    background: (!selectedDoctor || isDoctorServiceDisabled) ? '#F8FAFC' : 'white',
+                    outline: 'none',
+                    cursor: (!selectedDoctor || isDoctorServiceDisabled) ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none'
+                  }}
+                >
+                  <option value="" disabled hidden style={{ color: '#94A3B8' }}>
+                    {!selectedDoctor
+                      ? 'ডাক্তারের চেম্বার সিলেক্ট করুন...'
+                      : isDoctorServiceDisabled
+                        ? 'অনলাইন বুকিং সেবা সাময়িকভাবে বন্ধ'
+                        : filteredChambers.length === 0
+                          ? 'এই তারিখে চেম্বার খোলা নেই (তালিকা নিচে দেখুন)'
+                          : 'ডাক্তারের চেম্বার সিলেক্ট করুন...'}
+                  </option>
+                  {filteredChambers.length > 0 ? (
+                    filteredChambers.map(ch => (
+                      <option key={ch.id} value={ch.id} style={{ color: '#0F172A', fontWeight: 600 }}>
+                        {getChamberLabel(ch)}
                       </option>
-                    )
-                  })
-                )}
-              </select>
+                    ))
+                  ) : (
+                    doctorChambers.map(ch => {
+                      const dayNameBn = dayNameToBn[ch.day] || ch.day || ''
+                      return (
+                        <option key={ch.id} value="" disabled style={{ color: '#64748B' }}>
+                          {getChamberLabel(ch)} {dayNameBn ? `(${dayNameBn}বার খোলা)` : ''}
+                        </option>
+                      )
+                    })
+                  )}
+                </select>
+                <div style={{
+                  position: 'absolute',
+                  right: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: (!selectedDoctor || isDoctorServiceDisabled) ? '#CBD5E1' : '#94A3B8'
+                }}>
+                  <IconChevronDown size={18} stroke={2} />
+                </div>
+              </div>
 
               {selectedDoctor && !isDoctorServiceDisabled && filteredChambers.length === 0 && (
                 <div style={{
@@ -3216,24 +3517,42 @@ export default function QuickAppointmentPage() {
                     <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>
                       লিঙ্গ <span style={{ color: '#EF4444' }}>*</span>
                     </label>
-                    <select
-                      value={relativeForm.gender}
-                      onChange={(e) => setRelativeForm(prev => ({ ...prev, gender: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: 10,
-                        border: '1.5px solid #CBD5E1',
-                        fontSize: 14,
-                        outline: 'none',
-                        background: 'white',
-                        fontFamily: "'Hind Siliguri', sans-serif"
-                      }}
-                    >
-                      <option value="পুরুষ">পুরুষ</option>
-                      <option value="মহিলা">মহিলা</option>
-                      <option value="অন্যান্য">অন্যান্য</option>
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        value={relativeForm.gender}
+                        onChange={(e) => setRelativeForm(prev => ({ ...prev, gender: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 36px 10px 14px',
+                          borderRadius: 10,
+                          border: '1.5px solid #CBD5E1',
+                          fontSize: 14,
+                          outline: 'none',
+                          background: 'white',
+                          fontFamily: "'Hind Siliguri', sans-serif",
+                          appearance: 'none',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="পুরুষ">পুরুষ</option>
+                        <option value="মহিলা">মহিলা</option>
+                        <option value="অন্যান্য">অন্যান্য</option>
+                      </select>
+                      <div style={{
+                        position: 'absolute',
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        color: '#94A3B8',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        <IconChevronDown size={17} stroke={2} />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -3277,30 +3596,48 @@ export default function QuickAppointmentPage() {
                   <label style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginBottom: 6, display: 'block', fontFamily: "'Hind Siliguri', sans-serif" }}>
                     রোগীর সাথে সম্পর্ক <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={relativeForm.relation}
-                    onChange={(e) => setRelativeForm(prev => ({ ...prev, relation: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      border: '1.5px solid #CBD5E1',
-                      fontSize: 14,
-                      outline: 'none',
-                      background: 'white',
-                      fontFamily: "'Hind Siliguri', sans-serif"
-                    }}
-                  >
-                    <option value="পিতা">পিতা</option>
-                    <option value="মাতা">মাতা</option>
-                    <option value="স্ত্রী">স্ত্রী</option>
-                    <option value="স্বামী">স্বামী</option>
-                    <option value="সন্তান">সন্তান</option>
-                    <option value="ভাই">ভাই</option>
-                    <option value="বোন">বোন</option>
-                    <option value="রোগী">রোগী</option>
-                    <option value="অন্যান্য">অন্যান্য</option>
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={relativeForm.relation}
+                      onChange={(e) => setRelativeForm(prev => ({ ...prev, relation: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '10px 36px 10px 14px',
+                        borderRadius: 10,
+                        border: '1.5px solid #CBD5E1',
+                        fontSize: 14,
+                        outline: 'none',
+                        background: 'white',
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="পিতা">পিতা</option>
+                      <option value="মাতা">মাতা</option>
+                      <option value="স্ত্রী">স্ত্রী</option>
+                      <option value="স্বামী">স্বামী</option>
+                      <option value="সন্তান">সন্তান</option>
+                      <option value="ভাই">ভাই</option>
+                      <option value="বোন">বোন</option>
+                      <option value="রোগী">রোগী</option>
+                      <option value="অন্যান্য">অন্যান্য</option>
+                    </select>
+                    <div style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      color: '#94A3B8',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <IconChevronDown size={17} stroke={2} />
+                    </div>
+                  </div>
                 </div>
 
                 <button
