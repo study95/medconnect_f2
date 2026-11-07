@@ -168,14 +168,9 @@ function DoctorsPage() {
   const { hospitals } = useHospitals({ per_page: 200 })
   const [hospitalSearch, setHospitalSearch] = useState('')
 
-  // Auto-resolve department/specialty name or slug from URL to specialty_id
+  // Auto-resolve department/specialty name or slug from URL to specialty_id (e.g. from homepage department clicks)
   useEffect(() => {
     const rawDept = searchParams.get('department') || searchParams.get('specialty') || searchParams.get('specialty_name')
-    const rawSpecId = searchParams.get('specialty_id')
-    if (rawSpecId) {
-      if (rawSpecId !== selectedSpecialty) setSelectedSpecialty(rawSpecId)
-      return
-    }
     if (!selectedSpecialty && rawDept && specialties?.length > 0) {
       const clean = rawDept.trim().toLowerCase()
       const match = specialties.find(s => 
@@ -1381,7 +1376,7 @@ function DoctorsPage() {
         }
         .doc-results-bar {
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
           align-items: center;
           margin-bottom: 16px;
           flex-wrap: wrap;
@@ -1416,6 +1411,7 @@ function DoctorsPage() {
           .doc-mobile-search-bar {
             display: block !important;
             padding: 8px 16px 4px !important;
+            transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .doc-chip-scroll-btn {
             display: none !important;
@@ -1650,14 +1646,15 @@ function DoctorsPage() {
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
       <div className="doc-mobile-search-bar" style={{
         position: 'sticky',
-        top: 'var(--header-height, 0px)',
+        top: 'var(--mobile-search-top, 0px)',
         zIndex: 1040,
         background: 'rgba(248, 250, 252, 0.96)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         borderBottom: '1px solid #E2E8F0',
         padding: '10px 16px 8px',
-        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
+        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+        transition: 'top 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1, margin: 0 }}>
@@ -1742,7 +1739,7 @@ function DoctorsPage() {
               ) : (
                 <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
               )}
-              <span style={{
+              <span className="d-lg-none" style={{
                 fontSize: 12,
                 fontWeight: 700,
                 padding: '2px 8px',
@@ -1991,6 +1988,17 @@ function DoctorsPage() {
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div className="doc-results-bar">
+          {/* Desktop Count (≥992px) */}
+          <div className="d-none d-lg-flex align-items-center gap-2">
+            <span style={{ fontSize: 13.5, color: '#1E293B', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif" }}>
+              {(loading && sortedDoctors.length === 0) ? (
+                <span style={{ color: '#64748B' }}>লোড হচ্ছে...</span>
+              ) : (
+                `${toBengaliNumber(sortedDoctors.length)} জন ডাক্তার`
+              )}
+            </span>
+          </div>
+
           <div className="doc-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

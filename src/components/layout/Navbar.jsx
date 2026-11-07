@@ -50,7 +50,6 @@ function AppNavbar() {
   const isDoctorDetailPage = isDetailPath('/doctors')
   const isDoctorsPage = location.pathname === '/doctors' || location.pathname.startsWith('/doctors/')
   const isHospitalsPage = location.pathname === '/hospitals' || location.pathname.startsWith('/hospitals/')
-  const isMobileHeaderHidden = isDoctorsPage || isHospitalsPage
   const isDoctorListing = isDoctorsPage && !isDoctorDetailPage
   const isHospitalListing = isHospitalsPage && !isHospitalDetailPage
   const isSearchableListing = isDoctorListing || isHospitalListing
@@ -182,9 +181,14 @@ function AppNavbar() {
   }, [expanded])
 
   const [topbarVisible, setTopbarVisible] = useState(true)
+  const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef(null)
   const lastScrollYRef = useRef(0)
+
+  useEffect(() => {
+    setMobileHeaderVisible(true)
+  }, [location.pathname])
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -199,9 +203,10 @@ function AppNavbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
+      const deltaY = currentScrollY - lastScrollYRef.current
 
       if (isSearchableListing) {
-        // On doctor & hospital listing pages, hide topbar when scrolled down to expand listing viewport
+        // Desktop topbar
         if (currentScrollY <= 40) {
           setTopbarVisible(true)
           setScrolled(false)
@@ -209,10 +214,20 @@ function AppNavbar() {
           setTopbarVisible(false)
           setScrolled(true)
         }
+
+        // Mobile header: hide when scrolling down, reveal when scrolling up
+        if (currentScrollY <= 20) {
+          setMobileHeaderVisible(true)
+        } else if (deltaY > 6 && currentScrollY > 60) {
+          setMobileHeaderVisible(false)
+        } else if (deltaY < -6) {
+          setMobileHeaderVisible(true)
+        }
       } else {
-        // On all other pages (Home, About, Services, Contact, etc.), topbar stays permanently visible
+        // On all other pages (Home, About, Services, Contact, etc.)
         setTopbarVisible(true)
         setScrolled(currentScrollY > 20)
+        setMobileHeaderVisible(true)
       }
 
       lastScrollYRef.current = currentScrollY
@@ -275,11 +290,18 @@ function AppNavbar() {
         }
         @media (max-width: 991px) {
           :root {
-            --header-height: ${isMobileHeaderHidden ? '0px !important' : '68px !important'};
-            --sticky-top: ${isMobileHeaderHidden ? '0px !important' : '68px !important'};
+            --header-height: ${isAuthPage ? '0px !important' : '58px !important'};
+            --sticky-top: ${isAuthPage ? '0px !important' : (mobileHeaderVisible ? '58px !important' : '0px !important')};
+            --mobile-search-top: ${isAuthPage ? '0px' : (mobileHeaderVisible ? '58px' : '0px')};
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;
+          }
+          header.fixed-top {
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          header.fixed-top.mobile-header-hidden {
+            transform: translateY(-100%);
           }
         }
 
@@ -573,7 +595,10 @@ function AppNavbar() {
         }
       `}</style>
 
-      <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isMobileHeaderHidden ? 'd-none d-lg-block' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
+      <header
+        className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${!mobileHeaderVisible && isSearchableListing && !expanded ? 'mobile-header-hidden' : ''}`}
+        style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}
+      >
         
         {/* DESKTOP TOP HEADER (DARK GREEN BAR) */}
         <div className={`db-topbar d-none d-lg-flex ${!topbarVisible ? 'topbar-hidden' : ''}`}>
@@ -817,10 +842,14 @@ function AppNavbar() {
           background: '#ffffff',
           borderBottom: '1px solid #eef2f6',
           boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-          padding: '10px 0',
-          position: 'relative'
+          padding: '0',
+          position: 'relative',
+          height: '58px',
+          display: 'flex',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}>
-          <Container className="d-flex justify-content-between align-items-center">
+          <Container className="d-flex justify-content-between align-items-center" style={{ height: '100%' }}>
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center text-decoration-none">
               <img 

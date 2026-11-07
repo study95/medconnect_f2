@@ -1558,51 +1558,6 @@ export default function SupportPage() {
                     )}
                   </div>
                 )}
-
-                {/* Digital Platform Assistance Hotline Box */}
-                <div style={{ 
-                  background: 'white', 
-                  borderRadius: 24, 
-                  padding: '24px 20px', 
-                  border: '1.5px solid #FFE4E6',
-                  boxShadow: '0 8px 25px rgba(239,68,68,0.06)',
-                  textAlign: 'center',
-                  marginTop: searchedTicketResult ? 0 : '16px'
-                }}>
-                  <div style={{ 
-                    width: 48, height: 48, borderRadius: 16, 
-                    background: '#FFE4E6', color: '#EF4444', 
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 12
-                  }}>
-                    <AlertTriangle size={22} />
-                  </div>
-                  <h5 style={{ fontWeight: 900, marginBottom: 6, fontSize: 16, color: '#0F172A' }}>জরুরি বুকিং ও তথ্য হেল্পলাইন</h5>
-                  <p style={{ color: '#64748B', fontSize: 12.5, marginBottom: 16, lineHeight: 1.5 }}>
-                    Doctor Booklet ডিজিটাল প্ল্যাটফর্ম সম্পর্কিত যেকোনো তথ্য ও বুকিং সহায়তার জন্য কল করুন
-                  </p>
-                  <a 
-                    href={`tel:${site.phone || '09638649314'}`} 
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 10,
-                      background: '#EF4444', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: 99, 
-                      fontWeight: 900, 
-                      fontSize: 16,
-                      textDecoration: 'none',
-                      boxShadow: '0 6px 20px rgba(239,68,68,0.28)',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Phone size={18} />
-                    <span>{site.phone || '09638649314'}</span>
-                  </a>
-                </div>
               </div>
             )}
         </div>
