@@ -328,7 +328,7 @@ function DoctorDetailPageContent() {
   const doctorOgImage = doctor?.photo ? getMediaUrl(doctor.photo) : (doctor?.photo_url ? getMediaUrl(doctor.photo_url) : DEMO_AVATAR)
 
   return (
-    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
+    <div className="page-wrapper doctor-detail-page" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
       <SeoHead
         title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | MedConnect`}
         description={`${doctor?.name} (${doctor?.degree || 'MBBS'}) - ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}। চেম্বার ও অ্যাপয়েন্টমেন্টের তথ্য।`}
@@ -1562,18 +1562,18 @@ function DoctorDetailPageContent() {
 
         {/* ================= RELATED DOCTORS (INTERNAL LINKING SEO DISCOVERY) ================= */}
         {relatedDoctors && relatedDoctors.length > 0 && (
-          <section className="doc-detail-related-section mt-5 pt-4 border-top">
-            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-              <div>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: darkTextColor, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <section className="doc-detail-related-section mt-4 mt-lg-5 pt-3 pt-lg-4 border-top">
+            <div className="mb-3 mb-lg-4">
+              <div className="d-flex justify-content-between align-items-center gap-2" style={{ marginBottom: 4 }}>
+                <h3 style={{ fontSize: 'clamp(17px, 3.8vw, 20px)', fontWeight: 900, color: darkTextColor, margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span>সম্পর্কিত বিশেষজ্ঞ ডাক্তারগণ</span>
                   {relatedDoctors.length > 0 && (
                     <span style={{
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 800,
                       color: primaryGreen,
                       background: 'rgba(0, 184, 117, 0.1)',
-                      padding: '2px 10px',
+                      padding: '2px 8px',
                       borderRadius: 12,
                       display: 'inline-flex',
                       alignItems: 'center'
@@ -1582,30 +1582,41 @@ function DoctorDetailPageContent() {
                     </span>
                   )}
                 </h3>
-                <p style={{ fontSize: 13, color: mutedTextColor, margin: 0, fontWeight: 600 }}>
-                  {specialtyName} বিভাগের অন্যান্য শীর্ষস্থানীয় ডাক্তারদের প্রোফাইল ও অ্যাপয়েন্টমেন্ট
-                </p>
+
+                {doctor?.specialty?.slug && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/specialties/${doctor.specialty.slug}`)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: primaryGreen,
+                      fontWeight: 800,
+                      fontSize: 13.5,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 3,
+                      cursor: 'pointer',
+                      padding: 0,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    সব দেখুন
+                  </button>
+                )}
               </div>
 
-              {doctor?.specialty?.slug && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/specialties/${doctor.specialty.slug}`)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: primaryGreen,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  সব দেখুন <IconChevronRight size={16} />
-                </button>
-              )}
+              <p style={{
+                fontSize: 12.5,
+                color: mutedTextColor,
+                margin: 0,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {specialtyName} বিভাগের অন্যান্য বিশেষজ্ঞ ডাক্তার
+              </p>
             </div>
 
             <Row className="g-3 g-md-4">

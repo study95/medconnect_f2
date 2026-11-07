@@ -48,6 +48,7 @@ function AppNavbar() {
   }
   const isHospitalDetailPage = isDetailPath('/hospitals')
   const isDoctorDetailPage = isDetailPath('/doctors')
+  const isDetailPage = isHospitalDetailPage || isDoctorDetailPage
   const isDoctorsPage = location.pathname === '/doctors' || location.pathname.startsWith('/doctors/')
   const isHospitalsPage = location.pathname === '/hospitals' || location.pathname.startsWith('/hospitals/')
   const isDoctorListing = isDoctorsPage && !isDoctorDetailPage
@@ -290,12 +291,22 @@ function AppNavbar() {
         }
         @media (max-width: 991px) {
           :root {
-            --header-height: ${isAuthPage ? '0px !important' : '58px !important'};
-            --sticky-top: ${isAuthPage ? '0px !important' : (mobileHeaderVisible ? '58px !important' : '0px !important')};
-            --mobile-search-top: ${isAuthPage ? '0px' : (mobileHeaderVisible ? '58px' : '0px')};
+            --header-height: ${isAuthPage || isDetailPage ? '0px !important' : '58px !important'};
+            --sticky-top: ${isAuthPage || isDetailPage ? '0px !important' : (mobileHeaderVisible ? '58px !important' : '0px !important')};
+            --mobile-search-top: ${isAuthPage || isDetailPage ? '0px' : (mobileHeaderVisible ? '58px' : '0px')};
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;
+          }
+          .hospital-detail-page {
+            padding-top: 48px !important;
+          }
+          .doctor-detail-page {
+            padding-top: 0 !important;
+          }
+          body:has(.doctor-detail-page) header.fixed-top,
+          body:has(.hospital-detail-page) header.fixed-top {
+            display: none !important;
           }
           header.fixed-top {
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -596,7 +607,7 @@ function AppNavbar() {
       `}</style>
 
       <header
-        className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${!mobileHeaderVisible && isSearchableListing && !expanded ? 'mobile-header-hidden' : ''}`}
+        className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isDetailPage ? 'd-none d-lg-block' : ''} ${!mobileHeaderVisible && isSearchableListing && !expanded ? 'mobile-header-hidden' : ''}`}
         style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}
       >
         

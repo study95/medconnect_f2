@@ -378,6 +378,17 @@ export default function SupportPage() {
           text-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
         }
 
+        .support-tab-btn:hover:not(.active) {
+          background: #F1F5F9 !important;
+          border-color: #CBD5E1 !important;
+          color: #0F172A !important;
+          transform: translateY(-1px);
+        }
+
+        .support-tab-btn:active {
+          transform: scale(0.98);
+        }
+
         @media (max-width: 768px) {
           .support-hero-section {
             padding: 0 0 52px !important;
@@ -438,25 +449,28 @@ export default function SupportPage() {
           .support-tabs-nav {
             display: grid !important;
             grid-template-columns: repeat(3, 1fr) !important;
-            padding: 4px !important;
+            padding: 5px !important;
             border-radius: 14px !important;
             margin-bottom: 14px !important;
-            gap: 4px !important;
+            gap: 6px !important;
             overflow-x: visible !important;
+            background: #F8FAFC !important;
+            border: 1.5px solid #E2E8F0 !important;
           }
           .support-tab-btn {
-            padding: 8px 2px !important;
-            font-size: 11.5px !important;
+            padding: 9px 3px !important;
+            font-size: 11.8px !important;
             border-radius: 10px !important;
             width: 100% !important;
+            min-height: 42px !important;
             justify-content: center !important;
-            gap: 4px !important;
+            gap: 5px !important;
             white-space: nowrap !important;
-            letter-spacing: -0.01em !important;
+            letter-spacing: normal !important;
           }
           .support-tab-btn svg {
-            width: 13.5px !important;
-            height: 13.5px !important;
+            width: 14px !important;
+            height: 14px !important;
             flex-shrink: 0 !important;
           }
           .support-content-card {
@@ -789,97 +803,109 @@ export default function SupportPage() {
       {/* ── MAIN CONTENT AREA (CLEAN TABS & GRID LAYOUT) ── */}
       <Container className="support-tabs-container" id="support-tabs-container" style={{ marginTop: 32 }}>
         
-        {/* TAB NAVIGATION HEADER BAR */}
+        {/* TAB NAVIGATION HEADER BAR (ENHANCED BUTTON FEEL & RESPONSIVE MOBILE FIT) */}
         <div className="support-tabs-nav" style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          background: 'white',
+          gap: 10,
+          background: '#F8FAFC',
           padding: '7px 8px',
-          borderRadius: 18,
-          border: '1px solid #E2E8F0',
+          borderRadius: 16,
+          border: '1.5px solid #E2E8F0',
           marginBottom: 24,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+          boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)',
           overflowX: 'auto',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}>
+          {/* Tab 1: FAQ */}
           <button
+            type="button"
             onClick={() => setActiveMainTab('faq')}
-            className="support-tab-btn"
+            className={`support-tab-btn ${activeMainTab === 'faq' ? 'active' : ''}`}
             style={{
               flex: 1,
               padding: '11px 16px',
-              borderRadius: 13,
-              border: 'none',
-              background: activeMainTab === 'faq' ? '#00B875' : 'transparent',
-              color: activeMainTab === 'faq' ? 'white' : '#64748B',
-              fontWeight: 800,
+              borderRadius: 12,
+              border: activeMainTab === 'faq' ? '1.5px solid #009E64' : '1.5px solid #E2E8F0',
+              background: activeMainTab === 'faq' ? 'linear-gradient(135deg, #00B875 0%, #009E64 100%)' : '#FFFFFF',
+              color: activeMainTab === 'faq' ? '#FFFFFF' : '#334155',
+              fontWeight: activeMainTab === 'faq' ? 800 : 700,
               fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
-              transition: 'all 0.25s ease',
+              gap: 7,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               whiteSpace: 'nowrap',
-              boxShadow: activeMainTab === 'faq' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
+              boxShadow: activeMainTab === 'faq' ? '0 4px 12px rgba(0, 184, 117, 0.32)' : '0 1px 3px rgba(15, 23, 42, 0.04)',
+              fontFamily: "'Hind Siliguri', sans-serif"
             }}
           >
-            <HelpCircle size={17} />
-            <span>সচরাচর জিজ্ঞাসা</span>
+            <HelpCircle size={17} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+            <span className="d-none d-sm-inline">সচরাচর জিজ্ঞাসা</span>
+            <span className="d-sm-none">FAQ</span>
           </button>
 
+          {/* Tab 2: New Ticket */}
           <button
+            type="button"
             onClick={() => setActiveMainTab('ticket')}
-            className="support-tab-btn"
+            className={`support-tab-btn ${activeMainTab === 'ticket' ? 'active' : ''}`}
             style={{
               flex: 1,
               padding: '11px 16px',
-              borderRadius: 13,
-              border: 'none',
-              background: activeMainTab === 'ticket' ? '#00B875' : 'transparent',
-              color: activeMainTab === 'ticket' ? 'white' : '#64748B',
-              fontWeight: 800,
+              borderRadius: 12,
+              border: activeMainTab === 'ticket' ? '1.5px solid #009E64' : '1.5px solid #E2E8F0',
+              background: activeMainTab === 'ticket' ? 'linear-gradient(135deg, #00B875 0%, #009E64 100%)' : '#FFFFFF',
+              color: activeMainTab === 'ticket' ? '#FFFFFF' : '#334155',
+              fontWeight: activeMainTab === 'ticket' ? 800 : 700,
               fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
-              transition: 'all 0.25s ease',
+              gap: 7,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               whiteSpace: 'nowrap',
-              boxShadow: activeMainTab === 'ticket' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
+              boxShadow: activeMainTab === 'ticket' ? '0 4px 12px rgba(0, 184, 117, 0.32)' : '0 1px 3px rgba(15, 23, 42, 0.04)',
+              fontFamily: "'Hind Siliguri', sans-serif"
             }}
           >
-            <Ticket size={17} />
-            <span>নতুন টিকিট জমা</span>
+            <Ticket size={17} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+            <span className="d-none d-sm-inline">নতুন টিকিট জমা</span>
+            <span className="d-sm-none">নতুন টিকিট</span>
           </button>
 
+          {/* Tab 3: Track Ticket */}
           <button
+            type="button"
             onClick={() => setActiveMainTab('status')}
-            className="support-tab-btn"
+            className={`support-tab-btn ${activeMainTab === 'status' ? 'active' : ''}`}
             style={{
               flex: 1,
               padding: '11px 16px',
-              borderRadius: 13,
-              border: 'none',
-              background: activeMainTab === 'status' ? '#00B875' : 'transparent',
-              color: activeMainTab === 'status' ? 'white' : '#64748B',
-              fontWeight: 800,
+              borderRadius: 12,
+              border: activeMainTab === 'status' ? '1.5px solid #009E64' : '1.5px solid #E2E8F0',
+              background: activeMainTab === 'status' ? 'linear-gradient(135deg, #00B875 0%, #009E64 100%)' : '#FFFFFF',
+              color: activeMainTab === 'status' ? '#FFFFFF' : '#334155',
+              fontWeight: activeMainTab === 'status' ? 800 : 700,
               fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
-              transition: 'all 0.25s ease',
+              gap: 7,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               whiteSpace: 'nowrap',
-              boxShadow: activeMainTab === 'status' ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none'
+              boxShadow: activeMainTab === 'status' ? '0 4px 12px rgba(0, 184, 117, 0.32)' : '0 1px 3px rgba(15, 23, 42, 0.04)',
+              fontFamily: "'Hind Siliguri', sans-serif"
             }}
           >
-            <Search size={17} />
-            <span>টিকিট ট্র্যাক করুন</span>
+            <Search size={17} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+            <span className="d-none d-sm-inline">টিকিট ট্র্যাক করুন</span>
+            <span className="d-sm-none">টিকিট ট্র্যাক</span>
           </button>
         </div>
 

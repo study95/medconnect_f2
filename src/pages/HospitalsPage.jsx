@@ -1093,6 +1093,38 @@ function HospitalsPage() {
         .hosp-main-container {
           padding: 20px 24px;
         }
+        .hosp-heading-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .mobile-reset-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 10px;
+          border-radius: 20px;
+          background: #FEF2F2;
+          border: 1px solid #FECACA;
+          color: #DC2626;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+          line-height: 1.4;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+        }
+        .mobile-reset-pill:hover, .mobile-reset-pill:active {
+          background: #FEE2E2;
+          border-color: #FCA5A5;
+          color: #B91C1C;
+          transform: translateY(-1px);
+        }
         .hosp-page-heading {
           font-size: 28px;
           font-weight: 800;
@@ -1113,9 +1145,12 @@ function HospitalsPage() {
           .hosp-main-container {
             padding: 8px 16px 20px !important;
           }
+          .hosp-heading-row {
+            margin-bottom: 8px !important;
+          }
           .hosp-page-heading {
             font-size: 20px !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 0 !important;
           }
           .hosp-results-bar {
             margin-bottom: 10px !important;
@@ -1440,40 +1475,62 @@ function HospitalsPage() {
         {/* ── HEADER BLOCK (Heading, Desktop Search, Results Bar) ── */}
         <div ref={headerBlockRef} className="hosp-header-block">
           {/* ── HEADING TITLE ── */}
-          <h1 className="hosp-page-heading" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {locationHeadingText ? (
-              <>
-                <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
-              </>
-            ) : (
-              <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল তালিকা</span>
-            )}
-            <span className="d-lg-none" style={{
-              fontSize: 12,
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: 20,
-              background: '#E8F8F0',
-              color: '#00803D',
-              border: '1px solid #A7F3D0',
-              fontFamily: "'Hind Siliguri', sans-serif",
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              verticalAlign: 'middle',
-              letterSpacing: '0.01em',
-              lineHeight: '1.4'
-            }}>
-              {(loading && sortedHospitals.length === 0) ? (
+          <div className="hosp-heading-row" style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8
+          }}>
+            <h1 className="hosp-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
+              {locationHeadingText ? (
                 <>
-                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-                  <span style={{ fontSize: 11 }}>লোড হচ্ছে...</span>
+                  <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>হাসপাতাল তালিকা</span>
                 </>
               ) : (
-                `${toBengaliNumber(sortedHospitals.length)} টি হাসপাতাল`
+                <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>সকল হাসপাতাল তালিকা</span>
               )}
-            </span>
-          </h1>
+              <span className="d-lg-none" style={{
+                fontSize: 11.5,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 20,
+                background: '#E8F8F0',
+                color: '#00803D',
+                border: '1px solid #A7F3D0',
+                fontFamily: "'Hind Siliguri', sans-serif",
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                verticalAlign: 'middle',
+                letterSpacing: '0.01em',
+                lineHeight: '1.4',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}>
+                {(loading && sortedHospitals.length === 0) ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                    <span style={{ fontSize: 11 }}>লোড হচ্ছে...</span>
+                  </>
+                ) : (
+                  `${toBengaliNumber(sortedHospitals.length)} টি হাসপাতাল`
+                )}
+              </span>
+            </h1>
+
+            {/* Mobile Quick Reset Button when filters active */}
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="mobile-reset-pill d-lg-none"
+                title="ফিল্টার রিসেট করুন"
+                aria-label="ফিল্টার রিসেট করুন"
+              >
+                <span>রিসেট</span>
+              </button>
+            )}
+          </div>
 
           {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
           <div style={{ position: 'relative', marginBottom: 20 }}>

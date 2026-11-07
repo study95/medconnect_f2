@@ -177,6 +177,7 @@ function DoctorsPage() {
         String(s.id) === clean ||
         (s.slug || '').toLowerCase() === clean ||
         (s.name_bn || '').trim().toLowerCase() === clean ||
+        (s.bangla_name || '').trim().toLowerCase() === clean ||
         (s.name || '').trim().toLowerCase() === clean
       )
       if (match) {
@@ -616,6 +617,7 @@ function DoctorsPage() {
         String(s.id) === clean ||
         (s.slug || '').toLowerCase() === clean ||
         (s.name_bn || '').trim().toLowerCase() === clean ||
+        (s.bangla_name || '').trim().toLowerCase() === clean ||
         (s.name || '').trim().toLowerCase() === clean
       )
       if (match) setSelectedSpecialty(String(match.id))
@@ -1348,6 +1350,31 @@ function DoctorsPage() {
         .doc-heading-row {
           margin-bottom: 16px;
         }
+        .mobile-reset-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 10px;
+          border-radius: 20px;
+          background: #FEF2F2;
+          border: 1px solid #FECACA;
+          color: #DC2626;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: 'Hind Siliguri', sans-serif;
+          white-space: nowrap;
+          line-height: 1.4;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+        }
+        .mobile-reset-pill:hover, .mobile-reset-pill:active {
+          background: #FEE2E2;
+          border-color: #FCA5A5;
+          color: #B91C1C;
+          transform: translateY(-1px);
+        }
         .doc-page-heading {
           font-size: 28px;
           font-weight: 800;
@@ -1728,19 +1755,18 @@ function DoctorsPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 16,
-            flexWrap: 'wrap'
+            gap: 8
           }}>
-            <h1 className="doc-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h1 className="doc-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
               {locationHeadingText ? (
                 <>
-                  <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
+                  <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>ডাক্তার তালিকা</span>
                 </>
               ) : (
-                <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
+                <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>সকল ডাক্তার তালিকা</span>
               )}
               <span className="d-lg-none" style={{
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: 20,
@@ -1753,7 +1779,9 @@ function DoctorsPage() {
                 gap: 4,
                 verticalAlign: 'middle',
                 letterSpacing: '0.01em',
-                lineHeight: '1.4'
+                lineHeight: '1.4',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}>
                 {(loading && sortedDoctors.length === 0) ? (
                   <>
@@ -1765,6 +1793,19 @@ function DoctorsPage() {
                 )}
               </span>
             </h1>
+
+            {/* Mobile Quick Reset Button when filters active */}
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="mobile-reset-pill d-lg-none"
+                title="ফিল্টার রিসেট করুন"
+                aria-label="ফিল্টার রিসেট করুন"
+              >
+                <span>রিসেট</span>
+              </button>
+            )}
 
             <div className="d-none d-lg-block">
               <AvailabilityDateFilter

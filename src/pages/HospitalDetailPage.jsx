@@ -37,6 +37,9 @@ import {
 
 const DEMO_BANNER = DEFAULT_HOSPITAL_IMAGE
 
+const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
+
 function HospitalDetailPage() {
   const { district, upazila, slug, id } = useParams()
   const navigate = useNavigate()
@@ -158,6 +161,8 @@ function HospitalDetailPage() {
         if (specName && !specMap.has(specId)) {
           specMap.set(specId, {
             id: specId,
+            specialty_id: doc.specialty?.id || doc.specialty_id || (/^\d+$/.test(String(specId)) ? specId : ''),
+            slug: doc.specialty?.slug,
             name: specName,
             name_en: doc.specialty?.name || specName,
             sub: 'বিশেষায়িত চিকিৎসা বিভাগ',
@@ -1876,34 +1881,36 @@ function HospitalDetailPage() {
                     boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
                   }}
                 >
-                  <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                    <div>
-                      <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <h3 style={{ fontSize: 'clamp(17px, 3.8vw, 20px)', fontWeight: 950, color: textColor, margin: 0, whiteSpace: 'nowrap' }}>
                         আমাদের বিভাগসমূহ
                       </h3>
-                      <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
-                        মোট {departments.length}টি বিশেষায়িত চিকিৎসা বিভাগ
-                      </p>
+                      {departments.length > 7 && (
+                        <button
+                          type="button"
+                          onClick={() => setDeptModalOpen(true)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: primaryGreen,
+                            fontWeight: 800,
+                            fontSize: 13.5,
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 3,
+                            cursor: 'pointer',
+                            padding: 0,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}
+                        >
+                          সব দেখুন
+                        </button>
+                      )}
                     </div>
-                    {departments.length > 7 && (
-                      <button
-                        type="button"
-                        onClick={() => setDeptModalOpen(true)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: primaryGreen,
-                          fontWeight: 800,
-                          fontSize: 14,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        সব দেখুন <IconChevronRight size={16} />
-                      </button>
-                    )}
+                    <p style={{ fontSize: 12.5, color: mutedColor, margin: 0, fontWeight: 600 }}>
+                      মোট {departments.length}টি বিশেষায়িত চিকিৎসা বিভাগ
+                    </p>
                   </div>
 
                   <Row className="g-3">
@@ -1913,52 +1920,69 @@ function HospitalDetailPage() {
                           onClick={() => {
                             const hId = hospital?.id || hospital?.public_id || id;
                             const hName = hospital?.name || hospital?.name_bn || '';
-                            const sId = (dept.specialty_id || (typeof dept.id === 'number' || /^\d+$/.test(String(dept.id))) ? dept.id : '');
-                            navigate(`/doctors?hospital_id=${hId}${sId ? `&specialty_id=${sId}` : ''}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
+                            const sId = dept.specialty_id || (/^\d+$/.test(String(dept.id)) ? dept.id : '');
+                            const specParam = sId ? `&specialty_id=${sId}` : (dept.slug ? `&specialty=${encodeURIComponent(dept.slug)}` : '');
+                            const deptParam = dept.name_en ? `&department=${encodeURIComponent(dept.name_en)}` : (dept.name ? `&department=${encodeURIComponent(dept.name)}` : '');
+                            navigate(`/doctors?hospital_id=${hId}${specParam}${deptParam}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
                           }}
                           style={{ 
-                            padding: '18px 14px', 
+                            padding: '14px 14px 12px', 
                             borderRadius: 14, 
-                            border: `1.5px solid #F1F5F9`, 
-                            background: '#FAFAFA', 
+                            border: `1.5px solid #E2E8F0`, 
+                            background: '#FFFFFF', 
                             color: textColor, 
                             height: '100%',
                             display: 'flex', 
                             flexDirection: 'column', 
-                            gap: 10, 
+                            justifyContent: 'space-between',
+                            gap: 12, 
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
                             cursor: 'pointer',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.01)'
+                            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
                           }} 
                           onMouseEnter={e => {
                             e.currentTarget.style.borderColor = primaryGreen
-                            e.currentTarget.style.background = '#FFFFFF'
                             e.currentTarget.style.transform = 'translateY(-2px)'
-                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,168,140,0.08)'
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 184, 117, 0.12)'
                           }} 
                           onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = '#F1F5F9'
-                            e.currentTarget.style.background = '#FAFAFA'
+                            e.currentTarget.style.borderColor = '#E2E8F0'
                             e.currentTarget.style.transform = 'translateY(0)'
-                            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.01)'
+                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(15, 23, 42, 0.03)'
                           }}
                         >
-                          <div style={{ 
-                            width: 40, 
-                            height: 40, 
-                            borderRadius: 10, 
-                            background: '#E6F8F3', 
-                            color: primaryGreen, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center' 
-                          }}>
-                            <IconStethoscope size={26} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ 
+                              width: 38, 
+                              height: 38, 
+                              borderRadius: 10, 
+                              background: '#E8F8F0', 
+                              color: primaryGreen, 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              border: '1px solid #A7F3D0'
+                            }}>
+                              <IconStethoscope size={20} stroke={2.2} />
+                            </div>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#00803D',
+                              background: '#E8F8F0',
+                              border: '1px solid #D1FAE5',
+                              padding: '2px 7px',
+                              borderRadius: 6
+                            }}>
+                              {dept.doctors_count ? `${toBengaliNumber(dept.doctors_count)} জন` : 'বিভাগ'}
+                            </span>
                           </div>
                           <div>
-                            <p style={{ fontSize: 14.5, fontWeight: 900, margin: 0, color: textColor }}>{dept.name}</p>
-                            <p style={{ fontSize: 12, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>
-                              {dept.sub || (dept.doctors_count ? `${dept.doctors_count} জন বিশেষজ্ঞ ডাক্তার` : 'বিশেষায়িত চিকিৎসা বিভাগ')}
+                            <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: textColor, lineHeight: 1.3, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                              {dept.name}
+                            </p>
+                            <p style={{ fontSize: 11.5, fontWeight: 500, color: mutedColor, margin: '3px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {dept.sub || 'বিশেষায়িত সেবা'}
                             </p>
                           </div>
                         </div>
@@ -2092,34 +2116,44 @@ function HospitalDetailPage() {
                   boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
                 }}
               >
-                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                  <div>
-                    <h3 style={{ fontSize: 20, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <h3 style={{ fontSize: 'clamp(17px, 3.8vw, 20px)', fontWeight: 950, color: textColor, margin: 0, whiteSpace: 'nowrap' }}>
                       আমাদের বিশেষজ্ঞ ডাক্তার সমূহ
                     </h3>
-                    <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
-                      এই হাসপাতালে কর্মরত অভিজ্ঞ বিশেষজ্ঞ চিকিৎসকবৃন্দ
-                    </p>
+                    {hospital?.id && (
+                      <button
+                        type="button"
+                        onClick={() => { const hId = hospital?.id || hospital?.public_id || id; const hName = hospital?.name || hospital?.name_bn || ''; navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`); }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: primaryGreen,
+                          fontWeight: 800,
+                          fontSize: 13.5,
+                          textDecoration: 'underline',
+                          textUnderlineOffset: 3,
+                          cursor: 'pointer',
+                          padding: 0,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
+                      >
+                        সব দেখুন
+                      </button>
+                    )}
                   </div>
-                  {hospital?.id && (
-                    <button
-                      type="button"
-                      onClick={() => { const hId = hospital?.id || hospital?.public_id || id; const hName = hospital?.name || hospital?.name_bn || ''; navigate(`/doctors?hospital_id=${hId}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`); }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: primaryGreen,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      সব দেখুন <IconChevronRight size={16} />
-                    </button>
-                  )}
+                  <p style={{
+                    fontSize: 12.5,
+                    color: mutedColor,
+                    margin: 0,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    এই হাসপাতালে কর্মরত অভিজ্ঞ বিশেষজ্ঞ চিকিৎসকবৃন্দ
+                  </p>
                 </div>
 
                 {displayDoctors && displayDoctors.length > 0 ? (
@@ -2558,35 +2592,45 @@ function HospitalDetailPage() {
       {/* 5. Related Hospitals Section (Internal Linking SEO Discovery) */}
       {relatedHospitals && relatedHospitals.length > 0 && (
         <Container className="pb-4">
-          <div className="pt-4 border-top">
-            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-              <div>
-                <h3 style={{ fontSize: 22, fontWeight: 950, color: textColor, margin: '0 0 4px 0' }}>
+          <div className="pt-3 pt-lg-4 border-top">
+            <div className="mb-3 mb-lg-4">
+              <div className="d-flex justify-content-between align-items-center gap-2" style={{ marginBottom: 4 }}>
+                <h3 style={{ fontSize: 'clamp(17px, 3.8vw, 22px)', fontWeight: 950, color: textColor, margin: 0 }}>
                   সম্পর্কিত অন্যান্য হাসপাতাল
                 </h3>
-                <p style={{ fontSize: 13, color: mutedColor, margin: 0, fontWeight: 600 }}>
-                  {hospital?.district?.name || 'এই এলাকার'} অন্যান্য উন্নত চিকিৎসাকেন্দ্র ও হাসপাতাল
-                </p>
+                {hospital?.district?.slug && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/hospitals/${hospital.district_slug || hospital.district?.slug}`)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: primaryGreen,
+                      fontWeight: 800,
+                      fontSize: 13.5,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 3,
+                      cursor: 'pointer',
+                      padding: 0,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    সব হাসপাতাল
+                  </button>
+                )}
               </div>
-              {hospital?.district?.slug && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/hospitals/${hospital.district_slug || hospital.district?.slug}`)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: primaryGreen,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  সব হাসপাতাল <IconChevronRight size={16} />
-                </button>
-              )}
+              <p style={{
+                fontSize: 12.5,
+                color: mutedColor,
+                margin: 0,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {hospital?.district?.name || 'এই এলাকার'} অন্যান্য হাসপাতাল ও ডায়াগনস্টিক
+              </p>
             </div>
 
             <Row className="g-3">
@@ -2766,8 +2810,10 @@ function HospitalDetailPage() {
                     setDeptModalOpen(false)
                     const hId = hospital?.id || hospital?.public_id || id;
                     const hName = hospital?.name || hospital?.name_bn || '';
-                    const sId = (dept.specialty_id || (typeof dept.id === 'number' || /^\d+$/.test(String(dept.id))) ? dept.id : '');
-                    navigate(`/doctors?hospital_id=${hId}${sId ? `&specialty_id=${sId}` : ''}&department=${encodeURIComponent(dept.name)}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
+                    const sId = dept.specialty_id || (/^\d+$/.test(String(dept.id)) ? dept.id : '');
+                    const specParam = sId ? `&specialty_id=${sId}` : (dept.slug ? `&specialty=${encodeURIComponent(dept.slug)}` : '');
+                    const deptParam = dept.name_en ? `&department=${encodeURIComponent(dept.name_en)}` : (dept.name ? `&department=${encodeURIComponent(dept.name)}` : '');
+                    navigate(`/doctors?hospital_id=${hId}${specParam}${deptParam}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
                   }}
                   style={{ 
                     padding: '16px 18px', 
