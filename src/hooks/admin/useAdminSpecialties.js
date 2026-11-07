@@ -34,6 +34,8 @@ export function useAdminSpecialties(filters = {}) {
       return Array.isArray(raw) ? raw : []
     },
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   return {

@@ -5,13 +5,45 @@ import Sidebar from './Sidebar'
 import ExpiryWarningBanner from './ExpiryWarningBanner'
 import NotificationPopup from './NotificationPopup'
 import NotificationDropdown from '../layout/NotificationDropdown'
-import { AdminContentSkeleton } from '../common/Skeletons'
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconExternalLink } from '@tabler/icons-react'
 import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon } from 'lucide-react'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { useTheme } from '../../context/ThemeContext'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import '../../styles/admin.css'
+
+function TopRouteProgress() {
+  return (
+    <div 
+      style={{
+        position: 'fixed',
+        top: 'var(--admin-header-height, 64px)',
+        left: 0,
+        right: 0,
+        height: 3,
+        zIndex: 9999,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <div 
+        style={{
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(90deg, transparent, #10B981, #00B875, #059669, transparent)',
+          backgroundSize: '200% 100%',
+          animation: 'routeProgressShimmer 1.2s infinite ease-in-out',
+        }} 
+      />
+      <style>{`
+        @keyframes routeProgressShimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+    </div>
+  )
+}
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -176,7 +208,7 @@ export default function AdminLayout() {
         {/* Page Content — rendered by nested routes via <Outlet /> with Zero-Layout-Shift Suspense */}
         <main className="admin-content">
           <ExpiryWarningBanner />
-          <Suspense fallback={<AdminContentSkeleton />}>
+          <Suspense fallback={<TopRouteProgress />}>
             <Outlet />
           </Suspense>
         </main>

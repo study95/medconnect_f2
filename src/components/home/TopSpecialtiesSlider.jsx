@@ -479,19 +479,6 @@ const TopSpecialtiesSlider = memo(function TopSpecialtiesSlider({ specialties: p
               )}
             </h2>
           </div>
-          <p
-            style={{
-              fontSize: 'clamp(13.5px, 1.6vw, 15px)',
-              fontWeight: 500,
-              color: '#64748B',
-              margin: '4px 0 0 0',
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}
-          >
-            {language === 'bn'
-              ? 'আপনার প্রয়োজন অনুযায়ী অভিজ্ঞ বিশেষজ্ঞ ডাক্তার বেছে নিন'
-              : 'Find specialist doctors tailored to your medical needs'}
-          </p>
         </div>
 
         {/* ── 4-Column Grid (Image 2 Style) ── */}

@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateAppointments, invalidatePatients } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getAppointments,
   getAppointmentStats,
@@ -36,6 +37,8 @@ import { getErrorMessage } from '../../utils/errorHelper'
  * Hook to fetch admin appointments with server-side filters & caching
  */
 export function useAdminAppointments(filters = {}) {
+  const isDefaultView = (!filters.search && !filters.doctor_id && !filters.hospital_id && !filters.status && (!filters.page || filters.page === 1))
+
   const query = useQuery({
     queryKey: queryKeys.appointments.adminList(filters),
     queryFn: async () => {
@@ -43,9 +46,21 @@ export function useAdminAppointments(filters = {}) {
       const rawData = res.data?.data?.data || res.data?.data || res.data || []
       const appointments = Array.isArray(rawData) ? rawData : []
       const meta = res.data?.meta || res.data?.data?.meta || null
-      return { appointments, meta }
+      const result = { appointments, meta }
+      if (isDefaultView && appointments.length > 0) {
+        saveSessionSnapshot('appointments', result)
+      }
+      return result
+    },
+    initialData: () => {
+      if (isDefaultView) {
+        return getSessionSnapshot('appointments')
+      }
+      return undefined
     },
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   const appointments = query.data?.appointments || (Array.isArray(query.data) ? query.data : [])
@@ -75,13 +90,19 @@ export function useAdminAppointmentStats() {
     queryFn: async () => {
       try {
         const res = await getAppointmentStats()
-        return res.data?.data || null
+        const data = res.data?.data || null
+        if (data) {
+          saveSessionSnapshot('appointments_stats', data)
+        }
+        return data
       } catch (err) {
         console.error('Failed to fetch appointment stats', err)
         return null
       }
     },
-    staleTime: 30000,
+    initialData: () => getSessionSnapshot('appointments_stats'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 
@@ -97,6 +118,8 @@ export function useAdminAppointmentDetail(id) {
     },
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   return {

@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-if (!window.__ThemeContext) {
+if (typeof window !== 'undefined' && !window.__ThemeContext) {
   window.__ThemeContext = createContext();
 }
-const ThemeContext = window.__ThemeContext;
+const ThemeContext = typeof window !== 'undefined' ? window.__ThemeContext : createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState('light');
@@ -24,10 +24,16 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
+const defaultTheme = {
+  theme: 'light',
+  setTheme: () => {},
+  toggleTheme: () => {},
+};
+
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    return defaultTheme;
   }
   return context;
 };

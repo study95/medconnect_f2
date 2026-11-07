@@ -1,12 +1,13 @@
 // PrescriptionListPage.jsx — List all prescriptions (doctor sees own, admin sees all)
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useAuth } from '../../../context/AuthContext'
 import { useSubscription } from '../../../context/SubscriptionContext'
 import UpgradePromptModal from '../../../components/admin/UpgradePromptModal'
 import { getPrescriptions, deletePrescription, getDoctorLookup } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../../lib/cacheSnapshot'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
 import SearchableSelect from '../../../components/common/SearchableSelect'
@@ -185,9 +186,23 @@ export default function PrescriptionListPage() {
         } catch (e) {}
       }
 
-      return [...localDrafts, ...dbList]
+      const combined = [...localDrafts, ...dbList]
+      if (!doctorFilter && (!sourceTypeFilter || sourceTypeFilter === 'all') && !dateFrom && !dateTo && combined.length > 0) {
+        saveSessionSnapshot('prescriptions', combined)
+      }
+      return combined
     },
-    staleTime: 45 * 1000,
+    initialData: () => {
+      if (!doctorFilter && (!sourceTypeFilter || sourceTypeFilter === 'all') && !dateFrom && !dateTo) {
+        return getSessionSnapshot('prescriptions')
+      }
+      return undefined
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   // Lightweight Doctor lookup for Admin filter
@@ -549,7 +564,7 @@ export default function PrescriptionListPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                {(loading && prescriptions.length === 0) ? (
                   Array.from({ length: 8 }).map((_, rIdx) => (
                     <tr key={`rx-skeleton-${rIdx}`}>
                       <td>

@@ -12,6 +12,7 @@
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { queryKeys } from '../../lib/queryKeys'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getMedicines,
   getMedicine,
@@ -30,6 +31,8 @@ import { getErrorMessage } from '../../utils/errorHelper'
  * Hook to fetch paginated admin medicines list with server-side caching
  */
 export function useAdminMedicines(filters = {}) {
+  const isDefaultView = (!filters.search && !filters.company_id && !filters.dosage_form && !filters.status && (!filters.page || filters.page === 1))
+
   const query = useQuery({
     queryKey: queryKeys.medicines.adminList(filters),
     queryFn: async () => {
@@ -41,10 +44,23 @@ export function useAdminMedicines(filters = {}) {
         last_page: data?.last_page || res.data?.last_page || 1,
         total: data?.total ?? res.data?.total ?? items.length,
       }
-      return { items, pagination }
+      const result = { items, pagination }
+      if (isDefaultView && items.length > 0) {
+        saveSessionSnapshot('medicines', result)
+      }
+      return result
+    },
+    initialData: () => {
+      if (isDefaultView) {
+        return getSessionSnapshot('medicines')
+      }
+      return undefined
     },
     placeholderData: keepPreviousData,
-    staleTime: 30 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   return {

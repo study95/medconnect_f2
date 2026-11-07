@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Container, Row, Col } from 'react-bootstrap'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 
 import HospitalCard from '../components/common/HospitalCard'
 import CustomCheckbox from '../components/common/CustomCheckbox'
@@ -9,6 +9,7 @@ import ErrorState from '../components/common/ErrorState'
 import { HospitalGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
 import HospitalDetailPage from './HospitalDetailPage'
+import SearchTypeaheadDropdown from '../components/common/SearchTypeaheadDropdown'
 import { getHospitalUrl } from '../utils/identifierHelper'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
@@ -68,6 +69,9 @@ const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '
 function HospitalsPage() {
   const { district: districtParam, upazila: upazilaParam } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [isDesktopTypeaheadOpen, setIsDesktopTypeaheadOpen] = useState(false)
+  const [isMobileTypeaheadOpen, setIsMobileTypeaheadOpen] = useState(false)
 
   // 1-segment legacy fallback disambiguation:
   // If route matched /hospitals/:district and the token is purely numeric or ULID, delegate to HospitalDetailPage
@@ -79,26 +83,52 @@ function HospitalsPage() {
     return <HospitalDetailPage />
   }
 
+  const getInitialHospitalParam = (key) => {
+    const val = searchParams.get(key)
+    if (val !== null && val !== undefined && val !== '') return val
+    if (!districtParam && !upazilaParam) {
+      try {
+        const saved = sessionStorage.getItem('hospitals_filter_query')
+        if (saved) {
+          const sp = new URLSearchParams(saved)
+          return sp.get(key) || ''
+        }
+      } catch {}
+    }
+    return ''
+  }
+
   const {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
-  } = useLocations()
+  } = useLocations({
+    division_id: getInitialHospitalParam('division_id'),
+    district_id: getInitialHospitalParam('district_id'),
+    upazila_id: getInitialHospitalParam('upazila_id'),
+    union_id: getInitialHospitalParam('union_id')
+  })
 
   const { specialties } = useSpecialties()
 
-  const [hospitalType, setHospitalType]           = useState(searchParams.get('type') || '')
-  const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
-  const [selectedBeds, setSelectedBeds]           = useState(searchParams.get('beds') || '')
-  const [emergencyOnly, setEmergencyOnly]         = useState(() => searchParams.get('emergency') === '1' || searchParams.get('emergency_24h') === '1')
-  const [openTodayOnly, setOpenTodayOnly]         = useState(() => searchParams.get('open_today') === '1')
-  const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
-  const [appliedSearch, setAppliedSearch]         = useState(searchParams.get('search') || '')
+  const [hospitalType, setHospitalType]           = useState(() => getInitialHospitalParam('type'))
+  const [selectedSpecialty, setSelectedSpecialty] = useState(() => getInitialHospitalParam('specialty_id'))
+  const [selectedBeds, setSelectedBeds]           = useState(() => getInitialHospitalParam('beds'))
+  const [emergencyOnly, setEmergencyOnly]         = useState(() => {
+    const em = getInitialHospitalParam('emergency')
+    return em === '1' || em === 'true' || getInitialHospitalParam('emergency_24h') === '1'
+  })
+  const [openTodayOnly, setOpenTodayOnly]         = useState(() => {
+    const ot = getInitialHospitalParam('open_today')
+    return ot === '1' || ot === 'true'
+  })
+  const [searchText, setSearchText]               = useState(() => getInitialHospitalParam('search'))
+  const [appliedSearch, setAppliedSearch]         = useState(() => getInitialHospitalParam('search'))
   const [isSearching, setIsSearching]             = useState(false)
   const animatedPlaceholder                       = useTypewriter(HOSPITAL_SEARCH_PHRASES, 70, 35, 1800)
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
-  const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'newest')
+  const [sortBy, setSortBy]   = useState(() => getInitialHospitalParam('sort') || 'newest')
 
   const {
     location: userLocation,
@@ -110,10 +140,10 @@ function HospitalsPage() {
   } = useUserLocation()
 
   const [isNearMeActive, setIsNearMeActive] = useState(() => {
-    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest'
+    return getInitialHospitalParam('near_me') === '1' || getInitialHospitalParam('sort') === 'nearest'
   })
   const [locationInlineError, setLocationInlineError] = useState(false)
-  const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
+  const [distanceRadius, setDistanceRadius] = useState(() => getInitialHospitalParam('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
     try {
@@ -394,11 +424,32 @@ function HospitalsPage() {
   // Flag to avoid loop when syncing internal state FROM external URL navigation
   const isSyncingFromUrlRef = useRef(false)
 
+  // On mount, restore saved filters from sessionStorage if visiting bare /hospitals
+  useEffect(() => {
+    if (!searchParams.toString() && !districtParam && !upazilaParam) {
+      const savedQuery = sessionStorage.getItem('hospitals_filter_query')
+      if (savedQuery) {
+        prevParamsRef.current = savedQuery
+        setSearchParams(new URLSearchParams(savedQuery), { replace: true })
+      }
+    }
+  }, [])
+
   useEffect(() => {
     const currentStr = searchParams.toString()
     if (prevParamsRef.current === currentStr) return
     prevParamsRef.current = currentStr
     isSyncingFromUrlRef.current = true
+
+    // If navigated to bare /hospitals (e.g. via Navbar menu click), restore saved session filters
+    if (!currentStr && !districtParam && !upazilaParam) {
+      const savedQuery = sessionStorage.getItem('hospitals_filter_query')
+      if (savedQuery) {
+        prevParamsRef.current = savedQuery
+        setSearchParams(new URLSearchParams(savedQuery), { replace: true })
+        return
+      }
+    }
 
     const divId   = searchParams.get('division_id') || ''
     const distId  = searchParams.get('district_id') || ''
@@ -467,6 +518,11 @@ function HospitalsPage() {
 
     const currentStr = searchParams.toString()
     const nextStr = next.toString()
+    if (nextStr) {
+      sessionStorage.setItem('hospitals_filter_query', nextStr)
+    } else {
+      sessionStorage.removeItem('hospitals_filter_query')
+    }
     if (currentStr !== nextStr) {
       prevParamsRef.current = nextStr
       setSearchParams(next, { replace: true })
@@ -554,13 +610,31 @@ function HospitalsPage() {
   const handleClearSearch = () => {
     setSearchText('')
     setAppliedSearch('')
-    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
     window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     updateUrlParams({ search: '' })
   }
 
+  const handleSelectSearchAll = (q) => {
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
+    setSearchText(q)
+    setAppliedSearch(q)
+    setIsSearching(true)
+    updateUrlParams({ search: q })
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: q }))
+    window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: true }))
+    setTimeout(() => {
+      setIsSearching(false)
+      window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: false }))
+    }, 600)
+  }
+
   const handleSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
     setIsSearching(true)
     const q = searchText.trim()
     setAppliedSearch(q)
@@ -574,6 +648,21 @@ function HospitalsPage() {
   }
 
   // Real-time bidirectional search sync with sticky navbar
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('listing-typeahead-active', { detail: isDesktopTypeaheadOpen }))
+  }, [isDesktopTypeaheadOpen])
+
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop
+      if (scrollY > 50) {
+        setIsDesktopTypeaheadOpen(false)
+      }
+    }
+    window.addEventListener('scroll', handleWindowScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleWindowScroll)
+  }, [])
+
   useEffect(() => {
     const handleSyncFromNav = (e) => {
       if (typeof e.detail === 'string') {
@@ -730,6 +819,7 @@ function HospitalsPage() {
   const activeCount = activeFilters.length
 
   const handleClearAllFilters = () => {
+    sessionStorage.removeItem('hospitals_filter_query')
     setSelectedDivision('')
     setSelectedDistrict('')
     setSelectedUpazila('')
@@ -1003,15 +1093,6 @@ function HospitalsPage() {
         .hosp-main-container {
           padding: 20px 24px;
         }
-        .hosp-breadcrumb {
-          font-size: 13px;
-          color: #64748B;
-          font-weight: 500;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
         .hosp-page-heading {
           font-size: 28px;
           font-weight: 800;
@@ -1021,32 +1102,16 @@ function HospitalsPage() {
         }
         .hosp-results-bar {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           margin-bottom: 16px;
           flex-wrap: wrap;
           gap: 12px;
         }
-        .hosp-active-filters-bar {
-          background: rgba(248, 250, 252, 0.95);
-          border-bottom: none;
-          padding: 8px 24px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
 
         @media (max-width: 991px) {
-          .hosp-active-filters-bar {
-            padding: 2px 16px 8px 16px !important;
-          }
           .hosp-main-container {
             padding: 8px 16px 20px !important;
-          }
-          .hosp-breadcrumb {
-            margin-bottom: 4px !important;
-            font-size: 12px !important;
           }
           .hosp-page-heading {
             font-size: 20px !important;
@@ -1162,9 +1227,7 @@ function HospitalsPage() {
         }
         @media (max-width: 767px) {
           .hosp-results-bar {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 8px !important;
+            margin-bottom: 8px !important;
           }
           .hosp-results-controls {
             width: 100% !important;
@@ -1285,58 +1348,73 @@ function HospitalsPage() {
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
       <div className="hosp-mobile-search-bar" style={{
         position: 'sticky',
-        top: 'calc(var(--header-height, 68px) - 1px)',
+        top: 'var(--header-height, 0px)',
         zIndex: 1040,
-        background: 'rgba(248, 250, 252, 0.95)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        borderBottom: 'none',
-        padding: '8px 16px 4px'
+        background: 'rgba(248, 250, 252, 0.96)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '10px 16px 8px',
+        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
-            <div className="hosp-mobile-search-pill">
-              <button
-                type="submit"
-                title="সার্চ করুন"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <IconSearch size={20} className="hosp-mobile-search-icon" />
-              </button>
-              <input
-                type="text"
-                placeholder={animatedPlaceholder || "হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."}
-                value={searchText}
-                onChange={e => handleSearchChange(e.target.value)}
-                className="hosp-mobile-search-input"
-              />
-              {searchText && (
+          <div style={{ position: 'relative', flex: 1, margin: 0 }}>
+            <form onSubmit={handleSearchSubmit} style={{ margin: 0 }}>
+              <div className="hosp-mobile-search-pill">
+                <button
+                  type="submit"
+                  title="সার্চ করুন"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <IconSearch size={20} className="hosp-mobile-search-icon" />
+                </button>
+                <input
+                  type="text"
+                  placeholder={animatedPlaceholder || "হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."}
+                  value={searchText}
+                  onChange={e => {
+                    handleSearchChange(e.target.value)
+                    setIsMobileTypeaheadOpen(true)
+                  }}
+                  onFocus={() => setIsMobileTypeaheadOpen(true)}
+                  className="hosp-mobile-search-input"
+                />
+                {searchText && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="hosp-mobile-clear-btn"
+                    title="মুছুন"
+                  >
+                    <IconX size={17} />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleClearSearch}
-                  className="hosp-mobile-clear-btn"
-                  title="মুছুন"
+                  onClick={handleVoiceSearch}
+                  className="hosp-mobile-mic-btn"
+                  title="ভয়েস সার্চ"
                 >
-                  <IconX size={17} />
+                  <IconMicrophone size={19} />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={handleVoiceSearch}
-                className="hosp-mobile-mic-btn"
-                title="ভয়েস সার্চ"
-              >
-                <IconMicrophone size={19} />
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
+
+            <SearchTypeaheadDropdown
+              query={searchText}
+              isOpen={isMobileTypeaheadOpen}
+              onClose={() => setIsMobileTypeaheadOpen(false)}
+              onSelectSearchAll={handleSelectSearchAll}
+              type="hospital"
+            />
+          </div>
 
           {/* Filter Icon Button */}
           <button
@@ -1355,60 +1433,12 @@ function HospitalsPage() {
         </div>
       </div>
 
-      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS ── */}
-      {activeCount > 0 && (
-        <div className="hosp-active-filters-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {activeFilters.map(f => (
-              <span
-                key={f.key}
-                onClick={f.clear}
-                style={{
-                  background: '#00B875',
-                  color: 'white',
-                  border: '1px solid #00B875',
-                  borderRadius: 20,
-                  padding: '4px 12px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  boxShadow: '0 1px 3px rgba(0, 184, 117, 0.25)'
-                }}
-              >
-                {f.label}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); f.clear() }}
-                  style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
-                >
-                  <IconX size={13} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            Clear All ✕
-          </button>
-        </div>
-      )}
-
       <Container fluid className="hosp-main-container" style={{ maxWidth: 1380 }}>
         
-        {/* ── HEADER BLOCK (Breadcrumb, Heading, Desktop Search, Results Bar) ── */}
+        {/* ── HEADER BLOCK (Heading, Desktop Search, Results Bar) ── */}
         <div ref={headerBlockRef} className="hosp-header-block">
-          {/* ── BREADCRUMB ── */}
-          <div className="hosp-breadcrumb">
-            <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-            <span>/</span>
-            <span style={{ color: '#0F172A', fontWeight: 600 }}>Hospital Listings</span>
-          </div>
-
           {/* ── HEADING TITLE ── */}
-          <h1 className="hosp-page-heading">
+          <h1 className="hosp-page-heading" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {locationHeadingText ? (
               <>
                 <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>হাসপাতাল তালিকা</span>
@@ -1416,87 +1446,113 @@ function HospitalsPage() {
             ) : (
               <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল হাসপাতাল তালিকা</span>
             )}
+            <span style={{
+              fontSize: 12,
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: 20,
+              background: '#E8F8F0',
+              color: '#00803D',
+              border: '1px solid #A7F3D0',
+              fontFamily: "'Hind Siliguri', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              verticalAlign: 'middle',
+              letterSpacing: '0.01em',
+              lineHeight: '1.4'
+            }}>
+              {(loading && sortedHospitals.length === 0) ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                  <span style={{ fontSize: 11 }}>লোড হচ্ছে...</span>
+                </>
+              ) : (
+                `${toBengaliNumber(sortedHospitals.length)} টি হাসপাতাল`
+              )}
+            </span>
           </h1>
 
           {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-          <form onSubmit={handleSearchSubmit} className="hosp-desktop-search" style={{
-            background: 'white',
-            borderRadius: 8,
-            border: '1px solid #CBD5E1',
-            padding: '4px 6px 4px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-            marginBottom: 20
-          }}>
-            <button
-              type="submit"
-              title="সার্চ করুন"
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                color: '#94A3B8'
-              }}
-            >
-              <IconSearch size={18} />
-            </button>
-            <input
-              type="text"
-              placeholder={animatedPlaceholder || "হাসপাতাল বা ক্লিনিক খুঁজুন..."}
-              value={searchText}
-              onChange={e => handleSearchChange(e.target.value)}
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                fontSize: 14,
-                color: '#0F172A',
-                fontWeight: 500,
-                background: 'transparent',
-                padding: '10px 0'
-              }}
-            />
-            {searchText && (
-              <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
-                <IconX size={16} />
+          <div style={{ position: 'relative', marginBottom: 20 }}>
+            <form onSubmit={handleSearchSubmit} className="hosp-desktop-search" style={{
+              background: 'white',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              padding: '4px 6px 4px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              marginBottom: 0
+            }}>
+              <button
+                type="submit"
+                title="সার্চ করুন"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#94A3B8'
+                }}
+              >
+                <IconSearch size={18} />
               </button>
-            )}
-            <button
-              type="submit"
-              disabled={loading || isSearching}
-              className="hosp-desktop-search-btn"
-            >
-              {(loading || isSearching) ? (
-                <>
-                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                  <span>Searching...</span>
-                </>
-              ) : (
-                <span>Search</span>
+              <input
+                type="text"
+                placeholder={animatedPlaceholder || "হাসপাতাল বা ক্লিনিক খুঁজুন..."}
+                value={searchText}
+                onChange={e => {
+                  handleSearchChange(e.target.value)
+                  setIsDesktopTypeaheadOpen(true)
+                }}
+                onFocus={() => setIsDesktopTypeaheadOpen(true)}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 14,
+                  color: '#0F172A',
+                  fontWeight: 500,
+                  background: 'transparent',
+                  padding: '10px 0'
+                }}
+              />
+              {searchText && (
+                <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+                  <IconX size={16} />
+                </button>
               )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={isSearching}
+                className="hosp-desktop-search-btn"
+              >
+                {isSearching ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <span>Search</span>
+                )}
+              </button>
+            </form>
+
+            <SearchTypeaheadDropdown
+              query={searchText}
+              isOpen={isDesktopTypeaheadOpen}
+              onClose={() => setIsDesktopTypeaheadOpen(false)}
+              onSelectSearchAll={handleSelectSearchAll}
+              type="hospital"
+            />
+          </div>
 
           {/* ── RESULTS SUMMARY BAR & VIEW MODE SWITCHER ── */}
           <div className="hosp-results-bar">
-            <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
-              {loading ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
-                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
-                  হাসপাতাল খোঁজা হচ্ছে...
-                </span>
-              ) : (
-                <>
-                  <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedHospitals.length)}</strong>টি হাসপাতাল
-                </>
-              )}
-            </div>
-
             <div className="hosp-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {/* Sort Dropdown */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -1578,9 +1634,30 @@ function HospitalsPage() {
               }}>
                 {/* Filter Sidebar Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <IconAdjustmentsHorizontal size={18} color="#0F172A" />
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Filters</h3>
+                    {activeCount > 0 && total !== undefined && total !== null && (
+                      <span style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 20,
+                        background: '#E8F8F2',
+                        color: '#009E64',
+                        border: '1px solid #A7F3D0',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        lineHeight: 1.4
+                      }}>
+                        {loading ? (
+                          <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                        ) : (
+                          `${toBengaliNumber(total)}টি পাওয়া গেছে`
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
 

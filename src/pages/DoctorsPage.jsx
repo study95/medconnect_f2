@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Container, Row, Col, Modal } from 'react-bootstrap'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 
 import DoctorCard from '../components/common/DoctorCard'
 import CustomCheckbox from '../components/common/CustomCheckbox'
@@ -10,6 +10,7 @@ import { DoctorGridSkeleton } from '../components/common/Skeletons'
 import SeoHead from '../components/common/SeoHead'
 import DoctorDetailPage from './DoctorDetailPage'
 import AvailabilityDateFilter from '../components/common/AvailabilityDateFilter'
+import SearchTypeaheadDropdown from '../components/common/SearchTypeaheadDropdown'
 import useInfiniteDoctors from '../hooks/useInfiniteDoctors'
 import useLocations from '../hooks/useLocations'
 import useSpecialties from '../hooks/useSpecialties'
@@ -115,6 +116,9 @@ const formatDateLabelBn = (dateVal) => {
 function DoctorsPage() {
   const { district: districtParam, upazila: upazilaParam } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [isDesktopTypeaheadOpen, setIsDesktopTypeaheadOpen] = useState(false)
+  const [isMobileTypeaheadOpen, setIsMobileTypeaheadOpen] = useState(false)
 
   // 1-segment legacy fallback disambiguation:
   // If route matched /doctors/:district and the token is purely numeric or ULID, delegate to DoctorDetailPage
@@ -126,22 +130,40 @@ function DoctorsPage() {
     return <DoctorDetailPage />
   }
 
+  const getInitialDoctorParam = (key) => {
+    const fromUrl = searchParams.get(key)
+    if (fromUrl !== null && fromUrl !== undefined && fromUrl !== '') return fromUrl
+    if (!districtParam && !upazilaParam) {
+      try {
+        const saved = sessionStorage.getItem('doctors_filter_query')
+        if (saved) {
+          const sp = new URLSearchParams(saved)
+          return sp.get(key) || ''
+        }
+      } catch {}
+    }
+    return ''
+  }
+
   const {
     divisions, districts, upazilas, unions,
     selectedDivision, selectedDistrict, selectedUpazila, selectedUnion,
     setSelectedDivision, setSelectedDistrict, setSelectedUpazila, setSelectedUnion,
     setAllLocations,
   } = useLocations({
-    division_id: searchParams.get('division_id') || '',
-    district_id: searchParams.get('district_id') || '',
-    upazila_id: searchParams.get('upazila_id') || '',
-    union_id: searchParams.get('union_id') || ''
+    division_id: getInitialDoctorParam('division_id'),
+    district_id: getInitialDoctorParam('district_id'),
+    upazila_id: getInitialDoctorParam('upazila_id'),
+    union_id: getInitialDoctorParam('union_id')
   })
 
   const { specialties } = useSpecialties()
 
-  const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty_id') || '')
-  const [selectedHospital, setSelectedHospital]   = useState((searchParams.get('hospital_id') && searchParams.get('hospital_id') !== 'undefined') ? searchParams.get('hospital_id') : '')
+  const [selectedSpecialty, setSelectedSpecialty] = useState(() => getInitialDoctorParam('specialty_id'))
+  const [selectedHospital, setSelectedHospital]   = useState(() => {
+    const h = getInitialDoctorParam('hospital_id')
+    return (h && h !== 'undefined') ? h : ''
+  })
 
   const { hospitals } = useHospitals({ per_page: 200 })
   const [hospitalSearch, setHospitalSearch] = useState('')
@@ -191,15 +213,21 @@ function DoctorsPage() {
     staleTime: 10 * 60 * 1000,
   })
 
-  const [selectedFee, setSelectedFee]             = useState(searchParams.get('fee_range') || '')
-  const [selectedExp, setSelectedExp]             = useState(searchParams.get('exp_range') || '')
-  const [selectedDate, setSelectedDate]           = useState(searchParams.get('date') || '')
-  const [searchText, setSearchText]               = useState(searchParams.get('search') || '')
-  const [appliedSearch, setAppliedSearch]         = useState(searchParams.get('search') || '')
+  const [selectedFee, setSelectedFee]             = useState(() => getInitialDoctorParam('fee_range'))
+  const [selectedExp, setSelectedExp]             = useState(() => getInitialDoctorParam('exp_range'))
+  const [selectedDate, setSelectedDate]           = useState(() => getInitialDoctorParam('date'))
+  const [searchText, setSearchText]               = useState(() => getInitialDoctorParam('search'))
+  const [appliedSearch, setAppliedSearch]         = useState(() => getInitialDoctorParam('search'))
   const [isSearching, setIsSearching]             = useState(false)
   const debouncedSearchText                       = useDebounce(searchText, 350)
-  const [availableToday, setAvailableToday]       = useState(() => searchParams.get('available_today') === '1' || searchParams.get('available_today') === 'true')
-  const [telemedicineOnly, setTelemedicineOnly]   = useState(() => searchParams.get('telemedicine') === '1' || searchParams.get('available_telemedicine') === 'yes')
+  const [availableToday, setAvailableToday]       = useState(() => {
+    const at = getInitialDoctorParam('available_today')
+    return at === '1' || at === 'true'
+  })
+  const [telemedicineOnly, setTelemedicineOnly]   = useState(() => {
+    const tm = getInitialDoctorParam('telemedicine')
+    return tm === '1' || tm === 'true' || getInitialDoctorParam('available_telemedicine') === 'yes'
+  })
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
@@ -261,7 +289,7 @@ function DoctorsPage() {
     }
   }
 
-  const [sortBy, setSortBy]   = useState(searchParams.get('sort') || 'relevance')
+  const [sortBy, setSortBy]   = useState(() => getInitialDoctorParam('sort') || 'relevance')
 
   const {
     location: userLocation,
@@ -273,10 +301,10 @@ function DoctorsPage() {
   } = useUserLocation()
 
   const [isNearMeActive, setIsNearMeActive] = useState(() => {
-    return searchParams.get('near_me') === '1' || searchParams.get('sort') === 'nearest'
+    return getInitialDoctorParam('near_me') === '1' || getInitialDoctorParam('sort') === 'nearest'
   })
   const [locationInlineError, setLocationInlineError] = useState(false)
-  const [distanceRadius, setDistanceRadius] = useState(searchParams.get('radius') || '')
+  const [distanceRadius, setDistanceRadius] = useState(() => getInitialDoctorParam('radius') || '')
 
   const [viewMode, setViewModeState] = useState(() => {
     try {
@@ -537,12 +565,33 @@ function DoctorsPage() {
   // Flag to avoid loop when syncing internal state FROM external URL navigation
   const isSyncingFromUrlRef = useRef(false)
 
+  // On mount, restore saved filters from sessionStorage if visiting bare /doctors
+  useEffect(() => {
+    if (!searchParams.toString() && !districtParam && !upazilaParam) {
+      const savedQuery = sessionStorage.getItem('doctors_filter_query')
+      if (savedQuery) {
+        prevParamsRef.current = savedQuery
+        setSearchParams(new URLSearchParams(savedQuery), { replace: true })
+      }
+    }
+  }, [])
+
   // Sync state when URL params change from external navigation (e.g. Browser Back / Forward)
   useEffect(() => {
     const currentStr = searchParams.toString()
     if (prevParamsRef.current === currentStr) return
     prevParamsRef.current = currentStr
     isSyncingFromUrlRef.current = true
+
+    // If navigated to bare /doctors (e.g. via Navbar menu click), restore saved session filters
+    if (!currentStr && !districtParam && !upazilaParam) {
+      const savedQuery = sessionStorage.getItem('doctors_filter_query')
+      if (savedQuery) {
+        prevParamsRef.current = savedQuery
+        setSearchParams(new URLSearchParams(savedQuery), { replace: true })
+        return
+      }
+    }
 
     const divId   = searchParams.get('division_id') || ''
     const distId  = searchParams.get('district_id') || ''
@@ -563,6 +612,7 @@ function DoctorsPage() {
 
     setAllLocations({ division_id: divId, district_id: distId, upazila_id: upaId, union_id: uniId })
     setSearchText(qSearch)
+    setAppliedSearch(qSearch)
     if (specId) {
       setSelectedSpecialty(specId)
     } else if (rawDept && specialties?.length > 0) {
@@ -628,6 +678,11 @@ function DoctorsPage() {
 
     const currentStr = searchParams.toString()
     const nextStr = next.toString()
+    if (nextStr) {
+      sessionStorage.setItem('doctors_filter_query', nextStr)
+    } else {
+      sessionStorage.removeItem('doctors_filter_query')
+    }
     if (currentStr !== nextStr) {
       prevParamsRef.current = nextStr
       setSearchParams(next, { replace: true })
@@ -758,8 +813,25 @@ function DoctorsPage() {
   const handleClearSearch = () => {
     setSearchText('')
     setAppliedSearch('')
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
     window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     updateUrlParams({ search: '' })
+  }
+
+  const handleSelectSearchAll = (q) => {
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
+    setSearchText(q)
+    setAppliedSearch(q)
+    setIsSearching(true)
+    updateUrlParams({ search: q })
+    window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: q }))
+    window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: true }))
+    setTimeout(() => {
+      setIsSearching(false)
+      window.dispatchEvent(new CustomEvent('listing-search-loading', { detail: false }))
+    }, 600)
   }
 
   // Voice search handler
@@ -926,6 +998,7 @@ function DoctorsPage() {
   const activeCount = activeFilters.length
 
   const handleClearAllFilters = () => {
+    sessionStorage.removeItem('doctors_filter_query')
     setSelectedDivision('')
     setSelectedDistrict('')
     setSelectedUpazila('')
@@ -952,6 +1025,8 @@ function DoctorsPage() {
 
   const handleSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    setIsDesktopTypeaheadOpen(false)
+    setIsMobileTypeaheadOpen(false)
     setIsSearching(true)
     const q = searchText.trim()
     setAppliedSearch(q)
@@ -965,6 +1040,21 @@ function DoctorsPage() {
   }
 
   // Real-time bidirectional search sync with sticky navbar
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('listing-typeahead-active', { detail: isDesktopTypeaheadOpen }))
+  }, [isDesktopTypeaheadOpen])
+
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop
+      if (scrollY > 50) {
+        setIsDesktopTypeaheadOpen(false)
+      }
+    }
+    window.addEventListener('scroll', handleWindowScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleWindowScroll)
+  }, [])
+
   useEffect(() => {
     const handleSyncFromNav = (e) => {
       if (typeof e.detail === 'string') {
@@ -1260,14 +1350,8 @@ function DoctorsPage() {
         .doc-main-container {
           padding: 20px 24px;
         }
-        .doc-breadcrumb {
-          font-size: 13px;
-          color: #64748B;
-          font-weight: 500;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
+        .doc-heading-row {
+          margin-bottom: 16px;
         }
         .doc-page-heading {
           font-size: 28px;
@@ -1297,44 +1381,31 @@ function DoctorsPage() {
         }
         .doc-results-bar {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           margin-bottom: 16px;
           flex-wrap: wrap;
           gap: 10px;
         }
-        .doc-active-filters-bar {
-          background: rgba(248, 250, 252, 0.95);
-          border-bottom: none;
-          padding: 8px 24px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
 
         @media (max-width: 991px) {
-          .doc-active-filters-bar {
-            padding: 2px 16px 8px 16px !important;
-          }
           .doc-main-container {
             padding: 8px 16px 20px !important;
           }
-          .doc-breadcrumb {
-            margin-bottom: 4px !important;
-            font-size: 12px !important;
+          .doc-heading-row {
+            margin-bottom: 8px !important;
           }
           .doc-page-heading {
             font-size: 20px !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 0 !important;
           }
           .doc-chips-wrapper {
             display: block !important;
             margin-bottom: 8px !important;
           }
           .doc-chips-scroll {
-            padding-top: 2px !important;
-            padding-bottom: 4px !important;
+            padding-top: 1px !important;
+            padding-bottom: 2px !important;
           }
           .doc-results-bar {
             margin-bottom: 10px !important;
@@ -1454,9 +1525,7 @@ function DoctorsPage() {
         }
         @media (max-width: 767px) {
           .doc-results-bar {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 8px !important;
+            margin-bottom: 8px !important;
           }
           .doc-results-controls {
             width: 100% !important;
@@ -1581,45 +1650,60 @@ function DoctorsPage() {
       {/* ── MOBILE STICKY SEARCH & FILTER BAR (<992px) ── */}
       <div className="doc-mobile-search-bar" style={{
         position: 'sticky',
-        top: 'calc(var(--header-height, 68px) - 1px)',
+        top: 'var(--header-height, 0px)',
         zIndex: 1040,
-        background: 'rgba(248, 250, 252, 0.95)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        borderBottom: 'none',
-        padding: '10px 16px 6px'
+        background: 'rgba(248, 250, 252, 0.96)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '10px 16px 8px',
+        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <form onSubmit={handleSearchSubmit} style={{ flex: 1, margin: 0 }}>
-            <div className="doc-mobile-search-pill">
-              <IconSearch size={20} className="doc-mobile-search-icon" />
-              <input
-                type="text"
-                placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."
-                value={searchText}
-                onChange={e => handleSearchChange(e.target.value)}
-                className="doc-mobile-search-input"
-              />
-              {searchText && (
+          <div style={{ position: 'relative', flex: 1, margin: 0 }}>
+            <form onSubmit={handleSearchSubmit} style={{ margin: 0 }}>
+              <div className="doc-mobile-search-pill">
+                <IconSearch size={20} className="doc-mobile-search-icon" />
+                <input
+                  type="text"
+                  placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."
+                  value={searchText}
+                  onChange={e => {
+                    handleSearchChange(e.target.value)
+                    setIsMobileTypeaheadOpen(true)
+                  }}
+                  onFocus={() => setIsMobileTypeaheadOpen(true)}
+                  className="doc-mobile-search-input"
+                />
+                {searchText && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="doc-mobile-clear-btn"
+                    title="মুছুন"
+                  >
+                    <IconX size={17} />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleClearSearch}
-                  className="doc-mobile-clear-btn"
-                  title="মুছুন"
+                  onClick={handleVoiceSearch}
+                  className="doc-mobile-mic-btn"
+                  title="ভয়েস সার্চ"
                 >
-                  <IconX size={17} />
+                  <IconMicrophone size={19} />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={handleVoiceSearch}
-                className="doc-mobile-mic-btn"
-                title="ভয়েস সার্চ"
-              >
-                <IconMicrophone size={19} />
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
+
+            <SearchTypeaheadDropdown
+              query={searchText}
+              isOpen={isMobileTypeaheadOpen}
+              onClose={() => setIsMobileTypeaheadOpen(false)}
+              onSelectSearchAll={handleSelectSearchAll}
+              type="doctor"
+            />
+          </div>
 
           {/* Filter Icon Button (Matching Image 1 design) */}
           <button
@@ -1638,68 +1722,19 @@ function DoctorsPage() {
         </div>
       </div>
 
-      {/* ── TOP NAV BAR WITH ACTIVE FILTER PILLS ── */}
-      {activeCount > 0 && (
-        <div className="doc-active-filters-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {activeFilters.map(f => (
-              <span
-                key={f.key}
-                onClick={f.clear}
-                style={{
-                  background: '#00B875',
-                  color: 'white',
-                  border: '1px solid #00B875',
-                  borderRadius: 20,
-                  padding: '4px 12px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  boxShadow: '0 1px 3px rgba(0, 184, 117, 0.25)'
-                }}
-              >
-                {f.label}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); f.clear() }}
-                  style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex' }}
-                >
-                  <IconX size={13} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            Clear All ✕
-          </button>
-        </div>
-      )}
-
       <Container fluid className="doc-main-container" style={{ maxWidth: 1380 }}>
         
-        {/* ── HEADER BLOCK (Breadcrumb, Heading, Desktop Search, Chips, Results Bar) ── */}
+        {/* ── HEADER BLOCK (Heading, Desktop Search, Chips, Results Bar) ── */}
         <div ref={headerBlockRef} className="doc-header-block">
-          {/* ── BREADCRUMB ── */}
-          <div className="doc-breadcrumb">
-            <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-            <span>/</span>
-            <span style={{ color: '#0F172A', fontWeight: 600 }}>Doctor Listings</span>
-          </div>
-
           {/* ── HEADING TITLE + INLINE AVAILABILITY DATE FILTER BAR (DESKTOP) ── */}
-          <div style={{
+          <div className="doc-heading-row" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 16,
-            flexWrap: 'wrap',
-            marginBottom: 16
+            flexWrap: 'wrap'
           }}>
-            <h1 className="doc-page-heading" style={{ margin: 0 }}>
+            <h1 className="doc-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {locationHeadingText ? (
                 <>
                   <span style={{ textTransform: 'capitalize' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>ডাক্তার তালিকা</span>
@@ -1707,6 +1742,31 @@ function DoctorsPage() {
               ) : (
                 <span style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>সকল ডাক্তার তালিকা</span>
               )}
+              <span style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 20,
+                background: '#E8F8F0',
+                color: '#00803D',
+                border: '1px solid #A7F3D0',
+                fontFamily: "'Hind Siliguri', sans-serif",
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                verticalAlign: 'middle',
+                letterSpacing: '0.01em',
+                lineHeight: '1.4'
+              }}>
+                {(loading && sortedDoctors.length === 0) ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                    <span style={{ fontSize: 11 }}>লোড হচ্ছে...</span>
+                  </>
+                ) : (
+                  `${toBengaliNumber(sortedDoctors.length)} জন ডাক্তার`
+                )}
+              </span>
             </h1>
 
             <div className="d-none d-lg-block">
@@ -1719,54 +1779,68 @@ function DoctorsPage() {
           </div>
 
           {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
-          <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
-            background: 'white',
-            borderRadius: 8,
-            border: '1px solid #CBD5E1',
-            padding: '4px 6px 4px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-            marginBottom: 20
-          }}>
-            <IconSearch size={18} color="#94A3B8" />
-            <input
-              type="text"
-              placeholder="Search by doctor name, specialty, hospital, area..."
-              value={searchText}
-              onChange={e => handleSearchChange(e.target.value)}
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                fontSize: 14,
-                color: '#0F172A',
-                fontWeight: 500,
-                background: 'transparent',
-                padding: '10px 0'
-              }}
-            />
-            {searchText && (
-              <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
-                <IconX size={16} />
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={loading || isSearching}
-              className="doc-desktop-search-btn"
-            >
-              {(loading || isSearching) ? (
-                <>
-                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                  <span>Searching...</span>
-                </>
-              ) : (
-                <span>Search</span>
+          <div style={{ position: 'relative', marginBottom: 20 }}>
+            <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
+              background: 'white',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              padding: '4px 6px 4px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              marginBottom: 0
+            }}>
+              <IconSearch size={18} color="#94A3B8" />
+              <input
+                type="text"
+                placeholder="Search by doctor name, specialty, hospital, area..."
+                value={searchText}
+                onChange={e => {
+                  handleSearchChange(e.target.value)
+                  setIsDesktopTypeaheadOpen(true)
+                }}
+                onFocus={() => setIsDesktopTypeaheadOpen(true)}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 14,
+                  color: '#0F172A',
+                  fontWeight: 500,
+                  background: 'transparent',
+                  padding: '10px 0'
+                }}
+              />
+              {searchText && (
+                <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+                  <IconX size={16} />
+                </button>
               )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={isSearching}
+                className="doc-desktop-search-btn"
+              >
+                {isSearching ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <span>Search</span>
+                )}
+              </button>
+            </form>
+
+            <SearchTypeaheadDropdown
+              query={searchText}
+              isOpen={isDesktopTypeaheadOpen}
+              onClose={() => setIsDesktopTypeaheadOpen(false)}
+              onSelectSearchAll={handleSelectSearchAll}
+              type="doctor"
+            />
+          </div>
 
         {/* ── POPULAR DEPARTMENTS CHIP STRIP (DYNAMIC WITH DESKTOP SCROLL & ARROWS) ── */}
         <div className="doc-chips-wrapper">
@@ -1853,8 +1927,8 @@ function DoctorsPage() {
                     color: isSelected ? 'white' : '#334155',
                     border: isSelected ? '1px solid #00B875' : '1px solid #CBD5E1',
                     borderRadius: 20,
-                    padding: '6px 14px',
-                    fontSize: 12.5,
+                    padding: '5px 12px',
+                    fontSize: 12,
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
@@ -1917,19 +1991,6 @@ function DoctorsPage() {
 
         {/* ── RESULTS SUMMARY BAR & SORT ── */}
         <div className="doc-results-bar">
-          <div style={{ color: '#64748B', fontSize: 13.5, fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
-            {loading ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00B875', fontWeight: 700 }}>
-                <span className="spinner-border spinner-border-sm" role="status" style={{ width: 13, height: 13, borderWidth: 2 }} />
-                ডাক্তার খোঁজা হচ্ছে...
-              </span>
-            ) : (
-              <>
-                <strong style={{ color: '#0F172A', fontSize: 14 }}>{toBengaliNumber(sortedDoctors.length)}</strong> জন ডাক্তার
-              </>
-            )}
-          </div>
-
           <div className="doc-results-controls" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2013,9 +2074,30 @@ function DoctorsPage() {
             }}>
               {/* Filter Sidebar Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <IconAdjustmentsHorizontal size={18} color="#0F172A" />
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Filters</h3>
+                  {activeCount > 0 && total !== undefined && total !== null && (
+                    <span style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 20,
+                      background: '#E8F8F2',
+                      color: '#009E64',
+                      border: '1px solid #A7F3D0',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      lineHeight: 1.4
+                    }}>
+                      {loading ? (
+                        <span className="spinner-border spinner-border-sm" role="status" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                      ) : (
+                        `${toBengaliNumber(total)} জন পাওয়া গেছে`
+                      )}
+                    </span>
+                  )}
                 </div>
               </div>
 

@@ -42,7 +42,7 @@ export default function HospitalDetailPage() {
     }
   }
 
-  if (loading) return (
+  if (loading && !hospital) return (
     <div className="admin-container" style={{ maxWidth: 1000, margin: '20px auto', padding: '0 16px' }}>
       <DetailSkeleton />
     </div>

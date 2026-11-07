@@ -2,7 +2,7 @@
 // Inspired by Google Cloud Console & Stripe Dashboard Architecture: High-Density, Zero-Clutter, Action-Oriented
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../context/SubscriptionContext'
@@ -273,18 +273,55 @@ export default function DashboardPage() {
   const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports'
   const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
+  // Smart User-Scoped Session Key for Instant 0ms Load
+  const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const actorId = useMemo(() => {
+    if (user?.id || user?.public_id) return user.id || user.public_id
+    try {
+      const saved = localStorage.getItem('user')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed?.id || parsed?.public_id || 'guest'
+      }
+    } catch {}
+    return 'guest'
+  }, [user])
+  const sessionCacheKey = `db_kpi_snapshot_${actorId}_${todayDateStr}`
+
   const { data: stats = null, isLoading: loading, isFetching: statsFetching, refetch: refetchStats } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
     queryFn: async () => {
       try {
         const res = await getDashboardStats()
-        return res.data?.data || null
+        const fetchedData = res.data?.data || null
+        if (fetchedData && typeof window !== 'undefined') {
+          try {
+            // Persist lightweight snapshot for instant 0ms reload (omit deep activity lists)
+            const snapshot = { ...fetchedData }
+            delete snapshot.recent_activities
+            sessionStorage.setItem(sessionCacheKey, JSON.stringify(snapshot))
+          } catch {}
+        }
+        return fetchedData
       } catch (err) {
         console.error('Stats fetch error:', err)
         return null
       }
     },
-    staleTime: 60 * 1000,
+    initialData: () => {
+      if (typeof window === 'undefined') return undefined
+      try {
+        const cached = sessionStorage.getItem(sessionCacheKey)
+        if (cached) {
+          return JSON.parse(cached)
+        }
+      } catch {}
+      return undefined
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 3 * 60 * 1000, // 3 minutes silent background auto-sync
+    refetchIntervalInBackground: false, // PAUSE when tab is hidden or browser minimized
   })
 
   const subInfo = useMemo(() => {
@@ -358,21 +395,44 @@ export default function DashboardPage() {
     }
   }, [stats?.subscription, subscriptionContext, isDoctor])
 
+  const analyticsCacheKey = `db_analytics_snapshot_${actorId}_${range}`
+
   const { data: analytics = null, isLoading: analyticsLoading, isFetching: analyticsFetching, refetch: refetchAnalytics } = useQuery({
     queryKey: queryKeys.dashboard.analytics({ range }),
     queryFn: async () => {
       try {
         const res = await getDashboardAnalytics({ range })
-        return res.data?.data || null
+        const data = res.data?.data || null
+        if (data && typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(analyticsCacheKey, JSON.stringify(data))
+          } catch {}
+        }
+        return data
       } catch (err) {
         console.error('Analytics fetch error:', err)
         return null
       }
     },
-    staleTime: 60 * 1000,
+    initialData: () => {
+      if (typeof window === 'undefined') return undefined
+      try {
+        const cached = sessionStorage.getItem(analyticsCacheKey)
+        if (cached) {
+          return JSON.parse(cached)
+        }
+      } catch {}
+      return undefined
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
-  const isRefreshing = isManualRefreshing || statsFetching || analyticsFetching
+  // Only show loading spinner on the button when manual refresh is clicked
+  const isRefreshing = isManualRefreshing
 
   const handleRefresh = async () => {
     if (isRefreshing) return
@@ -476,7 +536,7 @@ export default function DashboardPage() {
     return Math.round(((stats.completed_appointments || 0) / stats.total_appointments) * 100)
   }, [stats])
 
-  if (loading) {
+  if (loading && !stats) {
     return <DashboardSkeleton />
   }
 
@@ -497,15 +557,24 @@ export default function DashboardPage() {
               }}>
                 {isDoctor ? `Dr. ${user?.name} · Clinical Overview` : isManager ? 'Hospital Operations Portal' : 'Executive Overview'}
               </h1>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '3px 8px', borderRadius: 20,
-                background: 'rgba(0, 184, 117, 0.08)',
-                border: '1px solid rgba(0, 184, 117, 0.2)',
-                fontSize: 11, fontWeight: 700, color: '#00B875'
-              }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00B875' }} />
-                <span>Live System</span>
+              <div 
+                title={statsFetching ? 'সার্ভারের সাথে রিয়েল-টাইম ডেটা সিঙ্ক হচ্ছে...' : 'সিস্টেম সম্পূর্ণ লাইভ ও সংযুক্ত'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '3px 8px', borderRadius: 20,
+                  background: statsFetching ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 184, 117, 0.08)',
+                  border: `1px solid ${statsFetching ? 'rgba(59, 130, 246, 0.25)' : 'rgba(0, 184, 117, 0.2)'}`,
+                  fontSize: 11, fontWeight: 700, 
+                  color: statsFetching ? '#2563EB' : '#00B875',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span style={{ 
+                  width: 6, height: 6, borderRadius: '50%', 
+                  background: statsFetching ? '#2563EB' : '#00B875',
+                  animation: statsFetching ? 'dashPulse 1s infinite' : 'none'
+                }} />
+                <span>{statsFetching ? 'সিঙ্ক হচ্ছে...' : 'Live System'}</span>
               </div>
             </div>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
@@ -722,9 +791,10 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ height: 260, width: '100%' }}>
-            {analyticsLoading ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
-                লোড হচ্ছে ট্রেন্ড ডেটা...
+            {(analyticsLoading && !analytics) ? (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(0,184,117,0.15)', borderTopColor: '#00B875', animation: 'spin 0.8s linear infinite' }} />
+                <span>লোড হচ্ছে ট্রেন্ড ডেটা...</span>
               </div>
             ) : combinedTrendData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">

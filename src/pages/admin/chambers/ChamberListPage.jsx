@@ -705,7 +705,7 @@ export default function ChamberListPage() {
           </span>
         </div>
 
-        {loading ? (
+        {(loading && items.length === 0) ? (
           <TableSkeleton rowCount={8} columnWidths={['130px', '20%', '20%', '15%', '12%', '10%', '13%', '10%']} headers={['Chamber ID', 'Doctor', 'Hospital', 'Schedule', 'Fee', 'Status', 'Created At', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState

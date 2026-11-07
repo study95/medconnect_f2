@@ -5339,9 +5339,9 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             width: 100%;
             height: 38px;
             border-radius: 999px;
-            background: #00803D;
-            color: #FFFFFF;
-            border: none;
+            background: #FFFFFF;
+            color: #00B875;
+            border: 1.5px solid #00B875;
             font-size: 13px;
             font-weight: 700;
             font-family: 'Hind Siliguri', sans-serif;
@@ -5349,15 +5349,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 3px 10px rgba(0, 128, 61, 0.22);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0, 184, 117, 0.08);
+            transition: all 0.22s ease;
             margin-top: auto;
           }
 
+          .hero-mobile-today-book-btn:hover {
+            background: #00B875;
+            color: #FFFFFF !important;
+            border-color: #00B875;
+            box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          }
+
           .hero-mobile-today-book-btn:active {
-            transform: scale(0.96);
-            background: #006832;
-            box-shadow: 0 1px 4px rgba(0, 128, 61, 0.15);
+            transform: scale(0.97);
+            background: #009E64;
+            color: #FFFFFF !important;
+            border-color: #009E64;
           }
 
           /* Skeleton Loading for Today Doctors */

@@ -6,6 +6,7 @@ import MostViewedDoctors from '../components/home/MostViewedDoctors'
 import TodayDoctorsSection from '../components/home/TodayDoctorsSection'
 import TopSpecialtiesSlider from '../components/home/TopSpecialtiesSlider'
 import TopHospitals from '../components/home/TopHospitals'
+import RecentlyAddedSection from '../components/home/RecentlyAddedSection'
 import DoctorCard from '../components/common/DoctorCard'
 import HospitalCard from '../components/common/HospitalCard'
 import OptimizedImage from '../components/common/OptimizedImage'
@@ -911,45 +912,39 @@ function DigitalDashboardBanner() {
 
   const features = [
     {
-      icon: <IconCalendar size={18} stroke={2.2} />,
+      icon: <IconCalendar size={22} stroke={2.2} />,
       title: 'ডিজিটাল অ্যাপয়েন্টমেন্ট',
       subtitle: 'অনলাইন স্লট বুকিং ও পেশেন্ট হিস্ট্রি',
-      chips: ['অটো স্লট ক্যালেন্ডার', 'পেশেন্ট ডাটাবেজ'],
       link: '/services'
     },
     {
-      icon: <IconFileText size={18} stroke={2.2} />,
+      icon: <IconFileText size={22} stroke={2.2} />,
       title: 'স্মার্ট ই-প্রেসক্রিপশন',
       subtitle: '৫০,০০০+ ড্রাগ ডিরেক্টরি ও প্রেসক্রিপশন প্রিন্ট',
-      chips: ['১-ক্লিকে প্রেসক্রিপশন', 'ডিজিটাল প্যাড ও PDF'],
       link: '/services'
     },
     {
-      icon: <IconBell size={18} stroke={2.2} />,
+      icon: <IconBell size={22} stroke={2.2} />,
       title: 'স্বয়ংক্রিয় SMS রিমাইন্ডার',
       subtitle: 'রোগীর অনুপস্থিতি ও মিসড ভিজিট রোধের ব্যবস্থা',
-      chips: ['বুকিং নিশ্চিতকরণ SMS', 'শিডিউল অ্যালার্ট'],
       link: '/services'
     },
     {
-      icon: <IconActivity size={18} stroke={2.2} />,
+      icon: <IconActivity size={22} stroke={2.2} />,
       title: 'লাইভ কিউ স্মার্ট টিভি',
       subtitle: 'ওয়েটিং রুমে রিয়েল-টাইম সিরিয়াল ও নেক্সট কল',
-      chips: ['যেকোনো স্মার্ট টিভিতে চলে', 'নো-হার্ডওয়্যার সেটআপ'],
       link: '/services'
     },
     {
-      icon: <IconBuildingHospital size={18} stroke={2.2} />,
+      icon: <IconBuildingHospital size={22} stroke={2.2} />,
       title: 'ডক্টর ও চেম্বার পেজ',
       subtitle: 'গুগল ও সোশ্যাল মিডিয়া থেকে সরাসরি পেশেন্ট বুকিং',
-      chips: ['নিজস্ব প্রোফাইল লিঙ্ক', 'রেটিং ও রিভিউ'],
       link: '/services'
     },
     {
-      icon: <IconChartBar size={18} stroke={2.2} />,
+      icon: <IconChartBar size={22} stroke={2.2} />,
       title: 'দৈনিক আয়-ব্যয় রিপোর্ট',
       subtitle: 'রোগী দেখা ও কনসালটেন্সি ফি লাইভ হিসাব',
-      chips: ['ডেইলি কালেকশন সামারি', 'PDF / এক্সেল রিপোর্ট'],
       link: '/services'
     }
   ]
@@ -959,10 +954,6 @@ function DigitalDashboardBanner() {
       <Container>
         {/* Title Header */}
         <div className="dashboard-promo-header">
-          <div className="dashboard-promo-pill">
-            <span className="dashboard-promo-dot" />
-            <span>প্র্যাকটিস ম্যানেজমেন্ট</span>
-          </div>
           <h2 className="dashboard-promo-title">
             আপনার চেম্বার হোক <span style={{ color: '#059669' }}>সম্পূর্ণ ডিজিটাল</span>
           </h2>
@@ -972,8 +963,8 @@ function DigitalDashboardBanner() {
         </div>
 
         {/* Feature Cards Grid (1 col on mobile, 2 cols on tablet, 3 cols on desktop) */}
-        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <Row className="g-2 g-md-3 justify-content-center mb-2 mb-md-3">
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <Row className="g-3 g-md-4 justify-content-center mb-3 mb-md-4">
             {features.map((item, i) => (
               <Col key={i} xs={12} sm={6} lg={4}>
                 <div
@@ -983,28 +974,20 @@ function DigitalDashboardBanner() {
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') navigate(item.link || '/services') }}
                 >
-                  {/* Green Square Icon Badge */}
-                  <div className="dashboard-feature-icon-badge">
-                    {item.icon}
-                  </div>
-                  <div className="dashboard-feature-text-box">
-                    <div className="dashboard-feature-top-row">
-                      <h4 className="dashboard-feature-title">
-                        {item.title}
-                      </h4>
-                      <IconArrowUpRight size={14} className="dash-feat-arrow" />
+                  <div className="dash-feat-top-bar">
+                    <div className="dashboard-feature-icon-badge">
+                      {item.icon}
                     </div>
-                    <p className="dashboard-feature-sub">
-                      {item.subtitle}
-                    </p>
-                    <div className="dash-feat-chips">
-                      {item.chips.map((chip, ci) => (
-                        <span key={ci} className="dash-feat-chip">
-                          {chip}
-                        </span>
-                      ))}
+                    <div className="dash-feat-arrow-box">
+                      <IconArrowUpRight size={15} stroke={2.4} />
                     </div>
                   </div>
+                  <h4 className="dashboard-feature-title">
+                    {item.title}
+                  </h4>
+                  <p className="dashboard-feature-sub">
+                    {item.subtitle}
+                  </p>
                 </div>
               </Col>
             ))}
@@ -1055,8 +1038,8 @@ function DigitalDashboardBanner() {
 
       <style>{`
         .dashboard-promo-section {
-          background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #E6F4EA 100%);
-          padding: 38px 0 36px;
+          background: radial-gradient(100% 70% at 50% 0%, #ECFDF5 0%, #F6FAF7 50%, #FFFFFF 100%);
+          padding: 48px 0 52px;
           color: #0F172A;
           position: relative;
           overflow: hidden;
@@ -1064,35 +1047,11 @@ function DigitalDashboardBanner() {
 
         .dashboard-promo-header {
           text-align: center;
-          margin-bottom: 26px;
-        }
-
-        .dashboard-promo-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 3.5px 12px;
-          background: #DCFCE7;
-          border: 1px solid #BBF7D0;
-          color: #047857;
-          font-size: 12px;
-          font-weight: 700;
-          border-radius: 999px;
-          margin-bottom: 10px;
-          font-family: 'Hind Siliguri', sans-serif;
-        }
-
-        .dashboard-promo-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: #059669;
-          display: inline-block;
-          box-shadow: 0 0 6px #10B981;
+          margin-bottom: 32px;
         }
 
         .dashboard-promo-title {
-          font-size: clamp(21px, 3.4vw, 34px);
+          font-size: clamp(22px, 3.4vw, 34px);
           font-weight: 900;
           color: #0F172A;
           margin-bottom: 8px;
@@ -1102,8 +1061,8 @@ function DigitalDashboardBanner() {
         }
 
         .dashboard-promo-subtitle {
-          font-size: 14.5px;
-          color: #475569;
+          font-size: 15px;
+          color: #64748B;
           font-weight: 500;
           max-width: 580px;
           margin: 0 auto;
@@ -1114,107 +1073,98 @@ function DigitalDashboardBanner() {
         .dashboard-feature-card {
           background: #FFFFFF;
           border: 1px solid #E2E8F0;
-          border-radius: 12px;
-          padding: 13px 15px;
+          border-radius: 18px;
+          padding: 26px 24px;
           display: flex;
+          flex-direction: column;
           align-items: flex-start;
-          gap: 12px;
-          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          text-align: left;
+          transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
           height: 100%;
-          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(5, 150, 105, 0.03);
+          box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
           cursor: pointer;
           position: relative;
         }
 
         .dashboard-feature-card:hover {
           background: #FFFFFF !important;
-          border-color: #10B981 !important;
-          transform: translateY(-2.5px);
-          box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12) !important;
+          border-color: #059669 !important;
+          transform: translateY(-5px);
+          box-shadow: 0 16px 36px -6px rgba(5, 150, 105, 0.14), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
         }
 
-        .dashboard-feature-card:hover .dash-feat-arrow {
-          color: #059669;
-          transform: translate(2px, -2px);
+        .dash-feat-top-bar {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
         }
 
         .dashboard-feature-icon-badge {
-          width: 38px;
-          height: 38px;
-          background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          color: #FFFFFF;
-          border-radius: 9px;
+          width: 48px;
+          height: 48px;
+          background: #ECFDF5;
+          color: #059669;
+          border: 1px solid #A7F3D0;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          margin-top: 2px;
-          box-shadow: 0 3px 8px rgba(5, 150, 105, 0.2);
+          transition: all 0.25s ease;
         }
 
-        .dashboard-feature-text-box {
-          flex: 1;
-          min-width: 0;
+        .dashboard-feature-card:hover .dashboard-feature-icon-badge {
+          background: #059669;
+          color: #FFFFFF;
+          border-color: #059669;
+          transform: scale(1.06);
+          box-shadow: 0 6px 16px rgba(5, 150, 105, 0.28);
         }
 
-        .dashboard-feature-top-row {
+        .dash-feat-arrow-box {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          color: #94A3B8;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 6px;
-          margin-bottom: 2px;
+          justify-content: center;
+          transition: all 0.22s ease;
+        }
+
+        .dashboard-feature-card:hover .dash-feat-arrow-box {
+          background: #ECFDF5;
+          border-color: #A7F3D0;
+          color: #059669;
+          transform: translate(2px, -2px);
         }
 
         .dashboard-feature-title {
-          font-size: 14px;
+          font-size: 16.5px;
           font-weight: 800;
           color: #0F172A;
-          margin: 0;
+          margin: 0 0 6px 0;
           font-family: 'Hind Siliguri', sans-serif;
-          line-height: 1.3;
+          line-height: 1.35;
+          letter-spacing: -0.2px;
+          transition: color 0.2s ease;
         }
 
-        .dash-feat-arrow {
-          color: #94A3B8;
-          flex-shrink: 0;
-          transition: all 0.2s ease;
+        .dashboard-feature-card:hover .dashboard-feature-title {
+          color: #059669;
         }
 
         .dashboard-feature-sub {
-          font-size: 12px;
+          font-size: 13.5px;
           color: #64748B;
-          margin: 0 0 7px 0;
-          font-weight: 500;
+          margin: 0;
+          font-weight: 400;
           font-family: 'Hind Siliguri', sans-serif;
-          line-height: 1.35;
-        }
-
-        .dash-feat-chips {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 5px;
-        }
-
-        .dash-feat-chip {
-          display: inline-flex;
-          align-items: center;
-          background: #F8FAFC;
-          color: #334155;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 7px;
-          border-radius: 5px;
-          font-family: 'Hind Siliguri', sans-serif;
-          letter-spacing: -0.1px;
-          line-height: 1.25;
-          border: 1px solid #E2E8F0;
-          white-space: nowrap;
-        }
-
-        .dashboard-feature-card:hover .dash-feat-chip {
-          background: #F0FDF4;
-          border-color: #BBF7D0;
-          color: #065F46;
+          line-height: 1.55;
         }
 
         .dash-trust-strip {
@@ -1222,18 +1172,20 @@ function DigitalDashboardBanner() {
           align-items: center;
           justify-content: center;
           flex-wrap: wrap;
-          gap: 8px 16px;
-          margin: 18px auto 20px;
-          padding: 8px 18px;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(6px);
+          gap: 10px 18px;
+          margin: 26px auto 24px;
+          padding: 10px 22px;
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(8px);
           border: 1px dashed #A7F3D0;
           border-radius: 999px;
-          max-width: 780px;
-          font-size: 12.5px;
+          max-width: 800px;
+          font-size: 13px;
           color: #334155;
           font-weight: 600;
           font-family: 'Hind Siliguri', sans-serif;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.04);
+        }
         }
 
         .trust-item {
@@ -1300,68 +1252,69 @@ function DigitalDashboardBanner() {
 
         @media (max-width: 767px) {
           .dashboard-promo-section {
-            padding: 24px 0 24px !important;
+            padding: 28px 0 30px !important;
           }
 
           .dashboard-promo-header {
-            margin-bottom: 16px !important;
-          }
-
-          .dashboard-promo-pill {
-            font-size: 11px !important;
-            padding: 2.5px 10px !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 20px !important;
           }
 
           .dashboard-promo-title {
-            font-size: 19px !important;
+            font-size: 20px !important;
             line-height: 1.3 !important;
-            margin-bottom: 4px !important;
+            margin-bottom: 6px !important;
           }
 
           .dashboard-promo-subtitle {
-            font-size: 12px !important;
-            line-height: 1.4 !important;
+            font-size: 12.5px !important;
+            line-height: 1.45 !important;
             padding: 0 8px;
           }
 
           .dashboard-feature-card {
-            padding: 11px 13px !important;
-            gap: 10px !important;
-            border-radius: 10px !important;
+            padding: 18px 18px !important;
+            border-radius: 16px !important;
+            border: 1px solid #E2E8F0 !important;
+            box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04) !important;
+          }
+
+          .dash-feat-top-bar {
+            margin-bottom: 12px !important;
           }
 
           .dashboard-feature-icon-badge {
-            width: 34px !important;
-            height: 34px !important;
-            border-radius: 8px !important;
+            width: 42px !important;
+            height: 42px !important;
+            border-radius: 12px !important;
           }
 
           .dashboard-feature-icon-badge svg {
-            width: 17px !important;
-            height: 17px !important;
+            width: 20px !important;
+            height: 20px !important;
+          }
+
+          .dash-feat-arrow-box {
+            width: 28px !important;
+            height: 28px !important;
           }
 
           .dashboard-feature-title {
-            font-size: 13.5px !important;
-          }
-
-          .dashboard-feature-sub {
-            font-size: 11.5px !important;
+            font-size: 15.5px !important;
             margin-bottom: 5px !important;
           }
 
-          .dash-feat-chip {
-            font-size: 10.5px !important;
-            padding: 1.5px 6px !important;
+          .dashboard-feature-sub {
+            font-size: 12.5px !important;
+            line-height: 1.5 !important;
+            color: #64748B !important;
           }
 
           .dash-trust-strip {
-            border-radius: 12px !important;
-            padding: 8px 12px !important;
-            font-size: 11px !important;
-            gap: 6px 10px !important;
-            margin: 14px auto 16px !important;
+            border-radius: 14px !important;
+            padding: 10px 14px !important;
+            font-size: 11.5px !important;
+            gap: 6px 12px !important;
+            margin: 18px auto 18px !important;
           }
 
           .trust-divider {
@@ -1994,9 +1947,6 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           }}>
             আপনার এলাকায় <span style={{ color: '#059669' }}>ডাক্তার খুঁজুন</span>
           </h2>
-          <p style={{ fontSize: 'clamp(13px, 1.6vw, 14.5px)', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500, fontFamily: "'Hind Siliguri', sans-serif" }}>
-            বিভাগ বা জেলা নির্বাচন করে সহজেই সেবা নিন
-          </p>
         </div>
 
         {/* ── 4 Cards Grid: 3 Landmark Cards + 1 Green Feature Card ── */}
@@ -3864,41 +3814,6 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
   )
 }
 
-// ─── RECENTLY ADDED ENTITIES DISCOVERY SECTION ───────────────────────────────
-function RecentlyAddedSection({ doctors = [], hospitals = [] }) {
-  if ((!doctors || doctors.length === 0) && (!hospitals || hospitals.length === 0)) return null
-
-  return (
-    <section className="d-none d-md-block" style={{ padding: '32px 0 34px', background: '#FFFFFF' }}>
-      <Container>
-        <div className="d-flex align-items-center justify-content-between mb-4">
-          <div>
-            <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
-              নতুন সংযোজন
-            </span>
-            <h2 className="fw-bold mb-0 text-dark" style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: "'Hind Siliguri', sans-serif" }}>
-              সম্প্রতি যুক্ত বিশেষজ্ঞ ডাক্তার ও হাসপাতাল
-            </h2>
-          </div>
-          <Link to="/doctors" className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
-            সকল ডাক্তার <IconArrowRight size={16} />
-          </Link>
-        </div>
-
-        {doctors && doctors.length > 0 && (
-          <Row className="g-3">
-            {doctors.slice(0, 3).map(doc => (
-              <Col key={doc.id} xs={12} sm={6} md={4}>
-                <DoctorCard doctor={doc} />
-              </Col>
-            ))}
-          </Row>
-        )}
-      </Container>
-    </section>
-  )
-}
-
 // ─── HOMEPAGE FAQ SECTION (WITH SCHEMA SUPPORT) ─────────────────────────────
 function HomepageFaqSection() {
   const [openIndex, setOpenIndex] = useState(0)
@@ -3934,9 +3849,6 @@ function HomepageFaqSection() {
     <section className="homepage-faq-section" style={{ padding: '36px 0 32px', background: '#F8FAFC' }}>
       <Container style={{ maxWidth: 880 }}>
         <div className="text-center mb-4">
-          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.8rem', fontWeight: 700 }}>
-            প্রশ্নোত্তর
-          </span>
           <h2 className="fw-bold text-dark" style={{ fontSize: 'clamp(22px, 3.5vw, 30px)', fontFamily: "'Hind Siliguri', sans-serif", marginBottom: 6 }}>
             সাধারণ জিজ্ঞাসা ও উত্তর
           </h2>
@@ -4045,16 +3957,15 @@ function HomepageFaqSection() {
           })}
         </div>
 
-        {/* আরো জানুন (FAQ / Help Center) Realistic 3D Pill Button */}
-        <div className="faq-more-btn-wrap text-center mt-4">
+        {/* আরও জানুন / সহায়তা কেন্দ্র Clean Modern Pill Button */}
+        <div className="faq-more-btn-wrap text-center mt-4 pt-1">
           <Link
             to="/support"
             className="faq-more-btn"
           >
-            <IconHelp size={19} stroke={2.2} style={{ flexShrink: 0, opacity: 0.95 }} />
-            <span>আরো জানুন (সাহায্য কেন্দ্র FAQ)</span>
-            <span className="faq-btn-divider" />
-            <IconArrowRight size={17} stroke={2.5} style={{ flexShrink: 0 }} />
+            <IconHelp size={17} stroke={2.2} />
+            <span>সকল প্রশ্নোত্তর ও সহায়তা কেন্দ্র</span>
+            <IconArrowRight size={15} stroke={2.4} />
           </Link>
         </div>
       </Container>
@@ -4066,54 +3977,35 @@ function HomepageFaqSection() {
         }
 
         .faq-more-btn {
-          background: linear-gradient(180deg, #10B981 0%, #00B875 50%, #059669 100%);
-          border: 1px solid rgba(255, 255, 255, 0.35);
-          box-shadow: 
-            0 6px 20px rgba(0, 184, 117, 0.38),
-            0 2px 4px rgba(0, 0, 0, 0.08),
-            inset 0 1.5px 1px rgba(255, 255, 255, 0.5),
-            inset 0 -1.5px 2px rgba(0, 60, 35, 0.22);
-          color: #FFFFFF !important;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+          background: #FFFFFF;
+          color: #059669;
+          border: 1.5px solid #059669;
           border-radius: 9999px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 10px;
-          padding: 10px 24px;
-          font-size: 14.5px;
+          gap: 8px;
+          padding: 8px 24px;
+          font-size: 13.8px;
           font-weight: 700;
           font-family: 'Hind Siliguri', sans-serif;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
           text-decoration: none !important;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.08);
           cursor: pointer;
         }
 
         .faq-more-btn:hover {
-          background: linear-gradient(180deg, #34D399 0%, #00B875 50%, #047857 100%);
-          box-shadow: 
-            0 9px 26px rgba(0, 184, 117, 0.45),
-            0 3px 6px rgba(0, 0, 0, 0.1),
-            inset 0 1.5px 1px rgba(255, 255, 255, 0.6),
-            inset 0 -1.5px 2px rgba(0, 60, 35, 0.3);
-          transform: translateY(-2px);
+          background: #059669;
           color: #FFFFFF !important;
+          border-color: #059669;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(5, 150, 105, 0.22);
         }
 
         .faq-more-btn:active {
-          background: linear-gradient(180deg, #059669 0%, #00B875 70%, #047857 100%);
-          box-shadow: 
-            0 3px 10px rgba(0, 184, 117, 0.3),
-            inset 0 2px 4px rgba(0, 0, 0, 0.25);
-          transform: translateY(1px);
-        }
-
-        .faq-btn-divider {
-          width: 1px;
-          height: 16px;
-          background: rgba(255, 255, 255, 0.38);
-          margin: 0 2px;
-          display: inline-block;
+          transform: translateY(0);
+          box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
         }
 
         @media (max-width: 768px) {
@@ -4220,26 +4112,46 @@ function PatientTestimonialsSection() {
     <section style={{ background: '#FFFFFF', padding: '38px 0 36px' }}>
       <Container>
         {/* Section Title Header */}
-        <div className="testimonial-header-wrap" style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 32px' }}>
+        <div className="testimonial-header-wrap" style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 30px' }}>
           <h2 style={{
             fontSize: 'clamp(21px, 3.5vw, 32px)',
             fontWeight: 900,
             color: '#0F172A',
-            marginBottom: 8,
+            margin: 0,
             fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
           }}>
             {title}
           </h2>
-          <p style={{
-            fontSize: 'clamp(12.5px, 3.4vw, 14.5px)',
-            color: '#64748B',
-            margin: 0,
-            lineHeight: 1.4,
-            fontWeight: 500,
-            fontFamily: "'Hind Siliguri', sans-serif"
+          {/* Decorative Center Accent Divider */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            marginTop: 12
           }}>
-            {subtitle}
-          </p>
+            <span style={{
+              width: 46,
+              height: 2.5,
+              background: 'linear-gradient(90deg, transparent, #059669)',
+              borderRadius: 4
+            }} />
+            <span style={{
+              width: 9,
+              height: 9,
+              background: '#059669',
+              borderRadius: 2,
+              transform: 'rotate(45deg)',
+              boxShadow: '0 2px 6px rgba(5, 150, 105, 0.35)',
+              display: 'inline-block'
+            }} />
+            <span style={{
+              width: 46,
+              height: 2.5,
+              background: 'linear-gradient(90deg, #059669, transparent)',
+              borderRadius: 4
+            }} />
+          </div>
         </div>
 
         {/* Swiper Slider Wrapper */}
@@ -4403,7 +4315,7 @@ function DarkRegistrationSection() {
       badge: 'ডাক্তারদের জন্য',
       title: 'Doctor Registration',
       subTitle: 'ডাক্তার হিসেবে যোগ দিন',
-      desc: 'আপনার চেম্বার ও প্র্যাকটিস পরিচালনা করুন এবং রোগীদের সরাসরি ডিজিটাল সেবা দিন।',
+      desc: 'চেম্বার পরিচালনা ও ডিজিটাল সেবা প্রদান',
       features: [
         'মাল্টি-চেম্বার ও শিফট কন্ট্রোল',
         'চেম্বার স্মার্ট টিভি ডিসপ্লে বোর্ড',
@@ -4417,7 +4329,7 @@ function DarkRegistrationSection() {
       badge: 'হাসপাতালের জন্য',
       title: 'Hospital Registration',
       subTitle: 'হাসপাতাল পার্টনার হোন',
-      desc: 'আপনার হাসপাতালের তথ্য যুক্ত করুন এবং অনলাইন অ্যাপয়েন্টমেন্ট ও সার্ভিস ম্যানেজ করুন।',
+      desc: 'হাসপাতালের তথ্য ও সার্ভিস পরিচালনা',
       features: [
         'সেন্ট্রাল ওপিডি ও টোকেন কাউন্টার',
         'বিশেষজ্ঞ ডাক্তার প্যানেল ম্যানেজমেন্ট',
@@ -4431,7 +4343,7 @@ function DarkRegistrationSection() {
       badge: 'রোগীদের জন্য',
       title: 'Patient Registration',
       subTitle: 'পেশেন্ট হিসেবে যুক্ত হোন',
-      desc: 'বিশেষজ্ঞ ডাক্তার খুঁজুন এবং যেকোনো সময় সহজে অনলাইনে অ্যাপয়েন্টমেন্ট বুক করুন।',
+      desc: 'বিশেষজ্ঞ ডাক্তার ও দ্রুত সিরিয়াল বুকিং',
       features: [
         'যাচাইকৃত বিশেষজ্ঞ ডাক্তারের সন্ধান',
         'তাৎক্ষণিক ডিজিটাল সিরিয়াল বুকিং',
@@ -4466,9 +4378,6 @@ function DarkRegistrationSection() {
       <Container>
         {/* Header Title & Subtitle (Clean, Compact & Premium) */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <span className="badge rounded-pill px-3 py-1 mb-2" style={{ background: '#DCFCE7', color: '#15803D', fontSize: '0.78rem', fontWeight: 700 }}>
-            ক্যাটাগরি নির্বাচন ও বিস্তারিত গাইড
-          </span>
           <h2 style={{
             fontSize: 'clamp(20px, 3.2vw, 30px)',
             fontWeight: 900,
@@ -4479,15 +4388,16 @@ function DarkRegistrationSection() {
             আপনার প্রোফাইল <span style={{ color: '#059669' }}>বেছে নিন</span>
           </h2>
           <p style={{
-            fontSize: 14,
+            fontSize: 'clamp(12px, 3.2vw, 13.5px)',
             color: '#64748B',
             fontWeight: 500,
             maxWidth: 520,
             margin: '0 auto',
             fontFamily: "'Hind Siliguri', sans-serif",
-            lineHeight: 1.5
+            lineHeight: 1.4,
+            whiteSpace: 'nowrap'
           }}>
-            প্রতিটি ক্যাটাগরির বিস্তারিত সুবিধা ও ফিচার জেনে নিন অথবা সরাসরি যুক্ত হোন
+            সুবিধা ও ফিচার জেনে সরাসরি যুক্ত হোন
           </p>
         </div>
 
@@ -4507,24 +4417,6 @@ function DarkRegistrationSection() {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(item.infoLink) }}
                 title="বিস্তারিত ফিচার ও সুবিধা পড়তে ক্লিক করুন"
               >
-                {/* Top Header Row with Category Badge & Clickable Details Indicator */}
-                <div className="reg-card-top-bar">
-                  <span className="reg-role-badge">
-                    {item.badge}
-                  </span>
-                  <span
-                    className="reg-details-tag"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(item.infoLink)
-                    }}
-                    title="বিস্তারিত সুবিধা ও গাইড দেখুন"
-                  >
-                    <IconInfoCircle size={13} stroke={2.2} />
-                    <span>বিস্তারিত দেখুন ↗</span>
-                  </span>
-                </div>
-
                 {/* Icon Wrapper */}
                 <div className="reg-icon-wrap">
                   {item.icon}
@@ -4837,11 +4729,11 @@ function DarkRegistrationSection() {
         .reg-card-desc {
           font-size: 13.5px;
           color: #64748B;
-          line-height: 1.6;
-          margin: 0 0 20px 0;
+          line-height: 1.4;
+          margin: 0 0 18px 0;
           font-weight: 500;
           font-family: 'Hind Siliguri', sans-serif;
-          min-height: 44px;
+          white-space: nowrap;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -4944,10 +4836,11 @@ function DarkRegistrationSection() {
           }
 
           .reg-card-desc {
-            font-size: 12px !important;
+            font-size: clamp(11px, 3.2vw, 12px) !important;
             margin-bottom: 12px !important;
-            line-height: 1.45 !important;
-            min-height: 34px !important;
+            line-height: 1.35 !important;
+            min-height: auto !important;
+            white-space: nowrap !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -5162,8 +5055,8 @@ function DoctorBookingPromoBanner() {
       style={{
         width: '100%',
         margin: '0',
-        padding: '14px 0 28px',
-        background: 'transparent',
+        padding: '14px 0 24px',
+        background: '#FFFFFF',
         position: 'relative'
       }}
     >
@@ -5192,7 +5085,7 @@ function DoctorBookingPromoBanner() {
           padding: 30px 38px;
           overflow: hidden;
           border: 1px solid rgba(52, 211, 153, 0.28);
-          box-shadow: 0 22px 48px -12px rgba(2, 44, 34, 0.28), 0 4px 16px rgba(0, 0, 0, 0.06);
+          box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
         }
         .live-tracker-single-row {
           position: relative;
@@ -5601,7 +5494,7 @@ function HomePage() {
   }
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+    <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
       <SeoHead
         title="MedConnect — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি"
         description="বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য, চেম্বার সময়সূচি এবং সহজে অনলাইন সিরিয়াল ও অ্যাপয়েন্টমেন্ট বুকিং করুন।"
@@ -5627,6 +5520,14 @@ function HomePage() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>
+        <RecentlyAddedSection
+          doctors={data?.recent_doctors}
+          hospitals={data?.recent_hospitals}
+          loading={isLoading}
+        />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" distance={28} duration={600}>
         <BrowseByLocationSection
           popularDivisions={data?.popular_divisions}
           popularDistricts={data?.popular_districts}
@@ -5641,13 +5542,6 @@ function HomePage() {
 
       <ScrollReveal direction="up" distance={28} duration={600}>
         <TopHospitals hospitals={data?.top_hospitals} loading={isLoading} />
-      </ScrollReveal>
-
-      <ScrollReveal direction="up" distance={28} duration={600} className="d-none d-md-block">
-        <RecentlyAddedSection
-          doctors={data?.recent_doctors}
-          hospitals={data?.recent_hospitals}
-        />
       </ScrollReveal>
 
       <ScrollReveal direction="up" distance={28} duration={600}>

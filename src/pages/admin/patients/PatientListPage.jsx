@@ -653,7 +653,7 @@ export default function PatientListPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                {(loading && patients.length === 0) ? (
                   Array.from({ length: 8 }).map((_, rIdx) => (
                     <tr key={`patient-skeleton-${rIdx}`}>
                       {isAdmin && (

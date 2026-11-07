@@ -1,4 +1,4 @@
-import { memo, useState, useMemo } from 'react'
+import { memo, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   IconStarFilled, IconStethoscope, IconBuildingHospital, IconMapPin, IconHeart, IconShare, IconEye, IconCalendarEvent, IconCheck, IconBriefcase, IconNavigation, IconClock
@@ -9,6 +9,7 @@ import { getDoctorUrl, getBookingUrl } from '../../utils/identifierHelper'
 import { formatDistance, findNearestChamber, calculateDistance } from '../../utils/geoUtils'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
+import { prefetchDoctor } from '../../hooks/useDoctorDetail'
 
 import { DEFAULT_DOCTOR_AVATAR } from '../../utils/mediaUtils'
 
@@ -30,6 +31,27 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
   const [copied, setCopied] = useState(false)
   const { isDoctorFavorite, toggleFavoriteDoctor } = useFavorites()
   const isFavorite = isDoctorFavorite(doctor.id)
+
+  const prefetchTimerRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    // 70ms debounce: only triggers when user pauses over card intentionally, avoiding scroll spam
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+    prefetchTimerRef.current = setTimeout(() => {
+      prefetchDoctor(doctor)
+    }, 70)
+  }
+
+  const handleMouseLeave = () => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current)
+      prefetchTimerRef.current = null
+    }
+  }
+
+  const handleTouchStart = () => {
+    prefetchDoctor(doctor)
+  }
 
   const doctorPhoto = doctor?.photo || doctor?.photo_url || doctor?.image || doctor?.avatar || doctor?.profile_image
   const specialtyName = (() => {
@@ -283,7 +305,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
 
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
-    navigate(getDoctorUrl(doctor))
+    navigate(getDoctorUrl(doctor), { state: { initialDoctor: doctor } })
   }
 
   const handleBook = (e) => {
@@ -468,11 +490,14 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
           onMouseEnter={e => {
             e.currentTarget.style.borderColor = '#94A3B8'
             e.currentTarget.style.boxShadow = '0 6px 20px rgba(15, 23, 42, 0.08)'
+            handleMouseEnter()
           }}
           onMouseLeave={e => {
             e.currentTarget.style.borderColor = '#E2E8F0'
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+            handleMouseLeave()
           }}
+          onTouchStart={handleTouchStart}
         >
           {/* Featured Image Box */}
           <div className="doc-list-image-box" style={{
@@ -717,11 +742,14 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = '#00B875'
         e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 184, 117, 0.10)'
+        handleMouseEnter()
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = '#E5E7EB'
         e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.03)'
+        handleMouseLeave()
       }}
+      onTouchStart={handleTouchStart}
     >
       {/* Heart Wishlist Button */}
       <button

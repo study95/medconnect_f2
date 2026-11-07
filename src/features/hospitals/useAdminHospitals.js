@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateHospitals } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getHospitals,
   getMyHospitalProfile,
@@ -41,8 +42,13 @@ export function useMyHospitalProfile({ enabled = true } = {}) {
     queryKey: queryKeys.hospitals.me(),
     queryFn: async () => {
       const res = await getMyHospitalProfile()
-      return res.data?.data ?? null
+      const data = res.data?.data ?? null
+      if (data) {
+        saveSessionSnapshot('hospital_me', data)
+      }
+      return data
     },
+    initialData: () => getSessionSnapshot('hospital_me'),
     enabled,
   })
 
@@ -60,6 +66,8 @@ export function useMyHospitalProfile({ enabled = true } = {}) {
  * Hook to fetch admin hospital listings with true server-side pagination & caching
  */
 export function useAdminHospitals(filters = {}, { enabled = true } = {}) {
+  const isDefaultView = (!filters.search && !filters.division_id && !filters.district_id && !filters.upazila_id && !filters.union_id && !filters.hospital_id && (!filters.page || filters.page === 1))
+
   const query = useQuery({
     queryKey: queryKeys.hospitals.adminList(filters),
     queryFn: async () => {
@@ -73,10 +81,22 @@ export function useAdminHospitals(filters = {}, { enabled = true } = {}) {
         last_page: res.data?.last_page ?? res.data?.data?.last_page ?? 1,
         per_page: res.data?.per_page ?? res.data?.data?.per_page ?? params.per_page,
       }
-      return { items, meta }
+      const result = { items, meta }
+      if (isDefaultView && items.length > 0) {
+        saveSessionSnapshot('hospitals', result)
+      }
+      return result
+    },
+    initialData: () => {
+      if (isDefaultView) {
+        return getSessionSnapshot('hospitals')
+      }
+      return undefined
     },
     enabled,
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])

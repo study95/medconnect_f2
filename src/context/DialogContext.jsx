@@ -1,7 +1,10 @@
 import { createContext, useState, useCallback, useRef, useEffect } from 'react'
 import { DIALOG_BUTTONS, DIALOG_MESSAGES } from '../utils/dialogMessages'
 
-export const DialogContext = createContext(null)
+if (typeof window !== 'undefined' && !window.__DialogContext) {
+  window.__DialogContext = createContext(null)
+}
+export const DialogContext = typeof window !== 'undefined' ? window.__DialogContext : createContext(null)
 
 export function DialogProvider({ children }) {
   const [queue, setQueue] = useState([])

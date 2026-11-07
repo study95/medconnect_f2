@@ -47,7 +47,10 @@ function useInfiniteHospitals(filters = {}) {
       }
       return undefined // no more pages
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes — avoids redundant re-fetches
+    staleTime: 5 * 60 * 1000, // 5 minutes — avoids redundant re-fetches
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   const hospitals = data?.pages.flatMap((p) => p.hospitals) || []
@@ -56,7 +59,9 @@ function useInfiniteHospitals(filters = {}) {
   return {
     hospitals,
     total,
-    loading:      isLoading || (isFetching && !isFetchingNextPage),
+    // Instant Back Navigation: only trigger full loading skeleton if no cached items exist
+    loading:      (isLoading || (isFetching && !isFetchingNextPage)) && hospitals.length === 0,
+    isBackgroundFetching: isFetching && !isFetchingNextPage && hospitals.length > 0,
     fetchingNext: isFetchingNextPage,
     hasMore:      hasNextPage,
     fetchMore:    fetchNextPage,

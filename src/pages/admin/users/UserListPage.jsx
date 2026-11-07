@@ -636,7 +636,7 @@ export default function UserListPage() {
         </div>
         
         <div className="admin-card-body" style={{ padding: 0 }}>
-          {loading ? (
+          {(loading && users.length === 0) ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '120px', '22%', '18%', '16%', '14%', '10%']} headers={['', 'User & Avatar', 'Email & Phone', 'Role & Permissions', 'Location', 'Status', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(roleFilter || typeFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👥" title="No users found" description="Try changing your search parameters or reset active filters." />

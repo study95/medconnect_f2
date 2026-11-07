@@ -3,7 +3,10 @@ import { useAuth } from './AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useDialog } from '../hooks/useDialog'
 
-const FavoritesContext = createContext(null)
+if (typeof window !== 'undefined' && !window.__FavoritesContext) {
+  window.__FavoritesContext = createContext(null)
+}
+const FavoritesContext = typeof window !== 'undefined' ? window.__FavoritesContext : createContext(null)
 
 export function FavoritesProvider({ children }) {
   const { user, isLoggedIn } = useAuth()
@@ -183,10 +186,21 @@ export function FavoritesProvider({ children }) {
   )
 }
 
+const defaultFavorites = {
+  favoriteDoctors: [],
+  favoriteHospitals: [],
+  isDoctorFavorite: () => false,
+  isHospitalFavorite: () => false,
+  toggleFavoriteDoctor: () => {},
+  toggleFavoriteHospital: () => {},
+  removeFavoriteDoctor: () => {},
+  removeFavoriteHospital: () => {},
+}
+
 export function useFavorites() {
   const context = useContext(FavoritesContext)
   if (!context) {
-    throw new Error('useFavorites must be used within a FavoritesProvider')
+    return defaultFavorites
   }
   return context
 }

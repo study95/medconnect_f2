@@ -1370,7 +1370,7 @@ export default function MedicineListPage() {
             </div>
           </div>
         </div>
-        {loading ? (
+        {(loading && items.length === 0) ? (
           <TableSkeleton
             rowCount={8}
             columnWidths={['44px', '60px', '25%', '22%', '10%', '15%', '16%', '8%']}

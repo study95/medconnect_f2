@@ -440,7 +440,7 @@ export default function DoctorListPage() {
   }, [isDoctorOnly])
 
   if (isDoctorOnly) {
-    if (loading) return <DetailSkeleton />
+    if (loading && !myProfile) return <DetailSkeleton />
 
     if (!myProfile) {
       return (
@@ -1930,7 +1930,7 @@ export default function DoctorListPage() {
           </div>
         </div>
 
-        {loading ? (
+        {(loading && doctors.length === 0) ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '135px', '80px', '20%', '16%', '14%', '11%', '11%', '11%', '6%']} headers={['', 'ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Registered', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />

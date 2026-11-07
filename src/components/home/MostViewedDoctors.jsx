@@ -76,7 +76,7 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
   }
 
   return (
-    <section id="most-viewed-doctors-section" style={{ padding: '8px 0 22px', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
+    <section id="most-viewed-doctors-section" style={{ padding: '20px 0 28px', background: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
       {/* ── Mobile Layout (< 768px): Matching "আজ যেসব ডাক্তার বসবেন" Design ── */}
       <div className="most-viewed-mobile-wrapper">
         <div className="most-viewed-mobile-header">
@@ -193,25 +193,9 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
       {/* ── Desktop Layout (>= 768px): 3-Column Grid / Slider Showcase ── */}
       <div className="most-viewed-desktop-wrapper">
         <Container>
-          {/* Header with Badge, Title, View All & Navigation */}
+          {/* Header with Title, View All & Navigation */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#D1FAE5',
-                color: '#00B875',
-                fontSize: 12,
-                fontWeight: 800,
-                padding: '4px 14px',
-                borderRadius: 99,
-                boxShadow: '0 2px 6px rgba(0, 184, 117, 0.08)',
-                marginBottom: 6
-              }}>
-                <IconEye size={15} stroke={2.5} color="#00B875" />
-                <span>MOST POPULAR / সর্বাধিক পঠিত</span>
-              </div>
               <h2 style={{
                 fontSize: '1.4rem',
                 fontWeight: 800,
@@ -576,24 +560,33 @@ const MostViewedDoctors = memo(function MostViewedDoctors({
             width: 100%;
             height: 38px;
             border-radius: 999px;
-            background: #00803D;
-            color: #FFFFFF;
-            border: none;
+            background: #FFFFFF;
+            color: #00B875;
+            border: 1.5px solid #00B875;
             font-size: 13px;
             font-weight: 700;
             font-family: 'Hind Siliguri', sans-serif;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 128, 61, 0.2);
-            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 184, 117, 0.08);
+            transition: all 0.22s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-top: auto;
           }
 
+          .most-viewed-mobile-book-btn:hover {
+            background: #00B875;
+            color: #FFFFFF !important;
+            border-color: #00B875;
+            box-shadow: 0 4px 14px rgba(0, 184, 117, 0.25);
+          }
+
           .most-viewed-mobile-book-btn:active {
             transform: scale(0.97);
-            background: #006630;
+            background: #009E64;
+            color: #FFFFFF !important;
+            border-color: #009E64;
           }
         }
       `}</style>

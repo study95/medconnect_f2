@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateUsers } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getUsers,
   getUser,
@@ -31,6 +32,8 @@ import { getErrorMessage } from '../../utils/errorHelper'
  * Hook to fetch admin users list with server-side filters & caching
  */
 export function useAdminUsers(filters = {}) {
+  const isDefaultView = (!filters.search && !filters.role && !filters.status && (!filters.page || filters.page === 1))
+
   const query = useQuery({
     queryKey: queryKeys.users.adminList(filters),
     queryFn: async () => {
@@ -48,9 +51,21 @@ export function useAdminUsers(filters = {}) {
         last_page: res.data?.last_page ?? res.data?.data?.last_page ?? 1,
         per_page: res.data?.per_page ?? res.data?.data?.per_page ?? params.per_page,
       }
-      return { items, meta }
+      const result = { items, meta }
+      if (isDefaultView && items.length > 0) {
+        saveSessionSnapshot('users', result)
+      }
+      return result
+    },
+    initialData: () => {
+      if (isDefaultView) {
+        return getSessionSnapshot('users')
+      }
+      return undefined
     },
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   const items = query.data?.items || (Array.isArray(query.data) ? query.data : [])

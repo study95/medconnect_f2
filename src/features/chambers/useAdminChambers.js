@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateChambers } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
+import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getChambers,
   getChamber,
@@ -32,14 +33,28 @@ import { getErrorMessage } from '../../utils/errorHelper'
  * Hook to fetch admin chamber routines with server-side caching & filters
  */
 export function useAdminChambers(filters = {}) {
+  const isDefaultView = (!filters.search && !filters.doctor_id && !filters.hospital_id && !filters.status && (!filters.page || filters.page === 1))
+
   const query = useQuery({
     queryKey: queryKeys.chambers.adminList(filters),
     queryFn: async () => {
       const res = await getChambers(filters)
       const raw = res.data?.data?.data || res.data?.data || res.data || []
-      return Array.isArray(raw) ? raw : []
+      const items = Array.isArray(raw) ? raw : []
+      if (isDefaultView && items.length > 0) {
+        saveSessionSnapshot('chambers', items)
+      }
+      return items
+    },
+    initialData: () => {
+      if (isDefaultView) {
+        return getSessionSnapshot('chambers')
+      }
+      return undefined
     },
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   return {

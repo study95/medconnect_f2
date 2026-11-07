@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../../utils/mediaUtils'
 import { getHospitalUrl } from '../../utils/identifierHelper'
@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast'
 import OptimizedImage from './OptimizedImage'
 import { useFavorites } from '../../context/FavoritesContext'
 import { calculateDistance, formatDistance, getGoogleMapsDirectionsUrl, toBengaliNumerals } from '../../utils/geoUtils'
+import { prefetchHospital } from '../../hooks/useHospitalDetail'
 
 const DEMO_HOSPITAL = DEFAULT_HOSPITAL_IMAGE
 
@@ -191,6 +192,32 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleDetails = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation()
+    navigate(getHospitalUrl(hospital), { state: { initialHospital: hospital } })
+  }
+
+  const prefetchTimerRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    // 70ms debounce: only triggers when user pauses over card intentionally, avoiding scroll spam
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+    prefetchTimerRef.current = setTimeout(() => {
+      prefetchHospital(hospital)
+    }, 70)
+  }
+
+  const handleMouseLeave = () => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current)
+      prefetchTimerRef.current = null
+    }
+  }
+
+  const handleTouchStart = () => {
+    prefetchHospital(hospital)
+  }
+
   const locationText = [
     hospital.upazila?.name_bn || hospital.upazila?.name,
     hospital.district?.name_bn || hospital.district?.name || 'ঢাকা'
@@ -216,7 +243,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
   if (viewMode === 'map-compact') {
     return (
       <div
-        onClick={() => navigate(getHospitalUrl(hospital))}
+        onClick={handleDetails}
         style={{
           background: 'white',
           borderRadius: 8,
@@ -409,7 +436,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
           }
         `}</style>
         <div
-          onClick={() => navigate(getHospitalUrl(hospital))}
+          onClick={handleDetails}
           className="hosp-list-card"
           style={{
             background: 'white',
@@ -429,11 +456,14 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
           onMouseEnter={e => {
             e.currentTarget.style.borderColor = '#94A3B8'
             e.currentTarget.style.boxShadow = '0 6px 20px rgba(15, 23, 42, 0.08)'
+            handleMouseEnter()
           }}
           onMouseLeave={e => {
             e.currentTarget.style.borderColor = '#E2E8F0'
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+            handleMouseLeave()
           }}
+          onTouchStart={handleTouchStart}
         >
           {/* Featured Image Box with Interactive Slider */}
           <HospitalCardImageSlider hospital={hospital} width={250} height={180} />
@@ -598,7 +628,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
               <div className="hosp-card-actions">
                 <button
                   type="button"
-                  onClick={() => navigate(getHospitalUrl(hospital))}
+                  onClick={handleDetails}
                   className="hosp-btn-detail"
                 >
                   <IconEye size={16} />
@@ -623,7 +653,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
   /* ── 3. STANDARD GRID VIEW CARD ── */
   return (
     <div
-      onClick={() => navigate(getHospitalUrl(hospital))}
+      onClick={handleDetails}
       style={{
         background: 'white', borderRadius: 8, border: '1px solid #E2E8F0',
         padding: '16px', cursor: 'pointer', transition: '0.3s',
@@ -633,11 +663,14 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = '#00A88C'
         e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 168, 140, 0.08)'
+        handleMouseEnter()
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = '#E2E8F0'
         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+        handleMouseLeave()
       }}
+      onTouchStart={handleTouchStart}
     >
       {/* Favorite Heart Action Button */}
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -724,7 +757,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
 
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
         <button
-          onClick={() => navigate(getHospitalUrl(hospital))}
+          onClick={handleDetails}
           style={{
             flex: 1,
             height: 38,

@@ -799,7 +799,7 @@ export default function AppointmentListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
+                  {(loading && appointments.length === 0) ? (
                     Array.from({ length: 8 }).map((_, rIdx) => (
                       <tr key={`appt-skeleton-${rIdx}`}>
                         {isAdmin && (

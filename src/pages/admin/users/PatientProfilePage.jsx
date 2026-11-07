@@ -61,7 +61,7 @@ export default function PatientProfilePage() {
     }
   }
 
-  if (loading) return <DetailSkeleton />
+  if (loading && !patient) return <DetailSkeleton />
   
   if (!patient) {
     return (

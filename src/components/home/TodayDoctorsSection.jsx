@@ -35,7 +35,7 @@ export default function TodayDoctorsSection() {
   }
 
   return (
-    <section id="today-doctors-section" className="d-none d-lg-block" style={{ padding: '20px 0 12px', background: '#F8FAFC', position: 'relative' }}>
+    <section id="today-doctors-section" className="d-none d-lg-block" style={{ padding: '16px 0 46px', background: '#FFFFFF', position: 'relative' }}>
       <Container>
         {/* Section Header */}
         <div style={{
@@ -47,40 +47,16 @@ export default function TodayDoctorsSection() {
           gap: 12
         }}>
           <div>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: '#DCFCE7',
-              color: '#059669',
-              fontSize: 12,
-              fontWeight: 800,
-              padding: '4px 12px',
-              borderRadius: 99,
-              marginBottom: 8,
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-              <span>লাইভ শিডিউল • আজকের ডাক্তার</span>
-            </div>
             <h2 style={{
               fontSize: 22,
               fontWeight: 800,
               color: '#0F172A',
-              margin: '0 0 4px 0',
+              margin: 0,
               fontFamily: "'Hind Siliguri', sans-serif",
               letterSpacing: '-0.3px'
             }}>
               আজ যেসব ডাক্তার চেম্বারে বসছেন
             </h2>
-            <p style={{
-              fontSize: 13.5,
-              color: '#64748B',
-              margin: 0,
-              fontFamily: "'Hind Siliguri', sans-serif"
-            }}>
-              আজকের তারিখে যেসব বিশেষজ্ঞ চিকিৎসকের চেম্বার খোলা আছে সরাসরি সিরিয়াল নিন
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

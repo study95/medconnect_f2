@@ -51,11 +51,25 @@ if (!window.__AuthContext) {
 export const AuthContext = window.__AuthContext
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [userType, setUserType] = useState(null) // 'patient' | 'doctor' | null
+  // Synchronous session hydration for instant 0ms mount (eliminates blank spinner/guest mismatch on reload)
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('user')
+      return savedUser ? JSON.parse(savedUser) : null
+    } catch {
+      return null
+    }
+  })
+  const [loading, setLoading] = useState(() => {
+    const savedToken = localStorage.getItem('token')
+    const savedUser = localStorage.getItem('user')
+    return !(savedToken && savedUser)
+  })
+  const [userType, setUserType] = useState(() => {
+    return localStorage.getItem('userType') || null
+  })
 
-  // On app start: restore session from localStorage
+  // On app start: restore and verify session from localStorage
   useEffect(() => {
     const savedToken = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
@@ -72,6 +86,8 @@ export function AuthProvider({ children }) {
         } catch (e) {
           console.error("Auth init error:", e)
           purgeClientSessionState()
+          setUser(null)
+          setUserType(null)
           setLoading(false)
         }
       } else {
@@ -503,11 +519,24 @@ export function AuthProvider({ children }) {
   )
 }
 
+const defaultAuth = {
+  user: null,
+  isLoggedIn: false,
+  isAdmin: false,
+  isDoctor: false,
+  isManager: false,
+  loading: false,
+  getRoles: () => [],
+  hasRole: () => false,
+  hasPermission: () => false,
+  login: () => Promise.resolve(),
+  logout: () => {},
+}
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
-    console.error('AuthContext is null. Component tree mismatch detected.');
-    throw new Error('useAuth must be used inside AuthProvider')
+    return defaultAuth
   }
   return context
 }

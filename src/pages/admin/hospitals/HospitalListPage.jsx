@@ -375,7 +375,7 @@ export default function HospitalListPage() {
 
   // If the user is a hospital manager (not admin), show the dedicated executive profile dashboard directly
   if (isManagerOnly) {
-    if (loading) return <DetailSkeleton />
+    if (loading && !myHospital) return <DetailSkeleton />
 
     if (!myHospital) {
       return (
@@ -587,7 +587,7 @@ export default function HospitalListPage() {
           </div>
         </div>
 
-        {loading ? (
+        {(loading && hospitals.length === 0) ? (
           <TableSkeleton rowCount={8} columnWidths={['44px', '28%', '22%', '16%', '12%', '14%', '8%']} headers={['', 'Facility Name', 'Location Profile', 'Contact Details', 'Status', 'Registered', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />

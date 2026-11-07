@@ -492,7 +492,11 @@ export function FormSkeleton() {
 // ─── Dashboard Skeleton (Stripe / Google Cloud Executive Console) ───
 export function DashboardSkeleton() {
   return (
-    <div style={{ animation: 'fadeIn 0.2s ease-out', maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div
+      data-loading="true"
+      className="dashboard-skeleton loading-skeleton"
+      style={{ animation: 'fadeIn 0.2s ease-out', maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}
+    >
       <ShimmerStyle />
       {/* Top Header Placeholder */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--admin-border, #e2e8f0)' }}>
@@ -580,7 +584,11 @@ export function DashboardSkeleton() {
 // ─── Admin Content Skeleton (For Seamless Inner Route Transitions) ───
 export function AdminContentSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.15s ease-out' }}>
+    <div
+      data-loading="true"
+      className="admin-content-skeleton loading-skeleton"
+      style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.15s ease-out' }}
+    >
       <ShimmerStyle />
       {/* Header bar placeholder */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>

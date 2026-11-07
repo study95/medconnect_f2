@@ -56,6 +56,8 @@ export function useAdminDoctorLeaves(filters = {}) {
       }
     },
     placeholderData: keepPreviousData,
+    refetchInterval: 3 * 60 * 1000,
+    refetchIntervalInBackground: false,
   })
 
   const data = query.data || { leaves: [], totalEntries: 0, currentPage: 1 }

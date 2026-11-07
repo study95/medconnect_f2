@@ -43,7 +43,10 @@ function useInfiniteDoctors(filters = {}) {
       }
       return undefined // no more pages
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes – avoid redundant re-fetches
+    staleTime: 5 * 60 * 1000, // 5 minutes – avoid redundant re-fetches
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   // Flatten all pages into one doctors array
@@ -53,7 +56,9 @@ function useInfiniteDoctors(filters = {}) {
   return {
     doctors,
     total,
-    loading: isLoading || (isFetching && !isFetchingNextPage),
+    // Instant Back Navigation: only trigger full loading skeleton if no cached items exist
+    loading: (isLoading || (isFetching && !isFetchingNextPage)) && doctors.length === 0,
+    isBackgroundFetching: isFetching && !isFetchingNextPage && doctors.length > 0,
     fetchingNext: isFetchingNextPage,
     hasMore: hasNextPage,
     fetchMore: fetchNextPage,

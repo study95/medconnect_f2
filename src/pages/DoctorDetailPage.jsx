@@ -56,7 +56,8 @@ function DoctorDetailPageContent() {
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1)
     } else {
-      navigate('/doctors')
+      const savedQuery = sessionStorage.getItem('doctors_filter_query')
+      navigate(savedQuery ? `/doctors?${savedQuery}` : '/doctors')
     }
   }
   const { t, i18n } = useTranslation()
@@ -65,7 +66,7 @@ function DoctorDetailPageContent() {
 
   const { location: userLocation, loading: locationLoading, requestLocation, hasLocation } = useUserLocation()
 
-  const { doctor, chambers, groupedChambers: rawGroupedChambers, loading, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
+  const { doctor, chambers, groupedChambers: rawGroupedChambers, loading, isBackgroundFetching, error, refetch } = useDoctorDetail({ district, upazila, slug, id })
   const doctorIdentifier = doctor?.slug || slug || doctor?.public_id || doctor?.id || id
   const { relatedDoctors, totalCount: relatedTotalCount, loading: loadingRelated } = useDoctorRelated(doctorIdentifier)
   const [showAllRelated, setShowAllRelated] = useState(false)
@@ -287,7 +288,7 @@ function DoctorDetailPageContent() {
     return buildPhysicianSchema(doctor, doctor?.reviews || [])
   }, [doctor])
 
-  if (loading) return (
+  if (loading && !doctor) return (
     <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
        <Container className="py-5">
          <DoctorDetailSkeleton />
@@ -419,7 +420,10 @@ function DoctorDetailPageContent() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/')}>হোম</span>
             <IconChevronRight size={14} color={mutedTextColor} />
-            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/doctors')}>ডাক্তার নির্দেশিকা</span>
+            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => {
+              const savedQuery = sessionStorage.getItem('doctors_filter_query')
+              navigate(savedQuery ? `/doctors?${savedQuery}` : '/doctors')
+            }}>ডাক্তার নির্দেশিকা</span>
             <IconChevronRight size={14} color={mutedTextColor} />
             {doctor?.district?.name && (
               <>
@@ -1369,10 +1373,31 @@ function DoctorDetailPageContent() {
                         </div>
                       )})}
                       {groupedChambers.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '36px 20px', background: '#F8FAFC', borderRadius: 16, border: '1px dashed #CBD5E1', color: '#64748B' }}>
-                          <IconBuildingHospital size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>ডাক্তারের কোনো চেম্বার তথ্য পাওয়া যায়নি</p>
-                        </div>
+                        isBackgroundFetching ? (
+                          <div className="d-flex flex-column gap-3">
+                            {[1, 2].map((n) => (
+                              <div key={n} style={{ padding: '20px 22px', borderRadius: 16, background: '#FFFFFF', border: `1.5px solid ${cardBorderColor}` }}>
+                                <div className="d-flex gap-3 align-items-center mb-3">
+                                  <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F1F5F9' }} className="placeholder-glow">
+                                    <span className="placeholder w-100 h-100" style={{ borderRadius: 12 }} />
+                                  </div>
+                                  <div className="flex-grow-1 placeholder-glow">
+                                    <span className="placeholder col-6 mb-1" />
+                                    <span className="placeholder col-4 d-block" />
+                                  </div>
+                                </div>
+                                <div className="placeholder-glow">
+                                  <span className="placeholder col-12" style={{ height: 38, borderRadius: 8 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '36px 20px', background: '#F8FAFC', borderRadius: 16, border: '1px dashed #CBD5E1', color: '#64748B' }}>
+                            <IconBuildingHospital size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>ডাক্তারের কোনো চেম্বার তথ্য পাওয়া যায়নি</p>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

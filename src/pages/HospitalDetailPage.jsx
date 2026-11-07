@@ -51,7 +51,8 @@ function HospitalDetailPage() {
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1)
     } else {
-      navigate('/hospitals')
+      const savedQuery = sessionStorage.getItem('hospitals_filter_query')
+      navigate(savedQuery ? `/hospitals?${savedQuery}` : '/hospitals')
     }
   }
 
@@ -366,7 +367,7 @@ function HospitalDetailPage() {
     return buildHospitalSchema(hospital)
   }, [hospital])
 
-  if (loadingHeader) return (
+  if (loadingHeader && !hospital) return (
     <div className="page-wrapper" style={{ background: '#F8FAFB', minHeight: '100vh' }}>
        <Container className="py-5">
          <HospitalDetailSkeleton />
@@ -412,7 +413,10 @@ function HospitalDetailPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/')}>হোম</span>
             <IconChevronRight size={14} color={mutedColor} />
-            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => navigate('/hospitals')}>হাসপাতাল</span>
+            <span style={{ color: primaryGreen, cursor: 'pointer' }} onClick={() => {
+              const savedQuery = sessionStorage.getItem('hospitals_filter_query')
+              navigate(savedQuery ? `/hospitals?${savedQuery}` : '/hospitals')
+            }}>হাসপাতাল</span>
             <IconChevronRight size={14} color={mutedColor} />
             {hospital?.district?.name && (
               <>

@@ -12,6 +12,7 @@ import {
 import NotificationDropdown from './NotificationDropdown'
 import { getContent } from '../../utils/contentService'
 import { useTypewriter } from '../../hooks/useTypewriter'
+import SearchTypeaheadDropdown from '../common/SearchTypeaheadDropdown'
 
 const NAV_DOCTOR_SEARCH_PHRASES = [
   'ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...',
@@ -47,9 +48,9 @@ function AppNavbar() {
   }
   const isHospitalDetailPage = isDetailPath('/hospitals')
   const isDoctorDetailPage = isDetailPath('/doctors')
-  const isAppViewDetailPage = isHospitalDetailPage || isDoctorDetailPage
   const isDoctorsPage = location.pathname === '/doctors' || location.pathname.startsWith('/doctors/')
   const isHospitalsPage = location.pathname === '/hospitals' || location.pathname.startsWith('/hospitals/')
+  const isMobileHeaderHidden = isDoctorsPage || isHospitalsPage
   const isDoctorListing = isDoctorsPage && !isDoctorDetailPage
   const isHospitalListing = isHospitalsPage && !isHospitalDetailPage
   const isSearchableListing = isDoctorListing || isHospitalListing
@@ -57,6 +58,7 @@ function AppNavbar() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [navSearchText, setNavSearchText] = useState('')
   const [navSearching, setNavSearching] = useState(false)
+  const [isTypeaheadOpen, setIsTypeaheadOpen] = useState(false)
 
   useEffect(() => {
     const handleLoading = (e) => {
@@ -78,6 +80,24 @@ function AppNavbar() {
   }, [searchParams, isSearchableListing])
 
   // Synchronize search text in real time with the listing page's search input
+  const hadPageQueryRef = useRef(false)
+
+  useEffect(() => {
+    const handlePageOpen = (e) => {
+      hadPageQueryRef.current = Boolean(e.detail)
+    }
+    window.addEventListener('listing-typeahead-active', handlePageOpen)
+    return () => window.removeEventListener('listing-typeahead-active', handlePageOpen)
+  }, [])
+
+  useEffect(() => {
+    if (scrolled && hadPageQueryRef.current && navSearchText.trim().length >= 2) {
+      setIsTypeaheadOpen(true)
+    } else if (!scrolled) {
+      setIsTypeaheadOpen(false)
+    }
+  }, [scrolled, navSearchText])
+
   useEffect(() => {
     const handleSyncFromPage = (e) => {
       if (typeof e.detail === 'string') {
@@ -98,6 +118,7 @@ function AppNavbar() {
 
   const handleNavSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    setIsTypeaheadOpen(false)
     setNavSearching(true)
     const q = navSearchText.trim()
     const next = new URLSearchParams(searchParams)
@@ -113,11 +134,34 @@ function AppNavbar() {
 
   const handleNavClearSearch = () => {
     setNavSearchText('')
+    setIsTypeaheadOpen(false)
     window.dispatchEvent(new CustomEvent('sync-nav-search', { detail: '' }))
     window.dispatchEvent(new CustomEvent('submit-listing-search', { detail: '' }))
     const next = new URLSearchParams(searchParams)
     next.delete('search')
     setSearchParams(next)
+  }
+
+  const handleNavSelectSearchAll = (q, category) => {
+    setIsTypeaheadOpen(false)
+    if (category === 'hospital' && !isHospitalListing) {
+      navigate(`/hospitals?search=${encodeURIComponent(q)}`)
+    } else if (category === 'doctor' && !isDoctorListing) {
+      navigate(`/doctors?search=${encodeURIComponent(q)}`)
+    } else {
+      setNavSearchText(q)
+      setNavSearching(true)
+      const next = new URLSearchParams(searchParams)
+      if (q) {
+        next.set('search', q)
+      } else {
+        next.delete('search')
+      }
+      setSearchParams(next)
+      window.dispatchEvent(new CustomEvent('sync-nav-search', { detail: q }))
+      window.dispatchEvent(new CustomEvent('submit-listing-search', { detail: q }))
+      setTimeout(() => setNavSearching(false), 700)
+    }
   }
   const isAuthPage = location.pathname.startsWith('/login') ||
                      (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||
@@ -231,8 +275,8 @@ function AppNavbar() {
         }
         @media (max-width: 991px) {
           :root {
-            --header-height: ${isAppViewDetailPage ? '0px !important' : '68px !important'};
-            --sticky-top: 68px !important;
+            --header-height: ${isMobileHeaderHidden ? '0px !important' : '68px !important'};
+            --sticky-top: ${isMobileHeaderHidden ? '0px !important' : '68px !important'};
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;
@@ -529,7 +573,7 @@ function AppNavbar() {
         }
       `}</style>
 
-      <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isAppViewDetailPage ? 'd-none d-lg-block' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
+      <header className={`fixed-top ${isAuthPage ? 'd-lg-none' : ''} ${isMobileHeaderHidden ? 'd-none d-lg-block' : ''}`} style={{ zIndex: 1050, top: 0, position: 'fixed', left: 0, right: 0 }}>
         
         {/* DESKTOP TOP HEADER (DARK GREEN BAR) */}
         <div className={`db-topbar d-none d-lg-flex ${!topbarVisible ? 'topbar-hidden' : ''}`}>
@@ -663,66 +707,80 @@ function AppNavbar() {
 
             {/* Menu Items or Sticky Listing Search Bar */}
             {isSearchableListing && scrolled ? (
-              <form
-                onSubmit={handleNavSearchSubmit}
-                className="db-nav-search-bar"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: '#F8FAFC',
-                  border: '1.5px solid #00B875',
-                  borderRadius: 99,
-                  padding: '4px 8px 4px 14px',
-                  width: '100%',
-                  maxWidth: 480,
-                  margin: '0 auto',
-                  transition: 'all 0.25s ease',
-                  boxShadow: '0 2px 10px rgba(0, 184, 117, 0.12)'
-                }}
-              >
-                <Search size={17} color="#00B875" style={{ flexShrink: 0 }} />
-                <input
-                  type="text"
-                  value={navSearchText}
-                  onChange={e => handleNavSearchChange(e.target.value)}
-                  placeholder={animatedPlaceholder || (isHospitalListing ? "হাসপাতাল বা ক্লিনিক খুঁজুন..." : "ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...")}
+              <div style={{ position: 'relative', width: '100%', maxWidth: 480, margin: '0 auto' }}>
+                <form
+                  onSubmit={handleNavSearchSubmit}
+                  className="db-nav-search-bar"
                   style={{
-                    flex: 1,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    fontSize: 13.5,
-                    fontWeight: 500,
-                    color: '#0F172A',
-                    fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: '#F8FAFC',
+                    border: '1.5px solid #00B875',
+                    borderRadius: 99,
+                    padding: '4px 8px 4px 14px',
+                    width: '100%',
+                    maxWidth: 480,
+                    margin: '0 auto',
+                    transition: 'all 0.25s ease',
+                    boxShadow: '0 2px 10px rgba(0, 184, 117, 0.12)'
                   }}
-                />
-                {navSearchText && (
-                  <button
-                    type="button"
-                    onClick={handleNavClearSearch}
-                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
-                    title="মুছুন"
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={navSearching}
-                  className="db-nav-search-btn"
                 >
-                  {navSearching ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                      <span>খোঁজা হচ্ছে...</span>
-                    </>
-                  ) : (
-                    <span>খুঁজুন</span>
+                  <Search size={17} color="#00B875" style={{ flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    value={navSearchText}
+                    onChange={e => {
+                      handleNavSearchChange(e.target.value)
+                      setIsTypeaheadOpen(true)
+                    }}
+                    onFocus={() => setIsTypeaheadOpen(true)}
+                    placeholder={animatedPlaceholder || (isHospitalListing ? "হাসপাতাল বা ক্লিনিক খুঁজুন..." : "ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...")}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: 13.5,
+                      fontWeight: 500,
+                      color: '#0F172A',
+                      fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
+                    }}
+                  />
+                  {navSearchText && (
+                    <button
+                      type="button"
+                      onClick={handleNavClearSearch}
+                      style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                      title="মুছুন"
+                    >
+                      <X size={15} />
+                    </button>
                   )}
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={navSearching}
+                    className="db-nav-search-btn"
+                  >
+                    {navSearching ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                        <span>খোঁজা হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <span>খুঁজুন</span>
+                    )}
+                  </button>
+                </form>
+
+                <SearchTypeaheadDropdown
+                  query={navSearchText}
+                  isOpen={isTypeaheadOpen}
+                  onClose={() => setIsTypeaheadOpen(false)}
+                  onSelectSearchAll={handleNavSelectSearchAll}
+                  type={isHospitalListing ? 'hospital' : (isDoctorListing ? 'doctor' : 'all')}
+                />
+              </div>
             ) : (
               <Nav className="mx-auto d-flex align-items-center" style={{ gap: '8px' }}>
                 {NAV_LINKS.map(item => {

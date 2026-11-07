@@ -57,7 +57,7 @@ export default function ExpiryWarningBanner() {
       if (!container) return true
 
       const spinner = container.querySelector(
-        '.admin-spinner, .admin-loading, .spin-animation, [data-loading="true"], .loading-skeleton, .table-skeleton'
+        '.admin-spinner, .admin-loading, .spin-animation, [data-loading="true"], .loading-skeleton, .table-skeleton, .skeleton-box, [class*="skeleton"], .shimmer-box'
       )
       if (spinner) return true
 

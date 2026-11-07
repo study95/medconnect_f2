@@ -89,7 +89,7 @@ export default function SpecialtyListPage() {
           </span>
         </div>
 
-        {loading ? (
+        {(loading && items.length === 0) ? (
           <TableSkeleton rowCount={6} columnWidths={['100px', '40%', '35%', '15%']} headers={['ID', 'Specialty Name', 'URL Slug', 'Actions']} />
         ) : filtered.length === 0 ? (
           <EmptyState searchQuery={search} onClearSearch={() => setSearch('')} icon="🩺" title="No specialties found" description="Try a different search term or add a new medical specialty." primaryAction={isAdmin ? { label: '+ Add Specialty', to: '/admin/specialties/create' } : undefined} />

@@ -180,10 +180,33 @@ export function SubscriptionProvider({ children }) {
   )
 }
 
+const defaultSubscription = {
+  hasAccess: true,
+  daysRemaining: null,
+  expiryDate: null,
+  showWarning: false,
+  isTrial: false,
+  isExpired: false,
+  isPendingVerification: false,
+  entityType: null,
+  planName: null,
+  subscription: null,
+  trial: null,
+  loaded: true,
+  hasActiveSubscription: true,
+  isDoctor: false,
+  isHospital: false,
+  refreshSubscription: () => {},
+  unreadCount: 0,
+  refreshUnreadCount: () => {},
+  popupNotifications: [],
+  dismissPopups: () => {},
+}
+
 export function useSubscription() {
   const context = useContext(SubscriptionContext)
   if (!context) {
-    throw new Error('useSubscription must be used inside SubscriptionProvider')
+    return defaultSubscription
   }
   return context
 }
