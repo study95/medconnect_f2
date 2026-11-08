@@ -83,16 +83,53 @@ function DoctorDetailPageContent() {
   // Active tab state: 'about', 'chamber', 'experience', 'reviews'
   const [activeTab, setActiveTab] = useState('about')
 
-  // Canonical SEO URL redirect: if navigated via legacy numeric ID or bare ULID (/doctors/:id), or if current district/upazila differs from doctor's canonical location
+  // Canonical SEO URL redirect:
+  // Redirects legacy ID routes (/doctors/:id), or fixes invalid URLs while preserving valid contextual chamber routes without bouncing.
   useEffect(() => {
-    if (doctor?.slug) {
-      const canonicalTarget = doctor.canonical_url || `/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug}`
-      const normalizedTarget = canonicalTarget.startsWith('/') ? canonicalTarget : `/${canonicalTarget}`
-      if (window.location.pathname !== normalizedTarget) {
-        navigate(normalizedTarget, { replace: true })
+    if (!doctor?.slug) return
+
+    const canonicalTarget = doctor.canonical_url || `/doctors/${doctor.district_slug || 'bangladesh'}/${doctor.upazila_slug || 'general'}/${doctor.slug}`
+    const normalizedCanonical = canonicalTarget.startsWith('/') ? canonicalTarget : `/${canonicalTarget}`
+
+    // 1. If navigated via legacy /doctors/:id route, redirect to canonical SEO URL
+    if (id && !slug) {
+      if (window.location.pathname !== normalizedCanonical) {
+        navigate(normalizedCanonical, { replace: true })
+      }
+      return
+    }
+
+    // 2. If on a 3-part slug route (/doctors/:district/:upazila/:slug)
+    if (district && upazila && slug) {
+      if (window.location.pathname === normalizedCanonical) return
+
+      // Allow staying on any active chamber's valid location without bouncing
+      const matchesAnyChamber = Array.isArray(chambers) && chambers.some(c => {
+        const cDist = c.district?.slug || c.hospital?.district?.slug
+        const cUpa = c.upazila?.slug || c.hospital?.upazila?.slug
+        const distMatch = !cDist || cDist === district || district === 'bangladesh'
+        const upaMatch = !cUpa || cUpa === upazila || upazila === 'general'
+        return distMatch && upaMatch
+      })
+
+      if (matchesAnyChamber) return
+
+      // Check if matches doctor profile location
+      const profileDist = doctor.district?.slug || doctor.district_slug
+      const profileUpa = doctor.upazila?.slug || doctor.upazila_slug
+      if (
+        (profileDist === district || district === 'bangladesh') &&
+        (profileUpa === upazila || upazila === 'general')
+      ) {
+        return
+      }
+
+      // If the URL does not match any valid chamber or profile, safely normalize to canonical
+      if (window.location.pathname !== normalizedCanonical) {
+        navigate(normalizedCanonical, { replace: true })
       }
     }
-  }, [id, doctor?.slug, doctor?.canonical_url, doctor?.district_slug, doctor?.upazila_slug, navigate])
+  }, [id, district, upazila, slug, doctor?.slug, doctor?.canonical_url, doctor?.district_slug, doctor?.upazila_slug, chambers, navigate])
 
   // Review Module Modal States
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
@@ -133,7 +170,11 @@ function DoctorDetailPageContent() {
 
   const userExistingReview = useMemo(() => {
     if (!eligibleAppointment) return null
-    return eligibleAppointment.review || (eligibleAppointment.has_review ? eligibleAppointment.review : null)
+    return (
+      eligibleAppointment.doctor_review ||
+      eligibleAppointment.review ||
+      (eligibleAppointment.has_review ? eligibleAppointment.review : null)
+    )
   }, [eligibleAppointment])
 
   const { confirm, showSuccess, showError } = useDialog()
@@ -1955,6 +1996,8 @@ function DoctorDetailPageContent() {
           setSelectedReviewForEdit(null)
           setSelectedAppointmentForReview(null)
         }}
+        reviewType="doctor"
+        doctor={doctor}
         appointment={selectedAppointmentForReview || eligibleAppointment}
         existingReview={selectedReviewForEdit}
       />

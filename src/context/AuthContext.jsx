@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast'
 import { subscribeToUserChannel, subscribeToPublicDirectory, disconnectEcho } from '../utils/echoService'
 import { queryClient } from '../lib/queryClient'
 import { invalidateDoctors, invalidateHospitals } from '../lib/cacheInvalidation'
+import { clearPersistedCache } from '../lib/cachePersister'
 
 /**
  * Purge all client-side session, draft, WebSocket, and TanStack Query caches.
@@ -37,6 +38,7 @@ function purgeClientSessionState() {
 
   try {
     queryClient.clear()
+    clearPersistedCache()
   } catch {}
 
   try {

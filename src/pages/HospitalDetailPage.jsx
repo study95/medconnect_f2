@@ -65,6 +65,7 @@ function HospitalDetailPage() {
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
   const [selectedReviewForReport, setSelectedReviewForReport] = useState(null)
   const [selectedReviewForEdit, setSelectedReviewForEdit] = useState(null)
+  const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false)
 
   const { confirm, showSuccess, showError } = useDialog()
   const deleteReviewMutation = useDeleteReview()
@@ -120,6 +121,12 @@ function HospitalDetailPage() {
     if (!reviewsData) return Array.isArray(hospital?.reviews) ? hospital.reviews : []
     return Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || [])
   }, [reviewsData, hospital?.reviews])
+
+  const userHospitalReview = useMemo(() => {
+    if (!user || !hospitalReviewsList.length) return null
+    const uId = user.id || user.user_id
+    return hospitalReviewsList.find(r => (r.user_id && String(r.user_id) === String(uId)) || (r.reviewer?.id && String(r.reviewer?.id) === String(uId))) || null
+  }, [user, hospitalReviewsList])
 
   const ratingSummary = useMemo(() => {
     return calculateRatingSummary(hospitalReviewsList)
@@ -923,32 +930,6 @@ function HospitalDetailPage() {
               pointerEvents: 'none'
             }}
           />
-
-          {/* Photo Count Pill Badge (Bottom-Right over Cover) */}
-          <div
-            onClick={() => scrollToSection('gallery')}
-            style={{
-              position: 'absolute',
-              bottom: 30,
-              right: 14,
-              zIndex: 10,
-              background: 'rgba(15, 23, 42, 0.72)',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              color: '#FFFFFF',
-              borderRadius: 20,
-              padding: '4px 10px',
-              fontSize: 11.5,
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              cursor: 'pointer'
-            }}
-          >
-            <IconPhoto size={14} />
-            <span>১/{photos.length > 0 ? photos.length : 1}</span>
-          </div>
         </div>
 
         {/* White Curved Sheet Card */}
@@ -956,8 +937,8 @@ function HospitalDetailPage() {
           style={{
             position: 'relative',
             marginTop: -20,
-            borderTopLeftRadius: 26,
-            borderTopRightRadius: 26,
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
             background: '#FFFFFF',
             zIndex: 15,
             padding: '0 16px 20px 16px',
@@ -2218,15 +2199,22 @@ function HospitalDetailPage() {
                   title="হাসপাতাল রিভিউ ও রোগীর মতামত"
                   currentUser={user}
                   isLoggedIn={Boolean(user)}
+                  hasReviewed={Boolean(userHospitalReview)}
+                  canWrite={Boolean(user)}
                   onReply={(rev) => setSelectedReviewForReply(rev)}
                   onReport={(rev) => setSelectedReviewForReport(rev)}
-                  onEdit={(rev) => setSelectedReviewForEdit(rev && (rev.id || rev.public_id) ? rev : null)}
+                  onEdit={(rev) => setSelectedReviewForEdit((rev && (rev.id || rev.public_id) ? rev : null) || userHospitalReview)}
                   onDelete={handleDeleteReview}
-                  onLoginClick={() => navigate('/register', { state: { from: window.location.pathname } })}
+                  onLoginClick={() => navigate('/login', { state: { from: window.location.pathname } })}
                   onWriteReview={() => {
                     if (!user) {
-                      navigate('/register', { state: { from: window.location.pathname } })
+                      navigate('/login', { state: { from: window.location.pathname } })
                       return
+                    }
+                    if (userHospitalReview) {
+                      setSelectedReviewForEdit(userHospitalReview)
+                    } else {
+                      setIsWriteReviewOpen(true)
                     }
                   }}
                 />
@@ -2887,9 +2875,18 @@ function HospitalDetailPage() {
       />
 
       <ReviewFormModal
-        show={Boolean(selectedReviewForEdit)}
-        onHide={() => setSelectedReviewForEdit(null)}
+        show={isWriteReviewOpen || Boolean(selectedReviewForEdit)}
+        onHide={() => {
+          setIsWriteReviewOpen(false)
+          setSelectedReviewForEdit(null)
+        }}
+        reviewType="hospital"
+        hospital={hospital}
         existingReview={selectedReviewForEdit}
+        onSuccess={() => {
+          setIsWriteReviewOpen(false)
+          setSelectedReviewForEdit(null)
+        }}
       />
 
       <ShareModal show={shareModalOpen} onHide={closeShareModal} shareData={shareData} />
@@ -2909,67 +2906,70 @@ function HospitalDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
           {/* Left: Hotline Number (Stylized capsule matching right button) */}
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-            {hospital?.phone ? (
-              <a
-                href={`tel:${hospital.phone}`}
-                style={{
-                  textDecoration: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
+            {(() => {
+              const effectiveHotline = hospital?.hotline || hospital?.emergency_phone || (facts?.find(f => f.type === 'emergency')?.value && facts.find(f => f.type === 'emergency').value !== 'সার্বক্ষণিক' ? facts.find(f => f.type === 'emergency').value : null) || hospital?.ambulance_number;
+              return effectiveHotline ? (
+                <a
+                  href={`tel:${effectiveHotline}`}
+                  style={{
+                    textDecoration: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    padding: '6px 12px',
+                    background: '#F8FAFC',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: 12,
+                    minHeight: 44,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#059669',
+                    lineHeight: 1.15,
+                    marginBottom: 2,
+                    letterSpacing: '0.01em',
+                    display: 'block'
+                  }}>
+                    হটলাইন
+                  </span>
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: '#1E293B',
+                    lineHeight: 1.15,
+                    letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: 'block'
+                  }}>
+                    {effectiveHotline}
+                  </span>
+                </a>
+              ) : (
+                <div style={{
                   padding: '6px 12px',
                   background: '#F8FAFC',
                   border: '1.5px solid #E2E8F0',
                   borderRadius: 12,
                   minHeight: 44,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
                   boxSizing: 'border-box'
-                }}
-              >
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#059669',
-                  lineHeight: 1.15,
-                  marginBottom: 2,
-                  letterSpacing: '0.01em',
-                  display: 'block'
                 }}>
-                  হটলাইন
-                </span>
-                <span style={{
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: '#1E293B',
-                  lineHeight: 1.15,
-                  letterSpacing: '0.01em',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: 'block'
-                }}>
-                  {hospital.phone}
-                </span>
-              </a>
-            ) : (
-              <div style={{
-                padding: '6px 12px',
-                background: '#F8FAFC',
-                border: '1.5px solid #E2E8F0',
-                borderRadius: 12,
-                minHeight: 44,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                boxSizing: 'border-box'
-              }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#94A3B8', marginBottom: 2 }}>
-                  হটলাইন
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8' }}>
-                  উপলব্ধ নেই
-                </span>
-              </div>
-            )}
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#94A3B8', marginBottom: 2 }}>
+                    হটলাইন
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8' }}>
+                    উপলব্ধ নেই
+                  </span>
+                </div>
+              );
+            })()}
           </div>
           {/* Right: Appointment Button */}
           <button

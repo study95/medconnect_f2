@@ -14,6 +14,7 @@ import DoctorRoute   from './components/admin/DoctorRoute'
 import HospitalRoute from './components/admin/HospitalRoute'
 import AdminLayout   from './components/admin/AdminLayout'
 import SubscriptionGate from './components/admin/SubscriptionGate'
+import DashboardRedirect from './components/common/DashboardRedirect'
 
 // Public pages
 const HomePage            = lazy(() => import('./pages/HomePage'))
@@ -272,7 +273,8 @@ function App() {
               </AdminRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
 
             {/* Doctors */}
             <Route path="doctors" element={<DoctorListPage />} />
@@ -434,7 +436,7 @@ function App() {
               </DoctorRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<Navigate to="/doctor/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
 
             {/* Doctor Profile & Chambers */}
@@ -513,7 +515,7 @@ function App() {
               </HospitalRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<Navigate to="/hospital/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
 
             {/* Hospital Facility Profile */}
@@ -581,6 +583,9 @@ function App() {
           <Route path="/display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/:token" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
+
+          {/* ===== GLOBAL ROLE-AWARE DASHBOARD REDIRECT ===== */}
+          <Route path="/dashboard" element={<DashboardRedirect />} />
 
           {/* ===== PUBLIC / PATIENT / AUTH ROUTES ===== */}
           <Route

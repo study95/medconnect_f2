@@ -27,6 +27,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { queryClient } from './lib/queryClient'
+import { initQueryPersistence } from './lib/cachePersister'
 import { AuthProvider } from './context/AuthContext'
 import { FavoritesProvider } from './context/FavoritesContext'
 import { SubscriptionProvider } from './context/SubscriptionContext'
@@ -65,6 +66,9 @@ if (typeof Node !== 'undefined' && Node.prototype.insertBefore) {
   };
 }
 
+
+// Initialize Enterprise IndexedDB Persistence (0ms native restore)
+initQueryPersistence()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

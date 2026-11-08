@@ -14,6 +14,8 @@ const ReviewModerationTable = memo(function ReviewModerationTable({
   totalPages = 1,
   statusFilter = 'pending',
   setStatusFilter,
+  typeFilter = '',
+  setTypeFilter,
   onModerate,
 }) {
   const statusBadges = {
@@ -26,15 +28,16 @@ const ReviewModerationTable = memo(function ReviewModerationTable({
 
   return (
     <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
-      {/* Header Toolbar: Status Filter Tabs */}
-      <div className="p-3 border-bottom border-light-subtle d-flex align-items-center justify-content-between flex-wrap gap-2">
+      {/* Header Toolbar: Status & Type Filter Tabs */}
+      <div className="p-3 border-bottom border-light-subtle d-flex align-items-center justify-content-between flex-wrap gap-3">
+        {/* Status Tabs */}
         <div className="d-flex align-items-center gap-1 flex-wrap">
           {[
             { key: 'pending', label: 'Pending Approval' },
             { key: 'approved', label: 'Approved' },
             { key: 'rejected', label: 'Rejected' },
             { key: 'flagged', label: 'Flagged / Disputed' },
-            { key: '', label: 'All Reviews' },
+            { key: '', label: 'All Statuses' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -48,6 +51,29 @@ const ReviewModerationTable = memo(function ReviewModerationTable({
               }`}
             >
               {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Type Filter Pills */}
+        <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-pill border border-light-subtle">
+          {[
+            { key: '', label: 'All Reviews' },
+            { key: 'doctor', label: '👨‍⚕️ Doctor' },
+            { key: 'hospital', label: '🏥 Hospital' },
+          ].map((typeTab) => (
+            <button
+              key={typeTab.key}
+              type="button"
+              onClick={() => {
+                if (setTypeFilter) setTypeFilter(typeTab.key)
+                setPage(1)
+              }}
+              className={`btn btn-sm rounded-pill px-3 py-0.5 extra-small fw-bold transition-all ${
+                typeFilter === typeTab.key ? 'btn-white bg-white text-dark shadow-sm' : 'btn-link text-muted text-decoration-none'
+              }`}
+            >
+              {typeTab.label}
             </button>
           ))}
         </div>
@@ -102,8 +128,27 @@ const ReviewModerationTable = memo(function ReviewModerationTable({
                       )}
                     </td>
                     <td>
-                      <div className="fw-semibold text-dark">Dr. {rev.doctor?.name || 'N/A'}</div>
-                      <div className="text-muted extra-small">{rev.hospital?.name || rev.chamber?.name || 'Chamber'}</div>
+                      <div className="d-flex align-items-center gap-1 mb-1">
+                        {rev.review_type === 'hospital' ? (
+                          <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill extra-small px-2 py-0.5">
+                            🏥 Hospital
+                          </span>
+                        ) : (
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2 py-0.5">
+                            👨‍⚕️ Doctor
+                          </span>
+                        )}
+                      </div>
+                      <div className="fw-semibold text-dark">
+                        {rev.review_type === 'hospital'
+                          ? (rev.hospital?.name || 'Hospital Facility')
+                          : `Dr. ${rev.doctor?.name || 'N/A'}`}
+                      </div>
+                      <div className="text-muted extra-small">
+                        {rev.review_type === 'hospital'
+                          ? 'Hospital Environment'
+                          : (rev.hospital?.name || rev.chamber?.name || 'Chamber')}
+                      </div>
                     </td>
                     <td>
                       <StarRating rating={rev.rating} size={14} showValue />

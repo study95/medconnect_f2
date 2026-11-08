@@ -265,10 +265,10 @@ function AppNavbar() {
   }
 
   const getDashboardPath = () => {
-    if (isAdmin) return '/admin'
-    if (isDoctor) return '/doctor'
-    if (isManager) return '/hospital'
-    return '/admin'
+    if (isAdmin) return '/admin/dashboard'
+    if (isDoctor) return '/doctor/dashboard'
+    if (isManager) return '/hospital/dashboard'
+    return '/admin/dashboard'
   }
 
   const NAV_LINKS = [

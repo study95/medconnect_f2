@@ -257,15 +257,22 @@ function ChamberDetailModal({ chamber, onClose, onEdit, canEdit }) {
             
             {/* Hospital / Facility */}
             <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--admin-bg, #f8fafc)', border: '1px solid var(--admin-border, #e2e8f0)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted, #64748b)', textTransform: 'uppercase' }}>
                   {(!chamber.hospital_id || !chamber.hospital) ? '🏠 Private Facility' : '🏥 Hospital & Facility'}
                 </span>
-                {(!chamber.hospital_id || !chamber.hospital) && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, background: '#EEF2FF', color: '#4F46E5', padding: '1px 6px', borderRadius: 4, border: '1px solid #C7D2FE' }}>
-                    Private
-                  </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {Boolean(chamber.is_primary) && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, background: '#E6F7F4', color: '#008F77', padding: '1px 6px', borderRadius: 4, border: '1px solid #99E2D8' }}>
+                      ⭐ Primary
+                    </span>
+                  )}
+                  {(!chamber.hospital_id || !chamber.hospital) && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, background: '#EEF2FF', color: '#4F46E5', padding: '1px 6px', borderRadius: 4, border: '1px solid #C7D2FE' }}>
+                      Private
+                    </span>
+                  )}
+                </div>
               </div>
               <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--admin-text, #0f172a)' }}>
                 {chamber.chamber_name || chamber.hospital?.name || 'ব্যক্তিগত চেম্বার'}
@@ -562,6 +569,7 @@ export default function ChamberListPage() {
     const isPrivate = !i.hospital_id || i.consultation_type === 'physical' || !i.hospital
     if (venueTypeFilter === 'hospital' && isPrivate) return false
     if (venueTypeFilter === 'private' && !isPrivate) return false
+    if (venueTypeFilter === 'primary' && !i.is_primary) return false
     if (dayFilter && i.day !== dayFilter) return false
     if (statusFilter === 'active' && !i.is_active) return false
     if (statusFilter === 'inactive' && i.is_active) return false
@@ -630,7 +638,7 @@ export default function ChamberListPage() {
           hospitalId && { key: 'hospital', label: `Hospital: ${hospitals.find(h => String(h.id) === String(hospitalId))?.name || hospitalId}`, onRemove: () => setHospitalId('') },
           (venueTypeFilter && venueTypeFilter !== 'all') && {
             key: 'venueType',
-            label: `Venue: ${venueTypeFilter === 'private' ? 'Private Chambers' : 'Hospital Chambers'}`,
+            label: `Venue: ${venueTypeFilter === 'private' ? 'Private Chambers' : (venueTypeFilter === 'primary' ? 'Primary Chambers' : 'Hospital Chambers')}`,
             onRemove: () => setVenueTypeFilter('all')
           },
           dayFilter && { key: 'day', label: `Day: ${dayFilter}`, onRemove: () => setDayFilter('') },
@@ -670,6 +678,7 @@ export default function ChamberListPage() {
             style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)' }}
           >
             <option value="all">All Types</option>
+            <option value="primary">⭐ Primary Only</option>
             <option value="hospital">🏥 Hospital Only</option>
             <option value="private">🏠 Private Only</option>
           </select>
@@ -740,7 +749,7 @@ export default function ChamberListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: 130, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Chamber ID</th>
+                  <th style={{ minWidth: 140, paddingLeft: 24, color: 'var(--admin-text-muted)' }}>Chamber ID</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Doctor</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Hospital & Location</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Schedule & Capacity</th>
@@ -753,18 +762,61 @@ export default function ChamberListPage() {
               <tbody>
                 {paginatedData.map((chamber) => {
                   const isPrivate = !chamber.hospital_id || chamber.consultation_type === 'physical' || !chamber.hospital
+                  const isPrimary = Boolean(chamber.is_primary)
 
                   return (
                     <tr 
                       key={chamber.id} 
                       style={{ 
                         transition: 'background 0.15s',
-                        background: isPrivate ? 'rgba(99, 102, 241, 0.03)' : 'transparent',
-                        borderLeft: isPrivate ? '4px solid #6366F1' : '4px solid transparent'
+                        background: isPrimary 
+                          ? 'rgba(0, 168, 140, 0.04)' 
+                          : (isPrivate ? 'rgba(99, 102, 241, 0.03)' : 'transparent'),
+                        borderLeft: isPrimary
+                          ? '4px solid #00A88C'
+                          : (isPrivate ? '4px solid #6366F1' : '4px solid transparent')
                       }}
                     >
-                      <td style={{ paddingLeft: 24 }}>
+                      <td style={{ paddingLeft: 24, verticalAlign: 'middle' }}>
                         <CompactUlid value={chamber.public_id || chamber.id} />
+                        {(isPrimary || isPrivate) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'nowrap' }}>
+                            {isPrimary && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3.5,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                background: '#E6F7F4',
+                                color: '#008F77',
+                                border: '1px solid #99E2D8',
+                                padding: '1.5px 6px',
+                                borderRadius: 5,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                ⭐ Primary
+                              </span>
+                            )}
+                            {isPrivate && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3.5,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                background: '#EEF2FF',
+                                color: '#4F46E5',
+                                border: '1px solid #C7D2FE',
+                                padding: '1.5px 6px',
+                                borderRadius: 5,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                🏠 Private
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>{chamber.doctor?.name || 'Unknown Doctor'}</div>
@@ -775,22 +827,6 @@ export default function ChamberListPage() {
                       <td>
                         {isPrivate ? (
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontSize: 10.5,
-                                fontWeight: 800,
-                                background: '#EEF2FF',
-                                color: '#4F46E5',
-                                border: '1px solid #C7D2FE',
-                                padding: '2px 7px',
-                                borderRadius: 6
-                              }}>
-                                🏠 Private Chamber
-                              </span>
-                            </div>
                             <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>
                               {chamber.chamber_name || 'ডক্টরস ব্যক্তিগত চেম্বার'}
                             </div>

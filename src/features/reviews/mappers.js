@@ -105,6 +105,11 @@ export function normalizeReviewPayload(formValues = {}) {
   return {
     appointment_id: formValues.appointment_id || undefined,
     appointment_public_id: formValues.appointment_public_id || undefined,
+    review_type: formValues.review_type || 'doctor',
+    hospital_id: formValues.hospital_id || undefined,
+    hospital_public_id: formValues.hospital_public_id || undefined,
+    doctor_id: formValues.doctor_id || undefined,
+    doctor_public_id: formValues.doctor_public_id || undefined,
     rating: Number(formValues.rating),
     cleanliness_rating: formValues.cleanliness_rating ? Number(formValues.cleanliness_rating) : null,
     staff_rating: formValues.staff_rating ? Number(formValues.staff_rating) : null,

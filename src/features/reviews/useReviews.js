@@ -9,7 +9,7 @@ export function useDoctorReviews(doctorId, filters = {}, options = {}) {
   return useQuery({
     queryKey: reviewQueryKeys.doctor(doctorId, filters),
     queryFn: async () => {
-      const res = await reviewApi.getReviews({ doctor_id: doctorId, ...filters })
+      const res = await reviewApi.getReviews({ doctor_id: doctorId, review_type: 'doctor', ...filters })
       return res.data
     },
     enabled: Boolean(doctorId),
@@ -25,7 +25,7 @@ export function useHospitalReviews(hospitalId, filters = {}, options = {}) {
   return useQuery({
     queryKey: reviewQueryKeys.hospital(hospitalId, filters),
     queryFn: async () => {
-      const res = await reviewApi.getReviews({ hospital_id: hospitalId, ...filters })
+      const res = await reviewApi.getReviews({ hospital_id: hospitalId, review_type: 'hospital', ...filters })
       return res.data
     },
     enabled: Boolean(hospitalId),

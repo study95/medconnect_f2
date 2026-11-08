@@ -273,6 +273,12 @@ export default function DashboardPage() {
   const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports'
   const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
+  // Custom Month & Year trend filter state
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
+  const [trendYear, setTrendYear] = useState(String(new Date().getFullYear()))
+  const [trendMonth, setTrendMonth] = useState('all') // 'all' or '1'..'12'
+  const [isCustomTrend, setIsCustomTrend] = useState(false)
+
   // Smart User-Scoped Session Key for Instant 0ms Load
   const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const actorId = useMemo(() => {
@@ -395,13 +401,20 @@ export default function DashboardPage() {
     }
   }, [stats?.subscription, subscriptionContext, isDoctor])
 
-  const analyticsCacheKey = `db_analytics_snapshot_${actorId}_${range}`
+  const analyticsParams = useMemo(() => {
+    if (isCustomTrend) {
+      return { year: trendYear, month: trendMonth }
+    }
+    return { range }
+  }, [isCustomTrend, trendYear, trendMonth, range])
+
+  const analyticsCacheKey = `db_analytics_snapshot_${actorId}_${isCustomTrend ? `${trendYear}_${trendMonth}` : range}`
 
   const { data: analytics = null, isLoading: analyticsLoading, isFetching: analyticsFetching, refetch: refetchAnalytics } = useQuery({
-    queryKey: queryKeys.dashboard.analytics({ range }),
+    queryKey: queryKeys.dashboard.analytics(analyticsParams),
     queryFn: async () => {
       try {
-        const res = await getDashboardAnalytics({ range })
+        const res = await getDashboardAnalytics(analyticsParams)
         const data = res.data?.data || null
         if (data && typeof window !== 'undefined') {
           try {
@@ -456,12 +469,20 @@ export default function DashboardPage() {
   // Format label for chart timeline
   const formatLabel = (period) => {
     if (!period) return ''
+    if (isCustomTrend && trendMonth !== 'all') {
+      const parts = String(period).split('-')
+      if (parts.length === 3) {
+        return `${parseInt(parts[2], 10)} তারিখ`
+      }
+      const d = new Date(period)
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
     if (range === 'day') {
       const d = new Date(period)
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
     if (range === 'week') return String(period).replace(/^\d{4}-/, '')
-    if (range === 'month') {
+    if (range === 'month' || (isCustomTrend && trendMonth === 'all')) {
       const parts = String(period).split('-')
       if (parts.length >= 2) {
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -482,7 +503,7 @@ export default function DashboardPage() {
       Revenue: payments[idx]?.value || 0,
       Completed: analytics?.appointments?.by_status?.completed?.find(x => x.period === item.period)?.value || 0,
     }))
-  }, [analytics, range])
+  }, [analytics, range, isCustomTrend, trendMonth])
 
   // Action desk critical items
   const actionItems = useMemo(() => {
@@ -577,12 +598,9 @@ export default function DashboardPage() {
                 <span>{statsFetching ? 'সিঙ্ক হচ্ছে...' : 'Live System'}</span>
               </div>
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--admin-text-muted)', fontWeight: 500 }}>
-              {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · প্ল্যাটফর্ম সেন্ট্রাল কমান্ড ও রিয়েল-টাইম অপারেশন মনিটর
-            </p>
             {isAdmin && (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, marginTop: 5,
+                display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
                 fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600, flexWrap: 'wrap'
               }}>
                 <span style={{ color: 'var(--admin-primary)' }}>নেটওয়ার্ক বিস্তার:</span>
@@ -768,24 +786,121 @@ export default function DashboardPage() {
           padding: '20px',
           display: 'flex', flexDirection: 'column'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>
                 অ্যাপয়েন্টমেন্ট ভলিউম ও সেবা সমাপ্তির ট্রেন্ড
               </div>
               <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 500, marginTop: 2 }}>
-                নির্বাচিত সময়কালের বুকিং চাহিদা ও সম্পন্ন সেবার বিশ্লেষণ
+                {isCustomTrend
+                  ? `${trendMonth !== 'all' ? (['','জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'][parseInt(trendMonth, 10)] || '') : 'সকল মাস'}, ${trendYear}-এর বিস্তারিত ট্রেন্ড`
+                  : 'নির্বাচিত সময়কালের বুকিং চাহিদা ও সম্পন্ন সেবার বিশ্লেষণ'}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, fontWeight: 600 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B875' }} />
-                <span style={{ color: 'var(--admin-text)' }}>মোট বুকিং</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B875' }} />
+                  <span style={{ color: 'var(--admin-text)' }}>মোট বুকিং</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+                  <span style={{ color: 'var(--admin-text-muted)' }}>সম্পন্ন সেবা</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
-                <span style={{ color: 'var(--admin-text-muted)' }}>সম্পন্ন সেবা</span>
+
+              {/* Month & Year Selectors */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <select
+                  value={isCustomTrend ? trendMonth : 'default'}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === 'default') {
+                      setIsCustomTrend(false)
+                    } else {
+                      setIsCustomTrend(true)
+                      setTrendMonth(val)
+                    }
+                  }}
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: '1px solid var(--admin-border)',
+                    background: 'var(--admin-bg)',
+                    color: 'var(--admin-text)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  title="মাস নির্বাচন"
+                >
+                  <option value="default">ডিফল্ট রেঞ্জ</option>
+                  <option value="all">পুরো বছর ({trendYear})</option>
+                  <option value="1">জানুয়ারি</option>
+                  <option value="2">ফেব্রুয়ারি</option>
+                  <option value="3">মার্চ</option>
+                  <option value="4">এপ্রিল</option>
+                  <option value="5">মে</option>
+                  <option value="6">জুন</option>
+                  <option value="7">জুলাই</option>
+                  <option value="8">আগস্ট</option>
+                  <option value="9">সেপ্টেম্বর</option>
+                  <option value="10">অক্টোবর</option>
+                  <option value="11">নভেম্বর</option>
+                  <option value="12">ডিসেম্বর</option>
+                </select>
+
+                <select
+                  value={trendYear}
+                  onChange={(e) => {
+                    setTrendYear(e.target.value)
+                    setIsCustomTrend(true)
+                  }}
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: '1px solid var(--admin-border)',
+                    background: 'var(--admin-bg)',
+                    color: 'var(--admin-text)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  title="বছর নির্বাচন"
+                >
+                  {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map(yr => (
+                    <option key={yr} value={String(yr)}>{yr}</option>
+                  ))}
+                </select>
+
+                {isCustomTrend && (
+                  <button
+                    onClick={() => {
+                      setIsCustomTrend(false)
+                      setTrendMonth('all')
+                    }}
+                    title="রিসেট করুন (ডিফল্ট রেঞ্জে ফিরুন)"
+                    style={{
+                      border: 'none',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#EF4444',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    ✕ রিসেট
+                  </button>
+                )}
               </div>
             </div>
           </div>

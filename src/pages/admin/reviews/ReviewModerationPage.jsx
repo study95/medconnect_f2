@@ -11,6 +11,7 @@ import { ShieldCheck, RefreshCw } from 'lucide-react'
 export default function ReviewModerationPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'pending')
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get('type') || '')
   const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10)))
 
   const isSyncingFromUrlRef = useRef(false)
@@ -23,8 +24,10 @@ export default function ReviewModerationPage() {
     isSyncingFromUrlRef.current = true
 
     const st = searchParams.get('status') || 'pending'
+    const tp = searchParams.get('type') || ''
     const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     setStatusFilter(st)
+    setTypeFilter(tp)
     setPage(p)
   }, [searchParams])
 
@@ -35,6 +38,7 @@ export default function ReviewModerationPage() {
     }
     const next = new URLSearchParams()
     if (statusFilter && statusFilter !== 'pending') next.set('status', statusFilter)
+    if (typeFilter) next.set('type', typeFilter)
     if (page > 1) next.set('page', String(page))
 
     const currentStr = searchParams.toString()
@@ -43,13 +47,14 @@ export default function ReviewModerationPage() {
       prevParamsRef.current = nextStr
       setSearchParams(next, { replace: true })
     }
-  }, [statusFilter, page, searchParams, setSearchParams])
+  }, [statusFilter, typeFilter, page, searchParams, setSearchParams])
 
   const [selectedReview, setSelectedReview] = useState(null)
   const [modalAction, setModalAction] = useState('approve')
 
   const { data, isLoading, isError, error, refetch, isFetching } = useModerationReviews({
     status: statusFilter || undefined,
+    review_type: typeFilter || undefined,
     page,
     per_page: 15,
   })
@@ -97,6 +102,8 @@ export default function ReviewModerationPage() {
         totalPages={totalPages}
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
         onModerate={handleOpenModeration}
       />
 

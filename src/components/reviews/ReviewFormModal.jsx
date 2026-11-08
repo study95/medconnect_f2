@@ -12,18 +12,24 @@ import {
   Loader2,
   CheckCircle2,
   Info,
+  Building2,
+  Stethoscope,
 } from 'lucide-react'
 import { useDialog } from '../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../utils/dialogMessages'
 
 /**
- * Enterprise Patient Review Form Modal — Fully Localized for Bengali UX
- * Handles review authoring, sub-dimension ratings, draft recovery from sessionStorage, validation, and 48-hour editing.
+ * Enterprise Review Form Modal — Fully Localized for Bengali UX
+ * Supports dedicated workflows for both Doctor consultations and Hospital facility reviews.
+ * Handles sub-dimension ratings, draft recovery, validation, and 48-hour editing.
  */
 export default function ReviewFormModal({
   show,
   onHide,
+  reviewType = 'doctor',
   appointment = null,
+  doctor = null,
+  hospital = null,
   existingReview = null,
   review = null,
   onSuccess = null,
@@ -32,8 +38,14 @@ export default function ReviewFormModal({
   const validReviewProp = review && (review.id || review.public_id) ? review : null
   const activeExistingReview = validExistingReview || validReviewProp
   const isEditing = Boolean(activeExistingReview)
-  const apptId = appointment?.id || appointment?.public_id || activeExistingReview?.appointment_id || 'general'
-  const draftStorageKey = `review_draft_${apptId}`
+
+  const activeReviewType = activeExistingReview?.review_type || reviewType || (hospital && !doctor ? 'hospital' : 'doctor')
+  const isHospital = activeReviewType === 'hospital'
+
+  const entityId = isHospital
+    ? (hospital?.id || hospital?.public_id || appointment?.hospital_id || 'hosp')
+    : (doctor?.id || doctor?.public_id || appointment?.id || 'doc')
+  const draftStorageKey = `review_draft_${activeReviewType}_${entityId}`
 
   const { showSuccess, showError } = useDialog()
 
@@ -130,7 +142,9 @@ export default function ReviewFormModal({
 
     const trimmedComment = comment.trim()
     if (!trimmedComment) {
-      errs.comment = 'অনুগ্রহ করে ডাক্তারের সাথে আপনার অভিজ্ঞতার বিবরণ লিখুন।'
+      errs.comment = isHospital
+        ? 'অনুগ্রহ করে হাসপাতালের সেবা ও পরিবেশ সম্পর্কে আপনার অভিজ্ঞতার বিবরণ লিখুন।'
+        : 'অনুগ্রহ করে ডাক্তারের সাথে আপনার অভিজ্ঞতার বিবরণ লিখুন।'
     } else if (trimmedComment.length < 10) {
       errs.comment = 'আপনার মতামত অন্তত ১০ অক্ষরের হতে হবে।'
     } else if (trimmedComment.length > 1000) {
@@ -171,8 +185,13 @@ export default function ReviewFormModal({
         })
       } else {
         const createPayload = normalizeReviewPayload({
+          review_type: activeReviewType,
           appointment_id: appointment?.id,
           appointment_public_id: appointment?.public_id,
+          doctor_id: isHospital ? undefined : (doctor?.id || appointment?.doctor_id || appointment?.doctor?.id),
+          doctor_public_id: isHospital ? undefined : (doctor?.public_id || appointment?.doctor?.public_id),
+          hospital_id: isHospital ? (hospital?.id || appointment?.hospital_id || appointment?.chamber?.hospital_id) : undefined,
+          hospital_public_id: isHospital ? (hospital?.public_id || appointment?.hospital_public_id || appointment?.chamber?.hospital?.public_id) : undefined,
           rating,
           cleanliness_rating: cleanlinessRating > 0 ? cleanlinessRating : null,
           staff_rating: staffRating > 0 ? staffRating : null,
@@ -213,10 +232,25 @@ export default function ReviewFormModal({
   }
 
   const doctorName =
+    doctor?.name ||
+    doctor?.name_bn ||
     appointment?.doctor?.name ||
     appointment?.doctor_name ||
     activeExistingReview?.doctor?.name ||
     'ডাক্তার'
+
+  const hospitalName =
+    hospital?.name ||
+    hospital?.name_bn ||
+    appointment?.chamber?.hospital?.name ||
+    appointment?.hospital_name ||
+    activeExistingReview?.hospital?.name ||
+    'হাসপাতাল'
+
+  const targetTitle = isHospital ? hospitalName : `ডাঃ ${doctorName}`
+  const targetSubtitle = isHospital
+    ? (hospital?.address || hospital?.district?.name || 'হাসপাতাল ও চিকিৎসাকেন্দ্র')
+    : (doctor?.specialty?.name || appointment?.specialty_name || 'ক্লিনিক্যাল কনসালটেশন')
 
   return (
     <Modal
@@ -231,10 +265,14 @@ export default function ReviewFormModal({
       <Modal.Header closeButton={!isSubmitting} className="border-bottom-0 pb-0 pt-4 px-4">
         <div>
           <Modal.Title className="fw-bold text-dark fs-5 mb-1">
-            {isEditing ? 'আপনার রিভিউ পরিবর্তন করুন' : 'ডাক্তার দেখানোর অভিজ্ঞতা শেয়ার করুন'}
+            {isEditing
+              ? (isHospital ? 'হাসপাতাল রিভিউ পরিবর্তন করুন' : 'আপনার রিভিউ পরিবর্তন করুন')
+              : (isHospital ? 'হাসপাতালের অভিজ্ঞতা শেয়ার করুন' : 'ডাক্তার দেখানোর অভিজ্ঞতা শেয়ার করুন')}
           </Modal.Title>
           <div className="text-muted small">
-            আপনার সৎ মতামত অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।
+            {isHospital
+              ? 'আপনার সৎ মতামত অন্য রোগীদের সঠিক চিকিৎসাকেন্দ্র ও হাসপাতাল নির্বাচন করতে সাহায্য করবে।'
+              : 'আপনার সৎ মতামত অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।'}
           </div>
         </div>
       </Modal.Header>
@@ -248,27 +286,32 @@ export default function ReviewFormModal({
               আপনার মতামত কেন গুরুত্বপূর্ণ?
             </div>
             <ul className="mb-0 ps-3 extra-small text-secondary lh-lg" style={{ fontSize: '0.82rem' }}>
-              <li>আপনার অভিজ্ঞতা অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।</li>
-              <li>শুধুমাত্র সম্পন্ন অ্যাপয়েন্টমেন্টের রোগীরাই রিভিউ দিতে পারেন।</li>
+              <li>
+                {isHospital
+                  ? 'আপনার অভিজ্ঞতা অন্য রোগীদের মানসম্মত হাসপাতাল ও স্বাস্থ্যসেবা নির্বাচন করতে সাহায্য করবে।'
+                  : 'আপনার অভিজ্ঞতা অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।'}
+              </li>
+              <li>
+                {isHospital
+                  ? 'হাসপাতালে সেবাগ্রহণকারী রোগী বা অভিভাবকগণ তাদের বাস্তব অভিজ্ঞতা তুলে ধরতে পারেন।'
+                  : 'শুধুমাত্র সম্পন্ন অ্যাপয়েন্টমেন্টের রোগীরাই রিভিউ দিতে পারেন।'}
+              </li>
               <li>অসত্য, অপমানজনক বা বিভ্রান্তিকর তথ্য প্রদান থেকে বিরত থাকুন।</li>
             </ul>
           </div>
 
-          {/* Target Doctor Info Subheader */}
+          {/* Target Info Subheader */}
           <div className="p-3 rounded-3 bg-light border border-light-subtle d-flex align-items-center gap-3 mb-4">
             <div
-              className="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
+              className={`rounded-circle ${isHospital ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'} fw-bold d-flex align-items-center justify-content-center flex-shrink-0`}
               style={{ width: '42px', height: '42px', fontSize: '1.1rem' }}
             >
-              {doctorName.charAt(0).toUpperCase()}
+              {isHospital ? <Building2 size={22} /> : <Stethoscope size={22} />}
             </div>
             <div>
-              <div className="fw-bold text-dark">ডাঃ {doctorName}</div>
+              <div className="fw-bold text-dark">{targetTitle}</div>
               <div className="text-muted extra-small">
-                {appointment?.chamber?.hospital?.name ||
-                  appointment?.hospital_name ||
-                  existingReview?.hospital?.name ||
-                  'ক্লিনিক্যাল কনসালটেশন'}
+                {targetSubtitle}
               </div>
             </div>
           </div>
@@ -276,9 +319,13 @@ export default function ReviewFormModal({
           {/* Primary Overall Star Rating */}
           <div className="text-center mb-4 p-3 rounded-4 bg-primary-subtle border border-primary-subtle">
             <label className="fw-bold text-dark d-block mb-1 fs-6">
-              আপনার সামগ্রিক অভিজ্ঞতা কেমন ছিল? <span className="text-danger">*</span>
+              {isHospital ? 'হাসপাতালের সেবা ও পরিবেশ সম্পর্কে আপনার রেটিং' : 'আপনার সামগ্রিক অভিজ্ঞতা কেমন ছিল?'} <span className="text-danger">*</span>
             </label>
-            <div className="text-muted small mb-2">এই ডাক্তারের সেবা সম্পর্কে আপনার অভিজ্ঞতার ভিত্তিতে রেটিং দিন।</div>
+            <div className="text-muted small mb-2">
+              {isHospital
+                ? 'এই হাসপাতালের চিকিৎসা পরিবেশ ও সার্বিক সেবার ভিত্তিতে রেটিং দিন।'
+                : 'এই ডাক্তারের সেবা সম্পর্কে আপনার অভিজ্ঞতার ভিত্তিতে রেটিং দিন।'}
+            </div>
             <StarRating
               rating={rating}
               size={32}
@@ -295,103 +342,105 @@ export default function ReviewFormModal({
             {errors.rating && <div className="text-danger small mt-1">{errors.rating}</div>}
           </div>
 
-          {/* Sub-Dimension Clinical Metrics (Optional) */}
-          <div className="mb-4">
-            <label className="fw-bold text-dark small d-block mb-2">
-              বিস্তারিত মূল্যায়ন <span className="text-muted fw-normal">(ঐচ্ছিক)</span>
-            </label>
-            <div className="row g-3">
-              {/* Cleanliness */}
-              <div className="col-12 col-md-4">
-                <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
-                  <div>
-                    <div className="d-flex align-items-center justify-content-center gap-1 text-primary small fw-semibold mb-1">
-                      <Sparkles size={14} />
-                      পরিচ্ছন্নতা ও স্বাস্থ্যবিধি
+          {/* Sub-Dimension Clinical / Facility Metrics (Optional) - Only for Hospital Reviews */}
+          {Boolean(isHospital) && (
+            <div className="mb-4">
+              <label className="fw-bold text-dark small d-block mb-2">
+                বিস্তারিত মূল্যায়ন <span className="text-muted fw-normal">(ঐচ্ছিক)</span>
+              </label>
+              <div className="row g-3">
+                {/* Cleanliness */}
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-center gap-1 text-primary small fw-semibold mb-1">
+                        <Sparkles size={14} />
+                        পরিচ্ছন্নতা ও পরিবেশ
+                      </div>
+                      <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
+                        হাসপাতাল প্রাঙ্গণ ও ওয়ার্ড কতটা পরিষ্কার ছিল?
+                      </div>
                     </div>
-                    <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
-                      চেম্বার বা হাসপাতাল কতটা পরিষ্কার ছিল?
-                    </div>
-                  </div>
-                  <div>
-                    <StarRating
-                      rating={cleanlinessRating}
-                      size={18}
-                      readOnly={false}
-                      onChange={(val) => {
-                        setCleanlinessRating(val)
-                        handleFieldChange('cleanliness_rating', val)
-                      }}
-                      className="justify-content-center my-1"
-                    />
-                    <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
-                      {cleanlinessRating > 0 ? `${cleanlinessRating} তারকা` : 'রেটিং দিন'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Staff Behavior */}
-              <div className="col-12 col-md-4">
-                <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
-                  <div>
-                    <div className="d-flex align-items-center justify-content-center gap-1 text-success small fw-semibold mb-1">
-                      <Users size={14} />
-                      স্টাফদের ব্যবহার
-                    </div>
-                    <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
-                      রিসেপশন ও অন্যান্য স্টাফের আচরণ কেমন ছিল?
-                    </div>
-                  </div>
-                  <div>
-                    <StarRating
-                      rating={staffRating}
-                      size={18}
-                      readOnly={false}
-                      onChange={(val) => {
-                        setStaffRating(val)
-                        handleFieldChange('staff_rating', val)
-                      }}
-                      className="justify-content-center my-1"
-                    />
-                    <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
-                      {staffRating > 0 ? `${staffRating} তারকা` : 'রেটিং দিন'}
+                    <div>
+                      <StarRating
+                        rating={cleanlinessRating}
+                        size={18}
+                        readOnly={false}
+                        onChange={(val) => {
+                          setCleanlinessRating(val)
+                          handleFieldChange('cleanliness_rating', val)
+                        }}
+                        className="justify-content-center my-1"
+                      />
+                      <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                        {cleanlinessRating > 0 ? `${cleanlinessRating} তারকা` : 'রেটিং দিন'}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Wait Time */}
-              <div className="col-12 col-md-4">
-                <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
-                  <div>
-                    <div className="d-flex align-items-center justify-content-center gap-1 text-info small fw-semibold mb-1">
-                      <Clock size={14} />
-                      অপেক্ষার সময়
+                {/* Staff Behavior */}
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-center gap-1 text-success small fw-semibold mb-1">
+                        <Users size={14} />
+                        স্টাফদের ব্যবহার
+                      </div>
+                      <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
+                        নার্স, রিসেপশন ও কর্মীদের আচরণ কেমন ছিল?
+                      </div>
                     </div>
-                    <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
-                      নির্ধারিত সময় অনুযায়ী ডাক্তার দেখাতে পেরেছেন কি?
+                    <div>
+                      <StarRating
+                        rating={staffRating}
+                        size={18}
+                        readOnly={false}
+                        onChange={(val) => {
+                          setStaffRating(val)
+                          handleFieldChange('staff_rating', val)
+                        }}
+                        className="justify-content-center my-1"
+                      />
+                      <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                        {staffRating > 0 ? `${staffRating} তারকা` : 'রেটিং দিন'}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <StarRating
-                      rating={waitTimeRating}
-                      size={18}
-                      readOnly={false}
-                      onChange={(val) => {
-                        setWaitTimeRating(val)
-                        handleFieldChange('wait_time_rating', val)
-                      }}
-                      className="justify-content-center my-1"
-                    />
-                    <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
-                      {waitTimeRating > 0 ? `${waitTimeRating} তারকা` : 'রেটিং দিন'}
+                </div>
+
+                {/* Wait Time */}
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border border-light-subtle bg-white text-center h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-center gap-1 text-info small fw-semibold mb-1">
+                        <Clock size={14} />
+                        অপেক্ষার সময়
+                      </div>
+                      <div className="extra-small text-muted mb-2" style={{ fontSize: '0.75rem' }}>
+                        টিকিট, টেস্ট বা সেবা পেতে কেমন সময় লেগেছে?
+                      </div>
+                    </div>
+                    <div>
+                      <StarRating
+                        rating={waitTimeRating}
+                        size={18}
+                        readOnly={false}
+                        onChange={(val) => {
+                          setWaitTimeRating(val)
+                          handleFieldChange('wait_time_rating', val)
+                        }}
+                        className="justify-content-center my-1"
+                      />
+                      <div className="extra-small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                        {waitTimeRating > 0 ? `${waitTimeRating} তারকা` : 'রেটিং দিন'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Title (Optional) */}
           <Form.Group className="mb-3">
@@ -426,7 +475,7 @@ export default function ReviewFormModal({
             <Form.Control
               as="textarea"
               rows={4}
-              placeholder="ডাক্তারের ব্যবহার, রোগ ব্যাখ্যা, চিকিৎসার মান, চেম্বারের পরিবেশ বা আপনার অভিজ্ঞতা সম্পর্কে লিখুন।"
+              placeholder={isHospital ? 'হাসপাতালের সার্বিক পরিবেশ, পরিষ্কার-পরিচ্ছন্নতা, নার্স ও কর্মীদের ব্যবহার, জরুরি বিভাগ বা ডায়াগনস্টিক সুবিধা সম্পর্কে লিখুন।' : 'ডাক্তারের ব্যবহার, রোগ ব্যাখ্যা, চিকিৎসার মান, চেম্বারের পরিবেশ বা আপনার অভিজ্ঞতা সম্পর্কে লিখুন।'}
               value={comment}
               maxLength={1000}
               onChange={(e) => {

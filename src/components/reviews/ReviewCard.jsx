@@ -32,6 +32,8 @@ const ReviewCard = memo(function ReviewCard({
   review,
   currentUser = null,
   showManagementStatus = false,
+  showTypeBadge = false,
+  isHospital = false,
   onReply,
   onEdit,
   onDelete,
@@ -54,20 +56,20 @@ const ReviewCard = memo(function ReviewCard({
   const hospitalReply = review.hospital_reply || review.hospitalReply
 
   return (
-    <div className={`card border-0 shadow-sm rounded-4 p-3 p-md-4 bg-white mb-3 ${className}`} style={{ border: '1px solid #E2E8F0' }}>
+    <div className={`card border-0 shadow-sm rounded-4 p-3 p-md-3.5 bg-white mb-3 ${className}`} style={{ border: '1px solid #E2E8F0' }}>
       {/* Header: Reviewer Info + Star Rating */}
-      <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3">
-        <div className="d-flex align-items-center gap-3">
+      <div className="d-flex align-items-start justify-content-between gap-2 mb-2.5">
+        <div className="d-flex align-items-center gap-2.5 min-w-0">
           {/* Avatar Icon / Image */}
           <div
             className={`rounded-circle d-flex align-items-center justify-content-center fw-bold overflow-hidden ${
-              isAnonymous ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-dark'
+              isAnonymous ? 'bg-primary-subtle text-primary' : 'bg-light text-dark border'
             }`}
-            style={{ width: '40px', height: '40px', fontSize: '0.95rem', flexShrink: 0 }}
+            style={{ width: '38px', height: '38px', fontSize: '0.9rem', flexShrink: 0, borderColor: '#E2E8F0' }}
             aria-hidden="true"
           >
             {isAnonymous ? (
-              <ShieldCheck size={20} />
+              <ShieldCheck size={18} />
             ) : reviewerPhoto && !imageError ? (
               <img
                 src={getMediaUrl(reviewerPhoto)}
@@ -81,23 +83,48 @@ const ReviewCard = memo(function ReviewCard({
           </div>
 
           {/* Name & Metadata */}
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: '14.5px' }}>{reviewerName}</h6>
+          <div className="min-w-0">
+            <div className="d-flex align-items-center gap-1.5 flex-wrap">
+              <span className="fw-bold text-dark text-truncate" style={{ fontSize: '13.5px', maxWidth: '140px' }}>
+                {reviewerName}
+              </span>
               {isVerified && (
-                <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-0.5" style={{ fontSize: '11px' }}>
-                  <UserCheck size={11} />
+                <span 
+                  className="badge rounded-pill d-inline-flex align-items-center gap-1 px-2 py-0.5" 
+                  style={{ 
+                    fontSize: '10.5px', 
+                    fontWeight: 600,
+                    backgroundColor: '#ECFDF5', 
+                    color: '#059669', 
+                    border: '1px solid #A7F3D0' 
+                  }}
+                >
+                  <UserCheck size={10} />
                   যাচাইকৃত রোগী
                 </span>
               )}
+              {showTypeBadge && (
+                <span 
+                  className="badge rounded-pill d-inline-flex align-items-center gap-1 px-2 py-0.5" 
+                  style={{ 
+                    fontSize: '10.5px', 
+                    fontWeight: 600,
+                    backgroundColor: review.review_type === 'hospital' ? '#EFF6FF' : '#F0FDF4',
+                    color: review.review_type === 'hospital' ? '#1D4ED8' : '#15803D',
+                    border: `1px solid ${review.review_type === 'hospital' ? '#BFDBFE' : '#BBF7D0'}`
+                  }}
+                >
+                  {review.review_type === 'hospital' ? '🏥 হাসপাতাল' : '👨‍⚕️ ডাক্তার'}
+                </span>
+              )}
               {review.status === 'pending' && (
-                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-0.5" style={{ fontSize: '11px' }}>
-                  <Clock size={11} />
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill d-inline-flex align-items-center gap-1 extra-small px-2 py-0.5" style={{ fontSize: '10.5px' }}>
+                  <Clock size={10} />
                   মূল্যায়নাধীন
                 </span>
               )}
             </div>
-            <div className="text-muted extra-small d-flex align-items-center gap-2 mt-0.5" style={{ fontSize: '11.5px' }}>
+            <div className="text-muted extra-small d-flex align-items-center gap-1.5 mt-0.5" style={{ fontSize: '11px' }}>
               <span>{formatReviewDate(review.created_at)}</span>
               {review.is_edited && (
                 <>
@@ -110,29 +137,41 @@ const ReviewCard = memo(function ReviewCard({
         </div>
 
         {/* Overall Star Rating */}
-        <div className="d-flex align-items-center gap-2 mt-1 mt-sm-0">
-          <StarRating rating={review.rating} size={16} showValue />
+        <div className="d-flex align-items-center gap-1 flex-shrink-0 bg-light px-2 py-1 rounded-pill border" style={{ borderColor: '#F1F5F9' }}>
+          <StarRating rating={review.rating} size={13} />
+          <span className="fw-bold text-dark ms-0.5" style={{ fontSize: '12px' }}>
+            {Number(review.rating).toFixed(1)}
+          </span>
         </div>
       </div>
 
-      {/* Sub-Dimension Ratings (Pills) */}
-      {(review.cleanliness_rating || review.staff_rating || review.wait_time_rating) && (
-        <div className="d-flex flex-wrap gap-1.5 gap-md-2 mb-3">
+      {/* Sub-Dimension Ratings (Micro Pills) - Only shown for Hospital reviews */}
+      {Boolean(isHospital || review.review_type === 'hospital') && (review.cleanliness_rating || review.staff_rating || review.wait_time_rating) && (
+        <div className="d-flex flex-wrap gap-1.5 mb-2.5">
           {review.cleanliness_rating && (
-            <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2.5 py-1 small fw-normal d-inline-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
-              <Sparkles size={12} className="text-primary" />
+            <span 
+              className="badge rounded-pill px-2 py-0.5 d-inline-flex align-items-center gap-1"
+              style={{ fontSize: '11px', fontWeight: 500, backgroundColor: '#F0F9FF', color: '#0369A1', border: '1px solid #BAE6FD' }}
+            >
+              <Sparkles size={11} />
               পরিচ্ছন্নতা: {review.cleanliness_rating}★
             </span>
           )}
           {review.staff_rating && (
-            <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2.5 py-1 small fw-normal d-inline-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
-              <Users size={12} className="text-success" />
+            <span 
+              className="badge rounded-pill px-2 py-0.5 d-inline-flex align-items-center gap-1"
+              style={{ fontSize: '11px', fontWeight: 500, backgroundColor: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}
+            >
+              <Users size={11} />
               স্টাফদের ব্যবহার: {review.staff_rating}★
             </span>
           )}
           {review.wait_time_rating && (
-            <span className="badge bg-light text-secondary border border-light-subtle rounded-pill px-2.5 py-1 small fw-normal d-inline-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
-              <Clock size={12} className="text-info" />
+            <span 
+              className="badge rounded-pill px-2 py-0.5 d-inline-flex align-items-center gap-1"
+              style={{ fontSize: '11px', fontWeight: 500, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}
+            >
+              <Clock size={11} />
               অপেক্ষার সময়: {review.wait_time_rating}★
             </span>
           )}
@@ -140,60 +179,100 @@ const ReviewCard = memo(function ReviewCard({
       )}
 
       {/* Title & Comment Body */}
-      {review.title && <h6 className="fw-bold text-dark mb-1.5" style={{ fontSize: '15px' }}>{review.title}</h6>}
-      <p className="text-secondary mb-3 lh-base" style={{ whiteSpace: 'pre-line', fontSize: '13.5px', color: '#334155' }}>
+      {review.title && (
+        <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '14px', lineHeight: 1.35 }}>
+          {review.title}
+        </h6>
+      )}
+      <p className="text-secondary mb-2.5 lh-base" style={{ whiteSpace: 'pre-line', fontSize: '13px', color: '#334155' }}>
         {review.comment}
       </p>
 
-      {/* Official Doctor Reply */}
+      {/* Official Doctor Reply - Conversational Bubble */}
       {doctorReply && (
-        <div className="p-3 rounded-3 bg-light border-start border-4 border-primary mt-2 mb-3">
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <CornerDownRight size={15} className="text-primary" />
-            <span className="fw-bold text-primary small">
+        <div 
+          className="p-2.5 p-sm-3 rounded-3 mt-2 mb-2.5"
+          style={{
+            backgroundColor: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderLeft: '3px solid #00B875'
+          }}
+        >
+          <div className="d-flex align-items-center gap-1.5 mb-1 flex-wrap">
+            <CornerDownRight size={13} style={{ color: '#00B875' }} />
+            <span className="fw-bold small" style={{ color: '#0F172A', fontSize: '12px' }}>
               ডাঃ {review.doctor?.name || doctorReply.user?.name || 'ডাক্তার'}-এর অফিসিয়াল উত্তর
             </span>
-            <span className="text-muted extra-small ms-auto">
+            <span 
+              className="badge rounded-pill px-1.5 py-0.2" 
+              style={{ fontSize: '9.5px', backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
+            >
+              ভেরিফাইড
+            </span>
+            <span className="text-muted extra-small ms-auto" style={{ fontSize: '11px' }}>
               {formatReviewDate(doctorReply.created_at)}
             </span>
           </div>
-          <p className="small text-dark mb-0 ps-3 ps-md-4">{doctorReply.reply}</p>
+          <p className="small text-secondary mb-0 ps-3" style={{ fontSize: '12.5px', color: '#475569' }}>
+            {doctorReply.reply}
+          </p>
         </div>
       )}
 
-      {/* Official Hospital Reply */}
+      {/* Official Hospital Reply - Conversational Bubble */}
       {hospitalReply && (
-        <div className="p-3 rounded-3 bg-light border-start border-4 border-info mt-2 mb-3">
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <CornerDownRight size={15} className="text-info" />
-            <span className="fw-bold text-info small">
+        <div 
+          className="p-2.5 p-sm-3 rounded-3 mt-2 mb-2.5"
+          style={{
+            backgroundColor: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderLeft: '3px solid #0284C7'
+          }}
+        >
+          <div className="d-flex align-items-center gap-1.5 mb-1 flex-wrap">
+            <CornerDownRight size={13} style={{ color: '#0284C7' }} />
+            <span className="fw-bold small" style={{ color: '#0F172A', fontSize: '12px' }}>
               {review.hospital?.name || 'হাসপাতাল কর্তৃপক্ষ'}-এর অফিসিয়াল উত্তর
             </span>
-            <span className="text-muted extra-small ms-auto">
+            <span 
+              className="badge rounded-pill px-1.5 py-0.2" 
+              style={{ fontSize: '9.5px', backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
+            >
+              ভেরিফাইড
+            </span>
+            <span className="text-muted extra-small ms-auto" style={{ fontSize: '11px' }}>
               {formatReviewDate(hospitalReply.created_at)}
             </span>
           </div>
-          <p className="small text-dark mb-0 ps-3 ps-md-4">{hospitalReply.reply}</p>
+          <p className="small text-secondary mb-0 ps-3" style={{ fontSize: '12.5px', color: '#475569' }}>
+            {hospitalReply.reply}
+          </p>
         </div>
       )}
 
       {/* Footer Actions */}
       <div className="d-flex align-items-center justify-content-between pt-2 border-top border-light-subtle flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-1.5">
           {allowReply && onReply && (
             <button
               type="button"
               onClick={() => onReply(review)}
-              className="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
-              style={{ fontSize: '12px' }}
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 px-2.5 py-1"
+              style={{ 
+                fontSize: '11.5px', 
+                fontWeight: 600,
+                backgroundColor: '#EFF6FF', 
+                color: '#1D4ED8', 
+                border: '1px solid #BFDBFE' 
+              }}
             >
-              <MessageSquare size={13} />
+              <MessageSquare size={12} />
               উত্তর দিন
             </button>
           )}
 
           {showManagementStatus && (doctorReply || hospitalReply) && onReply && !allowReply && (
-            <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1.5 d-inline-flex align-items-center gap-1">
+            <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1.5 d-inline-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
               <CheckCircle2 size={12} />
               ✓ Official Reply Added
             </span>
@@ -203,11 +282,17 @@ const ReviewCard = memo(function ReviewCard({
             <button
               type="button"
               onClick={() => onEdit(review)}
-              className="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
-              style={{ fontSize: '12px' }}
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 px-2.5 py-1"
+              style={{ 
+                fontSize: '11.5px', 
+                fontWeight: 600,
+                backgroundColor: '#F8FAFC', 
+                color: '#475569', 
+                border: '1px solid #E2E8F0' 
+              }}
             >
-              <Edit2 size={13} />
-              সম্পাদন
+              <Edit2 size={12} />
+              সম্পাদনা
             </button>
           )}
 
@@ -215,10 +300,16 @@ const ReviewCard = memo(function ReviewCard({
             <button
               type="button"
               onClick={() => onDelete(review)}
-              className="btn btn-sm btn-outline-danger rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1"
-              style={{ fontSize: '12px' }}
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 px-2.5 py-1"
+              style={{ 
+                fontSize: '11.5px', 
+                fontWeight: 600,
+                backgroundColor: '#FEF2F2', 
+                color: '#DC2626', 
+                border: '1px solid #FECACA' 
+              }}
             >
-              <Trash2 size={13} />
+              <Trash2 size={12} />
               মুছুন
             </button>
           )}
@@ -229,11 +320,11 @@ const ReviewCard = memo(function ReviewCard({
             type="button"
             onClick={() => onReport(review)}
             className="btn btn-link text-muted p-0 text-decoration-none extra-small d-inline-flex align-items-center gap-1 hover-text-danger ms-auto"
-            title="যদি এই রিভিউটি মিথ্যা, বিভ্রান্তিকর, অপমানজনক অথবা নীতিমালা লঙ্ঘন করে থাকে, তাহলে অভিযোগ জানান"
+            title="যদি এই রিভিউটি মিথ্যা বা নীতিমালা লঙ্ঘন করে থাকে, তাহলে অভিযোগ জানান"
             aria-label="অভিযোগ করুন"
-            style={{ fontSize: '11.5px' }}
+            style={{ fontSize: '11px', color: '#94A3B8' }}
           >
-            <Flag size={12} />
+            <Flag size={11} />
             অভিযোগ করুন
           </button>
         )}

@@ -303,9 +303,20 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
     return null
   })()
 
+  const doctorDetailUrl = useMemo(() => {
+    if (matchedChamber && doctor?.slug) {
+      const chDist = matchedChamber.district?.slug || matchedChamber.hospital?.district?.slug
+      const chUpa = matchedChamber.upazila?.slug || matchedChamber.hospital?.upazila?.slug
+      if (chDist) {
+        return `/doctors/${chDist}/${chUpa || 'general'}/${doctor.slug}`
+      }
+    }
+    return getDoctorUrl(doctor)
+  }, [matchedChamber, doctor])
+
   const handleDetails = (e) => {
     if (e) e.stopPropagation()
-    navigate(getDoctorUrl(doctor), { state: { initialDoctor: doctor } })
+    navigate(doctorDetailUrl, { state: { initialDoctor: doctor } })
   }
 
   const handleBook = (e) => {

@@ -1423,7 +1423,7 @@ function ProfilePage() {
                 {/* Admin Panel Button — visible only for admin / doctor / manager */}
                 {(isAdmin || isDoctor || isManager) && (
                   <button
-                    onClick={() => navigate('/admin')}
+                    onClick={() => navigate('/dashboard')}
                     style={{
                       width: '100%',
                       padding: '16px 18px',

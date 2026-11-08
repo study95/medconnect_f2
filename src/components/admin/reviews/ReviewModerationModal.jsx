@@ -135,9 +135,24 @@ export default function ReviewModerationModal({
               <StarRating rating={review.rating} size={15} showValue />
             </div>
 
-            <div className="small text-muted mb-2">
-              <strong>Target:</strong> Dr. {review.doctor?.name || 'N/A'}{' '}
-              {review.hospital?.name ? `(${review.hospital.name})` : ''}
+            <div className="small text-muted mb-2 d-flex align-items-center gap-2 flex-wrap">
+              <strong>Target:</strong>
+              {review.review_type === 'hospital' ? (
+                <>
+                  <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill extra-small px-2">
+                    🏥 Hospital Review
+                  </span>
+                  <span className="fw-semibold text-dark">{review.hospital?.name || 'Hospital Facility'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2">
+                    👨‍⚕️ Doctor Review
+                  </span>
+                  <span className="fw-semibold text-dark">Dr. {review.doctor?.name || 'N/A'}</span>
+                  {review.hospital?.name && <span>({review.hospital.name})</span>}
+                </>
+              )}
             </div>
 
             {review.title && <div className="fw-semibold text-dark small mb-1">{review.title}</div>}

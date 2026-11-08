@@ -13,6 +13,7 @@ import {
   IconBolt
 } from '@tabler/icons-react'
 import useSpecialties from '../hooks/useSpecialties'
+import useDebounce from '../hooks/useDebounce'
 import { getDoctors, getDoctorById } from '../api/doctorApi'
 import { getBookedSlots, createAppointment } from '../api/appointmentApi'
 import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
@@ -58,7 +59,24 @@ export default function QuickAppointmentPage() {
   const [loadingDoctors, setLoadingDoctors] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [doctorSearch, setDoctorSearch] = useState('')
+  const debouncedDoctorSearch = useDebounce(doctorSearch, 250)
+  const doctorsCacheRef = useRef(new Map())
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false)
+
+  // Instant in-memory filter: updates in 0ms on every keystroke without waiting for network
+  const filteredDoctorsList = useMemo(() => {
+    if (!doctorSearch.trim()) return doctorsList
+    const q = doctorSearch.trim().toLowerCase()
+    return doctorsList.filter(d => {
+      const nameEn = (d.name || '').toLowerCase()
+      const nameBn = (d.name_bn || '').toLowerCase()
+      const specEn = (d.specialty?.name || d.specialty_name || '').toLowerCase()
+      const specBn = (d.specialty?.name_bn || '').toLowerCase()
+      const degree = (d.degree || '').toLowerCase()
+      const workplace = (d.workplace || d.hospital?.name || '').toLowerCase()
+      return nameEn.includes(q) || nameBn.includes(q) || specEn.includes(q) || specBn.includes(q) || degree.includes(q) || workplace.includes(q)
+    })
+  }, [doctorsList, doctorSearch])
 
   // Doctor service access state
   const isDoctorServiceDisabled = Boolean(
@@ -346,16 +364,26 @@ export default function QuickAppointmentPage() {
   // Fetch doctors dynamically when specialty, search or date changes
   useEffect(() => {
     let isMounted = true
-    setLoadingDoctors(true)
+    const cacheKey = `${selectedSpecialtyId || 'all'}_${dateMode}_${customDate || ''}_${debouncedDoctorSearch.trim()}`
+
+    // Serve instant cached doctors if available
+    if (doctorsCacheRef.current.has(cacheKey)) {
+      setDoctorsList(doctorsCacheRef.current.get(cacheKey))
+      setLoadingDoctors(false)
+    } else if (doctorsList.length === 0) {
+      setLoadingDoctors(true)
+    }
+
     const params = { per_page: 50 }
     if (selectedSpecialtyId) params.specialty_id = selectedSpecialtyId
-    if (doctorSearch.trim()) params.search = doctorSearch.trim()
+    if (debouncedDoctorSearch.trim()) params.search = debouncedDoctorSearch.trim()
     params.date = dateMode === 'custom' ? (customDate || 'today') : dateMode
 
     getDoctors(params)
       .then((res) => {
         if (!isMounted) return
         const docs = res.data?.data || res.data || []
+        doctorsCacheRef.current.set(cacheKey, docs)
         setDoctorsList(docs)
 
         // Clear selected doctor if they are no longer in the filtered list
@@ -365,14 +393,16 @@ export default function QuickAppointmentPage() {
         }
       })
       .catch(() => {
-        if (isMounted) setDoctorsList([])
+        if (isMounted && !doctorsCacheRef.current.has(cacheKey)) {
+          setDoctorsList([])
+        }
       })
       .finally(() => {
         if (isMounted) setLoadingDoctors(false)
       })
 
     return () => { isMounted = false }
-  }, [selectedSpecialtyId, doctorSearch, dateMode, customDate])
+  }, [selectedSpecialtyId, debouncedDoctorSearch, dateMode, customDate])
 
   // Helper to format Chamber display label with Hospital Name (without address) and Day info
   const getChamberLabel = (ch) => {
@@ -2437,16 +2467,17 @@ export default function QuickAppointmentPage() {
                       maxHeight: 260,
                       overflowY: 'auto'
                     }}>
-                      {loadingDoctors ? (
-                        <div style={{ padding: 12, textAlign: 'center', fontSize: 13, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
-                          ডাক্তার লোড হচ্ছে...
+                      {(loadingDoctors && filteredDoctorsList.length === 0) ? (
+                        <div style={{ padding: 14, textAlign: 'center', fontSize: 13, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <IconLoader2 size={16} className="spin-animation" color="#00B875" />
+                          <span>ডাক্তার লোড হচ্ছে...</span>
                         </div>
-                      ) : doctorsList.length === 0 ? (
+                      ) : filteredDoctorsList.length === 0 ? (
                         <div style={{ padding: 12, textAlign: 'center', fontSize: 13, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
                           কোনো ডাক্তার পাওয়া যায়নি।
                         </div>
                       ) : (
-                        doctorsList.map(doc => {
+                        filteredDoctorsList.map(doc => {
                           const isDocDisabled = doc.has_service_access === false || doc.online_booking_enabled === false
                           return (
                             <div

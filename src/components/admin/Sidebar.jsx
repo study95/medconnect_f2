@@ -327,8 +327,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         <nav className="sidebar-nav">
           {/* Dashboard — visible to all staff */}
           <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
-            to={portalBase}
-            end
+            to={`${portalBase}/dashboard`}
             className={`sidebar-nav-item ${(location.pathname === portalBase || location.pathname === `${portalBase}/` || location.pathname === `${portalBase}/dashboard`) ? 'active' : ''}`}
             onClick={onClose}
             title={isCollapsed ? 'Dashboard' : undefined}

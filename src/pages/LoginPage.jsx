@@ -141,13 +141,13 @@ function LoginPage() {
     if (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register')) {
       navigate(from, { replace: true })
     } else if (role === 'doctor' || roles.includes('doctor') || userData?.role_id === 2) {
-      navigate('/doctor', { replace: true })
+      navigate('/doctor/dashboard', { replace: true })
     } else if (role === 'hospital' || roles.includes('hospital') || roles.includes('manager') || userData?.role_id === 3) {
-      navigate('/hospital', { replace: true })
+      navigate('/hospital/dashboard', { replace: true })
     } else if (roles.includes('admin') || roles.includes('super-admin') || userData?.role_id === 1) {
-      navigate('/admin', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     } else if (isStaffUser) {
-      navigate('/admin', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     } else {
       navigate('/', { replace: true })
     }

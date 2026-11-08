@@ -47,7 +47,7 @@ export default function AdminSecureLoginPage() {
         setPassword('');
       } else if (response.data.success) {
         storeAuth(response.data.token, response.data.user, 'admin');
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {
       setPassword('');
@@ -85,7 +85,7 @@ export default function AdminSecureLoginPage() {
           localStorage.setItem('admin_trusted_device_token', response.data.trusted_device_token);
         }
         storeAuth(response.data.token, response.data.user, 'admin');
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {
       setOtp('');

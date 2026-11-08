@@ -63,6 +63,7 @@ export default function AppointmentTicketPage() {
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewModalType, setReviewModalType] = useState('doctor')
   const [downloadingRx, setDownloadingRx] = useState(false)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
   const rxPaperRef = useRef(null)
@@ -1033,28 +1034,62 @@ export default function AppointmentTicketPage() {
                 </button>
 
                 <button
-                  onClick={() => setShowReviewModal(true)}
+                  type="button"
+                  onClick={() => {
+                    setReviewModalType('doctor')
+                    setShowReviewModal(true)
+                  }}
                   style={{
                     flex: 1,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    background: appointment?.review || appointment?.has_review ? '#FFFBEB' : '#FEF3C7',
+                    background: appointment?.doctor_review || appointment?.review || appointment?.has_doctor_review || appointment?.has_review ? '#FFFBEB' : '#FEF3C7',
                     border: '1.5px solid #FDE68A',
                     color: '#B45309',
-                    padding: '10px',
+                    padding: '10px 8px',
                     borderRadius: 10,
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
-                  title={appointment?.review || appointment?.has_review ? "আপনার দেওয়া রিভিউ সম্পাদনা করুন" : "ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"}
+                  title="ডাক্তারের চিকিৎসা ও কনসালটেশন নিয়ে আপনার অভিজ্ঞতা জানান"
                 >
-                  <Star size={16} color="#D97706" fill="#F59E0B" />
-                  {appointment?.review || appointment?.has_review ? 'রিভিউ সম্পাদনা' : 'রিভিউ দিন'}
+                  <Star size={15} color="#D97706" fill="#F59E0B" />
+                  {appointment?.doctor_review || appointment?.review || appointment?.has_doctor_review || appointment?.has_review ? 'ডাক্তার রিভিউ (সম্পাদনা)' : 'ডাক্তার রিভিউ'}
                 </button>
+
+                {(appointment?.hospital_id || appointment?.chamber?.hospital_id || appointment?.hospital_name || appointment?.chamber?.hospital?.name) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewModalType('hospital')
+                      setShowReviewModal(true)
+                    }}
+                    style={{
+                      flex: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: appointment?.hospital_review || appointment?.has_hospital_review ? '#F0FDF4' : '#E6F8F3',
+                      border: '1.5px solid #A7F3D0',
+                      color: '#047857',
+                      padding: '10px 8px',
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="হাসপাতালের পরিবেশ, পরিচ্ছন্নতা ও সেবা নিয়ে আপনার অভিজ্ঞতা জানান"
+                  >
+                    <Star size={15} color="#059669" fill="#10B981" />
+                    {appointment?.hospital_review || appointment?.has_hospital_review ? 'হাসপাতাল রিভিউ (সম্পাদনা)' : 'হাসপাতাল রিভিউ'}
+                  </button>
+                )}
               </>
             ) : (!statusInfo.isPast && status !== 'cancelled' && status !== 'rejected') ? (
               <button
@@ -1133,9 +1168,21 @@ export default function AppointmentTicketPage() {
       <ReviewFormModal
         show={showReviewModal}
         onHide={() => setShowReviewModal(false)}
+        reviewType={reviewModalType}
         appointment={appointment}
-        existingReview={appointment?.review || null}
+        doctor={appointment?.doctor}
+        hospital={appointment?.hospital || appointment?.chamber?.hospital}
+        existingReview={
+          reviewModalType === 'hospital'
+            ? (appointment?.hospital_review || null)
+            : (appointment?.doctor_review || appointment?.review || null)
+        }
         onSuccess={() => {
+          const wasDoctor = reviewModalType === 'doctor'
+          const hasHosp = Boolean(appointment?.hospital_id || appointment?.chamber?.hospital_id || appointment?.hospital_name || appointment?.chamber?.hospital?.name)
+          const hadHospReview = Boolean(appointment?.hospital_review || appointment?.has_hospital_review)
+
+          setShowReviewModal(false)
           if (id) {
             getAppointmentById(id)
               .then((res) => {
@@ -1143,6 +1190,12 @@ export default function AppointmentTicketPage() {
                 if (data) setAppointment(data)
               })
               .catch(() => {})
+          }
+          if (wasDoctor && hasHosp && !hadHospReview) {
+            setTimeout(() => {
+              setReviewModalType('hospital')
+              setShowReviewModal(true)
+            }, 600)
           }
         }}
       />

@@ -124,6 +124,7 @@ function MyAppointmentsPage() {
   const [downloadingRxId, setDownloadingRxId] = useState(null)
   const [rxDataForDownload, setRxDataForDownload] = useState(null)
   const [reviewAppt, setReviewAppt] = useState(null)
+  const [reviewApptType, setReviewApptType] = useState('doctor')
   const [existingReviewToEdit, setExistingReviewToEdit] = useState(null)
   const validTabs = ['all', 'upcoming', 'past']
   const initialTab = searchParams.get('tab') || 'all'
@@ -729,45 +730,79 @@ function MyAppointmentsPage() {
 
                       {/* Patient Review & Rating CTA - for active non-cancelled visits */}
                       {isLoggedIn && appt.status !== 'cancelled' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setReviewAppt(appt)
-                            setExistingReviewToEdit(appt.review || null)
-                          }}
-                          style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 7,
-                            background: appt.review || appt.has_review ? '#FFFBEB' : '#FEF3C7',
-                            border: '1.5px solid #FDE68A',
-                            color: '#B45309',
-                            padding: '8px 14px',
-                            borderRadius: 9,
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            fontFamily: "'Hind Siliguri', sans-serif",
-                            boxShadow: '0 1px 3px rgba(180,83,9,0.06)',
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.background = '#FDE68A'
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.background = appt.review || appt.has_review ? '#FFFBEB' : '#FEF3C7'
-                          }}
-                          title={appt.review || appt.has_review ? "আপনার দেওয়া রিভিউ সম্পাদনা করুন" : "ডাক্তার ও চেম্বার নিয়ে আপনার অভিজ্ঞতা জানান"}
-                        >
-                          <Star size={15} color="#D97706" fill="#F59E0B" />
-                          <span>
-                            {appt.review || appt.has_review
-                              ? 'রিভিউ দেওয়া হয়েছে (সম্পাদনা করুন)'
-                              : 'ডাক্তারকে রেটিং ও রিভিউ দিন'}
-                          </span>
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setReviewAppt(appt)
+                              setReviewApptType('doctor')
+                              setExistingReviewToEdit(appt.doctor_review || appt.review || null)
+                            }}
+                            style={{
+                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              background: appt.doctor_review || appt.review || appt.has_doctor_review || appt.has_review ? '#FFFBEB' : '#FEF3C7',
+                              border: '1.5px solid #FDE68A',
+                              color: '#B45309',
+                              padding: '8px 8px',
+                              borderRadius: 9,
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              fontFamily: "'Hind Siliguri', sans-serif",
+                            }}
+                            title="ডাক্তারের চিকিৎসা ও কনসালটেশন নিয়ে আপনার অভিজ্ঞতা জানান"
+                          >
+                            <Star size={14} color="#D97706" fill="#F59E0B" />
+                            <span>
+                              {appt.doctor_review || appt.review || appt.has_doctor_review || appt.has_review
+                                ? 'ডাক্তার রিভিউ (সম্পাদনা)'
+                                : 'ডাক্তার রিভিউ'}
+                            </span>
+                          </button>
+
+                          {(appt.hospital_id || appt.chamber?.hospital_id || appt.hospital_name || appt.chamber?.hospital?.name) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setReviewAppt(appt)
+                                setReviewApptType('hospital')
+                                setExistingReviewToEdit(appt.hospital_review || null)
+                              }}
+                              style={{
+                                flex: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                background: appt.hospital_review || appt.has_hospital_review ? '#F0FDF4' : '#E6F8F3',
+                                border: '1.5px solid #A7F3D0',
+                                color: '#047857',
+                                padding: '8px 8px',
+                                borderRadius: 9,
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                fontFamily: "'Hind Siliguri', sans-serif",
+                              }}
+                              title="হাসপাতালের পরিবেশ, পরিচ্ছন্নতা ও সেবা নিয়ে আপনার অভিজ্ঞতা জানান"
+                            >
+                              <Star size={14} color="#059669" fill="#10B981" />
+                              <span>
+                                {appt.hospital_review || appt.has_hospital_review
+                                  ? 'হাসপাতাল রিভিউ (সম্পাদনা)'
+                                  : 'হাসপাতাল রিভিউ'}
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -785,8 +820,29 @@ function MyAppointmentsPage() {
           setReviewAppt(null)
           setExistingReviewToEdit(null)
         }}
+        reviewType={reviewApptType}
         appointment={reviewAppt}
+        doctor={reviewAppt?.doctor}
+        hospital={reviewAppt?.hospital || reviewAppt?.chamber?.hospital}
         existingReview={existingReviewToEdit}
+        onSuccess={() => {
+          const wasDoctor = reviewApptType === 'doctor'
+          const apptRef = reviewAppt
+          const hasHosp = Boolean(apptRef?.hospital_id || apptRef?.chamber?.hospital_id || apptRef?.hospital_name || apptRef?.chamber?.hospital?.name)
+          const hadHospReview = Boolean(apptRef?.hospital_review || apptRef?.has_hospital_review)
+
+          refetch()
+          setReviewAppt(null)
+          setExistingReviewToEdit(null)
+
+          if (wasDoctor && hasHosp && !hadHospReview) {
+            setTimeout(() => {
+              setReviewAppt(apptRef)
+              setReviewApptType('hospital')
+              setExistingReviewToEdit(null)
+            }, 600)
+          }
+        }}
       />
 
       {/* ── Offscreen Prescription Paper for Direct PDF Rendering ── */}

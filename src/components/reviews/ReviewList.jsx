@@ -117,6 +117,16 @@ const ReviewList = memo(function ReviewList({
     return Array.isArray(data) ? data : data.data || []
   }, [data])
 
+  const [cachedAllReviews, setCachedAllReviews] = useState([])
+
+  useEffect(() => {
+    if (!selectedStar && reviews.length > 0) {
+      setCachedAllReviews(reviews)
+    }
+  }, [selectedStar, reviews])
+
+  const breakdownReviews = (!selectedStar || cachedAllReviews.length === 0) ? reviews : cachedAllReviews
+
   const displayedReviews = useMemo(() => {
     if (replyFilter === 'needs_reply') {
       return reviews.filter(
@@ -147,59 +157,76 @@ const ReviewList = memo(function ReviewList({
   return (
     <div className={`review-list-container ${className}`}>
       {/* Header with Title and "Write a Review" Action */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3 mb-md-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">রোগীর মতামত ও রিভিউ</h4>
-          <p className="text-muted small mb-0">যাচাইকৃত অ্যাপয়েন্টমেন্ট ও রোগীদের বাস্তব অভিজ্ঞতা</p>
+          <h4 className="fw-bold text-dark mb-0.5" style={{ fontSize: 'clamp(1.15rem, 3vw, 1.4rem)' }}>
+            {hospitalId ? 'হাসপাতালের মূল্যায়ন ও রোগীর মতামত' : 'রোগীর মতামত ও রিভিউ'}
+          </h4>
+          <p className="text-muted small mb-0" style={{ fontSize: '12.5px' }}>
+            {hospitalId
+              ? 'হাসপাতালের পরিবেশ, পরিচ্ছন্নতা ও সার্বিক সেবা সম্পর্কে রোগীদের বাস্তব অভিজ্ঞতা'
+              : 'যাচাইকৃত অ্যাপয়েন্টমেন্ট ও রোগীদের বাস্তব অভিজ্ঞতা'}
+          </p>
         </div>
 
         {/* Feature 1 — Enterprise Entry Point CTA */}
-        <div>
+        <div className="ms-auto ms-sm-0">
           {!isLoggedIn ? (
             <button
               type="button"
               onClick={onLoginClick || onWriteReview}
-              className="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm fw-semibold"
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 px-3.5 py-1.5 shadow-sm fw-semibold"
+              style={{
+                backgroundColor: '#EFF6FF',
+                color: '#1D4ED8',
+                border: '1px solid #BFDBFE',
+                fontSize: '12.5px'
+              }}
             >
-              <LogIn size={16} />
+              <LogIn size={14} />
               লগইন করে রিভিউ দিন
             </button>
           ) : hasReviewed ? (
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-1">
-                <CheckCircle size={14} />
+              <span 
+                className="badge rounded-pill px-3 py-1.5 small d-inline-flex align-items-center gap-1"
+                style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', fontSize: '12px' }}
+              >
+                <CheckCircle size={13} />
                 আপনার রিভিউ
               </span>
               {onEdit && (
                 <button
                   type="button"
                   onClick={() => onEdit?.()}
-                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+                  className="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+                  style={{ backgroundColor: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', fontSize: '12px' }}
                 >
-                  <Edit3 size={14} />
+                  <Edit3 size={13} />
                   সম্পাদনা করুন
                 </button>
               )}
             </div>
-          ) : isEligible ? (
+          ) : (canWrite || isEligible || Boolean(hospitalId)) ? (
             <button
               type="button"
               onClick={onWriteReview}
-              className="btn btn-primary rounded-pill d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm fw-semibold"
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 px-3.5 py-1.5 shadow-sm fw-semibold text-white"
+              style={{ backgroundColor: '#00B875', border: '1px solid #00B875', fontSize: '13px' }}
             >
-              <Star size={16} fill="currentColor" />
-              রিভিউ লিখুন
+              <Star size={14} fill="currentColor" />
+              {hospitalId ? 'হাসপাতাল রিভিউ লিখুন' : 'রিভিউ লিখুন'}
             </button>
           ) : (
             <button
               type="button"
               disabled
-              className="btn btn-light border text-muted rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2"
+              className="btn btn-light border text-muted rounded-pill d-inline-flex align-items-center gap-1.5 px-3 py-1.5"
               title="শুধুমাত্র চিকিৎসা গ্রহণ করা রোগীরাই রিভিউ দিতে পারবেন।"
-              style={{ cursor: 'not-allowed', opacity: 0.8, fontSize: '0.85rem' }}
+              style={{ cursor: 'not-allowed', opacity: 0.85, fontSize: '0.8rem' }}
             >
-              <Lock size={14} />
-              রিভিউ দেওয়ার জন্য চিকিৎসা সম্পন্ন করুন
+              <Lock size={13} />
+              রিভিউ দিতে চিকিৎসা সম্পন্ন করুন
             </button>
           )}
         </div>
@@ -233,42 +260,12 @@ const ReviewList = memo(function ReviewList({
         <>
           {/* Rating Breakdown & Star Bar Component */}
           <RatingBreakdown
-            reviews={reviews}
+            reviews={breakdownReviews}
             selectedStar={selectedStar}
             onFilterByStar={handleStarFilter}
-            className="mb-4"
+            isHospital={Boolean(hospitalId)}
+            className="mb-3"
           />
-
-          {/* Feature 3 — Enterprise Review Invitation Card */}
-          {isLoggedIn && isEligible && !hasReviewed && onWriteReview && (
-            <div
-              className="card border-0 rounded-4 p-4 mb-4 shadow-sm"
-              style={{
-                background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
-                border: '1.5px solid #86EFAC',
-              }}
-            >
-              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                  <div className="text-warning mb-1 fs-5">★★★★★</div>
-                  <h6 className="fw-bold text-dark mb-1">
-                    আপনার চিকিৎসার অভিজ্ঞতা অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।
-                  </h6>
-                  <p className="text-muted small mb-0">
-                    আপনার মূল্যবান মতামত শেয়ার করে স্বাস্থ্যসেবা উন্নত করতে সাহায্য করুন।
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onWriteReview}
-                  className="btn btn-success rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
-                >
-                  <MessageSquarePlus size={18} />
-                  রিভিউ লিখুন
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Feature 8K: Review Management Quick Filters (All, Needs Reply, Replied) */}
           {Boolean(showReplyFilter) && (
@@ -311,55 +308,69 @@ const ReviewList = memo(function ReviewList({
           )}
 
           {/* Filter & Sort Controls Toolbar */}
-          <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-3 mb-4 pb-2 border-bottom border-light-subtle">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2.5 mt-2 mt-md-3 mb-3.5 mb-md-4 pb-2.5 border-bottom border-light-subtle">
             {/* Star Filter Pills with Horizontal Scroll on Mobile */}
-            <div className="d-flex align-items-center gap-1.5 overflow-auto pb-1 pb-sm-0 flex-nowrap" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <div className="d-flex align-items-center gap-1.5 overflow-auto pb-1 flex-nowrap" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch', maxWidth: '100%' }}>
               <button
                 type="button"
                 onClick={() => handleStarFilter(null)}
-                className={`btn btn-sm rounded-pill px-3 py-1 text-nowrap flex-shrink-0 ${
-                  selectedStar === null ? 'btn-success text-white shadow-sm' : 'btn-outline-secondary border-light-subtle'
-                }`}
+                className="btn btn-sm rounded-pill text-nowrap flex-shrink-0 transition"
                 style={{
-                  backgroundColor: selectedStar === null ? '#00B875' : 'transparent',
+                  backgroundColor: selectedStar === null ? '#00B875' : '#F1F5F9',
+                  color: selectedStar === null ? '#FFFFFF' : '#475569',
+                  border: '1px solid',
                   borderColor: selectedStar === null ? '#00B875' : '#E2E8F0',
-                  fontSize: '12.5px',
-                  fontWeight: 700
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: selectedStar === null ? 700 : 600,
+                  boxShadow: selectedStar === null ? '0 2px 6px rgba(0, 184, 117, 0.25)' : 'none'
                 }}
               >
-                সকল রেটিং
+                সকল
               </button>
-              {[5, 4, 3, 2, 1].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => handleStarFilter(star)}
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 text-nowrap flex-shrink-0 ${
-                    selectedStar === star ? 'btn-success text-white shadow-sm' : 'btn-outline-secondary border-light-subtle'
-                  }`}
-                  style={{
-                    backgroundColor: selectedStar === star ? '#00B875' : 'transparent',
-                    borderColor: selectedStar === star ? '#00B875' : '#E2E8F0',
-                    fontSize: '12.5px',
-                    fontWeight: 700
-                  }}
-                >
-                  {star} ★
-                </button>
-              ))}
+              {[5, 4, 3, 2, 1].map((star) => {
+                const isSelected = selectedStar === star
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => handleStarFilter(star)}
+                    className="btn btn-sm rounded-pill text-nowrap flex-shrink-0 transition"
+                    style={{
+                      backgroundColor: isSelected ? '#00B875' : '#F1F5F9',
+                      color: isSelected ? '#FFFFFF' : '#475569',
+                      border: '1px solid',
+                      borderColor: isSelected ? '#00B875' : '#E2E8F0',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: isSelected ? 700 : 600,
+                      boxShadow: isSelected ? '0 2px 6px rgba(0, 184, 117, 0.25)' : 'none'
+                    }}
+                  >
+                    {star} ★
+                  </button>
+                )
+              })}
             </div>
 
             {/* Sort Dropdown */}
-            <div className="d-flex align-items-center justify-content-end gap-2 flex-shrink-0">
-              <label htmlFor="review-sort-select" className="small text-muted mb-0 text-nowrap" style={{ fontSize: '12.5px', fontWeight: 600 }}>
+            <div className="d-flex align-items-center gap-1.5 ms-auto flex-shrink-0">
+              <span className="text-muted d-none d-sm-inline" style={{ fontSize: '12px', fontWeight: 600 }}>
                 সাজান:
-              </label>
+              </span>
               <select
                 id="review-sort-select"
                 value={sortBy}
                 onChange={handleSortChange}
-                className="form-select form-select-sm rounded-3 border-light-subtle shadow-none"
-                style={{ width: '140px', fontSize: '12.5px' }}
+                className="form-select form-select-sm rounded-pill border-light-subtle shadow-none py-1 ps-2.5 pe-4"
+                style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 600,
+                  color: '#334155',
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E2E8F0',
+                  cursor: 'pointer'
+                }}
               >
                 {REVIEW_SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -375,12 +386,18 @@ const ReviewList = memo(function ReviewList({
             /* Empty State */
             <div className="text-center py-5 rounded-4 bg-light border border-light-subtle my-3 px-3">
               <MessageSquareOff size={48} className="text-muted mb-3 opacity-50" />
-              <h6 className="fw-bold text-dark mb-2">এখনও কোনো রোগী রিভিউ দেননি</h6>
+              <h6 className="fw-bold text-dark mb-2">
+                {selectedStar
+                  ? `${selectedStar}-তারকার কোনো রিভিউ পাওয়া যায়নি`
+                  : replyFilter !== 'all'
+                  ? 'ফিল্টার অনুযায়ী কোনো রিভিউ পাওয়া যায়নি'
+                  : 'এখনও কোনো রোগী রিভিউ দেননি'}
+              </h6>
               <p className="text-muted small mb-4 mx-auto" style={{ maxWidth: '440px' }}>
                 {replyFilter !== 'all'
                   ? `আপনার নির্বাচিত ফিল্টারের সাথে মেলেনি এমন কোনো রিভিউ নেই।`
                   : selectedStar
-                  ? `${selectedStar}-তারকার কোনো রিভিউ আপনার ফিল্টারের সাথে মেলেনি।`
+                  ? `${selectedStar}-তারকার কোনো রিভিউ পাওয়া যায়নি। অন্যান্য রেটিং বা সব রিভিউ দেখতে ফিল্টার ক্লিয়ার করুন।`
                   : !isLoggedIn
                   ? 'লগইন করে আপনার চিকিৎসার অভিজ্ঞতা শেয়ার করুন এবং অন্যান্য রোগীদের সাহায্য করুন।'
                   : isEligible && !hasReviewed
@@ -392,7 +409,8 @@ const ReviewList = memo(function ReviewList({
                 <button
                   type="button"
                   onClick={() => setReplyFilter('all')}
-                  className="btn btn-sm btn-outline-primary rounded-pill px-4 py-2"
+                  className="btn btn-sm rounded-pill px-4 py-2 text-white fw-semibold"
+                  style={{ backgroundColor: '#00B875', border: '1px solid #00B875' }}
                 >
                   সকল রিভিউ দেখুন
                 </button>
@@ -400,9 +418,10 @@ const ReviewList = memo(function ReviewList({
                 <button
                   type="button"
                   onClick={() => handleStarFilter(null)}
-                  className="btn btn-sm btn-outline-primary rounded-pill px-4 py-2"
+                  className="btn btn-sm rounded-pill px-4 py-2 text-white fw-semibold shadow-sm"
+                  style={{ backgroundColor: '#00B875', border: '1px solid #00B875' }}
                 >
-                  ফিল্টার মুছুন
+                  ফিল্টার মুছুন (সকল রিভিউ দেখুন)
                 </button>
               ) : !isLoggedIn ? (
                 <button
@@ -432,6 +451,7 @@ const ReviewList = memo(function ReviewList({
                   review={review}
                   currentUser={currentUser}
                   showManagementStatus={showReplyFilter}
+                  isHospital={Boolean(hospitalId)}
                   onReply={onReply}
                   onEdit={onEdit}
                   onDelete={onDelete}

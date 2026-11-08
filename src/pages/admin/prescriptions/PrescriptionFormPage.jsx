@@ -43,6 +43,7 @@ import { getErrorMessage } from '../../../utils/errorHelper'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
+import { toast } from 'react-hot-toast'
 import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import { queryClient } from '../../../lib/queryClient'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -966,6 +967,7 @@ export default function PrescriptionFormPage() {
   const [medicineSuggestions, setMedicineSuggestions] = useState([])
   const [activeMedicineIndex, setActiveMedicineIndex] = useState(null)
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(-1)
+  const [copiedGenericKey, setCopiedGenericKey] = useState(null)
   const medicineSearchTimeout = useRef(null)
   const suggestionsRef = useRef(null)
   const medicineInputRefs = useRef([])
@@ -1052,6 +1054,38 @@ export default function PrescriptionFormPage() {
       const topList = getTopOrFavoriteMedicines()
       setMedicineSuggestions(topList)
     }
+  }
+
+  // Quick Copy Generic Name with visual feedback & zero dropdown disruption
+  const handleCopyGeneric = (e, genericName, uniqueKey) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (!genericName) return
+    const text = String(genericName).trim()
+    if (!text) return
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {})
+    } else {
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      } catch {
+        // fallback ignore
+      }
+    }
+
+    setCopiedGenericKey(uniqueKey)
+    toast.success(`জেনেরিক কপি করা হয়েছে: ${text}`, { id: 'copy-generic-name', duration: 2000 })
+    setTimeout(() => {
+      setCopiedGenericKey(prev => (prev === uniqueKey ? null : prev))
+    }, 1800)
   }
 
   // Floating coordinates for Medicine Autocomplete Dropdown (bypasses table overflow clipping)
@@ -5042,9 +5076,27 @@ export default function PrescriptionFormPage() {
                                       {(medGeneric || item.company_name) && (
                                         <div className="dr-med-item-bottom">
                                           {medGeneric ? (
-                                            <span className="dr-med-item-generic" title={medGeneric}>
-                                              {medGeneric}
-                                            </span>
+                                            <div className="dr-med-item-generic-wrap">
+                                              <span className="dr-med-item-generic" title={medGeneric}>
+                                                {medGeneric}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                className={`dr-med-copy-btn ${copiedGenericKey === (item.id || sIdx) ? 'copied' : ''}`}
+                                                onClick={(e) => handleCopyGeneric(e, medGeneric, item.id || sIdx)}
+                                                onMouseDown={(e) => {
+                                                  e.stopPropagation()
+                                                  e.preventDefault()
+                                                }}
+                                                title={copiedGenericKey === (item.id || sIdx) ? 'কপি হয়েছে!' : 'জেনেরিক নাম কপি করুন'}
+                                              >
+                                                {copiedGenericKey === (item.id || sIdx) ? (
+                                                  <Check size={11} />
+                                                ) : (
+                                                  <Copy size={11} />
+                                                )}
+                                              </button>
+                                            </div>
                                           ) : <span />}
                                           {item.company_name && (
                                             <span className="dr-med-item-company" title={item.company_name}>
