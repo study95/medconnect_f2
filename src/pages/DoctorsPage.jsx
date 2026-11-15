@@ -329,13 +329,17 @@ function DoctorsPage() {
     }
   }
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [isDocSheetExpanded, setIsDocSheetExpanded] = useState(false)
+  const isDocSheetExpandedRef = useRef(false)
 
-  // Mobile Filter Bottom Sheet Drag-to-dismiss (Hardware Accelerated)
+  useEffect(() => {
+    isDocSheetExpandedRef.current = isDocSheetExpanded
+  }, [isDocSheetExpanded])
+
+  // Mobile Filter Bottom Sheet Drag & Expand Gestures (Smooth real-time touch tracking)
   const docFilterSheetRef = useRef(null)
   const docFilterOverlayRef = useRef(null)
-  const docSheetTouchStartY = useRef(0)
-  const docSheetCurrentY = useRef(0)
-  const isDocSheetDragging = useRef(false)
+  const docScrollBodyRef = useRef(null)
 
   const closeMobileFilter = useCallback(() => {
     if (docFilterSheetRef.current) {
@@ -348,62 +352,278 @@ function DoctorsPage() {
     }
     setTimeout(() => {
       setIsMobileFilterOpen(false)
-      docSheetCurrentY.current = 0
+      setIsDocSheetExpanded(false)
+      isDocSheetExpandedRef.current = false
       if (docFilterSheetRef.current) {
         docFilterSheetRef.current.style.transform = ''
+        docFilterSheetRef.current.style.height = ''
+        docFilterSheetRef.current.style.maxHeight = ''
+        docFilterSheetRef.current.style.transition = ''
       }
     }, 260)
   }, [])
 
-  const handleDocSheetTouchStart = (e) => {
-    docSheetTouchStartY.current = e.touches[0].clientY
-    docSheetCurrentY.current = 0
-    isDocSheetDragging.current = true
-    if (docFilterSheetRef.current) {
-      docFilterSheetRef.current.style.transition = 'none'
-    }
-    if (docFilterOverlayRef.current) {
-      docFilterOverlayRef.current.style.transition = 'none'
-    }
-  }
+  // ── YOUTUBE / FB STYLE BOTTOM SHEET GESTURES (REAL-TIME SMOOTH TRACKING, SWIPE UP TO EXPAND, SWIPE DOWN TO CLOSE) ──
+  useEffect(() => {
+    if (!isMobileFilterOpen) return
+    const sheet = docFilterSheetRef.current
+    const scrollBody = docScrollBodyRef.current
+    const overlay = docFilterOverlayRef.current
+    if (!sheet) return
 
-  const handleDocSheetTouchMove = (e) => {
-    if (!isDocSheetDragging.current) return
-    const deltaY = e.touches[0].clientY - docSheetTouchStartY.current
-    if (deltaY > 0) {
-      docSheetCurrentY.current = deltaY
-      if (docFilterSheetRef.current) {
-        docFilterSheetRef.current.style.transform = `translateY(${deltaY}px)`
-      }
-      if (docFilterOverlayRef.current) {
-        const opacity = Math.max(0, 1 - deltaY / 450)
-        docFilterOverlayRef.current.style.opacity = opacity
-      }
-    }
-  }
+    let startY = 0
+    let startX = 0
+    let initialHeight = 0
+    let isDragging = false
+    let dragMode = null // 'height' | 'dismiss'
+    let startScrollTop = 0
 
-  const handleDocSheetTouchEnd = () => {
-    if (!isDocSheetDragging.current) return
-    isDocSheetDragging.current = false
-    if (docFilterSheetRef.current) {
-      docFilterSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
-    }
-    if (docFilterOverlayRef.current) {
-      docFilterOverlayRef.current.style.transition = 'opacity 0.28s ease'
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
+
+    let currentDragY = 0
+
+    // ── TOUCH GESTURES (Mobile / Touch Devices) ──
+    const handleTouchStart = (e) => {
+      // Don't intercept if user is typing in an active text input
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+
+      const touch = e.touches[0]
+      startY = touch.clientY
+      startX = touch.clientX
+      currentDragY = 0
+
+      // Only check scrollTop if touch originated INSIDE scrollBody
+      const isInsideScrollBody = scrollBody && scrollBody.contains(e.target)
+      startScrollTop = isInsideScrollBody ? scrollBody.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
+      isDragging = false
+      dragMode = null
     }
 
-    if (docSheetCurrentY.current > 100) {
-      closeMobileFilter()
-    } else {
-      if (docFilterSheetRef.current) {
-        docFilterSheetRef.current.style.transform = ''
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY
+      const deltaX = touch.clientX - startX
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+      const maxH = getMaxHeight()
+      const isExpanded = isDocSheetExpandedRef.current
+
+      // 1. SWIPE UP (deltaY < -5): Smoothly expand drawer height pixel-by-pixel (smoothly, no leap)
+      if (deltaY < -5) {
+        if (!isExpanded || initialHeight < maxH - 10) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'height'
+          currentDragY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
       }
-      if (docFilterOverlayRef.current) {
-        docFilterOverlayRef.current.style.opacity = '1'
+
+      // 2. SWIPE DOWN (deltaY > 5): When at top of inner content or anywhere on header/footer/backdrop -> dismiss
+      else if (deltaY > 5 && startScrollTop <= 2) {
+        if (e.cancelable) e.preventDefault()
+        isDragging = true
+        dragMode = 'dismiss'
+        currentDragY = deltaY
+        sheet.style.transition = 'none'
+        sheet.style.transform = `translateY(${deltaY}px)`
+        if (overlay) {
+          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        }
       }
-      docSheetCurrentY.current = 0
     }
-  }
+
+    const handleTouchEnd = (e) => {
+      if (!isDragging) return
+      isDragging = false
+
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+
+      if (dragMode === 'dismiss') {
+        if (finalDeltaY > 50) {
+          closeMobileFilter()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
+        }
+      } else if (dragMode === 'height') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsDocSheetExpanded(true)
+          isDocSheetExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsDocSheetExpanded(false)
+          isDocSheetExpandedRef.current = false
+        }
+      }
+    }
+
+    // ── MOUSE GESTURES (Desktop DevTools mobile mode / mouse drag) ──
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+
+      startY = e.clientY
+      startX = e.clientX
+      currentDragY = 0
+
+      const isInsideScrollBody = scrollBody && scrollBody.contains(e.target)
+      startScrollTop = isInsideScrollBody ? scrollBody.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
+      isDragging = false
+      dragMode = null
+
+      const handleMouseMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY
+        const deltaX = moveEvent.clientX - startX
+
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+        const maxH = getMaxHeight()
+        const isExpanded = isDocSheetExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded || initialHeight < maxH - 10) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'height'
+            currentDragY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5 && startScrollTop <= 2) {
+          moveEvent.preventDefault()
+          isDragging = true
+          dragMode = 'dismiss'
+          currentDragY = deltaY
+          sheet.style.transition = 'none'
+          sheet.style.transform = `translateY(${deltaY}px)`
+          if (overlay) {
+            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+          }
+        }
+      }
+
+      const handleMouseUp = (upEvent) => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+
+        if (!isDragging) return
+        isDragging = false
+
+        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+
+        if (dragMode === 'dismiss') {
+          if (finalDeltaY > 50) {
+            closeMobileFilter()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
+          }
+        } else if (dragMode === 'height') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsDocSheetExpanded(true)
+            isDocSheetExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsDocSheetExpanded(false)
+            isDocSheetExpandedRef.current = false
+          }
+        }
+      }
+
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    // ── SCROLL / WHEEL AUTO-EXPAND ──
+    const handleScroll = () => {
+      if (scrollBody && scrollBody.scrollTop > 10 && !isDocSheetExpandedRef.current) {
+        setIsDocSheetExpanded(true)
+        isDocSheetExpandedRef.current = true
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.height = '92dvh'
+        sheet.style.maxHeight = '92dvh'
+      }
+    }
+    const handleWheel = (e) => {
+      if (e.deltaY > 10 && !isDocSheetExpandedRef.current) {
+        setIsDocSheetExpanded(true)
+        isDocSheetExpandedRef.current = true
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.height = '92dvh'
+        sheet.style.maxHeight = '92dvh'
+      }
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+    sheet.addEventListener('mousedown', handleMouseDown)
+    sheet.addEventListener('wheel', handleWheel, { passive: true })
+
+    if (overlay) {
+      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
+      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
+      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
+      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+      overlay.addEventListener('mousedown', handleMouseDown)
+    }
+
+    if (scrollBody) {
+      scrollBody.addEventListener('scroll', handleScroll, { passive: true })
+    }
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+      sheet.removeEventListener('mousedown', handleMouseDown)
+      sheet.removeEventListener('wheel', handleWheel)
+      if (overlay) {
+        overlay.removeEventListener('touchstart', handleTouchStart)
+        overlay.removeEventListener('touchmove', handleTouchMove)
+        overlay.removeEventListener('touchend', handleTouchEnd)
+        overlay.removeEventListener('touchcancel', handleTouchEnd)
+        overlay.removeEventListener('mousedown', handleMouseDown)
+      }
+      if (scrollBody) {
+        scrollBody.removeEventListener('scroll', handleScroll)
+      }
+    }
+  }, [isMobileFilterOpen, closeMobileFilter])
 
   // Prevent background scroll when mobile filter bottom sheet is open
   useEffect(() => {
@@ -1261,7 +1481,7 @@ function DoctorsPage() {
         }
         @keyframes docSheetSlideUp {
           from { transform: translateY(100%); }
-          to { transform: none; }
+          to { transform: translateY(0); }
         }
 
         .filter-drawer-backdrop {
@@ -1274,26 +1494,36 @@ function DoctorsPage() {
           justify-content: center;
           animation: docSheetFadeIn 0.28s ease;
           touch-action: none;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
         }
 
         .filter-drawer {
           background: #FFFFFF;
           width: 100%;
           max-width: 520px;
-          height: 75vh;
-          height: 75dvh;
-          max-height: 78vh;
+          height: 70vh;
+          height: 70dvh;
+          max-height: 72dvh;
           border-radius: 16px 16px 0 0;
           display: flex;
           flex-direction: column;
           overflow: hidden;
           box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
-          animation: docSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          touch-action: pan-y;
+          animation: docSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
           position: relative;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: optimizeLegibility;
+          transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
+        }
+
+        .filter-drawer.is-expanded {
+          height: 92vh;
+          height: 92dvh;
+          max-height: 94dvh;
         }
 
         .doc-sheet-drag-zone {
@@ -1341,6 +1571,8 @@ function DoctorsPage() {
           flex: 1;
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
           padding: 14px 20px 20px 20px;
         }
 
@@ -2575,26 +2807,28 @@ function DoctorsPage() {
         >
           <div
             ref={docFilterSheetRef}
-            className="filter-drawer"
+            className={`filter-drawer ${isDocSheetExpanded ? 'is-expanded' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
             <div
               className="doc-sheet-drag-zone"
-              onTouchStart={handleDocSheetTouchStart}
-              onTouchMove={handleDocSheetTouchMove}
-              onTouchEnd={handleDocSheetTouchEnd}
+              onClick={() => {
+                const next = !isDocSheetExpandedRef.current
+                setIsDocSheetExpanded(next)
+                isDocSheetExpandedRef.current = next
+                if (docFilterSheetRef.current) {
+                  docFilterSheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  docFilterSheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  docFilterSheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
+              }}
             >
               <div className="doc-sheet-drag-bar" />
             </div>
 
-            {/* Sheet Header (Swipeable, with filter count badge, without close X button per design preference) */}
-            <div
-              className="doc-mobile-sheet-header"
-              onTouchStart={handleDocSheetTouchStart}
-              onTouchMove={handleDocSheetTouchMove}
-              onTouchEnd={handleDocSheetTouchEnd}
-            >
+            {/* Sheet Header (Swipeable, with filter count badge) */}
+            <div className="doc-mobile-sheet-header">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2652,8 +2886,11 @@ function DoctorsPage() {
               </div>
             </div>
 
-        {/* Drawer Scroll Body */}
-        <div className="drawer-scroll-body">
+        {/* Drawer Scroll Body (YouTube/FB comments swipeable scroll body) */}
+        <div
+          ref={docScrollBodyRef}
+          className="drawer-scroll-body"
+        >
           {/* Near Me & Distance Radius (Mobile Drawer) */}
           <div style={{ marginBottom: 16, borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>নিকটবর্তী ডাক্তার</span>
