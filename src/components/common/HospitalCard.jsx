@@ -155,7 +155,7 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
       try {
         await navigator.share({
           title,
-          text: `${title} - MedConnect`,
+          text: `${title} - Doctor Booklet`,
           url
         })
         return

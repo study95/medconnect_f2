@@ -4470,12 +4470,13 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: none !important;
           }
           .hero-section-main {
-            background: #F8FAFC !important;
+            background: linear-gradient(180deg, #E8F8F2 0%, #F1FAF5 160px, #F8FAFC 300px, #F8FAFC 100%) !important;
             color: #0F172A !important;
             min-height: auto !important;
             display: block !important;
-            padding-top: calc(var(--header-height, 68px) + 14px) !important;
+            padding-top: calc(var(--header-height, 58px) + 8px) !important;
             padding-bottom: 4px !important;
+            position: relative;
           }
 
           /* ── Mobile Container ── */
@@ -4489,15 +4490,15 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           /* ── 1. Mint Green Promo Card ── */
           .hero-mobile-promo-card {
             background: linear-gradient(135deg, #E6F7F0 0%, #D8F5E5 50%, #E8F8F2 100%);
-            border-radius: 10px;
+            border-radius: 16px;
             padding: 18px 14px 14px 18px;
             display: flex;
             align-items: stretch;
             justify-content: space-between;
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(16, 185, 129, 0.18);
-            box-shadow: 0 6px 20px rgba(0, 184, 117, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.22);
+            box-shadow: 0 4px 16px rgba(0, 184, 117, 0.10);
             min-height: 156px;
           }
 

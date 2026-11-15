@@ -51,7 +51,7 @@ const PrescriptionPaper = React.forwardRef(({ prescription, hideAll, template },
 
   const verificationUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/rx/view/${verifyTargetId}${sigQuery}` 
-    : `https://medconnect.com/rx/view/${verifyTargetId}${sigQuery}`;
+    : `https://doctorbooklet.com/rx/view/${verifyTargetId}${sigQuery}`;
 
   // Formatted Name: name(patient_id)
   const cleanPatientName = (patientNameVal || '').replace(/\s*\([A-Z0-9-]+\)$/i, '').trim();

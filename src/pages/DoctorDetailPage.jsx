@@ -371,7 +371,7 @@ function DoctorDetailPageContent() {
   return (
     <div className="page-wrapper doctor-detail-page" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif" }}>
       <SeoHead
-        title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | MedConnect`}
+        title={`${doctor?.name || 'ডাক্তার প্রোফাইল'} — ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ'} | Doctor Booklet`}
         description={`${doctor?.name} (${doctor?.degree || 'MBBS'}) - ${doctor?.specialty?.name_bn || doctor?.specialty?.name || 'বিশেষজ্ঞ চিকিৎসা'}। চেম্বার ও অ্যাপয়েন্টমেন্টের তথ্য।`}
         canonicalUrl={`${window.location.origin}${canonicalPath}`}
         ogImage={doctorOgImage}

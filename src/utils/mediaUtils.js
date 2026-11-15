@@ -24,8 +24,16 @@ export const getMediaUrl = (path, fallback = '') => {
   
   // If it's already an absolute HTTP/HTTPS URL
   if (/^https?:\/\//i.test(path)) {
+    // If it points to an unintended /storage/favicon.png or /storage/doctorBookletLogo.png, restore to static
+    if (path.includes('/storage/favicon.png')) return '/favicon.png';
+    if (path.includes('/storage/doctorBookletLogo.png')) return '/doctorBookletLogo.png';
     // Normalize localhost / 127.0.0.1 hostnames to match current BASE_DOMAIN
     return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, BASE_DOMAIN);
+  }
+
+  // If it's a static frontend asset (starts with '/' and not '/storage/')
+  if (path.startsWith('/') && !path.toLowerCase().startsWith('/storage/')) {
+    return path;
   }
   
   // Clean up leading slashes

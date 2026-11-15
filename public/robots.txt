@@ -33,4 +33,4 @@ Disallow: /reset-password
 Disallow: /display/*
 Disallow: /queue-display/*
 
-Sitemap: https://medconnect.com.bd/sitemap.xml
+Sitemap: https://doctorbooklet.com/sitemap.xml

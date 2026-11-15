@@ -10,7 +10,8 @@ import {
   Bell, Search, ChevronRight, Activity, Headphones
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
-import { getContent } from '../../utils/contentService'
+import { getContent, useSiteSettings } from '../../utils/contentService'
+import { getMediaUrl } from '../../utils/mediaUtils'
 import { useTypewriter } from '../../hooks/useTypewriter'
 import SearchTypeaheadDropdown from '../common/SearchTypeaheadDropdown'
 
@@ -31,6 +32,9 @@ const NAV_HOSPITAL_SEARCH_PHRASES = [
 
 function AppNavbar() {
   const { user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isPatient, logout } = useAuth()
+  const site = useSiteSettings()
+  const siteLogo = site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'
+  const siteName = site?.name || 'Doctor Booklet'
   const navigate = useNavigate()
   const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
@@ -1201,8 +1205,9 @@ function AppNavbar() {
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center text-decoration-none">
               <img 
-                src="/doctorBookletLogo.png" 
-                alt="Doctor Booklet Logo" 
+                src={siteLogo} 
+                alt={siteName} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ 
                   height: '46px', 
                   width: 'auto', 
@@ -1320,60 +1325,32 @@ function AppNavbar() {
 
         {/* MOBILE HEADER (<992px) */}
         <div className="d-lg-none" style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #eef2f6',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+          background: scrolled ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: scrolled ? '1px solid #E2E8F0' : '1px solid rgba(0, 184, 117, 0.08)',
+          boxShadow: scrolled ? '0 2px 10px rgba(0,0,0,0.05)' : 'none',
           padding: '0',
           position: 'relative',
           height: '58px',
           display: 'flex',
           alignItems: 'center',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          transition: 'all 0.25s ease'
         }}>
           <Container className="d-flex justify-content-between align-items-center" style={{ height: '100%' }}>
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center text-decoration-none">
               <img 
-                src="/doctorBookletLogo.png" 
-                alt="Doctor Booklet" 
+                src={siteLogo} 
+                alt={siteName} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ height: '38px', width: 'auto', objectFit: 'contain' }} 
               />
             </Link>
 
             {/* Mobile Actions & Menu Toggle */}
-            <div className="d-flex align-items-center gap-2">
-              {location.pathname === '/' && (
-                <Link
-                  to={isLoggedIn ? "/my-appointments" : "/login"}
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '50%',
-                    background: '#FFFFFF',
-                    border: '1.5px solid #E2E8F0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    color: '#1E293B',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                    textDecoration: 'none'
-                  }}
-                  title="নোটিফিকেশন"
-                >
-                  <Bell size={16} />
-                  <span style={{
-                    position: 'absolute',
-                    top: '5px',
-                    right: '5px',
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#EF4444'
-                  }} />
-                </Link>
-              )}
-
+            <div className="d-flex align-items-center">
               <button 
                 type="button"
                 onClick={() => setExpanded(!expanded)}
@@ -1400,7 +1377,12 @@ function AppNavbar() {
           {/* Header */}
           <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-shrink-0">
             <Link to="/" onClick={closeMenu} className="d-flex align-items-center text-decoration-none">
-              <img src="/doctorBookletLogo.png" alt="Doctor Booklet" style={{ height: '32px', width: 'auto' }} />
+              <img 
+                src={siteLogo} 
+                alt={siteName} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
+                style={{ height: '32px', width: 'auto', objectFit: 'contain' }} 
+              />
             </Link>
             <button onClick={closeMenu} className="mobile-drawer-close-btn" aria-label="Close menu">
               <X size={19} />

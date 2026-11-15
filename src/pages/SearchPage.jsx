@@ -120,15 +120,16 @@ export default function SearchPage() {
   // Dynamic SEO calculation (noindex, follow for search results)
   const seoData = useMemo(() => {
     const q = debouncedQuery.trim()
-    let title = 'অনুসন্ধান | MedConnect'
+    let title = 'অনুসন্ধান | Doctor Booklet'
     let description = 'বাংলাদেশের সেরা ডাক্তার, হাসপাতাল ও বিশেষজ্ঞ স্বাস্থ্যসেবা অনুসন্ধান করুন।'
 
     if (q) {
-      title = `"${q}" — অনুসন্ধান ফলাফল | MedConnect`
+      title = `"${q}" — অনুসন্ধান ফলাফল | Doctor Booklet`
       description = `"${q}" সংক্রান্ত সকল ডাক্তার, হাসপাতাল ও বিশেষজ্ঞ বিভাগের অনুসন্ধান ফলাফল।`
     }
 
-    const canonicalUrl = `https://medconnect.com.bd/search${q ? `?query=${encodeURIComponent(q)}` : ''}`
+    const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://doctorbooklet.com'
+    const canonicalUrl = `${siteOrigin}/search${q ? `?query=${encodeURIComponent(q)}` : ''}`
 
     return {
       title,

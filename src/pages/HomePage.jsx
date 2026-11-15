@@ -301,7 +301,7 @@ function AppointmentCTA() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399' }} />
-                      <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>MedConnect Live</span>
+                      <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Doctor Booklet Live</span>
                     </div>
                     <span style={{ fontSize: 10, background: 'rgba(52, 211, 153, 0.15)', color: '#34D399', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>অনলাইন</span>
                   </div>
@@ -5560,7 +5560,7 @@ function HomePage() {
         '@type': 'WebSite',
         '@id': `${window.location.origin}/#website`,
         'url': window.location.origin,
-        'name': 'MedConnect',
+        'name': 'Doctor Booklet',
         'description': 'বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি',
         'potentialAction': {
           '@type': 'SearchAction',
@@ -5608,7 +5608,7 @@ function HomePage() {
   return (
     <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
       <SeoHead
-        title="MedConnect — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি"
+        title="ডাক্তার বুকলেট — শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতাল ডিরেক্টরি"
         description="বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য, চেম্বার সময়সূচি এবং সহজে অনলাইন সিরিয়াল ও অ্যাপয়েন্টমেন্ট বুকিং করুন।"
         canonicalUrl={window.location.origin}
         schemaData={homeSchema}

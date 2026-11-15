@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext'
+import { useSiteSettings } from '../utils/contentService'
+import { getMediaUrl } from '../utils/mediaUtils'
 import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, AlertCircle, LockKeyhole, Smartphone } from 'lucide-react'
 import '../styles/auth-premium.css'
 
@@ -9,6 +11,7 @@ function LoginPage() {
   const { login, verifyDoctor2Fa } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const site = useSiteSettings()
 
   // Derive initial role from URL path
   const pathRole = location.pathname === '/login/doctor'
@@ -247,8 +250,9 @@ function LoginPage() {
           <div>
             <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
               <img 
-                src="/doctorBookletLogo.png" 
-                alt="Doctor Booklet Logo" 
+                src={site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'} 
+                alt={site?.name || 'Doctor Booklet Logo'} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ height: '38px', width: 'auto', objectFit: 'contain' }} 
               />
             </Link>

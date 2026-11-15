@@ -3,6 +3,8 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import axiosInstance from '../api/axiosInstance'
 import PasswordInput from '../components/common/PasswordInput'
+import { useSiteSettings } from '../utils/contentService'
+import { getMediaUrl } from '../utils/mediaUtils'
 import {
   KeyRound,
   Mail,
@@ -19,6 +21,7 @@ import {
 import '../styles/auth-premium.css'
 
 export default function ResetPasswordPage() {
+  const site = useSiteSettings()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const emailParam = searchParams.get('email') || ''
@@ -99,8 +102,9 @@ export default function ResetPasswordPage() {
           <div>
             <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
               <img
-                src="/doctorBookletLogo.png"
-                alt="Doctor Booklet Logo"
+                src={site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'}
+                alt={site?.name || 'Doctor Booklet Logo'}
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
               />
             </Link>
@@ -142,8 +146,9 @@ export default function ResetPasswordPage() {
             <div className="d-lg-none text-center mb-4">
               <Link to="/" className="text-decoration-none d-inline-block">
                 <img
-                  src="/doctorBookletLogo.png"
-                  alt="Doctor Booklet"
+                  src={site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'}
+                  alt={site?.name || 'Doctor Booklet'}
+                  onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                   style={{ height: '34px', width: 'auto', objectFit: 'contain' }}
                 />
               </Link>

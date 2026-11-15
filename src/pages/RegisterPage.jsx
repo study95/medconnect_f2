@@ -11,6 +11,8 @@ import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import LegalDocumentModal from '../components/common/LegalDocumentModal'
+import { useSiteSettings } from '../utils/contentService'
+import { getMediaUrl } from '../utils/mediaUtils'
 import '../styles/auth-premium.css'
 
 const HOSPITAL_TYPES = [
@@ -28,6 +30,7 @@ const HOSPITAL_TYPES = [
 const RegisterPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const site = useSiteSettings()
   const { registerPatient, registerDoctor, registerHospital } = useAuth()
 
   // Derive initial role from URL path
@@ -526,8 +529,9 @@ const RegisterPage = () => {
           <div>
             <Link to="/" className="info-panel-logo mb-4 text-decoration-none" style={{ cursor: 'pointer' }}>
               <img 
-                src="/doctorBookletLogo.png" 
-                alt="Doctor Booklet Logo" 
+                src={site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'} 
+                alt={site?.name || 'Doctor Booklet Logo'} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ height: '38px', width: 'auto', objectFit: 'contain' }} 
               />
             </Link>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
 import { getContent } from '../../utils/contentService'
+import { getMediaUrl } from '../../utils/mediaUtils'
 import { 
   IconPhone, IconMail, IconMapPin, 
   IconBrandFacebook, IconBrandTwitter, IconBrandInstagram, IconBrandLinkedin,
@@ -230,8 +231,9 @@ function Footer() {
           <Col lg={4} className="mb-4 mb-lg-0">
             <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginBottom: 22 }}>
               <img 
-                src="/doctorBookletLogo.png" 
-                alt="Doctor Booklet Logo" 
+                src={site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'} 
+                alt={site?.name || 'Doctor Booklet Logo'} 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
                 style={{ 
                   height: '44px', 
                   width: 'auto', 

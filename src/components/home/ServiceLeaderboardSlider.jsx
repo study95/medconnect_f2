@@ -38,7 +38,7 @@ export default function ServiceLeaderboardSlider() {
       badgeBg: '#F43F5E',
       gradient: 'linear-gradient(135deg, #4C1D95 0%, #6D28D9 45%, #7C3AED 100%)', // Deep Purple / Toffee style like screenshot
       accentColor: '#EC4899',
-      title: 'MEDCONNECT SERVICE LEADERBOARD',
+      title: 'DOCTOR BOOKLET SERVICE LEADERBOARD',
       subtitle: 'ডায়াগনস্টিক | ক্লিনিক্যাল | সার্বক্ষণিক অ্যাম্বুলেন্স | টেলিমেডিসিন',
       description: 'সর্বাধিক পঠিত ও সর্বোচ্চ রেটিং প্রাপ্ত সেবা ডিক্লেয়ারেশন। ২০,০০০+ নিবন্ধিত রোগীর প্রথম পছন্দ।',
       features: [

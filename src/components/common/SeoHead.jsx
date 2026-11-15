@@ -4,7 +4,7 @@ import { useEffect } from 'react'
  * Enterprise SEO & Structured Data Head Manager
  */
 export default function SeoHead({
-  title = 'MedConnect — শীর্ষস্থানীয় ডাক্তার ও হাসপাতাল সেবা',
+  title = 'ডাক্তার বুকলেট — শীর্ষস্থানীয় ডাক্তার ও হাসপাতাল সেবা',
   description = 'অনলাইনে সেরা বিশেষজ্ঞ ডাক্তার ও হাসপাতালের তথ্য জানুন এবং সহজে সিরিয়াল ও অ্যাপয়েন্টমেন্ট বুকিং করুন।',
   canonicalUrl,
   ogImage = '/images/og-default.jpg',
@@ -50,7 +50,7 @@ export default function SeoHead({
     setMeta('property', 'og:url', currentUrl)
     setMeta('property', 'og:type', ogType)
     setMeta('property', 'og:image', ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`)
-    setMeta('property', 'og:site_name', 'MedConnect')
+    setMeta('property', 'og:site_name', 'Doctor Booklet')
     setMeta('property', 'og:locale', 'bn_BD')
 
     // 5. Twitter Card Tags
@@ -60,12 +60,12 @@ export default function SeoHead({
     setMeta('name', 'twitter:image', ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`)
 
     // 6. JSON-LD Structured Data
-    let scriptTag = document.querySelector('script[data-schema="medconnect-seo"]')
+    let scriptTag = document.querySelector('script[data-schema="doctorbooklet-seo"]')
     if (schemaData) {
       if (!scriptTag) {
         scriptTag = document.createElement('script')
         scriptTag.setAttribute('type', 'application/ld+json')
-        scriptTag.setAttribute('data-schema', 'medconnect-seo')
+        scriptTag.setAttribute('data-schema', 'doctorbooklet-seo')
         document.head.appendChild(scriptTag)
       }
       scriptTag.textContent = JSON.stringify(schemaData)
@@ -75,7 +75,7 @@ export default function SeoHead({
 
     return () => {
       // Clean up dynamic schema tag on unmount if needed
-      const tag = document.querySelector('script[data-schema="medconnect-seo"]')
+      const tag = document.querySelector('script[data-schema="doctorbooklet-seo"]')
       if (tag) tag.remove()
     }
   }, [title, description, canonicalUrl, ogImage, ogType, schemaData, noIndex])

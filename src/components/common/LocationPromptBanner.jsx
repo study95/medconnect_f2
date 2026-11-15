@@ -21,7 +21,7 @@ export default function LocationPromptBanner({
   const [isVisible, setIsVisible] = useState(false)
   const [dismissed, setDismissed] = useState(() => {
     try {
-      return sessionStorage.getItem('medconnect_loc_prompt_dismissed') === '1'
+      return sessionStorage.getItem('doctorbooklet_loc_prompt_dismissed') === '1' || sessionStorage.getItem('medconnect_loc_prompt_dismissed') === '1'
     } catch {
       return false
     }
@@ -52,7 +52,7 @@ export default function LocationPromptBanner({
     setJustActivated(false)
     setDismissed(true)
     try {
-      sessionStorage.setItem('medconnect_loc_prompt_dismissed', '1')
+      sessionStorage.setItem('doctorbooklet_loc_prompt_dismissed', '1')
     } catch {
       // ignore
     }

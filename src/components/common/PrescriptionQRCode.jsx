@@ -9,12 +9,12 @@ import { QRCodeSVG } from 'qrcode.react'
  * cameras, pharmacy barcode/QR scanners, A4 paper print, and PDF export.
  */
 export default function PrescriptionQRCode({
-  value = 'https://medconnect.com/rx/view',
+  value = 'https://doctorbooklet.com/rx/view',
   size = 76,
   label = 'Scan for Digital Rx',
   showLabel = true,
 }) {
-  const safeValue = String(value || 'https://medconnect.com/rx/view').trim()
+  const safeValue = String(value || 'https://doctorbooklet.com/rx/view').trim()
 
   return (
     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3, userSelect: 'none' }}>

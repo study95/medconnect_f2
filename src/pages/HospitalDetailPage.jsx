@@ -411,7 +411,7 @@ function HospitalDetailPage() {
   return (
     <div className="page-wrapper hospital-detail-page" style={{ background: '#F8FAFB', minHeight: '100vh', paddingBottom: 60, fontFamily: "'Hind Siliguri', sans-serif" }}>
       <SeoHead
-        title={`${hospital?.name || 'হাসপাতাল'} — বিস্তারিত ও ডাক্তার তালিকা | MedConnect`}
+        title={`${hospital?.name || 'হাসপাতাল'} — বিস্তারিত ও ডাক্তার তালিকা | Doctor Booklet`}
         description={`${hospital?.name} - ${hospital?.address || 'বাংলাদেশ'}। বিশেষজ্ঞ ডাক্তারদের তালিকা, ওপিডি সিরিয়াল ও ইমার্জেন্সি সেবা।`}
         canonicalUrl={`${window.location.origin}${canonicalPath}`}
         ogImage={hospital?.photo_url ? getMediaUrl(hospital.photo_url) : (hospital?.banner_url ? getMediaUrl(hospital.banner_url) : DEMO_BANNER)}

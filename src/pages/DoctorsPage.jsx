@@ -1399,7 +1399,7 @@ function DoctorsPage() {
     const upaNameEn = upazilaObj?.name || upazilaParam
 
     let canonicalPath = '/doctors'
-    let title = 'বাংলাদেশের সেরা বিশেষজ্ঞ ডাক্তার তালিকা ও সিরিয়াল বুকিং | MedConnect'
+    let title = 'বাংলাদেশের সেরা বিশেষজ্ঞ ডাক্তার তালিকা ও সিরিয়াল বুকিং | Doctor Booklet'
     let description = 'বাংলাদেশের শীর্ষস্থানীয় বিশেষজ্ঞ ডাক্তারদের তালিকা, চেম্বার সময়সূচী ও অনলাইন সিরিয়াল বুকিং সেবা।'
 
     const breadcrumbs = [
@@ -1411,36 +1411,38 @@ function DoctorsPage() {
       const divNameBn = matchedDivision.bangla_name || matchedDivision.name_bn || matchedDivision.name
       const divNameEn = matchedDivision.name || districtParam
       canonicalPath = `/doctors/${districtParam}`
-      title = `${divNameBn || divNameEn} বিভাগ সকল ডাক্তার তালিকা | MedConnect`
+      title = `${divNameBn || divNameEn} বিভাগ সকল ডাক্তার তালিকা | Doctor Booklet`
       description = `${divNameBn || divNameEn} বিভাগের সকল বিশেষজ্ঞ ডাক্তারদের তালিকা, চেম্বার সময়সূচী ও অনলাইন সিরিয়াল বুকিং সেবা।`
       breadcrumbs.push({ name: divNameEn || 'Division', url: `/doctors/${districtParam}` })
     } else if (districtParam) {
       canonicalPath = `/doctors/${districtParam}`
-      title = `${distNameBn || distNameEn} জেলার সেরা বিশেষজ্ঞ ডাক্তার তালিকা | MedConnect`
+      title = `${distNameBn || distNameEn} জেলার সেরা বিশেষজ্ঞ ডাক্তার তালিকা | Doctor Booklet`
       description = `${distNameBn || distNameEn} জেলার অভিজ্ঞ ডাক্তারদের তালিকা, বিশেষজ্ঞ বিভাগ, চেম্বার লোকেশন ও অনলাইন অ্যাপয়েন্টমেন্ট।`
       breadcrumbs.push({ name: distNameEn || 'District', url: `/doctors/${districtParam}` })
 
       if (upazilaParam) {
         canonicalPath = `/doctors/${districtParam}/${upazilaParam}`
-        title = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} — বিশেষজ্ঞ ডাক্তারদের তালিকা ও অ্যাপয়েন্টমেন্ট | MedConnect`
+        title = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} — বিশেষজ্ঞ ডাক্তারদের তালিকা ও অ্যাপয়েন্টমেন্ট | Doctor Booklet`
         description = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} এলাকার শীর্ষ বিশেষজ্ঞ ডাক্তারদের তালিকা, ওপিডি চেম্বার শিডিউল ও সিরিয়াল বুকিং।`
         breadcrumbs.push({ name: upaNameEn || 'Upazila', url: `/doctors/${districtParam}/${upazilaParam}` })
       }
     }
+
+    const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://doctorbooklet.com'
 
     const collectionSchema = {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: title,
       description: description,
-      url: `https://medconnect.com.bd${canonicalPath}`,
+      url: `${siteOrigin}${canonicalPath}`,
       mainEntity: {
         '@type': 'ItemList',
         itemListElement: doctors.slice(0, 12).map((doc, idx) => ({
           '@type': 'ListItem',
           position: idx + 1,
           name: doc.name || doc.name_bn,
-          url: doc.canonical_url ? `https://medconnect.com.bd${doc.canonical_url}` : undefined,
+          url: doc.canonical_url ? `${siteOrigin}${doc.canonical_url}` : undefined,
         })),
       },
     }
@@ -1452,14 +1454,14 @@ function DoctorsPage() {
         '@type': 'ListItem',
         position: idx + 1,
         name: crumb.name,
-        item: `https://medconnect.com.bd${crumb.url}`,
+        item: `${siteOrigin}${crumb.url}`,
       })),
     }
 
     return {
       title,
       description,
-      canonicalUrl: `https://medconnect.com.bd${canonicalPath}`,
+      canonicalUrl: `${siteOrigin}${canonicalPath}`,
       schema: [collectionSchema, breadcrumbSchema],
     }
   }, [districtParam, matchedDivision, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, doctors])

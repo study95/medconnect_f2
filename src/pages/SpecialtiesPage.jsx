@@ -57,9 +57,10 @@ export default function SpecialtiesPage() {
   }, [specialties, searchTerm])
 
   const seoData = useMemo(() => {
-    const title = 'সকল মেডিকেল স্পেশালিটি ও বিশেষজ্ঞ বিভাগ | MedConnect'
+    const title = 'সকল মেডিকেল স্পেশালিটি ও বিশেষজ্ঞ বিভাগ | Doctor Booklet'
     const description = 'বাংলাদেশের সকল মেডিকেল স্পেশালিটি, বিশেষজ্ঞ ডাক্তার এবং সংশ্লিষ্ট হাসপাতালের তালিকা। আপনার প্রয়োজনীয় বিভাগের বিশেষজ্ঞ ডাক্তার খুঁজুন।'
-    const canonicalUrl = 'https://medconnect.com.bd/specialties'
+    const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://doctorbooklet.com'
+    const canonicalUrl = `${siteOrigin}/specialties`
 
     const collectionSchema = {
       '@context': 'https://schema.org',
@@ -73,7 +74,7 @@ export default function SpecialtiesPage() {
           '@type': 'ListItem',
           position: idx + 1,
           name: spec.name,
-          url: `https://medconnect.com.bd/specialties/${spec.slug || spec.id}`,
+          url: `${siteOrigin}/specialties/${spec.slug || spec.id}`,
         })),
       },
     }
@@ -82,7 +83,7 @@ export default function SpecialtiesPage() {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://medconnect.com.bd/' },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteOrigin}/` },
         { '@type': 'ListItem', position: 2, name: 'Specialties', item: canonicalUrl },
       ],
     }

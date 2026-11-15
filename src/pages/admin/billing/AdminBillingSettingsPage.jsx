@@ -446,7 +446,7 @@ export default function AdminBillingSettingsPage() {
                     type="text"
                     value={form.bank_account_name}
                     onChange={(e) => setForm({ ...form, bank_account_name: e.target.value })}
-                    placeholder="MedConnect Technologies Ltd"
+                    placeholder="Doctor Booklet Technologies Ltd"
                     className="ab-form-input"
                   />
                 </div>
@@ -506,7 +506,7 @@ export default function AdminBillingSettingsPage() {
                   type="text"
                   value={form.invoice_company_name}
                   onChange={(e) => setForm({ ...form, invoice_company_name: e.target.value })}
-                  placeholder="MedConnect Healthcare Solutions Ltd."
+                  placeholder="Doctor Booklet Healthcare Solutions Ltd."
                   className="ab-form-input"
                 />
               </div>
@@ -540,7 +540,7 @@ export default function AdminBillingSettingsPage() {
                     type="text"
                     value={form.support_contact}
                     onChange={(e) => setForm({ ...form, support_contact: e.target.value })}
-                    placeholder="billing@medconnect.com / +880 9612-xxxxxx"
+                    placeholder="billing@doctorbooklet.com / +880 9612-xxxxxx"
                     className="ab-form-input"
                   />
                 </div>

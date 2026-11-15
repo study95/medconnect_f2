@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Row, Col, Form } from 'react-bootstrap'
-import { getContent, saveContent } from '../../../utils/contentService'
+import { getContent, saveContent, uploadCmsMedia, applySiteFavicon } from '../../../utils/contentService'
+import { getMediaUrl } from '../../../utils/mediaUtils'
 import {
   IconStar, IconTrash, IconPlus, IconUpload, IconDeviceFloppy,
   IconCheck, IconMessage, IconBuildingHospital, IconHelp,
   IconHome, IconPhoto, IconLink, IconExternalLink,
   IconInfoCircle, IconHeadphones, IconPhone, IconFileText,
   IconShieldCheck, IconReceiptRefund, IconListNumbers, IconAlertCircle,
-  IconTicket, IconFileCheck, IconCreditCard, IconCalendarEvent
+  IconTicket, IconFileCheck, IconCreditCard, IconCalendarEvent,
+  IconPalette, IconCloudUpload, IconRefresh
 } from '@tabler/icons-react'
 
 /* ── BENGALI DATE FORMATTING HELPERS ── */
@@ -142,6 +144,7 @@ function LegalDateInput({ value, onChange }) {
 }
 
 const TABS = [
+  { key: 'site', label: 'সাইট লোগো ও ব্র্যান্ডিং (Logo & Favicon)', icon: <IconPalette size={18} /> },
   { key: 'hero', label: 'হোম পেজ হিরো সেকশন', icon: <IconHome size={18} /> },
   { key: 'banners', label: 'স্লাইডার ব্যানার', icon: <IconPhoto size={18} /> },
   { key: 'testimonials', label: 'রোগীর রিভিউ (Testimonials)', icon: <IconMessage size={18} /> },
@@ -471,6 +474,313 @@ function PartnersTab({ data, onChange }) {
           </Col>
         ))}
       </Row>
+    </div>
+  )
+}
+
+/* ── 0. SITE BRANDING TAB (LOGO & FAVICON) ── */
+function SiteBrandingTab({ data = {}, onChange }) {
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState(null)
+  const [uploadErr, setUploadErr] = useState(null)
+
+  const currentLogo = data.logo_url ? getMediaUrl(data.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'
+  const currentFavicon = data.favicon_url ? (data.favicon_url.startsWith('http') || data.favicon_url.startsWith('data:') ? data.favicon_url : getMediaUrl(data.favicon_url, '/favicon.png')) : '/favicon.png'
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingLogo(true)
+    setUploadMsg(null)
+    setUploadErr(null)
+    try {
+      const res = await uploadCmsMedia(file, 'logo')
+      if (res && (res.url || res.path)) {
+        const savedUrl = res.url || res.path
+        onChange('logo_url', savedUrl)
+        setUploadMsg('মেইন লোগো সফলভাবে Cloudflare R2 ও অপ্টিমাইজড ফরম্যাটে আপলোড করা হয়েছে!')
+      } else {
+        throw new Error(res?.message || 'আপলোড ব্যর্থ হয়েছে')
+      }
+    } catch (err) {
+      setUploadErr(err?.response?.data?.message || err?.message || 'লোগো আপলোড করা যায়নি')
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleFaviconUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingFavicon(true)
+    setUploadMsg(null)
+    setUploadErr(null)
+    try {
+      const res = await uploadCmsMedia(file, 'favicon')
+      if (res && (res.url || res.path)) {
+        const savedUrl = res.url || res.path
+        onChange('favicon_url', savedUrl)
+        applySiteFavicon(savedUrl)
+        setUploadMsg('ফেভিকন সফলভাবে স্কয়ার PNG অপ্টিমাইজড ফরম্যাটে আপলোড ও আপডেট হয়েছে!')
+      } else {
+        throw new Error(res?.message || 'আপলোড ব্যর্থ হয়েছে')
+      }
+    } catch (err) {
+      setUploadErr(err?.response?.data?.message || err?.message || 'ফেভিকন আপলোড করা যায়নি')
+    } finally {
+      setUploadingFavicon(false)
+      e.target.value = ''
+    }
+  }
+
+  return (
+    <div>
+      {/* Notifications */}
+      {uploadMsg && (
+        <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', padding: '10px 14px', borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+          <IconCheck size={18} color="#059669" />
+          <span>{uploadMsg}</span>
+        </div>
+      )}
+      {uploadErr && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', padding: '10px 14px', borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+          <IconAlertCircle size={18} color="#DC2626" />
+          <span>{uploadErr}</span>
+        </div>
+      )}
+
+      {/* Cloudflare & Optimizer Status Banner */}
+      <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff', padding: '16px 20px', borderRadius: 12, marginBottom: 22, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0, 184, 117, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00B875' }}>
+            <IconCloudUpload size={22} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14.5 }}>Cloudflare R2 ও ইমেজ অপ্টিমাইজার ইঞ্জিন সক্রিয়</div>
+            <div style={{ color: '#94A3B8', fontSize: 12 }}>স্বয়ংক্রিয় WebP/PNG ফরম্যাট, আলফা ট্রান্সপারেন্সি ও গ্লোবাল এজ ক্যাশিং</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ background: 'rgba(0, 184, 117, 0.2)', color: '#34D399', fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 6 }}>WebP / PNG</span>
+          <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38BDF8', fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 6 }}>Cloudflare R2</span>
+          <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#C084FC', fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 6 }}>Global Edge CDN</span>
+        </div>
+      </div>
+
+      <Row className="g-4 mb-4">
+        {/* LOGO CARD */}
+        <Col md={6}>
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: 12, padding: 22, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 15.5, color: '#0F172A' }}>ওয়েবসাইট মেইন লোগো (Header & Footer)</div>
+              <span style={{ fontSize: 11, fontWeight: 700, background: '#ECFDF5', color: '#059669', padding: '3px 8px', borderRadius: 6 }}>Max Width 600px</span>
+            </div>
+            <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: 16 }}>
+              ভিজিটরদের সামনে সাইট হেডারে, ফুটারে এবং লগইন পেজে এই লোগোটি প্রদর্শিত হবে। প্রস্তাবিত ফরম্যাট: PNG বা WebP।
+            </div>
+
+            {/* Logo Preview Box */}
+            <div style={{
+              background: '#F8FAFC',
+              backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
+              backgroundSize: '12px 12px',
+              border: '1.5px dashed #CBD5E1',
+              borderRadius: 10,
+              padding: '24px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 120,
+              marginBottom: 16
+            }}>
+              <img 
+                src={currentLogo} 
+                alt="Main Logo Preview" 
+                onError={(e) => { e.target.src = '/doctorBookletLogo.png' }}
+                style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} 
+              />
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 'auto', flexWrap: 'wrap' }}>
+              <label style={{
+                background: uploadingLogo ? '#94A3B8' : '#00B875',
+                color: '#FFFFFF',
+                borderRadius: 8,
+                padding: '9px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: uploadingLogo ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}>
+                <IconUpload size={16} />
+                {uploadingLogo ? 'অপ্টিমাইজ ও আপলোড হচ্ছে...' : 'নতুন লোগো আপলোড করুন'}
+                <input 
+                  type="file" 
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml" 
+                  disabled={uploadingLogo} 
+                  onChange={handleLogoUpload} 
+                  style={{ display: 'none' }} 
+                />
+              </label>
+
+              {data.logo_url && data.logo_url !== '/doctorBookletLogo.png' && (
+                <button
+                  type="button"
+                  onClick={() => onChange('logo_url', '/doctorBookletLogo.png')}
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#64748B',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 8,
+                    padding: '9px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <IconRefresh size={15} /> ডিফল্ট
+                </button>
+              )}
+            </div>
+          </div>
+        </Col>
+
+        {/* FAVICON CARD */}
+        <Col md={6}>
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: 12, padding: 22, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 15.5, color: '#0F172A' }}>ব্রাউজার ফেভিকন (Favicon)</div>
+              <span style={{ fontSize: 11, fontWeight: 700, background: '#F0F9FF', color: '#0284C7', padding: '3px 8px', borderRadius: 6 }}>Square 128x128 PNG</span>
+            </div>
+            <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: 16 }}>
+              ব্রাউজারের ট্যাব টাইটেল এবং বুকমার্কবারে এই আইকনটি প্রদর্শিত হবে। স্বয়ংক্রিয়ভাবে স্কয়ার সাইজে অপ্টিমাইজ হবে।
+            </div>
+
+            {/* Browser Tab Simulation Mockup */}
+            <div style={{
+              background: '#E2E8F0',
+              borderRadius: '10px 10px 0 0',
+              padding: '8px 12px 0',
+              marginBottom: 16
+            }}>
+              <div style={{
+                background: '#FFFFFF',
+                borderRadius: '8px 8px 0 0',
+                padding: '7px 14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                maxWidth: 240,
+                borderTop: '2px solid #00B875'
+              }}>
+                <img 
+                  src={currentFavicon} 
+                  alt="Favicon" 
+                  onError={(e) => { e.target.src = '/favicon.png' }}
+                  style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 2 }} 
+                />
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {data.name || 'Doctor Booklet'} - স্বাস্থ্যসেবা...
+                </span>
+                <span style={{ fontSize: 11, color: '#94A3B8', marginLeft: 'auto' }}>×</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 'auto', flexWrap: 'wrap' }}>
+              <label style={{
+                background: uploadingFavicon ? '#94A3B8' : '#0F172A',
+                color: '#FFFFFF',
+                borderRadius: 8,
+                padding: '9px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: uploadingFavicon ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}>
+                <IconUpload size={16} />
+                {uploadingFavicon ? 'অপ্টিমাইজ ও আপলোড হচ্ছে...' : 'নতুন ফেভিকন আপলোড করুন'}
+                <input 
+                  type="file" 
+                  accept="image/png,image/jpeg,image/webp,image/x-icon,image/svg+xml" 
+                  disabled={uploadingFavicon} 
+                  onChange={handleFaviconUpload} 
+                  style={{ display: 'none' }} 
+                />
+              </label>
+
+              {data.favicon_url && data.favicon_url !== '/favicon.png' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange('favicon_url', '/favicon.png')
+                    applySiteFavicon('/favicon.png')
+                  }}
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#64748B',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 8,
+                    padding: '9px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <IconRefresh size={15} /> ডিফল্ট
+                </button>
+              )}
+            </div>
+          </div>
+        </Col>
+      </Row>
+
+      {/* CORE BRAND & CONTACT INFO CARD */}
+      <div style={{ background: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: 12, padding: 22 }}>
+        <div style={{ fontWeight: 700, fontSize: 15.5, color: '#0F172A', marginBottom: 4 }}>ওয়েবসাইট ব্র্যান্ড ও পরিচিতি তথ্য</div>
+        <div style={{ fontSize: 12.5, color: '#64748B', marginBottom: 20 }}>
+          ওয়েবসাইটের নাম, স্লোগান এবং গুরুত্বপূর্ণ যোগাযোগের তথ্য এখান থেকে সরাসরি আপডেট করুন।
+        </div>
+
+        <Row className="g-3">
+          <Col md={6}>
+            <FieldInput label="ওয়েবসাইটের মূল নাম (Site Name)" value={data.name || ''} onChange={v => onChange('name', v)} placeholder="Doctor Booklet Bangladesh" />
+          </Col>
+          <Col md={6}>
+            <FieldInput label="ওয়েবসাইটের স্লোগান / ট্যাগলাইন (Tagline)" value={data.tagline || ''} onChange={v => onChange('tagline', v)} placeholder="ডিজিটাল স্বাস্থ্যসেবার নতুন অভিজ্ঞতা" />
+          </Col>
+          <Col md={4}>
+            <FieldInput label="প্রধান হটলাইন নম্বর (Phone)" value={data.phone || ''} onChange={v => onChange('phone', v)} placeholder="09613868438" />
+          </Col>
+          <Col md={4}>
+            <FieldInput label="সাপোর্ট ইমেইল (Support Email)" value={data.email_support || data.email || ''} onChange={v => onChange('email_support', v)} placeholder="support@doctorbooklet.com.bd" />
+          </Col>
+          <Col md={4}>
+            <FieldInput label="অফিসিয়াল ওয়েবসাইট ডোমেন" value={data.website || ''} onChange={v => onChange('website', v)} placeholder="www.doctorbooklet.com.bd" />
+          </Col>
+          <Col md={12}>
+            <FieldInput label="প্রধান অফিস ও চেম্বার ঠিকানা (Address)" value={data.address || ''} onChange={v => onChange('address', v)} placeholder="ডাক্তার বুকলেট কমপ্লেক্স, ধানমন্ডি, ঢাকা" />
+          </Col>
+          <Col md={12}>
+            <FieldInput label="ফুটার কপিরাইট টেক্সট (Copyright Text)" value={data.copyright || ''} onChange={v => onChange('copyright', v)} placeholder="© ২০২৬ Doctor Booklet Bangladesh. সকল অধিকার সংরক্ষিত।" />
+          </Col>
+        </Row>
+      </div>
     </div>
   )
 }
@@ -1288,7 +1598,7 @@ function SupportTicketTab({ data, onChange }) {
 export default function ContentManagerPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [content, setContent] = useState(getContent())
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'about_us')
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'site')
   const [saved, setSaved] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [tabFilter, setTabFilter] = useState(() => searchParams.get('search') || '')
@@ -1361,6 +1671,7 @@ export default function ContentManagerPage() {
     const upd = (k, v) => updateSection(activeTab, k, v)
 
     switch (activeTab) {
+      case 'site': return <SiteBrandingTab data={sec} onChange={upd} />
       case 'hero': return <HeroTab data={sec} onChange={upd} />
       case 'banners': return <BannerSliderTab data={sec} onChange={upd} />
       case 'testimonials': return <TestimonialsTab data={sec} onChange={upd} />

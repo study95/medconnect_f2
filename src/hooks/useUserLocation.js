@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useTransition } from 'react'
 
-const GEO_STORAGE_KEY = 'medconnect_user_geo_v2'
+const GEO_STORAGE_KEY = 'doctorbooklet_user_geo_v2'
 
 /**
  * useUserLocation
@@ -11,7 +11,7 @@ export function useUserLocation() {
   const [location, setLocation] = useState(() => {
     if (typeof window === 'undefined') return null
     try {
-      const cached = localStorage.getItem(GEO_STORAGE_KEY) || sessionStorage.getItem('medconnect_user_geo_v1')
+      const cached = localStorage.getItem(GEO_STORAGE_KEY) || localStorage.getItem('medconnect_user_geo_v2') || sessionStorage.getItem('medconnect_user_geo_v1')
       if (cached) {
         const parsed = JSON.parse(cached)
         if (parsed?.latitude && parsed?.longitude) {

@@ -1,5 +1,5 @@
 /**
- * Identifier & SEO URL Helpers for MedConnect Enterprise
+ * Identifier & SEO URL Helpers for Doctor Booklet Enterprise
  * Single source of truth for frontend SEO URL generation across all modules.
  */
 

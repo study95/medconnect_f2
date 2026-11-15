@@ -1144,7 +1144,7 @@ function HospitalsPage() {
     const upaNameEn = upazilaObj?.name || upazilaParam
 
     let canonicalPath = '/hospitals'
-    let title = 'বাংলাদেশের সেরা হাসপাতাল ও ক্লিনিক তালিকা | MedConnect'
+    let title = 'বাংলাদেশের সেরা হাসপাতাল ও ক্লিনিক তালিকা | Doctor Booklet'
     let description = 'বাংলাদেশের শীর্ষস্থানীয় সরকারি ও বেসরকারি হাসপাতাল, ক্লিনিক এবং ডায়াগনস্টিক সেন্টারের তালিকা, জরুরি সেবা ও ওপিডি শিডিউল।'
 
     const breadcrumbs = [
@@ -1156,36 +1156,38 @@ function HospitalsPage() {
       const divNameBn = matchedDivision.bangla_name || matchedDivision.name_bn || matchedDivision.name
       const divNameEn = matchedDivision.name || districtParam
       canonicalPath = `/hospitals/${districtParam}`
-      title = `${divNameBn || divNameEn} বিভাগ সেরা হাসপাতাল ও ক্লিনিক তালিকা | MedConnect`
+      title = `${divNameBn || divNameEn} বিভাগ সেরা হাসপাতাল ও ক্লিনিক তালিকা | Doctor Booklet`
       description = `${divNameBn || divNameEn} বিভাগের শীর্ষ হাসপাতাল, বিশেষজ্ঞ ডাক্তার, আইসিইউ ও জরুরি স্বাস্থ্যসেবার তালিকা।`
       breadcrumbs.push({ name: divNameEn || 'Division', url: `/hospitals/${districtParam}` })
     } else if (districtParam) {
       canonicalPath = `/hospitals/${districtParam}`
-      title = `${distNameBn || distNameEn} জেলার সেরা হাসপাতাল ও ক্লিনিক তালিকা | MedConnect`
+      title = `${distNameBn || distNameEn} জেলার সেরা হাসপাতাল ও ক্লিনিক তালিকা | Doctor Booklet`
       description = `${distNameBn || distNameEn} জেলার শীর্ষ হাসপাতাল, বিশেষজ্ঞ ডাক্তার, আইসিইউ ও জরুরি এম্বুলেন্স সেবা সমূহের পূর্ণাঙ্গ তালিকা।`
       breadcrumbs.push({ name: distNameEn || 'District', url: `/hospitals/${districtParam}` })
 
       if (upazilaParam) {
         canonicalPath = `/hospitals/${districtParam}/${upazilaParam}`
-        title = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} — হাসপাতাল ও বিশেষজ্ঞ স্বাস্থ্যসেবা | MedConnect`
+        title = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} — হাসপাতাল ও বিশেষজ্ঞ স্বাস্থ্যসেবা | Doctor Booklet`
         description = `${upaNameBn || upaNameEn}, ${distNameBn || distNameEn} এলাকার সকল হাসপাতাল, ডায়াগনস্টিক সেন্টার, বেড সংখ্যা ও জরুরি সেবা সমূহের তালিকা।`
         breadcrumbs.push({ name: upaNameEn || 'Upazila', url: `/hospitals/${districtParam}/${upazilaParam}` })
       }
     }
+
+    const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://doctorbooklet.com'
 
     const collectionSchema = {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: title,
       description: description,
-      url: `https://medconnect.com.bd${canonicalPath}`,
+      url: `${siteOrigin}${canonicalPath}`,
       mainEntity: {
         '@type': 'ItemList',
         itemListElement: hospitals.slice(0, 12).map((hosp, idx) => ({
           '@type': 'ListItem',
           position: idx + 1,
           name: hosp.name || hosp.name_bn,
-          url: hosp.canonical_url ? `https://medconnect.com.bd${hosp.canonical_url}` : undefined,
+          url: hosp.canonical_url ? `${siteOrigin}${hosp.canonical_url}` : undefined,
         })),
       },
     }
@@ -1197,14 +1199,14 @@ function HospitalsPage() {
         '@type': 'ListItem',
         position: idx + 1,
         name: crumb.name,
-        item: `https://medconnect.com.bd${crumb.url}`,
+        item: `${siteOrigin}${crumb.url}`,
       })),
     }
 
     return {
       title,
       description,
-      canonicalUrl: `https://medconnect.com.bd${canonicalPath}`,
+      canonicalUrl: `${siteOrigin}${canonicalPath}`,
       schema: [collectionSchema, breadcrumbSchema],
     }
   }, [districtParam, matchedDivision, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, hospitals])

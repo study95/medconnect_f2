@@ -335,7 +335,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
       try {
         await navigator.share({
           title,
-          text: `${title} - MedConnect`,
+          text: `${title} - Doctor Booklet`,
           url
         })
         return

@@ -1,16 +1,20 @@
+import { useState, useEffect } from 'react'
 import axiosInstance from '../api/axiosInstance'
+import { getMediaUrl } from './mediaUtils'
 
 const INITIAL_CONTENT = {
   // ── SITE SETTINGS ──────────────────────────────
   site: {
     name: 'Doctor Booklet Bangladesh',
     tagline: 'ডিজিটাল স্বাস্থ্যসেবার নতুন অভিজ্ঞতা',
+    logo_url: '/doctorBookletLogo.png',
+    favicon_url: '/favicon.png',
     phone: '017 XXXX XXXX',
     phone_secondary: '(প্রিমিয়াম সদস্যরা সকাল ৮টা - রাত ১০টা)',
     email: 'info@doctorbooklet.com.bd',
     email_support: 'support@doctorbooklet.com.bd',
     website: 'www.doctorbooklet.com.bd',
-    address: 'মেডকানেক্ট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫',
+    address: 'ডাক্তার বুকলেট কমপ্লেক্স, বাড়ি নং ১২, রোড নং ৫, ধানমন্ডি, ঢাকা-১২০৫',
     office_hours: 'শনিবার - বৃহস্পতিবার: সকাল ৯টা - রাত ৮টা | শুক্রবার: সকাল ১০টা - বিকাল ৫টা',
     facebook: 'https://facebook.com',
     youtube: 'https://youtube.com',
@@ -460,6 +464,14 @@ export const getContent = () => {
       if (parsed?.contact?.phone === '017 XXXX XXXX') {
         parsed.contact.phone = '09613868438'
       }
+      if (parsed?.site) {
+        if (parsed.site.favicon_url && parsed.site.favicon_url.includes('storage/favicon.png')) {
+          parsed.site.favicon_url = '/favicon.png'
+        }
+        if (parsed.site.logo_url && parsed.site.logo_url.includes('storage/doctorBookletLogo.png')) {
+          parsed.site.logo_url = '/doctorBookletLogo.png'
+        }
+      }
       return deepMerge(INITIAL_CONTENT, parsed)
     } catch (e) {
       return INITIAL_CONTENT
@@ -480,6 +492,19 @@ export const fetchContentFromBackend = async () => {
       })()
       // deepMerge(backend, local) → local wins on every key
       const merged = deepMerge(res.data, localRaw)
+
+      // Ensure persistent backend site branding (logo & favicon) takes effect
+      if (res.data?.site?.logo_url) {
+        merged.site = merged.site || {}
+        merged.site.logo_url = res.data.site.logo_url
+      }
+      if (res.data?.site?.favicon_url) {
+        merged.site = merged.site || {}
+        merged.site.favicon_url = res.data.site.favicon_url
+      }
+      if (merged?.site?.favicon_url) {
+        applySiteFavicon(merged.site.favicon_url)
+      }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
         window.dispatchEvent(new Event('cms-updated'))
@@ -544,6 +569,89 @@ export const resetContent = () => {
   localStorage.removeItem(STORAGE_KEY)
   window.dispatchEvent(new Event('cms-updated'))
   return INITIAL_CONTENT
+}
+
+/**
+ * Upload image (logo, favicon, banner) to backend storage (R2 / CDN).
+ * Automatically optimized and downscaled.
+ */
+export const uploadCmsMedia = async (file, type = 'general') => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('type', type)
+
+  const res = await axiosInstance.post('/cms-content/upload-media', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+  return res.data
+}
+
+/**
+ * Dynamically updates the browser tab's favicon link.
+ */
+export const applySiteFavicon = (faviconUrl) => {
+  if (typeof document === 'undefined') return
+  const rawHref = faviconUrl
+    ? (faviconUrl.startsWith('http') || faviconUrl.startsWith('data:') ? faviconUrl : getMediaUrl(faviconUrl, '/favicon.png'))
+    : '/favicon.png'
+
+  const href = rawHref.includes('storage/favicon.png') ? '/favicon.png' : rawHref
+
+  // Remove existing icon links to force Chrome/Firefox/Edge to re-evaluate the tab icon
+  const existingLinks = document.querySelectorAll("link[rel*='icon']")
+  existingLinks.forEach(el => el.parentNode && el.parentNode.removeChild(el))
+
+  // Create clean link element
+  const link = document.createElement('link')
+  link.rel = 'icon'
+  link.type = href.endsWith('.ico') ? 'image/x-icon' : (href.endsWith('.svg') ? 'image/svg+xml' : 'image/png')
+  link.href = href
+  document.head.appendChild(link)
+}
+
+/**
+ * React hook to subscribe to reactive site settings (logo, favicon, title, etc.)
+ */
+export function useSiteSettings() {
+  const [site, setSite] = useState(() => getContent()?.site || {})
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const currentSite = getContent()?.site || {}
+      setSite(currentSite)
+      if (currentSite.favicon_url) {
+        applySiteFavicon(currentSite.favicon_url)
+      }
+    }
+
+    // Run once on mount
+    handleUpdate()
+
+    window.addEventListener('cms-updated', handleUpdate)
+    return () => window.removeEventListener('cms-updated', handleUpdate)
+  }, [])
+
+  return site
+}
+
+// Global listener for favicon sync
+if (typeof window !== 'undefined') {
+  window.addEventListener('cms-updated', () => {
+    try {
+      const site = getContent()?.site
+      if (site?.favicon_url) {
+        applySiteFavicon(site.favicon_url)
+      }
+    } catch (_) {}
+  })
+
+  // Trigger favicon update once on initial load
+  try {
+    const site = getContent()?.site
+    if (site?.favicon_url) {
+      applySiteFavicon(site.favicon_url)
+    }
+  } catch (_) {}
 }
 
 // Deep merge helper: keeps initial keys as default, overrides with saved values
