@@ -8,8 +8,138 @@ import {
   IconHome, IconPhoto, IconLink, IconExternalLink,
   IconInfoCircle, IconHeadphones, IconPhone, IconFileText,
   IconShieldCheck, IconReceiptRefund, IconListNumbers, IconAlertCircle,
-  IconTicket, IconFileCheck, IconCreditCard
+  IconTicket, IconFileCheck, IconCreditCard, IconCalendarEvent
 } from '@tabler/icons-react'
+
+/* ── BENGALI DATE FORMATTING HELPERS ── */
+const BN_DIGITS = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (num) => String(num).replace(/\d/g, d => BN_DIGITS[d] || d)
+
+const BN_MONTHS = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+]
+
+const formatBengaliDate = (dateObj) => {
+  if (!dateObj || isNaN(dateObj.getTime())) return ''
+  const day = toBengaliNumber(dateObj.getDate())
+  const month = BN_MONTHS[dateObj.getMonth()]
+  const year = toBengaliNumber(dateObj.getFullYear())
+  return `${day} ${month}, ${year}`
+}
+
+const getTodayBengaliDate = () => formatBengaliDate(new Date())
+
+function LegalDateInput({ value, onChange }) {
+  const datePickerRef = useRef(null)
+  const todayBn = getTodayBengaliDate()
+  const isToday = (value || '').trim() === todayBn
+
+  const handlePickDate = (e) => {
+    const val = e.target.value
+    if (!val) return
+    const [y, m, d] = val.split('-').map(Number)
+    if (y && m && d) {
+      const dateObj = new Date(y, m - 1, d)
+      onChange(formatBengaliDate(dateObj))
+    }
+  }
+
+  return (
+    <Form.Group className="mb-3">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <Form.Label style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', margin: 0 }}>
+          সর্বশেষ সংশোধনের তারিখ
+        </Form.Label>
+        <button
+          type="button"
+          onClick={() => onChange(todayBn)}
+          disabled={isToday}
+          style={{
+            background: isToday ? '#F1F5F9' : '#ECFDF5',
+            color: isToday ? '#94A3B8' : '#059669',
+            border: isToday ? '1px solid #E2E8F0' : '1px solid #A7F3D0',
+            borderRadius: 6,
+            padding: '2px 8px',
+            fontSize: 11.5,
+            fontWeight: 700,
+            cursor: isToday ? 'default' : 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            transition: 'all 0.15s ease'
+          }}
+          title="আজকের তারিখ বসান"
+        >
+          <IconCalendarEvent size={13} />
+          {isToday ? 'আজকের তারিখ সেট আছে' : 'আজকের তারিখ দিন'}
+        </button>
+      </div>
+
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <input
+          type="text"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder="২৪ জুলাই, ২০২৬"
+          style={{
+            background: '#FFFFFF',
+            color: '#0F172A',
+            border: '1.5px solid #E2E8F0',
+            borderRadius: 8,
+            padding: '10px 42px 10px 14px',
+            fontFamily: "'Hind Siliguri', sans-serif",
+            fontSize: 14,
+            width: '100%',
+            outline: 'none',
+            transition: 'all 0.2s ease'
+          }}
+          onFocus={e => { e.target.style.borderColor = '#00B875'; e.target.style.boxShadow = '0 0 0 3px rgba(0, 184, 117, 0.12)' }}
+          onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
+        />
+
+        {/* Hidden HTML Date Picker */}
+        <input
+          ref={datePickerRef}
+          type="date"
+          onChange={handlePickDate}
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            if (datePickerRef.current) {
+              if (typeof datePickerRef.current.showPicker === 'function') {
+                datePickerRef.current.showPicker()
+              } else {
+                datePickerRef.current.click()
+              }
+            }
+          }}
+          style={{
+            position: 'absolute',
+            right: 8,
+            background: '#F8FAFC',
+            border: '1px solid #CBD5E1',
+            borderRadius: 6,
+            width: 30,
+            height: 30,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#475569',
+            transition: 'all 0.15s ease'
+          }}
+          title="ক্যালেন্ডার থেকে তারিখ নির্বাচন করুন"
+        >
+          <IconCalendarEvent size={16} />
+        </button>
+      </div>
+    </Form.Group>
+  )
+}
 
 const TABS = [
   { key: 'hero', label: 'হোম পেজ হিরো সেকশন', icon: <IconHome size={18} /> },
@@ -941,11 +1071,19 @@ function ContactTab({ data, onChange }) {
 /* ── 9. SEPARATE LEGAL POLICY TAB (Reused for Terms, Privacy, Refund) ── */
 function LegalPolicyTab({ sectionName, defaultTitle, data, onChange }) {
   const sections = data.sections || []
+  const todayBn = getTodayBengaliDate()
+
+  const handleAutoUpdateTrigger = () => {
+    if (data.auto_update_date !== false && (data.updated_date || '').trim() !== todayBn) {
+      onChange('updated_date', todayBn)
+    }
+  }
 
   const updateSectionItem = (i, key, val) => {
     const updated = [...sections]
     updated[i] = { ...updated[i], [key]: val }
     onChange('sections', updated)
+    handleAutoUpdateTrigger()
   }
 
   const addSectionItem = () => {
@@ -953,26 +1091,54 @@ function LegalPolicyTab({ sectionName, defaultTitle, data, onChange }) {
       ...sections,
       { num: `${sections.length + 1}.১`, heading: 'নতুন ধারা বা শর্ত', content: 'বিস্তারিত নিয়ম ও বিবরণ...' }
     ])
+    handleAutoUpdateTrigger()
   }
 
   const removeSectionItem = (i) => {
     onChange('sections', sections.filter((_, idx) => idx !== i))
+    handleAutoUpdateTrigger()
   }
 
   return (
     <div>
       <Row className="g-3 mb-4">
-        <Col md={8}>
-          <FieldInput label="পলিসির মূল শিরোনাম" value={data.title || defaultTitle} onChange={v => onChange('title', v)} />
+        <Col md={7}>
+          <FieldInput label="পলিসির মূল শিরোনাম" value={data.title || defaultTitle} onChange={v => { onChange('title', v); handleAutoUpdateTrigger(); }} />
         </Col>
-        <Col md={4}>
-          <FieldInput label="সর্বশেষ সংশোধনের তারিখ" value={data.updated_date || ''} onChange={v => onChange('updated_date', v)} placeholder="২৪ জুলাই, ২০২৬" />
-        </Col>
-        <Col md={12}>
-          <FieldInput label="পলিসির সাব-টাইটেল / ভূমিকা" value={data.subtitle || ''} onChange={v => onChange('subtitle', v)} multiline rows={2} placeholder="সংক্ষিপ্ত সারসংক্ষেপ..." />
+        <Col md={5}>
+          <LegalDateInput value={data.updated_date} onChange={v => onChange('updated_date', v)} />
         </Col>
         <Col md={12}>
-          <FieldInput label="গুরুত্বপূর্ণ নোটিশ / সতর্কবার্তা ব্যানার" value={data.notice || ''} onChange={v => onChange('notice', v)} multiline rows={2} placeholder="ব্যবহারকারীদের জন্য বিশেষ বিজ্ঞপ্তি..." />
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: 8,
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10
+          }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              <input
+                type="checkbox"
+                checked={data.auto_update_date !== false}
+                onChange={e => onChange('auto_update_date', e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#00B875', cursor: 'pointer' }}
+              />
+              <span>নীতিমালা বা ধারা পরিবর্তনের সাথে সাথে সংশোধনের তারিখ স্বয়ংক্রিয়ভাবে আজকের তারিখে আপডেট করুন</span>
+            </label>
+            <span style={{ fontSize: 12, color: '#64748B' }}>
+              আজকের তারিখ: <strong style={{ color: '#00B875' }}>{todayBn}</strong>
+            </span>
+          </div>
+        </Col>
+        <Col md={12}>
+          <FieldInput label="পলিসির সাব-টাইটেল / ভূমিকা" value={data.subtitle || ''} onChange={v => { onChange('subtitle', v); handleAutoUpdateTrigger(); }} multiline rows={2} placeholder="সংক্ষিপ্ত সারসংক্ষেপ..." />
+        </Col>
+        <Col md={12}>
+          <FieldInput label="গুরুত্বপূর্ণ নোটিশ / সতর্কবার্তা ব্যানার" value={data.notice || ''} onChange={v => { onChange('notice', v); handleAutoUpdateTrigger(); }} multiline rows={2} placeholder="ব্যবহারকারীদের জন্য বিশেষ বিজ্ঞপ্তি..." />
         </Col>
       </Row>
 
@@ -1161,7 +1327,24 @@ export default function ContentManagerPage() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await saveContent(content)
+
+    // Auto-update legal policies updated_date on save if enabled
+    const legalTabs = ['legal_terms', 'legal_privacy', 'legal_refund', 'legal_subscription', 'legal_billing']
+    const todayBn = getTodayBengaliDate()
+    let contentToSave = { ...content }
+
+    legalTabs.forEach(tabKey => {
+      const tabData = contentToSave[tabKey]
+      if (tabData && tabData.auto_update_date !== false && (tabData.updated_date || '').trim() !== todayBn) {
+        contentToSave[tabKey] = {
+          ...tabData,
+          updated_date: todayBn
+        }
+      }
+    })
+
+    setContent(contentToSave)
+    await saveContent(contentToSave)
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)

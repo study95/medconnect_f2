@@ -231,7 +231,7 @@ function HospitalsPage() {
       closeMobileFilter()
     } else {
       if (hospFilterSheetRef.current) {
-        hospFilterSheetRef.current.style.transform = 'translateY(0px)'
+        hospFilterSheetRef.current.style.transform = ''
       }
       if (hospFilterOverlayRef.current) {
         hospFilterOverlayRef.current.style.opacity = '1'
@@ -884,26 +884,26 @@ function HospitalsPage() {
     return () => window.removeEventListener('wheel', handleWheel)
   }, [])
 
-  // Dynamic location title for heading
-  const locationHeadingText = useMemo(() => {
-    const parts = []
-    if (selectedUnion) {
-      const uniObj = unions.find(u => String(u.id) === String(selectedUnion))
-      if (uniObj) parts.push(getLocName(uniObj, ''))
-    }
-    if (selectedUpazila) {
-      const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      if (upaObj) parts.push(getLocName(upaObj, ''))
+  // Dynamic location breadcrumb trail for heading
+  const locationBreadcrumb = useMemo(() => {
+    const steps = []
+    if (selectedDivision) {
+      const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
+      if (divObj) steps.push(getLocName(divObj, ''))
     }
     if (selectedDistrict) {
       const distObj = districts.find(d => String(d.id) === String(selectedDistrict))
-      if (distObj) parts.push(getLocName(distObj, ''))
+      if (distObj) steps.push(getLocName(distObj, ''))
     }
-    if (selectedDivision) {
-      const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
-      if (divObj) parts.push(getLocName(divObj, ''))
+    if (selectedUpazila) {
+      const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
+      if (upaObj) steps.push(getLocName(upaObj, ''))
     }
-    return parts.filter(Boolean).join(', ')
+    if (selectedUnion) {
+      const uniObj = unions.find(u => String(u.id) === String(selectedUnion))
+      if (uniObj) steps.push(getLocName(uniObj, ''))
+    }
+    return steps.filter(Boolean)
   }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, divisions, districts, upazilas, unions])
 
   // Filtered specialties list for search inside drawer
@@ -1006,15 +1006,13 @@ function HospitalsPage() {
         }
         @keyframes hospSheetSlideUp {
           from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+          to { transform: none; }
         }
 
         .filter-drawer-backdrop {
           position: fixed;
           inset: 0;
           background: rgba(15, 23, 42, 0.65);
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
           z-index: 99999;
           display: flex;
           align-items: flex-end;
@@ -1035,10 +1033,12 @@ function HospitalsPage() {
           flex-direction: column;
           overflow: hidden;
           box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
-          animation: hospSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-          will-change: transform;
+          animation: hospSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           touch-action: pan-y;
           position: relative;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
         }
 
         .hosp-sheet-drag-zone {
@@ -1482,13 +1482,7 @@ function HospitalsPage() {
             gap: 8
           }}>
             <h1 className="hosp-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
-              {locationHeadingText ? (
-                <>
-                  <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>হাসপাতাল তালিকা</span>
-                </>
-              ) : (
-                <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>সকল হাসপাতাল তালিকা</span>
-              )}
+              <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>হাসপাতাল তালিকা</span>
               <span className="d-lg-none" style={{
                 fontSize: 11.5,
                 fontWeight: 700,
@@ -1531,6 +1525,40 @@ function HospitalsPage() {
               </button>
             )}
           </div>
+
+          {/* ── LOCATION BREADCRUMB TRAIL (DESKTOP ONLY) ── */}
+          {locationBreadcrumb.length > 0 && (
+            <div className="hosp-location-trail d-none d-lg-flex" style={{
+              alignItems: 'center',
+              gap: 6,
+              flexWrap: 'wrap',
+              marginTop: 4,
+              marginBottom: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#475569',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#00B875', fontWeight: 700, fontSize: 12.5 }}>
+                <IconMapPin size={15} color="#00B875" />
+                <span>লোকেশন:</span>
+              </span>
+              {locationBreadcrumb.map((step, idx) => (
+                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {idx > 0 && <span style={{ color: '#94A3B8', fontWeight: 800, fontSize: 12 }}>›</span>}
+                  <span style={{
+                    color: idx === locationBreadcrumb.length - 1 ? '#0F172A' : '#475569',
+                    fontWeight: idx === locationBreadcrumb.length - 1 ? 800 : 600,
+                    background: idx === locationBreadcrumb.length - 1 ? '#F1F5F9' : 'transparent',
+                    padding: idx === locationBreadcrumb.length - 1 ? '1px 8px' : '0',
+                    borderRadius: 6
+                  }}>
+                    {step}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
           <div style={{ position: 'relative', marginBottom: 20 }}>
@@ -1589,14 +1617,15 @@ function HospitalsPage() {
                 type="submit"
                 disabled={isSearching}
                 className="hosp-desktop-search-btn"
+                style={{ fontFamily: "'Hind Siliguri', sans-serif" }}
               >
                 {isSearching ? (
                   <>
                     <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                    <span>Searching...</span>
+                    <span>খুঁজছেন...</span>
                   </>
                 ) : (
-                  <span>Search</span>
+                  <span>খুঁজুন</span>
                 )}
               </button>
             </form>
@@ -2061,10 +2090,10 @@ function HospitalsPage() {
                     <div style={{ width: 70, height: 70, background: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                       <IconBuildingHospital size={36} color="#64748B" />
                     </div>
-                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>No hospitals found</h3>
-                    <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px' }}>No hospital listings matched your selected filters.</p>
-                    <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-                      Clear All Filters
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8, fontFamily: "'Hind Siliguri', sans-serif" }}>কোনো হাসপাতাল পাওয়া যায়নি</h3>
+                    <p style={{ color: '#64748B', fontSize: 14, maxWidth: 360, margin: '0 auto 20px', fontFamily: "'Hind Siliguri', sans-serif" }}>আপনার নির্বাচিত ফিল্টার অনুযায়ী কোনো হাসপাতাল খুঁজে পাওয়া যায়নি।</p>
+                    <button onClick={handleClearAllFilters} style={{ background: '#0B192C', color: 'white', border: 'none', borderRadius: 6, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      ফিল্টার মুছুন
                     </button>
                   </div>
                 )}

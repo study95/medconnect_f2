@@ -18,6 +18,15 @@ import useHospitals from '../hooks/useHospitals'
 import { useQuery } from '@tanstack/react-query'
 import { getHospitalById } from '../api/hospitalApi'
 import useDebounce from '../hooks/useDebounce'
+import { useTypewriter } from '../hooks/useTypewriter'
+
+const DOCTOR_SEARCH_PHRASES = [
+  'ডাক্তারের নাম লিখুন... (যেমন: ডাঃ শফিকুল ইসলাম)',
+  'বিশেষজ্ঞতা দিয়ে খুঁজুন... (যেমন: মেডিসিন, হৃদরোগ)',
+  'হাসপাতাল লিখুন... (যেমন: স্কয়ার, পপুলার)',
+  'এলাকা বা শহর দিয়ে খুঁজুন... (যেমন: ধানমন্ডি, সিলেট)',
+  'ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন...'
+]
 import useUserLocation from '../hooks/useUserLocation'
 import LocationPromptBanner from '../components/common/LocationPromptBanner'
 import { formatDistance, calculateDistance } from '../utils/geoUtils'
@@ -119,6 +128,7 @@ function DoctorsPage() {
   const navigate = useNavigate()
   const [isDesktopTypeaheadOpen, setIsDesktopTypeaheadOpen] = useState(false)
   const [isMobileTypeaheadOpen, setIsMobileTypeaheadOpen] = useState(false)
+  const animatedPlaceholder = useTypewriter(DOCTOR_SEARCH_PHRASES, 70, 35, 1800)
 
   // 1-segment legacy fallback disambiguation:
   // If route matched /doctors/:district and the token is purely numeric or ULID, delegate to DoctorDetailPage
@@ -386,7 +396,7 @@ function DoctorsPage() {
       closeMobileFilter()
     } else {
       if (docFilterSheetRef.current) {
-        docFilterSheetRef.current.style.transform = 'translateY(0px)'
+        docFilterSheetRef.current.style.transform = ''
       }
       if (docFilterOverlayRef.current) {
         docFilterOverlayRef.current.style.opacity = '1'
@@ -1105,60 +1115,51 @@ function DoctorsPage() {
     return () => observer.disconnect()
   }, [hasMore, fetchingNext, fetchMore])
 
-  // Coordinate mousewheel scrolling between the top header and dual-scroll panes on desktop
+  // Desktop wheel coordination for the dual-pane layout:
+  //  - Scrolling DOWN over either pane: first scroll the page until the header block is hidden
+  //    (panes then rest just below the navbar), after that the pane itself scrolls.
+  //  - Scrolling UP: the pane scrolls first; once it reaches its top, the browser naturally
+  //    chains the scroll to the page and the header block is revealed again.
   useEffect(() => {
-    const handleWheelCoordination = (e) => {
-      if (window.innerWidth < 992) return
-      const headerEl = headerBlockRef.current
-      if (!headerEl) return
+    const handleWheel = (e) => {
+      if (window.innerWidth < 992 || e.deltaY <= 0) return
+      const leftEl = leftPaneRef.current
+      const rightEl = rightPaneRef.current
+      const overPane = (leftEl && leftEl.contains(e.target)) || (rightEl && rightEl.contains(e.target))
+      if (!overPane) return
 
-      const headerRect = headerEl.getBoundingClientRect()
-      const stickyThreshold = 98 // 66px navbar + 32px gap
-
-      if (headerRect.bottom <= stickyThreshold) {
-        // Sticky dual-pane mode is active
-        const rightEl = rightPaneRef.current
-        const leftEl = leftPaneRef.current
-        const isOverRight = rightEl && rightEl.contains(e.target)
-        const isOverLeft = leftEl && leftEl.contains(e.target)
-
-        if (e.deltaY < 0) {
-          // Scrolling UP
-          if (isOverRight && rightEl.scrollTop <= 0) {
-            // Reached top of cards: scroll window back up to reveal header
-            window.scrollBy({ top: e.deltaY, behavior: 'auto' })
-          } else if (isOverLeft && leftEl.scrollTop <= 0) {
-            // Reached top of filters: scroll window back up to reveal header
-            window.scrollBy({ top: e.deltaY, behavior: 'auto' })
-          }
-        }
+      const maxPageScroll = document.documentElement.scrollHeight - window.innerHeight
+      const remaining = maxPageScroll - window.scrollY
+      if (remaining > 1) {
+        e.preventDefault()
+        window.scrollBy({ top: Math.min(e.deltaY, remaining), behavior: 'auto' })
       }
     }
 
-    window.addEventListener('wheel', handleWheelCoordination, { passive: true })
-    return () => window.removeEventListener('wheel', handleWheelCoordination)
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
   }, [])
 
-  // Dynamic location title for heading
-  const locationHeadingText = useMemo(() => {
-    const parts = []
-    if (selectedUnion) {
-      const uniObj = unions.find(u => String(u.id) === String(selectedUnion))
-      if (uniObj) parts.push(getLocName(uniObj, ''))
-    }
-    if (selectedUpazila) {
-      const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
-      if (upaObj) parts.push(getLocName(upaObj, ''))
+  // Dynamic location breadcrumb trail for heading
+  const locationBreadcrumb = useMemo(() => {
+    const steps = []
+    if (selectedDivision) {
+      const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
+      if (divObj) steps.push(getLocName(divObj, ''))
     }
     if (selectedDistrict) {
       const distObj = districts.find(d => String(d.id) === String(selectedDistrict))
-      if (distObj) parts.push(getLocName(distObj, ''))
+      if (distObj) steps.push(getLocName(distObj, ''))
     }
-    if (selectedDivision) {
-      const divObj = divisions.find(d => String(d.id) === String(selectedDivision))
-      if (divObj) parts.push(getLocName(divObj, ''))
+    if (selectedUpazila) {
+      const upaObj = upazilas.find(u => String(u.id) === String(selectedUpazila))
+      if (upaObj) steps.push(getLocName(upaObj, ''))
     }
-    return parts.filter(Boolean).join(', ')
+    if (selectedUnion) {
+      const uniObj = unions.find(u => String(u.id) === String(selectedUnion))
+      if (uniObj) steps.push(getLocName(uniObj, ''))
+    }
+    return steps.filter(Boolean)
   }, [selectedDivision, selectedDistrict, selectedUpazila, selectedUnion, divisions, districts, upazilas, unions])
 
   const filteredSpecialties = useMemo(() => {
@@ -1244,7 +1245,7 @@ function DoctorsPage() {
   }, [districtParam, matchedDivision, upazilaParam, districts, upazilas, selectedDistrict, selectedUpazila, doctors])
 
   return (
-    <div className="page-wrapper" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
+    <div className="page-wrapper doc-page-root" style={{ background: '#F8FAFC', minHeight: '100vh', paddingTop: 'var(--header-height, 110px)', paddingBottom: 60, fontFamily: "'Inter', sans-serif" }}>
       <SeoHead
         title={seoData.title}
         description={seoData.description}
@@ -1260,15 +1261,13 @@ function DoctorsPage() {
         }
         @keyframes docSheetSlideUp {
           from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+          to { transform: none; }
         }
 
         .filter-drawer-backdrop {
           position: fixed;
           inset: 0;
           background: rgba(15, 23, 42, 0.65);
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
           z-index: 99999;
           display: flex;
           align-items: flex-end;
@@ -1289,10 +1288,12 @@ function DoctorsPage() {
           flex-direction: column;
           overflow: hidden;
           box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
-          animation: docSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-          will-change: transform;
+          animation: docSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           touch-action: pan-y;
           position: relative;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
         }
 
         .doc-sheet-drag-zone {
@@ -1462,17 +1463,24 @@ function DoctorsPage() {
             padding-left: 12px !important;
             padding-right: 0 !important;
           }
-          .doc-filter-sidebar {
-            position: sticky !important;
-            top: var(--sticky-top, 98px) !important;
-            height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
-            max-height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
+          /* ── Desktop dual-pane layout ──
+             Both panes have a fixed height = viewport - (66px scrolled navbar + 24px gap) - 20px container bottom padding.
+             The page itself only scrolls far enough to hide the header block; at that point both panes rest
+             exactly 24px below the navbar, and each pane scrolls independently inside itself. */
+          .doc-page-root {
+            padding-bottom: 0 !important;
+          }
+          .doc-filter-sidebar,
+          .doc-results-scroll-pane {
+            height: calc(100vh - 90px - 20px) !important;
+            max-height: calc(100vh - 90px - 20px) !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            overscroll-behavior: contain !important;
-            padding-right: 6px;
             scrollbar-width: thin;
             scrollbar-color: #CBD5E1 transparent;
+          }
+          .doc-filter-sidebar {
+            padding-right: 6px;
           }
           .doc-filter-sidebar::-webkit-scrollbar {
             width: 6px;
@@ -1489,17 +1497,8 @@ function DoctorsPage() {
           }
 
           .doc-results-scroll-pane {
-            position: sticky !important;
-            top: var(--sticky-top, 98px) !important;
-            height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
-            max-height: calc(100vh - var(--sticky-top, 98px) - 24px) !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            overscroll-behavior: contain !important;
             padding-right: 8px;
             padding-bottom: 24px;
-            scrollbar-width: thin;
-            scrollbar-color: #CBD5E1 transparent;
           }
           .doc-results-scroll-pane::-webkit-scrollbar {
             width: 6px;
@@ -1690,7 +1689,7 @@ function DoctorsPage() {
                 <IconSearch size={20} className="doc-mobile-search-icon" />
                 <input
                   type="text"
-                  placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."
+                  placeholder={animatedPlaceholder || "ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল..."}
                   value={searchText}
                   onChange={e => {
                     handleSearchChange(e.target.value)
@@ -1698,6 +1697,7 @@ function DoctorsPage() {
                   }}
                   onFocus={() => setIsMobileTypeaheadOpen(true)}
                   className="doc-mobile-search-input"
+                  style={{ fontFamily: "'Hind Siliguri', 'Inter', sans-serif" }}
                 />
                 {searchText && (
                   <button
@@ -1758,13 +1758,7 @@ function DoctorsPage() {
             gap: 8
           }}>
             <h1 className="doc-page-heading" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
-              {locationHeadingText ? (
-                <>
-                  <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locationHeadingText}</span> — <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>ডাক্তার তালিকা</span>
-                </>
-              ) : (
-                <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>সকল ডাক্তার তালিকা</span>
-              )}
+              <span style={{ fontFamily: "'Hind Siliguri', sans-serif", whiteSpace: 'nowrap' }}>ডাক্তার তালিকা</span>
               <span className="d-lg-none" style={{
                 fontSize: 11.5,
                 fontWeight: 700,
@@ -1816,6 +1810,40 @@ function DoctorsPage() {
             </div>
           </div>
 
+          {/* ── LOCATION BREADCRUMB TRAIL (DESKTOP ONLY) ── */}
+          {locationBreadcrumb.length > 0 && (
+            <div className="doc-location-trail d-none d-lg-flex" style={{
+              alignItems: 'center',
+              gap: 6,
+              flexWrap: 'wrap',
+              marginTop: 4,
+              marginBottom: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#475569',
+              fontFamily: "'Hind Siliguri', sans-serif"
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#00B875', fontWeight: 700, fontSize: 12.5 }}>
+                <IconMapPin size={15} color="#00B875" />
+                <span>লোকেশন:</span>
+              </span>
+              {locationBreadcrumb.map((step, idx) => (
+                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {idx > 0 && <span style={{ color: '#94A3B8', fontWeight: 800, fontSize: 12 }}>›</span>}
+                  <span style={{
+                    color: idx === locationBreadcrumb.length - 1 ? '#0F172A' : '#475569',
+                    fontWeight: idx === locationBreadcrumb.length - 1 ? 800 : 600,
+                    background: idx === locationBreadcrumb.length - 1 ? '#F1F5F9' : 'transparent',
+                    padding: idx === locationBreadcrumb.length - 1 ? '1px 8px' : '0',
+                    borderRadius: 6
+                  }}>
+                    {step}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* ── DESKTOP FULL WIDTH SEARCH BAR (≥992px) ── */}
           <div style={{ position: 'relative', marginBottom: 20 }}>
             <form onSubmit={handleSearchSubmit} className="doc-desktop-search" style={{
@@ -1832,7 +1860,7 @@ function DoctorsPage() {
               <IconSearch size={18} color="#94A3B8" />
               <input
                 type="text"
-                placeholder="Search by doctor name, specialty, hospital, area..."
+                placeholder={animatedPlaceholder || "ডাক্তারের নাম, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন..."}
                 value={searchText}
                 onChange={e => {
                   handleSearchChange(e.target.value)
@@ -1847,7 +1875,8 @@ function DoctorsPage() {
                   color: '#0F172A',
                   fontWeight: 500,
                   background: 'transparent',
-                  padding: '10px 0'
+                  padding: '10px 0',
+                  fontFamily: "'Hind Siliguri', 'Inter', sans-serif"
                 }}
               />
               {searchText && (
@@ -1859,14 +1888,15 @@ function DoctorsPage() {
                 type="submit"
                 disabled={isSearching}
                 className="doc-desktop-search-btn"
+                style={{ fontFamily: "'Hind Siliguri', 'Inter', sans-serif" }}
               >
                 {isSearching ? (
                   <>
                     <span className="spinner-border spinner-border-sm" role="status" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                    <span>Searching...</span>
+                    <span>খুঁজছেন...</span>
                   </>
                 ) : (
-                  <span>Search</span>
+                  <span>খুঁজুন</span>
                 )}
               </button>
             </form>

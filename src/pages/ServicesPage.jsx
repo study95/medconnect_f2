@@ -56,7 +56,7 @@ export default function ServicesPage() {
     if (scrollSection) {
       const tabsSection = document.getElementById('services-role-tabs')
       if (tabsSection) {
-        const yOffset = -80 // account for fixed navbar height
+        const yOffset = -106 // account for fixed navbar height (102px + 4px breathing room)
         const y = tabsSection.getBoundingClientRect().top + window.pageYOffset + yOffset
         window.scrollTo({ top: y, behavior: 'smooth' })
       }
@@ -274,7 +274,7 @@ export default function ServicesPage() {
         }
         .services-sticky-tabs {
           position: sticky;
-          top: 76px;
+          top: var(--header-height, 102px);
           z-index: 30;
           background: #FFFFFF;
           border-bottom: 1px solid #E2E8F0;
@@ -348,7 +348,7 @@ export default function ServicesPage() {
             padding: 86px 0 38px !important; /* Full clearance for mobile fixed navbar (76px) */
           }
           .services-sticky-tabs {
-            top: 70px !important;
+            top: var(--header-height, 58px) !important;
           }
           .services-quick-card {
             margin-top: 16px !important;

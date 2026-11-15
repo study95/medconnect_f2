@@ -126,6 +126,7 @@ const getInitials = (name) => {
 // Badge color helper
 const getTypeStyles = (type) => {
   switch (type) {
+    case 'admin': return { bg: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', icon: '🛡️' }
     case 'doctor': return { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', icon: '👨‍⚕️' }
     case 'hospital': return { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', icon: '🏥' }
     default: return { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', icon: '👤' }
@@ -461,6 +462,7 @@ export default function UserListPage() {
             style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}
           >
             <option value="">All Identity Types</option>
+            <option value="admin">🛡️ Admin</option>
             <option value="doctor">👨‍⚕️ Doctor</option>
             <option value="hospital">🏥 Hospital</option>
             <option value="patient">👤 Patient / User</option>

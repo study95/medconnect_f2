@@ -499,6 +499,79 @@ export default function LegalPage() {
           position: relative;
         }
 
+        .legal-doc-header {
+          border-bottom: 1.5px solid #E2E8F0;
+          padding-bottom: 24px;
+          margin-bottom: 26px;
+        }
+        .legal-doc-meta-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .legal-doc-header-badges {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .legal-doc-badge-pill {
+          padding: 4px 12px;
+          border-radius: 99px;
+          background: #ECFDF5;
+          color: #065F46;
+          border: 1px solid #A7F3D0;
+          font-size: 12px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+        }
+        .legal-doc-date-pill {
+          font-size: 12.5px;
+          color: #64748B;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #F1F5F9;
+          padding: 4px 10px;
+          border-radius: 99px;
+          white-space: nowrap;
+        }
+        .badge-text-short {
+          display: none;
+        }
+        .badge-text-full {
+          display: inline;
+        }
+        .legal-print-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 16px;
+          border-radius: 12px;
+          border: 1.5px solid #E2E8F0;
+          background: #F8FAFC;
+          color: #0F172A;
+          font-weight: 800;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+          white-space: nowrap;
+        }
+        .legal-print-btn:hover {
+          background: #F1F5F9;
+          border-color: #CBD5E1;
+        }
+        .legal-print-btn-text {
+          display: inline;
+        }
+
         .clause-item {
           padding: 20px 22px;
           border-radius: 16px;
@@ -509,6 +582,61 @@ export default function LegalPage() {
         .clause-item:hover {
           border-color: #CBD5E1;
           box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
+        }
+        .clause-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        .clause-badge-wrap {
+          flex-shrink: 0;
+        }
+        .clause-badge {
+          font-size: 12px;
+          font-weight: 900;
+          color: #064E3B;
+          background: #ECFDF5;
+          border: 1px solid #A7F3D0;
+          padding: 3px 10px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          white-space: nowrap;
+        }
+        .clause-heading {
+          font-weight: 800;
+          font-size: 17px;
+          color: #0F172A;
+          margin: 0;
+          flex: 1;
+          line-height: 1.4;
+        }
+        .clause-copy-btn {
+          border: 1px solid #E2E8F0;
+          background: #F8FAFC;
+          color: #64748B;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border-radius: 8px;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+        .clause-copy-btn:hover {
+          background: #F1F5F9;
+          color: #0F172A;
+          border-color: #CBD5E1;
+        }
+        .clause-copy-btn.copied {
+          background: #ECFDF5;
+          border-color: #A7F3D0;
+          color: #00B875;
         }
 
         /* ── SEARCH INPUT ── */
@@ -630,20 +758,58 @@ export default function LegalPage() {
             box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
           }
           .legal-doc-header {
-            padding-bottom: 12px !important;
-            margin-bottom: 14px !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 12px !important;
+          }
+          .legal-doc-meta-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 6px !important;
+            margin-bottom: 8px !important;
+            flex-wrap: nowrap !important;
           }
           .legal-doc-header-badges {
+            display: flex !important;
+            align-items: center !important;
             gap: 6px !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden !important;
           }
-          .legal-doc-header-badges span {
+          .legal-doc-badge-pill {
             font-size: 11px !important;
             padding: 3px 8px !important;
+            border-radius: 99px !important;
+            gap: 4px !important;
+          }
+          .badge-text-full {
+            display: none !important;
+          }
+          .badge-text-short {
+            display: inline !important;
+          }
+          .legal-doc-date-pill {
+            font-size: 11px !important;
+            padding: 3px 8px !important;
+            border-radius: 99px !important;
+            gap: 4px !important;
+          }
+          .date-prefix {
+            display: none !important;
           }
           .legal-print-btn {
-            padding: 5px 12px !important;
-            font-size: 11.5px !important;
+            padding: 0 !important;
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
             border-radius: 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+          }
+          .legal-print-btn-text {
+            display: none !important;
           }
           .legal-doc-title {
             font-size: 18px !important;
@@ -680,20 +846,37 @@ export default function LegalPage() {
             border-radius: 12px !important;
           }
           .clause-header {
-            gap: 6px !important;
-            margin-bottom: 8px !important;
+            display: grid !important;
+            grid-template-columns: auto 1fr auto !important;
+            grid-template-areas:
+              "badge . copy"
+              "title title title" !important;
+            row-gap: 8px !important;
+            align-items: center !important;
+            margin-bottom: 9px !important;
+          }
+          .clause-badge-wrap {
+            grid-area: badge !important;
+            justify-self: start !important;
           }
           .clause-badge {
-            font-size: 10.5px !important;
-            padding: 2px 7px !important;
+            font-size: 11px !important;
+            padding: 2.5px 8px !important;
+            border-radius: 6px !important;
+          }
+          .clause-copy-btn {
+            grid-area: copy !important;
+            justify-self: end !important;
+            font-size: 11px !important;
+            padding: 3px 8px !important;
             border-radius: 6px !important;
           }
           .clause-heading {
-            font-size: 14px !important;
-            line-height: 1.35 !important;
-          }
-          .clause-copy-btn {
-            font-size: 11px !important;
+            grid-area: title !important;
+            width: 100% !important;
+            font-size: 14.5px !important;
+            line-height: 1.38 !important;
+            margin: 0 !important;
           }
           .clause-content {
             font-size: 12.8px !important;
@@ -999,35 +1182,18 @@ export default function LegalPage() {
           <Col lg={8} xl={9}>
             <div className="legal-doc-card">
               {/* Document Header Bar */}
-              <div className="legal-doc-header" style={{ borderBottom: '1.5px solid #E2E8F0', paddingBottom: 24, marginBottom: 26 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-                  <div className="legal-doc-header-badges" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ 
-                      padding: '4px 12px', 
-                      borderRadius: 99, 
-                      background: '#ECFDF5', 
-                      color: '#065F46', 
-                      border: '1px solid #A7F3D0',
-                      fontSize: 12, 
-                      fontWeight: 800, 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: 6 
-                    }}>
-                      <CheckCircle2 size={14} color="#00B875" /> অফিসিয়াল সনদপ্রাপ্ত নথি
+              <div className="legal-doc-header">
+                <div className="legal-doc-meta-row">
+                  <div className="legal-doc-header-badges">
+                    <span className="legal-doc-badge-pill">
+                      <CheckCircle2 size={13} color="#00B875" />
+                      <span className="badge-text-full">অফিসিয়াল সনদপ্রাপ্ত নথি</span>
+                      <span className="badge-text-short">অফিসিয়াল নথি</span>
                     </span>
-                    <span style={{ 
-                      fontSize: 12.5, 
-                      color: '#64748B', 
-                      fontWeight: 700, 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: 6,
-                      background: '#F1F5F9',
-                      padding: '4px 10px',
-                      borderRadius: 99
-                    }}>
-                      <Clock size={13} /> কার্যকর: {activeContent.effective_date || activeTabMeta?.updatedDate}
+                    <span className="legal-doc-date-pill">
+                      <Clock size={12} />
+                      <span className="date-prefix">কার্যকর: </span>
+                      <span>{activeContent.effective_date || activeTabMeta?.updatedDate}</span>
                     </span>
                   </div>
 
@@ -1036,25 +1202,10 @@ export default function LegalPage() {
                     type="button"
                     onClick={() => window.print()}
                     className="legal-print-btn"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '7px 16px',
-                      borderRadius: 12,
-                      border: '1.5px solid #E2E8F0',
-                      background: '#F8FAFC',
-                      color: '#0F172A',
-                      fontWeight: 800,
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', sans-serif"
-                    }}
                     title="এই নথিটি প্রিন্ট বা সংরক্ষণ করুন"
                   >
-                    <Printer size={15} />
-                    <span>প্রিন্ট / সেভ করুন</span>
+                    <Printer size={14} />
+                    <span className="legal-print-btn-text">প্রিন্ট / সেভ করুন</span>
                   </button>
                 </div>
 
@@ -1143,49 +1294,24 @@ export default function LegalPage() {
                 ) : (
                   filteredSections.map((section, index) => (
                     <div key={index} className="clause-item">
-                      <div className="clause-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
-                          <span className="clause-badge" style={{ 
-                            fontSize: 12, 
-                            fontWeight: 900, 
-                            color: '#064E3B', 
-                            background: '#ECFDF5', 
-                            border: '1px solid #A7F3D0',
-                            padding: '3px 10px', 
-                            borderRadius: 8,
-                            flexShrink: 0
-                          }}>
+                      <div className="clause-header">
+                        <div className="clause-badge-wrap">
+                          <span className="clause-badge">
                             ধারা {section.num}
                           </span>
-                          <h4 className="clause-heading" style={{ 
-                            fontWeight: 800, 
-                            fontSize: 17, 
-                            color: '#0F172A', 
-                            margin: 0 
-                          }}>
-                            {section.heading}
-                          </h4>
                         </div>
+                        <h4 className="clause-heading">
+                          {section.heading}
+                        </h4>
 
                         {/* Copy Clause Button */}
                         <button
                           type="button"
-                          className="clause-copy-btn"
+                          className={`clause-copy-btn ${copiedClause === section.num ? 'copied' : ''}`}
                           onClick={() => handleCopyClause(section.num, section.content)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            color: copiedClause === section.num ? '#00B875' : '#94A3B8',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4
-                          }}
                           title="এই ধারাটি কপি করুন"
                         >
-                          {copiedClause === section.num ? <Check size={14} /> : <Copy size={14} />}
+                          {copiedClause === section.num ? <Check size={13} /> : <Copy size={13} />}
                           <span>{copiedClause === section.num ? 'কপি হয়েছে' : 'কপি'}</span>
                         </button>
                       </div>
