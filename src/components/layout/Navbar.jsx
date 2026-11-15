@@ -856,8 +856,56 @@ function AppNavbar() {
           .mobile-drawer-user-card {
             background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
             border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 10px 12px;
+            border-radius: 14px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+          }
+
+          .mobile-drawer-user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-weight: 800;
+            font-size: 14.5px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+          }
+
+          .mobile-drawer-user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+          }
+
+          .mobile-drawer-user-name {
+            font-size: 14.5px;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .mobile-drawer-user-role {
+            font-size: 11.5px;
+            color: #64748B;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Hind Siliguri', sans-serif;
           }
 
           .mobile-drawer-section-title {
@@ -1051,9 +1099,9 @@ function AppNavbar() {
 
             {/* Right Quick Links & Auth */}
             <div className="d-flex align-items-center" style={{ gap: '20px' }}>
-              <Link to="/doctors" className="db-topbar-link">
+              <Link to="/legal" className="db-topbar-link">
                 <ShieldCheck size={14} strokeWidth={2.2} />
-                <span>ডাক্তার পরামর্শ?</span>
+                <span>শর্তাবলী ও নীতিমালা</span>
               </Link>
 
               <Link to="/about" className="db-topbar-link">
@@ -1361,16 +1409,16 @@ function AppNavbar() {
 
           {/* User profile strip if logged in */}
           {isLoggedIn && (
-            <div className="mobile-drawer-user-card mb-3 d-flex align-items-center gap-2.5 flex-shrink-0">
+            <div className="mobile-drawer-user-card mb-3 flex-shrink-0">
               <div
-                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                style={{ width: 38, height: 38, background: getColor(user?.name), fontSize: 14 }}
+                className="mobile-drawer-user-avatar"
+                style={{ background: getColor(user?.name) }}
               >
                 {getInitials(user?.name)}
               </div>
-              <div className="overflow-hidden">
-                <div className="fw-bold text-dark text-truncate" style={{ fontSize: 13.5 }}>{user?.name}</div>
-                <div className="text-muted text-truncate" style={{ fontSize: 11 }}>{getUserTypeLabel()}</div>
+              <div className="mobile-drawer-user-info">
+                <div className="mobile-drawer-user-name">{user?.name}</div>
+                <div className="mobile-drawer-user-role">{getUserTypeLabel()}</div>
               </div>
             </div>
           )}
@@ -1403,9 +1451,9 @@ function AppNavbar() {
           <div className="mb-3 flex-shrink-0">
             <div className="mobile-drawer-section-title">সহায়তা ও তথ্য</div>
             <div className="d-flex flex-column gap-1">
-              <Link to="/doctors" onClick={closeMenu} className="mobile-drawer-sub-item">
+              <Link to="/legal" onClick={closeMenu} className="mobile-drawer-sub-item">
                 <ShieldCheck size={16} color="#00803D" />
-                <span>ডাক্তার পরামর্শ?</span>
+                <span>শর্তাবলী ও নীতিমালা</span>
               </Link>
               <Link to="/about" onClick={closeMenu} className="mobile-drawer-sub-item">
                 <FileText size={16} color="#0284C7" />

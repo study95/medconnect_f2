@@ -1335,27 +1335,25 @@ function HospitalsPage() {
         .mobile-reset-pill {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 3px 10px;
-          border-radius: 20px;
-          background: #FEF2F2;
-          border: 1px solid #FECACA;
-          color: #DC2626;
-          font-size: 12px;
-          font-weight: 700;
+          background: none;
+          border: none;
+          padding: 2px 4px;
+          color: #EF4444;
+          font-size: 13px;
+          font-weight: 500;
           cursor: pointer;
           font-family: 'Hind Siliguri', sans-serif;
           white-space: nowrap;
           line-height: 1.4;
           flex-shrink: 0;
-          transition: all 0.15s ease;
-          box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          text-decoration-thickness: 1.2px;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
         .mobile-reset-pill:hover, .mobile-reset-pill:active {
-          background: #FEE2E2;
-          border-color: #FCA5A5;
-          color: #B91C1C;
-          transform: translateY(-1px);
+          color: #DC2626;
+          opacity: 0.85;
         }
         .hosp-page-heading {
           font-size: 28px;

@@ -2353,7 +2353,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             >
               <IconMapPin size={13} color="#00803D" stroke={2.2} />
               <span>{locationLabel ? locationLabel.split('>')[0].trim() : 'অবস্থান'}</span>
-              {locationLabel ? (
+              {locationLabel && (
                 <span
                   className="hero-mobile-filter-pill-clear"
                   onClick={(e) => {
@@ -2364,8 +2364,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 >
                   <IconX size={12} />
                 </span>
-              ) : (
-                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
 
@@ -2380,7 +2378,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             >
               <IconStethoscope size={13} color="#00803D" stroke={2.2} />
               <span>{specialtyLabel || 'বিশেষজ্ঞতা'}</span>
-              {specialtyLabel ? (
+              {specialtyLabel && (
                 <span
                   className="hero-mobile-filter-pill-clear"
                   onClick={(e) => {
@@ -2391,8 +2389,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 >
                   <IconX size={12} />
                 </span>
-              ) : (
-                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
 
@@ -2407,7 +2403,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             >
               <IconBuildingHospital size={13} color="#00803D" stroke={2.2} />
               <span>{hospitalLabel || 'হাসপাতাল'}</span>
-              {hospitalLabel ? (
+              {hospitalLabel && (
                 <span
                   className="hero-mobile-filter-pill-clear"
                   onClick={(e) => {
@@ -2418,21 +2414,19 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                 >
                   <IconX size={12} />
                 </span>
-              ) : (
-                <IconChevronDown size={11} color="#64748B" />
               )}
             </button>
           </div>
 
-          {/* 4. Quick Action Cards (4-Grid) */}
+          {/* 4. Quick Action Cards (3-Grid) */}
           <div className="hero-mobile-quick-actions">
             {/* Action 1: অ্যাপয়েন্টমেন্ট বুক করুন */}
             <div
               className="hero-mobile-action-card hero-mobile-action-mint"
               onClick={() => navigate('/quick-appointment')}
             >
-              <div className="hero-mobile-action-icon-wrapper">
-                <IconCalendarEvent size={24} color="#00803D" stroke={2.2} />
+              <div className="hero-mobile-action-icon-wrapper hero-mobile-icon-mint">
+                <IconCalendarEvent size={20} color="#00803D" stroke={2.2} />
               </div>
               <div className="hero-mobile-action-text">
                 <div>অ্যাপয়েন্টমেন্ট</div>
@@ -2444,16 +2438,15 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             <div
               className="hero-mobile-action-card hero-mobile-action-cyan"
               onClick={() => setShowLiveSerialModal(true)}
-              style={{ position: 'relative' }}
             >
               <div className="hero-mobile-live-badge">
                 <span className="hero-mobile-live-pulse-dot" />
                 LIVE
               </div>
-              <div className="hero-mobile-action-icon-wrapper hero-mobile-cyan-icon-wrap">
-                <IconActivity size={24} color="#0284C7" stroke={2.3} />
+              <div className="hero-mobile-action-icon-wrapper hero-mobile-icon-cyan">
+                <IconActivity size={20} color="#0284C7" stroke={2.3} />
               </div>
-              <div className="hero-mobile-action-text hero-mobile-cyan-text">
+              <div className="hero-mobile-action-text">
                 <div>লাইভ সিরিয়াল</div>
                 <div>ট্র্যাকিং</div>
               </div>
@@ -2464,8 +2457,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               className="hero-mobile-action-card hero-mobile-action-orange"
               onClick={() => navigate('/doctors')}
             >
-              <div className="hero-mobile-action-icon-wrapper">
-                <IconUserCheck size={24} color="#EA580C" stroke={2.2} />
+              <div className="hero-mobile-action-icon-wrapper hero-mobile-icon-orange">
+                <IconUserCheck size={20} color="#EA580C" stroke={2.2} />
               </div>
               <div className="hero-mobile-action-text">
                 <div>বিশেষজ্ঞ</div>
@@ -4976,15 +4969,15 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
             background: #FFFFFF;
             border: 1.5px solid #E2E8F0;
             border-radius: 999px;
             padding: 0 4px;
             height: 38px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #1E293B;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #0F172A;
             white-space: nowrap;
             min-width: 0;
             width: 100%;
@@ -4993,8 +4986,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             transition: all 0.2s ease;
             user-select: none;
             font-family: 'Hind Siliguri', sans-serif;
-            line-height: 1;
-            letter-spacing: -0.2px;
+            line-height: 1.3;
+            letter-spacing: 0;
             box-sizing: border-box;
           }
 
@@ -5007,6 +5000,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             text-overflow: ellipsis;
             white-space: nowrap;
             min-width: 0;
+            letter-spacing: 0;
+            padding: 1px 0;
           }
 
           .hero-mobile-filter-pill:active {
@@ -5040,107 +5035,109 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            margin-top: 11px;
+            margin-top: 12px;
             width: 100%;
           }
 
           .hero-mobile-action-card {
-            border-radius: 12px;
-            padding: 9px 4px 8px 4px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 10px 4px 9px 4px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             user-select: none;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
             text-align: center;
-            min-height: 68px;
+            min-height: 82px;
+            position: relative;
+            box-sizing: border-box;
           }
 
           .hero-mobile-action-card:active {
             transform: scale(0.96);
+            background: #F8FAFC;
           }
 
-          .hero-mobile-action-mint {
-            background: #E8F8F0;
-            border: 1px solid rgba(0, 184, 117, 0.22);
+          .hero-mobile-action-card.hero-mobile-action-mint:active {
+            border-color: #00B875;
           }
-
-          .hero-mobile-action-blue {
-            background: #EBF5FF;
-            border: 1px solid rgba(59, 130, 246, 0.22);
+          .hero-mobile-action-card.hero-mobile-action-cyan:active {
+            border-color: #0284C7;
           }
-
-          .hero-mobile-action-orange {
-            background: #FFF4E6;
-            border: 1px solid rgba(249, 115, 22, 0.22);
-          }
-
-          .hero-mobile-action-purple {
-            background: #F4F0FF;
-            border: 1px solid rgba(139, 92, 246, 0.22);
-          }
-
-          .hero-mobile-action-cyan {
-            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
-            border: 1.5px solid #0284C7;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
-            position: relative;
-            overflow: visible;
-          }
-
-          .hero-mobile-live-badge {
-            position: absolute;
-            top: -6px;
-            right: 4px;
-            background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-            color: #FFFFFF;
-            font-size: 8px;
-            font-weight: 800;
-            padding: 1px 5px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            letter-spacing: 0.04em;
-            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
-            border: 1px solid #BAE6FD;
-            line-height: 1.2;
-            z-index: 3;
-          }
-
-          .hero-mobile-live-pulse-dot {
-            width: 5px;
-            height: 5px;
-            background-color: #38BDF8;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 6px #38BDF8;
-            animation: qlsPulseDot 1.4s infinite ease-in-out;
+          .hero-mobile-action-card.hero-mobile-action-orange:active {
+            border-color: #EA580C;
           }
 
           .hero-mobile-action-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 4px;
-            height: 26px;
+            margin-bottom: 5px;
             transition: transform 0.2s ease;
+            flex-shrink: 0;
           }
 
           .hero-mobile-action-card:hover .hero-mobile-action-icon-wrapper {
             transform: translateY(-2px);
           }
 
+          .hero-mobile-icon-mint {
+            background: #E8F8F0;
+          }
+
+          .hero-mobile-icon-cyan {
+            background: #E0F2FE;
+          }
+
+          .hero-mobile-icon-orange {
+            background: #FFF4E6;
+          }
+
+          .hero-mobile-live-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: #0284C7;
+            color: #FFFFFF;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 1.5px 5px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            letter-spacing: 0.03em;
+            box-shadow: 0 1px 4px rgba(2, 132, 199, 0.3);
+            line-height: 1;
+            z-index: 2;
+          }
+
+          .hero-mobile-live-pulse-dot {
+            width: 4px;
+            height: 4px;
+            background-color: #FFFFFF;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 4px #FFFFFF;
+            animation: qlsPulseDot 1.4s infinite ease-in-out;
+          }
+
           .hero-mobile-action-text {
             font-size: 11.5px;
-            font-weight: 800;
+            font-weight: 750;
             color: #0F172A;
             line-height: 1.25;
             font-family: 'Hind Siliguri', sans-serif;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
+            text-align: center;
           }
 
           /* ── 5. Emergency Banner (Option 2: Modern Vibrant Coral-Red Look) ── */
