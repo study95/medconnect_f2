@@ -24,9 +24,9 @@ export const getDoctorById = (id) =>
 export const getDoctorChambers = (params = {}) =>
   axiosInstance.get('/doctor-chambers', { params })
 
-// GET /api/specialties
-export const getSpecialties = () =>
-  axiosInstance.get('/specialties')
+// GET /api/specialties (fetch all active specialties, up to 200)
+export const getSpecialties = (params = { all: true, per_page: 200 }) =>
+  axiosInstance.get('/specialties', { params })
 
 // GET /api/doctors/:identifier/related (Internal Linking Endpoint)
 export const getDoctorRelated = (identifier) =>

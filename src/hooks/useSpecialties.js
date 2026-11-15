@@ -14,8 +14,8 @@ export default function useSpecialties() {
       const res = await getSpecialties()
       return res.data?.data || res.data || []
     },
-    staleTime: 30 * 60 * 1000, // 30 minutes — specialties rarely change
-    gcTime: 60 * 60 * 1000,    // 1 hour cache retention
+    staleTime: 2 * 60 * 1000,  // 2 minutes — fresh data on navigation
+    gcTime: 30 * 60 * 1000,    // 30 min cache retention
   })
 
   return {

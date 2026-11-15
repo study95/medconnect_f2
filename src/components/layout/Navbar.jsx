@@ -7,7 +7,7 @@ import {
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X,
-  Bell, Search
+  Bell, Search, ChevronRight, Activity, Headphones
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent } from '../../utils/contentService'
@@ -243,6 +243,203 @@ function AppNavbar() {
 
   const closeMenu = () => setExpanded(false)
 
+  // Drawer Touch Refs for Edge-Swipe to Open and Swipe to Close
+  const drawerRef = useRef(null)
+  const backdropRef = useRef(null)
+  const isEdgeSwipingRef = useRef(false)
+  const isCloseSwipingRef = useRef(false)
+  const touchStartXRef = useRef(0)
+  const touchStartYRef = useRef(0)
+  const currentDragOffsetRef = useRef(0)
+
+  // ── RIGHT EDGE SWIPE-TO-OPEN & SWIPE-TO-CLOSE GESTURE ──
+  useEffect(() => {
+    const drawer = drawerRef.current
+    const backdrop = backdropRef.current
+    if (!drawer) return
+
+    const getDrawerWidth = () => Math.min(window.innerWidth * 0.86, 330)
+
+    // 1. Edge-swipe to open (when closed)
+    const handleWindowTouchStart = (e) => {
+      if (expanded) return
+      if (e.touches.length !== 1) return
+      const touch = e.touches[0]
+      // Trigger only within 28px of right viewport edge
+      if (touch.clientX < window.innerWidth - 28) return
+
+      touchStartXRef.current = touch.clientX
+      touchStartYRef.current = touch.clientY
+      isEdgeSwipingRef.current = true
+      currentDragOffsetRef.current = 0
+    }
+
+    const handleWindowTouchMove = (e) => {
+      if (!isEdgeSwipingRef.current || expanded) return
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchStartXRef.current // negative when moving left
+      const deltaY = touch.clientY - touchStartYRef.current
+
+      // If user is mostly scrolling vertically, abort edge swipe
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaX) < 14) {
+        isEdgeSwipingRef.current = false
+        return
+      }
+
+      if (deltaX < -8) {
+        if (e.cancelable) e.preventDefault()
+        const drawerW = getDrawerWidth()
+        const offset = Math.max(0, drawerW + deltaX)
+        currentDragOffsetRef.current = deltaX
+
+        drawer.style.transition = 'none'
+        drawer.style.transform = `translateX(${offset}px)`
+
+        if (backdrop) {
+          const progress = Math.min(1, Math.max(0, (drawerW - offset) / drawerW))
+          backdrop.style.transition = 'none'
+          backdrop.style.visibility = 'visible'
+          backdrop.style.opacity = String(progress)
+        }
+      }
+    }
+
+    const handleWindowTouchEnd = () => {
+      if (!isEdgeSwipingRef.current || expanded) return
+      isEdgeSwipingRef.current = false
+      const dragDistance = -currentDragOffsetRef.current
+
+      if (dragDistance >= 55) {
+        // Snap open
+        drawer.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        drawer.style.transform = 'translateX(0)'
+        if (backdrop) {
+          backdrop.style.transition = 'all 0.28s ease'
+          backdrop.style.opacity = '1'
+        }
+        setTimeout(() => {
+          setExpanded(true)
+          drawer.style.transform = ''
+          drawer.style.transition = ''
+          if (backdrop) {
+            backdrop.style.opacity = ''
+            backdrop.style.visibility = ''
+            backdrop.style.transition = ''
+          }
+        }, 280)
+      } else {
+        // Snap closed
+        drawer.style.transition = 'transform 0.22s ease'
+        drawer.style.transform = 'translateX(100%)'
+        if (backdrop) {
+          backdrop.style.transition = 'all 0.22s ease'
+          backdrop.style.opacity = '0'
+        }
+        setTimeout(() => {
+          drawer.style.transform = ''
+          drawer.style.transition = ''
+          if (backdrop) {
+            backdrop.style.visibility = 'hidden'
+            backdrop.style.opacity = ''
+            backdrop.style.transition = ''
+          }
+        }, 220)
+      }
+    }
+
+    // 2. Swipe to close (when open)
+    const handleDrawerTouchStart = (e) => {
+      if (!expanded) return
+      if (e.touches.length !== 1) return
+      const touch = e.touches[0]
+      touchStartXRef.current = touch.clientX
+      touchStartYRef.current = touch.clientY
+      isCloseSwipingRef.current = true
+      currentDragOffsetRef.current = 0
+    }
+
+    const handleDrawerTouchMove = (e) => {
+      if (!isCloseSwipingRef.current || !expanded) return
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchStartXRef.current // positive when moving right
+      const deltaY = touch.clientY - touchStartYRef.current
+
+      if (deltaX > 10 && deltaX > Math.abs(deltaY) * 1.2) {
+        const drawerW = getDrawerWidth()
+        currentDragOffsetRef.current = deltaX
+
+        drawer.style.transition = 'none'
+        drawer.style.transform = `translateX(${deltaX}px)`
+
+        if (backdrop) {
+          const progress = Math.max(0, 1 - deltaX / drawerW)
+          backdrop.style.transition = 'none'
+          backdrop.style.opacity = String(progress)
+        }
+      }
+    }
+
+    const handleDrawerTouchEnd = () => {
+      if (!isCloseSwipingRef.current || !expanded) return
+      isCloseSwipingRef.current = false
+      const dragDistance = currentDragOffsetRef.current
+
+      if (dragDistance >= 60) {
+        // Snap close
+        drawer.style.transition = 'transform 0.24s ease'
+        drawer.style.transform = 'translateX(100%)'
+        if (backdrop) {
+          backdrop.style.transition = 'all 0.24s ease'
+          backdrop.style.opacity = '0'
+        }
+        setTimeout(() => {
+          closeMenu()
+          drawer.style.transform = ''
+          drawer.style.transition = ''
+          if (backdrop) {
+            backdrop.style.opacity = ''
+            backdrop.style.visibility = ''
+            backdrop.style.transition = ''
+          }
+        }, 240)
+      } else {
+        // Snap back open
+        drawer.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+        drawer.style.transform = 'translateX(0)'
+        if (backdrop) {
+          backdrop.style.transition = 'all 0.2s ease'
+          backdrop.style.opacity = '1'
+        }
+        setTimeout(() => {
+          drawer.style.transform = ''
+          drawer.style.transition = ''
+          if (backdrop) {
+            backdrop.style.opacity = ''
+            backdrop.style.transition = ''
+          }
+        }, 200)
+      }
+    }
+
+    window.addEventListener('touchstart', handleWindowTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleWindowTouchMove, { passive: false })
+    window.addEventListener('touchend', handleWindowTouchEnd, { passive: true })
+
+    drawer.addEventListener('touchstart', handleDrawerTouchStart, { passive: true })
+    drawer.addEventListener('touchmove', handleDrawerTouchMove, { passive: true })
+    drawer.addEventListener('touchend', handleDrawerTouchEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('touchstart', handleWindowTouchStart)
+      window.removeEventListener('touchmove', handleWindowTouchMove)
+      window.removeEventListener('touchend', handleWindowTouchEnd)
+
+      drawer.removeEventListener('touchstart', handleDrawerTouchStart)
+      drawer.removeEventListener('touchmove', handleDrawerTouchMove)
+      drawer.removeEventListener('touchend', handleDrawerTouchEnd)
+    }
+  }, [expanded])
+
   const handleLogout = () => {
     closeMenu()
     logout()
@@ -277,6 +474,14 @@ function AppNavbar() {
     { label: 'হাসপাতাল', path: '/hospitals' },
     { label: 'সেবা সমূহ', path: '/services' },
     { label: 'যোগাযোগ', path: '/contact' },
+  ]
+
+  const MOBILE_NAV_LINKS = [
+    { label: 'হোম', path: '/', icon: <Home size={17} /> },
+    { label: 'ডাক্তার', path: '/doctors', icon: <Stethoscope size={17} /> },
+    { label: 'হাসপাতাল', path: '/hospitals', icon: <Building2 size={17} /> },
+    { label: 'সেবা সমূহ', path: '/services', icon: <Activity size={17} /> },
+    { label: 'যোগাযোগ', path: '/contact', icon: <Headphones size={17} /> },
   ]
 
   return (
@@ -586,23 +791,240 @@ function AppNavbar() {
         /* Mobile Drawer */
         @media (max-width: 991px) {
           .mobile-drawer {
-            position: fixed; top: 0; left: 0; right: 0; width: 100%; max-width: 100vw; height: 100vh; height: 100dvh;
-            background: white; z-index: 2000;
-            transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
-            padding: 20px 24px;
-            padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
-            display: flex; flex-direction: column;
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: auto;
+            width: 86%;
+            max-width: 330px;
+            min-width: 280px;
+            height: 100vh;
+            height: 100dvh;
+            background: #FFFFFF;
+            z-index: 2000;
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px;
+            display: flex;
+            flex-direction: column;
             overflow-y: auto;
+            overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
-            box-shadow: 0 0 40px rgba(0,0,0,0.15);
+            box-shadow: -8px 0 36px rgba(15, 23, 42, 0.22);
           }
-          .mobile-drawer.open { transform: translateX(0); }
+          .mobile-drawer.open {
+            transform: translateX(0);
+          }
           .drawer-backdrop {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
-            background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
-            z-index: 1999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
           }
-          .drawer-backdrop.show { opacity: 1; visibility: visible; }
+          .drawer-backdrop.show {
+            opacity: 1;
+            visibility: visible;
+          }
+
+          .mobile-drawer-close-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748B;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          .mobile-drawer-close-btn:active {
+            transform: scale(0.92);
+            background: #E2E8F0;
+            color: #0F172A;
+          }
+
+          .mobile-drawer-user-card {
+            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 10px 12px;
+          }
+
+          .mobile-drawer-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94A3B8;
+            margin-bottom: 6px;
+            padding-left: 6px;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+
+          .mobile-drawer-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 12px;
+            border-radius: 12px;
+            color: #1E293B;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.18s ease;
+            background: transparent;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .mobile-drawer-nav-item:hover,
+          .mobile-drawer-nav-item:active {
+            background: #F8FAFC;
+            color: #0F172A;
+          }
+          .mobile-drawer-nav-item.active {
+            background: #E8F8F2 !important;
+            color: #00803D !important;
+            font-weight: 750;
+            box-shadow: 0 1px 4px rgba(0, 128, 61, 0.08);
+          }
+          .mobile-drawer-nav-item .mobile-drawer-item-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #F1F5F9;
+            color: #64748B;
+            flex-shrink: 0;
+            transition: all 0.18s ease;
+          }
+          .mobile-drawer-nav-item.active .mobile-drawer-item-icon {
+            background: #00803D;
+            color: #FFFFFF;
+          }
+          .mobile-drawer-nav-item .mobile-drawer-item-arrow {
+            margin-left: auto;
+            color: #CBD5E1;
+            transition: transform 0.15s ease, color 0.15s ease;
+          }
+          .mobile-drawer-nav-item.active .mobile-drawer-item-arrow {
+            color: #00803D;
+          }
+
+          .mobile-drawer-sub-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.15s ease;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .mobile-drawer-sub-item:hover,
+          .mobile-drawer-sub-item:active {
+            background: #F8FAFC;
+            color: #0F172A;
+          }
+
+          .mobile-drawer-helpline-card {
+            background: linear-gradient(135deg, #F0FDF4 0%, #E8F8F2 100%);
+            border: 1px solid #A7F3D0;
+            border-radius: 12px;
+            padding: 11px 13px;
+            box-shadow: 0 2px 8px rgba(0, 128, 61, 0.06);
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .helpline-pulse-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #00803D;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .helpline-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #065F46;
+          }
+          .helpline-number {
+            font-size: 15px;
+            font-weight: 800;
+            color: #00803D;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+          }
+          .helpline-badge {
+            background: #00803D;
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 999px;
+            box-shadow: 0 2px 6px rgba(0, 128, 61, 0.2);
+          }
+
+          .mobile-drawer-login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            height: 46px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00B875 0%, #00803D 100%);
+            color: #FFFFFF !important;
+            font-size: 14.5px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(0, 184, 117, 0.32);
+            transition: transform 0.15s ease;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .mobile-drawer-login-btn:active {
+            transform: scale(0.98);
+          }
+
+          .mobile-drawer-logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            background: #FEF2F2;
+            border: 1px solid #FEE2E2;
+            color: #EF4444;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            font-family: 'Hind Siliguri', sans-serif;
+          }
+          .mobile-drawer-logout-btn:active {
+            background: #FEE2E2;
+          }
         }
       `}</style>
 
@@ -925,70 +1347,113 @@ function AppNavbar() {
         </div>
 
         {/* MOBILE DRAWER */}
-        <div className={`drawer-backdrop ${expanded ? 'show' : ''} d-lg-none`} onClick={closeMenu} />
-        <div className={`mobile-drawer ${expanded ? 'open' : ''} d-lg-none`}>
-          <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-shrink-0">
-            <img src="/doctorBookletLogo.png" alt="Doctor Booklet" style={{ height: '34px', width: 'auto' }} />
-            <button onClick={closeMenu} style={{ background: 'none', border: 'none', color: '#64748B' }}>
-              <X size={22} />
+        <div ref={backdropRef} className={`drawer-backdrop ${expanded ? 'show' : ''} d-lg-none`} onClick={closeMenu} />
+        <div ref={drawerRef} className={`mobile-drawer ${expanded ? 'open' : ''} d-lg-none`}>
+          {/* Header */}
+          <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-shrink-0">
+            <Link to="/" onClick={closeMenu} className="d-flex align-items-center text-decoration-none">
+              <img src="/doctorBookletLogo.png" alt="Doctor Booklet" style={{ height: '32px', width: 'auto' }} />
+            </Link>
+            <button onClick={closeMenu} className="mobile-drawer-close-btn" aria-label="Close menu">
+              <X size={19} />
             </button>
           </div>
 
-          <Nav className="flex-column gap-1 mb-3 flex-shrink-0">
-            {NAV_LINKS.map(item => (
-              <Nav.Link
-                key={item.path}
-                as={Link}
-                to={item.path}
-                onClick={closeMenu}
-                className={`db-nav-item ${location.pathname === item.path ? 'active-item' : ''}`}
-                style={{ width: '100%', justifyContent: 'flex-start' }}
+          {/* User profile strip if logged in */}
+          {isLoggedIn && (
+            <div className="mobile-drawer-user-card mb-3 d-flex align-items-center gap-2.5 flex-shrink-0">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                style={{ width: 38, height: 38, background: getColor(user?.name), fontSize: 14 }}
               >
-                {item.isHome && <Home size={16} />}
-                <span>{item.label}</span>
-              </Nav.Link>
-            ))}
-          </Nav>
+                {getInitials(user?.name)}
+              </div>
+              <div className="overflow-hidden">
+                <div className="fw-bold text-dark text-truncate" style={{ fontSize: 13.5 }}>{user?.name}</div>
+                <div className="text-muted text-truncate" style={{ fontSize: 11 }}>{getUserTypeLabel()}</div>
+              </div>
+            </div>
+          )}
 
-          <div style={{ height: '1px', background: '#eef2f6', margin: '12px 0' }} className="flex-shrink-0" />
-
-          <div className="d-flex flex-column gap-2 mb-4 flex-shrink-0">
-            <Link to="/doctors" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
-              <ShieldCheck size={16} /> <span>ডাক্তার পরামর্শ?</span>
-            </Link>
-            <Link to="/about" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
-              <FileText size={16} /> <span>আমাদের সম্পর্কে</span>
-            </Link>
-            <Link to="/support" onClick={closeMenu} className="db-topbar-link" style={{ color: '#003820', fontSize: '14px', padding: '6px 0' }}>
-              <HelpCircle size={16} /> <span>সহায়তা কেন্দ্র</span>
-            </Link>
+          {/* Main Navigation items with clean icons and chevrons */}
+          <div className="mb-3 flex-shrink-0">
+            <div className="mobile-drawer-section-title">প্রধান মেনু</div>
+            <div className="d-flex flex-column gap-1">
+              {MOBILE_NAV_LINKS.map(item => {
+                const isActive = location.pathname === item.path
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeMenu}
+                    className={`mobile-drawer-nav-item ${isActive ? 'active' : ''}`}
+                  >
+                    <div className="mobile-drawer-item-icon">
+                      {item.icon}
+                    </div>
+                    <span>{item.label}</span>
+                    <ChevronRight size={15} className="mobile-drawer-item-arrow" />
+                  </Link>
+                )
+              })}
+            </div>
           </div>
 
-          <div className="mt-auto pt-3 border-top flex-shrink-0" style={{ paddingBottom: '16px' }}>
+          {/* Secondary Quick Links */}
+          <div className="mb-3 flex-shrink-0">
+            <div className="mobile-drawer-section-title">সহায়তা ও তথ্য</div>
+            <div className="d-flex flex-column gap-1">
+              <Link to="/doctors" onClick={closeMenu} className="mobile-drawer-sub-item">
+                <ShieldCheck size={16} color="#00803D" />
+                <span>ডাক্তার পরামর্শ?</span>
+              </Link>
+              <Link to="/about" onClick={closeMenu} className="mobile-drawer-sub-item">
+                <FileText size={16} color="#0284C7" />
+                <span>আমাদের সম্পর্কে</span>
+              </Link>
+              <Link to="/support" onClick={closeMenu} className="mobile-drawer-sub-item">
+                <HelpCircle size={16} color="#D97706" />
+                <span>সহায়তা কেন্দ্র</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 24/7 Helpline Quick Card */}
+          <div className="mobile-drawer-helpline-card mb-3 flex-shrink-0">
+            <div className="d-flex align-items-center gap-2">
+              <div className="helpline-pulse-box">
+                <Phone size={13} />
+              </div>
+              <span className="helpline-title">২৪/৭ জরুরি হেল্পলাইন</span>
+            </div>
+            <a href="tel:09613868438" className="helpline-number">
+              <span>০৯৬১৩৮৬৮৪৩৮</span>
+              <span className="helpline-badge">কল করুন</span>
+            </a>
+          </div>
+
+          {/* Bottom Footer Actions (Logged In vs Logged Out) */}
+          <div className="mt-auto pt-3 border-top flex-shrink-0">
             {isLoggedIn ? (
-              <div>
-                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px', marginBottom: 12 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: '#003820' }}>{user?.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>{getUserTypeLabel()}</div>
-                </div>
-                <Nav.Link as={Link} to="/profile" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#1e293b' }}>
-                  <User size={16} className="me-2" /> প্রোফাইল
-                </Nav.Link>
-                <Nav.Link as={Link} to="/my-appointments" onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#1e293b' }}>
-                  <Calendar size={16} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
-                </Nav.Link>
+              <div className="d-flex flex-column gap-1">
+                <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">
+                  <User size={16} className="text-secondary" /> <span>প্রোফাইল</span>
+                </Link>
+                <Link to="/my-appointments" onClick={closeMenu} className="mobile-drawer-sub-item">
+                  <Calendar size={16} className="text-secondary" /> <span>আমার অ্যাপয়েন্টমেন্ট</span>
+                </Link>
                 {isStaff && (
-                  <Nav.Link as={Link} to={getDashboardPath()} onClick={closeMenu} style={{ fontWeight: 500, padding: '8px 0', color: '#003820' }}>
-                    <LayoutGrid size={16} className="me-2" /> {getAdminLinkLabel()}
-                  </Nav.Link>
+                  <Link to={getDashboardPath()} onClick={closeMenu} className="mobile-drawer-sub-item" style={{ color: '#00803D', fontWeight: 700 }}>
+                    <LayoutGrid size={16} /> <span>{getAdminLinkLabel()}</span>
+                  </Link>
                 )}
-                <Button variant="link" onClick={handleLogout} className="text-danger p-0 text-decoration-none mt-2 d-flex align-items-center" style={{ fontWeight: 500 }}>
-                  <LogOut size={16} className="me-2" /> সাইন আউট
-                </Button>
+                <button onClick={handleLogout} className="mobile-drawer-logout-btn mt-2">
+                  <LogOut size={16} /> <span>সাইন আউট</span>
+                </button>
               </div>
             ) : (
-              <Link to="/login" onClick={closeMenu} className="db-btn-primary w-100 justify-content-center">
-                <User size={16} />
+              <Link to="/login" onClick={closeMenu} className="mobile-drawer-login-btn">
+                <User size={17} />
                 <span>লগইন / রেজিস্টার</span>
               </Link>
             )}

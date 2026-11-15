@@ -111,8 +111,14 @@ export function invalidatePatients(queryClient, { patientId = null } = {}) {
 export function invalidateSpecialties(queryClient, { specialtyId = null, slug = null } = {}) {
   if (!queryClient) return
 
+  // Invalidate public and admin specialty lists
+  queryClient.invalidateQueries({ queryKey: ['specialties'] })
+  queryClient.invalidateQueries({ queryKey: queryKeys.specialties.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.specialties.lists() })
   queryClient.invalidateQueries({ queryKey: queryKeys.specialties.adminLists() })
+
+  // Also invalidate homepage query so top specialties slider updates immediately
+  queryClient.invalidateQueries({ queryKey: ['homepage'] })
 
   if (specialtyId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.specialties.detail(specialtyId) })

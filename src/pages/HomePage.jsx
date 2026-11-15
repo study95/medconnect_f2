@@ -22,7 +22,7 @@ import {
   IconFileText, IconBell, IconChartBar, IconMapPin, IconArrowUpRight, IconPlus, IconMinus,
   IconSearch, IconX, IconActivity, IconUserHeart, IconHelp, IconLoader2, IconCheck
 } from '@tabler/icons-react'
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import axiosInstance from '../api/axiosInstance'
@@ -1366,6 +1366,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
   // Bottom sheet swipe down to dismiss refs & handlers (Specialties Style)
   const sheetRef = useRef(null)
   const overlayRef = useRef(null)
+  const locationBodyRef = useRef(null)
   const sheetTouchStartY = useRef(0)
   const sheetCurrentY = useRef(0)
   const isSheetDragging = useRef(false)
@@ -1382,7 +1383,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     setLocationSearch('')
   }
 
-  const closeLocationModal = () => {
+  const closeLocationModal = useCallback(() => {
     if (sheetRef.current) {
       sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
       sheetRef.current.style.transform = 'translateY(100%)'
@@ -1398,57 +1399,161 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         sheetRef.current.style.transform = ''
       }
     }, 250)
-  }
+  }, [])
 
-  const handleSheetTouchStart = (e) => {
-    sheetTouchStartY.current = e.touches[0].clientY
-    sheetCurrentY.current = 0
-    isSheetDragging.current = true
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'none'
-    }
-    if (overlayRef.current) {
-      overlayRef.current.style.transition = 'none'
-    }
-  }
+  // ── UNIFIED SWIPE DOWN FROM ANYWHERE TO CLOSE LOCATION MODAL ──
+  useEffect(() => {
+    if (!showLocationModal) return
+    const sheet = sheetRef.current
+    const overlay = overlayRef.current
+    const body = locationBodyRef.current
+    if (!sheet) return
 
-  const handleSheetTouchMove = (e) => {
-    if (!isSheetDragging.current) return
-    const deltaY = e.touches[0].clientY - sheetTouchStartY.current
-    if (deltaY > 0) {
-      sheetCurrentY.current = deltaY
-      if (sheetRef.current) {
-        sheetRef.current.style.transform = `translateY(${deltaY}px)`
-      }
-      if (overlayRef.current) {
-        const opacity = Math.max(0, 1 - deltaY / 400)
-        overlayRef.current.style.opacity = opacity
-      }
-    }
-  }
+    let startY = 0
+    let startX = 0
+    let currentDragY = 0
+    let isDragging = false
+    let startScrollTop = 0
 
-  const handleSheetTouchEnd = () => {
-    if (!isSheetDragging.current) return
-    isSheetDragging.current = false
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
-    }
-    if (overlayRef.current) {
-      overlayRef.current.style.transition = 'opacity 0.28s ease'
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      const touch = e.touches[0]
+      startY = touch.clientY
+      startX = touch.clientX
+      currentDragY = 0
+
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+      isDragging = false
     }
 
-    if (sheetCurrentY.current > 100) {
-      closeLocationModal()
-    } else {
-      if (sheetRef.current) {
-        sheetRef.current.style.transform = 'translateY(0px)'
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY
+      const deltaX = touch.clientX - startX
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+      if (deltaY > 5 && startScrollTop <= 2) {
+        if (e.cancelable) e.preventDefault()
+        isDragging = true
+        currentDragY = deltaY
+        sheet.style.transition = 'none'
+        sheet.style.transform = `translateY(${deltaY}px)`
+        if (overlay) {
+          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        }
       }
-      if (overlayRef.current) {
-        overlayRef.current.style.opacity = '1'
-      }
-      sheetCurrentY.current = 0
     }
-  }
+
+    const handleTouchEnd = (e) => {
+      if (!isDragging) return
+      isDragging = false
+
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+
+      if (finalDeltaY > 50) {
+        closeLocationModal()
+      } else {
+        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.transform = ''
+        if (overlay) {
+          overlay.style.transition = 'opacity 0.28s ease'
+          overlay.style.opacity = '1'
+        }
+      }
+    }
+
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+
+      startY = e.clientY
+      startX = e.clientX
+      currentDragY = 0
+
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+      isDragging = false
+
+      const handleMouseMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY
+        const deltaX = moveEvent.clientX - startX
+
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+        if (deltaY > 5 && startScrollTop <= 2) {
+          moveEvent.preventDefault()
+          isDragging = true
+          currentDragY = deltaY
+          sheet.style.transition = 'none'
+          sheet.style.transform = `translateY(${deltaY}px)`
+          if (overlay) {
+            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+          }
+        }
+      }
+
+      const handleMouseUp = (upEvent) => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+
+        if (!isDragging) return
+        isDragging = false
+
+        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+
+        if (finalDeltaY > 50) {
+          closeLocationModal()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
+        }
+      }
+
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+    sheet.addEventListener('mousedown', handleMouseDown)
+
+    if (overlay) {
+      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
+      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
+      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
+      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+      overlay.addEventListener('mousedown', handleMouseDown)
+    }
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+      sheet.removeEventListener('mousedown', handleMouseDown)
+      if (overlay) {
+        overlay.removeEventListener('touchstart', handleTouchStart)
+        overlay.removeEventListener('touchmove', handleTouchMove)
+        overlay.removeEventListener('touchend', handleTouchEnd)
+        overlay.removeEventListener('touchcancel', handleTouchEnd)
+        overlay.removeEventListener('mousedown', handleMouseDown)
+      }
+    }
+  }, [showLocationModal, closeLocationModal])
+
+  const handleSheetTouchStart = () => {}
+  const handleSheetTouchMove = () => {}
+  const handleSheetTouchEnd = () => {}
 
   // Stepper handlers
   const handleSelectDivision = (div) => {
@@ -2333,7 +2438,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             </div>
 
             {/* Body / Content Grid */}
-            <div className="bbl-popup-body">
+            <div ref={locationBodyRef} className="bbl-popup-body">
               {/* Direct View All Doctors Action Banners */}
               {drillStep === 'districts' && activeDivision && (
                 <div className="bbl-direct-action-banner">
@@ -3679,6 +3784,9 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           .bbl-popup-overlay {
             padding: 0 !important;
             align-items: flex-end !important;
+            touch-action: none;
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
           }
 
           .bbl-popup-sheet {
@@ -3686,6 +3794,8 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             max-height: 85vh !important;
             border-radius: 16px 16px 0 0 !important;
             animation: bblSheetSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
           }
 
           @keyframes bblSheetSlideUp {
@@ -3734,6 +3844,8 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
           .bbl-popup-body {
             padding: 14px 16px 28px !important;
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
           }
 
           .bbl-popup-grid {

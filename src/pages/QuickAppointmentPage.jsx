@@ -606,6 +606,7 @@ export default function QuickAppointmentPage() {
   // All Specialties Bottom Sheet Refs & Swipe-down handlers
   const allSpecSheetRef = useRef(null)
   const allSpecOverlayRef = useRef(null)
+  const allSpecBodyRef = useRef(null)
   const allSpecTouchStartY = useRef(0)
   const allSpecCurrentY = useRef(0)
   const isAllSpecDragging = useRef(false)
@@ -630,127 +631,162 @@ export default function QuickAppointmentPage() {
     }, 260)
   }, [])
 
-  const handleAllSpecPointerDown = (e) => {
-    if (e.button !== undefined && e.button !== 0) return
-    isPointerActive.current = true
-    allSpecTouchStartY.current = e.clientY
-    allSpecCurrentY.current = 0
-    isAllSpecDragging.current = true
-    if (allSpecSheetRef.current) {
-      allSpecSheetRef.current.style.transition = 'none'
-    }
-    if (allSpecOverlayRef.current) {
-      allSpecOverlayRef.current.style.transition = 'none'
-    }
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {}
-  }
+  // ── UNIFIED SWIPE DOWN FROM ANYWHERE TO CLOSE ALL SPECIALTIES MODAL ──
+  useEffect(() => {
+    if (!isAllSpecialtiesModalOpen) return
+    const sheet = allSpecSheetRef.current
+    const overlay = allSpecOverlayRef.current
+    const body = allSpecBodyRef.current
+    if (!sheet) return
 
-  const handleAllSpecPointerMove = (e) => {
-    if (!isAllSpecDragging.current) return
-    const deltaY = e.clientY - allSpecTouchStartY.current
-    if (deltaY > 0) {
-      allSpecCurrentY.current = deltaY
-      if (allSpecSheetRef.current) {
-        allSpecSheetRef.current.style.transform = `translateY(${deltaY}px)`
-      }
-      if (allSpecOverlayRef.current) {
-        const opacity = Math.max(0, 1 - deltaY / 450)
-        allSpecOverlayRef.current.style.opacity = opacity
-      }
-    }
-  }
+    let startY = 0
+    let startX = 0
+    let currentDragY = 0
+    let isDragging = false
+    let startScrollTop = 0
 
-  const handleAllSpecPointerUp = (e) => {
-    if (!isAllSpecDragging.current) return
-    isAllSpecDragging.current = false
-    try {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-      }
-    } catch {}
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      const touch = e.touches[0]
+      startY = touch.clientY
+      startX = touch.clientX
+      currentDragY = 0
 
-    if (allSpecSheetRef.current) {
-      allSpecSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
-    }
-    if (allSpecOverlayRef.current) {
-      allSpecOverlayRef.current.style.transition = 'opacity 0.28s ease'
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+      isDragging = false
     }
 
-    if (allSpecCurrentY.current > 75) {
-      closeAllSpecialtiesSheet()
-    } else {
-      if (allSpecSheetRef.current) {
-        allSpecSheetRef.current.style.transform = 'translateY(0px)'
-      }
-      if (allSpecOverlayRef.current) {
-        allSpecOverlayRef.current.style.opacity = '1'
-      }
-      allSpecCurrentY.current = 0
-    }
-    setTimeout(() => {
-      isPointerActive.current = false
-    }, 100)
-  }
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY
+      const deltaX = touch.clientX - startX
 
-  const handleAllSpecTouchStart = (e) => {
-    if (isPointerActive.current) return
-    if (e.touches && e.touches[0]) {
-      allSpecTouchStartY.current = e.touches[0].clientY
-      allSpecCurrentY.current = 0
-      isAllSpecDragging.current = true
-      if (allSpecSheetRef.current) {
-        allSpecSheetRef.current.style.transition = 'none'
-      }
-      if (allSpecOverlayRef.current) {
-        allSpecOverlayRef.current.style.transition = 'none'
-      }
-    }
-  }
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-  const handleAllSpecTouchMove = (e) => {
-    if (isPointerActive.current) return
-    if (!isAllSpecDragging.current) return
-    if (e.touches && e.touches[0]) {
-      const deltaY = e.touches[0].clientY - allSpecTouchStartY.current
-      if (deltaY > 0) {
-        allSpecCurrentY.current = deltaY
-        if (allSpecSheetRef.current) {
-          allSpecSheetRef.current.style.transform = `translateY(${deltaY}px)`
-        }
-        if (allSpecOverlayRef.current) {
-          const opacity = Math.max(0, 1 - deltaY / 450)
-          allSpecOverlayRef.current.style.opacity = opacity
+      if (deltaY > 5 && startScrollTop <= 2) {
+        if (e.cancelable) e.preventDefault()
+        isDragging = true
+        currentDragY = deltaY
+        sheet.style.transition = 'none'
+        sheet.style.transform = "translateY(" + deltaY + "px)"
+        if (overlay) {
+          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
         }
       }
     }
-  }
 
-  const handleAllSpecTouchEnd = () => {
-    if (isPointerActive.current) return
-    if (!isAllSpecDragging.current) return
-    isAllSpecDragging.current = false
+    const handleTouchEnd = (e) => {
+      if (!isDragging) return
+      isDragging = false
 
-    if (allSpecSheetRef.current) {
-      allSpecSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
-    }
-    if (allSpecOverlayRef.current) {
-      allSpecOverlayRef.current.style.transition = 'opacity 0.28s ease'
-    }
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
 
-    if (allSpecCurrentY.current > 75) {
-      closeAllSpecialtiesSheet()
-    } else {
-      if (allSpecSheetRef.current) {
-        allSpecSheetRef.current.style.transform = 'translateY(0px)'
+      if (finalDeltaY > 50) {
+        closeAllSpecialtiesSheet()
+      } else {
+        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.transform = ''
+        if (overlay) {
+          overlay.style.transition = 'opacity 0.28s ease'
+          overlay.style.opacity = '1'
+        }
       }
-      if (allSpecOverlayRef.current) {
-        allSpecOverlayRef.current.style.opacity = '1'
-      }
-      allSpecCurrentY.current = 0
     }
-  }
+
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+
+      startY = e.clientY
+      startX = e.clientX
+      currentDragY = 0
+
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+      isDragging = false
+
+      const handleMouseMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY
+        const deltaX = moveEvent.clientX - startX
+
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+        if (deltaY > 5 && startScrollTop <= 2) {
+          moveEvent.preventDefault()
+          isDragging = true
+          currentDragY = deltaY
+          sheet.style.transition = 'none'
+          sheet.style.transform = "translateY(" + deltaY + "px)"
+          if (overlay) {
+            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+          }
+        }
+      }
+
+      const handleMouseUp = (upEvent) => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+
+        if (!isDragging) return
+        isDragging = false
+
+        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+
+        if (finalDeltaY > 50) {
+          closeAllSpecialtiesSheet()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
+        }
+      }
+
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+    sheet.addEventListener('mousedown', handleMouseDown)
+
+    if (overlay) {
+      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
+      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
+      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
+      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+      overlay.addEventListener('mousedown', handleMouseDown)
+    }
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+      sheet.removeEventListener('mousedown', handleMouseDown)
+      if (overlay) {
+        overlay.removeEventListener('touchstart', handleTouchStart)
+        overlay.removeEventListener('touchmove', handleTouchMove)
+        overlay.removeEventListener('touchend', handleTouchEnd)
+        overlay.removeEventListener('touchcancel', handleTouchEnd)
+        overlay.removeEventListener('mousedown', handleMouseDown)
+      }
+    }
+  }, [isAllSpecialtiesModalOpen, closeAllSpecialtiesSheet])
+
+  const handleAllSpecPointerDown = () => {}
+  const handleAllSpecPointerMove = () => {}
+  const handleAllSpecPointerUp = () => {}
+  const handleAllSpecTouchStart = () => {}
+  const handleAllSpecTouchMove = () => {}
+  const handleAllSpecTouchEnd = () => {}
 
   // Prevent background scroll when All Specialties bottom sheet is open
   useEffect(() => {
@@ -3038,7 +3074,10 @@ export default function QuickAppointmentPage() {
             flexDirection: 'column',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            animation: 'quickSheetFadeIn 0.22s ease'
+            animation: 'quickSheetFadeIn 0.22s ease',
+            touchAction: 'none',
+            overscrollBehavior: 'none',
+            overscrollBehaviorY: 'none'
           }}
           onClick={closeAllSpecialtiesSheet}
         >
@@ -3056,7 +3095,10 @@ export default function QuickAppointmentPage() {
               overflow: 'hidden',
               boxShadow: '0 -12px 48px rgba(0, 0, 0, 0.28)',
               animation: 'quickSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
-              position: 'relative'
+              position: 'relative',
+              touchAction: 'pan-y',
+              overscrollBehavior: 'none',
+              overscrollBehaviorY: 'none'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -3182,7 +3224,17 @@ export default function QuickAppointmentPage() {
             </div>
 
             {/* Specialties List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px calc(18px + env(safe-area-inset-bottom))' }}>
+            <div
+              ref={allSpecBodyRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '14px 18px calc(18px + env(safe-area-inset-bottom))',
+                overscrollBehavior: 'none',
+                overscrollBehaviorY: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
                 {specialties
                   ?.filter(spec => {
