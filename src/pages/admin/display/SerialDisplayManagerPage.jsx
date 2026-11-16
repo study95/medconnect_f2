@@ -1265,8 +1265,9 @@ export default function SerialDisplayManagerPage() {
     ? `${window.location.origin}/display/${currentChamberQueue.chamber.display_token}`
     : ''
 
-  const hospitalTvUrl = selectedHospitalId 
-    ? `${window.location.origin}/display/hospital/${selectedHospitalId}`
+  const hospitalTvTokenOrId = hospitalQueueData?.hospital?.display_token || hospitalQueueData?.hospital?.public_id || selectedHospitalId
+  const hospitalTvUrl = hospitalTvTokenOrId 
+    ? `${window.location.origin}/display/hospital/${hospitalTvTokenOrId}`
     : ''
 
   // Selected date weekday helper

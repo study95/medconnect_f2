@@ -1,6 +1,7 @@
 // NotificationPopup.jsx — Modal popup on login for unread popup notifications
 import { useSubscription } from '../../context/SubscriptionContext'
 import { markNotificationRead } from '../../api/subscriptionApi'
+import { sanitizeHtml } from '../../utils/sanitizeHtml'
 
 const typeIcons = { warning: '⚠️', info: 'ℹ️', promo: '🎁', system: '🔧', expiry: '⏰' }
 
@@ -73,7 +74,7 @@ export default function NotificationPopup() {
                     lineHeight: 1.6,
                     wordBreak: 'break-word'
                   }}
-                  dangerouslySetInnerHTML={{ __html: n.message }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.message) }}
                 />
                 <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600 }}>

@@ -6,6 +6,31 @@
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
 
+const DEVICE_FP_STORAGE_KEY = 'db_device_fp'
+
+/**
+ * Retrieve or generate a persistent cryptographic device fingerprint ID for this browser profile.
+ * Used with Device-Bound Sanctum Tokens so stolen Bearer tokens cannot be replayed from another PC/browser.
+ */
+export const getDeviceFingerprint = () => {
+  try {
+    let fp = localStorage.getItem(DEVICE_FP_STORAGE_KEY)
+    if (!fp || fp.length < 32) {
+      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(24)
+        crypto.getRandomValues(bytes)
+        fp = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+      } else {
+        fp = `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
+      }
+      localStorage.setItem(DEVICE_FP_STORAGE_KEY, fp)
+    }
+    return fp
+  } catch {
+    return 'fallback-browser-device'
+  }
+}
+
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api', // ← from .env
   headers: {
@@ -21,6 +46,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    config.headers['X-Device-Fingerprint'] = getDeviceFingerprint()
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
     }
@@ -59,6 +85,20 @@ axiosInstance.interceptors.response.use(
       const blockedMsg = error.response?.data?.message || 'আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত (Blocked) করা হয়েছে।'
       if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
         toast.error(blockedMsg, { id: 'account-blocked-alert' })
+      }
+      return Promise.reject(error)
+    }
+
+    // Immediately terminate session if backend revokes token due to device mismatch / replay attempt
+    if (error.response?.status === 401 && error.response?.data?.code === 'DEVICE_MISMATCH_REVOKED') {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('userType')
+      window.dispatchEvent(new Event('auth-expired'))
+
+      const securityMsg = error.response?.data?.message || 'নিরাপত্তা সতর্কতা: অন্য ডিভাইস থেকে সেশন ব্যবহারের চেষ্টা শনাক্ত হওয়ায় পুনরায় লগইন করুন।'
+      if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
+        toast.error(securityMsg, { id: 'device-mismatch-alert' })
       }
       return Promise.reject(error)
     }

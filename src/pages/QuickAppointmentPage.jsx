@@ -19,6 +19,7 @@ import { getBookedSlots, createAppointment } from '../api/appointmentApi'
 import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
 import { useAuth } from '../context/AuthContext'
 import SeoHead from '../components/common/SeoHead'
+import { escapeHtml } from '../utils/sanitizeHtml'
 import { toast } from 'react-hot-toast'
 import {
   getBangladeshDateStr,
@@ -1460,18 +1461,18 @@ export default function QuickAppointmentPage() {
   const handlePrintSlip = () => {
     if (!confirmedAppointmentData) return
 
-    const trackingId = confirmedAppointmentData.id || ''
-    const serialNumber = confirmedAppointmentData.serial_number ? toBengaliNumber(confirmedAppointmentData.serial_number) : ''
-    const doctorName = confirmedAppointmentData.doctor_name || ''
-    const specialty = confirmedAppointmentData.specialty || ''
-    const hospitalName = confirmedAppointmentData.hospital_name || ''
-    const appointmentDate = confirmedAppointmentData.appointment_date || ''
-    const appointmentTime = confirmedAppointmentData.appointment_time || ''
-    const patientName = confirmedAppointmentData.patient_name || ''
-    const patientPhone = confirmedAppointmentData.patient_phone || ''
-    const patientRelation = confirmedAppointmentData.relation || ''
-    const paymentStatus = confirmedAppointmentData.payment_status || 'Unpaid (চেম্বারে দিবেন)'
-    const cleanMobile = confirmedAppointmentData.booker_phone || mobileNumber || ''
+    const trackingId = escapeHtml(confirmedAppointmentData.id || '')
+    const serialNumber = escapeHtml(confirmedAppointmentData.serial_number ? toBengaliNumber(confirmedAppointmentData.serial_number) : '')
+    const doctorName = escapeHtml(confirmedAppointmentData.doctor_name || '')
+    const specialty = escapeHtml(confirmedAppointmentData.specialty || '')
+    const hospitalName = escapeHtml(confirmedAppointmentData.hospital_name || '')
+    const appointmentDate = escapeHtml(confirmedAppointmentData.appointment_date || '')
+    const appointmentTime = escapeHtml(confirmedAppointmentData.appointment_time || '')
+    const patientName = escapeHtml(confirmedAppointmentData.patient_name || '')
+    const patientPhone = escapeHtml(confirmedAppointmentData.patient_phone || '')
+    const patientRelation = escapeHtml(confirmedAppointmentData.relation || '')
+    const paymentStatus = escapeHtml(confirmedAppointmentData.payment_status || 'Unpaid (চেম্বারে দিবেন)')
+    const cleanMobile = escapeHtml(confirmedAppointmentData.booker_phone || mobileNumber || '')
     const isRelative = confirmedAppointmentData.booking_for === 'relative'
 
     const credentialsHtml = newAccountCredentials ? `
@@ -1480,9 +1481,9 @@ export default function QuickAppointmentPage() {
           ✓ রোগী অ্যাকাউন্ট তৈরি সম্পন্ন হয়েছে (ভবিষ্যতে লগইনের জন্য সংরক্ষণ করুন):
         </div>
         <div style="display: flex; gap: 20px; font-size: 13px; color: #0F172A; flex-wrap: wrap;">
-          <div><span style="color: #64748B;">পাবলিক আইডি:</span> <strong>${newAccountCredentials.patient_public_id || 'N/A'}</strong></div>
-          <div><span style="color: #64748B;">লগইন মোবাইল:</span> <strong>${newAccountCredentials.login_phone || cleanMobile}</strong></div>
-          <div><span style="color: #64748B;">পাসওয়ার্ড:</span> <strong style="color: #059669; letter-spacing: 1px;">${newAccountCredentials.temp_password || 'N/A'}</strong></div>
+          <div><span style="color: #64748B;">পাবলিক আইডি:</span> <strong>${escapeHtml(newAccountCredentials.patient_public_id || 'N/A')}</strong></div>
+          <div><span style="color: #64748B;">লগইন মোবাইল:</span> <strong>${escapeHtml(newAccountCredentials.login_phone || cleanMobile)}</strong></div>
+          <div><span style="color: #64748B;">পাসওয়ার্ড:</span> <strong style="color: #059669; letter-spacing: 1px;">${escapeHtml(newAccountCredentials.temp_password || 'N/A')}</strong></div>
         </div>
       </div>
     ` : ''
