@@ -79,12 +79,12 @@ export const bulkDeleteAppointments = (ids) => axiosInstance.post('/appointments
 // ===== USERS =====
 export const getUsers = (params) => axiosInstance.get('/users', { params })
 export const getUser = (id) => axiosInstance.get(`/users/${id}`)
-export const updateUserRole = (id, role) => axiosInstance.put(`/users/${id}/role`, { role })
-export const toggleBlockUser = (id, isBlocked = null) => axiosInstance.put(`/users/${id}/block`, isBlocked !== null ? { is_blocked: isBlocked } : {})
-export const deleteUser = (id) => axiosInstance.delete(`/users/${id}`)
-export const bulkDeleteUsers = (ids) => axiosInstance.post('/users/bulk-delete', { ids })
+export const updateUserRole = (id, role) => axiosInstance.put(`/users/${id}/role`, { role }, { skipGlobalToast: true })
+export const toggleBlockUser = (id, isBlocked = null) => axiosInstance.put(`/users/${id}/block`, isBlocked !== null ? { is_blocked: isBlocked } : {}, { skipGlobalToast: true })
+export const deleteUser = (id) => axiosInstance.delete(`/users/${id}`, { skipGlobalToast: true })
+export const bulkDeleteUsers = (ids) => axiosInstance.post('/users/bulk-delete', { ids }, { skipGlobalToast: true })
 export const getAllPermissions = () => axiosInstance.get('/permissions')
-export const updateUserPermissions = (id, permissions) => axiosInstance.put(`/users/${id}/permissions`, { permissions })
+export const updateUserPermissions = (id, permissions) => axiosInstance.put(`/users/${id}/permissions`, { permissions }, { skipGlobalToast: true })
 
 // ===== PATIENTS (Separate registration table) =====
 export const getPatients = (params) => axiosInstance.get('/admin/patients', { params })

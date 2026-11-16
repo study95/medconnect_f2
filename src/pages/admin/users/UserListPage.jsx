@@ -92,26 +92,42 @@ function TableCheckbox({ checked, indeterminate, onChange, title }) {
   )
 }
 
-const ROLES = ['admin', 'manager', 'doctor', 'user']
-const ROLE_LABELS = { admin: 'ADMIN', manager: 'HOSPITAL', doctor: 'DOCTOR', user: 'USER' }
+const ROLES = ['super-admin', 'admin', 'doctor', 'hospital', 'patient']
+const ROLE_LABELS = { 
+  'super-admin': 'SUPER ADMIN', 
+  admin: 'ADMIN', 
+  doctor: 'DOCTOR', 
+  hospital: 'HOSPITAL', 
+  patient: 'PATIENT',
+  manager: 'HOSPITAL',
+  user: 'PATIENT'
+}
 
 const SECTION_CONFIG = {
-  doctor: { title: 'Doctors Management', icon: '👨‍⚕️' },
-  doctor_chamber: { title: 'Chamber Management', icon: '🏥' },
-  hospital: { title: 'Hospitals Management', icon: '🏥' },
-  patient: { title: 'Patients Management', icon: '👤' },
-  appointment: { title: 'Appointments', icon: '📅' },
-  medicine: { title: 'Medicines Management', icon: '💊' },
-  prescription: { title: 'Prescriptions', icon: '📋' },
-  specialty: { title: 'Medical Specialties', icon: '🩺' },
   division: { title: 'Divisions', icon: '📍' },
   district: { title: 'Districts', icon: '🏙️' },
   upazila: { title: 'Upazilas', icon: '🏘️' },
   union: { title: 'Unions', icon: '🏡' },
-  payment: { title: 'Payments & Financials', icon: '💳' },
+  doctor: { title: 'Doctors Management', icon: '👨‍⚕️' },
+  doctor_chamber: { title: 'Chamber Management', icon: '🏥' },
+  hospital: { title: 'Hospitals Management', icon: '🏥' },
+  specialty: { title: 'Medical Specialties', icon: '🩺' },
+  patient: { title: 'Patients Management', icon: '👤' },
+  appointment: { title: 'Appointments', icon: '📅' },
+  doctor_leave: { title: 'Doctor Leaves', icon: '🗓️' },
+  medicine: { title: 'Medicines Management', icon: '💊' },
+  prescription: { title: 'Prescriptions', icon: '📋' },
+  billing: { title: 'Enterprise Billing & Plans', icon: '💳' },
+  payment: { title: 'Payments & Financials', icon: '💰' },
+  commission: { title: 'Commissions', icon: '🏷️' },
+  subscription_package: { title: 'Subscription Packages', icon: '📦' },
   subscription: { title: 'Subscriptions', icon: '📦' },
-  report: { title: 'Reports & Analytics', icon: '📊' },
-  audit: { title: 'Audit Logs', icon: '🔍' },
+  review: { title: 'Reviews & Moderation', icon: '⭐' },
+  service: { title: 'Support Tickets & Services', icon: '🎫' },
+  contact_message: { title: 'Public Contact Messages', icon: '✉️' },
+  audit_log: { title: 'Audit Logs & Security', icon: '🛡️' },
+  audit: { title: 'Audit Logs & Security', icon: '🛡️' },
+  content: { title: 'CMS & Site Content', icon: '📝' },
   user: { title: 'User Management', icon: '👥' },
 }
 
@@ -134,7 +150,7 @@ const getTypeStyles = (type) => {
 }
 
 export default function UserListPage() {
-  const { user: currentUser, hasPermission, isAdmin } = useAuth()
+  const { user: currentUser, hasPermission, isAdmin, isSuperAdmin } = useAuth()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
@@ -255,19 +271,24 @@ export default function UserListPage() {
   const getUserRole = (u) => {
     let roles = []
     if (Array.isArray(u.roles) && u.roles.length > 0) {
-      roles = u.roles.map(r => typeof r === 'string' ? r : (r.name || 'user'))
+      roles = u.roles.map(r => typeof r === 'string' ? r : (r.name || 'patient'))
     } else if (u.role) {
       roles = [u.role]
     }
+    if (roles.includes('super-admin')) return 'super-admin'
     if (roles.includes('admin')) return 'admin'
     if (roles.includes('doctor')) return 'doctor'
-    if (roles.includes('manager') || roles.includes('hospital')) return 'manager'
-    return 'user'
+    if (roles.includes('hospital') || roles.includes('manager')) return 'hospital'
+    return 'patient'
   }
 
   const initiateRoleChange = (targetUser, newRole) => {
     const currentRole = getUserRole(targetUser)
     if (currentRole === newRole) return
+    if (targetUser.id === currentUser?.id) {
+      toast.error('আপনি নিজের অ্যাকাউন্টের ভূমিকা পরিবর্তন করতে পারবেন না।', { id: 'own-role-err' })
+      return
+    }
     setRoleChangeTarget({
       user: targetUser,
       oldRole: currentRole,
@@ -741,10 +762,12 @@ export default function UserListPage() {
                               width: 'auto', minWidth: 100, height: 32, padding: '0 8px', 
                               fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
                               background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)',
-                              cursor: changingRole === u.id ? 'wait' : 'pointer'
+                              cursor: isSelf ? 'not-allowed' : (changingRole === u.id ? 'wait' : 'pointer'),
+                              opacity: isSelf ? 0.6 : 1
                             }}
                             value={roleChangeTarget?.user?.id === u.id ? roleChangeTarget.newRole : getUserRole(u)}
-                            disabled={changingRole === u.id}
+                            disabled={isSelf || changingRole === u.id || (getUserRole(u) === 'super-admin' && !isSuperAdmin)}
+                            title={isSelf ? 'You cannot change your own role' : undefined}
                             onChange={(e) => initiateRoleChange(u, e.target.value)}
                           >
                             {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
@@ -753,7 +776,7 @@ export default function UserListPage() {
                         <td>
                           <button
                             type="button"
-                            disabled={isSelf || togglingBlockId === u.id}
+                            disabled={isSelf || togglingBlockId === u.id || (getUserRole(u) === 'super-admin' && !isSuperAdmin)}
                             onClick={() => initiateToggleBlock(u)}
                             title={isSelf ? 'You cannot block your own account' : (u.is_blocked ? 'Click to unblock user' : 'Click to block user')}
                             style={{
@@ -790,9 +813,9 @@ export default function UserListPage() {
                             {isAdmin && (
                               <button 
                                 className="admin-action-btn admin-action-btn-delete" 
-                                title="Delete User"
+                                title={getUserRole(u) === 'super-admin' ? 'Super-Admin cannot be deleted' : 'Delete User'}
                                 onClick={() => setDeleteTarget(u)}
-                                disabled={u.id === currentUser.id}
+                                disabled={u.id === currentUser.id || getUserRole(u) === 'super-admin'}
                               >
                                 <img src="/icons/delete.png" alt="Delete" />
                               </button>
@@ -823,14 +846,28 @@ export default function UserListPage() {
           <div className="admin-card" style={{ maxWidth: 800, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 className="admin-card-title">User Permissions: {selectedUserForPerms.name}</h3>
-                <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', margin: 0 }}>Configure granular capability overrides for this user account</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h3 className="admin-card-title" style={{ margin: 0 }}>User Permissions: {selectedUserForPerms.name}</h3>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: getUserRole(selectedUserForPerms) === 'super-admin' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(99, 102, 241, 0.12)',
+                    color: getUserRole(selectedUserForPerms) === 'super-admin' ? '#7C3AED' : '#4F46E5',
+                    border: '1px solid currentColor'
+                  }}>
+                    {ROLE_LABELS[getUserRole(selectedUserForPerms)] || getUserRole(selectedUserForPerms)}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--admin-text-muted)', margin: '4px 0 0 0' }}>Configure granular capability overrides for this user account</p>
               </div>
               <button className="admin-btn admin-btn-sm" onClick={() => setSelectedUserForPerms(null)}>✕</button>
             </div>
 
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--admin-border)', display: 'flex', gap: 12, alignItems: 'center', background: 'var(--admin-bg)' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--admin-border)', display: 'flex', gap: 12, alignItems: 'center', background: 'var(--admin-bg)', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
                 <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-muted)' }} />
                 <input 
                   type="text" 
@@ -840,6 +877,38 @@ export default function UserListPage() {
                   style={{ width: '100%', height: 36, paddingLeft: 32, paddingRight: 10, borderRadius: 6, border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)', color: 'var(--admin-text)', fontSize: 13 }}
                 />
               </div>
+
+              {/* Dynamic Live Selection Counter Badge */}
+              <div 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
+                  background: userPermissions.length === availablePermissions.length && availablePermissions.length > 0
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : (userPermissions.length > 0 ? 'rgba(59, 130, 246, 0.12)' : 'rgba(156, 163, 175, 0.15)'),
+                  color: userPermissions.length === availablePermissions.length && availablePermissions.length > 0
+                    ? '#059669'
+                    : (userPermissions.length > 0 ? '#2563EB' : 'var(--admin-text-muted)'),
+                  border: userPermissions.length === availablePermissions.length && availablePermissions.length > 0
+                    ? '1px solid rgba(16, 185, 129, 0.3)'
+                    : (userPermissions.length > 0 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--admin-border)'),
+                  transition: 'all 0.15s ease'
+                }}
+                title="Total capabilities currently granted to this user"
+              >
+                <span>{userPermissions.length === availablePermissions.length && availablePermissions.length > 0 ? '✓' : '⚡'}</span>
+                <span>
+                  Selected: {userPermissions.length} / {availablePermissions.length} ({Math.round((userPermissions.length / (availablePermissions.length || 1)) * 100)}%)
+                </span>
+              </div>
+
               <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={selectAllPermissions}>Select All</button>
               <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={clearAllPermissions}>Clear All</button>
             </div>
@@ -868,14 +937,45 @@ export default function UserListPage() {
                         const pName = typeof p === 'string' ? p : p.name
                         const isChecked = userPermissions.includes(pName)
                         return (
-                          <label key={pName} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', color: 'var(--admin-text)', userSelect: 'none' }}>
+                          <label key={pName} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5, cursor: 'pointer', color: 'var(--admin-text)', userSelect: 'none' }}>
+                            <span
+                              style={{
+                                width: 17,
+                                height: 17,
+                                minWidth: 17,
+                                borderRadius: 5,
+                                border: isChecked ? '1.5px solid #00B875' : '1.5px solid #CBD5E1',
+                                background: isChecked ? '#00B875' : '#FFFFFF',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isChecked ? '0 1px 3px rgba(0, 184, 117, 0.25)' : 'none',
+                                flexShrink: 0
+                              }}
+                            >
+                              {isChecked && (
+                                <svg
+                                  width="11"
+                                  height="11"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="3.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </span>
                             <input 
                               type="checkbox" 
                               checked={isChecked} 
                               onChange={() => togglePermission(pName)}
-                              style={{ accentColor: 'var(--admin-primary)', width: 15, height: 15 }}
+                              style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
                             />
-                            {pName.replace(/[._]/g, ' ')}
+                            <span>{pName.replace(/[._]/g, ' ')}</span>
                           </label>
                         )
                       })}
@@ -885,9 +985,18 @@ export default function UserListPage() {
               )}
             </div>
 
-            <div className="admin-card-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--admin-border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div className="admin-card-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--admin-border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+              {selectedUserForPerms && getUserRole(selectedUserForPerms) === 'super-admin' && !isSuperAdmin && (
+                <span style={{ color: '#DC2626', fontSize: 12, marginRight: 'auto', fontWeight: 600 }}>
+                  🛡️ Protected: Only a Super-Admin can modify permissions of a Super-Admin account.
+                </span>
+              )}
               <button className="admin-btn admin-btn-outline" onClick={() => setSelectedUserForPerms(null)} disabled={savingPerms}>Cancel</button>
-              <button className="admin-btn admin-btn-primary" onClick={savePermissions} disabled={savingPerms}>
+              <button 
+                className="admin-btn admin-btn-primary" 
+                onClick={savePermissions} 
+                disabled={savingPerms || (selectedUserForPerms && getUserRole(selectedUserForPerms) === 'super-admin' && !isSuperAdmin)}
+              >
                 {savingPerms ? 'Saving Changes...' : 'Save Permissions'}
               </button>
             </div>

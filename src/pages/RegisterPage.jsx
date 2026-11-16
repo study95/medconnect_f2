@@ -764,33 +764,35 @@ const RegisterPage = () => {
                   {otpTimer > 0 && !otpSent && !isAlreadyRegistered && throttleTimer === 0 && (
                     <div className="fade-in-up" style={{
                       marginTop: 8,
-                      padding: '8px 12px',
+                      padding: '7px 12px',
                       background: '#F0FDF4',
-                      border: '1px solid #BBF7D0',
+                      border: '1px solid #D1FAE5',
                       borderRadius: 8,
-                      color: '#166534',
-                      fontSize: 12.5,
-                      fontWeight: 600,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: 8
+                      gap: 8,
+                      fontFamily: "'Hind Siliguri', sans-serif"
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={15} color="#16A34A" style={{ flexShrink: 0 }} />
-                        <span>নতুন নম্বরে ওটিপি পাঠাতে অপেক্ষা করুন:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#065F46', fontWeight: 600 }}>
+                        <Clock size={14} color="#059669" style={{ flexShrink: 0 }} />
+                        <span>নতুন নম্বরে ওটিপি পাঠাতে অপেক্ষা করুন</span>
                       </div>
                       <span style={{
-                        padding: '1px 7px',
-                        background: '#DCFCE7',
-                        border: '1px solid #86EFAC',
-                        borderRadius: 5,
-                        color: '#15803D',
+                        padding: '2px 8px',
+                        background: '#FFFFFF',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: 6,
+                        color: '#047857',
                         fontFamily: "'Inter', monospace",
                         fontWeight: 800,
-                        fontSize: 12.5
+                        fontSize: 12,
+                        letterSpacing: '0.3px',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 1px 2px rgba(4, 120, 87, 0.05)',
+                        flexShrink: 0
                       }}>
-                        ⏳ {formatCountdown(otpTimer)}
+                        {formatCountdown(otpTimer)}
                       </span>
                     </div>
                   )}

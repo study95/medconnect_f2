@@ -339,7 +339,7 @@ export function AuthProvider({ children }) {
 
   const register = async (name, email, password) => {
     try {
-      const response = await registerApi({ name, email, password, role: 'user' })
+      const response = await registerApi({ name, email, password, role: 'patient' })
       if (response.data?.token) {
         const { token, user: userData } = response.data
         storeAuth(token, userData)
@@ -354,10 +354,10 @@ export function AuthProvider({ children }) {
   const registerPatient = async (formData) => {
     try {
       if (formData instanceof FormData) {
-        formData.append('role', 'user')
+        formData.append('role', 'patient')
         formData.append('type', 'patient')
       } else {
-        formData.role = 'user'
+        formData.role = 'patient'
         formData.type = 'patient'
       }
       
@@ -456,8 +456,10 @@ export function AuthProvider({ children }) {
 
   const hasRole = (role) => getRoles().includes(role.toLowerCase())
   
+  const isSuperAdmin = hasRole('super-admin');
+
   const isAdmin = 
-    hasRole('admin') || hasRole('super-admin') || user?.role_id === 1;
+    isSuperAdmin || hasRole('admin') || user?.role_id === 1;
     
   const isDoctor = 
     !isAdmin && (hasRole('doctor') || user?.role_id === 2 || String(user?.role_id) === 'doctor' || 
@@ -505,6 +507,7 @@ export function AuthProvider({ children }) {
     fetchCurrentUser,
     hasRole,
     hasPermission,
+    isSuperAdmin,
     isAdmin,
     isDoctor,
     isDoctorOnly,

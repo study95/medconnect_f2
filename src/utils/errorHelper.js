@@ -57,7 +57,11 @@ export const translateToBangla = (msg, fallback = 'তথ্য প্রক্�
   }
 
   // Role mismatch / Account type conflict
-  if (lower.includes('role') || (lower.includes('registered as') && (lower.includes('doctor') || lower.includes('patient')))) {
+  if (lower.includes('own role') || lower.includes('cannot change your own role')) {
+    return 'আপনি নিজের অ্যাকাউন্টের ভূমিকা (Role) পরিবর্তন করতে পারবেন না।';
+  }
+
+  if ((lower.includes('role') && (lower.includes('conflict') || lower.includes('mismatch') || lower.includes('already'))) || (lower.includes('registered as') && (lower.includes('doctor') || lower.includes('patient')))) {
     return 'এই নম্বরটি ইতিমধ্যে অন্য অ্যাকাউন্টের ধরন হিসেবে নিবন্ধিত।';
   }
 

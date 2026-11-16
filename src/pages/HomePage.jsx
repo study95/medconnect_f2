@@ -1737,12 +1737,12 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         slug: d.slug || (d.name || '').toLowerCase()
       }))
 
-      const displayDistricts = dbDistricts.slice(0, 3)
-      const remainingCount = dbDistricts.length > 3 ? dbDistricts.length - 3 : 0
+      const displayDistricts = dbDistricts.slice(0, 2)
+      const remainingCount = dbDistricts.length > 2 ? dbDistricts.length - 2 : 0
 
       if (remainingCount > 0) {
         displayDistricts.push({
-          name: `+ ${toBnNum(remainingCount)} জেলা`,
+          name: `+${toBnNum(remainingCount)} জেলা`,
           isMore: true
         })
       }
@@ -2115,7 +2115,8 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
                               navigate(`/doctors/${tag.slug}`)
                             }
                           }}
-                          className="bbl-bento-district-pill"
+                          className={`bbl-bento-district-pill ${tag.isMore ? 'bbl-bento-district-pill-more' : ''}`}
+                          title={tag.isMore ? 'বিভাগের সকল জেলা দেখুন' : `${tag.name}-এর ডাক্তার খুঁজুন`}
                         >
                           {tag.name}
                         </span>
@@ -2829,6 +2830,20 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
           color: #FFFFFF;
           border-color: #00B875;
           transform: translateY(-1px);
+        }
+
+        .bbl-bento-district-pill-more {
+          background: #ECFDF5;
+          border-color: #A7F3D0;
+          color: #059669;
+          font-weight: 800;
+        }
+
+        .bbl-bento-district-pill-more:hover {
+          background: #00B875;
+          border-color: #00B875;
+          color: #FFFFFF;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
         }
 
         .bbl-bento-arrow-btn {
