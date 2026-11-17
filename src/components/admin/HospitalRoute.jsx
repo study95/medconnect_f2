@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function HospitalRoute({ children }) {
-  const { isLoggedIn, isManager, isAdmin, isDoctor, loading } = useAuth()
+  const { isLoggedIn, isManager, isAdmin, isDoctor, isPendingHospital, loading } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -17,6 +17,11 @@ export default function HospitalRoute({ children }) {
 
   if (!isLoggedIn) {
     return <Navigate to="/login/hospital" state={{ from: location }} replace />
+  }
+
+  // Redirect pending hospital applicants to the verification status page
+  if (isPendingHospital) {
+    return <Navigate to="/pending-verification" replace />
   }
 
   // Hospital Manager or Super Admin is allowed into Hospital portal

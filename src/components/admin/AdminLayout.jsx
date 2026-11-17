@@ -6,7 +6,7 @@ import ExpiryWarningBanner from './ExpiryWarningBanner'
 import NotificationPopup from './NotificationPopup'
 import NotificationDropdown from '../layout/NotificationDropdown'
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconExternalLink } from '@tabler/icons-react'
-import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon } from 'lucide-react'
+import { Bell, ChevronDown, User, Lock, LogOut, Sun, Moon, ShieldCheck } from 'lucide-react'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { useTheme } from '../../context/ThemeContext'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -184,6 +184,9 @@ export default function AdminLayout() {
                         </Link>
                         <Link to={`${portalBase}/password`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                           <Lock size={16} /> Update Password
+                        </Link>
+                        <Link to={`${portalBase}/security`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: '#00B875', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <ShieldCheck size={16} color="#00B875" /> Two-Factor Security (2FA)
                         </Link>
                       </div>
                       <div style={{ padding: 8, borderTop: '1px solid var(--admin-border)' }}>

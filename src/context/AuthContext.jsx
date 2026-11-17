@@ -2,14 +2,17 @@
 // Every component can call useAuth() to check user role
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginApi, logoutApi, registerApi, patientLoginApi, doctorLoginApi, patientRegisterApi, doctorRegisterApi, hospitalLoginApi, hospitalRegisterApi } from '../api/authApi'
+import { loginApi, logoutApi, logoutAllApi, registerApi, patientLoginApi, doctorLoginApi, patientRegisterApi, doctorRegisterApi, hospitalLoginApi, hospitalRegisterApi } from '../api/authApi'
 import axiosInstance from '../api/axiosInstance'
 import { getErrorMessage } from '../utils/errorHelper'
 import { toast } from 'react-hot-toast'
-import { subscribeToUserChannel, subscribeToPublicDirectory, disconnectEcho } from '../utils/echoService'
+import { subscribeToUserChannel, subscribeToPublicDirectory, disconnectEcho, isWebSocketConnected, onConnectionStateChange } from '../utils/echoService'
 import { queryClient } from '../lib/queryClient'
 import { invalidateDoctors, invalidateHospitals } from '../lib/cacheInvalidation'
 import { clearPersistedCache } from '../lib/cachePersister'
+import useIdleTimeout, { getRoleIdleTimeoutMs } from '../hooks/useIdleTimeout'
+import IdleWarningModal from '../components/auth/IdleWarningModal'
+import SudoVerifyModal from '../components/auth/SudoVerifyModal'
 
 /**
  * Purge all client-side session, draft, WebSocket, and TanStack Query caches.
@@ -99,18 +102,63 @@ export function AuthProvider({ children }) {
 
     init()
 
-    const handleAuthExpired = () => {
+    const clearLocalSession = () => {
       purgeClientSessionState()
       setUser(null)
       setUserType(null)
     }
+
+    const handleAuthExpired = () => {
+      clearLocalSession()
+      try {
+        const ch = new BroadcastChannel('medconnect_auth_sync')
+        ch.postMessage({ type: 'LOGOUT' })
+        ch.close()
+      } catch {}
+    }
+
+    // Multi-tab logout sync via BroadcastChannel
+    let authChannel = null
+    try {
+      authChannel = new BroadcastChannel('medconnect_auth_sync')
+      authChannel.onmessage = (event) => {
+        if (event?.data?.type === 'LOGOUT') {
+          clearLocalSession()
+        }
+      }
+    } catch {}
+
+    // Fallback multi-tab sync via localStorage 'storage' event
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' && !e.newValue) {
+        clearLocalSession()
+      }
+    }
+
+    // Guard against browser back-forward cache (bfcache) showing stale authenticated UI after logout
+    const handlePageShow = (e) => {
+      if (e.persisted && !localStorage.getItem('token')) {
+        clearLocalSession()
+      }
+    }
+
     window.addEventListener('auth-expired', handleAuthExpired)
-    return () => window.removeEventListener('auth-expired', handleAuthExpired)
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('pageshow', handlePageShow)
+    return () => {
+      window.removeEventListener('auth-expired', handleAuthExpired)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('pageshow', handlePageShow)
+      try { authChannel?.close() } catch {}
+    }
   }, [])
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = async (isBackgroundPoll = false) => {
     try {
-      const response = await axiosInstance.get('/me')
+      const response = await axiosInstance.get(
+        '/me',
+        isBackgroundPoll ? { headers: { 'X-Background-Poll': 'true' } } : undefined
+      )
       if (response.data?.success) {
         const userData = response.data.user
         const rolesList = Array.isArray(userData.roles) 
@@ -119,7 +167,7 @@ export function AuthProvider({ children }) {
         const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
           : rolesList.includes('doctor') ? 'doctor' 
           : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
-          : 'user'
+          : (userData?.registration_type === 'doctor' ? 'doctor' : userData?.registration_type === 'hospital' ? 'hospital' : 'user')
 
         setUser((prevUser) => {
           if (prevUser && prevUser.id === userData.id) {
@@ -145,34 +193,51 @@ export function AuthProvider({ children }) {
         logout()
         return
       }
-      if (err.response?.status === 500) {
-        console.warn('Backend crashed reading token on /me. Forcing logout to self-heal.')
-        purgeClientSessionState()
-        setUser(null)
-        setUserType(null)
+      if (err.response?.status >= 500) {
+        console.warn('Backend server error on /me. Keeping current session alive.', err)
       }
     }
   }
 
-  // Automatic Background Fallback & Tab Focus Sync (Guarantee zero-reload updates)
+  // Reverb WebSocket-First Sync with Throttled Focus & Disconnected Fallback Polling
   useEffect(() => {
     if (!user?.id) return
 
+    let lastFocusFetch = 0
     const handleFocus = () => {
-      fetchCurrentUser()
+      const now = Date.now()
+      if (now - lastFocusFetch >= 60000 && document.visibilityState === 'visible') {
+        lastFocusFetch = now
+        fetchCurrentUser(true)
+      }
     }
     window.addEventListener('focus', handleFocus)
 
-    // Fallback polling every 8s when the tab is visible
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchCurrentUser()
+    let interval = null
+    const syncPollingMode = (connected) => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
       }
-    }, 8000)
+      // Only poll /me (every 60s) when Reverb WebSocket is disconnected
+      if (!connected) {
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            fetchCurrentUser(true)
+          }
+        }, 60000)
+      }
+    }
+
+    syncPollingMode(isWebSocketConnected())
+    const unsubConn = onConnectionStateChange((state) => {
+      syncPollingMode(state === 'connected')
+    })
 
     return () => {
       window.removeEventListener('focus', handleFocus)
-      clearInterval(interval)
+      unsubConn()
+      if (interval) clearInterval(interval)
     }
   }, [user?.id])
 
@@ -254,7 +319,7 @@ export function AuthProvider({ children }) {
     const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
       : rolesList.includes('doctor') ? 'doctor' 
       : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
-      : (type || 'user')
+      : (userData?.registration_type === 'doctor' ? 'doctor' : userData?.registration_type === 'hospital' ? 'hospital' : (type || 'user'))
     localStorage.setItem('userType', resolvedType)
     setUser(userData)
     setUserType(resolvedType)
@@ -274,11 +339,12 @@ export function AuthProvider({ children }) {
         device_token: deviceToken
       })
 
-      // If backend triggers 2FA for New Device on Doctor or Hospital role
+      // If backend triggers 2FA (Google Authenticator TOTP or SMS OTP)
       if (response.data?.requires_2fa) {
         return {
           success: false,
           requires_2fa: true,
+          method: response.data.method || 'sms',
           role: response.data.role || role,
           session_key: response.data.session_key,
           masked_mobile: response.data.masked_mobile,
@@ -295,15 +361,17 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const verifyDoctor2Fa = async ({ session_key, otp, trust_device = false }) => {
+  const verifyDoctor2Fa = async ({ session_key, otp, code, trust_device = false }) => {
     try {
       const deviceName = typeof navigator !== 'undefined' && navigator.userAgent 
         ? (navigator.userAgent.includes('Windows') ? 'Windows PC' : navigator.userAgent.includes('Mac') ? 'Mac' : 'Mobile Browser') 
         : 'Web Browser'
 
+      const inputVal = code || otp
       const response = await axiosInstance.post('/doctor-verify-2fa', {
         session_key,
-        otp,
+        otp: inputVal,
+        code: inputVal,
         trust_device,
         device_name: deviceName
       })
@@ -420,17 +488,29 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => {
+  const performLogout = async (apiCall = logoutApi) => {
     const activeToken = localStorage.getItem('token')
     purgeClientSessionState()
     setUser(null)
     setUserType(null)
 
-    // Revoke Sanctum token(s) server-side asynchronously without blocking UI navigation
+    try {
+      const ch = new BroadcastChannel('medconnect_auth_sync')
+      ch.postMessage({ type: 'LOGOUT' })
+      ch.close()
+    } catch {}
+
     if (activeToken) {
-      logoutApi(activeToken).catch(() => {})
+      try {
+        await apiCall(activeToken)
+      } catch {
+        // Ignore network errors so client logout always succeeds immediately
+      }
     }
   }
+
+  const logout = () => performLogout(logoutApi)
+  const logoutAll = () => performLogout(logoutAllApi)
 
   const isLoggedIn = !!user
 
@@ -469,7 +549,22 @@ export function AuthProvider({ children }) {
     !isAdmin && !isDoctor && (hasRole('manager') || hasRole('hospital') || user?.role_id === 3 || String(user?.role_id) === 'manager' || String(user?.role_id) === 'hospital' ||
     Boolean(user?.is_manager) || Boolean(user?.isManager));
 
-  const isPatient = !isAdmin && !isDoctor && !isManager;
+  // Determine pending verification status for Doctor or Hospital applicant
+  const isPendingDoctor = 
+    !isAdmin && !isDoctor && (
+      user?.registration_type === 'doctor' ||
+      (Boolean(user?.doctor) && user?.doctor?.is_active === false)
+    );
+
+  const isPendingHospital = 
+    !isAdmin && !isManager && (
+      user?.registration_type === 'hospital' ||
+      (Boolean(user?.hospital) && user?.hospital?.is_active === false)
+    );
+
+  const isPendingVerification = isPendingDoctor || isPendingHospital;
+
+  const isPatient = !isAdmin && !isDoctor && !isManager && !isPendingVerification;
     
   const isStaff = isAdmin || isDoctor || isManager;
 
@@ -504,6 +599,7 @@ export function AuthProvider({ children }) {
     registerDoctor,
     registerHospital,
     logout,
+    logoutAll,
     fetchCurrentUser,
     hasRole,
     hasPermission,
@@ -511,15 +607,41 @@ export function AuthProvider({ children }) {
     isAdmin,
     isDoctor,
     isDoctorOnly,
+    isPendingDoctor,
+    isPendingHospital,
+    isPendingVerification,
     isPatient,
     isManager,
     isStaff,
     getRoles,
   }
 
+  const idleTimeoutMs = getRoleIdleTimeoutMs(userType, isAdmin, isStaff)
+  const { showWarning, remainingSeconds, stayLoggedIn } = useIdleTimeout({
+    enabled: !!user?.id,
+    timeoutMs: idleTimeoutMs,
+    onTimeout: () => {
+      toast.error('দীর্ঘক্ষণ নিষ্ক্রিয় থাকায় নিরাপত্তার স্বার্থে আপনার সেশনটি স্বয়ংক্রিয়ভাবে বন্ধ করা হয়েছে।', {
+        id: 'idle-auto-logout',
+      })
+      logout()
+    },
+    onKeepAlive: () => {
+      // Non-poll request so backend resets last_activity_at
+      fetchCurrentUser(false)
+    },
+  })
+
   return (
     <AuthContext.Provider value={value}>
       {children}
+      <IdleWarningModal
+        show={showWarning}
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={stayLoggedIn}
+        onLogoutNow={logout}
+      />
+      <SudoVerifyModal />
     </AuthContext.Provider>
   )
 }
@@ -529,7 +651,11 @@ const defaultAuth = {
   isLoggedIn: false,
   isAdmin: false,
   isDoctor: false,
+  isPendingDoctor: false,
+  isPendingHospital: false,
+  isPendingVerification: false,
   isManager: false,
+  isPatient: false,
   loading: false,
   getRoles: () => [],
   hasRole: () => false,

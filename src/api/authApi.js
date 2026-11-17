@@ -10,7 +10,7 @@ import axiosInstance from './axiosInstance'
 export const loginApi = (credentials) =>
   axiosInstance.post('/login', credentials)
 
-// POST /api/logout — revokes active Sanctum token(s) on server
+// POST /api/logout — revokes current device Sanctum token on server
 export const logoutApi = (token = null) =>
   axiosInstance.post(
     '/logout',
@@ -20,6 +20,25 @@ export const logoutApi = (token = null) =>
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }
   )
+
+// POST /api/logout-all — revokes ALL active Sanctum tokens across all devices
+export const logoutAllApi = (token = null) =>
+  axiosInstance.post(
+    '/logout-all',
+    {},
+    {
+      skipGlobalToast: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }
+  )
+
+// GET /api/sessions — list all active sessions for current user
+export const getActiveSessionsApi = () =>
+  axiosInstance.get('/sessions')
+
+// DELETE /api/sessions/:id — revoke a specific session
+export const revokeSessionApi = (sessionId) =>
+  axiosInstance.delete(`/sessions/${sessionId}`)
 
 // POST /api/register — simple name+email+password
 export const registerApi = (userData) =>
@@ -86,8 +105,25 @@ export const updatePatientProfile = (data) => updateMyProfile(data)
 export const updateDoctorProfile = (data) => updateMyProfile(data)
 export const updateHospitalProfile = (data) => updateMyProfile(data)
 
+/**
+ * Update account password.
+ * - For Admin / Super-Admin: requires { current_password, new_password, new_password_confirmation, code }
+ *   where `code` is the 6-digit Google Authenticator code or 8-char emergency backup code.
+ * - For standard users (Patient / Doctor): requires { current_password, new_password, new_password_confirmation }.
+ */
 export const updatePasswordApi = (data) =>
   axiosInstance.post('/update-password', data)
 
-export const resendPasswordOtpApi = () =>
-  axiosInstance.post('/resend-password-otp')
+// ===== TWO-FACTOR AUTHENTICATION (Google Authenticator TOTP) =====
+export const getTwoFactorStatusApi = () =>
+  axiosInstance.get('/two-factor/status')
+
+export const setupTwoFactorApi = (data) =>
+  axiosInstance.post('/two-factor/setup', data) // { password }
+
+export const enableTwoFactorApi = (data) =>
+  axiosInstance.post('/two-factor/enable', data) // { code }
+
+export const disableTwoFactorApi = (data) =>
+  axiosInstance.post('/two-factor/disable', data) // { password, code }
+

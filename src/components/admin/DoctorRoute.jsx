@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function DoctorRoute({ children }) {
-  const { isLoggedIn, isDoctor, isAdmin, isManager, loading } = useAuth()
+  const { isLoggedIn, isDoctor, isAdmin, isManager, isPendingDoctor, loading } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -17,6 +17,11 @@ export default function DoctorRoute({ children }) {
 
   if (!isLoggedIn) {
     return <Navigate to="/login/doctor" state={{ from: location }} replace />
+  }
+
+  // Redirect pending doctor applicants to the verification status page
+  if (isPendingDoctor) {
+    return <Navigate to="/pending-verification" replace />
   }
 
   // Strictly allow only Doctors and Super Admins into the Doctor Portal

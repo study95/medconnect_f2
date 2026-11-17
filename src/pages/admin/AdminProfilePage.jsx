@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getMyProfile, updateMyProfile } from '../../api/authApi'
+import TwoFactorSecurityCard from '../../components/auth/TwoFactorSecurityCard'
 import useLocations from '../../hooks/useLocations'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -550,6 +551,9 @@ function AdminProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Two-Factor Authentication Security Card */}
+      <TwoFactorSecurityCard />
     </div>
   )
 }

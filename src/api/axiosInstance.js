@@ -5,6 +5,7 @@
 
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
+import { requestSudoVerification } from '../utils/sudoPrompt'
 
 const DEVICE_FP_STORAGE_KEY = 'db_device_fp'
 
@@ -55,14 +56,37 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+const clearAuthAndNotify = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('userType')
+  window.dispatchEvent(new Event('auth-expired'))
+}
+
 // RESPONSE INTERCEPTOR
 axiosInstance.interceptors.response.use(
   (response) => {
     return response
   },
-  (error) => {
+  async (error) => {
     const method = (error.config?.method || '').toLowerCase()
     const url = error.config?.url || ''
+
+    // Seamless Step-Up (Sudo Mode) prompt & automatic retry for critical operations
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === 'SUDO_REQUIRED' &&
+      error.config &&
+      !error.config._sudoRetried
+    ) {
+      try {
+        await requestSudoVerification(Boolean(error.response?.data?.requires_2fa))
+        error.config._sudoRetried = true
+        return axiosInstance(error.config)
+      } catch {
+        return Promise.reject(error)
+      }
+    }
 
     const isPublicAuthRoute = 
       url.includes('/login') ||
@@ -77,10 +101,7 @@ axiosInstance.interceptors.response.use(
 
     // Immediately terminate session if backend reports the user account has been blocked
     if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BLOCKED') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('userType')
-      window.dispatchEvent(new Event('auth-expired'))
+      clearAuthAndNotify()
 
       const blockedMsg = error.response?.data?.message || 'আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত (Blocked) করা হয়েছে।'
       if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
@@ -89,16 +110,17 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Immediately terminate session if backend revokes token due to device mismatch / replay attempt
-    if (error.response?.status === 401 && error.response?.data?.code === 'DEVICE_MISMATCH_REVOKED') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('userType')
-      window.dispatchEvent(new Event('auth-expired'))
+    // Immediately terminate session if backend revokes token due to device mismatch or idle timeout
+    const errorCode = error.response?.data?.code
+    if (error.response?.status === 401 && (errorCode === 'DEVICE_MISMATCH_REVOKED' || errorCode === 'SESSION_EXPIRED_IDLE')) {
+      clearAuthAndNotify()
 
-      const securityMsg = error.response?.data?.message || 'নিরাপত্তা সতর্কতা: অন্য ডিভাইস থেকে সেশন ব্যবহারের চেষ্টা শনাক্ত হওয়ায় পুনরায় লগইন করুন।'
+      const fallbackMsg = errorCode === 'SESSION_EXPIRED_IDLE'
+        ? 'দীর্ঘক্ষণ নিষ্ক্রিয় থাকায় নিরাপত্তার স্বার্থে আপনার সেশনটি স্বয়ংক্রিয়ভাবে বন্ধ করা হয়েছে।'
+        : 'নিরাপত্তা সতর্কতা: অন্য ডিভাইস থেকে সেশন ব্যবহারের চেষ্টা শনাক্ত হওয়ায় পুনরায় লগইন করুন।'
+      const securityMsg = error.response?.data?.message || fallbackMsg
       if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
-        toast.error(securityMsg, { id: 'device-mismatch-alert' })
+        toast.error(securityMsg, { id: `security-logout-${errorCode}` })
       }
       return Promise.reject(error)
     }
@@ -106,12 +128,7 @@ axiosInstance.interceptors.response.use(
     // Only expire the authentication session if the core identity endpoint explicitly returns 401
     // This prevents accidental logouts when saving content, submitting forms, or handling specific permission errors
     if (error.response?.status === 401 && (url.includes('/me') || url.includes('/auth/check'))) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('userType')
-
-      // Dispatch custom event to notify React app
-      window.dispatchEvent(new Event('auth-expired'))
+      clearAuthAndNotify()
     }
 
     const skipGlobalToast = error.config?.skipGlobalToast || isPublicAuthRoute

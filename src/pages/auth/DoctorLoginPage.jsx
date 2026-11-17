@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorCheckIdentifier } from '../../api/authApi'
+import TwoFactorLoginModal from '../../components/auth/TwoFactorLoginModal'
 import { Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import '../../styles/auth.css'
@@ -22,6 +23,10 @@ export default function DoctorLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // 2FA Challenge Modal State
+  const [twoFaData, setTwoFaData] = useState(null)
+  const [showTwoFaModal, setShowTwoFaModal] = useState(false)
 
   const detectInputType = (value) => {
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Email'
@@ -50,6 +55,25 @@ export default function DoctorLoginPage() {
     }
   }
 
+  const handleSuccessfulAuth = (userData) => {
+    const rawRoles = userData?.roles || userData?.role || []
+    const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => 
+      typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
+    )
+    const isApproved = roles.includes('doctor') || roles.includes('admin') || roles.includes('super-admin') || userData?.role_id === 1 || userData?.role_id === 2
+
+    if (!isApproved) {
+      navigate('/pending-verification', {
+        replace: true,
+        state: { type: 'doctor', name: userData?.name || '' }
+      })
+      return
+    }
+
+    const target = from && from !== '/' && !from.startsWith('/login') ? from : '/admin'
+    navigate(target, { replace: true })
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault()
     if (!password) return setError('Please enter your password')
@@ -60,22 +84,14 @@ export default function DoctorLoginPage() {
     setLoading(false)
 
     if (result.success) {
-      const rawRoles = result.user?.roles || result.user?.role || []
-      const roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => 
-        typeof r === 'object' && r !== null ? String(r.name || r.role || '').toLowerCase() : String(r).toLowerCase()
-      )
-      const isApproved = roles.includes('doctor') || roles.includes('admin') || roles.includes('super-admin') || result.user?.role_id === 1 || result.user?.role_id === 2
-
-      if (!isApproved) {
-        navigate('/pending-verification', {
-          replace: true,
-          state: { type: 'doctor', name: result.user?.name || '' }
-        })
-        return
-      }
-
-      const target = from && from !== '/' && !from.startsWith('/login') ? from : '/admin'
-      navigate(target, { replace: true })
+      handleSuccessfulAuth(result.user)
+    } else if (result.requires_2fa) {
+      setTwoFaData({
+        session_key: result.session_key,
+        method: result.method || 'sms',
+        masked_mobile: result.masked_mobile || '',
+      })
+      setShowTwoFaModal(true)
     } else {
       setError(result.message || 'Invalid credentials. Please try again.')
     }
@@ -244,6 +260,21 @@ export default function DoctorLoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Two-Factor Authentication Challenge Modal */}
+      {showTwoFaModal && twoFaData && (
+        <TwoFactorLoginModal
+          isOpen={showTwoFaModal}
+          onClose={() => setShowTwoFaModal(false)}
+          sessionKey={twoFaData.session_key}
+          method={twoFaData.method}
+          maskedMobile={twoFaData.masked_mobile}
+          onSuccess={(userData) => {
+            setShowTwoFaModal(false)
+            handleSuccessfulAuth(userData)
+          }}
+        />
+      )}
     </div>
   )
 }

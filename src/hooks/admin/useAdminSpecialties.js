@@ -19,6 +19,8 @@ import {
   createSpecialty,
   updateSpecialty,
   deleteSpecialty,
+  approveSpecialty,
+  rejectSpecialty,
 } from '../../api/adminApi'
 import { getErrorMessage } from '../../utils/errorHelper'
 
@@ -104,6 +106,24 @@ export function useAdminSpecialtyMutations() {
     },
   })
 
+  // Approve Specialty
+  const approveMutation = useMutation({
+    mutationFn: (id) => approveSpecialty(id),
+    onSuccess: () => {
+      invalidateSpecialties(queryClient)
+      queryClient.invalidateQueries({ queryKey: ['homepage'] })
+    },
+  })
+
+  // Reject Specialty
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, data }) => rejectSpecialty(id, data),
+    onSuccess: () => {
+      invalidateSpecialties(queryClient)
+      queryClient.invalidateQueries({ queryKey: ['homepage'] })
+    },
+  })
+
   return {
     createSpecialty: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
@@ -111,5 +131,9 @@ export function useAdminSpecialtyMutations() {
     isUpdating: updateMutation.isPending,
     deleteSpecialty: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    approveSpecialty: approveMutation.mutateAsync,
+    isApproving: approveMutation.isPending,
+    rejectSpecialty: rejectMutation.mutateAsync,
+    isRejecting: rejectMutation.isPending,
   }
 }

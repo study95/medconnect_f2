@@ -7,7 +7,7 @@ import {
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X,
-  Bell, Search, ChevronRight, Activity, Headphones
+  Bell, Search, ChevronRight, Activity, Headphones, Hourglass
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent, useSiteSettings } from '../../utils/contentService'
@@ -31,7 +31,10 @@ const NAV_HOSPITAL_SEARCH_PHRASES = [
 ]
 
 function AppNavbar() {
-  const { user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isPatient, logout } = useAuth()
+  const { 
+    user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isPatient,
+    isPendingDoctor, isPendingHospital, isPendingVerification, logout 
+  } = useAuth()
   const site = useSiteSettings()
   const siteLogo = site?.logo_url ? getMediaUrl(site.logo_url, '/doctorBookletLogo.png') : '/doctorBookletLogo.png'
   const siteName = site?.name || 'Doctor Booklet'
@@ -454,6 +457,8 @@ function AppNavbar() {
     if (isAdmin) return 'অ্যাডমিনিস্ট্রেটর'
     if (isDoctor) return 'ডাক্তার'
     if (isManager) return 'হাসপাতাল ম্যানেজার'
+    if (isPendingDoctor) return 'ডাক্তার (যাচাইকরণাধীন)'
+    if (isPendingHospital) return 'হাসপাতাল (যাচাইকরণাধীন)'
     if (isPatient) return 'রোগী'
     return 'ব্যবহারকারী'
   }
@@ -1162,12 +1167,22 @@ function AppNavbar() {
                         <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>{getUserTypeLabel()}</div>
                       </div>
                       <div style={{ padding: '6px' }}>
-                        <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
-                          <User size={15} className="me-2" /> প্রোফাইল
-                        </Link>
-                        <Link to="/my-appointments" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
-                          <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
-                        </Link>
+                        {isPendingVerification ? (
+                          <Link to="/pending-verification" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item" style={{ color: '#D97706', fontWeight: 700 }}>
+                            <Hourglass size={15} className="me-2 text-warning" /> আবেদনের অবস্থা ও ভেরিফিকেশন
+                          </Link>
+                        ) : (
+                          <>
+                            <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                              <User size={15} className="me-2" /> প্রোফাইল
+                            </Link>
+                            {!isDoctor && !isManager && (
+                              <Link to="/my-appointments" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                                <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
+                              </Link>
+                            )}
+                          </>
+                        )}
                         {isStaff && (
                           <Link to={getDashboardPath()} onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
                             <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
@@ -1466,12 +1481,22 @@ function AppNavbar() {
           <div className="mt-auto pt-3 border-top flex-shrink-0">
             {isLoggedIn ? (
               <div className="d-flex flex-column gap-1">
-                <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">
-                  <User size={16} className="text-secondary" /> <span>প্রোফাইল</span>
-                </Link>
-                <Link to="/my-appointments" onClick={closeMenu} className="mobile-drawer-sub-item">
-                  <Calendar size={16} className="text-secondary" /> <span>আমার অ্যাপয়েন্টমেন্ট</span>
-                </Link>
+                {isPendingVerification ? (
+                  <Link to="/pending-verification" onClick={closeMenu} className="mobile-drawer-sub-item" style={{ color: '#D97706', fontWeight: 700 }}>
+                    <Hourglass size={16} /> <span>আবেদনের অবস্থা ও ভেরিফিকেশন</span>
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">
+                      <User size={16} className="text-secondary" /> <span>প্রোফাইল</span>
+                    </Link>
+                    {!isDoctor && !isManager && (
+                      <Link to="/my-appointments" onClick={closeMenu} className="mobile-drawer-sub-item">
+                        <Calendar size={16} className="text-secondary" /> <span>আমার অ্যাপয়েন্টমেন্ট</span>
+                      </Link>
+                    )}
+                  </>
+                )}
                 {isStaff && (
                   <Link to={getDashboardPath()} onClick={closeMenu} className="mobile-drawer-sub-item" style={{ color: '#00803D', fontWeight: 700 }}>
                     <LayoutGrid size={16} /> <span>{getAdminLinkLabel()}</span>

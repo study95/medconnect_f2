@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Form, Button } from 'react-bootstrap'
 import axiosInstance from '../api/axiosInstance'
+import { validateStrongPassword } from '../utils/passwordValidator'
 import PasswordInput from '../components/common/PasswordInput'
 import { useSiteSettings } from '../utils/contentService'
 import { getMediaUrl } from '../utils/mediaUtils'
@@ -48,8 +49,9 @@ export default function ResetPasswordPage() {
       return
     }
 
-    if (password.length < 6) {
-      setStatusMsg({ type: 'danger', text: 'পাসওয়ার্ডটি কমপক্ষে ৬ অক্ষরের হতে হবে।' })
+    const pwdCheck = validateStrongPassword(password)
+    if (!pwdCheck.valid) {
+      setStatusMsg({ type: 'danger', text: pwdCheck.message })
       return
     }
 

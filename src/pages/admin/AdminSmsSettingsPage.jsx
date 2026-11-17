@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FormSkeleton } from '../../components/common/Skeletons'
 import {
   getAdminSmsSettings,
@@ -62,7 +63,18 @@ export default function AdminSmsSettingsPage() {
   const [testing, setTesting] = useState(false)
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
   const [testResult, setTestResult] = useState(null)
-  const [activeTab, setActiveTab] = useState('gateway') // 'gateway' | 'balance' | 'credentials' | 'security' | 'test' | 'logs'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const VALID_TABS = ['gateway', 'balance', 'credentials', 'security', 'test', 'logs']
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(() => (VALID_TABS.includes(initialTab) ? initialTab : 'gateway'))
+
+  // Sync activeTab whenever URL query changes (e.g. navigation via sidebar)
+  useEffect(() => {
+    const currentTab = searchParams.get('tab')
+    if (currentTab && VALID_TABS.includes(currentTab) && currentTab !== activeTab) {
+      setActiveTab(currentTab)
+    }
+  }, [searchParams])
 
   // Settings State
   const [form, setForm] = useState({
@@ -677,7 +689,10 @@ export default function AdminSmsSettingsPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id)
+                setSearchParams(tab.id === 'gateway' ? {} : { tab: tab.id }, { replace: true })
+              }}
               style={{
                 flex: '1 1 0',
                 minWidth: 'fit-content',

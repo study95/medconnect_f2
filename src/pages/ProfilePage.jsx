@@ -37,10 +37,20 @@ const GENDER_BN = {
 }
 
 function ProfilePage() {
-  const { user, userType, logout, fetchCurrentUser, isDoctor, isAdmin, isManager, isPatient } = useAuth()
+  const { 
+    user, userType, logout, fetchCurrentUser, isDoctor, isAdmin, isManager, isPatient,
+    isPendingVerification, loading: authLoading 
+  } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { favoriteDoctors, favoriteHospitals } = useFavorites()
+
+  // Redirect pending doctor or hospital applicants directly to the dedicated pending verification page
+  useEffect(() => {
+    if (!authLoading && isPendingVerification) {
+      navigate('/pending-verification', { replace: true })
+    }
+  }, [authLoading, isPendingVerification, navigate])
 
   const initialTab = searchParams.get('tab') === 'favorites' ? 'favorites' : 'profile'
   const [mainTab, setMainTab] = useState(initialTab)
@@ -501,7 +511,7 @@ function ProfilePage() {
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '4px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 800, marginBottom: 8, border: '1px solid rgba(255,255,255,0.2)', color: '#DCFCE7' }}>
                     <IconSparkles size={14} color="#34D399" />
-                    <span>{isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার অ্যাকাউন্ট' : (isManager ? 'হাসপাতাল পোর্টাল' : 'রোগী প্রোফাইল'))}</span>
+                    <span>{isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার অ্যাকাউন্ট' : (isManager ? 'হাসপাতাল পোর্টাল' : (isPendingVerification ? 'ডাক্তার (যাচাইকরণাধীন)' : 'রোগী প্রোফাইল')))}</span>
                   </div>
                   <h1 style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', fontFamily: "'Hind Siliguri', sans-serif", color: '#FFFFFF' }}>
                     {displayName}
@@ -731,7 +741,7 @@ function ProfilePage() {
                       display: 'inline-flex', alignItems: 'center', gap: 6,
                       border: '1px solid #DCFCE7'
                     }}>
-                      {isAdmin ? '🛡️ সিস্টেম অ্যাডমিনিস্ট্রেটর' : (isDoctorUser ? '👨‍⚕️ নিবন্ধিত ডাক্তার' : (isManager ? '🏥 হাসপাতাল ম্যানেজার' : '👤 নিবন্ধিত রোগী'))}
+                      {isAdmin ? '🛡️ সিস্টেম অ্যাডমিনিস্ট্রেটর' : (isDoctorUser ? '👨‍⚕️ নিবন্ধিত ডাক্তার' : (isManager ? '🏥 হাসপাতাল ম্যানেজার' : (isPendingVerification ? '⏳ যাচাইকরণাধীন' : '👤 নিবন্ধিত রোগী')))}
                     </span>
                   </div>
 
@@ -1248,7 +1258,7 @@ function ProfilePage() {
 
                     {/* ROLE BADGE */}
                     <div style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#DCFCE7', padding: '2px 10px', borderRadius: 5, display: 'inline-block', fontWeight: 800 }}>
-                      {isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার' : (isManager ? 'হাসপাতাল' : 'রোগী'))}
+                      {isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার' : (isManager ? 'হাসপাতাল' : (isPendingVerification ? 'যাচাইকরণাধীন' : 'রোগী')))}
                     </div>
                   </div>
                 </div>

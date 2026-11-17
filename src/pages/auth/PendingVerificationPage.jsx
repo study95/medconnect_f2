@@ -72,20 +72,33 @@ export default function PendingVerificationPage() {
     user?.name ||
     (isHospital ? 'হাসপাতাল কর্তৃপক্ষ' : 'ডাক্তার')
 
-  // Mobile / Email resolution
-  const mobileOrEmail = user?.phone || user?.mobile || user?.email || location.state?.phone || '০১৭********'
-  const emailAddress = user?.email || location.state?.email || 'N/A'
+  // Mobile / Email resolution (strictly use real user/state data, no dummy values)
+  const rawPhone = user?.phone || user?.mobile || location.state?.phone || location.state?.mobile || ''
+  const toBngDigits = (num) => String(num || '').replace(/[0-9]/g, (digit) => '০১২৩৪৫৬৭৮৯'[digit])
+  const mobileDisplay = rawPhone ? toBngDigits(rawPhone) : 'প্রদান করা হয়নি'
+  const emailAddress = user?.email || location.state?.email || 'প্রদান করা হয়নি'
 
   // License / BMDC resolution
-  const licenseNumber = user?.bmdc_number ||
+  const licenseNumber = user?.bmdc ||
+    user?.bmdc_number ||
+    user?.doctor?.bmdc ||
     user?.doctor?.bmdc_number ||
     user?.bmdc_reg_no ||
     user?.license_number ||
     user?.hospital?.license_number ||
     user?.dghs_reg_no ||
+    location.state?.bmdc ||
     location.state?.bmdc_number ||
     location.state?.license_number ||
     'যাচাই প্রক্রিয়াধীন'
+
+  // Workplace / Hospital name resolution
+  const workplace = user?.doctor?.workplace ||
+    user?.doctor?.workplace_bn ||
+    location.state?.workplace ||
+    location.state?.hospital_name ||
+    user?.hospital?.name ||
+    ''
 
   // Submission Date & Time
   const submissionTimestamp = user?.created_at || location.state?.created_at || null
@@ -127,6 +140,13 @@ export default function PendingVerificationPage() {
       return
     }
   }, [loading, isLoggedIn, isAdmin, isDoctor, isManager, isPatient, user, location.state, navigate])
+
+  // Instant fetch on mount to sync user profile and details immediately
+  useEffect(() => {
+    if (isLoggedIn && fetchCurrentUser) {
+      fetchCurrentUser()
+    }
+  }, [isLoggedIn])
 
   // Real-time status sync: Periodic polling fallback & tab focus listener
   useEffect(() => {
@@ -350,7 +370,7 @@ export default function PendingVerificationPage() {
                     <span className="pv-item-label">
                       <Phone size={13} /> মোবাইল নম্বর
                     </span>
-                    <span className="pv-item-value">{mobileOrEmail}</span>
+                    <span className="pv-item-value">{mobileDisplay}</span>
                   </div>
 
                   <div className="pv-details-item pv-item-full">
@@ -359,6 +379,15 @@ export default function PendingVerificationPage() {
                     </span>
                     <span className="pv-item-value">{emailAddress}</span>
                   </div>
+
+                  {workplace && (
+                    <div className="pv-details-item pv-item-full">
+                      <span className="pv-item-label">
+                        <Building2 size={13} /> {isHospital ? 'হাসপাতালের নাম' : 'কর্মস্থল / চেম্বার'}
+                      </span>
+                      <span className="pv-item-value">{workplace}</span>
+                    </div>
+                  )}
 
                   <div className="pv-details-item pv-item-full">
                     <span className="pv-item-label">

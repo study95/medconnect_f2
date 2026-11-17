@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axiosInstance from '../api/axiosInstance'
+import { validateStrongPassword } from '../utils/passwordValidator'
 import {
   Smartphone,
   Lock,
@@ -261,8 +262,9 @@ export default function ForgotPasswordPage() {
     if (e) e.preventDefault()
     setStatusMsg({ type: '', text: '' })
 
-    if (password.length < 6) {
-      setStatusMsg({ type: 'danger', text: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' })
+    const pwdCheck = validateStrongPassword(password)
+    if (!pwdCheck.valid) {
+      setStatusMsg({ type: 'danger', text: pwdCheck.message })
       return
     }
 

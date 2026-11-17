@@ -6,6 +6,7 @@ import NotificationItem from './NotificationItem'
 import NotificationSkeleton from './NotificationSkeleton'
 import { Bell, CheckCheck, BellOff, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { isWebSocketConnected, onConnectionStateChange } from '../../utils/echoService'
 
 /**
  * Enterprise Global Notification Bell Dropdown Component
@@ -16,16 +17,25 @@ export default function NotificationDropdown({
   className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [wsConnected, setWsConnected] = useState(() => isWebSocketConnected())
   const dropdownRef = useRef(null)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  // 1. Fetch unread count
+  useEffect(() => {
+    return onConnectionStateChange((state) => {
+      setWsConnected(state === 'connected')
+    })
+  }, [])
+
+  // 1. Fetch unread count (Reverb-first: 120s safety sync when WS connected, 45s fallback when disconnected)
   const { data: countData } = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: async () => {
       try {
-        const res = await axiosInstance.get('/v1/notifications/unread-count')
+        const res = await axiosInstance.get('/v1/notifications/unread-count', {
+          headers: { 'X-Background-Poll': 'true' },
+        })
         return (
           res.data?.unread_count ??
           res.data?.count ??
@@ -37,7 +47,8 @@ export default function NotificationDropdown({
         return 0
       }
     },
-    refetchInterval: 1000 * 15, // poll every 15s for responsiveness
+    refetchInterval: wsConnected ? 1000 * 120 : 1000 * 45,
+    refetchOnWindowFocus: false,
   })
 
   const unreadCount = Number(countData) || 0

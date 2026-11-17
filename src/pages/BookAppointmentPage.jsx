@@ -13,6 +13,7 @@ import useDoctorDetail from '../hooks/useDoctorDetail'
 import useUserLocation from '../hooks/useUserLocation'
 import { calculateDistance, formatDistance } from '../utils/geoUtils'
 import { getBangladeshTodayStr } from '../utils/dateUtils'
+import { validateStrongPassword } from '../utils/passwordValidator'
 import {
   IconCalendarEvent, IconClock, IconMapPin, IconPhone,
   IconShieldCheck, IconUser, IconLock, IconDeviceMobile,
@@ -1429,8 +1430,9 @@ export default function BookAppointmentPage() {
       setRegError('অনুগ্রহ করে আপনার পূর্ণ নাম লিখুন।')
       return
     }
-    if (!regForm.password || regForm.password.length < 6) {
-      setRegError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।')
+    const pwdCheck = validateStrongPassword(regForm.password)
+    if (!pwdCheck.valid) {
+      setRegError(pwdCheck.message)
       return
     }
     if (regForm.password !== regForm.confirm_password) {

@@ -339,24 +339,21 @@ function SpecCard({ spec, language, t, navigate }) {
   const meta = useMemo(() => getSpecialtyMeta(spec.name || spec.name_bn || ''), [spec.name, spec.name_bn])
   const IconComp = meta.icon
 
-  // 100% Dynamic Name Resolution from API / Database
+  // 100% Dynamic Name Resolution from API / Database ("same to same")
   const displayName = useMemo(() => {
     if (language === 'bn' && spec.name_bn) {
       return spec.name_bn
     }
     const raw = spec.name || spec.name_bn || ''
-    const cleanRaw = raw.replace(/^spec_/, '')
+    const cleanRaw = raw.replace(/^spec_/, '').trim()
+    if (!cleanRaw) {
+      return (language === 'bn' ? meta.title?.bn : meta.title?.en) || ''
+    }
     const translated = translateMetadata(cleanRaw, language, t)
     if (translated && translated !== cleanRaw) {
       return translated
     }
-    if (language === 'bn' && meta.title?.bn) {
-      return meta.title.bn
-    }
-    if (language === 'en' && meta.title?.en) {
-      return meta.title.en
-    }
-    return cleanRaw || raw
+    return cleanRaw
   }, [spec, language, t, meta])
 
   const desc = (language === 'bn' ? meta.desc?.bn : meta.desc?.en) || (language === 'bn' ? 'বিশেষজ্ঞ চিকিৎসা ও সেবা' : 'Expert medical care')

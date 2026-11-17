@@ -146,6 +146,7 @@ const PurchaseReportPage     = lazy(() => import('./pages/admin/reports/Purchase
 // Admin Profile & Password
 const AdminProfilePage       = lazy(() => import('./pages/admin/AdminProfilePage'))
 const AdminPasswordPage      = lazy(() => import('./pages/admin/AdminPasswordPage'))
+const AdminSecurityPage      = lazy(() => import('./pages/admin/AdminSecurityPage'))
 
 // Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
@@ -394,6 +395,7 @@ function App() {
             <Route path="billing/settings" element={<AdminBillingSettingsPage />} />
             <Route path="billing/gateways" element={<AdminGatewaySettingsPage />} />
             <Route path="sms-settings" element={<AdminSmsSettingsPage />} />
+            <Route path="sms-logs" element={<Navigate to="/admin/sms-settings?tab=logs" replace />} />
 
 
             {/* Commission & Service Management */}
@@ -411,6 +413,7 @@ function App() {
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="password" element={<AdminPasswordPage />} />
+            <Route path="security" element={<AdminSecurityPage />} />
 
             {/* Review Moderation & Dispute Reports (Admin) */}
             <Route path="reviews/moderation" element={<ReviewModerationPage />} />
@@ -504,6 +507,7 @@ function App() {
             {/* Profile & Password */}
             <Route path="account-profile" element={<AdminProfilePage />} />
             <Route path="password" element={<AdminPasswordPage />} />
+            <Route path="security" element={<AdminSecurityPage />} />
           </Route>
 
           {/* ===== HOSPITAL PORTAL ROUTES ===== */}
@@ -575,6 +579,7 @@ function App() {
             {/* Profile & Password */}
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="password" element={<AdminPasswordPage />} />
+            <Route path="security" element={<AdminSecurityPage />} />
           </Route>
 
           {/* ===== TV DISPLAY ROUTES & ADMIN SECURE ACCESS (Completely standalone) ===== */}
@@ -611,6 +616,7 @@ function App() {
                   <Route path="/register/patient/verify"    element={<OtpVerificationPage />} />
 
                   <Route path="/pending-verification"       element={<PendingVerificationPage />} />
+                  <Route path="/account-pending"            element={<PendingVerificationPage />} />
                   <Route path="/forgot-password"            element={<ForgotPasswordPage />} />
                   <Route path="/reset-password"             element={<ResetPasswordPage />} />
 

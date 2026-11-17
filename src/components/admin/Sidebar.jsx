@@ -801,8 +801,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           )}
 
           {/* ── SYSTEM ── Admin, Manager, Doctor */}
-          {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('content.update')) && (
-            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/audit-logs']} {...sectionProps}>
+          {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('content.update') || hasPermission('audit_log.view')) && (
+            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/sms-logs', '/admin/audit-logs']} {...sectionProps}>
               {/* Users — Admin only */}
               {(isAdmin || hasPermission('user.view')) && (
                 <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -851,21 +851,33 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </>
               )}
 
-              {/* SMS Settings — Admin only */}
+              {/* SMS Settings & Logs — Admin only */}
               {isAdmin && (
-                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
-                  to="/admin/sms-settings"
-                  className={`sidebar-nav-item ${isActive('/admin/sms-settings') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? 'SMS & OTP Settings' : undefined}
-                >
-                  <span className="nav-icon"><MessageSquare size={18} /></span>
-                  <span className="nav-text">SMS & OTP Settings</span>
-                </PrefetchNavLink>
+                <>
+                  <Link
+                    to="/admin/sms-settings"
+                    className={`sidebar-nav-item ${location.pathname === '/admin/sms-settings' && !location.search.includes('tab=logs') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'SMS & OTP Settings' : undefined}
+                  >
+                    <span className="nav-icon"><MessageSquare size={18} /></span>
+                    <span className="nav-text">SMS & OTP Settings</span>
+                  </Link>
+
+                  <Link
+                    to="/admin/sms-settings?tab=logs"
+                    className={`sidebar-nav-item ${location.pathname === '/admin/sms-settings' && location.search.includes('tab=logs') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'SMS Logs' : undefined}
+                  >
+                    <span className="nav-icon"><History size={18} /></span>
+                    <span className="nav-text">SMS Logs</span>
+                  </Link>
+                </>
               )}
 
-              {/* Audit Log — Admin only */}
-              {isAdmin && (
+              {/* Audit Log — Admin or audit_log.view permission */}
+              {(isAdmin || hasPermission('audit_log.view')) && (
                 <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/audit-logs"
                   className={`sidebar-nav-item ${isActive('/admin/audit-logs') ? 'active' : ''}`}

@@ -31,6 +31,8 @@ export const getSpecialty = (id) => axiosInstance.get(`/specialties/${id}`)
 export const createSpecialty = (data) => axiosInstance.post('/specialties', data)
 export const updateSpecialty = (id, data) => axiosInstance.put(`/specialties/${id}`, data)
 export const deleteSpecialty = (id) => axiosInstance.delete(`/specialties/${id}`)
+export const approveSpecialty = (id) => axiosInstance.post(`/specialties/${id}/approve`)
+export const rejectSpecialty = (id, data) => axiosInstance.post(`/specialties/${id}/reject`, data)
 
 // ===== DIVISIONS =====
 export const getDivisions = () => axiosInstance.get('/divisions')

@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Form, Button, Row, Col } from 'react-bootstrap'
 import {
   Mail, Lock, User, ShieldCheck, Hotel, Phone,
   UserCircle, Shield, Clock, CalendarCheck,
-  Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole
+  Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole,
+  Plus, Info, X
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
+import { validateStrongPassword } from '../utils/passwordValidator'
 import LegalDocumentModal from '../components/common/LegalDocumentModal'
 import { useSiteSettings } from '../utils/contentService'
 import { getMediaUrl } from '../utils/mediaUtils'
@@ -78,10 +80,75 @@ const RegisterPage = () => {
 
   const [form, setForm] = useState({
     name: '', hospital_name: '', email: '', mobile: '',
-    specialty_id: '', workplace: '', bmdc_number: '',
+    specialty_id: '', custom_specialty_name: '', workplace: '', bmdc_number: '',
     hospital_type: '', license_number: '', address: '', hotline: '', official_email: '',
     password: '', confirm: ''
   })
+
+  // Doctor Specialty Searchable & Creatable Combobox State
+  const [specialtySearch, setSpecialtySearch] = useState('')
+  const [specialtyDropdownOpen, setSpecialtyDropdownOpen] = useState(false)
+  const specialtyDropdownRef = useRef(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (specialtyDropdownRef.current && !specialtyDropdownRef.current.contains(e.target)) {
+        setSpecialtyDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
+
+  const filteredSpecialties = useMemo(() => {
+    if (!specialtySearch.trim()) return specialties
+    const q = specialtySearch.trim().toLowerCase()
+    return specialties.filter(s => s.name?.toLowerCase().includes(q))
+  }, [specialties, specialtySearch])
+
+  const hasExactSpecialtyMatch = useMemo(() => {
+    if (!specialtySearch.trim()) return false
+    const q = specialtySearch.trim().toLowerCase()
+    return specialties.some(s => s.name?.trim().toLowerCase() === q)
+  }, [specialties, specialtySearch])
+
+  const handleSelectSpecialty = (s) => {
+    setForm(prev => ({
+      ...prev,
+      specialty_id: s.id,
+      custom_specialty_name: ''
+    }))
+    setSpecialtySearch(s.name)
+    setSpecialtyDropdownOpen(false)
+    if (fieldErrors.specialty_id) {
+      setFieldErrors(prev => ({ ...prev, specialty_id: null }))
+    }
+  }
+
+  const handleSelectCustomSpecialty = (name) => {
+    const cleanName = (name || '').trim()
+    if (!cleanName) return
+    setForm(prev => ({
+      ...prev,
+      specialty_id: '',
+      custom_specialty_name: cleanName
+    }))
+    setSpecialtySearch(cleanName)
+    setSpecialtyDropdownOpen(false)
+    if (fieldErrors.specialty_id) {
+      setFieldErrors(prev => ({ ...prev, specialty_id: null }))
+    }
+  }
+
+  const handleClearSpecialty = () => {
+    setForm(prev => ({
+      ...prev,
+      specialty_id: '',
+      custom_specialty_name: ''
+    }))
+    setSpecialtySearch('')
+    setSpecialtyDropdownOpen(false)
+  }
 
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -394,8 +461,9 @@ const RegisterPage = () => {
       setFieldErrors({ confirm: 'পাসওয়ার্ড মিলছে না!' })
       return
     }
-    if (form.password.length < 6) {
-      setFieldErrors({ password: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে' })
+    const pwdCheck = validateStrongPassword(form.password)
+    if (!pwdCheck.valid) {
+      setFieldErrors({ password: pwdCheck.message })
       return
     }
 
@@ -409,9 +477,9 @@ const RegisterPage = () => {
     if (verificationToken) formData.append('verification_token', verificationToken)
 
     if (role === 'doctor') {
-      if (!form.specialty_id) {
+      if (!form.specialty_id && !form.custom_specialty_name?.trim()) {
         setLoading(false)
-        setFieldErrors({ specialty_id: 'স্পেশালটি নির্বাচন করা বাধ্যতামূলক।' })
+        setFieldErrors({ specialty_id: 'স্পেশালটি নির্বাচন করা বা নতুন নাম লেখা বাধ্যতামূলক।' })
         return
       }
       if (!form.workplace || !form.workplace.trim()) {
@@ -424,7 +492,11 @@ const RegisterPage = () => {
         setFieldErrors({ bmdc_number: 'বিএমডিসি নম্বর দেওয়া বাধ্যতামূলক।' })
         return
       }
-      formData.append('specialty_id', form.specialty_id)
+      if (form.custom_specialty_name?.trim()) {
+        formData.append('custom_specialty_name', form.custom_specialty_name.trim())
+      } else {
+        formData.append('specialty_id', form.specialty_id)
+      }
       formData.append('workplace', form.workplace)
       formData.append('bmdc_number', form.bmdc_number)
       formData.append('bmdc', form.bmdc_number)
@@ -474,7 +546,16 @@ const RegisterPage = () => {
           replace: true,
           state: {
             type: role,
-            name: role === 'hospital' ? (form.hospital_name || form.name) : form.name
+            name: role === 'hospital' ? (form.hospital_name || form.name) : form.name,
+            phone: form.phone || form.mobile,
+            mobile: form.phone || form.mobile,
+            email: form.email,
+            bmdc: form.bmdc_number || form.bmdc,
+            bmdc_number: form.bmdc_number || form.bmdc,
+            license_number: form.license_number,
+            workplace: form.workplace || form.workplace_bn,
+            hospital_name: form.hospital_name || form.name,
+            created_at: new Date().toISOString()
           }
         })
         return
@@ -1191,22 +1272,170 @@ const RegisterPage = () => {
                   {role === 'doctor' && (
                     <>
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">স্পেশালটি (Specialty) *</Form.Label>
-                        <div className="input-group-premium">
-                          <span className="input-icon-premium"><Stethoscope size={17} /></span>
-                          <Form.Select
-                            name="specialty_id"
-                            value={form.specialty_id}
-                            onChange={handleChange}
-                            required
-                            className="auth-input-premium"
-                          >
-                            <option value="">স্পেশালটি নির্বাচন করুন</option>
-                            {specialties.map(s => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                          </Form.Select>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <Form.Label className="auth-label-premium" style={{ marginBottom: 0 }}>
+                            স্পেশালটি (Specialty) *
+                          </Form.Label>
+                          {form.custom_specialty_name && (
+                            <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 12, fontWeight: 700, border: '1px solid #FDE68A' }}>
+                              নতুন রিকোয়েস্ট
+                            </span>
+                          )}
                         </div>
+
+                        <div ref={specialtyDropdownRef} style={{ position: 'relative' }}>
+                          <div className="input-group-premium">
+                            <span className="input-icon-premium"><Stethoscope size={17} /></span>
+                            <Form.Control
+                              type="text"
+                              placeholder="স্পেশালটি খুঁজুন বা নতুন নাম লিখুন..."
+                              value={specialtySearch}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setSpecialtySearch(val)
+                                setSpecialtyDropdownOpen(true)
+                                if (form.specialty_id || form.custom_specialty_name) {
+                                  setForm(prev => ({ ...prev, specialty_id: '', custom_specialty_name: '' }))
+                                }
+                              }}
+                              onFocus={() => setSpecialtyDropdownOpen(true)}
+                              className="auth-input-premium"
+                              style={{ paddingRight: specialtySearch ? 36 : 14 }}
+                              autoComplete="off"
+                            />
+                            {specialtySearch && (
+                              <button
+                                type="button"
+                                onClick={handleClearSpecialty}
+                                style={{
+                                  position: 'absolute',
+                                  right: 12,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 4,
+                                  color: '#94A3B8',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  zIndex: 10
+                                }}
+                                title="মুছুন"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Searchable & Creatable Dropdown Panel */}
+                          {specialtyDropdownOpen && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 4px)',
+                                left: 0,
+                                right: 0,
+                                background: '#FFFFFF',
+                                borderRadius: 12,
+                                border: '1.5px solid #00B875',
+                                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)',
+                                maxHeight: 250,
+                                overflowY: 'auto',
+                                zIndex: 1050,
+                                padding: '6px 0'
+                              }}
+                            >
+                              {/* Option 1: Creatable Button when user types something not exactly in the list */}
+                              {specialtySearch.trim() && !hasExactSpecialtyMatch && (
+                                <div
+                                  onClick={() => handleSelectCustomSpecialty(specialtySearch)}
+                                  style={{
+                                    padding: '10px 14px',
+                                    borderBottom: filteredSpecialties.length > 0 ? '1px dashed #E2E8F0' : 'none',
+                                    background: '#F0FDF4',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 9,
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                    color: '#047857',
+                                    transition: 'background 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#DCFCE7'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#F0FDF4'}
+                                >
+                                  <div style={{ width: 22, height: 22, borderRadius: 6, background: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <Plus size={14} color="#FFFFFF" strokeWidth={3} />
+                                  </div>
+                                  <span>নতুন হিসেবে দিন: <strong style={{ color: '#0F172A' }}>"{specialtySearch.trim()}"</strong></span>
+                                </div>
+                              )}
+
+                              {/* Option 2: Filtered Existing Specialties List */}
+                              {filteredSpecialties.length > 0 ? (
+                                filteredSpecialties.map(s => {
+                                  const isSelected = String(form.specialty_id) === String(s.id)
+                                  return (
+                                    <div
+                                      key={s.id}
+                                      onClick={() => handleSelectSpecialty(s)}
+                                      style={{
+                                        padding: '9px 16px',
+                                        cursor: 'pointer',
+                                        fontSize: 13.5,
+                                        fontWeight: isSelected ? 700 : 500,
+                                        color: isSelected ? '#00B875' : '#334155',
+                                        background: isSelected ? '#F0FDF4' : 'transparent',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      onMouseEnter={(e) => !isSelected && (e.currentTarget.style.background = '#F8FAFC')}
+                                      onMouseLeave={(e) => !isSelected && (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                      <span>{s.name}</span>
+                                      {isSelected && <CheckCircle size={15} color="#00B875" />}
+                                    </div>
+                                  )
+                                })
+                              ) : !specialtySearch.trim() ? (
+                                <div style={{ padding: '12px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                                  কোনো স্পেশালটি পাওয়া যায়নি
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Informational Guidance Tag for Custom Specialty */}
+                        {form.custom_specialty_name && (
+                          <div
+                            className="fade-in-up"
+                            style={{
+                              marginTop: 8,
+                              padding: '10px 12px',
+                              borderRadius: 10,
+                              background: '#F0FDF4',
+                              border: '1px solid #BBF7D0',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 8,
+                              fontSize: 12.5,
+                              color: '#166534',
+                              lineHeight: 1.4
+                            }}
+                          >
+                            <Info size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <span>আপনার দেওয়া <strong>"{form.custom_specialty_name}"</strong> নতুন স্পেশালটি হিসেবে আপনার প্রোফাইলে যুক্ত হবে এবং অ্যাডমিন অনুমোদনের পর সার্বজনীন তালিকায় আসবে।</span>
+                            </div>
+                          </div>
+                        )}
+
                         {fieldErrors.specialty_id && (
                           <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.specialty_id}

@@ -122,19 +122,31 @@ function LoginPage() {
                         roles.includes('hospital') ||
                         [1, 2, 3].includes(userData?.role_id)
 
-    // Pending verification check for doctor / hospital
-    if (role === 'doctor' || role === 'hospital') {
-      const approvedRoles = role === 'doctor'
+    // Pending verification check for doctor / hospital (based on registration_type or form role)
+    const targetType = userData?.registration_type || role
+    if (targetType === 'doctor' || targetType === 'hospital') {
+      const approvedRoles = targetType === 'doctor'
         ? ['doctor', 'admin', 'super-admin']
         : ['manager', 'hospital', 'admin', 'super-admin']
       const isApproved = approvedRoles.some(r => roles.includes(r))
-        || (role === 'doctor' && (userData?.role_id === 1 || userData?.role_id === 2))
-        || (role === 'hospital' && (userData?.role_id === 1 || userData?.role_id === 3))
+        || (targetType === 'doctor' && (userData?.role_id === 1 || userData?.role_id === 2))
+        || (targetType === 'hospital' && (userData?.role_id === 1 || userData?.role_id === 3))
 
       if (!isApproved) {
         navigate('/pending-verification', {
           replace: true,
-          state: { type: role, name: userData?.name || '' }
+          state: { 
+            type: targetType, 
+            name: userData?.name || '',
+            phone: userData?.phone || userData?.mobile || '',
+            mobile: userData?.phone || userData?.mobile || '',
+            email: userData?.email || '',
+            bmdc: userData?.bmdc || userData?.doctor?.bmdc || '',
+            bmdc_number: userData?.bmdc || userData?.doctor?.bmdc || '',
+            license_number: userData?.hospital?.license_number || '',
+            workplace: userData?.doctor?.workplace || '',
+            created_at: userData?.created_at || new Date().toISOString()
+          }
         })
         return
       }
