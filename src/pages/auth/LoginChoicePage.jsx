@@ -84,6 +84,19 @@ export default function LoginChoicePage() {
             Register here
           </span>
         </p>
+
+        {/* Field Agent Portal entry */}
+        <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px dashed #E2E8F0' }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#64748B' }}>
+            Are you an authorized Field Partner?{' '}
+            <Link
+              to="/login/agent"
+              style={{ color: '#059669', fontWeight: 700, textDecoration: 'none' }}
+            >
+              Sign in to Agent Desk →
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

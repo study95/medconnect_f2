@@ -161,6 +161,8 @@ function LoginPage() {
       navigate('/hospital/dashboard', { replace: true })
     } else if (roles.includes('admin') || roles.includes('super-admin') || userData?.role_id === 1) {
       navigate('/admin/dashboard', { replace: true })
+    } else if (roles.includes('agent')) {
+      navigate('/agent', { replace: true })
     } else if (isStaffUser) {
       navigate('/admin/dashboard', { replace: true })
     } else {
@@ -210,6 +212,8 @@ function LoginPage() {
       const lower = errMsg.toLowerCase()
 
       if (lower.includes('স্থগিত') || lower.includes('blocked') || lower.includes('suspend') || lower.includes('ban')) {
+        setFieldErrors({ form: errMsg })
+      } else if (lower.includes('এজেন্ট') || lower.includes('agent')) {
         setFieldErrors({ form: errMsg })
       } else if (lower.includes('রোগী') || lower.includes('ডাক্তার') || lower.includes('হাসপাতাল') || lower.includes('role')) {
         setFieldErrors({ role: errMsg })
@@ -634,7 +638,7 @@ function LoginPage() {
                     padding: '10px 14px',
                     marginBottom: 14,
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: 10,
                     color: '#991B1B',
                     fontSize: 13,
@@ -643,8 +647,30 @@ function LoginPage() {
                     textAlign: 'left'
                   }}
                 >
-                  <AlertCircle size={18} color="#DC2626" style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{fieldErrors.form || fieldErrors.general}</span>
+                  <AlertCircle size={18} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ flex: 1 }}>
+                    <div>{fieldErrors.form || fieldErrors.general}</div>
+                    {(String(fieldErrors.form || fieldErrors.general).includes('এজেন্ট') ||
+                      String(fieldErrors.form || fieldErrors.general).toLowerCase().includes('agent')) && (
+                      <div style={{ marginTop: 7, paddingTop: 6, borderTop: '1px dashed #FCA5A5' }}>
+                        <Link
+                          to="/login/agent"
+                          state={{ identifier: identifier ? identifier.trim() : '' }}
+                          style={{
+                            color: '#00803D',
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 12.5
+                          }}
+                        >
+                          👉 এজেন্ট পোর্টালে লগইন করতে এখানে ক্লিক করুন &rarr;
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -270,7 +270,7 @@ export const disconnectEcho = () => {
 /**
  * Subscribe to personal user notifications & status updates.
  */
-export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate) => {
+export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate, onForceLogout) => {
   if (!userId) return () => {}
   const echo = getEcho()
   const channel = echo.private(`user.${userId}`)
@@ -281,6 +281,9 @@ export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate)
   if (onHospitalUpdate) {
     channel.listen('.hospital.status.updated', onHospitalUpdate)
   }
+  if (onForceLogout) {
+    channel.listen('.session.force_logout', onForceLogout)
+  }
 
   return () => {
     if (onDoctorUpdate) {
@@ -288,6 +291,9 @@ export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate)
     }
     if (onHospitalUpdate) {
       channel.stopListening('.hospital.status.updated', onHospitalUpdate)
+    }
+    if (onForceLogout) {
+      channel.stopListening('.session.force_logout', onForceLogout)
     }
     if (echoInstance) {
       echoInstance.leave(`user.${userId}`)

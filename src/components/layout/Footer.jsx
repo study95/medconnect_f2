@@ -82,6 +82,7 @@ function Footer() {
     { label: 'আপনি কি রোগী?', to: '/register-patient', icon: <IconUserPlus size={16} /> },
     { label: 'আপনি কি ডাক্তার?', to: '/register-doctor', icon: <IconUserPlus size={16} /> },
     { label: 'আপনার কি হাসপাতাল আছে?', to: '/register-hospital', icon: <IconBuildingHospital size={16} /> },
+    { label: 'ফিল্ড এজেন্ট পোর্টাল', to: '/login/agent', icon: <IconDashboard size={16} /> },
     { label: 'পার্টনার ড্যাশবোর্ড', to: '/login', icon: <IconDashboard size={16} /> },
     { label: 'সাহায্য কেন্দ্র (FAQ)', to: '/support', icon: <IconHelp size={16} /> },
   ]

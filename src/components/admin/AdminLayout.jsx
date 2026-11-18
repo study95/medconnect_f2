@@ -104,7 +104,7 @@ export default function AdminLayout() {
                 display: 'inline-block',
                 whiteSpace: 'nowrap'
               }}>
-                {roleName === 'admin' ? 'Admin Panel' : (roleName === 'manager' || roleName === 'hospital') ? 'Hospital Panel' : roleName === 'doctor' ? 'Doctor Panel' : 'User Panel'}
+                {(roleName === 'admin' || roleName === 'super-admin' || isAdmin) ? 'Admin Panel' : (roleName === 'manager' || roleName === 'hospital' || isManager) ? 'Hospital Panel' : (roleName === 'doctor' || isDoctor) ? 'Doctor Panel' : 'User Panel'}
               </span>
             </div>
           </div>

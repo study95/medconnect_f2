@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function DashboardRedirect() {
-  const { user, isLoggedIn, loading, isAdmin, isDoctor, isManager, isStaff, isPatient } = useAuth()
+  const { user, isLoggedIn, loading, isAdmin, isDoctor, isManager, isStaff, isPatient, isAgent } = useAuth()
 
   if (loading) {
     return (
@@ -29,6 +29,10 @@ export default function DashboardRedirect() {
 
   if (isManager) {
     return <Navigate to="/hospital/dashboard" replace />
+  }
+
+  if (isAgent) {
+    return <Navigate to="/agent" replace />
   }
 
   if (isPatient) {

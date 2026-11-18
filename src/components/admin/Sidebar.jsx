@@ -531,6 +531,64 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </SidebarSection>
           )}
 
+          {/* ── FIELD AGENTS ── Admin only */}
+          {isAdmin && (
+            <SidebarSection
+              id="field_agents"
+              label="Field Agents"
+              routes={['/admin/agents', '/admin/onboarding-desk', '/admin/agent-payouts', '/agent']}
+              {...sectionProps}
+            >
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                to="/admin/agents"
+                className={`sidebar-nav-item ${isActive('/admin/agents') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Agent Directory' : undefined}
+              >
+                <span className="nav-icon"><Users size={18} /></span>
+                <span className="nav-text">Agent Directory</span>
+              </PrefetchNavLink>
+
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                to="/admin/onboarding-desk"
+                className={`sidebar-nav-item ${isActive('/admin/onboarding-desk') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Onboarding Desk' : undefined}
+              >
+                <span className="nav-icon"><ClipboardPlus size={18} /></span>
+                <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span>Onboarding Desk</span>
+                  <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Review</span>
+                </span>
+              </PrefetchNavLink>
+
+              <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                to="/admin/agent-payouts"
+                className={`sidebar-nav-item ${isActive('/admin/agent-payouts') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Payout Approvals' : undefined}
+              >
+                <span className="nav-icon"><CreditCard size={18} /></span>
+                <span className="nav-text">Payout Approvals</span>
+              </PrefetchNavLink>
+
+              <Link
+                to="/agent"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`sidebar-nav-item ${location.pathname.startsWith('/agent') ? 'active' : ''}`}
+                onClick={onClose}
+                title={isCollapsed ? 'Agent Dashboard' : undefined}
+              >
+                <span className="nav-icon"><Gauge size={18} color="#00B875" /></span>
+                <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span>Agent Dashboard</span>
+                  <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Portal ↗</span>
+                </span>
+              </Link>
+            </SidebarSection>
+          )}
+
           {/* ── BOOKINGS ── Admin, Manager, Doctor */}
           {(isAdmin || isManager || isDoctor || hasPermission('appointment.view') || hasPermission('patient.view')) && (
             <SidebarSection

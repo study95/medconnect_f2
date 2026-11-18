@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import AppNavbar     from './components/layout/Navbar'
 import Footer        from './components/layout/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
+import GuestOnlyRoute from './components/common/GuestOnlyRoute'
 import ScrollToTop   from './components/common/ScrollToTop'
 import BackToTop     from './components/common/BackToTop'
 import FloatingBottomNav from './components/layout/FloatingBottomNav'
@@ -12,6 +13,8 @@ import { Toaster } from 'react-hot-toast'
 import AdminRoute    from './components/admin/AdminRoute'
 import DoctorRoute   from './components/admin/DoctorRoute'
 import HospitalRoute from './components/admin/HospitalRoute'
+import AgentRoute    from './components/agent/AgentRoute'
+import AgentLayout   from './components/agent/AgentLayout'
 import AdminLayout   from './components/admin/AdminLayout'
 import SubscriptionGate from './components/admin/SubscriptionGate'
 import DashboardRedirect from './components/common/DashboardRedirect'
@@ -51,6 +54,7 @@ const PatientLoginPage       = lazy(() => import('./pages/auth/PatientLoginPage'
 const DoctorLoginPage        = lazy(() => import('./pages/auth/DoctorLoginPage'))
 const HospitalLoginPage      = lazy(() => import('./pages/auth/HospitalLoginPage'))
 const AdminSecureLoginPage   = lazy(() => import('./pages/auth/AdminSecureLoginPage'))
+const AgentLoginPage         = lazy(() => import('./pages/auth/AgentLoginPage'))
 const HospitalRegisterPage   = lazy(() => import('./pages/auth/HospitalRegisterPage'))
 const PendingVerificationPage = lazy(() => import('./pages/auth/PendingVerificationPage'))
 
@@ -160,6 +164,17 @@ const HospitalReviewsPage    = lazy(() => import('./pages/admin/hospitals/Hospit
 
 // Serial Display & Live Queue Management
 const SerialDisplayManagerPage = lazy(() => import('./pages/admin/display/SerialDisplayManagerPage'))
+
+// Field Agent Pages
+const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'))
+const DoctorOnboardWizardPage = lazy(() => import('./pages/agent/DoctorOnboardWizardPage'))
+const SubmissionsTrackerPage = lazy(() => import('./pages/agent/SubmissionsTrackerPage'))
+const AgentWalletPage = lazy(() => import('./pages/agent/AgentWalletPage'))
+
+// Admin Field Agent Governance Desk
+const AgentDirectoryPage = lazy(() => import('./pages/admin/agent/AgentDirectoryPage'))
+const OnboardingVerificationDeskPage = lazy(() => import('./pages/admin/agent/OnboardingVerificationDeskPage'))
+const PayoutApprovalDeskPage = lazy(() => import('./pages/admin/agent/PayoutApprovalDeskPage'))
 
 
 function PageLoader() {
@@ -428,6 +443,11 @@ function App() {
 
             {/* Enterprise System Health & Observability */}
             <Route path="system-health" element={<SystemHealthPage />} />
+
+            {/* Field Agent & Provider Governance Desk */}
+            <Route path="agents" element={<AgentDirectoryPage />} />
+            <Route path="onboarding-desk" element={<OnboardingVerificationDeskPage />} />
+            <Route path="agent-payouts" element={<PayoutApprovalDeskPage />} />
           </Route>
 
           {/* ===== DOCTOR PORTAL ROUTES ===== */}
@@ -582,8 +602,27 @@ function App() {
             <Route path="security" element={<AdminSecurityPage />} />
           </Route>
 
+          {/* ===== FIELD AGENT PORTAL ROUTES (Standalone Enterprise Shell) ===== */}
+          <Route
+            path="/agent/*"
+            element={
+              <AgentRoute>
+                <AgentLayout />
+              </AgentRoute>
+            }
+          >
+            <Route index element={<AgentDashboardPage />} />
+            <Route path="dashboard" element={<Navigate to="/agent" replace />} />
+            <Route path="onboard/doctor" element={<DoctorOnboardWizardPage />} />
+            <Route path="tracker" element={<SubmissionsTrackerPage />} />
+            <Route path="wallet" element={<AgentWalletPage />} />
+          </Route>
+
           {/* ===== TV DISPLAY ROUTES & ADMIN SECURE ACCESS (Completely standalone) ===== */}
-          <Route path="/admin-secure-access" element={<AdminSecureLoginPage />} />
+          <Route path="/admin-secure-access" element={<GuestOnlyRoute><AdminSecureLoginPage /></GuestOnlyRoute>} />
+          <Route path="/login/agent" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
+          <Route path="/agent/login" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
+          <Route path="/agent-login" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
           <Route path="/display/:token" element={<PublicDisplayBoardPage />} />
           <Route path="/display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/:token" element={<PublicDisplayBoardPage />} />
@@ -600,11 +639,11 @@ function App() {
                 <AppNavbar />
                 <Routes>
                   {/* Auth Routes (Responsive: desktop clean card, mobile top & bottom nav) */}
-                  <Route path="/login"                      element={<LoginPage />} />
-                  <Route path="/login/patient"              element={<LoginPage />} />
-                  <Route path="/login/doctor"               element={<LoginPage />} />
-                  <Route path="/login/hospital"             element={<LoginPage />} />
-                  <Route path="/login/choice"               element={<LoginChoicePage />} />
+                  <Route path="/login"                      element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
+                  <Route path="/login/patient"              element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
+                  <Route path="/login/doctor"               element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
+                  <Route path="/login/hospital"             element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
+                  <Route path="/login/choice"               element={<GuestOnlyRoute><LoginChoicePage /></GuestOnlyRoute>} />
 
                   <Route path="/register"                   element={<RegisterPage />} />
                   <Route path="/register/patient"           element={<RegisterPage />} />

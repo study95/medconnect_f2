@@ -5,11 +5,12 @@ import {
   Mail, Lock, User, ShieldCheck, Hotel, Phone,
   UserCircle, Shield, Clock, CalendarCheck,
   Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole,
-  Plus, Info, X
+  Plus, Info, X, Loader2
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
+import { getHospitals } from '../api/hospitalApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import { validateStrongPassword } from '../utils/passwordValidator'
 import LegalDocumentModal from '../components/common/LegalDocumentModal'
@@ -51,11 +52,18 @@ const RegisterPage = () => {
   const [showConfirm, setShowConfirm] = useState(false)
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
   const [specialties, setSpecialties] = useState([])
+  const [hospitals, setHospitals] = useState([])
+  const [initialLoadingSpecialties, setInitialLoadingSpecialties] = useState(true)
+  const [initialLoadingHospitals, setInitialLoadingHospitals] = useState(true)
 
   useEffect(() => {
     getSpecialties().then(res => {
       setSpecialties(res.data?.data || res.data || [])
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setInitialLoadingSpecialties(false))
+
+    getHospitals({ per_page: 100 }).then(res => {
+      setHospitals(res.data?.data || res.data || [])
+    }).catch(() => {}).finally(() => setInitialLoadingHospitals(false))
   }, [])
 
   // Sync role when URL changes
@@ -80,7 +88,7 @@ const RegisterPage = () => {
 
   const [form, setForm] = useState({
     name: '', hospital_name: '', email: '', mobile: '',
-    specialty_id: '', custom_specialty_name: '', workplace: '', bmdc_number: '',
+    specialty_id: '', custom_specialty_name: '', workplace: '', hospital_id: '', bmdc_number: '',
     hospital_type: '', license_number: '', address: '', hotline: '', official_email: '',
     password: '', confirm: ''
   })
@@ -90,15 +98,56 @@ const RegisterPage = () => {
   const [specialtyDropdownOpen, setSpecialtyDropdownOpen] = useState(false)
   const specialtyDropdownRef = useRef(null)
 
+  // Doctor Hospital / Workplace Searchable & Creatable Combobox State
+  const [hospitalSearch, setHospitalSearch] = useState('')
+  const [hospitalDropdownOpen, setHospitalDropdownOpen] = useState(false)
+  const [loadingHospitals, setLoadingHospitals] = useState(false)
+  const hospitalDropdownRef = useRef(null)
+
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (specialtyDropdownRef.current && !specialtyDropdownRef.current.contains(e.target)) {
         setSpecialtyDropdownOpen(false)
       }
+      if (hospitalDropdownRef.current && !hospitalDropdownRef.current.contains(e.target)) {
+        setHospitalDropdownOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleOutsideClick)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
+
+  // Dynamic server-side debounced search for hospitals
+  useEffect(() => {
+    if (!hospitalDropdownOpen || !hospitalSearch.trim() || hospitalSearch.trim().length < 2) {
+      setLoadingHospitals(false)
+      return
+    }
+    // If a hospital is already chosen and its name equals current search, don't trigger search
+    if (form.hospital_id) {
+      setLoadingHospitals(false)
+      return
+    }
+
+    setLoadingHospitals(true)
+    const timer = setTimeout(() => {
+      getHospitals({ search: hospitalSearch.trim(), per_page: 50 })
+        .then(res => {
+          const results = res.data?.data || res.data || []
+          setHospitals(prev => {
+            const map = new Map()
+            results.forEach(h => map.set(h.id, h))
+            prev.forEach(h => {
+              if (!map.has(h.id)) map.set(h.id, h)
+            })
+            return Array.from(map.values())
+          })
+        })
+        .catch(() => {})
+        .finally(() => setLoadingHospitals(false))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [hospitalSearch, hospitalDropdownOpen, form.hospital_id])
 
   const filteredSpecialties = useMemo(() => {
     if (!specialtySearch.trim()) return specialties
@@ -148,6 +197,67 @@ const RegisterPage = () => {
     }))
     setSpecialtySearch('')
     setSpecialtyDropdownOpen(false)
+  }
+
+  // Hospital Combobox Helpers
+  const filteredHospitals = useMemo(() => {
+    if (!hospitalSearch.trim()) return hospitals
+    const q = hospitalSearch.trim().toLowerCase()
+    return hospitals.filter(h =>
+      (h.name && h.name.toLowerCase().includes(q)) ||
+      (h.name_bn && h.name_bn.toLowerCase().includes(q)) ||
+      (h.address && h.address.toLowerCase().includes(q)) ||
+      (h.district?.name && h.district.name.toLowerCase().includes(q)) ||
+      (h.district?.bangla_name && h.district.bangla_name.toLowerCase().includes(q))
+    )
+  }, [hospitals, hospitalSearch])
+
+  const hasExactHospitalMatch = useMemo(() => {
+    if (!hospitalSearch.trim()) return false
+    const q = hospitalSearch.trim().toLowerCase()
+    return hospitals.some(h =>
+      h.name?.trim().toLowerCase() === q ||
+      h.name_bn?.trim().toLowerCase() === q
+    )
+  }, [hospitals, hospitalSearch])
+
+  const handleSelectHospital = (h) => {
+    const displayName = h.name_bn || h.name
+    setForm(prev => ({
+      ...prev,
+      hospital_id: h.id,
+      workplace: displayName
+    }))
+    setHospitalSearch(displayName)
+    setHospitalDropdownOpen(false)
+    if (fieldErrors.workplace) {
+      setFieldErrors(prev => ({ ...prev, workplace: null }))
+    }
+  }
+
+  const handleSelectCustomHospital = (name) => {
+    const cleanName = (name || '').trim()
+    if (!cleanName) return
+    setForm(prev => ({
+      ...prev,
+      hospital_id: '',
+      workplace: cleanName
+    }))
+    setHospitalSearch(cleanName)
+    setHospitalDropdownOpen(false)
+    if (fieldErrors.workplace) {
+      setFieldErrors(prev => ({ ...prev, workplace: null }))
+    }
+  }
+
+  const handleClearHospital = () => {
+    setForm(prev => ({
+      ...prev,
+      hospital_id: '',
+      workplace: ''
+    }))
+    setHospitalSearch('')
+    setHospitalDropdownOpen(false)
   }
 
   const [otp, setOtp] = useState('')
@@ -484,7 +594,7 @@ const RegisterPage = () => {
       }
       if (!form.workplace || !form.workplace.trim()) {
         setLoading(false)
-        setFieldErrors({ workplace: 'বর্তমান কর্মস্থল দেওয়া বাধ্যতামূলক।' })
+        setFieldErrors({ workplace: 'বর্তমান কর্মস্থল / হাসপাতাল নির্বাচন করা বা নাম লেখা বাধ্যতামূলক।' })
         return
       }
       if (!form.bmdc_number || !form.bmdc_number.trim()) {
@@ -496,6 +606,9 @@ const RegisterPage = () => {
         formData.append('custom_specialty_name', form.custom_specialty_name.trim())
       } else {
         formData.append('specialty_id', form.specialty_id)
+      }
+      if (form.hospital_id) {
+        formData.append('hospital_id', form.hospital_id)
       }
       formData.append('workplace', form.workplace)
       formData.append('bmdc_number', form.bmdc_number)
@@ -1402,6 +1515,11 @@ const RegisterPage = () => {
                                     </div>
                                   )
                                 })
+                              ) : initialLoadingSpecialties ? (
+                                <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                  <Loader2 size={16} className="animate-spin" style={{ color: '#00B875' }} />
+                                  <span>স্পেশালটির তালিকা লোড হচ্ছে...</span>
+                                </div>
                               ) : !specialtySearch.trim() ? (
                                 <div style={{ padding: '12px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
                                   কোনো স্পেশালটি পাওয়া যায়নি
@@ -1431,7 +1549,7 @@ const RegisterPage = () => {
                           >
                             <Info size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
                             <div>
-                              <span>আপনার দেওয়া <strong>"{form.custom_specialty_name}"</strong> নতুন স্পেশালটি হিসেবে আপনার প্রোফাইলে যুক্ত হবে এবং অ্যাডমিন অনুমোদনের পর সার্বজনীন তালিকায় আসবে।</span>
+                              <span>আপনার দেওয়া <strong>"{form.custom_specialty_name}"</strong> নতুন স্পেশালটি হিসেবে আপনার প্রোফাইলে যুক্ত হবে।</span>
                             </div>
                           </div>
                         )}
@@ -1444,19 +1562,214 @@ const RegisterPage = () => {
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">বর্তমান কর্মস্থল (Workplace) *</Form.Label>
-                        <div className="input-group-premium">
-                          <span className="input-icon-premium"><Hotel size={17} /></span>
-                          <Form.Control
-                            name="workplace"
-                            type="text"
-                            placeholder="যেমনঃ ঢাকা মেডিকেল কলেজ হাসপাতাল"
-                            value={form.workplace}
-                            onChange={handleChange}
-                            required
-                            className="auth-input-premium"
-                          />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <Form.Label className="auth-label-premium" style={{ marginBottom: 0 }}>
+                            বর্তমান কর্মস্থল / হাসপাতাল (Hospital / Workplace) *
+                          </Form.Label>
+                          {form.hospital_id ? (
+                            <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 12, fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                              তালিকাভুক্ত হাসপাতাল
+                            </span>
+                          ) : form.workplace ? (
+                            <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 12, fontWeight: 700, border: '1px solid #FDE68A' }}>
+                              কাস্টম কর্মস্থল
+                            </span>
+                          ) : null}
                         </div>
+
+                        <div ref={hospitalDropdownRef} style={{ position: 'relative' }}>
+                          <div className="input-group-premium">
+                            <span className="input-icon-premium"><Hotel size={17} /></span>
+                            <Form.Control
+                              type="text"
+                              placeholder="হাসপাতাল খুঁজুন বা নতুন নাম লিখুন..."
+                              value={hospitalSearch}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setHospitalSearch(val)
+                                setHospitalDropdownOpen(true)
+                                setForm(prev => ({ ...prev, hospital_id: '', workplace: val }))
+                                if (fieldErrors.workplace) {
+                                  setFieldErrors(prev => ({ ...prev, workplace: null }))
+                                }
+                              }}
+                              onFocus={() => setHospitalDropdownOpen(true)}
+                              className="auth-input-premium"
+                              style={{ paddingRight: hospitalSearch ? 36 : 14 }}
+                              autoComplete="off"
+                            />
+                            {loadingHospitals ? (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  right: 12,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#00B875',
+                                  zIndex: 10
+                                }}
+                              >
+                                <Loader2 size={16} className="animate-spin" />
+                              </div>
+                            ) : hospitalSearch ? (
+                              <button
+                                type="button"
+                                onClick={handleClearHospital}
+                                style={{
+                                  position: 'absolute',
+                                  right: 12,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 4,
+                                  color: '#94A3B8',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  zIndex: 10
+                                }}
+                                title="মুছুন"
+                              >
+                                <X size={16} />
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {/* Searchable & Creatable Dropdown Panel */}
+                          {hospitalDropdownOpen && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 4px)',
+                                left: 0,
+                                right: 0,
+                                background: '#FFFFFF',
+                                borderRadius: 12,
+                                border: '1.5px solid #00B875',
+                                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)',
+                                maxHeight: 250,
+                                overflowY: 'auto',
+                                zIndex: 1050,
+                                padding: '6px 0'
+                              }}
+                            >
+                              {/* Option 1: Creatable Button when user types something not exactly in the list */}
+                              {hospitalSearch.trim() && !hasExactHospitalMatch && (
+                                <div
+                                  onClick={() => handleSelectCustomHospital(hospitalSearch)}
+                                  style={{
+                                    padding: '10px 14px',
+                                    borderBottom: filteredHospitals.length > 0 ? '1px dashed #E2E8F0' : 'none',
+                                    background: '#F0FDF4',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 9,
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                    color: '#047857',
+                                    transition: 'background 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#DCFCE7'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#F0FDF4'}
+                                >
+                                  <div style={{ width: 22, height: 22, borderRadius: 6, background: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <Plus size={14} color="#FFFFFF" strokeWidth={3} />
+                                  </div>
+                                  <span>নতুন হিসেবে দিন: <strong style={{ color: '#0F172A' }}>"{hospitalSearch.trim()}"</strong></span>
+                                </div>
+                              )}
+
+                              {/* Loading Indicator */}
+                              {loadingHospitals && (
+                                <div style={{ padding: '8px 16px', fontSize: 12.5, color: '#047857', display: 'flex', alignItems: 'center', gap: 7, background: '#F0FDF4', borderBottom: '1px solid #E2E8F0' }}>
+                                  <Loader2 size={14} className="animate-spin" style={{ color: '#00B875' }} />
+                                  <span>হাসপাতাল খোঁজা হচ্ছে...</span>
+                                </div>
+                              )}
+
+                              {/* Initial Loading or Filtered Existing Hospitals List */}
+                              {initialLoadingHospitals ? (
+                                <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                  <Loader2 size={16} className="animate-spin" style={{ color: '#00B875' }} />
+                                  <span>হাসপাতালের তালিকা লোড হচ্ছে...</span>
+                                </div>
+                              ) : filteredHospitals.length > 0 ? (
+                                filteredHospitals.map(h => {
+                                  const isSelected = form.hospital_id && (String(form.hospital_id) === String(h.id) || String(form.hospital_id) === String(h.public_id))
+                                  const nameDisplay = h.name_bn || h.name
+                                  const locationSubtitle = [h.upazila?.name, h.district?.name || h.district_slug].filter(Boolean).join(', ')
+
+                                  return (
+                                    <div
+                                      key={h.id || h.public_id}
+                                      onClick={() => handleSelectHospital(h)}
+                                      style={{
+                                        padding: '9px 16px',
+                                        cursor: 'pointer',
+                                        fontSize: 13.5,
+                                        fontWeight: isSelected ? 700 : 500,
+                                        color: isSelected ? '#00B875' : '#334155',
+                                        background: isSelected ? '#F0FDF4' : 'transparent',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      onMouseEnter={(e) => !isSelected && (e.currentTarget.style.background = '#F8FAFC')}
+                                      onMouseLeave={(e) => !isSelected && (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span>{nameDisplay}</span>
+                                        {locationSubtitle && (
+                                          <span style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 400 }}>
+                                            📍 {locationSubtitle}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {isSelected && <CheckCircle size={15} color="#00B875" style={{ flexShrink: 0 }} />}
+                                    </div>
+                                  )
+                                })
+                              ) : !loadingHospitals ? (
+                                <div style={{ padding: '12px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                                  {hospitalSearch.trim() ? 'তালিকায় কোনো বিদ্যমান হাসপাতাল মেলেনি' : 'কোনো হাসপাতাল পাওয়া যায়নি'}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Informational Guidance Tag for Custom Hospital */}
+                        {form.workplace && !form.hospital_id && (
+                          <div
+                            className="fade-in-up"
+                            style={{
+                              marginTop: 8,
+                              padding: '10px 12px',
+                              borderRadius: 10,
+                              background: '#F0FDF4',
+                              border: '1px solid #BBF7D0',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 8,
+                              fontSize: 12.5,
+                              color: '#166534',
+                              lineHeight: 1.4
+                            }}
+                          >
+                            <Info size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <span>আপনার কর্মস্থল হিসেবে <strong>"{form.workplace}"</strong> সংরক্ষিত হবে।</span>
+                            </div>
+                          </div>
+                        )}
+
                         {fieldErrors.workplace && (
                           <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.workplace}

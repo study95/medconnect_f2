@@ -49,6 +49,25 @@ function purgeClientSessionState() {
   } catch {}
 }
 
+let sharedAuthChannel = null
+function getAuthSyncChannel() {
+  if (typeof BroadcastChannel === 'undefined') return null
+  if (!sharedAuthChannel) {
+    try {
+      sharedAuthChannel = new BroadcastChannel('medconnect_auth_sync')
+    } catch {
+      return null
+    }
+  }
+  return sharedAuthChannel
+}
+
+function postAuthSync(payload) {
+  try {
+    getAuthSyncChannel()?.postMessage(payload)
+  } catch {}
+}
+
 // Singleton pattern for AuthContext to prevent duplicate instances during HMR or module resolution mismatches
 if (!window.__AuthContext) {
   window.__AuthContext = createContext(null)
@@ -108,30 +127,51 @@ export function AuthProvider({ children }) {
       setUserType(null)
     }
 
-    const handleAuthExpired = () => {
-      clearLocalSession()
-      try {
-        const ch = new BroadcastChannel('medconnect_auth_sync')
-        ch.postMessage({ type: 'LOGOUT' })
-        ch.close()
-      } catch {}
+    const syncSessionFromBroadcast = (userData, resolvedType) => {
+      if (!userData) return
+      setUser((prev) => {
+        if (prev?.id && String(prev.id) !== String(userData.id)) {
+          try {
+            queryClient.clear()
+            disconnectEcho()
+          } catch {}
+        }
+        return userData
+      })
+      setUserType(resolvedType || null)
     }
 
-    // Multi-tab logout sync via BroadcastChannel
-    let authChannel = null
-    try {
-      authChannel = new BroadcastChannel('medconnect_auth_sync')
-      authChannel.onmessage = (event) => {
-        if (event?.data?.type === 'LOGOUT') {
-          clearLocalSession()
-        }
+    const handleAuthExpired = () => {
+      clearLocalSession()
+      postAuthSync({ type: 'LOGOUT' })
+    }
+
+    // Multi-tab auth sync via persistent BroadcastChannel
+    const authChannel = getAuthSyncChannel()
+    const handleChannelMessage = (event) => {
+      if (event?.data?.type === 'LOGOUT') {
+        clearLocalSession()
+      } else if (event?.data?.type === 'LOGIN') {
+        syncSessionFromBroadcast(event.data.user, event.data.userType)
       }
-    } catch {}
+    }
+    if (authChannel) {
+      authChannel.addEventListener('message', handleChannelMessage)
+    }
 
     // Fallback multi-tab sync via localStorage 'storage' event
     const handleStorageChange = (e) => {
-      if (e.key === 'token' && !e.newValue) {
-        clearLocalSession()
+      if (e.key === 'token') {
+        if (!e.newValue) {
+          clearLocalSession()
+        } else {
+          try {
+            const rawUser = localStorage.getItem('user')
+            const parsedUser = rawUser ? JSON.parse(rawUser) : null
+            const storedType = localStorage.getItem('userType') || null
+            syncSessionFromBroadcast(parsedUser, storedType)
+          } catch {}
+        }
       }
     }
 
@@ -149,7 +189,9 @@ export function AuthProvider({ children }) {
       window.removeEventListener('auth-expired', handleAuthExpired)
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('pageshow', handlePageShow)
-      try { authChannel?.close() } catch {}
+      if (authChannel) {
+        authChannel.removeEventListener('message', handleChannelMessage)
+      }
     }
   }, [])
 
@@ -289,6 +331,13 @@ export function AuthProvider({ children }) {
           } else {
             toast.error(e.message || 'আপনার হাসপাতাল প্রোফাইলটি নিষ্ক্রিয় করা হয়েছে।', { duration: 6000, id: `hosp-inactive-${e.hospital_id}` })
           }
+        },
+        (e) => {
+          toast.error(e?.message || 'নিরাপত্তা বা অ্যাকাউন্ট পরিবর্তনের কারণে আপনার সেশনটি বন্ধ করা হয়েছে।', {
+            duration: 6000,
+            id: 'force-logout-ws',
+          })
+          logout()
         }
       )
     }
@@ -323,6 +372,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('userType', resolvedType)
     setUser(userData)
     setUserType(resolvedType)
+    postAuthSync({ type: 'LOGIN', user: userData, userType: resolvedType })
   }
 
   const login = async (email, password, role = null) => {
@@ -403,6 +453,10 @@ export function AuthProvider({ children }) {
 
   const loginAsHospital = async (identifier, password) => {
     return login(identifier, password, 'hospital')
+  }
+
+  const loginAsAgent = async (identifier, password) => {
+    return login(identifier, password, 'agent')
   }
 
   const register = async (name, email, password) => {
@@ -493,12 +547,7 @@ export function AuthProvider({ children }) {
     purgeClientSessionState()
     setUser(null)
     setUserType(null)
-
-    try {
-      const ch = new BroadcastChannel('medconnect_auth_sync')
-      ch.postMessage({ type: 'LOGOUT' })
-      ch.close()
-    } catch {}
+    postAuthSync({ type: 'LOGOUT' })
 
     if (activeToken) {
       try {
@@ -564,7 +613,9 @@ export function AuthProvider({ children }) {
 
   const isPendingVerification = isPendingDoctor || isPendingHospital;
 
-  const isPatient = !isAdmin && !isDoctor && !isManager && !isPendingVerification;
+  const isAgent = hasRole('agent') || Boolean(user?.agent);
+
+  const isPatient = !isAdmin && !isDoctor && !isManager && !isAgent && !isPendingVerification;
     
   const isStaff = isAdmin || isDoctor || isManager;
 
@@ -594,6 +645,7 @@ export function AuthProvider({ children }) {
     loginAsPatient,
     loginAsDoctor,
     loginAsHospital,
+    loginAsAgent,
     register,
     registerPatient,
     registerDoctor,
@@ -613,6 +665,7 @@ export function AuthProvider({ children }) {
     isPatient,
     isManager,
     isStaff,
+    isAgent,
     getRoles,
   }
 
