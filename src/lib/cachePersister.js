@@ -82,11 +82,11 @@ export function initQueryPersistence() {
       queryClient,
       persister: idbPersister,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours persistent lifetime
-      buster: 'v2.1.0-cache',       // Cache invalidation buster: bump on schema changes
+      buster: 'v2.2.0-cache',       // Cache invalidation buster: bump on schema changes
       dehydrateOptions: {
         shouldDehydrateQuery: (query) => {
-          // 1. Only persist successfully completed queries
-          if (query.state.status !== 'success') return false
+          // 1. Only persist successfully completed queries that are NOT invalidated
+          if (query.state.status !== 'success' || query.state.isInvalidated) return false
 
           const rootKey = String(query.queryKey[0] || '')
 

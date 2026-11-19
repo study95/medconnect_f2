@@ -63,8 +63,10 @@ export default function useDoctorDetail(params, options = {}) {
       return res.data?.data || res.data
     },
     enabled: isEnabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
+    initialDataUpdatedAt: 0,
+    refetchOnMount: true,
     initialData: () => {
       // Priority 1: Explicit initial data passed in options or router state
       if (options.initialDoctor) return options.initialDoctor

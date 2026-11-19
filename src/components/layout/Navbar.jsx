@@ -32,7 +32,7 @@ const NAV_HOSPITAL_SEARCH_PHRASES = [
 
 function AppNavbar() {
   const { 
-    user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isPatient,
+    user, isLoggedIn, isStaff, isAdmin, isDoctor, isManager, isAgent, isPatient,
     isPendingDoctor, isPendingHospital, isPendingVerification, logout 
   } = useAuth()
   const site = useSiteSettings()
@@ -457,6 +457,7 @@ function AppNavbar() {
     if (isAdmin) return 'অ্যাডমিনিস্ট্রেটর'
     if (isDoctor) return 'ডাক্তার'
     if (isManager) return 'হাসপাতাল ম্যানেজার'
+    if (isAgent) return 'এজেন্ট'
     if (isPendingDoctor) return 'ডাক্তার (যাচাইকরণাধীন)'
     if (isPendingHospital) return 'হাসপাতাল (যাচাইকরণাধীন)'
     if (isPatient) return 'রোগী'
@@ -467,6 +468,7 @@ function AppNavbar() {
     if (isAdmin) return 'অ্যাডমিন প্যানেল'
     if (isDoctor) return 'ডাক্তার প্যানেল'
     if (isManager) return 'হাসপাতাল প্যানেল'
+    if (isAgent) return 'ড্যাশবোর্ড'
     return 'ম্যানেজমেন্ট প্যানেল'
   }
 
@@ -474,6 +476,7 @@ function AppNavbar() {
     if (isAdmin) return '/admin/dashboard'
     if (isDoctor) return '/doctor/dashboard'
     if (isManager) return '/hospital/dashboard'
+    if (isAgent) return '/agent'
     return '/admin/dashboard'
   }
 
@@ -1164,13 +1167,29 @@ function AppNavbar() {
                     >
                       <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, #003820 0%, #005A34 100%)', color: 'white' }}>
                         <div style={{ fontWeight: 800, fontSize: 14.5 }}>{user?.name}</div>
-                        <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>{getUserTypeLabel()}</div>
+                        <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{getUserTypeLabel()}</span>
+                          {isAgent && (user?.agent?.agent_code || user?.agent_code || user?.agent?.public_id || user?.public_id) && (
+                            <span style={{ background: 'rgba(255,255,255,0.22)', padding: '1px 6px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.3px' }}>
+                              {user?.agent?.agent_code || user?.agent_code || user?.agent?.public_id || user?.public_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div style={{ padding: '6px' }}>
                         {isPendingVerification ? (
                           <Link to="/pending-verification" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item" style={{ color: '#D97706', fontWeight: 700 }}>
                             <Hourglass size={15} className="me-2 text-warning" /> আবেদনের অবস্থা ও ভেরিফিকেশন
                           </Link>
+                        ) : isAgent ? (
+                          <>
+                            <Link to="/agent" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                              <LayoutGrid size={15} className="me-2 text-success" /> ড্যাশবোর্ড
+                            </Link>
+                            <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                              <User size={15} className="me-2" /> প্রোফাইল আপডেট
+                            </Link>
+                          </>
                         ) : (
                           <>
                             <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
@@ -1181,12 +1200,12 @@ function AppNavbar() {
                                 <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
                               </Link>
                             )}
+                            {isStaff && (
+                              <Link to={getDashboardPath()} onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                                <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
+                              </Link>
+                            )}
                           </>
-                        )}
-                        {isStaff && (
-                          <Link to={getDashboardPath()} onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
-                            <LayoutGrid size={15} className="me-2" /> {getAdminLinkLabel()}
-                          </Link>
                         )}
                         <div style={{ height: 1, background: '#E2E8F0', margin: '4px 0' }} />
                         <button
@@ -1485,6 +1504,15 @@ function AppNavbar() {
                   <Link to="/pending-verification" onClick={closeMenu} className="mobile-drawer-sub-item" style={{ color: '#D97706', fontWeight: 700 }}>
                     <Hourglass size={16} /> <span>আবেদনের অবস্থা ও ভেরিফিকেশন</span>
                   </Link>
+                ) : isAgent ? (
+                  <>
+                    <Link to="/agent" onClick={closeMenu} className="mobile-drawer-sub-item" style={{ color: '#00803D', fontWeight: 700 }}>
+                      <LayoutGrid size={16} /> <span>ড্যাশবোর্ড</span>
+                    </Link>
+                    <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">
+                      <User size={16} className="text-secondary" /> <span>প্রোফাইল আপডেট</span>
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">

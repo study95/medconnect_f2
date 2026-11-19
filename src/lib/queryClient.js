@@ -13,7 +13,7 @@ export const queryClient = new QueryClient({
       retry: 1,                           // 1 retry on network/server errors for swift error handling
       refetchOnWindowFocus: false,        // Prevents unnecessary background re-fetches on tab focus
       refetchOnReconnect: true,           // Automatically revalidates when internet recovers
-      refetchOnMount: false,              // Prevents flash on back-navigation: serve memory cache instantly
+      refetchOnMount: true,               // Serve fresh cache within staleTime (0 hits), but refetch on mount if invalidated/stale
       placeholderData: keepPreviousData,  // Retains previous data while fetching next page/filter (zero layout flash)
     },
     mutations: {

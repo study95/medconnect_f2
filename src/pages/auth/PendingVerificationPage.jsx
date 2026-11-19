@@ -14,6 +14,7 @@ import {
 import { toast } from 'react-hot-toast'
 import { useDialog } from '../../hooks/useDialog'
 import { uploadDoctorVerificationDocuments, deleteDoctorVerificationDocument, submitDoctorVerificationApplication } from '../../api/doctorApi'
+import { uploadHospitalVerificationDocuments, deleteHospitalVerificationDocument, submitHospitalVerificationApplication } from '../../api/hospitalApi'
 import { getMediaUrl } from '../../utils/mediaUtils'
 import CustomCheckbox from '../../components/common/CustomCheckbox'
 import '../../styles/dialog.css'
@@ -60,9 +61,21 @@ export default function PendingVerificationPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  // Doctor Verification Document Upload State
+  // Determine user role
+  const stateType = location.state?.type
+  const isHospital = stateType === 'hospital' ||
+    user?.registration_type === 'hospital' ||
+    Boolean(user?.hospital) ||
+    user?.role_id === 3 ||
+    location.pathname.includes('hospital')
+
+  const roleLabel = isHospital ? 'হাসপাতাল' : 'ডাক্তার'
+
+  // Verification Document Upload State (Doctor & Hospital)
   const [bmdcDoc, setBmdcDoc] = useState(user?.doctor?.bmdc_document || null)
   const [nidDoc, setNidDoc] = useState(user?.doctor?.nid_document || null)
+  const [licenseDoc, setLicenseDoc] = useState(user?.hospital?.license_document || null)
+  const [tradeDoc, setTradeDoc] = useState(user?.hospital?.trade_license_document || null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [activeUploadType, setActiveUploadType] = useState(null)
   const [deletingDoc, setDeletingDoc] = useState(false)
@@ -74,7 +87,7 @@ export default function PendingVerificationPage() {
   const [dialogState, setDialogState] = useState({
     isOpen: false,
     type: null, // 'delete' | 'submit'
-    docType: null, // 'bmdc' | 'nid'
+    docType: null, // 'bmdc' | 'nid' | 'license' | 'trade_license'
     title: '',
     message: '',
     confirmText: '',
@@ -85,6 +98,8 @@ export default function PendingVerificationPage() {
   const [flowerPetals, setFlowerPetals] = useState([])
   const bmdcFileInputRef = useRef(null)
   const nidFileInputRef = useRef(null)
+  const licenseFileInputRef = useRef(null)
+  const tradeFileInputRef = useRef(null)
   const statusFeedbackTimerRef = useRef(null)
 
   useEffect(() => {
@@ -98,6 +113,8 @@ export default function PendingVerificationPage() {
   useEffect(() => {
     if (user?.doctor?.bmdc_document) setBmdcDoc(user.doctor.bmdc_document)
     if (user?.doctor?.nid_document) setNidDoc(user.doctor.nid_document)
+    if (user?.hospital?.license_document) setLicenseDoc(user.hospital.license_document)
+    if (user?.hospital?.trade_license_document) setTradeDoc(user.hospital.trade_license_document)
   }, [user])
 
   // Falling flowers & petals generator on celebration
@@ -119,11 +136,22 @@ export default function PendingVerificationPage() {
     }
   }, [showCelebrationModal])
 
-  // Doctor Verification Status & Lock Mode
-  const rawVerificationStatus = user?.doctor?.verification_status
-  const verificationStatus = rawVerificationStatus || (user?.doctor?.bmdc_document ? 'submitted' : 'draft')
+  // Verification Status & Lock Mode (Dual support for Doctor & Hospital)
+  const rawVerificationStatus = isHospital
+    ? user?.hospital?.verification_status
+    : user?.doctor?.verification_status
+  const defaultStatus = isHospital
+    ? (user?.hospital?.license_document ? 'submitted' : 'draft')
+    : (user?.doctor?.bmdc_document ? 'submitted' : 'draft')
+  const verificationStatus = rawVerificationStatus || defaultStatus
   const isLocked = verificationStatus === 'submitted' || verificationStatus === 'approved'
   const isRevisionRequested = verificationStatus === 'revision_requested'
+
+  const doc1 = isHospital ? licenseDoc : bmdcDoc
+  const doc2 = isHospital ? tradeDoc : nidDoc
+  const doc1Name = isHospital ? 'হাসপাতাল লাইসেন্স / DGHS সনদ' : 'বিএমডিসি সনদপত্র'
+  const doc2Name = isHospital ? 'ট্রেড লাইসেন্স / পরিচালকের NID' : 'জাতীয় পরিচয়পত্র (NID)'
+  const hasBothDocs = Boolean(doc1 && doc2)
 
   const handleUploadFile = async (file, type) => {
     if (!file) return
@@ -151,27 +179,53 @@ export default function PendingVerificationPage() {
 
     try {
       const formData = new FormData()
-      if (type === 'bmdc') {
-        formData.append('bmdc_document', file)
-      } else {
-        formData.append('nid_document', file)
-      }
-
-      const res = await uploadDoctorVerificationDocuments(formData)
-      if (res.data?.success) {
-        const docData = res.data.data
-        if (type === 'bmdc') {
-          setBmdcDoc(docData?.bmdc_document || file.name)
+      if (isHospital) {
+        if (type === 'license') {
+          formData.append('license_document', file)
         } else {
-          setNidDoc(docData?.nid_document || file.name)
+          formData.append('trade_license_document', file)
         }
-        await showSuccess({
-          title: type === 'bmdc' ? 'সনদপত্র আপলোড সম্পন্ন' : 'এনআইডি আপলোড সম্পন্ন',
-          message: type === 'bmdc' ? 'আপনার বিএমডিসি সনদ সফলভাবে আপলোড হয়েছে।' : 'আপনার জাতীয় পরিচয়পত্র (NID) সফলভাবে আপলোড হয়েছে।',
-          confirmText: 'ঠিক আছে',
-          autoCloseMs: 2200
-        })
-        if (fetchCurrentUser) fetchCurrentUser()
+        const res = await uploadHospitalVerificationDocuments(formData)
+        if (res.data?.success) {
+          const docData = res.data.data
+          if (type === 'license') {
+            setLicenseDoc(docData?.license_document || file.name)
+          } else {
+            setTradeDoc(docData?.trade_license_document || file.name)
+          }
+          await showSuccess({
+            title: type === 'license' ? 'লাইসেন্স আপলোড সম্পন্ন' : 'ট্রেড লাইসেন্স / NID আপলোড সম্পন্ন',
+            message: type === 'license'
+              ? 'আপনার হাসপাতালের লাইসেন্স / DGHS সনদ সফলভাবে আপলোড হয়েছে।'
+              : 'আপনার ট্রেড লাইসেন্স / পরিচালকের NID সফলভাবে আপলোড হয়েছে।',
+            confirmText: 'ঠিক আছে',
+            autoCloseMs: 2200
+          })
+          if (fetchCurrentUser) fetchCurrentUser()
+        }
+      } else {
+        if (type === 'bmdc') {
+          formData.append('bmdc_document', file)
+        } else {
+          formData.append('nid_document', file)
+        }
+
+        const res = await uploadDoctorVerificationDocuments(formData)
+        if (res.data?.success) {
+          const docData = res.data.data
+          if (type === 'bmdc') {
+            setBmdcDoc(docData?.bmdc_document || file.name)
+          } else {
+            setNidDoc(docData?.nid_document || file.name)
+          }
+          await showSuccess({
+            title: type === 'bmdc' ? 'সনদপত্র আপলোড সম্পন্ন' : 'এনআইডি আপলোড সম্পন্ন',
+            message: type === 'bmdc' ? 'আপনার বিএমডিসি সনদ সফলভাবে আপলোড হয়েছে।' : 'আপনার জাতীয় পরিচয়পত্র (NID) সফলভাবে আপলোড হয়েছে।',
+            confirmText: 'ঠিক আছে',
+            autoCloseMs: 2200
+          })
+          if (fetchCurrentUser) fetchCurrentUser()
+        }
       }
     } catch (err) {
       const msg = err?.response?.data?.message || 'ডকুমেন্ট আপলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'
@@ -196,7 +250,12 @@ export default function PendingVerificationPage() {
       })
       return
     }
-    const docLabel = type === 'bmdc' ? 'বিএমডিসি সনদপত্র' : 'জাতীয় পরিচয়পত্র (NID)'
+    let docLabel = ''
+    if (isHospital) {
+      docLabel = type === 'license' ? 'হাসপাতালের লাইসেন্স' : 'ট্রেড লাইসেন্স / পরিচালকের NID'
+    } else {
+      docLabel = type === 'bmdc' ? 'বিএমডিসি সনদপত্র' : 'জাতীয় পরিচয়পত্র (NID)'
+    }
     setDialogState({
       isOpen: true,
       type: 'delete',
@@ -218,24 +277,50 @@ export default function PendingVerificationPage() {
     setDeletingDoc(true)
     setActiveDeleteType(type)
 
-    const docLabel = type === 'bmdc' ? 'বিএমডিসি সনদপত্র' : 'জাতীয় পরিচয়পত্র (NID)'
+    let docLabel = ''
+    if (isHospital) {
+      docLabel = type === 'license' ? 'হাসপাতালের লাইসেন্স' : 'ট্রেড লাইসেন্স / পরিচালকের NID'
+    } else {
+      docLabel = type === 'bmdc' ? 'বিএমডিসি সনদপত্র' : 'জাতীয় পরিচয়পত্র (NID)'
+    }
+
     try {
-      const res = await deleteDoctorVerificationDocument(type)
-      if (res.data?.success) {
-        if (type === 'bmdc') {
-          setBmdcDoc(null)
-          if (bmdcFileInputRef.current) bmdcFileInputRef.current.value = ''
-        } else {
-          setNidDoc(null)
-          if (nidFileInputRef.current) nidFileInputRef.current.value = ''
+      if (isHospital) {
+        const res = await deleteHospitalVerificationDocument(type)
+        if (res.data?.success) {
+          if (type === 'license') {
+            setLicenseDoc(null)
+            if (licenseFileInputRef.current) licenseFileInputRef.current.value = ''
+          } else {
+            setTradeDoc(null)
+            if (tradeFileInputRef.current) tradeFileInputRef.current.value = ''
+          }
+          await showSuccess({
+            title: 'ডকুমেন্ট মোছা হয়েছে',
+            message: `${docLabel} সফলভাবে মুছে ফেলা হয়েছে।`,
+            confirmText: 'ঠিক আছে',
+            autoCloseMs: 2000
+          })
+          if (fetchCurrentUser) fetchCurrentUser()
         }
-        await showSuccess({
-          title: 'ডকুমেন্ট মোছা হয়েছে',
-          message: `${docLabel} সফলভাবে মুছে ফেলা হয়েছে।`,
-          confirmText: 'ঠিক আছে',
-          autoCloseMs: 2000
-        })
-        if (fetchCurrentUser) fetchCurrentUser()
+      } else {
+        const res = await deleteDoctorVerificationDocument(type)
+        if (res.data?.success) {
+          if (type === 'bmdc') {
+            setBmdcDoc(null)
+            if (bmdcFileInputRef.current) bmdcFileInputRef.current.value = ''
+          } else {
+            setNidDoc(null)
+            if (nidFileInputRef.current) nidFileInputRef.current.value = ''
+          }
+          await showSuccess({
+            title: 'ডকুমেন্ট মোছা হয়েছে',
+            message: `${docLabel} সফলভাবে মুছে ফেলা হয়েছে।`,
+            confirmText: 'ঠিক আছে',
+            autoCloseMs: 2000
+          })
+          if (fetchCurrentUser) fetchCurrentUser()
+        }
       }
     } catch (err) {
       const msg = err?.response?.data?.message || 'ডকুমেন্ট মুছতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
@@ -252,10 +337,15 @@ export default function PendingVerificationPage() {
   }
 
   const promptFinalSubmit = () => {
-    if (!bmdcDoc || !nidDoc) {
+    const doc1 = isHospital ? licenseDoc : bmdcDoc
+    const doc2 = isHospital ? tradeDoc : nidDoc
+    const doc1Name = isHospital ? 'হাসপাতাল লাইসেন্স / DGHS সনদ' : 'বিএমডিসি সনদ'
+    const doc2Name = isHospital ? 'ট্রেড লাইসেন্স / পরিচালকের NID' : 'জাতীয় পরিচয়পত্র (NID)'
+
+    if (!doc1 || !doc2) {
       showWarning({
         title: 'নথি অপূর্ণ রয়েছে',
-        message: 'চূড়ান্ত আবেদন জমা দেওয়ার জন্য বিএমডিসি সনদ ও জাতীয় পরিচয়পত্র (NID) উভয়ই আপলোড করা আবশ্যক!',
+        message: `চূড়ান্ত আবেদন জমা দেওয়ার জন্য ${doc1Name} ও ${doc2Name} উভয়ই আপলোড করা আবশ্যক!`,
         confirmText: 'ঠিক আছে'
       })
       return
@@ -287,7 +377,9 @@ export default function PendingVerificationPage() {
     setUploadError(null)
 
     try {
-      const res = await submitDoctorVerificationApplication()
+      const res = isHospital
+        ? await submitHospitalVerificationApplication()
+        : await submitDoctorVerificationApplication()
       if (res.data?.success) {
         setShowCelebrationModal(true)
         if (fetchCurrentUser) await fetchCurrentUser()
@@ -300,16 +392,6 @@ export default function PendingVerificationPage() {
       setSubmittingFinal(false)
     }
   }
-
-  // Determine user role
-  const stateType = location.state?.type
-  const isHospital = stateType === 'hospital' ||
-    user?.registration_type === 'hospital' ||
-    user?.hospital ||
-    user?.role_id === 3 ||
-    location.pathname.includes('hospital')
-
-  const roleLabel = isHospital ? 'হাসপাতাল' : 'ডাক্তার'
 
   // Name resolution
   const displayName = location.state?.name ||
@@ -530,40 +612,44 @@ export default function PendingVerificationPage() {
 
           {/* Main Headline */}
           <h1 className="pv-main-title">
-            {isHospital
-              ? 'আপনার আবেদন এখনো অনুমোদনের অপেক্ষায়'
-              : isRevisionRequested
-                ? 'সনদপত্র সংশোধনের অনুরোধ করা হয়েছে'
-                : isLocked
-                  ? 'আপনার আবেদন অনুমোদনের অপেক্ষায়'
-                  : (!bmdcDoc || !nidDoc)
-                    ? (!bmdcDoc && !nidDoc
-                        ? 'আপনার বিএমডিসি সনদ ও জাতীয় পরিচয়পত্র জমা দিন'
-                        : (!bmdcDoc ? 'আপনার বিএমডিসি সনদপত্র জমা দিন' : 'আপনার জাতীয় পরিচয়পত্র (NID) জমা দিন'))
-                    : 'চূড়ান্ত আবেদন জমা দিয়ে যাচাই শুরু করুন'}
+            {isRevisionRequested
+              ? 'নথিপত্র সংশোধনের অনুরোধ করা হয়েছে'
+              : isLocked
+                ? 'আপনার আবেদন অনুমোদনের অপেক্ষায়'
+                : !hasBothDocs
+                  ? (isHospital
+                      ? (!doc1 && !doc2
+                          ? 'হাসপাতালের লাইসেন্স ও ট্রেড লাইসেন্স জমা দিন'
+                          : (!doc1 ? 'হাসপাতালের লাইসেন্স সনদ জমা দিন' : 'ট্রেড লাইসেন্স / NID জমা দিন'))
+                      : (!doc1 && !doc2
+                          ? 'আপনার বিএমডিসি সনদ ও জাতীয় পরিচয়পত্র জমা দিন'
+                          : (!doc1 ? 'আপনার বিএমডিসি সনদপত্র জমা দিন' : 'আপনার জাতীয় পরিচয়পত্র (NID) জমা দিন')))
+                  : 'চূড়ান্ত আবেদন জমা দিয়ে যাচাই শুরু করুন'}
           </h1>
 
           {/* Subtitle */}
           <p className="pv-main-subtitle">
-            {isHospital ? (
+            {isRevisionRequested ? (
               <>
-                আপনার হাসপাতালের তথ্য আমাদের কাছে জমা হয়েছে।<br />
-                এটি এখন প্রশাসক দলের মাধ্যমে যাচাই করা হচ্ছে।
-              </>
-            ) : isRevisionRequested ? (
-              <>
-                প্রশাসকের নির্দেশনা অনুযায়ী অনুগ্রহ করে আপনার সঠিক ও স্পষ্ট সনদপত্রটি পুনরায় আপলোড করে চূড়ান্ত জমা দিন।
+                প্রশাসকের নির্দেশনা অনুযায়ী অনুগ্রহ করে আপনার সঠিক ও স্পষ্ট নথি পুনরায় আপলোড করে চূড়ান্ত জমা দিন।
               </>
             ) : isLocked ? (
               <>
                 আপনার সকল তথ্য ও কাগজপত্র সফলভাবে জমা হয়েছে।<br />
                 এটি এখন প্রশাসক দলের মাধ্যমে যাচাই করা হচ্ছে।
               </>
-            ) : (!bmdcDoc || !nidDoc) ? (
-              <>
-                রোগীর নিরাপত্তা ও চিকিৎসকের পেশাদারিত্ব নিশ্চিত করতে বিএমডিসি (BMDC) সনদ ও জাতীয় পরিচয়পত্র (NID) উভয়ই যাচাই বাধ্যতামূলক।<br />
-                উভয় নথি আপলোড করে চূড়ান্ত আবেদন সম্পন্ন করুন।
-              </>
+            ) : !hasBothDocs ? (
+              isHospital ? (
+                <>
+                  হাসপাতালের সঠিকতা ও সেবাগ্রহীতাদের সুরক্ষা নিশ্চিত করতে লাইসেন্স ও ট্রেড লাইসেন্স/NID উভয় নথি যাচাই বাধ্যতামূলক।<br />
+                  উভয় নথি আপলোড করে চূড়ান্ত আবেদন সম্পন্ন করুন।
+                </>
+              ) : (
+                <>
+                  রোগীর নিরাপত্তা ও চিকিৎসকের পেশাদারিত্ব নিশ্চিত করতে বিএমডিসি (BMDC) সনদ ও জাতীয় পরিচয়পত্র (NID) উভয়ই যাচাই বাধ্যতামূলক।<br />
+                  উভয় নথি আপলোড করে চূড়ান্ত আবেদন সম্পন্ন করুন।
+                </>
+              )
             ) : (
               <>
                 আপনার সকল প্রয়োজনীয় কাগজপত্র আপলোড সম্পন্ন হয়েছে। নিচের অংশে নিশ্চিতকরণ বক্সে টিক দিয়ে<br />
@@ -594,11 +680,11 @@ export default function PendingVerificationPage() {
               {/* Step 2: যাচাই চলছে / জমা দিন */}
               <div className="pv-step-node">
                 <div
-                  className={`pv-step-icon-circle ${(!isHospital && (!bmdcDoc || !nidDoc)) ? 'pv-node-pending' : 'pv-node-active'}`}
+                  className={`pv-step-icon-circle ${!hasBothDocs ? 'pv-node-pending' : 'pv-node-active'}`}
                   style={
-                    !isHospital && (!bmdcDoc || !nidDoc)
+                    !hasBothDocs
                       ? { borderColor: '#EAB308', color: '#CA8A04', background: '#FEF9C3' }
-                      : (!isHospital && !isLocked)
+                      : !isLocked
                         ? { borderColor: '#3B82F6', color: '#1D4ED8', background: '#EFF6FF' }
                         : {}
                   }
@@ -607,20 +693,22 @@ export default function PendingVerificationPage() {
                 </div>
                 <div className="pv-step-text-group">
                   <span
-                    className={`pv-step-title ${(!isHospital && (!bmdcDoc || !nidDoc)) ? '' : 'pv-title-active'}`}
+                    className={`pv-step-title ${!hasBothDocs ? '' : 'pv-title-active'}`}
                     style={
-                      !isHospital && (!bmdcDoc || !nidDoc)
+                      !hasBothDocs
                         ? { color: '#B45309', fontWeight: 700 }
-                        : (!isHospital && !isLocked)
+                        : !isLocked
                           ? { color: '#1D4ED8', fontWeight: 700 }
                           : {}
                     }
                   >
-                    {!isHospital
-                      ? (!bmdcDoc || !nidDoc
-                          ? (!bmdcDoc && !nidDoc ? 'নথি দিন' : (!bmdcDoc ? 'সনদ দিন' : 'এনআইডি দিন'))
-                          : (!isLocked ? 'জমা দিন' : 'যাচাই চলছে'))
-                      : 'যাচাই চলছে'}
+                    {!hasBothDocs
+                      ? (!doc1 && !doc2
+                          ? 'নথি দিন'
+                          : (!doc1
+                              ? (isHospital ? 'লাইসেন্স দিন' : 'সনদ দিন')
+                              : (isHospital ? 'ট্রেড লাইসেন্স' : 'এনআইডি দিন')))
+                      : (!isLocked ? 'জমা দিন' : 'যাচাই চলছে')}
                   </span>
                 </div>
               </div>
@@ -641,404 +729,406 @@ export default function PendingVerificationPage() {
             </div>
           </div>
 
-          {/* ===== DOCTOR VERIFICATION DOCUMENTS UPLOAD CARD ===== */}
-          {!isHospital && (
-            <div style={{ marginTop: 18, marginBottom: 16 }}>
-              {/* Locked Notice if submitted or approved */}
-              {isLocked && (
-                <div style={{
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  background: '#F0FDF4',
-                  border: '1.5px solid #86EFAC',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  fontSize: 13,
-                  color: '#166534'
-                }}>
-                  <ShieldCheck size={20} color="#16A34A" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <div>
-                    <strong>আবেদন পর্যালোচনার জন্য জমা রয়েছে (লকড):</strong> আপনার কাগজপত্র চূড়ান্তভাবে জমা হয়েছে। অ্যাডমিন কর্তৃক যাচাই প্রক্রিয়া শেষ না হওয়া পর্যন্ত এটি লক থাকবে এবং কোনো তথ্য পরিবর্তন করা যাবে না।
-                  </div>
-                </div>
-              )}
-
-              {/* Revision Alert if Requested */}
-              {isRevisionRequested && user?.doctor?.verification_notes && (
-                <div style={{
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  background: '#FEF3C7',
-                  border: '1px solid #FDE68A',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  fontSize: 13,
-                  color: '#92400E'
-                }}>
-                  <AlertCircle size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <div>
-                    <strong>অ্যাডমিন রিভিউ নোট:</strong> {user.doctor.verification_notes}
-                    <div style={{ marginTop: 4, fontSize: 12, color: '#B45309' }}>
-                      অনুগ্রহ করে নির্দেশনা অনুযায়ী সঠিক ও স্পষ্ট সনদপত্রটি পুনরায় আপলোড করে চূড়ান্ত জমা দিন।
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* BMDC Certificate Card */}
+          {/* ===== VERIFICATION DOCUMENTS UPLOAD CARD (DOCTOR & HOSPITAL) ===== */}
+          <div style={{ marginTop: 18, marginBottom: 16 }}>
+            {/* Locked Notice if submitted or approved */}
+            {isLocked && (
               <div style={{
-                background: bmdcDoc ? '#F0FDF4' : '#FFFFFF',
-                border: bmdcDoc ? '1.5px solid #86EFAC' : '1.5px dashed #00B875',
-                borderRadius: 14,
-                padding: '12px 12px',
-                marginBottom: 10,
-                boxShadow: bmdcDoc ? 'none' : '0 2px 10px rgba(0, 184, 117, 0.04)'
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: '#F0FDF4',
+                border: '1.5px solid #86EFAC',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                fontSize: 13,
+                color: '#166534'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: bmdcDoc ? 8 : 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <FileText size={16} color={bmdcDoc ? '#16A34A' : '#00B875'} style={{ flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      বিএমডিসি সনদপত্র <span style={{ color: '#DC2626' }}>*</span>
-                    </span>
-                  </div>
-                  {bmdcDoc ? (
-                    <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3.5, flexShrink: 0 }}>
-                      <CheckCircle2 size={11} /> {isLocked ? 'যাচাই চলছে' : 'সংরক্ষিত'}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 10.5, background: '#FEF2F2', color: '#DC2626', padding: '2px 8px', borderRadius: 10, fontWeight: 700, flexShrink: 0 }}>
-                      আপলোড আবশ্যক
-                    </span>
-                  )}
+                <ShieldCheck size={20} color="#16A34A" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <strong>আবেদন পর্যালোচনার জন্য জমা রয়েছে (লকড):</strong> আপনার কাগজপত্র চূড়ান্তভাবে জমা হয়েছে। অ্যাডমিন কর্তৃক যাচাই প্রক্রিয়া শেষ না হওয়া পর্যন্ত এটি লক থাকবে এবং কোনো তথ্য পরিবর্তন করা যাবে না।
                 </div>
+              </div>
+            )}
 
-                {bmdcDoc ? (
-                  <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #DCFCE7', padding: '10px 10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FileText size={16} color="#166534" />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          BMDC Certificate
-                        </span>
-                        <span style={{ fontSize: 11, color: '#65A30D' }}>সনদপত্র সংরক্ষিত রয়েছে</span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                      <a
-                        href={getMediaUrl(bmdcDoc)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pv-doc-action-btn pv-doc-action-view"
-                      >
-                        <Eye size={13} />
-                        <span>{isLocked ? 'সনদপত্র দেখুন' : 'দেখুন'}</span>
-                      </a>
-                      {!isLocked && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => bmdcFileInputRef.current?.click()}
-                            disabled={uploadingDoc || deletingDoc}
-                            className="pv-doc-action-btn pv-doc-action-change"
-                          >
-                            <RefreshCw size={12} />
-                            <span>পরিবর্তন</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => promptDeleteFile('bmdc')}
-                            disabled={uploadingDoc || deletingDoc}
-                            className="pv-doc-action-btn pv-doc-action-delete"
-                          >
-                            {deletingDoc && activeDeleteType === 'bmdc' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={12} />
-                            )}
-                            <span>মুছুন</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
+            {/* Revision Alert if Requested */}
+            {isRevisionRequested && (isHospital ? user?.hospital?.verification_notes : user?.doctor?.verification_notes) && (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                fontSize: 13,
+                color: '#92400E'
+              }}>
+                <AlertCircle size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <strong>অ্যাডমিন রিভিউ নোট:</strong> {isHospital ? user?.hospital?.verification_notes : user?.doctor?.verification_notes}
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#B45309' }}>
+                    অনুগ্রহ করে নির্দেশনা অনুযায়ী সঠিক ও স্পষ্ট নথিটি পুনরায় আপলোড করে চূড়ান্ত জমা দিন।
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Document 1 Slot: BMDC Certificate (Doctor) or Hospital License (Hospital) */}
+            <div style={{
+              background: doc1 ? '#F0FDF4' : '#FFFFFF',
+              border: doc1 ? '1.5px solid #86EFAC' : '1.5px dashed #00B875',
+              borderRadius: 14,
+              padding: '12px 12px',
+              marginBottom: 10,
+              boxShadow: doc1 ? 'none' : '0 2px 10px rgba(0, 184, 117, 0.04)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: doc1 ? 8 : 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <FileText size={16} color={doc1 ? '#16A34A' : '#00B875'} style={{ flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {isHospital ? 'হাসপাতাল লাইসেন্স / DGHS সনদপত্র' : 'বিএমডিসি সনদপত্র'} <span style={{ color: '#DC2626' }}>*</span>
+                  </span>
+                </div>
+                {doc1 ? (
+                  <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3.5, flexShrink: 0 }}>
+                    <CheckCircle2 size={11} /> {isLocked ? 'যাচাই চলছে' : 'সংরক্ষিত'}
+                  </span>
                 ) : (
-                  <div
-                    onClick={() => !uploadingDoc && !deletingDoc && !isLocked && bmdcFileInputRef.current?.click()}
-                    style={{
-                      padding: '12px 10px',
-                      background: '#F8FAFC',
-                      borderRadius: 10,
-                      cursor: (uploadingDoc || deletingDoc || isLocked) ? 'not-allowed' : 'pointer',
-                      border: '1px solid #E2E8F0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F0FDF4')}
-                    onMouseLeave={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F8FAFC')}
-                  >
-                    {uploadingDoc && activeUploadType === 'bmdc' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#00B875', fontSize: 12.5, fontWeight: 600 }}>
-                        <Loader2 size={16} className="animate-spin" />
-                        <span>BMDC সনদ আপলোড হচ্ছে...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <UploadCloud size={18} color="#00B875" />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
-                            সনদপত্র আপলোড করতে ট্যাপ করুন
-                          </span>
-                          <span style={{ fontSize: 10.5, color: '#94A3B8' }}>
-                            JPG, PNG বা PDF (সর্বোচ্চ ১০ MB)
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <span style={{ fontSize: 10.5, background: '#FEF2F2', color: '#DC2626', padding: '2px 8px', borderRadius: 10, fontWeight: 700, flexShrink: 0 }}>
+                    আপলোড আবশ্যক
+                  </span>
                 )}
-
-                <input
-                  ref={bmdcFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) handleUploadFile(f, 'bmdc')
-                  }}
-                />
               </div>
 
-              {/* NID Card Upload (Required) */}
-              <div style={{
-                background: nidDoc ? '#F0FDF4' : '#FFFFFF',
-                border: nidDoc ? '1.5px solid #86EFAC' : (isLocked ? '1px solid #E2E8F0' : '1.5px dashed #00B875'),
-                borderRadius: 14,
-                padding: '12px 12px',
-                marginBottom: 10,
-                boxShadow: nidDoc ? 'none' : '0 2px 10px rgba(0, 184, 117, 0.04)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: nidDoc ? 8 : 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <ShieldCheck size={16} color={nidDoc ? '#16A34A' : '#00B875'} style={{ flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      জাতীয় পরিচয়পত্র / NID <span style={{ color: '#EF4444', fontWeight: 800 }}>*</span>
-                    </span>
-                  </div>
-                  {nidDoc ? (
-                    <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3.5, flexShrink: 0 }}>
-                      <CheckCircle2 size={11} /> {isLocked ? 'যাচাই চলছে' : 'সংরক্ষিত'}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 10.5, background: '#FEE2E2', color: '#B91C1C', padding: '2px 8px', borderRadius: 10, fontWeight: 700, flexShrink: 0 }}>
-                      আপলোড আবশ্যক
-                    </span>
-                  )}
-                </div>
-
-                {nidDoc ? (
-                  <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #DCFCE7', padding: '10px 10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <ShieldCheck size={16} color="#166534" />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          NID Card
-                        </span>
-                        <span style={{ fontSize: 11, color: '#65A30D' }}>পরিচয়পত্র সংরক্ষিত রয়েছে</span>
-                      </div>
+              {doc1 ? (
+                <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #DCFCE7', padding: '10px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={16} color="#166534" />
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                      <a
-                        href={getMediaUrl(nidDoc)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pv-doc-action-btn pv-doc-action-view"
-                      >
-                        <Eye size={13} />
-                        <span>{isLocked ? 'পরিচয়পত্র দেখুন' : 'দেখুন'}</span>
-                      </a>
-                      {!isLocked && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => nidFileInputRef.current?.click()}
-                            disabled={uploadingDoc || deletingDoc}
-                            className="pv-doc-action-btn pv-doc-action-change"
-                          >
-                            <RefreshCw size={12} />
-                            <span>পরিবর্তন</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => promptDeleteFile('nid')}
-                            disabled={uploadingDoc || deletingDoc}
-                            className="pv-doc-action-btn pv-doc-action-delete"
-                          >
-                            {deletingDoc && activeDeleteType === 'nid' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={12} />
-                            )}
-                            <span>মুছুন</span>
-                          </button>
-                        </>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isHospital ? 'Hospital License' : 'BMDC Certificate'}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#65A30D' }}>সনদপত্র সংরক্ষিত রয়েছে</span>
                     </div>
                   </div>
-                ) : isLocked ? (
-                  <div style={{ padding: '6px 0', fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>
-                    জাতীয় পরিচয়পত্র আপলোড করা হয়নি।
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => !uploadingDoc && !deletingDoc && !isLocked && nidFileInputRef.current?.click()}
-                    style={{
-                      padding: '12px 10px',
-                      background: '#F8FAFC',
-                      borderRadius: 10,
-                      cursor: (uploadingDoc || deletingDoc || isLocked) ? 'not-allowed' : 'pointer',
-                      border: '1px solid #E2E8F0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#EFF6FF')}
-                    onMouseLeave={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F8FAFC')}
-                  >
-                    {uploadingDoc && activeUploadType === 'nid' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563EB', fontSize: 12.5, fontWeight: 600 }}>
-                        <Loader2 size={16} className="animate-spin" />
-                        <span>NID আপলোড হচ্ছে...</span>
-                      </div>
-                    ) : (
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                    <a
+                      href={getMediaUrl(doc1)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="pv-doc-action-btn pv-doc-action-view"
+                    >
+                      <Eye size={13} />
+                      <span>{isLocked ? 'সনদপত্র দেখুন' : 'দেখুন'}</span>
+                    </a>
+                    {!isLocked && (
                       <>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <UploadCloud size={18} color="#3B82F6" />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
-                            পরিচয়পত্র আপলোড করতে ট্যাপ করুন
-                          </span>
-                          <span style={{ fontSize: 10.5, color: '#94A3B8' }}>
-                            JPG, PNG বা PDF (সর্বোচ্চ ১০ MB)
-                          </span>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => isHospital ? licenseFileInputRef.current?.click() : bmdcFileInputRef.current?.click()}
+                          disabled={uploadingDoc || deletingDoc}
+                          className="pv-doc-action-btn pv-doc-action-change"
+                        >
+                          <RefreshCw size={12} />
+                          <span>পরিবর্তন</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => promptDeleteFile(isHospital ? 'license' : 'bmdc')}
+                          disabled={uploadingDoc || deletingDoc}
+                          className="pv-doc-action-btn pv-doc-action-delete"
+                        >
+                          {deletingDoc && activeDeleteType === (isHospital ? 'license' : 'bmdc') ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={12} />
+                          )}
+                          <span>মুছুন</span>
+                        </button>
                       </>
                     )}
                   </div>
-                )}
-
-                <input
-                  ref={nidFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) handleUploadFile(f, 'nid')
+                </div>
+              ) : (
+                <div
+                  onClick={() => !uploadingDoc && !deletingDoc && !isLocked && (isHospital ? licenseFileInputRef.current?.click() : bmdcFileInputRef.current?.click())}
+                  style={{
+                    padding: '12px 10px',
+                    background: '#F8FAFC',
+                    borderRadius: 10,
+                    cursor: (uploadingDoc || deletingDoc || isLocked) ? 'not-allowed' : 'pointer',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    transition: 'all 0.15s ease'
                   }}
-                />
-              </div>
-
-              {uploadError && (
-                <p style={{ color: '#DC2626', fontSize: 12, marginTop: 6, marginBottom: 0 }}>
-                  ⚠️ {uploadError}
-                </p>
-              )}
-
-              {/* ===== FINAL SUBMISSION & APPLICATION LOCK CARD ===== */}
-              {!isLocked && (
-                <div style={{
-                  marginTop: 14,
-                  padding: '16px',
-                  background: (bmdcDoc && nidDoc) ? '#F0FDF4' : '#F8FAFC',
-                  border: (bmdcDoc && nidDoc) ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
-                  borderRadius: 16,
-                  transition: 'all 0.25s ease'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <ShieldCheck size={18} color={(bmdcDoc && nidDoc) ? '#16A34A' : '#94A3B8'} />
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>
-                      {isRevisionRequested ? 'সংশোধিত আবেদন পুনরায় জমা দিন' : 'চূড়ান্ত আবেদন জমা দিন'}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 12px', lineHeight: 1.45 }}>
-                    {(bmdcDoc && nidDoc)
-                      ? 'আপনার সকল নথি যাচাই করে নিশ্চিত করুন। চূড়ান্ত জমা দেওয়ার পর অ্যাডমিনের অনুমোদন প্রক্রিয়া শেষ না হওয়া পর্যন্ত কোনো নথি পরিবর্তন করা যাবে না।'
-                      : (!bmdcDoc && !nidDoc
-                          ? 'আবেদন চূড়ান্ত জমা দেওয়ার জন্য বিএমডিসি (BMDC) রেজিস্ট্রেশন সনদ এবং জাতীয় পরিচয়পত্র (NID) উভয় নথি আপলোড করা বাধ্যতামূলক।'
-                          : (!bmdcDoc
-                              ? 'আবেদন চূড়ান্ত জমা দেওয়ার জন্য বিএমডিসি (BMDC) রেজিস্ট্রেশন সনদপত্র আপলোড করা বাধ্যতামূলক।'
-                              : 'আবেদন চূড়ান্ত জমা দেওয়ার জন্য জাতীয় পরিচয়পত্র (NID) আপলোড করা বাধ্যতামূলক।'))
-                    }
-                  </p>
-
-                  {(bmdcDoc && nidDoc) && (
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', marginBottom: 14, fontSize: 12.5, color: '#334155', fontWeight: 600, userSelect: 'none' }}>
-                      <CustomCheckbox
-                        checked={agreedToSubmit}
-                        onChange={(e) => setAgreedToSubmit(e.target.checked)}
-                        style={{ marginTop: 1 }}
-                      />
-                      <span style={{ lineHeight: 1.45 }}>আমি নিশ্চিত করছি যে প্রদত্ত বিএমডিসি সনদ, জাতীয় পরিচয়পত্র (NID) ও তথ্যাবলী সম্পূর্ণ সত্য ও নির্ভুল।</span>
-                    </label>
+                  onMouseEnter={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F0FDF4')}
+                  onMouseLeave={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F8FAFC')}
+                >
+                  {uploadingDoc && activeUploadType === (isHospital ? 'license' : 'bmdc') ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#00B875', fontSize: 12.5, fontWeight: 600 }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>{isHospital ? 'হাসপাতালের লাইসেন্স আপলোড হচ্ছে...' : 'BMDC সনদ আপলোড হচ্ছে...'}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <UploadCloud size={18} color="#00B875" />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
+                          {isHospital ? 'লাইসেন্স সনদ আপলোড করতে ট্যাপ করুন' : 'সনদপত্র আপলোড করতে ট্যাপ করুন'}
+                        </span>
+                        <span style={{ fontSize: 10.5, color: '#94A3B8' }}>
+                          JPG, PNG বা PDF (সর্বোচ্চ ১০ MB)
+                        </span>
+                      </div>
+                    </>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={promptFinalSubmit}
-                    disabled={!bmdcDoc || !nidDoc || !agreedToSubmit || submittingFinal}
-                    style={{
-                      width: '100%',
-                      padding: '12px 18px',
-                      borderRadius: 10,
-                      border: 'none',
-                      background: (bmdcDoc && nidDoc && agreedToSubmit)
-                        ? 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)'
-                        : '#E2E8F0',
-                      color: (bmdcDoc && nidDoc && agreedToSubmit) ? '#FFFFFF' : '#94A3B8',
-                      fontSize: 14,
-                      fontWeight: 700,
-                      cursor: (bmdcDoc && nidDoc && agreedToSubmit && !submittingFinal) ? 'pointer' : 'not-allowed',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      transition: 'all 0.2s ease',
-                      boxShadow: (bmdcDoc && nidDoc && agreedToSubmit) ? '0 4px 14px rgba(0, 184, 117, 0.25)' : 'none'
-                    }}
-                  >
-                    {submittingFinal ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        <span>আবেদন জমা হচ্ছে...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{isRevisionRequested ? 'সংশোধিত আবেদন পুনরায় জমা দিন' : 'চূড়ান্ত আবেদন জমা দিন'}</span>
-                        <ArrowRight size={16} />
-                      </>
-                    )}
-                  </button>
                 </div>
               )}
+
+              <input
+                ref={isHospital ? licenseFileInputRef : bmdcFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleUploadFile(f, isHospital ? 'license' : 'bmdc')
+                }}
+              />
             </div>
-          )}
+
+            {/* Document 2 Slot: NID (Doctor) or Trade License / Director NID (Hospital) */}
+            <div style={{
+              background: doc2 ? '#F0FDF4' : '#FFFFFF',
+              border: doc2 ? '1.5px solid #86EFAC' : (isLocked ? '1px solid #E2E8F0' : '1.5px dashed #00B875'),
+              borderRadius: 14,
+              padding: '12px 12px',
+              marginBottom: 10,
+              boxShadow: doc2 ? 'none' : '0 2px 10px rgba(0, 184, 117, 0.04)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: doc2 ? 8 : 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <ShieldCheck size={16} color={doc2 ? '#16A34A' : '#00B875'} style={{ flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {isHospital ? 'ট্রেড লাইসেন্স / পরিচালকের NID' : 'জাতীয় পরিচয়পত্র / NID'} <span style={{ color: '#EF4444', fontWeight: 800 }}>*</span>
+                  </span>
+                </div>
+                {doc2 ? (
+                  <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3.5, flexShrink: 0 }}>
+                    <CheckCircle2 size={11} /> {isLocked ? 'যাচাই চলছে' : 'সংরক্ষিত'}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10.5, background: '#FEE2E2', color: '#B91C1C', padding: '2px 8px', borderRadius: 10, fontWeight: 700, flexShrink: 0 }}>
+                    আপলোড আবশ্যক
+                  </span>
+                )}
+              </div>
+
+              {doc2 ? (
+                <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #DCFCE7', padding: '10px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <ShieldCheck size={16} color="#166534" />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isHospital ? 'Trade License / Director NID' : 'NID Card'}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#65A30D' }}>নথি সংরক্ষিত রয়েছে</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                    <a
+                      href={getMediaUrl(doc2)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="pv-doc-action-btn pv-doc-action-view"
+                    >
+                      <Eye size={13} />
+                      <span>{isLocked ? 'নথি দেখুন' : 'দেখুন'}</span>
+                    </a>
+                    {!isLocked && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => isHospital ? tradeFileInputRef.current?.click() : nidFileInputRef.current?.click()}
+                          disabled={uploadingDoc || deletingDoc}
+                          className="pv-doc-action-btn pv-doc-action-change"
+                        >
+                          <RefreshCw size={12} />
+                          <span>পরিবর্তন</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => promptDeleteFile(isHospital ? 'trade_license' : 'nid')}
+                          disabled={uploadingDoc || deletingDoc}
+                          className="pv-doc-action-btn pv-doc-action-delete"
+                        >
+                          {deletingDoc && activeDeleteType === (isHospital ? 'trade_license' : 'nid') ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={12} />
+                          )}
+                          <span>মুছুন</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : isLocked ? (
+                <div style={{ padding: '6px 0', fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>
+                  {isHospital ? 'ট্রেড লাইসেন্স আপলোড করা হয়নি।' : 'জাতীয় পরিচয়পত্র আপলোড করা হয়নি।'}
+                </div>
+              ) : (
+                <div
+                  onClick={() => !uploadingDoc && !deletingDoc && !isLocked && (isHospital ? tradeFileInputRef.current?.click() : nidFileInputRef.current?.click())}
+                  style={{
+                    padding: '12px 10px',
+                    background: '#F8FAFC',
+                    borderRadius: 10,
+                    cursor: (uploadingDoc || deletingDoc || isLocked) ? 'not-allowed' : 'pointer',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#EFF6FF')}
+                  onMouseLeave={(e) => !uploadingDoc && !deletingDoc && !isLocked && (e.currentTarget.style.background = '#F8FAFC')}
+                >
+                  {uploadingDoc && activeUploadType === (isHospital ? 'trade_license' : 'nid') ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563EB', fontSize: 12.5, fontWeight: 600 }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>{isHospital ? 'ট্রেড লাইসেন্স আপলোড হচ্ছে...' : 'NID আপলোড হচ্ছে...'}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <UploadCloud size={18} color="#3B82F6" />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>
+                          {isHospital ? 'ট্রেড লাইসেন্স / পরিচালকের NID আপলোড করতে ট্যাপ করুন' : 'পরিচয়পত্র আপলোড করতে ট্যাপ করুন'}
+                        </span>
+                        <span style={{ fontSize: 10.5, color: '#94A3B8' }}>
+                          JPG, PNG বা PDF (সর্বোচ্চ ১০ MB)
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <input
+                ref={isHospital ? tradeFileInputRef : nidFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleUploadFile(f, isHospital ? 'trade_license' : 'nid')
+                }}
+              />
+            </div>
+
+            {uploadError && (
+              <p style={{ color: '#DC2626', fontSize: 12, marginTop: 6, marginBottom: 0 }}>
+                ⚠️ {uploadError}
+              </p>
+            )}
+
+            {/* ===== FINAL SUBMISSION & APPLICATION LOCK CARD ===== */}
+            {!isLocked && (
+              <div style={{
+                marginTop: 14,
+                padding: '16px',
+                background: hasBothDocs ? '#F0FDF4' : '#F8FAFC',
+                border: hasBothDocs ? '1.5px solid #00B875' : '1.5px solid #E2E8F0',
+                borderRadius: 16,
+                transition: 'all 0.25s ease'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <ShieldCheck size={18} color={hasBothDocs ? '#16A34A' : '#94A3B8'} />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>
+                    {isRevisionRequested ? 'সংশোধিত আবেদন পুনরায় জমা দিন' : 'চূড়ান্ত আবেদন জমা দিন'}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 12px', lineHeight: 1.45 }}>
+                  {hasBothDocs
+                    ? 'আপনার সকল নথি যাচাই করে নিশ্চিত করুন। চূড়ান্ত জমা দেওয়ার পর অ্যাডমিনের অনুমোদন প্রক্রিয়া শেষ না হওয়া পর্যন্ত কোনো নথি পরিবর্তন করা যাবে না।'
+                    : (!doc1 && !doc2
+                        ? `আবেদন চূড়ান্ত জমা দেওয়ার জন্য ${doc1Name} এবং ${doc2Name} উভয় নথি আপলোড করা বাধ্যতামূলক।`
+                        : (!doc1
+                            ? `আবেদন চূড়ান্ত জমা দেওয়ার জন্য ${doc1Name} আপলোড করা বাধ্যতামূলক।`
+                            : `আবেদন চূড়ান্ত জমা দেওয়ার জন্য ${doc2Name} আপলোড করা বাধ্যতামূলক।`))
+                  }
+                </p>
+
+                {hasBothDocs && (
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', marginBottom: 14, fontSize: 12.5, color: '#334155', fontWeight: 600, userSelect: 'none' }}>
+                    <CustomCheckbox
+                      checked={agreedToSubmit}
+                      onChange={(e) => setAgreedToSubmit(e.target.checked)}
+                      style={{ marginTop: 1 }}
+                    />
+                    <span style={{ lineHeight: 1.45 }}>
+                      {isHospital
+                        ? 'আমি নিশ্চিত করছি যে প্রদত্ত হাসপাতালের লাইসেন্স, ট্রেড লাইসেন্স / পরিচালকের NID ও যাবতীয় তথ্যাবলী সম্পূর্ণ সত্য ও নির্ভুল।'
+                        : 'আমি নিশ্চিত করছি যে প্রদত্ত বিএমডিসি সনদ, জাতীয় পরিচয়পত্র (NID) ও তথ্যাবলী সম্পূর্ণ সত্য ও নির্ভুল।'}
+                    </span>
+                  </label>
+                )}
+
+                <button
+                  type="button"
+                  onClick={promptFinalSubmit}
+                  disabled={!hasBothDocs || !agreedToSubmit || submittingFinal}
+                  style={{
+                    width: '100%',
+                    padding: '12px 18px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: (hasBothDocs && agreedToSubmit)
+                      ? 'linear-gradient(135deg, #064E3B 0%, #00B875 100%)'
+                      : '#E2E8F0',
+                    color: (hasBothDocs && agreedToSubmit) ? '#FFFFFF' : '#94A3B8',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: (hasBothDocs && agreedToSubmit && !submittingFinal) ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s ease',
+                    boxShadow: (hasBothDocs && agreedToSubmit) ? '0 4px 14px rgba(0, 184, 117, 0.25)' : 'none'
+                  }}
+                >
+                  {submittingFinal ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>আবেদন জমা হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isRevisionRequested ? 'সংশোধিত আবেদন পুনরায় জমা দিন' : 'চূড়ান্ত আবেদন জমা দিন'}</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* ===== INFO NOTICE BOX ===== */}
           <div className="pv-notice-box">
@@ -1100,7 +1190,26 @@ export default function PendingVerificationPage() {
                     <span className="pv-item-value">{licenseNumber}</span>
                   </div>
 
-                  {!isHospital && (
+                  {isHospital ? (
+                    <>
+                      <div className="pv-details-item">
+                        <span className="pv-item-label">
+                          <ShieldCheck size={13} /> লাইসেন্স সনদ স্ট্যাটাস
+                        </span>
+                        <span className="pv-item-value" style={{ color: licenseDoc ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
+                          {licenseDoc ? '✓ জমা হয়েছে' : '⚠️ বাকি আছে'}
+                        </span>
+                      </div>
+                      <div className="pv-details-item">
+                        <span className="pv-item-label">
+                          <ShieldCheck size={13} /> ট্রেড লাইসেন্স স্ট্যাটাস
+                        </span>
+                        <span className="pv-item-value" style={{ color: tradeDoc ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
+                          {tradeDoc ? '✓ জমা হয়েছে' : '⚠️ বাকি আছে'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
                     <>
                       <div className="pv-details-item">
                         <span className="pv-item-label">
@@ -1347,7 +1456,9 @@ export default function PendingVerificationPage() {
               ✨ উষ্ণ সংবর্ধনা ও অভিনন্দন ✨
             </span>
             <h2 className="pv-celebration-title">
-              {displayName ? (displayName.startsWith('Dr.') || displayName.startsWith('ডা.') ? displayName : `ডা. ${displayName}`) : 'সম্মানিত চিকিৎসক'}
+              {isHospital
+                ? (displayName || 'সম্মানিত হাসপাতাল কর্তৃপক্ষ')
+                : (displayName ? (displayName.startsWith('Dr.') || displayName.startsWith('ডা.') ? displayName : `ডা. ${displayName}`) : 'সম্মানিত চিকিৎসক')}
             </h2>
             <p className="pv-celebration-welcome">
               ডক্টর বুকলেট (Doctor Booklet) পরিবারে আপনাকে আন্তরিক স্বাগতম!
@@ -1361,7 +1472,9 @@ export default function PendingVerificationPage() {
                 <span>আপনার আবেদন সফলভাবে গৃহীত হয়েছে</span>
               </div>
               <p style={{ margin: 0, fontSize: 12.5, color: '#334155', lineHeight: 1.55 }}>
-                আপনার বিএমডিসি সনদপত্র ও প্রয়োজনীয় তথ্যাবলী চূড়ান্তভাবে আমাদের ভেরিফিকেশন প্যানেলে জমা হয়েছে। তথ্যের সুরক্ষার স্বার্থে সকল নথি লক করা হয়েছে।
+                {isHospital
+                  ? 'আপনার হাসপাতালের লাইসেন্স ও প্রয়োজনীয় যাবতীয় নথিপত্র চূড়ান্তভাবে আমাদের ভেরিফিকেশন প্যানেলে জমা হয়েছে। তথ্যের সুরক্ষার স্বার্থে সকল নথি লক করা হয়েছে।'
+                  : 'আপনার বিএমডিসি সনদপত্র ও প্রয়োজনীয় তথ্যাবলী চূড়ান্তভাবে আমাদের ভেরিফিকেশন প্যানেলে জমা হয়েছে। তথ্যের সুরক্ষার স্বার্থে সকল নথি লক করা হয়েছে।'}
               </p>
             </div>
 
@@ -1369,7 +1482,9 @@ export default function PendingVerificationPage() {
             <div className="pv-celebration-timeline">
               <Hourglass size={16} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
               <span>
-                আমাদের চিকিৎসক যাচাইকরণ দল দ্রুত এটি পর্যালোচনা করে <strong>১–৩ কার্যদিবসের</strong> মধ্যে আপনার প্রোফাইল সম্পূর্ণ সক্রিয় করবে।
+                {isHospital
+                  ? 'আমাদের যাচাইকরণ দল দ্রুত এটি পর্যালোচনা করে <strong>১–৩ কার্যদিবসের</strong> মধ্যে আপনার হাসপাতাল প্রোফাইল সম্পূর্ণ সক্রিয় করবে।'
+                  : 'আমাদের চিকিৎসক যাচাইকরণ দল দ্রুত এটি পর্যালোচনা করে <strong>১–৩ কার্যদিবসের</strong> মধ্যে আপনার প্রোফাইল সম্পূর্ণ সক্রিয় করবে।'}
               </span>
             </div>
 

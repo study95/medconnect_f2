@@ -701,21 +701,54 @@ export default function HospitalListPage() {
                     </td>
                     <td>
                       {isAdmin ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div
-                            onClick={() => handleToggleStatus(h)}
-                            style={{
-                              width: 44, height: 24, borderRadius: 12, padding: 2, cursor: 'pointer',
-                              background: h.is_active ? '#10B981' : '#CBD5E1',
-                              display: 'flex', transition: '0.2s',
-                              justifyContent: h.is_active ? 'flex-end' : 'flex-start'
-                            }}
-                          >
-                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div
+                              onClick={() => handleToggleStatus(h)}
+                              style={{
+                                width: 44, height: 24, borderRadius: 12, padding: 2, cursor: 'pointer',
+                                background: h.is_active ? '#10B981' : '#CBD5E1',
+                                display: 'flex', transition: '0.2s',
+                                justifyContent: h.is_active ? 'flex-end' : 'flex-start'
+                              }}
+                            >
+                              <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: h.is_active ? '#10B981' : 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
+                              {h.is_active ? 'Active' : 'Inactive'}
+                            </span>
                           </div>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: h.is_active ? '#10B981' : 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
-                            {h.is_active ? 'Active' : 'Inactive'}
-                          </span>
+                          {h.verification_status && h.verification_status !== 'approved' && (
+                            <>
+                              <span style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                width: 'fit-content',
+                                background: h.verification_status === 'submitted' ? '#EFF6FF' : (h.verification_status === 'revision_requested' ? '#FEF2F2' : '#FEF3C7'),
+                                color: h.verification_status === 'submitted' ? '#1D4ED8' : (h.verification_status === 'revision_requested' ? '#DC2626' : '#92400E'),
+                                border: `1px solid ${h.verification_status === 'submitted' ? (h.verification_notes ? '#93C5FD' : '#BFDBFE') : (h.verification_status === 'revision_requested' ? '#FECACA' : '#FDE68A')}`,
+                              }}>
+                                {h.verification_status === 'submitted' ? (h.verification_notes ? '📩 পুনঃজমা (Re-submitted)' : '⏳ যাচাই অপেক্ষমাণ') : (h.verification_status === 'revision_requested' ? '⚠️ সংশোধন আবশ্যক' : 'খসড়া')}
+                              </span>
+                              {h.verification_notes && (
+                                <span
+                                  style={{
+                                    fontSize: 9.5,
+                                    color: h.verification_status === 'revision_requested' ? '#DC2626' : '#2563EB',
+                                    maxWidth: 150,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  title={`নোট: ${h.verification_notes}`}
+                                >
+                                  💬 {h.verification_notes}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       ) : (
                         <span style={{

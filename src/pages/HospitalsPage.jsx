@@ -17,11 +17,18 @@ import useInfiniteHospitals from '../hooks/useInfiniteHospitals'
 import useDebounce from '../hooks/useDebounce'
 import { useTypewriter } from '../hooks/useTypewriter'
 
-const HOSPITAL_SEARCH_PHRASES = [
+const HOSPITAL_SEARCH_PHRASES_DESKTOP = [
   'হাসপাতালের নাম লিখুন... (যেমন: অ্যাপোলো, ঢাকা মেডিকেল)',
   'ধরন লিখুন... (যেমন: ডায়াগনস্টিক, ক্লিনিক, ট্রমা)',
   'এলাকা দিয়ে খুঁজুন... (যেমন: উত্তরা, সিলেট সদর)',
   'হাসপাতাল বা ক্লিনিক খুঁজুন...'
+]
+
+const HOSPITAL_SEARCH_PHRASES_MOBILE = [
+  'হাসপাতাল খুঁজুন... (স্কয়ার)',
+  'হাসপাতালের নাম লিখুন...',
+  'ধরন লিখুন... (ক্লিনিক)',
+  'এলাকা দিয়ে খুঁজুন... (মিরপুর)'
 ]
 import useUserLocation from '../hooks/useUserLocation'
 import LocationPromptBanner from '../components/common/LocationPromptBanner'
@@ -125,7 +132,8 @@ function HospitalsPage() {
   const [searchText, setSearchText]               = useState(() => getInitialHospitalParam('search'))
   const [appliedSearch, setAppliedSearch]         = useState(() => getInitialHospitalParam('search'))
   const [isSearching, setIsSearching]             = useState(false)
-  const animatedPlaceholder                       = useTypewriter(HOSPITAL_SEARCH_PHRASES, 70, 35, 1800)
+  const desktopPlaceholder                        = useTypewriter(HOSPITAL_SEARCH_PHRASES_DESKTOP, 70, 35, 1800)
+  const mobilePlaceholder                         = useTypewriter(HOSPITAL_SEARCH_PHRASES_MOBILE, 70, 35, 1800)
   const [specialtySearch, setSpecialtySearch]     = useState('')
 
   const [sortBy, setSortBy]   = useState(() => getInitialHospitalParam('sort') || 'newest')
@@ -1512,10 +1520,10 @@ function HospitalsPage() {
           background: #FFFFFF;
           border: 1.5px solid #E2E8F0;
           border-radius: 16px;
-          padding: 0 14px;
+          padding: 0 12px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.03);
           transition: all 0.2s ease;
         }
@@ -1532,7 +1540,8 @@ function HospitalsPage() {
           background: transparent;
           outline: none;
           width: 100%;
-          font-size: 13.5px;
+          min-width: 0;
+          font-size: 13px;
           font-weight: 600;
           color: #1E293B;
           font-family: 'Hind Siliguri', sans-serif;
@@ -1541,6 +1550,7 @@ function HospitalsPage() {
           color: #64748B;
           font-weight: 500;
           opacity: 1;
+          text-overflow: ellipsis;
         }
         .hosp-mobile-mic-btn {
           background: none;
@@ -1646,7 +1656,7 @@ function HospitalsPage() {
                 </button>
                 <input
                   type="text"
-                  placeholder={animatedPlaceholder || "হাসপাতাল, ক্লিনিক বা ধরন খুঁজুন..."}
+                  placeholder={mobilePlaceholder || ' '}
                   value={searchText}
                   onChange={e => {
                     handleSearchChange(e.target.value)
@@ -1822,7 +1832,7 @@ function HospitalsPage() {
               </button>
               <input
                 type="text"
-                placeholder={animatedPlaceholder || "হাসপাতাল বা ক্লিনিক খুঁজুন..."}
+                placeholder={desktopPlaceholder || ' '}
                 value={searchText}
                 onChange={e => {
                   handleSearchChange(e.target.value)

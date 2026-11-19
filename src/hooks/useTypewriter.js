@@ -11,7 +11,7 @@ import { useState, useEffect, useRef } from 'react';
 export function useTypewriter(
   words = [], 
   typingSpeed = 70, 
-  deletingSpeed = 35, 
+  deletingSpeed = 30, 
   delayBetweenWords = 1800,
   showCursor = false
 ) {
@@ -19,6 +19,7 @@ export function useTypewriter(
   const [subIndex, setSubIndex] = useState(0);
   const [reverse, setReverse] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isEmptyPaused, setIsEmptyPaused] = useState(false);
 
   const wordsKey = Array.isArray(words) ? words.join('~|~') : '';
   const prevWordsKeyRef = useRef(wordsKey);
@@ -31,6 +32,7 @@ export function useTypewriter(
       setSubIndex(0);
       setReverse(false);
       setIsPaused(false);
+      setIsEmptyPaused(false);
     }
   }, [wordsKey]);
 
@@ -39,6 +41,7 @@ export function useTypewriter(
 
     const currentWord = words[index % words.length] || '';
 
+    // 1. Full word typed: pause so user can read it
     if (isPaused) {
       const timer = setTimeout(() => {
         setIsPaused(false);
@@ -47,28 +50,42 @@ export function useTypewriter(
       return () => clearTimeout(timer);
     }
 
+    // 2. Word fully deleted: pause briefly before typing next word
+    if (isEmptyPaused) {
+      const timer = setTimeout(() => {
+        setIsEmptyPaused(false);
+        setReverse(false);
+        setIndex((prev) => (prev + 1) % words.length);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+
+    // Reached the end of word typing
     if (subIndex === currentWord.length && !reverse) {
       setIsPaused(true);
       return;
     }
 
+    // Reached empty after deleting
     if (subIndex === 0 && reverse) {
-      setReverse(false);
-      setIndex((prev) => (prev + 1) % words.length);
+      setIsEmptyPaused(true);
       return;
     }
 
+    // Typing or deleting next character
     const timeout = setTimeout(() => {
       setSubIndex((prev) => prev + (reverse ? -1 : 1));
     }, reverse ? deletingSpeed : typingSpeed);
 
     return () => clearTimeout(timeout);
-  }, [subIndex, index, reverse, isPaused, wordsKey, typingSpeed, deletingSpeed, delayBetweenWords]);
+  }, [subIndex, index, reverse, isPaused, isEmptyPaused, wordsKey, typingSpeed, deletingSpeed, delayBetweenWords]);
 
   if (!words || words.length === 0) return '';
   const currentWord = words[index % words.length] || '';
   const cursor = showCursor ? (isPaused ? '' : '|') : '';
-  return `${currentWord.substring(0, subIndex)}${cursor}`;
+  const text = `${currentWord.substring(0, subIndex)}${cursor}`;
+  // Return whitespace when text is empty to prevent callers with `text || fallback` from flashing the fallback
+  return text || ' ';
 }
 
 export default useTypewriter;

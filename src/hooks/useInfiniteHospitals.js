@@ -49,7 +49,7 @@ function useInfiniteHospitals(filters = {}) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes — avoids redundant re-fetches
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   })
 

@@ -28,6 +28,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { queryClient } from './lib/queryClient'
 import { initQueryPersistence } from './lib/cachePersister'
+import { initCacheBroadcastListener } from './lib/cacheBroadcast'
 import { AuthProvider } from './context/AuthContext'
 import { FavoritesProvider } from './context/FavoritesContext'
 import { SubscriptionProvider } from './context/SubscriptionContext'
@@ -69,6 +70,9 @@ if (typeof Node !== 'undefined' && Node.prototype.insertBefore) {
 
 // Initialize Enterprise IndexedDB Persistence (0ms native restore)
 initQueryPersistence()
+
+// Initialize Enterprise Cross-Tab Broadcast Synchronization (0 server hit, instant tab sync)
+initCacheBroadcastListener(queryClient)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

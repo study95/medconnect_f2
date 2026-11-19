@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { useQuery } from '@tanstack/react-query'
 import useLocations from '../../hooks/useLocations'
+import { useTypewriter } from '../../hooks/useTypewriter'
 import { getSpecialties, getDoctors } from '../../api/doctorApi'
 import { getHospitals } from '../../api/hospitalApi'
 import {
@@ -691,9 +692,20 @@ function UnifiedHospitalTab({
   )
 }
 
+// ── Mobile Home Search Typing Phrases ──────────────────────────────
+const HOME_SEARCH_PHRASES_MOBILE = [
+  'ডাক্তার খুঁজুন... (মেডিসিন)',
+  'ডাক্তারের নাম লিখুন...',
+  'হাসপাতাল খুঁজুন... (স্কয়ার)',
+  'বিশেষজ্ঞতা দিয়ে খুঁজুন...',
+  'এলাকা খুঁজুন... (ধানমন্ডি)',
+  'ডাক্তার বা হাসপাতাল খুঁজুন...'
+]
+
 // ── Main Hero Section ───────────────────────────────────────────────
 const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const navigate = useNavigate()
+  const animatedPlaceholder = useTypewriter(HOME_SEARCH_PHRASES_MOBILE, 70, 35, 1800)
   const [cms, setCms] = useState(getContent())
   useEffect(() => {
     const update = () => setCms(getContent())
@@ -2309,7 +2321,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
               <IconSearch size={20} className="hero-mobile-search-icon" />
               <input
                 type="text"
-                placeholder="ডাক্তার, বিশেষজ্ঞতা বা হাসপাতাল খুঁজুন..."
+                placeholder={animatedPlaceholder || ' '}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className="hero-mobile-search-input"
@@ -4860,10 +4872,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             border: 1.5px solid #E2E8F0;
             border-radius: 16px;
-            padding: 0 14px;
+            padding: 0 12px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             transition: all 0.2s ease;
           }
@@ -4883,7 +4895,8 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: transparent;
             outline: none;
             width: 100%;
-            font-size: 13.5px;
+            min-width: 0;
+            font-size: 13px;
             font-weight: 600;
             color: #1E293B;
             font-family: 'Hind Siliguri', sans-serif;
@@ -4893,6 +4906,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             color: #64748B;
             font-weight: 500;
             opacity: 1;
+            text-overflow: ellipsis;
           }
 
           .hero-mobile-mic-btn {

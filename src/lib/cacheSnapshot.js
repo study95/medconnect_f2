@@ -34,3 +34,17 @@ export function saveSessionSnapshot(moduleName, data) {
     // Graceful fallback on quota error
   }
 }
+
+/**
+ * Invalidate / remove snapshot from sessionStorage when mutated.
+ */
+export function clearSessionSnapshot(moduleName) {
+  if (typeof window === 'undefined') return
+  try {
+    const actor = getActorCacheScope()
+    const key = `mc_snap_${moduleName}_${actor}`
+    sessionStorage.removeItem(key)
+  } catch (err) {
+    // Graceful fallback
+  }
+}

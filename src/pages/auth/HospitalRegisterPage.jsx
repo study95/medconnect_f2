@@ -101,6 +101,7 @@ export default function HospitalRegisterPage() {
     if (!form.hospital_name.trim()) errs.hospital_name = 'Hospital Name is required'
     if (!form.hospital_type) errs.hospital_type = 'Type of Hospital is required'
     if (!form.license_number.trim()) errs.license_number = 'License Number is required'
+    if (!form.hotline.trim()) errs.hotline = 'Hot Number (Hotline) is required'
     if (!form.address.trim()) errs.address = 'Hospital Address is required'
     if (!form.email.trim()) errs.email = 'Email is required'
     if (!form.phone.trim()) errs.phone = 'Phone number is required'
@@ -218,8 +219,9 @@ export default function HospitalRegisterPage() {
                 {errors.license_number && <div className="auth-field-error">{errors.license_number}</div>}
               </div>
               <div className="auth-input-group">
-                <label>Hot Number (Hotline)</label>
-                <input className="auth-input" name="hotline" value={form.hotline} onChange={handleChange} placeholder="e.g. 10616" />
+                <label>Hot Number (Hotline) *</label>
+                <input className={`auth-input ${errors.hotline ? 'error' : ''}`} name="hotline" value={form.hotline} onChange={handleChange} placeholder="e.g. 10616" />
+                {errors.hotline && <div className="auth-field-error">{errors.hotline}</div>}
               </div>
             </div>
 

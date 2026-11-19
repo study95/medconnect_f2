@@ -8,22 +8,42 @@
  */
 
 import { queryKeys } from './queryKeys'
+import { clearSessionSnapshot } from './cacheSnapshot'
+import { broadcastCacheEvent } from './cacheBroadcast'
 
 /**
  * Invalidate Doctor caches (list, detail, related, and optionally chambers)
  */
 export function invalidateDoctors(queryClient, { doctorId = null, includeChambers = false, includeReviews = false } = {}) {
+  // Purge sessionStorage snapshots on mutation so stale cached snapshots are never served
+  clearSessionSnapshot('doctors')
+  clearSessionSnapshot('doctor_me')
+
+  // Emit cross-tab sync broadcast (0 network bandwidth, 0 server hit)
+  broadcastCacheEvent({ type: 'DOCTORS_MUTATED', payload: { doctorId } })
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('medconnect:doctors-updated', { detail: { doctorId } }))
+  }
+
   if (!queryClient) return
 
   // Invalidate doctor lists & admin lists (refetchType: 'all' covers active & inactive cached queries)
   queryClient.invalidateQueries({ queryKey: queryKeys.doctors.lists(), refetchType: 'all' })
   queryClient.invalidateQueries({ queryKey: queryKeys.doctors.adminLists(), refetchType: 'all' })
   queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all, refetchType: 'all' })
+  // Invalidate singular and infinite public doctor keys and homepage preview
+  queryClient.invalidateQueries({ queryKey: ['doctor'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['doctors'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['doctors-infinite'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['hospital'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['hospitals-infinite'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['homepage'], refetchType: 'all' })
 
   if (doctorId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.doctors.detail(doctorId), refetchType: 'all' })
     queryClient.invalidateQueries({ queryKey: queryKeys.doctors.related(doctorId), refetchType: 'all' })
     queryClient.invalidateQueries({ queryKey: queryKeys.doctors.schedule(doctorId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['doctor-related', doctorId], refetchType: 'all' })
   }
 
   if (includeChambers) {
@@ -43,15 +63,36 @@ export function invalidateDoctors(queryClient, { doctorId = null, includeChamber
  * Invalidate Hospital caches (list, detail, related, and optionally chambers)
  */
 export function invalidateHospitals(queryClient, { hospitalId = null, includeChambers = false, includeReviews = false } = {}) {
+  // Purge sessionStorage snapshots on mutation so stale cached snapshots are never served
+  clearSessionSnapshot('hospitals')
+  clearSessionSnapshot('hospital_me')
+  clearSessionSnapshot('doctors')
+
+  // Emit cross-tab sync broadcast (0 network bandwidth, 0 server hit)
+  broadcastCacheEvent({ type: 'HOSPITALS_MUTATED', payload: { hospitalId } })
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('medconnect:hospitals-updated', { detail: { hospitalId } }))
+    window.dispatchEvent(new CustomEvent('medconnect:doctors-updated', { detail: { hospitalId } }))
+  }
+
   if (!queryClient) return
 
   queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.lists(), refetchType: 'all' })
   queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.adminLists(), refetchType: 'all' })
   queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.all, refetchType: 'all' })
+  // Invalidate singular and infinite public hospital & affiliated doctor keys and homepage preview
+  queryClient.invalidateQueries({ queryKey: ['hospital'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['hospitals'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['hospitals-infinite'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['doctor'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['doctors'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['doctors-infinite'], refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: ['homepage'], refetchType: 'all' })
 
   if (hospitalId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.detail(hospitalId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.related(hospitalId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.detail(hospitalId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: queryKeys.hospitals.related(hospitalId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['hospital-related', hospitalId], refetchType: 'all' })
   }
 
   if (includeChambers) {
@@ -73,20 +114,25 @@ export function invalidateHospitals(queryClient, { hospitalId = null, includeCha
 export function invalidateChambers(queryClient, { chamberId = null, doctorId = null, hospitalId = null } = {}) {
   if (!queryClient) return
 
-  queryClient.invalidateQueries({ queryKey: queryKeys.chambers.lists() })
-  queryClient.invalidateQueries({ queryKey: queryKeys.chambers.adminLists() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.chambers.lists(), refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: queryKeys.chambers.adminLists(), refetchType: 'all' })
 
   if (chamberId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.detail(chamberId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.detail(chamberId), refetchType: 'all' })
   }
 
   if (doctorId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.byDoctor(doctorId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.schedule(doctorId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.byDoctor(doctorId), refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: queryKeys.doctors.schedule(doctorId), refetchType: 'all' })
   }
 
   if (hospitalId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.byHospital(hospitalId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.chambers.byHospital(hospitalId), refetchType: 'all' })
+  }
+
+  invalidateDoctors(queryClient, { doctorId })
+  if (hospitalId) {
+    invalidateHospitals(queryClient, { hospitalId })
   }
 }
 

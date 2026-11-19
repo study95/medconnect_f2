@@ -2349,7 +2349,7 @@ function HospitalDetailPage() {
               )}
 
               {/* 2. Emergency Services Card (জরুরি সেবা) */}
-              {(hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone) && (
+              {(hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number) && (
                 <div style={{ 
                   background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)', 
                   borderRadius: 20, 
@@ -2365,7 +2365,7 @@ function HospitalDetailPage() {
                   </p>
                   
                   <a 
-                    href={`tel:${hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone}`}
+                    href={`tel:${hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number}`}
                     style={{
                       background: '#FFFFFF',
                       borderRadius: 12,
@@ -2395,7 +2395,7 @@ function HospitalDetailPage() {
                     }}
                   >
                     <IconPhone size={20} color="currentColor" />
-                    <span>{hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number || hospital?.phone}</span>
+                    <span>{hospital?.hotline || hospital?.emergency_phone || hospital?.ambulance_number}</span>
                   </a>
                 </div>
               )}
@@ -2907,7 +2907,7 @@ function HospitalDetailPage() {
           {/* Left: Hotline Number (Stylized capsule matching right button) */}
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             {(() => {
-              const effectiveHotline = hospital?.hotline || hospital?.emergency_phone || (facts?.find(f => f.type === 'emergency')?.value && facts.find(f => f.type === 'emergency').value !== 'সার্বক্ষণিক' ? facts.find(f => f.type === 'emergency').value : null) || hospital?.ambulance_number;
+              const effectiveHotline = hospital?.hotline;
               return effectiveHotline ? (
                 <a
                   href={`tel:${effectiveHotline}`}

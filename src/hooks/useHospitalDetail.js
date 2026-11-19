@@ -60,8 +60,10 @@ export default function useHospitalDetail(params, options = {}) {
       return res.data?.data || res.data
     },
     enabled: isEnabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
+    initialDataUpdatedAt: 0,
+    refetchOnMount: true,
     initialData: () => {
       // 1. Explicit initial data from props/options or router location state
       if (options.initialHospital) return options.initialHospital

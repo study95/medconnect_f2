@@ -388,6 +388,10 @@ export default function HospitalFormPage() {
       newErrors.phone = 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).'
     }
 
+    if (!form.hotline || !form.hotline.trim()) {
+      newErrors.hotline = 'Hot Number (Hotline) is required.'
+    }
+
     if (form.ambulance_number && form.ambulance_number.trim()) {
       if (!/^01[3-9]\d{8}$/.test(form.ambulance_number.trim())) {
         newErrors.ambulance_number = 'Please enter a valid 11-digit Bangladesh mobile number. Example: 01712345678'
@@ -1091,7 +1095,7 @@ export default function HospitalFormPage() {
                 {errors.phone && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.phone}</div>}
               </div>
               <div className="admin-form-group">
-                <label className="admin-form-label">Hot Number (Hotline)</label>
+                <label className="admin-form-label">Hot Number (Hotline) *</label>
                 <input
                   className={`admin-form-input ${errors.hotline ? 'has-error' : ''}`}
                   name="hotline"

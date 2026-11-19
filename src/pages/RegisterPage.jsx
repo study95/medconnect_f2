@@ -869,11 +869,18 @@ const RegisterPage = () => {
         scrollToFirstError(err)
         return
       }
+      if (!form.hotline || !form.hotline.trim()) {
+        setLoading(false)
+        const err = { hotline: 'হটলাইন নম্বর দেওয়া বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
+        return
+      }
       formData.append('hospital_name', form.hospital_name)
       formData.append('hospital_type', form.hospital_type)
       formData.append('license_number', form.license_number)
       formData.append('address', form.address)
-      if (form.hotline) formData.append('hotline', form.hotline)
+      formData.append('hotline', form.hotline)
       if (form.official_email) {
         formData.append('official_email', form.official_email)
         if (!form.email) formData.append('email', form.official_email)
@@ -1496,18 +1503,13 @@ const RegisterPage = () => {
             {/* ===== STEP 2: DETAILS FORM ===== */}
             {step === 2 && (
               <div className="slide-in-right" key="step2">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
-                  <div>
-                    <h3 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 4, letterSpacing: '-0.5px' }}>
-                      অ্যাকাউন্ট তথ্য দিন
-                    </h3>
-                    <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0 }}>
-                      আপনার নাম, ইমেইল ও পাসওয়ার্ড সেট করুন
-                    </p>
-                  </div>
-                  <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, background: '#F8FAFC', padding: '4px 10px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                    <span style={{ color: '#EF4444', fontWeight: 800, marginRight: 2 }}>*</span> চিহ্নিত ফিল্ড আবশ্যক
-                  </span>
+                <div style={{ marginBottom: 16 }}>
+                  <h3 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 4, letterSpacing: '-0.5px' }}>
+                    অ্যাকাউন্ট তথ্য দিন
+                  </h3>
+                  <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0 }}>
+                    আপনার নাম, ইমেইল ও পাসওয়ার্ড সেট করুন
+                  </p>
                 </div>
 
                 <Form onSubmit={handleSubmit}>
@@ -1641,6 +1643,28 @@ const RegisterPage = () => {
                             <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.license_number}
                           </p>
                         )}
+
+                        {/* Hospital Verification Notice / Hint */}
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            background: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 8,
+                            fontSize: 12.5,
+                            color: '#1E40AF',
+                            lineHeight: 1.45
+                          }}
+                        >
+                          <FileText size={16} color="#2563EB" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <strong>নথিপত্র যাচাইকরণ নির্দেশনা:</strong> হাসপাতাল প্রোফাইল সক্রিয় ও অনুমোদনের জন্য পরবর্তী ধাপে আপনার <strong>হাসপাতালের লাইসেন্স / DGHS সনদপত্র এবং ট্রেড লাইসেন্স</strong> আপলোড করতে হবে।
+                          </div>
+                        </div>
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
@@ -1668,9 +1692,10 @@ const RegisterPage = () => {
 
                       <Row className="g-2" style={{ marginBottom: 14 }}>
                         <Col md={6}>
-                          <Form.Group>
-                            <Form.Label className="auth-label-premium">
-                              হটলাইন নম্বর (Hotline) <span style={{ color: '#94A3B8', fontWeight: 500, fontSize: 11.5 }}>(ঐচ্ছিক)</span>
+                          <Form.Group className="h-100 d-flex flex-column justify-content-end">
+                            <Form.Label className="auth-label-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>হটলাইন (Hotline) <span style={{ color: '#ef4444' }}>*</span></span>
+                              <span style={{ color: '#ef4444', fontWeight: 500, fontSize: 11.5 }}>(বাধ্যতামূলক)</span>
                             </Form.Label>
                             <div className="input-group-premium">
                               <span className="input-icon-premium"><Phone size={17} /></span>
@@ -1680,15 +1705,21 @@ const RegisterPage = () => {
                                 placeholder="যেমনঃ 10616"
                                 value={form.hotline}
                                 onChange={handleChange}
-                                className="auth-input-premium"
+                                className={`auth-input-premium ${fieldErrors.hotline ? 'is-invalid' : ''}`}
                               />
                             </div>
+                            {fieldErrors.hotline && (
+                              <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 4, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.hotline}
+                              </p>
+                            )}
                           </Form.Group>
                         </Col>
                         <Col md={6}>
-                          <Form.Group>
-                            <Form.Label className="auth-label-premium">
-                              অফিসিয়াল ইমেইল (Official Email) <span style={{ color: '#94A3B8', fontWeight: 500, fontSize: 11.5 }}>(ঐচ্ছিক)</span>
+                          <Form.Group className="h-100 d-flex flex-column justify-content-end">
+                            <Form.Label className="auth-label-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>অফিসিয়াল ইমেইল (Email)</span>
+                              <span style={{ color: '#94A3B8', fontWeight: 500, fontSize: 11.5 }}>(ঐচ্ছিক)</span>
                             </Form.Label>
                             <div className="input-group-premium">
                               <span className="input-icon-premium"><Mail size={17} /></span>

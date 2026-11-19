@@ -45,7 +45,7 @@ function useInfiniteDoctors(filters = {}) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes – avoid redundant re-fetches
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   })
 

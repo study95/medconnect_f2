@@ -85,10 +85,13 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
         revision_notes: revisionNotes || adminNotes,
       })
 
+      const isHospital = request.entity_type === 'hospital'
       const successInfo = {
         action: actionType,
         message: actionType === 'approve'
-          ? 'আবেদনটি সফলভাবে অনুমোদিত হয়েছে! নতুন ডাক্তার একাউন্ট তৈরি হয়েছে এবং এজেন্টের ওয়ালেটে ৳৫০০ কমিশন জমা হয়েছে।'
+          ? (isHospital
+              ? 'আবেদনটি সফলভাবে অনুমোদিত হয়েছে! নতুন হাসপাতাল প্রোফাইল তৈরি হয়েছে এবং এজেন্টের ওয়ালেটে ৳১,৫০০ কমিশন জমা হয়েছে।'
+              : 'আবেদনটি সফলভাবে অনুমোদিত হয়েছে! নতুন ডাক্তার একাউন্ট তৈরি হয়েছে এবং এজেন্টের ওয়ালেটে ৳৫০০ কমিশন জমা হয়েছে।')
           : actionType === 'reject'
           ? 'আবেদনটি বাতিল (Reject) করা হয়েছে।'
           : 'নথিপত্র সংশোধনের জন্য এজেন্টের কাছে রিভিশন নোট পাঠানো হয়েছে।'
@@ -97,7 +100,9 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
 
       toast.success(
         actionType === 'approve'
-          ? 'Provider successfully approved! Doctor profile and ৳500 commission provisioned.'
+          ? (isHospital
+              ? 'Hospital successfully approved! Facility profile and ৳1,500 commission provisioned.'
+              : 'Provider successfully approved! Doctor profile and ৳500 commission provisioned.')
           : actionType === 'reject'
           ? 'Onboarding application rejected.'
           : 'Revision requested from field agent.'
@@ -231,14 +236,14 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
               width: 44,
               height: 44,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
+              background: request.entity_type === 'hospital' ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' : 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0, 184, 117, 0.3)'
+              boxShadow: request.entity_type === 'hospital' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(0, 184, 117, 0.3)'
             }}>
-              <Stethoscope size={22} />
+              {request.entity_type === 'hospital' ? <Building2 size={22} /> : <Stethoscope size={22} />}
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -333,51 +338,115 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
               padding: 16
             }}>
               <div style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--admin-text-muted, #64748B)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: '0.04em' }}>
-                Provider Candidate Details
+                {request.entity_type === 'hospital' ? 'Hospital Candidate Details' : 'Doctor Candidate Details'}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>BMDC Reg. No</span>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 800, color: '#00B875' }}>
-                    {payload.bmdc || payload.license_number || 'N/A'}
-                  </span>
-                </div>
+                {request.entity_type === 'hospital' ? (
+                  <>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>DGHS / License No</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 13.5, fontWeight: 800, color: '#10B981' }}>
+                        {payload.license_number || 'N/A'}
+                      </span>
+                    </div>
 
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Primary Degree</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0F172A)' }}>
-                    {payload.degree || 'MBBS'}
-                  </span>
-                </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Facility Type</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0F172A)', textTransform: 'uppercase' }}>
+                        {payload.hospital_type || 'Private'}
+                      </span>
+                    </div>
 
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Contact Phone</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
-                    {payload.phone || 'N/A'}
-                  </span>
-                </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Official Phone</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.phone || 'N/A'}
+                      </span>
+                    </div>
 
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Email Address</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--admin-text, #0F172A)', wordBreak: 'break-all' }}>
-                    {payload.email || 'N/A'}
-                  </span>
-                </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Hotline Number</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.hotline || 'N/A'}
+                      </span>
+                    </div>
 
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Workplace / Hospital</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
-                    {payload.workplace || 'Independent Practitioner'}
-                  </span>
-                </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Official Email</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--admin-text, #0F172A)', wordBreak: 'break-all' }}>
+                        {payload.email || 'N/A'}
+                      </span>
+                    </div>
 
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Visiting Fee</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--admin-text, #0F172A)' }}>
-                    ৳{payload.fee || payload.visiting_fee || 500}
-                  </span>
-                </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Physical Address & Location</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.address || 'Address not specified'}
+                      </span>
+                    </div>
+
+                    {(payload.latitude || payload.longitude) && (
+                      <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(16, 185, 129, 0.08)', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#065F46' }}>
+                          📍 GPS: {payload.latitude}, {payload.longitude}
+                        </span>
+                        <a
+                          href={payload.google_map_url || `https://www.google.com/maps?q=${payload.latitude},${payload.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 11.5, color: '#0284C7', fontWeight: 700, textDecoration: 'underline' }}
+                        >
+                          View Map ↗
+                        </a>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>BMDC Reg. No</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 800, color: '#00B875' }}>
+                        {payload.bmdc || payload.license_number || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Primary Degree</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.degree || 'MBBS'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Contact Phone</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.phone || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Email Address</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--admin-text, #0F172A)', wordBreak: 'break-all' }}>
+                        {payload.email || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Workplace / Hospital</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--admin-text, #0F172A)' }}>
+                        {payload.workplace || 'Independent Practitioner'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--admin-text-muted, #64748B)', display: 'block' }}>Visiting Fee</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--admin-text, #0F172A)' }}>
+                        ৳{payload.fee || payload.visiting_fee || 500}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -412,7 +481,9 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                 </div>
 
                 <p style={{ margin: 0, fontSize: 12.5, color: '#047857', lineHeight: 1.5 }}>
-                  এই প্রোভাইডার আবেদনটি সফলভাবে নিরীক্ষা ও অনুমোদন সম্পন্ন হয়েছে। ডাক্তার প্রোফাইল স্বয়ংক্রিয়ভাবে একটিভ হয়েছে এবং সাবমিটিং ফিল্ড এজেন্টের ওয়ালেটে ৳৫০০ কমিশন জমা হয়েছে।
+                  {request.entity_type === 'hospital'
+                    ? 'এই হাসপাতাল আবেদনটি সফলভাবে নিরীক্ষা ও অনুমোদন সম্পন্ন হয়েছে। হাসপাতাল প্রোফাইল স্বয়ংক্রিয়ভাবে সক্রিয় হয়েছে এবং সাবমিটিং ফিল্ড এজেন্টের ওয়ালেটে ৳১,৫০০ কমিশন জমা হয়েছে।'
+                    : 'এই প্রোভাইডার আবেদনটি সফলভাবে নিরীক্ষা ও অনুমোদন সম্পন্ন হয়েছে। ডাক্তার প্রোফাইল স্বয়ংক্রিয়ভাবে একটিভ হয়েছে এবং সাবমিটিং ফিল্ড এজেন্টের ওয়ালেটে ৳৫০০ কমিশন জমা হয়েছে।'}
                 </p>
 
                 <div style={{
@@ -437,7 +508,9 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                   </div>
                   {request.provisioned_entity_id && (
                     <div style={{ gridColumn: 'span 2' }}>
-                      <span style={{ color: '#64748B', display: 'block', fontSize: 11, fontWeight: 600 }}>লাইভ ডাক্তার সিস্টেম আইডি:</span>
+                      <span style={{ color: '#64748B', display: 'block', fontSize: 11, fontWeight: 600 }}>
+                        লাইভ {request.entity_type === 'hospital' ? 'হাসপাতাল' : 'ডাক্তার'} সিস্টেম আইডি:
+                      </span>
                       <strong style={{ color: '#059669', fontFamily: 'monospace', fontSize: 13 }}>
                         #{request.provisioned_entity_id} ({request.entity_type?.toUpperCase()})
                       </strong>
@@ -661,6 +734,37 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                         I confirm that I have cross-checked <strong>{payload.bmdc}</strong> in the official BMDC database and verified this physician holds an active registration.
                       </span>
                     </label>
+                  </div>
+                )}
+
+                {/* Hospital DGHS / Trade License Verification Guard */}
+                {request.entity_type === 'hospital' && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(2, 132, 199, 0.08) 100%)',
+                    border: '1.5px solid rgba(16, 185, 129, 0.35)',
+                    borderRadius: 14,
+                    padding: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ShieldCheck size={20} color="#10B981" />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--admin-text, #0F172A)' }}>
+                          DGHS / Trade License Verification Guard
+                        </span>
+                      </div>
+                      {payload.license_number && (
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: 6, border: '1px solid #A7F3D0' }}>
+                          লাইসেন্স: {payload.license_number}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--admin-text-muted, #64748B)', lineHeight: 1.45 }}>
+                      স্বাস্থ্য অধিদপ্তর (DGHS) বা পৌর কর্তৃপক্ষের লাইসেন্স নম্বর ও আপলোডকৃত নথিপত্র সতর্কতার সাথে মিলিয়ে যাচাই করুন।
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#047857', fontWeight: 600 }}>
+                      <CheckCircle2 size={15} color="#10B981" />
+                      <span>অনুমোদনের সাথে সাথে হাসপাতালটি লাইভ হবে এবং এজেন্টের অ্যাকাউন্টে ৳১,৫০০ কমিশন ক্রেডিট হবে।</span>
+                    </div>
                   </div>
                 )}
 
@@ -891,7 +995,9 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--admin-text, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              Document #{idx + 1}
+                              {request.entity_type === 'hospital'
+                                ? (idx === 0 ? 'DGHS লাইসেন্স / রেজিস্ট্রেশন সনদপত্র' : (idx === 1 ? 'ট্রেড লাইসেন্স কপি' : `ডকুমেন্ট #${idx + 1}`))
+                                : (idx === 0 ? 'বিএমডিসি (BMDC) সনদপত্র' : (idx === 1 ? 'জাতীয় পরিচয়পত্র (NID)' : `ডকুমেন্ট #${idx + 1}`))}
                             </div>
                             <div style={{ fontSize: 10.5, fontFamily: 'monospace', color: 'var(--admin-text-muted, #64748B)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {docKey}

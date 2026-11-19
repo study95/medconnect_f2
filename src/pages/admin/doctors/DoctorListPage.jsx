@@ -1,6 +1,6 @@
 // DoctorListPage.jsx — Admin doctor management + Doctor own profile
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check, AlertTriangle } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, Award, IdCard, Copy, Check, AlertTriangle, FileText, ExternalLink, ShieldCheck, Clock } from 'lucide-react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
@@ -217,6 +217,9 @@ export default function DoctorListPage() {
       top10Filter: '',
       telemedicineFilter: '',
       specialtyId: '',
+      verificationStatus: '',
+      fromDate: '',
+      toDate: '',
     },
     aliases: {
       statusFilter: ['is_active', 'status'],
@@ -226,7 +229,10 @@ export default function DoctorListPage() {
       unionId: ['union_id'],
       specialtyId: ['specialty_id'],
       top10Filter: ['top_10_doctor'],
-      telemedicineFilter: ['available_telemedicine']
+      telemedicineFilter: ['available_telemedicine'],
+      verificationStatus: ['verification_status'],
+      fromDate: ['from_date', 'start_date', 'registered_from'],
+      toDate: ['to_date', 'end_date', 'registered_to'],
     },
     storageKey: 'admin_doctors_filters'
   })
@@ -240,6 +246,9 @@ export default function DoctorListPage() {
     top10Filter,
     telemedicineFilter,
     specialtyId,
+    verificationStatus,
+    fromDate,
+    toDate,
   } = filters
 
   const setDivisionId = (val) => setFilter('divisionId', val)
@@ -250,9 +259,12 @@ export default function DoctorListPage() {
   const setTop10Filter = (val) => setFilter('top10Filter', val)
   const setTelemedicineFilter = (val) => setFilter('telemedicineFilter', val)
   const setSpecialtyId = (val) => setFilter('specialtyId', val)
+  const setVerificationStatus = (val) => setFilter('verificationStatus', val)
+  const setFromDate = (val) => setFilter('fromDate', val)
+  const setToDate = (val) => setFilter('toDate', val)
 
   const [showFilters, setShowFilters] = useState(Boolean(
-    divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId
+    divisionId || districtId || upazilaId || unionId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || specialtyId || verificationStatus || fromDate || toDate
   ))
 
   const isDoctorOnly = !isAdmin && !isManager && isDoctor
@@ -272,8 +284,11 @@ export default function DoctorListPage() {
     if (top10Filter !== '') params.top_10_doctor = top10Filter
     if (telemedicineFilter !== '') params.available_telemedicine = telemedicineFilter
     if (specialtyId) params.specialty_id = specialtyId
+    if (verificationStatus) params.verification_status = verificationStatus
+    if (fromDate) params.from_date = fromDate
+    if (toDate) params.to_date = toDate
     return params
-  }, [currentPage, perPage, debouncedSearch, divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId])
+  }, [currentPage, perPage, debouncedSearch, divisionId, districtId, upazilaId, unionId, statusFilter, top10Filter, telemedicineFilter, specialtyId, verificationStatus, fromDate, toDate])
 
   // Dedicated lightweight own-profile query for Doctor Portal (/doctor/me)
   const {
@@ -1701,12 +1716,12 @@ export default function DoctorListPage() {
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search doctor by ID, name, BMDC, phone, specialty..."
+        searchPlaceholder="Search doctor by ID, name, BMDC, phone, specialty, location..."
         onRefresh={fetchDoctors}
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '')}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter !== '' || top10Filter !== '' || telemedicineFilter !== '' || verificationStatus || fromDate || toDate)}
         onClearFilters={clearFilters}
         activeFilters={[
           divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => handleDivisionChange('') },
@@ -1715,8 +1730,11 @@ export default function DoctorListPage() {
           unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
           specialtyId && { key: 'specialty', label: `Specialty: ${specialties.find(s => String(s.id) === String(specialtyId))?.name || specialtyId}`, onRemove: () => setSpecialtyId('') },
           statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === '1' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
+          verificationStatus && { key: 'verification', label: `Verification: ${verificationStatus}`, onRemove: () => setVerificationStatus('') },
           top10Filter !== '' && { key: 'top10', label: `Top 10: ${top10Filter === 'yes' ? 'Yes' : 'No'}`, onRemove: () => setTop10Filter('') },
           telemedicineFilter !== '' && { key: 'tele', label: `Telemedicine: ${telemedicineFilter === 'yes' ? 'Yes' : 'No'}`, onRemove: () => setTelemedicineFilter('') },
+          fromDate && { key: 'fromDate', label: `From: ${fromDate}`, onRemove: () => setFromDate('') },
+          toDate && { key: 'toDate', label: `To: ${toDate}`, onRemove: () => setToDate('') },
         ].filter(Boolean)}
         actions={
           isAdmin ? (
@@ -1776,7 +1794,17 @@ export default function DoctorListPage() {
             <option value="0">Inactive</option>
           </select>
         </div>
-        <div style={{ minWidth: 120 }}>
+        <div style={{ minWidth: 140 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Verification</label>
+          <select className="status-select" value={verificationStatus} onChange={e => setVerificationStatus(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
+            <option value="">All Verification</option>
+            <option value="submitted">⏳ In Review (যাচাই অপেক্ষমাণ)</option>
+            <option value="approved">✓ Approved (অনুমোদিত)</option>
+            <option value="revision_requested">⚠ Revision Needed</option>
+            <option value="draft">○ Draft (খসড়া)</option>
+          </select>
+        </div>
+        <div style={{ minWidth: 110 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Top 10</label>
           <select className="status-select" value={top10Filter} onChange={e => setTop10Filter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             <option value="">All</option>
@@ -1784,13 +1812,33 @@ export default function DoctorListPage() {
             <option value="no">No</option>
           </select>
         </div>
-        <div style={{ minWidth: 120 }}>
+        <div style={{ minWidth: 110 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Telemedicine</label>
           <select className="status-select" value={telemedicineFilter} onChange={e => setTelemedicineFilter(e.target.value)} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
             <option value="">All</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
           </select>
+        </div>
+        <div style={{ minWidth: 135 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>From Date</label>
+          <input
+            type="date"
+            className="status-select"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8, padding: '0 8px', fontSize: 12 }}
+          />
+        </div>
+        <div style={{ minWidth: 135 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>To Date</label>
+          <input
+            type="date"
+            className="status-select"
+            value={toDate}
+            onChange={e => setToDate(e.target.value)}
+            style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8, padding: '0 8px', fontSize: 12 }}
+          />
         </div>
       </ListToolbar>
 
@@ -1806,8 +1854,36 @@ export default function DoctorListPage() {
             padding: '14px 20px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <h3 className="admin-card-title" style={{ margin: 0 }}>All Registered Doctors</h3>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--admin-bg, #F1F5F9)', padding: '3px 4px', borderRadius: 8, border: '1px solid var(--admin-border, #E2E8F0)' }}>
+              {[
+                { key: '', label: 'All' },
+                { key: 'submitted', label: '⏳ In Review' },
+                { key: 'approved', label: '✓ Approved' },
+                { key: 'draft', label: 'Draft' },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setVerificationStatus(tab.key)}
+                  style={{
+                    border: 'none',
+                    background: verificationStatus === tab.key ? 'var(--admin-card-bg, #FFFFFF)' : 'transparent',
+                    color: verificationStatus === tab.key ? '#00A88C' : 'var(--admin-text-muted, #64748B)',
+                    fontWeight: verificationStatus === tab.key ? 700 : 600,
+                    fontSize: 11.5,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    boxShadow: verificationStatus === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -1931,9 +2007,9 @@ export default function DoctorListPage() {
         </div>
 
         {(loading && doctors.length === 0) ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '135px', '80px', '20%', '16%', '14%', '11%', '11%', '11%', '6%']} headers={['', 'ID', 'Photo', 'Professional Details', 'Workplace Identity', 'Location Profile', 'Account Status', 'Contact Info', 'Registered', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '130px', '25%', '20%', '18%', '13%', '14%', '110px']} headers={['', 'ID', 'Professional Details', 'Workplace Identity', 'Verification & Docs', 'Account Status', 'Contact Info', 'Actions']} />
         ) : total === 0 ? (
-          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
+          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || verificationStatus || fromDate || toDate || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -1947,15 +2023,13 @@ export default function DoctorListPage() {
                       title={isAllSelected ? 'Deselect all' : 'Select all on this page'}
                     />
                   </th>
-                  <th style={{ width: 135, color: 'var(--admin-text-muted)' }}>ID</th>
-                  <th style={{ width: 80, color: 'var(--admin-text-muted)' }}>Photo</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Professional Details</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Workplace Identity</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Location Profile</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Account Status</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Contact Info</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
-                  <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
+                  <th style={{ width: 130, color: 'var(--admin-text-muted)' }}>ID</th>
+                  <th style={{ width: '25%', color: 'var(--admin-text-muted)' }}>Professional Details</th>
+                  <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Workplace Identity</th>
+                  <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Verification & Docs</th>
+                  <th style={{ width: '13%', color: 'var(--admin-text-muted)' }}>Account Status</th>
+                  <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
+                  <th style={{ width: 110, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1976,38 +2050,45 @@ export default function DoctorListPage() {
                         title="Select row"
                       />
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td style={{ width: 130, whiteSpace: 'nowrap' }}>
                       <CompactUlid value={doctor.public_id || doctor.id} />
                     </td>
                     <td>
-                      <div style={{
-                        width: 48, height: 48, borderRadius: 10, overflow: 'hidden',
-                        background: 'rgba(0, 168, 140, 0.05)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: '1px solid rgba(0, 168, 140, 0.1)'
-                      }}>
-                        {doctor.photo ? (
-                          <img
-                            src={getMediaUrl(doctor.photo)}
-                            alt={doctor.name || ''}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.style.display = 'none';
-                              if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'block';
-                            }}
-                          />
-                        ) : null}
-                        <span style={{ fontSize: 18, fontWeight: 900, color: '#00A88C', display: doctor.photo ? 'none' : 'block' }}>
-                          {doctor.name?.charAt(0) || 'D'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 15 }}>{doctor.name}</div>
-                      <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 700, marginTop: 2 }}>BMDC: {doctor.bmdc || 'N/A'}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', marginTop: 4 }}>
-                        {doctor.specialty?.name || 'General Physician'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                          width: 44, height: 44, minWidth: 44, borderRadius: 10, overflow: 'hidden',
+                          background: 'rgba(0, 168, 140, 0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid rgba(0, 168, 140, 0.15)',
+                          flexShrink: 0
+                        }}>
+                          {doctor.photo ? (
+                            <img
+                              src={getMediaUrl(doctor.photo)}
+                              alt={doctor.name || ''}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'block';
+                              }}
+                            />
+                          ) : null}
+                          <span style={{ fontSize: 17, fontWeight: 900, color: '#00A88C', display: doctor.photo ? 'none' : 'block' }}>
+                            {doctor.name?.charAt(0) || 'D'}
+                          </span>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {doctor.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 700, marginTop: 2 }}>
+                            BMDC: {doctor.bmdc || 'N/A'}
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {doctor.specialty?.name || 'General Physician'}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -2037,14 +2118,159 @@ export default function DoctorListPage() {
                       )}
                     </td>
                     <td>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', maxWidth: 160, lineHeight: 1.5 }}>
-                        {[
-                          doctor.division?.name,
-                          doctor.district?.name,
-                          doctor.upazila?.name,
-                          doctor.union?.name
-                        ].filter(Boolean).join(', ') || '—'}
-                      </div>
+                      {(() => {
+                        const status = doctor.verification_status || (doctor.is_active ? 'approved' : (doctor.bmdc_document ? 'submitted' : 'draft'))
+                        const isApproved = status === 'approved'
+                        const isRevision = status === 'revision_requested'
+                        const isResubmitted = (status === 'submitted' || status === 'in_review') && Boolean(doctor.verification_notes)
+                        const isInReview = status === 'submitted' || status === 'in_review'
+                        const hasBmdc = Boolean(doctor.bmdc_document)
+                        const hasNid = Boolean(doctor.nid_document)
+
+                        const badgeConfig = isApproved
+                          ? { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', icon: '✓', text: 'অনুমোদিত' }
+                          : isResubmitted
+                          ? { bg: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', border: 'rgba(37, 99, 235, 0.25)', icon: '📩', text: 'পুনঃজমা (Re-submitted)' }
+                          : isInReview
+                          ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#D97706', border: 'rgba(245, 158, 11, 0.25)', icon: '⏳', text: 'যাচাই অপেক্ষমাণ' }
+                          : isRevision
+                          ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#DC2626', border: 'rgba(239, 68, 68, 0.25)', icon: '⚠', text: 'সংশোধন আবশ্যক' }
+                          : { bg: 'rgba(100, 116, 139, 0.08)', color: '#64748B', border: 'rgba(100, 116, 139, 0.2)', icon: '○', text: 'খসড়া (Draft)' }
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 145 }}>
+                            <div>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  background: badgeConfig.bg,
+                                  color: badgeConfig.color,
+                                  border: `1px solid ${badgeConfig.border}`,
+                                }}
+                              >
+                                <span>{badgeConfig.icon}</span>
+                                <span>{badgeConfig.text}</span>
+                              </span>
+                              {doctor.verification_notes && (
+                                <div
+                                  style={{
+                                    marginTop: 3,
+                                    fontSize: 10,
+                                    color: isRevision ? '#DC2626' : '#2563EB',
+                                    maxWidth: 170,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  title={`নোট: ${doctor.verification_notes}`}
+                                >
+                                  💬 {doctor.verification_notes}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              {hasBmdc ? (
+                                <a
+                                  href={getMediaUrl(doctor.bmdc_document)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="BMDC সনদ দেখুন (নতুন ট্যাবে খুলুন)"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(0, 168, 140, 0.1)',
+                                    color: '#00A88C',
+                                    border: '1px solid rgba(0, 168, 140, 0.25)',
+                                    textDecoration: 'none',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <FileText size={10} />
+                                  <span>BMDC ✓</span>
+                                  <ExternalLink size={9} style={{ opacity: 0.7 }} />
+                                </a>
+                              ) : (
+                                <span
+                                  title="BMDC সনদ জমা দেওয়া হয়নি"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(148, 163, 184, 0.08)',
+                                    color: 'var(--admin-text-muted, #94A3B8)',
+                                    border: '1px dashed var(--admin-border, #CBD5E1)',
+                                  }}
+                                >
+                                  <span>BMDC —</span>
+                                </span>
+                              )}
+
+                              {hasNid ? (
+                                <a
+                                  href={getMediaUrl(doctor.nid_document)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="NID কার্ড দেখুন (নতুন ট্যাবে খুলুন)"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#2563EB',
+                                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                                    textDecoration: 'none',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <IdCard size={10} />
+                                  <span>NID ✓</span>
+                                  <ExternalLink size={9} style={{ opacity: 0.7 }} />
+                                </a>
+                              ) : (
+                                <span
+                                  title="NID কার্ড জমা দেওয়া হয়নি"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(148, 163, 184, 0.08)',
+                                    color: 'var(--admin-text-muted, #94A3B8)',
+                                    border: '1px dashed var(--admin-border, #CBD5E1)',
+                                  }}
+                                >
+                                  <span>NID —</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2056,7 +2282,7 @@ export default function DoctorListPage() {
                                 width: 34, height: 18, borderRadius: 10, padding: 2, cursor: 'pointer',
                                 background: doctor.is_active ? '#10B981' : '#CBD5E1',
                                 display: 'flex', transition: '0.2s',
-                                justifyConent: doctor.is_active ? 'flex-end' : 'flex-start'
+                                justifyContent: doctor.is_active ? 'flex-end' : 'flex-start'
                               }}
                             >
                               <div style={{ width: 14, height: 14, borderRadius: '50%', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }} />
@@ -2082,16 +2308,8 @@ export default function DoctorListPage() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{doctor.phone || '—'}</div>
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{doctor.email || '—'}</div>
                     </td>
-                    <td>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 600 }}>
-                        {doctor.created_at ? new Date(doctor.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
-                        {doctor.created_at ? new Date(doctor.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div className="admin-actions" style={{ justifyContent: 'flex-end', gap: 10 }}>
+                    <td style={{ width: 110, textAlign: 'right', paddingRight: 24 }}>
+                      <div className="admin-actions" style={{ justifyContent: 'flex-end', gap: 8, flexWrap: 'nowrap' }}>
                         <button 
                           className="admin-action-btn admin-action-btn-view" 
                           title="View Profile" 

@@ -64,7 +64,18 @@ export default function QuickAppointmentPage() {
   const [doctorSearch, setDoctorSearch] = useState('')
   const debouncedDoctorSearch = useDebounce(doctorSearch, 250)
   const doctorsCacheRef = useRef(new Map())
+  const [syncTrigger, setSyncTrigger] = useState(0)
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false)
+
+  // Real-time synchronization: wipe cache and refresh when doctors mutated in another tab/admin
+  useEffect(() => {
+    const handleDoctorSync = () => {
+      doctorsCacheRef.current.clear()
+      setSyncTrigger(prev => prev + 1)
+    }
+    window.addEventListener('medconnect:doctors-updated', handleDoctorSync)
+    return () => window.removeEventListener('medconnect:doctors-updated', handleDoctorSync)
+  }, [])
 
   // Instant in-memory filter: updates in 0ms on every keystroke without waiting for network
   const filteredDoctorsList = useMemo(() => {
@@ -405,7 +416,7 @@ export default function QuickAppointmentPage() {
       })
 
     return () => { isMounted = false }
-  }, [selectedSpecialtyId, debouncedDoctorSearch, dateMode, customDate])
+  }, [selectedSpecialtyId, debouncedDoctorSearch, dateMode, customDate, syncTrigger])
 
   // Helper to format Chamber display label with Hospital Name (without address) and Day info
   const getChamberLabel = (ch) => {

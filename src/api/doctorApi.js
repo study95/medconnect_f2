@@ -45,3 +45,7 @@ export const deleteDoctorVerificationDocument = (type) =>
 // POST /api/doctor/verification-documents/submit
 export const submitDoctorVerificationApplication = () =>
   axiosInstance.post('/doctor/verification-documents/submit')
+
+// POST /api/doctors/:id/verify (Admin Only)
+export const verifyDoctor = (id, data) =>
+  axiosInstance.post(`/doctors/${id}/verify`, data)

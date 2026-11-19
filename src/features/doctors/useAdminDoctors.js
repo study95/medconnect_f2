@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateDoctors } from '../../lib/cacheInvalidation'
 import { useLookupQuery } from '../../lib/queryHooks'
-import { getSessionSnapshot, saveSessionSnapshot } from '../../lib/cacheSnapshot'
+import { getSessionSnapshot, saveSessionSnapshot, clearSessionSnapshot } from '../../lib/cacheSnapshot'
 import {
   getDoctors,
   getMyDoctorProfile,
@@ -49,6 +49,9 @@ export function useMyDoctorProfile({ enabled = true } = {}) {
       return data
     },
     initialData: () => getSessionSnapshot('doctor_me'),
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
     enabled,
   })
 
@@ -93,9 +96,12 @@ export function useAdminDoctors(filters = {}, { enabled = true } = {}) {
       }
       return undefined
     },
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
     enabled,
     placeholderData: keepPreviousData,
-    refetchInterval: 3 * 60 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
   })
 
@@ -134,6 +140,8 @@ export function useAdminDoctorDetail(id) {
     },
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
   })
 
   return {

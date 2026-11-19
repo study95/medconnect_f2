@@ -49,6 +49,9 @@ export function useMyHospitalProfile({ enabled = true } = {}) {
       return data
     },
     initialData: () => getSessionSnapshot('hospital_me'),
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
     enabled,
   })
 
@@ -93,6 +96,9 @@ export function useAdminHospitals(filters = {}, { enabled = true } = {}) {
       }
       return undefined
     },
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
     enabled,
     placeholderData: keepPreviousData,
     refetchInterval: 3 * 60 * 1000,
@@ -135,6 +141,8 @@ export function useAdminHospitalDetail(id, { initialHospital = null } = {}) {
     },
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
   })
 
   return {

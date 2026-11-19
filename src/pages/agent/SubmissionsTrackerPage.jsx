@@ -216,20 +216,40 @@ export default function SubmissionsTrackerPage() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '10px 18px',
+                gap: 6,
+                padding: '9px 16px',
                 borderRadius: 10,
                 background: 'linear-gradient(135deg, #00B875 0%, #009E64 100%)',
                 color: '#FFFFFF',
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: 800,
                 textDecoration: 'none',
                 boxShadow: '0 4px 12px rgba(0, 184, 117, 0.3)',
                 transition: 'all 0.2s'
               }}
             >
-              <Plus size={16} strokeWidth={2.5} />
-              <span>+ Onboard Doctor</span>
+              <Plus size={15} strokeWidth={2.5} />
+              <span>+ Doctor</span>
+            </Link>
+            <Link
+              to="/agent/onboard/hospital"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 16px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                color: '#FFFFFF',
+                fontSize: 13,
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Building2 size={15} strokeWidth={2.5} />
+              <span>+ Hospital</span>
             </Link>
           </div>
         </div>
@@ -311,25 +331,44 @@ export default function SubmissionsTrackerPage() {
               <ClipboardList size={44} style={{ color: '#CBD5E1', margin: '0 auto 12px' }} />
               <h3 style={{ fontSize: 15, fontWeight: 800, color: '#334155', margin: 0 }}>No Submissions Found</h3>
               <p style={{ fontSize: 13, color: '#64748B', margin: '6px 0 18px' }}>
-                Start by registering your first physician candidate to earn partner commissions.
+                Start by registering your first physician or hospital candidate to earn partner commissions.
               </p>
-              <Link
-                to="/agent/onboard/doctor"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '9px 16px',
-                  borderRadius: 10,
-                  background: '#00B875',
-                  color: '#FFFFFF',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                <Plus size={15} /> + Onboard Doctor Now
-              </Link>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Link
+                  to="/agent/onboard/doctor"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '9px 16px',
+                    borderRadius: 10,
+                    background: '#00B875',
+                    color: '#FFFFFF',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Plus size={15} /> + Onboard Doctor
+                </Link>
+                <Link
+                  to="/agent/onboard/hospital"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '9px 16px',
+                    borderRadius: 10,
+                    background: '#10B981',
+                    color: '#FFFFFF',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Building2 size={15} /> + Onboard Hospital
+                </Link>
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -393,7 +432,9 @@ export default function SubmissionsTrackerPage() {
                       <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                         {item.status === 'revision_requested' ? (
                           <Link
-                            to={`/agent/onboard/doctor?edit_code=${item.request_code}`}
+                            to={item.entity_type === 'hospital' 
+                              ? `/agent/onboard/hospital?edit_code=${item.request_code}` 
+                              : `/agent/onboard/doctor?edit_code=${item.request_code}`}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',

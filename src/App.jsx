@@ -168,6 +168,7 @@ const SerialDisplayManagerPage = lazy(() => import('./pages/admin/display/Serial
 // Field Agent Pages
 const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'))
 const DoctorOnboardWizardPage = lazy(() => import('./pages/agent/DoctorOnboardWizardPage'))
+const HospitalOnboardWizardPage = lazy(() => import('./pages/agent/HospitalOnboardWizardPage'))
 const SubmissionsTrackerPage = lazy(() => import('./pages/agent/SubmissionsTrackerPage'))
 const AgentWalletPage = lazy(() => import('./pages/agent/AgentWalletPage'))
 
@@ -614,6 +615,7 @@ function App() {
             <Route index element={<AgentDashboardPage />} />
             <Route path="dashboard" element={<Navigate to="/agent" replace />} />
             <Route path="onboard/doctor" element={<DoctorOnboardWizardPage />} />
+            <Route path="onboard/hospital" element={<HospitalOnboardWizardPage />} />
             <Route path="tracker" element={<SubmissionsTrackerPage />} />
             <Route path="wallet" element={<AgentWalletPage />} />
           </Route>

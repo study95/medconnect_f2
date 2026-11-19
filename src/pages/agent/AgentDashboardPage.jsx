@@ -7,6 +7,7 @@ import {
   Clock, 
   Plus, 
   Stethoscope, 
+  Building2,
   ShieldCheck, 
   ChevronRight, 
   QrCode, 
@@ -280,7 +281,7 @@ export default function AgentDashboardPage() {
                 background: isAgentSuspended ? '#F1F5F9' : '#FFFFFF',
                 color: isAgentSuspended ? '#94A3B8' : '#064E3B',
                 borderRadius: 10,
-                padding: '9px 18px',
+                padding: '9px 16px',
                 fontSize: 13,
                 fontWeight: 800,
                 textDecoration: 'none',
@@ -290,7 +291,29 @@ export default function AgentDashboardPage() {
               }}
             >
               {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Plus size={16} color="#059669" />}
-              <span>{isAgentSuspended ? 'Onboard (Locked)' : 'Onboard Doctor'}</span>
+              <span>{isAgentSuspended ? 'Doctor (Locked)' : 'Onboard Doctor'}</span>
+            </Link>
+
+            <Link
+              to="/agent/onboard/hospital"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                background: isAgentSuspended ? '#F1F5F9' : '#10B981',
+                color: isAgentSuspended ? '#94A3B8' : '#FFFFFF',
+                borderRadius: 10,
+                padding: '9px 16px',
+                fontSize: 13,
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                whiteSpace: 'nowrap',
+                transition: 'transform 0.15s ease'
+              }}
+            >
+              {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Building2 size={16} color="#FFFFFF" />}
+              <span>{isAgentSuspended ? 'Hospital (Locked)' : 'Onboard Hospital'}</span>
             </Link>
           </div>
         </div>
@@ -609,24 +632,45 @@ export default function AgentDashboardPage() {
               <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#94A3B8' }}>
                 {search ? 'অন্য নাম বা BMDC নম্বর দিয়ে অনুসন্ধান করুন।' : 'কমিশন অর্জনের জন্য আপনার প্রথম ডাক্তার অনবোর্ডিং শুরু করুন।'}
               </p>
-              <Link
-                to="/agent/onboard/doctor"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  background: isAgentSuspended ? '#94A3B8' : '#059669',
-                  color: '#FFFFFF',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                {isAgentSuspended ? <Lock size={14} /> : <Plus size={14} />}
-                <span>{isAgentSuspended ? 'Onboard (Locked)' : 'Onboard Doctor'}</span>
-              </Link>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Link
+                  to="/agent/onboard/doctor"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: isAgentSuspended ? '#94A3B8' : '#059669',
+                    color: '#FFFFFF',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    textDecoration: 'none'
+                  }}
+                >
+                  {isAgentSuspended ? <Lock size={14} /> : <Plus size={14} />}
+                  <span>{isAgentSuspended ? 'Doctor (Locked)' : '+ Onboard Doctor'}</span>
+                </Link>
+
+                <Link
+                  to="/agent/onboard/hospital"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: isAgentSuspended ? '#94A3B8' : '#10B981',
+                    color: '#FFFFFF',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    textDecoration: 'none'
+                  }}
+                >
+                  {isAgentSuspended ? <Lock size={14} /> : <Building2 size={14} />}
+                  <span>{isAgentSuspended ? 'Hospital (Locked)' : '+ Onboard Hospital'}</span>
+                </Link>
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>

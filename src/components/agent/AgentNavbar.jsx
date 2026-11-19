@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { 
   Gauge, 
   Stethoscope, 
+  Building2,
   ClipboardList, 
   Wallet, 
   ArrowUpRight, 
@@ -36,8 +37,14 @@ export default function AgentNavbar() {
     { to: '/agent', label: 'Overview', icon: Gauge, exact: true },
     { 
       to: '/agent/onboard/doctor', 
-      label: isAgentSuspended ? 'Onboard (Locked)' : '+ Onboard Doctor', 
+      label: isAgentSuspended ? 'Doctor (Locked)' : 'Onboard Doctor', 
       icon: isAgentSuspended ? Lock : Stethoscope,
+      locked: isAgentSuspended
+    },
+    { 
+      to: '/agent/onboard/hospital', 
+      label: isAgentSuspended ? 'Hospital (Locked)' : 'Onboard Hospital', 
+      icon: isAgentSuspended ? Lock : Building2,
       locked: isAgentSuspended
     },
     { to: '/agent/tracker', label: 'My Submissions', icon: ClipboardList },
@@ -71,27 +78,6 @@ export default function AgentNavbar() {
         justifyContent: 'space-between',
         gap: 16
       }}>
-        {/* Left: Partner Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-            background: 'linear-gradient(135deg, rgba(0, 184, 117, 0.12) 0%, rgba(2, 132, 199, 0.12) 100%)',
-            color: '#00B875',
-            padding: '4px 10px',
-            borderRadius: 8,
-            border: '1px solid rgba(0, 184, 117, 0.25)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00B875', boxShadow: '0 0 6px #00B875' }} />
-            Field Partner Desk
-          </span>
-        </div>
-
         {/* Center: Navigation Links */}
         <nav style={{
           display: 'flex',

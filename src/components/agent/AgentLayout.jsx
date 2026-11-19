@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Stethoscope, 
+  Building2,
   ClipboardList, 
   Wallet, 
   LogOut, 
@@ -83,6 +84,7 @@ export default function AgentLayout() {
   const navLinks = [
     { to: '/agent', label: 'Overview', icon: LayoutDashboard, exact: true },
     { to: '/agent/onboard/doctor', label: 'Onboard Doctor', icon: Stethoscope },
+    { to: '/agent/onboard/hospital', label: 'Onboard Hospital', icon: Building2 },
     { to: '/agent/tracker', label: 'Submissions', icon: ClipboardList },
     { to: '/agent/wallet', label: 'Wallet', icon: Wallet },
   ]
@@ -124,7 +126,7 @@ export default function AgentLayout() {
           justifyContent: 'space-between',
           gap: 16
         }}>
-          {/* Left: Brand & Partner Badge */}
+          {/* Left: Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Link to="/agent" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
               <img 
@@ -133,28 +135,6 @@ export default function AgentLayout() {
                 style={{ height: 38, width: 'auto', objectFit: 'contain' }}
               />
             </Link>
-
-            <div style={{ height: 24, width: 1, background: '#E2E8F0' }} className="d-none d-md-block" />
-
-            <div className="d-none d-md-flex align-items-center gap-2">
-              <span style={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                background: 'rgba(6, 95, 70, 0.08)',
-                color: '#065F46',
-                padding: '4px 10px',
-                borderRadius: 8,
-                border: '1px solid rgba(6, 95, 70, 0.2)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 6px #10B981' }} />
-                Field Partner Desk
-              </span>
-            </div>
           </div>
 
           {/* Center: Desktop Navigation Bar */}
