@@ -24,6 +24,7 @@ import {
 import { toast } from 'react-hot-toast'
 import adminAgentApi from '../../../api/adminAgentApi'
 import { getMediaUrl } from '../../../utils/mediaUtils'
+import CustomCheckbox from '../../../components/common/CustomCheckbox'
 
 export default function OnboardingSplitViewer({ request, onClose, onDecisionComplete }) {
   const [isBmdcVerified, setIsBmdcVerified] = useState(false)
@@ -649,19 +650,12 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                       </a>
                     </div>
 
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginTop: 8 }}>
-                      <input
-                        type="checkbox"
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginTop: 8, userSelect: 'none' }}>
+                      <CustomCheckbox
                         checked={isBmdcVerified}
                         onChange={(e) => setIsBmdcVerified(e.target.checked)}
-                        style={{
-                          width: 18,
-                          height: 18,
-                          accentColor: '#00B875',
-                          cursor: 'pointer',
-                          marginTop: 2,
-                          flexShrink: 0
-                        }}
+                        color="#10B981"
+                        style={{ marginTop: 2 }}
                       />
                       <span style={{ fontSize: 12.5, color: 'var(--admin-text, #0F172A)', lineHeight: 1.4 }}>
                         I confirm that I have cross-checked <strong>{payload.bmdc}</strong> in the official BMDC database and verified this physician holds an active registration.

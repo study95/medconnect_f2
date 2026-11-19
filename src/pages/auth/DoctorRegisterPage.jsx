@@ -8,6 +8,7 @@ import { getSpecialties } from '../../api/adminApi'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import PasswordInput from '../../components/common/PasswordInput'
 import LegalDocumentModal from '../../components/common/LegalDocumentModal'
+import CustomCheckbox from '../../components/common/CustomCheckbox'
 import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
@@ -137,7 +138,9 @@ export default function DoctorRegisterPage() {
       })
     } else {
       if (result.errors) setErrors(result.errors)
-      else if (result.message) toast.error(result.message)
+      if (result.message && (!result.errors || Object.keys(result.errors).length === 0)) {
+        toast.error(result.message)
+      }
     }
   }
 
@@ -370,14 +373,14 @@ export default function DoctorRegisterPage() {
             transition: 'all 0.25s ease'
           }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-              <input
-                type="checkbox"
+              <CustomCheckbox
                 checked={agreedToTerms}
                 onChange={(e) => {
                   setAgreedToTerms(e.target.checked)
                   if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }))
                 }}
-                style={{ width: 18, height: 18, accentColor: '#4F46E5', cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
+                color="#10B981"
+                style={{ marginTop: 2 }}
               />
               <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
                 আমি Doctor Booklet-এর{' '}

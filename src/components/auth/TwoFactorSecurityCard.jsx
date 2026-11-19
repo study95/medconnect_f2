@@ -11,8 +11,11 @@ import {
   Copy, Check, Download, AlertTriangle, Eye, EyeOff, X, Loader2, ArrowRight 
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
+import CustomCheckbox from '../common/CustomCheckbox'
 
 export default function TwoFactorSecurityCard({ onStatusChange }) {
+  const { showSuccess, showError } = useDialog()
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState({ enabled: false, setup_at: null, backup_codes_remaining: 0 })
   const [showGuide, setShowGuide] = useState(true)
@@ -107,7 +110,12 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
     try {
       const res = await enableTwoFactorApi({ code: cleanCode })
       if (res.data?.success) {
-        toast.success(res.data.message || 'Google Authenticator ২-ধাপ যাচাই চালু হয়েছে!')
+        showSuccess({
+          title: 'নিরাপত্তা সক্রিয় হয়েছে',
+          message: res.data.message || 'Google Authenticator ২-ধাপ যাচাই সফলভাবে চালু হয়েছে!',
+          confirmText: 'ঠিক আছে',
+          autoCloseMs: 2500
+        })
         setShowSetupModal(false)
         resetSetupModalState()
         fetchStatus()
@@ -141,7 +149,12 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
         code: disableCode.trim(),
       })
       if (res.data?.success) {
-        toast.success('Google Authenticator ২-ধাপ যাচাই সফলভাবে বন্ধ করা হয়েছে।')
+        showSuccess({
+          title: 'নিরাপত্তা সেটিংস পরিবর্তন',
+          message: 'Google Authenticator ২-ধাপ যাচাই সফলভাবে বন্ধ করা হয়েছে।',
+          confirmText: 'ঠিক আছে',
+          autoCloseMs: 2500
+        })
         setShowDisableModal(false)
         resetDisableModalState()
         fetchStatus()
@@ -718,11 +731,11 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
                   </div>
 
                   {/* Confirmation Checkbox */}
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
-                    <input
-                      type="checkbox"
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 16, userSelect: 'none' }}>
+                    <CustomCheckbox
                       checked={savedCodesChecked}
                       onChange={(e) => setSavedCodesChecked(e.target.checked)}
+                      color="#10B981"
                       style={{ marginTop: 2 }}
                     />
                     <span style={{ fontSize: 12, color: 'var(--admin-text)', lineHeight: 1.4 }}>

@@ -25,6 +25,7 @@ import {
   disableTwoFactorApi 
 } from '../../../api/authApi'
 import { toast } from 'react-hot-toast'
+import CustomCheckbox from '../../../components/common/CustomCheckbox'
 
 export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange }) {
   const [loading, setLoading] = useState(true)
@@ -496,11 +497,11 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
                       ))}
                     </div>
 
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 10, cursor: 'pointer', fontSize: 11.5, color: '#92400E' }}>
-                      <input
-                        type="checkbox"
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 10, cursor: 'pointer', fontSize: 11.5, color: '#92400E', userSelect: 'none' }}>
+                      <CustomCheckbox
                         checked={savedCodesChecked}
                         onChange={(e) => setSavedCodesChecked(e.target.checked)}
+                        color="#10B981"
                         style={{ marginTop: 2 }}
                       />
                       <span>আমি ব্যাকআপ কোডগুলো নিরাপদ স্থানে কপি বা সেভ করে রেখেছি।</span>

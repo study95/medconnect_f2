@@ -91,6 +91,66 @@ button, input, select, textarea {
   font-family: 'Noto Sans Bengali', 'Hind Siliguri', 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
+/* ===================================================
+   UNIFIED PREMIUM CHECKBOX STYLING (Image 2 style)
+   Applies emerald rounded checkboxes across the app
+=================================================== */
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]) {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid #CBD5E1;
+  background-color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  position: relative;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 11px 11px;
+}
+
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]):hover:not(:disabled) {
+  border-color: #10B981;
+}
+
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]):checked {
+  background-color: #10B981;
+  border-color: #10B981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]):indeterminate {
+  background-color: #10B981;
+  border-color: #10B981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]):focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.4);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:not(.table-checkbox-hidden):not([style*="opacity: 0"]):not([style*="opacity:0"]):not([style*="opacity: 0%"]):not([style*="opacity:0%"]):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #F1F5F9;
+  border-color: #E2E8F0;
+}
+
 /* Fix for Google Translate Banner Gap */
 .goog-te-banner-frame.skiptranslate, 
 #goog-gt-tt, 

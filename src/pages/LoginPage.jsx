@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSiteSettings } from '../utils/contentService'
 import { getMediaUrl } from '../utils/mediaUtils'
 import { User, ShieldCheck, Hotel, Mail, Lock, Shield, Clock, CalendarCheck, Heart, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, AlertCircle, LockKeyhole, Smartphone } from 'lucide-react'
+import CustomCheckbox from '../components/common/CustomCheckbox'
 import '../styles/auth-premium.css'
 
 function LoginPage() {
@@ -365,12 +366,11 @@ function LoginPage() {
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: 500 }}>
-                    <input
-                      type="checkbox"
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155', fontWeight: 500, userSelect: 'none' }}>
+                    <CustomCheckbox
                       checked={trustDevice}
                       onChange={(e) => setTrustDevice(e.target.checked)}
-                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#0D9488' }}
+                      color="#10B981"
                     />
                     <span>এই ডিভাইসে আর জিজ্ঞাসা করবেন না</span>
                   </label>

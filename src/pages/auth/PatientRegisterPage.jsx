@@ -8,6 +8,7 @@ import useLocations from '../../hooks/useLocations'
 import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import PasswordInput from '../../components/common/PasswordInput'
 import LegalDocumentModal from '../../components/common/LegalDocumentModal'
+import CustomCheckbox from '../../components/common/CustomCheckbox'
 import '../../styles/auth.css'
 
 export default function PatientRegisterPage() {
@@ -299,14 +300,14 @@ export default function PatientRegisterPage() {
             transition: 'all 0.25s ease'
           }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-              <input
-                type="checkbox"
+              <CustomCheckbox
                 checked={agreedToTerms}
                 onChange={(e) => {
                   setAgreedToTerms(e.target.checked)
                   if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }))
                 }}
-                style={{ width: 18, height: 18, accentColor: '#00A88C', cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
+                color="#10B981"
+                style={{ marginTop: 2 }}
               />
               <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
                 আমি Doctor Booklet-এর{' '}

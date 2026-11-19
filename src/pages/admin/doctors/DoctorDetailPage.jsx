@@ -165,6 +165,74 @@ export default function DoctorDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Verification Documents Card */}
+          <div className="admin-card">
+            <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 className="admin-card-title" style={{ color: 'var(--admin-text)', margin: 0 }}>🪪 Verification Documents</h3>
+                {doctor.verification_status === 'draft' && (
+                  <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #FDE68A' }}>
+                    ⏳ খসড়া (জমা হয়নি)
+                  </span>
+                )}
+                {doctor.verification_status === 'submitted' && (
+                  <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                    📩 চূড়ান্ত জমা হয়েছে
+                  </span>
+                )}
+                {doctor.verification_status === 'approved' && (
+                  <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                    ✓ অনুমোদিত
+                  </span>
+                )}
+                {doctor.verification_status === 'revision_requested' && (
+                  <span style={{ fontSize: 11, background: '#FEF2F2', color: '#DC2626', padding: '2px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #FECACA' }}>
+                    ⚠️ সংশোধন চাওয়া হয়েছে
+                  </span>
+                )}
+              </div>
+              {doctor.bmdc && (
+                <a
+                  href={`https://bmdc.org.bd`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, border: '1px solid #A7F3D0' }}
+                >
+                  Verify BMDC ↗
+                </a>
+              )}
+            </div>
+            <div className="admin-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>BMDC Certificate</span>
+                {doctor.bmdc_document ? (
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #BBF7D0' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>✓ Document Uploaded</span>
+                    <a href={getMediaUrl(doctor.bmdc_document)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#059669', textDecoration: 'underline' }}>
+                      View File ↗
+                    </a>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 6, padding: '8px 12px', background: '#FEF2F2', borderRadius: 8, border: '1px solid #FECACA', color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
+                    ⚠️ No BMDC document uploaded yet
+                  </div>
+                )}
+              </div>
+
+              {doctor.nid_document && (
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>NID Document</span>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>NID Card Copy</span>
+                    <a href={getMediaUrl(doctor.nid_document)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#0284C7', textDecoration: 'underline' }}>
+                      View File ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Clinical Details */}

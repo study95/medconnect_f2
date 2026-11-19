@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import { useDialog } from '../hooks/useDialog'
 import { Container, Row, Col, Nav } from 'react-bootstrap'
 import { createAppointment, getBookedSlots } from '../api/appointmentApi'
 import { sendOtp, verifyOtp, patientCheckIdentifier } from '../api/authApi'
@@ -39,6 +40,7 @@ const reasonTypeBn = {
 export default function BookAppointmentPage() {
   const { doctorId } = useParams()
   const navigate = useNavigate()
+  const { showSuccess, showError } = useDialog()
   const [searchParams] = useSearchParams()
   const chamberIdParam = searchParams.get('chamberId')
   const dateParam = searchParams.get('date')
@@ -475,7 +477,7 @@ export default function BookAppointmentPage() {
       return
     }
     if (isSlotBooked(slot)) {
-      toast.error('এই সময় স্লটটি ইতোমধ্যে বুক করা হয়েছে। অন্য স্লট নির্বাচন করুন।')
+      showWarning('স্লটটি ইতোমধ্যে বুকড', 'এই সময় স্লটটি ইতোমধ্যে বুক করা হয়েছে। অনুগ্রহ করে অন্য স্লট নির্বাচন করুন।')
       return
     }
     setForm(prev => ({ ...prev, appointment_time: slot }));
@@ -590,7 +592,7 @@ export default function BookAppointmentPage() {
   useEffect(() => {
     if (form.appointment_time && isSlotBooked(form.appointment_time)) {
       setForm(prev => ({ ...prev, appointment_time: '' }))
-      toast.error('আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অন্য স্লট নির্বাচন করুন।', { id: 'slot-taken-toast' })
+      showWarning('স্লটটি খালি নেই', 'আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অনুগ্রহ করে অন্য স্লট নির্বাচন করুন।')
     }
   }, [bookedSlots, form.appointment_date])
 

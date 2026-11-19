@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
+import CustomCheckbox from '../../components/common/CustomCheckbox';
 
 export default function AdminSecureLoginPage() {
   const [step, setStep] = useState('credentials'); // 'credentials' | '2fa'
@@ -616,16 +617,15 @@ export default function AdminSecureLoginPage() {
               </div>
 
               <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   id="backup-confirm-checkbox"
                   checked={backupConfirmed}
                   onChange={(e) => setBackupConfirmed(e.target.checked)}
-                  style={{ cursor: 'pointer', accentColor: '#0D9488', width: '15px', height: '15px' }}
+                  color="#10B981"
                 />
                 <label 
                   htmlFor="backup-confirm-checkbox"
-                  style={{ color: '#78350F', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+                  style={{ color: '#78350F', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', margin: 0, userSelect: 'none' }}
                 >
                   আমি ব্যাকআপ কোডগুলো নিরাপদ স্থানে সংরক্ষণ করেছি
                 </label>

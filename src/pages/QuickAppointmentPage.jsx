@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext'
 import SeoHead from '../components/common/SeoHead'
 import { escapeHtml } from '../utils/sanitizeHtml'
 import { toast } from 'react-hot-toast'
+import { useDialog } from '../hooks/useDialog'
 import {
   getBangladeshDateStr,
   getBangladeshTodayStr,
@@ -38,6 +39,7 @@ const bnDaysShort = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', '
 
 export default function QuickAppointmentPage() {
   const navigate = useNavigate()
+  const { showSuccess, showError, showWarning } = useDialog()
   const [searchParams] = useSearchParams()
 
   const { specialties } = useSpecialties()
@@ -544,7 +546,11 @@ export default function QuickAppointmentPage() {
             // If currently selected slot became booked in background, deselect and inform
             setSelectedTimeSlot(prev => {
               if (prev && booked.includes(prev)) {
-                toast.error('আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অন্য স্লট বেছে নিন।', { id: 'slot-poll-alert' })
+                showWarning({
+                  title: 'স্লটটি খালি নেই',
+                  message: 'আপনার নির্বাচিত সময় স্লটটি এইমাত্র অন্য কেউ বুক করে ফেলেছেন। অন্য স্লট বেছে নিন।',
+                  confirmText: 'ঠিক আছে'
+                })
                 return ''
               }
               return prev
@@ -848,7 +854,11 @@ export default function QuickAppointmentPage() {
   // Open Wizard Handler with Inline Field Validation
   const handleProceedBooking = () => {
     if (isDoctorServiceDisabled) {
-      toast.error('এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে।')
+      showWarning({
+        title: 'অনলাইন বুকিং বন্ধ',
+        message: 'এই ডাক্তারের অনলাইন বুকিং সেবাটি বর্তমানে বন্ধ রয়েছে।',
+        confirmText: 'ঠিক আছে'
+      })
       return
     }
 
@@ -1416,7 +1426,12 @@ export default function QuickAppointmentPage() {
         payment_status: 'বকেয়া (চেম্বারে ক্যাশ প্রদেয়)'
       })
       setModalStep(5)
-      toast.success('অ্যাপয়েন্টমেন্ট বুকিং সফল হয়েছে!', { id: 'book-ok' })
+      showSuccess({
+        title: 'সিরিয়াল নিশ্চিত হয়েছে! 🩺',
+        message: 'আপনার অ্যাপয়েন্টমেন্ট সফলভাবে বুক করা হয়েছে। ডিজিটাল রসিদ দেখতে ঠিক আছে চাপুন।',
+        confirmText: 'ঠিক আছে',
+        autoCloseMs: 2500
+      })
     } catch (err) {
       console.error('Appointment booking failed:', err)
       let errorMsg = err.response?.data?.message || err.response?.data?.error || 'অ্যাপয়েন্টমেন্ট বুকিং সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'

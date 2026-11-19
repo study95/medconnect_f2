@@ -31,3 +31,17 @@ export const getSpecialties = (params = { all: true, per_page: 200 }) =>
 // GET /api/doctors/:identifier/related (Internal Linking Endpoint)
 export const getDoctorRelated = (identifier) =>
   axiosInstance.get(`/doctors/${identifier}/related`)
+
+// POST /api/doctor/verification-documents
+export const uploadDoctorVerificationDocuments = (formData) =>
+  axiosInstance.post('/doctor/verification-documents', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+
+// DELETE /api/doctor/verification-documents
+export const deleteDoctorVerificationDocument = (type) =>
+  axiosInstance.delete('/doctor/verification-documents', { data: { type } })
+
+// POST /api/doctor/verification-documents/submit
+export const submitDoctorVerificationApplication = () =>
+  axiosInstance.post('/doctor/verification-documents/submit')

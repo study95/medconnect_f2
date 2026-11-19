@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { KeyRound, Smartphone, ShieldCheck, AlertTriangle, X, Loader2, ArrowRight } from 'lucide-react'
+import CustomCheckbox from '../common/CustomCheckbox'
 
 export default function TwoFactorLoginModal({
   isOpen,
@@ -207,11 +208,11 @@ export default function TwoFactorLoginModal({
               </button>
             </div>
           ) : (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 20 }}>
-              <input
-                type="checkbox"
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 20, userSelect: 'none' }}>
+              <CustomCheckbox
                 checked={trustDevice}
                 onChange={(e) => setTrustDevice(e.target.checked)}
+                color="#10B981"
               />
               <span style={{ fontSize: 13, color: '#374151' }}>
                 এই ডিভাইসে ৩০ দিন মনে রাখুন (পরবর্তীতে কোড লাগবে না)

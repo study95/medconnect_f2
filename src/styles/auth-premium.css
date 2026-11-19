@@ -310,6 +310,20 @@
   box-shadow: 0 0 0 3.5px rgba(0, 184, 117, 0.18) !important;
 }
 
+.auth-input-premium.error,
+.auth-input-premium.is-invalid {
+  border-color: #EF4444 !important;
+  background-color: #FEF2F2 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+.auth-input-premium.error:focus,
+.auth-input-premium.is-invalid:focus {
+  border-color: #DC2626 !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3.5px rgba(220, 38, 38, 0.2) !important;
+}
+
 /* ===== LABELS ===== */
 .auth-label-premium {
   font-weight: 700;

@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Form, Button, Row, Col } from 'react-bootstrap'
+import { Form, Button, Row, Col, Modal } from 'react-bootstrap'
 import {
   Mail, Lock, User, ShieldCheck, Hotel, Phone,
   UserCircle, Shield, Clock, CalendarCheck,
   Heart, CheckCircle, Stethoscope, Search, Eye, EyeOff, ArrowRight, ChevronDown, AlertTriangle, LockKeyhole,
-  Plus, Info, X, Loader2
+  Plus, Info, X, Loader2, FileText, RefreshCw
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import { useDialog } from '../hooks/useDialog'
 import { sendOtp, verifyOtp } from '../api/authApi'
 import { getSpecialties } from '../api/adminApi'
 import { getHospitals } from '../api/hospitalApi'
 import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import { validateStrongPassword } from '../utils/passwordValidator'
 import LegalDocumentModal from '../components/common/LegalDocumentModal'
+import CustomCheckbox from '../components/common/CustomCheckbox'
 import { useSiteSettings } from '../utils/contentService'
 import { getMediaUrl } from '../utils/mediaUtils'
 import '../styles/auth-premium.css'
@@ -35,6 +38,7 @@ const RegisterPage = () => {
   const location = useLocation()
   const site = useSiteSettings()
   const { registerPatient, registerDoctor, registerHospital } = useAuth()
+  const { showSuccess, showError, showWarning } = useDialog()
 
   // Derive initial role from URL path
   const pathRole = location.pathname === '/register/doctor'
@@ -265,11 +269,47 @@ const RegisterPage = () => {
   const [otpTimer, setOtpTimer] = useState(0)
   const [throttleTimer, setThrottleTimer] = useState(0)
   const [verifying, setVerifying] = useState(false)
-  const [verificationToken, setVerificationToken] = useState('')
+  const [verificationToken, setVerificationToken] = useState(() => {
+    return sessionStorage.getItem('doctor_reg_token') || ''
+  })
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [legalModal, setLegalModal] = useState({ open: false, type: 'terms' })
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const otpRefs = useRef([])
+
+  // State for OTP Session Renewal on Step 2
+  const [isOtpSessionExpired, setIsOtpSessionExpired] = useState(false)
+  const [showOtpRenewModal, setShowOtpRenewModal] = useState(false)
+  const [renewOtpDigits, setRenewOtpDigits] = useState(['', '', '', '', '', ''])
+  const [renewOtpSending, setRenewOtpSending] = useState(false)
+  const [renewOtpVerifying, setRenewOtpVerifying] = useState(false)
+  const [renewOtpTimer, setRenewOtpTimer] = useState(0)
+  const [renewOtpError, setRenewOtpError] = useState('')
+  const renewOtpRefs = useRef([])
+
+  // Restore step and mobile if page was accidentally refreshed after OTP verification
+  useEffect(() => {
+    const savedToken = sessionStorage.getItem('doctor_reg_token')
+    const savedMobile = sessionStorage.getItem('reg_verified_mobile')
+    if (savedToken && savedMobile && step === 1) {
+      setForm(prev => ({ ...prev, mobile: savedMobile }))
+      setVerificationToken(savedToken)
+      setStep(2)
+    }
+  }, [])
+
+  // Countdown timer effect for Renew OTP cooldown
+  useEffect(() => {
+    let interval = null
+    if (renewOtpTimer > 0) {
+      interval = setInterval(() => {
+        setRenewOtpTimer(prev => prev - 1)
+      }, 1000)
+    } else {
+      clearInterval(interval)
+    }
+    return () => clearInterval(interval)
+  }, [renewOtpTimer])
 
   // Countdown timer effect for OTP resend cooldown
   useEffect(() => {
@@ -540,7 +580,11 @@ const RegisterPage = () => {
     try {
       const res = await verifyOtp({ mobile: form.mobile, otp: currentOtp })
       if (res.data?.success) {
-        setVerificationToken(res.data?.verification_token || '')
+        const vToken = res.data?.verification_token || ''
+        setVerificationToken(vToken)
+        sessionStorage.setItem('doctor_reg_token', vToken)
+        sessionStorage.setItem('reg_verified_mobile', form.mobile)
+        setIsOtpSessionExpired(false)
         setStep(2)
       } else {
         setFieldErrors({ otp: res.data?.message || 'ভুল ওটিপি কোড!' })
@@ -558,22 +602,195 @@ const RegisterPage = () => {
     }
   }
 
-  const handleSubmit = async (e) => {
+  // ── INLINE OTP SESSION RENEWAL HANDLERS ──
+  const handleRenewPaste = (e) => {
     e.preventDefault()
+    setRenewOtpError('')
+    const raw = e.clipboardData?.getData('text')?.trim() || ''
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = raw.replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
+
+    if (cleanDigits.length > 0) {
+      const digits = cleanDigits.slice(0, 6).split('')
+      const newDigits = ['', '', '', '', '', '']
+      digits.forEach((d, i) => { newDigits[i] = d })
+      setRenewOtpDigits(newDigits)
+      const targetFocus = Math.min(digits.length - 1, 5)
+      setTimeout(() => renewOtpRefs.current[targetFocus]?.focus(), 10)
+    }
+  }
+
+  const handleRenewDigitChange = (index, value) => {
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' }
+    const normalized = String(value).replace(/[০-৯]/g, d => bnToEn[d] || d)
+    const cleanDigits = normalized.replace(/\D/g, '')
+
+    if (cleanDigits.length > 1) {
+      const digits = cleanDigits.slice(0, 6).split('')
+      const newDigits = [...renewOtpDigits]
+      digits.forEach((d, i) => {
+        if (index + i < 6) newDigits[index + i] = d
+      })
+      setRenewOtpDigits(newDigits)
+      setRenewOtpError('')
+      const nextFocus = Math.min(index + digits.length - 1, 5)
+      setTimeout(() => renewOtpRefs.current[nextFocus]?.focus(), 10)
+      return
+    }
+
+    const singleDigit = cleanDigits.slice(-1)
+    const newDigits = [...renewOtpDigits]
+    newDigits[index] = singleDigit
+    setRenewOtpDigits(newDigits)
+    setRenewOtpError('')
+
+    if (singleDigit && index < 5) {
+      renewOtpRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleRenewKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !renewOtpDigits[index] && index > 0) {
+      renewOtpRefs.current[index - 1]?.focus()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const entered = renewOtpDigits.join('')
+      if (entered.length === 6 && !renewOtpVerifying) {
+        handleVerifyRenewOtp()
+      }
+    }
+  }
+
+  const handleTriggerRenewOtp = async () => {
+    setRenewOtpError('')
+    setRenewOtpSending(true)
+    const mobileToUse = (form.mobile || sessionStorage.getItem('reg_verified_mobile') || '').trim()
+    try {
+      const res = await sendOtp({ mobile: mobileToUse, type: 'registration' })
+      if (res.data?.success === false) {
+        setRenewOtpError(translateToBangla(res.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।'))
+      } else {
+        const cooldown = res.data?.cooldown_seconds || 60
+        setRenewOtpTimer(cooldown)
+        setRenewOtpDigits(['', '', '', '', '', ''])
+        setTimeout(() => renewOtpRefs.current[0]?.focus(), 150)
+      }
+    } catch (err) {
+      setRenewOtpError(getErrorMessage(err, 'ওটিপি পাঠাতে সমস্যা হয়েছে। কিছুক্ষণ পর চেষ্টা করুন।'))
+    } finally {
+      setRenewOtpSending(false)
+    }
+  }
+
+  const handleOpenRenewModal = () => {
+    setShowOtpRenewModal(true)
+    handleTriggerRenewOtp()
+  }
+
+  const handleVerifyRenewOtp = async () => {
+    setRenewOtpError('')
+    const entered = renewOtpDigits.join('')
+    if (entered.length !== 6) {
+      setRenewOtpError('অনুগ্রহ করে সঠিক ৬ সংখ্যার ওটিপি কোড লিখুন।')
+      return
+    }
+
+    setRenewOtpVerifying(true)
+    const mobileToUse = (form.mobile || sessionStorage.getItem('reg_verified_mobile') || '').trim()
+    try {
+      const res = await verifyOtp({ mobile: mobileToUse, otp: entered })
+      if (res.data?.success) {
+        const newToken = res.data?.verification_token || ''
+        setVerificationToken(newToken)
+        sessionStorage.setItem('doctor_reg_token', newToken)
+        setShowOtpRenewModal(false)
+        setIsOtpSessionExpired(false)
+        setFieldErrors(prev => ({ ...prev, general: '' }))
+        toast.success('ওটিপি সফলভাবে যাচাই করা হয়েছে! এবার অ্যাকাউন্ট তৈরি সম্পন্ন করা হচ্ছে...')
+        setTimeout(() => {
+          handleSubmit(null, newToken)
+        }, 350)
+      } else {
+        setRenewOtpError(res.data?.message || 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।')
+      }
+    } catch (err) {
+      setRenewOtpError(getErrorMessage(err, 'ভুল ওটিপি কোড! অনুগ্রহ করে আবার চেষ্টা করুন।'))
+    } finally {
+      setRenewOtpVerifying(false)
+    }
+  }
+
+  const scrollToFirstError = (errorsObj) => {
+    if (!errorsObj || typeof errorsObj !== 'object') return
+    const keys = Object.keys(errorsObj).filter(k => !!errorsObj[k])
+    if (keys.length === 0) return
+
+    // Order of fields from top of form to bottom
+    const fieldOrder = [
+      'name',
+      'email',
+      'hospital_name',
+      'hospital_type',
+      'license_number',
+      'address',
+      'specialty_id',
+      'workplace',
+      'bmdc_number',
+      'password',
+      'confirm',
+      'terms',
+      'general'
+    ]
+
+    const firstKey = fieldOrder.find(k => keys.includes(k)) || keys[0]
+
+    setTimeout(() => {
+      let targetEl = null
+
+      if (firstKey === 'specialty_id') {
+        targetEl = specialtyDropdownRef.current || document.querySelector('[name="specialty_search"]')
+      } else if (firstKey === 'workplace') {
+        targetEl = hospitalDropdownRef.current || document.querySelector('[name="hospital_search"]')
+      } else if (firstKey === 'terms') {
+        targetEl = document.querySelector('input[type="checkbox"]')
+      } else if (firstKey === 'general') {
+        targetEl = document.querySelector('.auth-card-premium') || document.querySelector('.auth-main-card')
+      } else {
+        targetEl = document.querySelector(`[name="${firstKey}"]`)
+      }
+
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (typeof targetEl.focus === 'function' && firstKey !== 'terms') {
+          targetEl.focus({ preventScroll: true })
+        }
+      }
+    }, 120)
+  }
+
+  const handleSubmit = async (e, tokenOverride = null) => {
+    if (e && e.preventDefault) e.preventDefault()
     setFieldErrors({})
 
     if (!agreedToTerms) {
-      setFieldErrors({ terms: 'রেজিস্ট্রেশন সম্পন্ন করতে ব্যবহারের শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি প্রদান করুন।' })
+      const err = { terms: 'রেজিস্ট্রেশন সম্পন্ন করতে ব্যবহারের শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি প্রদান করুন।' }
+      setFieldErrors(err)
+      scrollToFirstError(err)
       return
     }
 
     if (form.password !== form.confirm) {
-      setFieldErrors({ confirm: 'পাসওয়ার্ড মিলছে না!' })
+      const err = { confirm: 'পাসওয়ার্ড মিলছে না!' }
+      setFieldErrors(err)
+      scrollToFirstError(err)
       return
     }
     const pwdCheck = validateStrongPassword(form.password)
     if (!pwdCheck.valid) {
-      setFieldErrors({ password: pwdCheck.message })
+      const err = { password: pwdCheck.message }
+      setFieldErrors(err)
+      scrollToFirstError(err)
       return
     }
 
@@ -584,22 +801,30 @@ const RegisterPage = () => {
     formData.append('email', form.email)
     formData.append('mobile', form.mobile)
     formData.append('password', form.password)
-    if (verificationToken) formData.append('verification_token', verificationToken)
+
+    const activeToken = tokenOverride || verificationToken || sessionStorage.getItem('doctor_reg_token') || ''
+    if (activeToken) formData.append('verification_token', activeToken)
 
     if (role === 'doctor') {
       if (!form.specialty_id && !form.custom_specialty_name?.trim()) {
         setLoading(false)
-        setFieldErrors({ specialty_id: 'স্পেশালটি নির্বাচন করা বা নতুন নাম লেখা বাধ্যতামূলক।' })
+        const err = { specialty_id: 'স্পেশালটি নির্বাচন করা বা নতুন নাম লেখা বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (!form.workplace || !form.workplace.trim()) {
         setLoading(false)
-        setFieldErrors({ workplace: 'বর্তমান কর্মস্থল / হাসপাতাল নির্বাচন করা বা নাম লেখা বাধ্যতামূলক।' })
+        const err = { workplace: 'বর্তমান কর্মস্থল / হাসপাতাল নির্বাচন করা বা নাম লেখা বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (!form.bmdc_number || !form.bmdc_number.trim()) {
         setLoading(false)
-        setFieldErrors({ bmdc_number: 'বিএমডিসি নম্বর দেওয়া বাধ্যতামূলক।' })
+        const err = { bmdc_number: 'বিএমডিসি নম্বর দেওয়া বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (form.custom_specialty_name?.trim()) {
@@ -618,22 +843,30 @@ const RegisterPage = () => {
     if (role === 'hospital') {
       if (!form.hospital_name || !form.hospital_name.trim()) {
         setLoading(false)
-        setFieldErrors({ hospital_name: 'হাসপাতালের নাম দেওয়া বাধ্যতামূলক।' })
+        const err = { hospital_name: 'হাসপাতালের নাম দেওয়া বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (!form.hospital_type) {
         setLoading(false)
-        setFieldErrors({ hospital_type: 'হাসপাতালের ধরন নির্বাচন করা বাধ্যতামূলক।' })
+        const err = { hospital_type: 'হাসপাতালের ধরন নির্বাচন করা বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (!form.license_number || !form.license_number.trim()) {
         setLoading(false)
-        setFieldErrors({ license_number: 'লাইসেন্স নম্বর দেওয়া বাধ্যতামূলক।' })
+        const err = { license_number: 'লাইসেন্স নম্বর দেওয়া বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       if (!form.address || !form.address.trim()) {
         setLoading(false)
-        setFieldErrors({ address: 'হাসপাতালের ঠিকানা দেওয়া বাধ্যতামূলক।' })
+        const err = { address: 'হাসপাতালের ঠিকানা দেওয়া বাধ্যতামূলক।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
         return
       }
       formData.append('hospital_name', form.hospital_name)
@@ -654,6 +887,24 @@ const RegisterPage = () => {
 
     setLoading(false)
     if (result.success) {
+      sessionStorage.removeItem('doctor_reg_token')
+      sessionStorage.removeItem('reg_verified_mobile')
+      setIsOtpSessionExpired(false)
+
+      const roleTitle = role === 'doctor'
+        ? 'ডাক্তার নিবন্ধন সফল হয়েছে! 🩺'
+        : (role === 'hospital' ? 'হাসপাতাল নিবন্ধন সফল হয়েছে! 🏥' : 'রেজিস্ট্রেশন সফল হয়েছে! 🎉')
+      const roleMsg = role === 'patient'
+        ? 'আপনার Doctor Booklet অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। প্রোফাইল আপডেট করে সেবা গ্রহণ করতে পারেন।'
+        : 'আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। প্রোফাইল অনুমোদনের জন্য পরবর্তী ভেরিফিকেশন ধাপে যান।'
+
+      await showSuccess({
+        title: roleTitle,
+        message: roleMsg,
+        confirmText: role === 'patient' ? 'প্রোফাইলে যান' : 'পরবর্তী ধাপে যান',
+        autoCloseMs: 2500
+      })
+
       if (role === 'doctor' || role === 'hospital') {
         navigate('/pending-verification', {
           replace: true,
@@ -676,17 +927,69 @@ const RegisterPage = () => {
       setStep(3)
     } else {
       const errMsg = result.message || ''
-      const translatedMsg = translateToBangla(errMsg || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
+      const isOtpExpired = result.is_otp_expired ||
+        errMsg.toLowerCase().includes('otp') ||
+        errMsg.includes('ওটিপি') ||
+        errMsg.includes('যাচাই করা হয়নি') ||
+        errMsg.includes('মেয়াদ শেষ')
 
-      if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('mobile') || errMsg.toLowerCase().includes('registered')) {
+      if (isOtpExpired) {
+        setIsOtpSessionExpired(true)
+        setFieldErrors({ general: 'নিরাপত্তাজনিত কারণে আপনার ভেরিফিকেশন সেশনের মেয়াদ শেষ হয়েছে।' })
+        handleOpenRenewModal()
+        return
+      }
+
+      const serverErrors = result.errors || {}
+      const mappedErrors = {}
+
+      // 1. Map backend field errors if present
+      Object.keys(serverErrors).forEach(k => {
+        const val = Array.isArray(serverErrors[k]) ? serverErrors[k][0] : serverErrors[k]
+        if (k === 'bmdc' || k === 'bmdc_number') mappedErrors.bmdc_number = val
+        else if (k === 'phone' || k === 'mobile') mappedErrors.mobile = val
+        else if (k === 'custom_specialty_name') mappedErrors.specialty_id = val
+        else mappedErrors[k] = val
+      })
+
+      // 2. Identify field from error message text if not already mapped
+      if (errMsg) {
+        const lower = errMsg.toLowerCase()
+        if ((lower.includes('bmdc') || errMsg.includes('বিএমডিসি')) && !mappedErrors.bmdc_number) {
+          mappedErrors.bmdc_number = errMsg
+        } else if ((lower.includes('email') || errMsg.includes('ইমেইল')) && !mappedErrors.email) {
+          mappedErrors.email = errMsg
+        } else if ((lower.includes('license') || errMsg.includes('লাইসেন্স')) && !mappedErrors.license_number) {
+          mappedErrors.license_number = errMsg
+        } else if ((lower.includes('hospital') || errMsg.includes('হাসপাতাল')) && !mappedErrors.hospital_name) {
+          mappedErrors.hospital_name = errMsg
+        } else if ((lower.includes('specialty') || errMsg.includes('স্পেশালটি')) && !mappedErrors.specialty_id) {
+          mappedErrors.specialty_id = errMsg
+        } else if ((lower.includes('phone') || lower.includes('mobile') || errMsg.includes('মোবাইল')) && !mappedErrors.mobile) {
+          mappedErrors.mobile = errMsg
+        } else if (Object.keys(mappedErrors).length === 0) {
+          mappedErrors.general = translateToBangla(errMsg)
+        }
+      }
+
+      // If mobile conflict specifically on Step 1
+      if (mappedErrors.mobile && (errMsg.toLowerCase().includes('already') || errMsg.includes('ইতিমধ্যে নিবন্ধিত'))) {
         setStep(1)
         setOtpSent(false)
         setIsAlreadyRegistered(true)
-        setFieldErrors({ mobile: translatedMsg })
-      } else if (errMsg.toLowerCase().includes('email')) {
-        setFieldErrors({ email: translatedMsg })
-      } else {
-        setFieldErrors({ general: translatedMsg })
+      }
+
+      setFieldErrors(mappedErrors)
+      scrollToFirstError(mappedErrors)
+
+      // Suppress redundant floating toast when field-specific inline error is already shown!
+      // Only show error dialog if it's an unmapped general system error
+      if (errMsg && Object.keys(mappedErrors).length === 0) {
+        showError({
+          title: 'নিবন্ধন সম্পন্ন হয়নি',
+          message: errMsg,
+          confirmText: 'ঠিক আছে'
+        })
       }
     }
   }
@@ -760,7 +1063,9 @@ const RegisterPage = () => {
             {step !== 3 && (
               <>
                 <Form.Group style={{ marginBottom: 6 }}>
-                  <Form.Label className="auth-label-premium">অ্যাকাউন্টের ধরন (Account Type)</Form.Label>
+                  <Form.Label className="auth-label-premium">
+                    অ্যাকাউন্টের ধরন (Account Type) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                  </Form.Label>
                   <div className="input-group-premium" style={{ position: 'relative' }}>
                     <span className="input-icon-premium" style={{ color: role ? cfg.color : '#94A3B8' }}>
                       {role ? cfg.icon : <User size={15} />}
@@ -844,7 +1149,7 @@ const RegisterPage = () => {
 
                 <Form.Group style={{ marginBottom: 18 }}>
                   <Form.Label className="auth-label-premium" style={{ color: !role ? '#94A3B8' : undefined }}>
-                    মোবাইল নম্বর {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
+                    মোবাইল নম্বর <span style={{ color: !role ? '#94A3B8' : '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span> {!role && <LockKeyhole size={12} style={{ marginLeft: 4, opacity: 0.6 }} />}
                   </Form.Label>
                   <div
                     className="input-group-premium"
@@ -1191,12 +1496,19 @@ const RegisterPage = () => {
             {/* ===== STEP 2: DETAILS FORM ===== */}
             {step === 2 && (
               <div className="slide-in-right" key="step2">
-                <h3 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 4, letterSpacing: '-0.5px' }}>
-                  অ্যাকাউন্ট তথ্য দিন
-                </h3>
-                <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, marginBottom: 18 }}>
-                  আপনার নাম, ইমেইল ও পাসওয়ার্ড সেট করুন
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
+                  <div>
+                    <h3 style={{ fontWeight: 800, color: '#0F172A', fontSize: 22, marginBottom: 4, letterSpacing: '-0.5px' }}>
+                      অ্যাকাউন্ট তথ্য দিন
+                    </h3>
+                    <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, margin: 0 }}>
+                      আপনার নাম, ইমেইল ও পাসওয়ার্ড সেট করুন
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, background: '#F8FAFC', padding: '4px 10px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                    <span style={{ color: '#EF4444', fontWeight: 800, marginRight: 2 }}>*</span> চিহ্নিত ফিল্ড আবশ্যক
+                  </span>
+                </div>
 
                 <Form onSubmit={handleSubmit}>
                   {/* Verified Badge */}
@@ -1213,7 +1525,9 @@ const RegisterPage = () => {
 
                   {role !== 'hospital' && (
                     <Form.Group style={{ marginBottom: 14 }}>
-                      <Form.Label className="auth-label-premium">পূর্ণ নাম</Form.Label>
+                      <Form.Label className="auth-label-premium">
+                        পূর্ণ নাম <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                      </Form.Label>
                       <div className="input-group-premium">
                         <span className="input-icon-premium"><UserCircle size={17} /></span>
                         <Form.Control
@@ -1222,7 +1536,7 @@ const RegisterPage = () => {
                           placeholder="আপনার পূর্ণ নাম"
                           value={form.name}
                           onChange={handleChange} required
-                          className="auth-input-premium"
+                          className={`auth-input-premium ${fieldErrors.name ? 'is-invalid error' : ''}`}
                         />
                       </div>
                       {fieldErrors.name && (
@@ -1235,14 +1549,16 @@ const RegisterPage = () => {
 
                   {role !== 'hospital' && (
                     <Form.Group style={{ marginBottom: 14 }}>
-                      <Form.Label className="auth-label-premium">ইমেইল ঠিকানা</Form.Label>
+                      <Form.Label className="auth-label-premium">
+                        ইমেইল ঠিকানা <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                      </Form.Label>
                       <div className="input-group-premium">
                         <span className="input-icon-premium"><Mail size={17} /></span>
                         <Form.Control
                           name="email" type="email"
                           placeholder="name@example.com"
                           value={form.email} onChange={handleChange} required
-                          className="auth-input-premium"
+                          className={`auth-input-premium ${fieldErrors.email ? 'is-invalid error' : ''}`}
                         />
                       </div>
                       {fieldErrors.email && (
@@ -1256,7 +1572,9 @@ const RegisterPage = () => {
                   {role === 'hospital' && (
                     <>
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">হাসপাতালের নাম (Hospital Name) *</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          হাসপাতালের নাম (Hospital Name) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><Hotel size={17} /></span>
                           <Form.Control
@@ -1266,7 +1584,7 @@ const RegisterPage = () => {
                             value={form.hospital_name}
                             onChange={handleChange}
                             required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.hospital_name ? 'is-invalid error' : ''}`}
                           />
                         </div>
                         {fieldErrors.hospital_name && (
@@ -1277,7 +1595,9 @@ const RegisterPage = () => {
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">হাসপাতালের ধরন (Type of Hospital) *</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          হাসপাতালের ধরন (Type of Hospital) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><Hotel size={17} /></span>
                           <Form.Select
@@ -1285,7 +1605,7 @@ const RegisterPage = () => {
                             value={form.hospital_type}
                             onChange={handleChange}
                             required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.hospital_type ? 'is-invalid error' : ''}`}
                           >
                             <option value="">হাসপাতালের ধরন নির্বাচন করুন</option>
                             {HOSPITAL_TYPES.map(ht => (
@@ -1301,7 +1621,9 @@ const RegisterPage = () => {
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">লাইসেন্স নম্বর (License Number) *</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          লাইসেন্স নম্বর (License Number) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><ShieldCheck size={17} /></span>
                           <Form.Control
@@ -1311,7 +1633,7 @@ const RegisterPage = () => {
                             value={form.license_number}
                             onChange={handleChange}
                             required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.license_number ? 'is-invalid error' : ''}`}
                           />
                         </div>
                         {fieldErrors.license_number && (
@@ -1322,7 +1644,9 @@ const RegisterPage = () => {
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">হাসপাতালের ঠিকানা (Hospital Address) *</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          হাসপাতালের ঠিকানা (Hospital Address) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><Hotel size={17} /></span>
                           <Form.Control
@@ -1332,7 +1656,7 @@ const RegisterPage = () => {
                             value={form.address}
                             onChange={handleChange}
                             required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.address ? 'is-invalid error' : ''}`}
                           />
                         </div>
                         {fieldErrors.address && (
@@ -1345,7 +1669,9 @@ const RegisterPage = () => {
                       <Row className="g-2" style={{ marginBottom: 14 }}>
                         <Col md={6}>
                           <Form.Group>
-                            <Form.Label className="auth-label-premium">হট নম্বর (Hotline)</Form.Label>
+                            <Form.Label className="auth-label-premium">
+                              হটলাইন নম্বর (Hotline) <span style={{ color: '#94A3B8', fontWeight: 500, fontSize: 11.5 }}>(ঐচ্ছিক)</span>
+                            </Form.Label>
                             <div className="input-group-premium">
                               <span className="input-icon-premium"><Phone size={17} /></span>
                               <Form.Control
@@ -1361,7 +1687,9 @@ const RegisterPage = () => {
                         </Col>
                         <Col md={6}>
                           <Form.Group>
-                            <Form.Label className="auth-label-premium">অফিসিয়াল ইমেইল (Official Email)</Form.Label>
+                            <Form.Label className="auth-label-premium">
+                              অফিসিয়াল ইমেইল (Official Email) <span style={{ color: '#94A3B8', fontWeight: 500, fontSize: 11.5 }}>(ঐচ্ছিক)</span>
+                            </Form.Label>
                             <div className="input-group-premium">
                               <span className="input-icon-premium"><Mail size={17} /></span>
                               <Form.Control
@@ -1387,7 +1715,7 @@ const RegisterPage = () => {
                       <Form.Group style={{ marginBottom: 14 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <Form.Label className="auth-label-premium" style={{ marginBottom: 0 }}>
-                            স্পেশালটি (Specialty) *
+                            স্পেশালটি (Specialty) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
                           </Form.Label>
                           {form.custom_specialty_name && (
                             <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 12, fontWeight: 700, border: '1px solid #FDE68A' }}>
@@ -1412,7 +1740,8 @@ const RegisterPage = () => {
                                 }
                               }}
                               onFocus={() => setSpecialtyDropdownOpen(true)}
-                              className="auth-input-premium"
+                              name="specialty_search"
+                              className={`auth-input-premium ${fieldErrors.specialty_id ? 'is-invalid error' : ''}`}
                               style={{ paddingRight: specialtySearch ? 36 : 14 }}
                               autoComplete="off"
                             />
@@ -1564,7 +1893,7 @@ const RegisterPage = () => {
                       <Form.Group style={{ marginBottom: 14 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <Form.Label className="auth-label-premium" style={{ marginBottom: 0 }}>
-                            বর্তমান কর্মস্থল / হাসপাতাল (Hospital / Workplace) *
+                            বর্তমান কর্মস্থল / হাসপাতাল (Hospital / Workplace) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
                           </Form.Label>
                           {form.hospital_id ? (
                             <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 12, fontWeight: 700, border: '1px solid #BBF7D0' }}>
@@ -1594,7 +1923,8 @@ const RegisterPage = () => {
                                 }
                               }}
                               onFocus={() => setHospitalDropdownOpen(true)}
-                              className="auth-input-premium"
+                              name="hospital_search"
+                              className={`auth-input-premium ${fieldErrors.workplace ? 'is-invalid error' : ''}`}
                               style={{ paddingRight: hospitalSearch ? 36 : 14 }}
                               autoComplete="off"
                             />
@@ -1778,7 +2108,9 @@ const RegisterPage = () => {
                       </Form.Group>
 
                       <Form.Group style={{ marginBottom: 14 }}>
-                        <Form.Label className="auth-label-premium">বিএমডিসি নম্বর (BMDC Reg No.) *</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          বিএমডিসি নম্বর (BMDC Reg No.) <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><ShieldCheck size={17} /></span>
                           <Form.Control
@@ -1788,7 +2120,7 @@ const RegisterPage = () => {
                             value={form.bmdc_number}
                             onChange={handleChange}
                             required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.bmdc_number ? 'is-invalid error' : ''}`}
                           />
                         </div>
                         {fieldErrors.bmdc_number && (
@@ -1796,6 +2128,28 @@ const RegisterPage = () => {
                             <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} /> {fieldErrors.bmdc_number}
                           </p>
                         )}
+
+                        {/* BMDC Verification Notice / Hint */}
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            background: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 8,
+                            fontSize: 12.5,
+                            color: '#1E40AF',
+                            lineHeight: 1.45
+                          }}
+                        >
+                          <FileText size={16} color="#2563EB" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <strong>সনদপত্র যাচাইকরণ নির্দেশনা:</strong> ডাক্তার প্রোফাইল সক্রিয় ও অনুমোদনের জন্য পরবর্তী ধাপে আপনার <strong>BMDC সার্টিফিকেটের ছবি বা PDF</strong> আপলোড করতে হবে।
+                          </div>
+                        </div>
                       </Form.Group>
                     </>
                   )}
@@ -1803,14 +2157,16 @@ const RegisterPage = () => {
                   <Row className="g-2" style={{ marginBottom: 18 }}>
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label className="auth-label-premium">পাসওয়ার্ড</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          পাসওয়ার্ড <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><Lock size={17} /></span>
                           <Form.Control
                             name="password" type={showPass ? 'text' : 'password'}
                             placeholder="কমপক্ষে ৬ অক্ষর"
                             value={form.password} onChange={handleChange} required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.password ? 'is-invalid error' : ''}`}
                           />
                           <button type="button" className="input-link-premium" style={{ color: '#94A3B8', border: 'none', background: 'none' }} onClick={() => setShowPass(!showPass)}>
                             {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -1825,14 +2181,16 @@ const RegisterPage = () => {
                     </Col>
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label className="auth-label-premium">পাসওয়ার্ড নিশ্চিত</Form.Label>
+                        <Form.Label className="auth-label-premium">
+                          পাসওয়ার্ড নিশ্চিত <span style={{ color: '#EF4444', marginLeft: 2, fontWeight: 700 }}>*</span>
+                        </Form.Label>
                         <div className="input-group-premium">
                           <span className="input-icon-premium"><Lock size={17} /></span>
                           <Form.Control
                             name="confirm" type={showConfirm ? 'text' : 'password'}
                             placeholder="আবার লিখুন"
                             value={form.confirm} onChange={handleChange} required
-                            className="auth-input-premium"
+                            className={`auth-input-premium ${fieldErrors.confirm ? 'is-invalid error' : ''}`}
                           />
                           <button type="button" className="input-link-premium" style={{ color: '#94A3B8', border: 'none', background: 'none' }} onClick={() => setShowConfirm(!showConfirm)}>
                             {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -1864,21 +2222,14 @@ const RegisterPage = () => {
                       margin: 0,
                       userSelect: 'none'
                     }}>
-                      <input
-                        type="checkbox"
+                      <CustomCheckbox
                         checked={agreedToTerms}
                         onChange={(e) => {
                           setAgreedToTerms(e.target.checked)
                           if (fieldErrors.terms) setFieldErrors(prev => ({ ...prev, terms: '' }))
                         }}
-                        style={{
-                          width: 18,
-                          height: 18,
-                          accentColor: '#00B875',
-                          cursor: 'pointer',
-                          marginTop: 2,
-                          flexShrink: 0
-                        }}
+                        color="#10B981"
+                        style={{ marginTop: 2 }}
                       />
                       <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
                         আমি Doctor Booklet-এর{' '}
@@ -1933,9 +2284,45 @@ const RegisterPage = () => {
                   )}
 
                   {fieldErrors.general && (
-                    <p className="fade-in-up" style={{ color: '#DC2626', fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {fieldErrors.general}
-                    </p>
+                    <div className="fade-in-up" style={{
+                      background: '#FEF2F2',
+                      border: '1.5px solid #FCA5A5',
+                      borderRadius: 12,
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#DC2626', fontWeight: 700, fontSize: 13.5, marginBottom: isOtpSessionExpired ? 6 : 0 }}>
+                        <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                        <span>{fieldErrors.general}</span>
+                      </div>
+                      {isOtpSessionExpired && (
+                        <div>
+                          <p style={{ color: '#4B5563', fontSize: 12.5, margin: '4px 0 10px 0', lineHeight: 1.5 }}>
+                            আপনার ফরমের সকল তথ্য অক্ষত রয়েছে। অ্যাকাউন্ট তৈরি সম্পন্ন করতে ওটিপি কোড দিয়ে সেশন রিনিউ করুন।
+                          </p>
+                          <Button
+                            type="button"
+                            onClick={handleOpenRenewModal}
+                            style={{
+                              background: '#0D9488',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 8,
+                              padding: '7px 20px',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <RefreshCw size={14} /> পুনরায় ওটিপি কোড দিন
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   <Button
@@ -2030,6 +2417,120 @@ const RegisterPage = () => {
           if (fieldErrors.terms) setFieldErrors(prev => ({ ...prev, terms: '' }))
         }}
       />
+
+      {/* ── OTP SESSION RENEWAL MODAL ── */}
+      <Modal
+        show={showOtpRenewModal}
+        onHide={() => setShowOtpRenewModal(false)}
+        centered
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#CCFBF1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ShieldCheck size={22} color="#0D9488" />
+            </div>
+            <div>
+              <Modal.Title style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                ওটিপি সেশন রিনিউ করুন
+              </Modal.Title>
+              <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+                নিরাপত্তার স্বার্থে নতুন ওটিপি কোড দিয়ে ভেরিফাই করুন
+              </p>
+            </div>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={{ padding: '24px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13.5, color: '#334155', marginBottom: 18, lineHeight: 1.5 }}>
+            আপনার ফরমের তথ্য সুরক্ষিত আছে। নিবন্ধিত মোবাইল <strong>{form.mobile}</strong> এ একটি নতুন ৬-সংখ্যার ওটিপি কোড পাঠানো হয়েছে:
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
+            {renewOtpDigits.map((digit, idx) => (
+              <input
+                key={idx}
+                ref={el => renewOtpRefs.current[idx] = el}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={e => handleRenewDigitChange(idx, e.target.value)}
+                onKeyDown={e => handleRenewKeyDown(idx, e)}
+                onPaste={handleRenewPaste}
+                style={{
+                  width: 44,
+                  height: 48,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  borderRadius: 10,
+                  border: renewOtpError ? '2px solid #EF4444' : '1.5px solid #CBD5E1',
+                  background: '#F8FAFC',
+                  outline: 'none',
+                  color: '#0F172A'
+                }}
+              />
+            ))}
+          </div>
+
+          {renewOtpError && (
+            <p style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginBottom: 14 }}>
+              <AlertTriangle size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+              {renewOtpError}
+            </p>
+          )}
+
+          <div style={{ marginBottom: 20, fontSize: 13, color: '#64748B' }}>
+            {renewOtpTimer > 0 ? (
+              <span>পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন: <strong>{formatCountdown(renewOtpTimer)}</strong></span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleTriggerRenewOtp}
+                disabled={renewOtpSending}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0D9488',
+                  fontWeight: 700,
+                  cursor: renewOtpSending ? 'not-allowed' : 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0
+                }}
+              >
+                {renewOtpSending ? 'ওটিপি পাঠানো হচ্ছে...' : 'পুনরায় ওটিপি পাঠান'}
+              </button>
+            )}
+          </div>
+
+          <Button
+            onClick={handleVerifyRenewOtp}
+            disabled={renewOtpVerifying || renewOtpDigits.join('').length !== 6}
+            style={{
+              width: '100%',
+              background: '#0D9488',
+              border: 'none',
+              padding: '11px 0',
+              borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 14.5,
+              boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              cursor: (renewOtpVerifying || renewOtpDigits.join('').length !== 6) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {renewOtpVerifying ? (
+              <><span className="spinner-border spinner-border-sm me-2" /> যাচাই করা হচ্ছে...</>
+            ) : (
+              <><span>যাচাই করে সম্পন্ন করুন</span> <ArrowRight size={17} /></>
+            )}
+          </Button>
+        </Modal.Body>
+      </Modal>
     </div>
   )
 }

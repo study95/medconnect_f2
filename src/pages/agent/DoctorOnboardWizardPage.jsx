@@ -290,7 +290,9 @@ export default function DoctorOnboardWizardPage() {
 
     if (step === 4) {
       if (!formData.documents?.doctor_bmdc_cert?.file_key) {
-        errs.document_keys = 'কমপক্ষে BMDC রেজিস্ট্রেশন সনদপত্রটি আপলোড করতে হবে।'
+        errs.document_keys = 'BMDC রেজিস্ট্রেশন সনদপত্রটি আপলোড করতে হবে।'
+      } else if (!formData.documents?.doctor_nid?.file_key) {
+        errs.document_keys = 'ডাক্তারের জাতীয় পরিচয়পত্র (NID) আপলোড করা বাধ্যতামূলক।'
       }
     }
 
@@ -1496,13 +1498,13 @@ export default function DoctorOnboardWizardPage() {
                     <span style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      background: '#EFF6FF',
-                      color: '#2563EB',
+                      background: '#FEE2E2',
+                      color: '#DC2626',
                       padding: '3px 8px',
                       borderRadius: 6,
-                      border: '1px solid #DBEAFE'
+                      border: '1px solid #FECACA'
                     }}>
-                      সুপারিশকৃত (Recommended)
+                      আবশ্যক (Required)
                     </span>
                   </div>
 
@@ -1520,22 +1522,22 @@ export default function DoctorOnboardWizardPage() {
 
               {/* Status Banner */}
               <div style={{
-                background: activeDocumentCount > 0 ? '#F0FDF4' : '#FEF3C7',
-                border: activeDocumentCount > 0 ? '1px solid #86EFAC' : '1px solid #FDE68A',
+                background: activeDocumentCount >= 2 ? '#F0FDF4' : '#FEF3C7',
+                border: activeDocumentCount >= 2 ? '1px solid #86EFAC' : '1px solid #FDE68A',
                 borderRadius: 12,
                 padding: '12px 16px',
                 fontSize: 12.5,
                 fontWeight: 600,
-                color: activeDocumentCount > 0 ? '#065F46' : '#92400E',
+                color: activeDocumentCount >= 2 ? '#065F46' : '#92400E',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10
               }}>
                 <ShieldCheck size={20} style={{ flexShrink: 0 }} />
                 <span>
-                  {activeDocumentCount > 0
-                    ? `✓ ${activeDocumentCount}টি ভেরিফিকেশন ডকুমেন্ট নিরাপদে ভল্টে সংরক্ষিত হয়েছে। আপনি পরবর্তী রিভিউ ধাপে যেতে পারেন।`
-                    : 'পরবর্তী ধাপে যেতে অনুগ্রহ করে কমপক্ষে BMDC রেজিস্ট্রেশন সনদপত্রটি আপলোড করুন।'}
+                  {activeDocumentCount >= 2
+                    ? `✓ উভয় ভেরিফিকেশন ডকুমেন্ট (BMDC ও NID) নিরাপদে সংরক্ষিত হয়েছে। আপনি পরবর্তী রিভিউ ধাপে যেতে পারেন।`
+                    : 'পরবর্তী ধাপে যেতে অনুগ্রহ করে BMDC সনদ ও জাতীয় পরিচয়পত্র (NID) উভয়ই আপলোড করুন।'}
                 </span>
               </div>
 

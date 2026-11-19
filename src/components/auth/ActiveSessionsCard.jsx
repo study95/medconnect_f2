@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { getActiveSessionsApi, revokeSessionApi } from '../../api/authApi'
 import { useAuth } from '../../context/AuthContext'
 import { toast } from 'react-hot-toast'
+import { useDialog } from '../../hooks/useDialog'
 import { Laptop, LogOut, Trash2, RefreshCw, ShieldAlert } from 'lucide-react'
 
 export default function ActiveSessionsCard() {
   const { logoutAll } = useAuth()
+  const { showSuccess, showError } = useDialog()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [revokingId, setRevokingId] = useState(null)
@@ -34,11 +36,20 @@ export default function ActiveSessionsCard() {
     try {
       const res = await revokeSessionApi(session.id)
       if (res.data?.success) {
-        toast.success('ডিভাইস সেশনটি বাতিল করা হয়েছে।')
+        showSuccess({
+          title: 'সেশন বাতিল সম্পন্ন',
+          message: 'নির্বাচিত ডিভাইস সেশনটি সফলভাবে বাতিল করা হয়েছে।',
+          confirmText: 'ঠিক আছে',
+          autoCloseMs: 2200
+        })
         setSessions((prev) => prev.filter((s) => s.id !== session.id))
       }
     } catch {
-      toast.error('সেশন বাতিল করতে সমস্যা হয়েছে।')
+      showError({
+        title: 'সেশন বাতিল ব্যর্থ',
+        message: 'সেশন বাতিল করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+        confirmText: 'ঠিক আছে'
+      })
     } finally {
       setRevokingId(null)
     }
@@ -48,7 +59,12 @@ export default function ActiveSessionsCard() {
     setRevokingAll(true)
     try {
       await logoutAll()
-      toast.success('সবগুলো ডিভাইস থেকে সফলভাবে লগআউট করা হয়েছে।')
+      showSuccess({
+        title: 'লগআউট সম্পন্ন',
+        message: 'সবগুলো ডিভাইস থেকে সফলভাবে লগআউট করা হয়েছে।',
+        confirmText: 'ঠিক আছে',
+        autoCloseMs: 2500
+      })
     } finally {
       setRevokingAll(false)
     }

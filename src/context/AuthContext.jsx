@@ -492,7 +492,13 @@ export function AuthProvider({ children }) {
     } catch (error) {
       const message = getErrorMessage(error, 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       const errors = error.response?.data?.errors || {}
-      return { success: false, message, errors }
+      return { 
+        success: false, 
+        message, 
+        errors, 
+        is_otp_expired: error.response?.data?.is_otp_expired || false,
+        status: error.response?.status 
+      }
     }
   }
 
@@ -515,7 +521,13 @@ export function AuthProvider({ children }) {
     } catch (error) {
       const message = getErrorMessage(error, 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       const errors = error.response?.data?.errors || {}
-      return { success: false, message, errors }
+      return { 
+        success: false, 
+        message, 
+        errors, 
+        is_otp_expired: error.response?.data?.is_otp_expired || false,
+        status: error.response?.status 
+      }
     }
   }
 
@@ -538,7 +550,13 @@ export function AuthProvider({ children }) {
     } catch (error) {
       const message = getErrorMessage(error, 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       const errors = error.response?.data?.errors || {}
-      return { success: false, message, errors }
+      return { 
+        success: false, 
+        message, 
+        errors, 
+        is_otp_expired: error.response?.data?.is_otp_expired || false,
+        status: error.response?.status 
+      }
     }
   }
 
