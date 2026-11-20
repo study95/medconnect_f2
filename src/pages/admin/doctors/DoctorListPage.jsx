@@ -2007,7 +2007,7 @@ export default function DoctorListPage() {
         </div>
 
         {(loading && doctors.length === 0) ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '130px', '25%', '20%', '18%', '13%', '14%', '110px']} headers={['', 'ID', 'Professional Details', 'Workplace Identity', 'Verification & Docs', 'Account Status', 'Contact Info', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '130px', '25%', '20%', '14%', '18%', '13%', '110px']} headers={['', 'ID', 'Professional Details', 'Workplace Identity', 'Contact Info', 'Verification & Docs', 'Account Status', 'Actions']} />
         ) : total === 0 ? (
           <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || specialtyId || statusFilter || top10Filter || telemedicineFilter || verificationStatus || fromDate || toDate || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="👨‍⚕️" title="No doctors found" description="Try adjusting your search criteria or clear your active filters." primaryAction={isAdmin ? { label: '+ Add New Doctor', to: '/admin/doctors/create' } : undefined} />
         ) : (
@@ -2026,9 +2026,9 @@ export default function DoctorListPage() {
                   <th style={{ width: 130, color: 'var(--admin-text-muted)' }}>ID</th>
                   <th style={{ width: '25%', color: 'var(--admin-text-muted)' }}>Professional Details</th>
                   <th style={{ width: '20%', color: 'var(--admin-text-muted)' }}>Workplace Identity</th>
+                  <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
                   <th style={{ width: '18%', color: 'var(--admin-text-muted)' }}>Verification & Docs</th>
                   <th style={{ width: '13%', color: 'var(--admin-text-muted)' }}>Account Status</th>
-                  <th style={{ width: '14%', color: 'var(--admin-text-muted)' }}>Contact Info</th>
                   <th style={{ width: 110, textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
@@ -2118,6 +2118,10 @@ export default function DoctorListPage() {
                       )}
                     </td>
                     <td>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{doctor.phone || '—'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{doctor.email || '—'}</div>
+                    </td>
+                    <td>
                       {(() => {
                         const status = doctor.verification_status || (doctor.is_active ? 'approved' : (doctor.bmdc_document ? 'submitted' : 'draft'))
                         const isApproved = status === 'approved'
@@ -2157,22 +2161,6 @@ export default function DoctorListPage() {
                                 <span>{badgeConfig.icon}</span>
                                 <span>{badgeConfig.text}</span>
                               </span>
-                              {doctor.verification_notes && (
-                                <div
-                                  style={{
-                                    marginTop: 3,
-                                    fontSize: 10,
-                                    color: isRevision ? '#DC2626' : '#2563EB',
-                                    maxWidth: 170,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                  title={`নোট: ${doctor.verification_notes}`}
-                                >
-                                  💬 {doctor.verification_notes}
-                                </div>
-                              )}
                             </div>
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
@@ -2303,10 +2291,6 @@ export default function DoctorListPage() {
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-text)' }}>{doctor.phone || '—'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{doctor.email || '—'}</div>
                     </td>
                     <td style={{ width: 110, textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end', gap: 8, flexWrap: 'nowrap' }}>

@@ -64,6 +64,8 @@
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   min-height: 100%;
 }
 

@@ -84,7 +84,18 @@ export default function PresignedDropzone({
       }
     } catch (err) {
       console.error('File upload error:', err)
-      setError(err?.response?.data?.message || err?.message || 'ডকুমেন্ট আপলোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
+      const data = err?.response?.data
+      let errText = ''
+      if (data?.errors && typeof data.errors === 'object') {
+        const first = Object.values(data.errors).flat()[0]
+        if (first) errText = first
+      }
+      if (!errText) {
+        errText = (data?.message && data.message !== 'Validation failed.')
+          ? data.message
+          : (err?.message || 'ডকুমেন্ট আপলোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')
+      }
+      setError(errText)
     } finally {
       setUploading(false)
     }
@@ -139,70 +150,83 @@ export default function PresignedDropzone({
       />
 
       {uploadedKey ? (
-        /* Uploaded State Card */
+        /* Uploaded State Card - Refined Layout & Proportional Alignment */
         <div style={{
           background: '#F0FDF4',
           border: '1.5px solid #86EFAC',
-          borderRadius: 14,
-          padding: '14px 18px',
+          borderRadius: 16,
+          padding: '16px 18px',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           justifyContent: 'space-between',
           gap: 12,
+          minHeight: 110,
           boxShadow: '0 2px 6px rgba(16, 185, 129, 0.08)',
           animation: 'fadeIn 0.2s ease-out'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-            <div style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: '#DCFCE7',
-              color: '#059669',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.15)'
-            }}>
-              <CheckCircle2 size={24} />
-            </div>
-            <div style={{ minWidth: 0 }}>
+          {/* Top Row: File Icon + File Name & Size + Status Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
               <div style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: '#0F172A',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: '#DCFCE7',
+                color: '#059669',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(16, 185, 129, 0.15)'
               }}>
-                {fileName || label}
+                <CheckCircle2 size={22} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 11,
-                  background: 'rgba(5, 150, 105, 0.12)',
-                  color: '#047857',
-                  padding: '2px 8px',
-                  borderRadius: 6,
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontSize: 13.5,
                   fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}>
-                  <ShieldCheck size={12} />
-                  সংযুক্ত হয়েছে (Uploaded)
-                </span>
-                {fileSizeText && (
-                  <span style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500 }}>
-                    {fileSizeText}
+                  color: '#0F172A',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }} title={fileName || label}>
+                  {fileName || label}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: 11.5, color: '#64748B' }}>
+                  {fileSizeText && <span style={{ fontWeight: 600, color: '#334155' }}>{fileSizeText}</span>}
+                  {fileSizeText && <span>•</span>}
+                  <span style={{ color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <ShieldCheck size={12} />
+                    সংযুক্ত ফাইল
                   </span>
-                )}
+                </div>
               </div>
             </div>
+
+            <span style={{
+              fontSize: 11,
+              background: '#DCFCE7',
+              color: '#047857',
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontWeight: 700,
+              border: '1px solid #BBF7D0',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}>
+              ✓ আপলোড সম্পন্ন
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          {/* Bottom Actions Row: Change File & Remove */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 8,
+            paddingTop: 8,
+            borderTop: '1px dashed #BBF7D0'
+          }}>
             <label
               htmlFor={`dropzone-${category}`}
               style={{
@@ -212,37 +236,39 @@ export default function PresignedDropzone({
                 background: '#FFFFFF',
                 border: '1px solid #BBF7D0',
                 borderRadius: 8,
-                padding: '6px 12px',
+                padding: '5px 12px',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
                 transition: 'all 0.15s ease'
               }}
-              title="অন্য ফাইল দিন"
+              title="অন্য ফাইল বেছে নিন"
             >
-              <ArrowUpCircle size={14} />
-              <span>পরিবর্তন</span>
+              <ArrowUpCircle size={13} />
+              <span>ফাইল পরিবর্তন</span>
             </label>
             <button
               type="button"
               onClick={handleClear}
               style={{
-                border: 'none',
-                background: '#FEE2E2',
+                border: '1px solid #FECACA',
+                background: '#FFFFFF',
                 color: '#DC2626',
                 borderRadius: 8,
-                width: 32,
-                height: 32,
-                display: 'flex',
+                padding: '5px 10px',
+                fontSize: 12,
+                fontWeight: 700,
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: 4,
                 cursor: 'pointer',
                 transition: 'background 0.15s ease'
               }}
               title="ডকুমেন্ট মুছে ফেলুন"
             >
-              <Trash2 size={16} />
+              <Trash2 size={13} />
+              <span>মুছুন</span>
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp, FileText, ExternalLink, Building2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebounce } from '../../../hooks/useDebounce'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
@@ -215,41 +215,53 @@ export default function HospitalListPage() {
   } = useTableUrlFilters({
     initialFilters: {
       statusFilter: '',
+      verificationStatus: '',
       hospitalIdFilter: '',
       divisionId: '',
       districtId: '',
       upazilaId: '',
       unionId: '',
+      fromDate: '',
+      toDate: '',
     },
     aliases: {
       statusFilter: ['status', 'is_active'],
+      verificationStatus: ['verification_status'],
       hospitalIdFilter: ['hospital_id'],
       divisionId: ['division_id'],
       districtId: ['district_id'],
       upazilaId: ['upazila_id'],
-      unionId: ['union_id']
+      unionId: ['union_id'],
+      fromDate: ['from_date', 'start_date', 'registered_from'],
+      toDate: ['to_date', 'end_date', 'registered_to'],
     },
     storageKey: 'admin_hospitals_filters'
   })
 
   const {
     statusFilter,
+    verificationStatus,
     hospitalIdFilter,
     divisionId,
     districtId,
     upazilaId,
     unionId,
+    fromDate,
+    toDate,
   } = filters
 
   const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setVerificationStatus = (val) => setFilter('verificationStatus', val)
   const setHospitalIdFilter = (val) => setFilter('hospitalIdFilter', val)
   const setDivisionId = (val) => setFilter('divisionId', val)
   const setDistrictId = (val) => setFilter('districtId', val)
   const setUpazilaId = (val) => setFilter('upazilaId', val)
   const setUnionId = (val) => setFilter('unionId', val)
+  const setFromDate = (val) => setFilter('fromDate', val)
+  const setToDate = (val) => setFilter('toDate', val)
 
   const [showFilters, setShowFilters] = useState(Boolean(
-    statusFilter || hospitalIdFilter || divisionId || districtId || upazilaId || unionId
+    statusFilter || verificationStatus || hospitalIdFilter || divisionId || districtId || upazilaId || unionId || fromDate || toDate
   ))
 
   // Server-side filter memo for TanStack Query (Admin view)
@@ -265,8 +277,11 @@ export default function HospitalListPage() {
     if (upazilaId) params.upazila_id = upazilaId
     if (unionId) params.union_id = unionId
     if (statusFilter !== '') params.is_active = statusFilter === 'active' ? 1 : 0
+    if (verificationStatus) params.verification_status = verificationStatus
+    if (fromDate) params.from_date = fromDate
+    if (toDate) params.to_date = toDate
     return params
-  }, [currentPage, perPage, debouncedSearch, hospitalIdFilter, divisionId, districtId, upazilaId, unionId, statusFilter])
+  }, [currentPage, perPage, debouncedSearch, hospitalIdFilter, divisionId, districtId, upazilaId, unionId, statusFilter, verificationStatus, fromDate, toDate])
 
   // Dedicated own-facility query for Hospital Portal (/hospital/me)
   const {
@@ -414,7 +429,7 @@ export default function HospitalListPage() {
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter !== '')}
+        hasActiveFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter !== '' || verificationStatus || fromDate || toDate)}
         onClearFilters={clearFilters}
         activeFilters={[
           divisionId && { key: 'division', label: `Division: ${divisions.find(d => String(d.id) === String(divisionId))?.name || divisionId}`, onRemove: () => handleDivisionChange('') },
@@ -423,6 +438,9 @@ export default function HospitalListPage() {
           unionId && { key: 'union', label: `Union: ${unions.find(u => String(u.id) === String(unionId))?.name || unionId}`, onRemove: () => setUnionId('') },
           hospitalIdFilter && { key: 'hospital', label: `Facility: ${hospitalsOptions.find(h => String(h.id) === String(hospitalIdFilter))?.name || hospitalIdFilter}`, onRemove: () => setHospitalIdFilter('') },
           statusFilter !== '' && { key: 'status', label: `Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => setStatusFilter('') },
+          verificationStatus && { key: 'verification', label: `Verification: ${verificationStatus}`, onRemove: () => setVerificationStatus('') },
+          fromDate && { key: 'fromDate', label: `Registered From: ${fromDate}`, onRemove: () => setFromDate('') },
+          toDate && { key: 'toDate', label: `Registered To: ${toDate}`, onRemove: () => setToDate('') },
         ].filter(Boolean)}
         actions={
           isAdmin && (
@@ -447,6 +465,26 @@ export default function HospitalListPage() {
             <option value="inactive">Inactive</option>
           </select>
         </div>
+        <div style={{ flex: '1 1 140px', minWidth: 135 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>From Date</label>
+          <input
+            type="date"
+            className="status-select"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+            style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 10, padding: '0 12px', fontSize: 12.5, fontWeight: 500 }}
+          />
+        </div>
+        <div style={{ flex: '1 1 140px', minWidth: 135 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>To Date</label>
+          <input
+            type="date"
+            className="status-select"
+            value={toDate}
+            onChange={e => setToDate(e.target.value)}
+            style={{ width: '100%', height: 42, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 10, padding: '0 12px', fontSize: 12.5, fontWeight: 500 }}
+          />
+        </div>
       </ListToolbar>
 
       <div className="admin-card">
@@ -461,10 +499,40 @@ export default function HospitalListPage() {
             padding: '14px 20px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <h3 className="admin-card-title" style={{ margin: 0 }}>
-              {isManager ? 'My Facility' : 'Registered Facilities'}
+              {isManager ? 'My Facility' : 'All Registered Hospitals'}
             </h3>
+            {!isManager && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--admin-bg, #F1F5F9)', padding: '3px 4px', borderRadius: 8, border: '1px solid var(--admin-border, #E2E8F0)' }}>
+                {[
+                  { key: '', label: 'All' },
+                  { key: 'submitted', label: '⏳ In Review' },
+                  { key: 'approved', label: '✓ Approved' },
+                  { key: 'draft', label: 'Draft' },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setVerificationStatus(tab.key)}
+                    style={{
+                      border: 'none',
+                      background: verificationStatus === tab.key ? 'var(--admin-card-bg, #FFFFFF)' : 'transparent',
+                      color: verificationStatus === tab.key ? '#00A88C' : 'var(--admin-text-muted, #64748B)',
+                      fontWeight: verificationStatus === tab.key ? 700 : 600,
+                      fontSize: 11.5,
+                      padding: '3px 10px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      boxShadow: verificationStatus === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -588,9 +656,9 @@ export default function HospitalListPage() {
         </div>
 
         {(loading && hospitals.length === 0) ? (
-          <TableSkeleton rowCount={8} columnWidths={['44px', '28%', '22%', '16%', '12%', '14%', '8%']} headers={['', 'Facility Name', 'Location Profile', 'Contact Details', 'Status', 'Registered', 'Actions']} />
+          <TableSkeleton rowCount={8} columnWidths={['44px', '32%', '22%', '24%', '12%', '100px']} headers={['', 'Facility Name', 'Contact Details', 'Verification & Docs', 'Account Status', 'Actions']} />
         ) : total === 0 ? (
-          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />
+          <EmptyState hasFilters={Boolean(divisionId || districtId || upazilaId || unionId || hospitalIdFilter || statusFilter || verificationStatus || fromDate || toDate || search)} searchQuery={search} onClearFilters={clearFilters} onClearSearch={() => setSearch('')} icon="🏥" title="No hospitals found" description="Try changing your search keywords or reset active filters." primaryAction={isAdmin ? { label: '+ Add New Hospital', to: '/admin/hospitals/create' } : undefined} />
         ) : (
           <div className="admin-table-wrapper">
             <table className="admin-table">
@@ -605,10 +673,9 @@ export default function HospitalListPage() {
                     />
                   </th>
                   <th style={{ paddingLeft: 16, color: 'var(--admin-text-muted)' }}>Facility Name</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Location Profile</th>
                   <th style={{ color: 'var(--admin-text-muted)' }}>Contact Details</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Status</th>
-                  <th style={{ color: 'var(--admin-text-muted)' }}>Registered</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Verification & Docs</th>
+                  <th style={{ color: 'var(--admin-text-muted)' }}>Account Status</th>
                   <th style={{ textAlign: 'right', paddingRight: 24, color: 'var(--admin-text-muted)' }}>Actions</th>
                 </tr>
               </thead>
@@ -681,63 +748,56 @@ export default function HospitalListPage() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', maxWidth: 300, lineHeight: 1.5 }}>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)', marginBottom: 2 }}>
-                          {[h.division?.name || h.division_name, h.district?.name || h.district_name].filter(Boolean).join(' > ')}
-                        </div>
-                        <div style={{ marginBottom: 2 }}>
-                          {[h.upazila?.name || h.upazila_name, h.union?.name || h.union_name].filter(Boolean).join(', ') || 'Area N/A'}
-                        </div>
-                        {h.address && (
-                          <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--admin-border)', marginTop: 4, paddingTop: 2 }}>
-                            📍 {h.address}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
                       <div style={{ fontWeight: 600, color: 'var(--admin-text)', fontSize: 13 }}>📞 {h.phone || 'N/A'}</div>
                       <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>✉️ {h.email || 'N/A'}</div>
                     </td>
                     <td>
-                      {isAdmin ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div
-                              onClick={() => handleToggleStatus(h)}
-                              style={{
-                                width: 44, height: 24, borderRadius: 12, padding: 2, cursor: 'pointer',
-                                background: h.is_active ? '#10B981' : '#CBD5E1',
-                                display: 'flex', transition: '0.2s',
-                                justifyContent: h.is_active ? 'flex-end' : 'flex-start'
-                              }}
-                            >
-                              <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                            </div>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: h.is_active ? '#10B981' : 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
-                              {h.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </div>
-                          {h.verification_status && h.verification_status !== 'approved' && (
-                            <>
-                              <span style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                width: 'fit-content',
-                                background: h.verification_status === 'submitted' ? '#EFF6FF' : (h.verification_status === 'revision_requested' ? '#FEF2F2' : '#FEF3C7'),
-                                color: h.verification_status === 'submitted' ? '#1D4ED8' : (h.verification_status === 'revision_requested' ? '#DC2626' : '#92400E'),
-                                border: `1px solid ${h.verification_status === 'submitted' ? (h.verification_notes ? '#93C5FD' : '#BFDBFE') : (h.verification_status === 'revision_requested' ? '#FECACA' : '#FDE68A')}`,
-                              }}>
-                                {h.verification_status === 'submitted' ? (h.verification_notes ? '📩 পুনঃজমা (Re-submitted)' : '⏳ যাচাই অপেক্ষমাণ') : (h.verification_status === 'revision_requested' ? '⚠️ সংশোধন আবশ্যক' : 'খসড়া')}
+                      {(() => {
+                        const status = h.verification_status || (h.is_active ? 'approved' : ((h.license_document || h.trade_license_document) ? 'submitted' : 'draft'))
+                        const isApproved = status === 'approved'
+                        const isRevision = status === 'revision_requested'
+                        const isResubmitted = (status === 'submitted' || status === 'in_review') && Boolean(h.verification_notes)
+                        const isInReview = status === 'submitted' || status === 'in_review'
+                        const hasDghs = Boolean(h.license_document)
+                        const hasTrade = Boolean(h.trade_license_document)
+
+                        const badgeConfig = isApproved
+                          ? { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', icon: '✓', text: 'অনুমোদিত' }
+                          : isResubmitted
+                          ? { bg: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', border: 'rgba(37, 99, 235, 0.25)', icon: '📩', text: 'পুনঃজমা (Re-submitted)' }
+                          : isInReview
+                          ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#D97706', border: 'rgba(245, 158, 11, 0.25)', icon: '⏳', text: 'যাচাই অপেক্ষমাণ' }
+                          : isRevision
+                          ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#DC2626', border: 'rgba(239, 68, 68, 0.25)', icon: '⚠', text: 'সংশোধন আবশ্যক' }
+                          : { bg: 'rgba(100, 116, 139, 0.08)', color: '#64748B', border: 'rgba(100, 116, 139, 0.2)', icon: '○', text: 'খসড়া (Draft)' }
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 145 }}>
+                            <div>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  background: badgeConfig.bg,
+                                  color: badgeConfig.color,
+                                  border: `1px solid ${badgeConfig.border}`,
+                                }}
+                              >
+                                <span>{badgeConfig.icon}</span>
+                                <span>{badgeConfig.text}</span>
                               </span>
                               {h.verification_notes && (
-                                <span
+                                <div
                                   style={{
-                                    fontSize: 9.5,
-                                    color: h.verification_status === 'revision_requested' ? '#DC2626' : '#2563EB',
-                                    maxWidth: 150,
+                                    marginTop: 3,
+                                    fontSize: 10,
+                                    color: isRevision ? '#DC2626' : '#2563EB',
+                                    maxWidth: 170,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
@@ -745,10 +805,124 @@ export default function HospitalListPage() {
                                   title={`নোট: ${h.verification_notes}`}
                                 >
                                   💬 {h.verification_notes}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              {hasDghs ? (
+                                <a
+                                  href={getMediaUrl(h.license_document)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="DGHS লাইসেন্স সনদ দেখুন (নতুন ট্যাবে খুলুন)"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(0, 168, 140, 0.1)',
+                                    color: '#00A88C',
+                                    border: '1px solid rgba(0, 168, 140, 0.25)',
+                                    textDecoration: 'none',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <FileText size={10} />
+                                  <span>DGHS ✓</span>
+                                  <ExternalLink size={9} style={{ opacity: 0.7 }} />
+                                </a>
+                              ) : (
+                                <span
+                                  title="DGHS সনদ জমা দেওয়া হয়নি"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(148, 163, 184, 0.08)',
+                                    color: 'var(--admin-text-muted, #94A3B8)',
+                                    border: '1px dashed var(--admin-border, #CBD5E1)',
+                                  }}
+                                >
+                                  <span>DGHS —</span>
                                 </span>
                               )}
-                            </>
-                          )}
+
+                              {hasTrade ? (
+                                <a
+                                  href={getMediaUrl(h.trade_license_document)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="ট্রেড লাইসেন্স দেখুন (নতুন ট্যাবে খুলুন)"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#2563EB',
+                                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                                    textDecoration: 'none',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <Building2 size={10} />
+                                  <span>Trade Lic ✓</span>
+                                  <ExternalLink size={9} style={{ opacity: 0.7 }} />
+                                </a>
+                              ) : (
+                                <span
+                                  title="ট্রেড লাইসেন্স জমা দেওয়া হয়নি"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: 'rgba(148, 163, 184, 0.08)',
+                                    color: 'var(--admin-text-muted, #94A3B8)',
+                                    border: '1px dashed var(--admin-border, #CBD5E1)',
+                                  }}
+                                >
+                                  <span>Trade —</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </td>
+                    <td>
+                      {isAdmin ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
+                            onClick={() => handleToggleStatus(h)}
+                            style={{
+                              width: 44, height: 24, borderRadius: 12, padding: 2, cursor: 'pointer',
+                              background: h.is_active ? '#10B981' : '#CBD5E1',
+                              display: 'flex', transition: '0.2s',
+                              justifyContent: h.is_active ? 'flex-end' : 'flex-start'
+                            }}
+                          >
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: h.is_active ? '#10B981' : 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
+                            {h.is_active ? 'Active' : 'Inactive'}
+                          </span>
                         </div>
                       ) : (
                         <span style={{
@@ -760,14 +934,6 @@ export default function HospitalListPage() {
                           {h.is_active ? 'Active' : 'Inactive'}
                         </span>
                       )}
-                    </td>
-                    <td>
-                      <div style={{ fontSize: 12, color: 'var(--admin-text)', fontWeight: 600 }}>
-                        {h.created_at ? new Date(h.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--admin-text-muted)', marginTop: 2 }}>
-                        {h.created_at ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>

@@ -47,10 +47,28 @@ export default function AgentWalletPage() {
     settled_balance: 0.0,
     pending_payouts: 0.0,
     available_balance: 0.0,
+    total_withdrawn: 0.0,
+    lifetime_earnings: 0.0,
     currency: 'BDT',
   }
 
   const entries = statementData?.entries || []
+
+  // Dynamic total lifetime earnings (total accrued partner commission)
+  const totalLifetimeEarned = summary.lifetime_earnings !== undefined
+    ? Number(summary.lifetime_earnings || 0)
+    : (summary.total_earned !== undefined
+      ? Number(summary.total_earned || 0)
+      : (entries.length > 0
+        ? entries.filter(e => e.direction === 'credit').reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
+        : Number(summary.settled_balance || 0)))
+
+  // Dynamic total withdrawn (settled debits sent to bank/bKash)
+  const totalWithdrawn = summary.total_withdrawn !== undefined
+    ? Number(summary.total_withdrawn || 0)
+    : (entries.length > 0
+      ? entries.filter(e => e.direction === 'debit').reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
+      : 0)
 
   return (
     <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
@@ -90,7 +108,7 @@ export default function AgentWalletPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
-                  Agent Commission Wallet
+                  এজেন্ট কমিশন ওয়ালেট
                 </h1>
                 <span style={{
                   fontSize: 11,
@@ -106,7 +124,7 @@ export default function AgentWalletPage() {
                 </span>
               </div>
               <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
-                Manage verified onboarding rewards, request bank/bKash payouts, and track audit ledgers.
+                অনবোর্ডিং রিওয়ার্ড পরিচালনা, ব্যাংক/বিকাশ পেআউট অনুরোধ এবং অডিট লেজার ট্র্যাক করুন।
               </p>
             </div>
           </div>
@@ -160,7 +178,7 @@ export default function AgentWalletPage() {
               }}
             >
               <CreditCard size={16} strokeWidth={2.5} />
-              <span>{isAgentSuspended ? 'Payout Disabled' : 'Request Payout'}</span>
+              <span>{isAgentSuspended ? 'পেআউট স্থগিত' : 'পেআউট রিকোয়েস্ট'}</span>
             </button>
           </div>
         </div>
@@ -168,7 +186,7 @@ export default function AgentWalletPage() {
         {/* Financial KPI Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
           gap: 16,
           marginBottom: 24
         }}>
@@ -185,7 +203,7 @@ export default function AgentWalletPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: '#00B875', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Available to Withdraw
+                উত্তোলনযোগ্য ব্যালেন্স
               </span>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(0, 184, 117, 0.12)', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Wallet size={19} />
@@ -196,7 +214,7 @@ export default function AgentWalletPage() {
                 ৳{Number(summary.available_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>
-                Net after deducting in-flight settlement requests
+                চলমান পেআউট রিকোয়েস্ট বাদে অবশিষ্ট ব্যালেন্স
               </p>
             </div>
           </div>
@@ -214,7 +232,7 @@ export default function AgentWalletPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                In-Flight Payouts
+                প্রক্রিয়াধীন পেআউট
               </span>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={19} />
@@ -225,12 +243,12 @@ export default function AgentWalletPage() {
                 ৳{Number(summary.pending_payouts || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>
-                Currently in review with finance / accounts desk
+                ফাইন্যান্স ও অ্যাকাউন্টস ডেস্কে পর্যালোচনায় রয়েছে
               </p>
             </div>
           </div>
 
-          {/* Card 3: Settled Lifetime */}
+          {/* Card 3: Total Withdrawn */}
           <div style={{
             background: '#FFFFFF',
             borderRadius: 20,
@@ -243,18 +261,47 @@ export default function AgentWalletPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Lifetime Settled
+                সফল উত্তোলন
               </span>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShieldCheck size={19} />
+                <CheckCircle2 size={19} />
               </div>
             </div>
             <div>
               <div style={{ fontSize: 28, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.03em' }}>
-                ৳{Number(summary.settled_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ৳{Number(totalWithdrawn).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>
-                Gross cumulative approved partner earnings
+                বিকাশ বা ব্যাংকে সফলভাবে ক্যাশআউট হয়েছে
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Total Lifetime Earnings */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: 20,
+            padding: '22px 24px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                সর্বমোট অর্জিত আয়
+              </span>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={19} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.03em' }}>
+                ৳{Number(totalLifetimeEarned).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0' }}>
+                অনুমোদিত পার্টনার হিসেবে মোট অর্জিত কমিশন
               </p>
             </div>
           </div>

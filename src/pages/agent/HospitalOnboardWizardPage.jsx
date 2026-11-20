@@ -18,15 +18,21 @@ import {
   Check, 
   ChevronRight, 
   ShieldAlert, 
+  ShieldCheck,
   FileText,
   Building,
-  Navigation
+  Navigation,
+  Sparkles,
+  DollarSign,
+  Info,
+  Edit3
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import agentApi from '../../api/agentApi'
 import axiosInstance from '../../api/axiosInstance'
 import PresignedDropzone from '../../features/agent/components/PresignedDropzone'
+import { getMediaUrl } from '../../utils/mediaUtils'
 
 export default function HospitalOnboardWizardPage() {
   const navigate = useNavigate()
@@ -154,7 +160,7 @@ export default function HospitalOnboardWizardPage() {
                 docsObj[fieldKey] = {
                   file_key: key,
                   name: key.split('/').pop() || `Document #${idx + 1}`,
-                  preview_url: `/storage/${key}`
+                  preview_url: getMediaUrl(key)
                 }
               })
             }
@@ -193,6 +199,17 @@ export default function HospitalOnboardWizardPage() {
   const activeDocumentKeys = Object.values(formData.documents || {})
     .filter(Boolean)
     .map((d) => d.file_key)
+
+  const activeDocumentCount = Object.values(formData.documents || {})
+    .filter(Boolean)
+    .filter((d) => d.file_key).length
+
+  const hospitalTypeLabels = {
+    private: 'প্রাইভেট হাসপাতাল (Private)',
+    clinic: 'ক্লিনিক (Clinic)',
+    diagnostic: 'ডায়াগনস্টিক সেন্টার (Diagnostic)',
+    public: 'সরকারি হাসপাতাল (Public)'
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -300,9 +317,7 @@ export default function HospitalOnboardWizardPage() {
       } else if (!/^01[3-9]\d{8}$/.test(formData.phone.trim())) {
         errs.phone = 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।'
       }
-      if (!formData.email.trim()) {
-        errs.email = 'অফিসিয়াল ইমেইল অ্যাড্রেস আবশ্যক।'
-      } else if (!formData.email.includes('@')) {
+      if (formData.email?.trim() && !formData.email.includes('@')) {
         errs.email = 'সঠিক ইমেইল ফরম্যাট দিন (যেমন: hospital@example.com)।'
       }
     }
@@ -319,6 +334,8 @@ export default function HospitalOnboardWizardPage() {
       }
       if (!formData.documents?.hospital_license_doc?.file_key) {
         errs.document_keys = 'হাসপাতালের DGHS লাইসেন্স বা রেজিস্ট্রেশন সনদপত্র আপলোড করা বাধ্যতামূলক।'
+      } else if (!formData.documents?.hospital_trade_license_doc?.file_key) {
+        errs.document_keys = 'পৌরসভা বা সিটি কর্পোরেশনের ট্রেড লাইসেন্স আপলোড করা বাধ্যতামূলক।'
       }
     }
 
@@ -372,7 +389,7 @@ export default function HospitalOnboardWizardPage() {
         hospital_type: formData.hospital_type,
         phone: formData.phone.trim(),
         hotline: formData.hotline ? formData.hotline.trim() : null,
-        email: formData.email.trim(),
+        email: formData.email?.trim() ? formData.email.trim() : null,
         license_number: formData.license_number.trim(),
         division_id: formData.division_id ? parseInt(formData.division_id, 10) : null,
         district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
@@ -435,9 +452,9 @@ export default function HospitalOnboardWizardPage() {
   }
 
   const steps = [
-    { num: 1, label: 'পরিচয়', desc: 'নাম ও যোগাযোগ', icon: Building2 },
+    { num: 1, label: 'প্রাথমিক পরিচয়', desc: 'নাম ও যোগাযোগ', icon: Building2 },
     { num: 2, label: 'লোকেশন ও জিপিএস', desc: 'ঠিকানা ও কো-অর্ডিনেট', icon: MapPin },
-    { num: 3, label: 'লাইসেন্স ও ফাইল', desc: 'DGHS সনদপত্র', icon: FileCheck },
+    { num: 3, label: 'লাইসেন্স ও সনদপত্র', desc: 'DGHS ও ট্রেড লাইসেন্স', icon: FileCheck },
     { num: 4, label: 'রিভিউ ও সাবমিট', desc: 'চূড়ান্ত যাচাই', icon: CheckCircle2 },
   ]
 
@@ -530,197 +547,274 @@ export default function HospitalOnboardWizardPage() {
   const selectedUnionName = unions.find(u => String(u.id) === String(formData.union_id))?.name || ''
 
   return (
-    <div style={{ minHeight: '100%', background: '#F8FAFC', paddingBottom: 60 }}>
+    <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px 48px' }}>
         
-        {/* Breadcrumb Navigation */}
+        {/* Breadcrumb HUD */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748B', marginBottom: 16 }}>
           <Link to="/agent" style={{ color: 'inherit', textDecoration: 'none' }}>Partner Desk</Link>
           <ChevronRight size={13} />
           <span>Onboarding</span>
           <ChevronRight size={13} />
-          <span style={{ color: '#059669', fontWeight: 700 }}>
-            {isEditingRevision ? `Edit Application #${editCode}` : 'Hospital Onboarding'}
+          <span style={{ color: '#00B875', fontWeight: 700 }}>
+            {isEditingRevision ? `Application Revision #${editCode}` : 'Hospital Onboarding'}
           </span>
         </div>
 
         {/* Page Header */}
         <div style={{
-          background: '#FFFFFF',
-          borderRadius: 20,
-          border: '1px solid #E2E8F0',
-          padding: '24px 28px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-          marginBottom: 24,
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 24,
           flexWrap: 'wrap',
-          gap: 16
+          gap: 12
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)'
-              }}>
-                <Building2 size={20} />
-              </div>
-              <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)'
+            }}>
+              <Building2 size={24} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
                 {isEditingRevision ? 'হাসপাতাল আবেদন সংশোধন ফর্ম' : 'নতুন হাসপাতাল অনবোর্ডিং ফর্ম'}
               </h1>
+              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
+                {isEditingRevision 
+                  ? `আবেদন কোড: ${editCode} • এডমিনের মন্তব্য অনুযায়ী সংশোধন করে পুনরায় জমা দিন`
+                  : <>হাসপাতালের তথ্য, লোকেশন ও লাইসেন্স যাচাইয়ের জন্য জমা দিন। অনুমোদন সাপেক্ষে <strong>৳১,৫০০ কমিশন</strong> লাভ করুন।</>}
+              </p>
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: '#64748B' }}>
-              হাসপাতালের তথ্য, বিভাগ-জেলা-উপজেলা এবং সঠিক জিপিএস লোকেশন ইনপুট দিয়ে লাইসেন্স সনদপত্র আপলোড করুন।
-            </p>
           </div>
 
           <div style={{
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            borderRadius: 12,
-            padding: '8px 14px',
-            textAlign: 'right'
+            background: isEditingRevision ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 184, 117, 0.1)',
+            border: isEditingRevision ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 184, 117, 0.25)',
+            borderRadius: 10,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 800,
+            color: isEditingRevision ? '#D97706' : '#00B875',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>
-              অ্যাপ্রুভাল কমিশন
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#065F46' }}>
-              ৳১,৫০০ <span style={{ fontSize: 11, fontWeight: 600 }}>/ হাসপাতাল</span>
-            </div>
+            <Sparkles size={14} />
+            <span>ধাপ {currentStep} / ৪</span>
           </div>
         </div>
 
-        {/* Revision Alert Banner (If editing) */}
-        {isEditingRevision && revisionOriginalRequest?.admin_notes && (
+        {/* ── Admin Revision Instructions Banner ── */}
+        {isEditingRevision && revisionOriginalRequest && (
           <div style={{
             marginBottom: 24,
             padding: '16px 20px',
-            background: '#FEF2F2',
-            border: '1.5px solid #FECACA',
             borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.12) 100%)',
+            border: '1.5px solid rgba(245, 158, 11, 0.35)',
             display: 'flex',
             alignItems: 'flex-start',
-            gap: 12
+            gap: 14,
+            boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
           }}>
-            <AlertCircle size={20} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <div style={{ fontWeight: 800, color: '#991B1B', fontSize: 13.5, marginBottom: 2 }}>
-                অ্যাডমিনের সংশোধনের নির্দেশনা:
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: '#F59E0B',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <AlertCircle size={22} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <h4 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#92400E' }}>
+                  অ্যাডমিন সংশোধন নির্দেশনা (Admin Revision Required)
+                </h4>
+                <span style={{
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: '#D97706',
+                  background: '#FEF3C7',
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(245, 158, 11, 0.3)'
+                }}>
+                  {revisionOriginalRequest.request_code}
+                </span>
               </div>
-              <div style={{ color: '#7F1D1D', fontSize: 13, lineHeight: 1.5 }}>
-                "{revisionOriginalRequest.admin_notes}"
-              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#B45309', lineHeight: 1.5 }}>
+                <strong>এডমিনের কমেন্ট:</strong> {revisionOriginalRequest.admin_notes || 'অনুগ্রহ করে ভুল বা অসম্পূর্ণ তথ্য ও নথিপত্র সংশোধন করে পুনরায় জমা দিন।'}
+              </p>
             </div>
           </div>
         )}
 
-        {/* Global Error Banner */}
-        {errorMessage && (
+        {/* ── Stepper Progress Bar ── */}
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          borderRadius: 20,
+          padding: '20px 24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          marginBottom: 24,
+          position: 'relative'
+        }}>
           <div style={{
-            marginBottom: 24,
-            padding: '14px 18px',
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            color: '#B91C1C',
-            fontSize: 13
+            justifyContent: 'space-between',
+            position: 'relative'
           }}>
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, fontWeight: 600 }}>{errorMessage}</div>
+            {/* Background line connecting steps */}
+            <div style={{
+              position: 'absolute',
+              top: 20,
+              left: 30,
+              right: 30,
+              height: 2,
+              background: '#E2E8F0',
+              zIndex: 0
+            }} />
+
+            {/* Active connecting line */}
+            <div style={{
+              position: 'absolute',
+              top: 20,
+              left: 30,
+              width: `${((currentStep - 1) / (steps.length - 1)) * 92}%`,
+              height: 2,
+              background: 'linear-gradient(90deg, #00B875, #0284c7)',
+              transition: 'width 0.3s ease',
+              zIndex: 0
+            }} />
+
+            {steps.map((s) => {
+              const Icon = s.icon
+              const isCompleted = currentStep > s.num
+              const isCurrent = currentStep === s.num
+
+              return (
+                <div 
+                  key={s.num} 
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    background: '#FFFFFF',
+                    padding: '0 8px',
+                    cursor: s.num < currentStep ? 'pointer' : 'default'
+                  }}
+                  onClick={() => {
+                    if (s.num < currentStep) setCurrentStep(s.num)
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: 800,
+                      transition: 'all 0.2s ease',
+                      background: isCompleted 
+                        ? '#00B875' 
+                        : isCurrent 
+                        ? 'rgba(0, 184, 117, 0.12)' 
+                        : '#F1F5F9',
+                      color: isCompleted 
+                        ? '#FFFFFF' 
+                        : isCurrent 
+                        ? '#00B875' 
+                        : '#94A3B8',
+                      border: isCurrent ? '2px solid #00B875' : isCompleted ? 'none' : '1px solid #CBD5E1',
+                      boxShadow: isCurrent ? '0 0 0 4px rgba(0, 184, 117, 0.15)' : 'none'
+                    }}
+                  >
+                    {isCompleted ? <Check size={18} strokeWidth={3} /> : <Icon size={16} />}
+                  </div>
+
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: isCurrent ? 800 : 600,
+                    color: isCurrent ? '#00B875' : isCompleted ? '#0F172A' : '#64748B',
+                    marginTop: 6
+                  }}>
+                    {s.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Error Banner ── */}
+        {(errorList.length > 0 || errorMessage) && (
+          <div style={{
+            marginBottom: 20,
+            padding: '16px 18px',
+            borderRadius: 14,
+            background: '#FEF2F2',
+            border: '1.5px solid #FECDD3',
+            color: '#991B1B',
+            fontSize: 13,
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, marginBottom: 6, color: '#DC2626' }}>
+              <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <span>ভ্যালিডেশন এরর (Validation Errors Found):</span>
+            </div>
+            {errorMessage && <div style={{ marginBottom: 4, fontWeight: 600 }}>{errorMessage}</div>}
+            {errorList.length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.5 }}>
+                {errorList.map((err, i) => (
+                  <li key={i}>{typeof err === 'string' ? err : JSON.stringify(err)}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
-        {/* Stepper Header HUD */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 10,
-          marginBottom: 24
-        }}>
-          {steps.map((st) => {
-            const isDone = st.num < currentStep
-            const isActive = st.num === currentStep
-            const StepIcon = st.icon
-
-            return (
-              <div
-                key={st.num}
-                onClick={() => {
-                  if (st.num < currentStep) setCurrentStep(st.num)
-                }}
-                style={{
-                  background: isActive ? '#FFFFFF' : (isDone ? '#F0FDF4' : '#FFFFFF'),
-                  border: isActive ? '2px solid #10B981' : (isDone ? '1px solid #BBF7D0' : '1px solid #E2E8F0'),
-                  borderRadius: 14,
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  cursor: isDone ? 'pointer' : 'default',
-                  boxShadow: isActive ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  background: isActive ? '#10B981' : (isDone ? '#059669' : '#F1F5F9'),
-                  color: (isActive || isDone) ? '#FFFFFF' : '#64748B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: 13,
-                  flexShrink: 0
-                }}>
-                  {isDone ? <Check size={16} strokeWidth={3} /> : <StepIcon size={16} />}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: isActive ? '#059669' : '#94A3B8', textTransform: 'uppercase' }}>
-                    ধাপ {st.num}
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {st.label}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Wizard Card Body */}
+        {/* ── Main Form Card ── */}
         <div style={{
           background: '#FFFFFF',
-          borderRadius: 20,
           border: '1px solid #E2E8F0',
-          padding: '32px 32px',
-          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)'
+          borderRadius: 24,
+          padding: '32px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+          marginBottom: 32
         }}>
 
           {/* ═══════════════════════════════════════════════════════
               STEP 1: Hospital Identity & Contact Details
              ═══════════════════════════════════════════════════════ */}
           {currentStep === 1 && (
-            <div>
-              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #F1F5F9' }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Building2 size={19} color="#10B981" />
-                  হাসপাতালের প্রাথমিক পরিচিতি ও যোগাযোগ
-                </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>
-                  হাসপাতালের অফিশিয়াল নাম, ধরন এবং যোগাযোগের মোবাইল ও ইমেইল নম্বর প্রদান করুন।
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  ধাপ ১: হাসপাতালের প্রাথমিক পরিচিতি ও যোগাযোগ
+                </h2>
+                <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                  হাসপাতালের অফিশিয়াল নাম, ধরন এবং প্রশাসনিক মোবাইল ও ইমেইল নম্বর প্রদান করুন।
                 </p>
               </div>
 
@@ -837,7 +931,7 @@ export default function HospitalOnboardWizardPage() {
                 {/* Official Email */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    অফিসিয়াল ইমেইল অ্যাড্রেস *
+                    অফিসিয়াল ইমেইল অ্যাড্রেস (ঐচ্ছিক)
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -902,13 +996,12 @@ export default function HospitalOnboardWizardPage() {
              ═══════════════════════════════════════════════════════ */}
           {currentStep === 2 && (
             <div>
-              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #F1F5F9' }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <MapPin size={19} color="#10B981" />
-                  হাসপাতালের লোকেশন ও জিপিএস কো-অর্ডিনেট
-                </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>
-                  প্রশাসনিক এলাকা নির্বাচন করুন এবং জিপিএস দিয়ে সঠিক অক্ষাংশ ও দ্রাঘিমাংশ সেট করুন।
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14, marginBottom: 20 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  ধাপ ২: ভৌগোলিক এলাকা ও সঠিক জিপিএস লোকেশন
+                </h2>
+                <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                  প্রশাসনিক বিভাগ, জেলা, উপজেলা নির্বাচন করুন এবং ম্যাপ ন্যাভিগেশনের জন্য সরাসরি জিপিএস কো-অর্ডিনেট সেট করুন।
                 </p>
               </div>
 
@@ -1205,13 +1298,12 @@ export default function HospitalOnboardWizardPage() {
              ═══════════════════════════════════════════════════════ */}
           {currentStep === 3 && (
             <div>
-              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #F1F5F9' }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileCheck size={19} color="#10B981" />
-                  লাইসেন্স ও ভেরিফিকেশন সনদপত্র
-                </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>
-                  স্বাস্থ্য অধিদপ্তর (DGHS) লাইসেন্স নম্বর দিন এবং প্রয়োজনীয় সনদপত্র আপলোড করুন।
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14, marginBottom: 20 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  ধাপ ৩: সরকারি লাইসেন্স ও ভেরিফিকেশন সনদপত্র
+                </h2>
+                <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                  স্বাস্থ্য অধিদপ্তর (DGHS) রেজিস্ট্রেশন নম্বর প্রদান করুন এবং অফিশিয়াল লাইসেন্স ফাইল আপলোড করুন।
                 </p>
               </div>
 
@@ -1246,42 +1338,167 @@ export default function HospitalOnboardWizardPage() {
                 </span>
               </div>
 
+              {/* Guidance Info Banner - Single Row Text */}
+              <div style={{
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
+                borderRadius: 12,
+                padding: '11px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 20
+              }}>
+                <ShieldCheck size={18} color="#059669" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: '#065F46', fontWeight: 600 }}>
+                  <strong>নির্দেশনা:</strong> ডিজিএইচএস (DGHS) লাইসেন্স এবং ট্রেড লাইসেন্স উভয় সনদপত্র আপলোড করা বাধ্যতামূলক (অনুমোদিত ফরম্যাট: PDF, JPG, PNG বা WEBP • সর্বোচ্চ ১০ MB)।
+                </span>
+              </div>
+
               {/* Presigned Document Dropzones */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
                 {/* 1. DGHS License Doc (Required) */}
-                <div>
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 16,
+                  padding: '16px 18px',
+                  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: 'rgba(0, 184, 117, 0.1)',
+                        color: '#00B875',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <FileCheck size={18} />
+                      </div>
+                      <div style={{
+                        fontSize: 13.5,
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        DGHS লাইসেন্স / রেজিস্ট্রেশন সনদ
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 10.5,
+                      background: '#FEE2E2',
+                      color: '#DC2626',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      fontWeight: 800,
+                      border: '1px solid #FECACA',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      বাধ্যতামূলক *
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#64748B', paddingLeft: 40, marginTop: -4 }}>
+                    স্বাস্থ্য অধিদপ্তর কর্তৃক অনুমোদিত সরকারি লাইসেন্স কপি
+                  </div>
+
                   <PresignedDropzone
                     category="hospital_license"
-                    label="DGHS রেজিস্ট্রেশন / অনুমোদন সনদপত্র *"
+                    label="DGHS রেজিস্ট্রেশন সনদপত্র"
                     required
                     existingKey={formData.documents?.hospital_license_doc?.file_key}
                     existingFileName={formData.documents?.hospital_license_doc?.name || formData.documents?.hospital_license_doc?.file_name}
                     existingFileSize={formData.documents?.hospital_license_doc?.file_size}
-                    onUploadSuccess={(category, fileKey, fileName, fileSizeText) =>
-                      handleDocumentUploaded('hospital_license_doc', fileKey, fileName, fileSizeText)
+                    onUploadSuccess={(fileKey, fileName, sizeStr) =>
+                      handleDocumentUploaded('hospital_license_doc', fileKey, fileName, sizeStr)
                     }
                     onRemove={() => handleDocumentRemoved('hospital_license_doc')}
                   />
                   {getFieldError('document_keys') && !formData.documents?.hospital_license_doc?.file_key && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 6, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 2, display: 'block', fontWeight: 600 }}>
                       {getFieldError('document_keys')}
                     </span>
                   )}
                 </div>
 
-                {/* 2. Trade License Doc (Optional) */}
-                <div>
+                {/* 2. Trade License Doc (Required) */}
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 16,
+                  padding: '16px 18px',
+                  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: 'rgba(2, 132, 199, 0.1)',
+                        color: '#0284C7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <FileText size={18} />
+                      </div>
+                      <div style={{
+                        fontSize: 13.5,
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 10.5,
+                      background: '#FEE2E2',
+                      color: '#DC2626',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      fontWeight: 800,
+                      border: '1px solid #FECACA',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      বাধ্যতামূলক *
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#64748B', paddingLeft: 40, marginTop: -4 }}>
+                    হালনাগাদ ট্রেড লাইসেন্স বা ট্যাক্স সার্টিফিকেট
+                  </div>
+
                   <PresignedDropzone
                     category="hospital_trade_license"
-                    label="ট্রেড লাইসেন্স বা ট্যাক্স সার্টিফিকেট (ঐচ্ছিক)"
+                    label="ট্রেড লাইসেন্স কপি"
+                    required
                     existingKey={formData.documents?.hospital_trade_license_doc?.file_key}
                     existingFileName={formData.documents?.hospital_trade_license_doc?.name || formData.documents?.hospital_trade_license_doc?.file_name}
                     existingFileSize={formData.documents?.hospital_trade_license_doc?.file_size}
-                    onUploadSuccess={(category, fileKey, fileName, fileSizeText) =>
-                      handleDocumentUploaded('hospital_trade_license_doc', fileKey, fileName, fileSizeText)
+                    onUploadSuccess={(fileKey, fileName, sizeStr) =>
+                      handleDocumentUploaded('hospital_trade_license_doc', fileKey, fileName, sizeStr)
                     }
                     onRemove={() => handleDocumentRemoved('hospital_trade_license_doc')}
                   />
+                  {getFieldError('document_keys') && !formData.documents?.hospital_trade_license_doc?.file_key && (
+                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 2, display: 'block', fontWeight: 600 }}>
+                      {getFieldError('document_keys')}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1291,120 +1508,414 @@ export default function HospitalOnboardWizardPage() {
               STEP 4: Review, Confirm & Submit
              ═══════════════════════════════════════════════════════ */}
           {currentStep === 4 && (
-            <div>
-              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #F1F5F9' }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle2 size={19} color="#10B981" />
-                  আবেদনের তথ্য চূড়ান্ত পর্যালোচনা ও জমা
-                </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>
-                  সাবমিট করার পূর্বে সকল তথ্য ও আপলোডকৃত ফাইলসমূহ সতর্কতার সাথে যাচাই করুন।
-                </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                    ধাপ ৪: চূড়ান্ত পর্যালোচনা ও সাবমিশন
+                  </h2>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                    প্রশাসনিক অডিটের জন্য সাবমিট করার পূর্বে হাসপাতালের সকল সংগৃহীত তথ্য ও প্রমাণপত্র যাচাই করুন।
+                  </p>
+                </div>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#00803D',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <ShieldCheck size={14} />
+                  <span>যাচাইয়ের জন্য প্রস্তুত</span>
+                </div>
               </div>
 
-              {/* Review Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18, marginBottom: 24 }}>
-                {/* Identity Summary Card */}
-                <div style={{ background: '#F8FAFC', padding: '16px 18px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Building2 size={14} color="#10B981" /> হাসপাতালের পরিচিতি
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>
-                    {formData.name}
-                  </div>
-                  {formData.name_bn && (
-                    <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
-                      {formData.name_bn}
+              {/* ── CARD 1: Hospital Profile & Contact ── */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
+                padding: '18px 20px',
+                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DCFCE7', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={16} />
                     </div>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: '#334155' }}>
-                    <div><strong>ধরন:</strong> {formData.hospital_type.toUpperCase()}</div>
-                    <div><strong>ফোন:</strong> {formData.phone}</div>
-                    <div><strong>ইমেইল:</strong> {formData.email}</div>
-                    {formData.hotline && <div><strong>হটলাইন:</strong> {formData.hotline}</div>}
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>হাসপাতালের প্রাথমিক পরিচিতি ও যোগাযোগ</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0284C7',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 8px',
+                      borderRadius: 6
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <Edit3 size={13} />
+                    <span>পরিবর্তন করুন</span>
+                  </button>
                 </div>
 
-                {/* Location & GPS Summary Card */}
-                <div style={{ background: '#F8FAFC', padding: '16px 18px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <MapPin size={14} color="#059669" /> অবস্থান ও জিপিএস কো-অর্ডিনেট
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের পূর্ণ নাম</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
+                      {formData.name} {formData.name_bn && <span style={{ fontSize: 12.5, fontWeight: 500, color: '#64748B' }}>({formData.name_bn})</span>}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
-                    {[selectedUnionName, selectedUpazilaName, selectedDistrictName, selectedDivisionName].filter(Boolean).join(', ') || 'এলাকা নির্ধারিত হয়নি'}
+
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের ধরন</div>
+                    <div>
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#0369A1',
+                        background: '#E0F2FE',
+                        border: '1px solid #BAE6FD',
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        display: 'inline-block'
+                      }}>
+                        {hospitalTypeLabels[formData.hospital_type] || formData.hospital_type}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 10 }}>
-                    <strong>ঠিকানা:</strong> {formData.address || 'প্রদান করা হয়নি'}
+
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>অফিসিয়াল মোবাইল</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Phone size={13} style={{ color: '#00803D' }} />
+                      <span>{formData.phone}</span>
+                    </div>
                   </div>
+
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>ইমেইল ঠিকানা</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Mail size={13} style={{ color: '#0284C7' }} />
+                      <span>{formData.email || '— (ঐচ্ছিক)'}</span>
+                    </div>
+                  </div>
+
+                  {formData.hotline && (
+                    <div>
+                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>জরুরি হটলাইন</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <PhoneCall size={13} style={{ color: '#8B5CF6' }} />
+                        <span>{formData.hotline}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── CARD 2: Location, Address & GPS Coordinates ── */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
+                padding: '18px 20px',
+                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <MapPin size={16} />
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>ভৌগোলিক এলাকা, ঠিকানা ও জিপিএস</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0284C7',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 8px',
+                      borderRadius: 6
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <Edit3 size={13} />
+                    <span>পরিবর্তন করুন</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>প্রশাসনিক বিভাগ ও জেলা</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                      {selectedDistrictName || '—'}, {selectedDivisionName || '—'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>উপজেলা ও ইউনিয়ন</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A' }}>
+                      {selectedUpazilaName || '—'} {selectedUnionName && `(${selectedUnionName})`}
+                    </div>
+                  </div>
+
+                  {formData.address && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের পূর্ণাঙ্গ ঠিকানা</div>
+                      <div style={{ fontSize: 13, color: '#1E293B', fontWeight: 600, background: '#F8FAFC', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                        {formData.address}
+                      </div>
+                    </div>
+                  )}
+
                   {formData.latitude && formData.longitude ? (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: 8, fontSize: 11.5, fontWeight: 700, border: '1px solid #A7F3D0' }}>
-                      <CheckCircle2 size={13} color="#059669" />
-                      GPS: {formData.latitude}, {formData.longitude}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Navigation size={13} color="#059669" />
+                        <span>জিপিএস কো-অর্ডিনেট: {formData.latitude}, {formData.longitude}</span>
+                        {formData.google_map_url && (
+                          <a href={formData.google_map_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0284C7', textDecoration: 'none', marginLeft: 8, fontSize: 12 }}>
+                            (গুগল ম্যাপে দেখুন ↗)
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11.5, color: '#94A3B8', fontStyle: 'italic' }}>
+                    <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#94A3B8', fontStyle: 'italic' }}>
                       জিপিএস কো-অর্ডিনেট ইনপুট দেওয়া হয়নি
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* License & Documents Summary Card */}
-                <div style={{ gridColumn: 'span 2', background: '#F8FAFC', padding: '16px 18px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <FileCheck size={14} color="#059669" /> লাইসেন্স ও আপলোডকৃত নথিপত্র
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 10 }}>
-                    লাইসেন্স / DGHS নম্বর: <span style={{ color: '#059669' }}>{formData.license_number}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                    <div style={{ padding: '8px 12px', background: formData.documents?.hospital_license_doc ? '#F0FDF4' : '#FEF2F2', borderRadius: 8, border: `1px solid ${formData.documents?.hospital_license_doc ? '#BBF7D0' : '#FECACA'}`, fontSize: 12 }}>
-                      <span style={{ fontWeight: 700, color: formData.documents?.hospital_license_doc ? '#166534' : '#DC2626' }}>
-                        {formData.documents?.hospital_license_doc ? '✓ DGHS সনদপত্র আপলোড করা হয়েছে' : '✕ DGHS সনদপত্র পাওয়া যায়নি'}
-                      </span>
+              {/* ── CARD 3: License & Verification Documents ── */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
+                padding: '18px 20px',
+                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F3E8FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FileCheck size={16} />
                     </div>
-                    <div style={{ padding: '8px 12px', background: formData.documents?.hospital_trade_license_doc ? '#F0FDF4' : '#F8FAFC', borderRadius: 8, border: `1px solid ${formData.documents?.hospital_trade_license_doc ? '#BBF7D0' : '#E2E8F0'}`, fontSize: 12 }}>
-                      <span style={{ fontWeight: 600, color: formData.documents?.hospital_trade_license_doc ? '#166534' : '#64748B' }}>
-                        {formData.documents?.hospital_trade_license_doc ? '✓ ট্রেড লাইসেন্স সংযুক্ত হয়েছে' : 'ট্রেড লাইসেন্স দেওয়া হয়নি (ঐচ্ছিক)'}
-                      </span>
+                    <div>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>সরকারি লাইসেন্স ও সংযুক্ত নথিপত্র</span>
+                      <span style={{ fontSize: 12, color: '#64748B', marginLeft: 8 }}>({activeDocumentCount}টি ফাইল সংযুক্ত)</span>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0284C7',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 8px',
+                      borderRadius: 6
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <Edit3 size={13} />
+                    <span>পরিবর্তন করুন</span>
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                    লাইসেন্স বা ডিজিএইচএস (DGHS) রেজিস্ট্রেশন নম্বর
+                  </div>
+                  <span style={{
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: '#065F46',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    display: 'inline-block'
+                  }}>
+                    {formData.license_number || '—'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Document 1: DGHS License Doc */}
+                  {formData.documents?.hospital_license_doc ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 10
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <FileText size={18} style={{ color: '#0284C7' }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                            DGHS রেজিস্ট্রেশন সনদপত্র
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                            {formData.documents.hospital_license_doc.file_name} {formData.documents.hospital_license_doc.file_size ? `• ${formData.documents.hospital_license_doc.file_size}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#15803D',
+                        background: '#DCFCE7',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <CheckCircle2 size={12} /> সংযুক্ত
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: '#DC2626', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, border: '1px solid #FECACA' }}>
+                      ✕ DGHS রেজিস্ট্রেশন সনদপত্র আপলোড করা হয়নি
+                    </div>
+                  )}
+
+                  {/* Document 2: Trade License Doc */}
+                  {formData.documents?.hospital_trade_license_doc ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 10
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <FileText size={18} style={{ color: '#0284C7' }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                            পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                            {formData.documents.hospital_trade_license_doc.file_name} {formData.documents.hospital_trade_license_doc.file_size ? `• ${formData.documents.hospital_trade_license_doc.file_size}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#15803D',
+                        background: '#DCFCE7',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <CheckCircle2 size={12} /> সংযুক্ত
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: '#DC2626', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, border: '1px solid #FECACA' }}>
+                      ✕ পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স আপলোড করা হয়নি
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Commission Confirmation Box */}
+              {/* ── CARD 4: Executive Commission & Audit Assurance Card ── */}
               <div style={{
                 background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
                 border: '1.5px solid #A7F3D0',
                 borderRadius: 14,
                 padding: '16px 20px',
                 display: 'flex',
-                alignItems: 'center',
-                gap: 14
+                alignItems: 'flex-start',
+                gap: 14,
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
               }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#D1FAE5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Building2 size={20} />
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: '#00803D',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 10px rgba(0, 128, 61, 0.25)'
+                }}>
+                  <Sparkles size={20} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 800, color: '#065F46' }}>
-                    অ্যাডমিন ভেরিফিকেশন ও স্বয়ংক্রিয় পে-আউট কমিশন
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: '#064E3B' }}>
+                      ৳১,৫০০ পার্টনার কমিশন ও অ্যাডমিন অডিট নিশ্চিতকরণ
+                    </span>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      background: '#00803D',
+                      color: '#FFFFFF',
+                      padding: '2px 8px',
+                      borderRadius: 12
+                    }}>
+                      গ্যারান্টিযুক্ত
+                    </span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>
-                    আবেদনটি জমা দেওয়ার পর কেন্দ্রীয় অ্যাডমিন টিম নথিপত্র ও লাইসেন্স যাচাই করবে। অনুমোদন হওয়া মাত্রই আপনার ওয়ালেটে <strong>৳১,৫০০ কমিশন</strong> ক্রেডিট হবে।
-                  </div>
+                  <p style={{ fontSize: 12.5, color: '#065F46', margin: 0, lineHeight: 1.55 }}>
+                    আবেদনটি সাবমিট করার সাথে সাথে কেন্দ্রীয় <strong>Admin Onboarding Verification Desk</strong>-এ তালিকাভুক্ত হবে। সরকারি DGHS লাইসেন্স ও ট্রেড লাইসেন্স যাচাই সম্পন্ন হওয়ামাত্র আপনার ফিল্ড এজেন্ট ওয়ালেটে <strong>৳১,৫০০ কমিশন</strong> স্বয়ংক্রিয়ভাবে ক্রেডিট হবে।
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Wizard Action Footer Controls */}
+          {/* ── Wizard Navigation Controls ── */}
           <div style={{
-            marginTop: 32,
-            paddingTop: 20,
-            borderTop: '1px solid #F1F5F9',
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            marginTop: 32,
+            paddingTop: 24,
+            borderTop: '1px solid #F1F5F9'
           }}>
             {currentStep > 1 ? (
               <button
@@ -1412,57 +1923,47 @@ export default function HospitalOnboardWizardPage() {
                 onClick={prevStep}
                 disabled={submitting}
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '11px 20px',
+                  borderRadius: 12,
+                  border: '1.5px solid #CBD5E1',
                   background: '#FFFFFF',
                   color: '#475569',
-                  border: '1.5px solid #CBD5E1',
-                  borderRadius: 10,
-                  padding: '10px 20px',
+                  fontSize: 13.5,
                   fontWeight: 700,
-                  fontSize: 13,
                   cursor: submitting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
+                  transition: 'all 0.15s'
                 }}
               >
-                <ArrowLeft size={15} />
+                <ArrowLeft size={16} />
                 <span>পূর্ববর্তী ধাপ</span>
               </button>
-            ) : (
-              <Link
-                to="/agent/tracker"
-                style={{
-                  color: '#64748B',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: 'none'
-                }}
-              >
-                ← ফিরে যান
-              </Link>
-            )}
+            ) : <div />}
 
             {currentStep < 4 ? (
               <button
                 type="button"
                 onClick={nextStep}
                 style={{
-                  background: '#059669',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '10px 24px',
-                  fontWeight: 700,
-                  fontSize: 13.5,
-                  cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
+                  padding: '11px 24px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #00B875 0%, #009E64 100%)',
+                  color: '#FFFFFF',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 184, 117, 0.3)',
+                  transition: 'all 0.15s'
                 }}
               >
                 <span>পরবর্তী ধাপ</span>
-                <ArrowRight size={15} />
+                <ArrowRight size={16} />
               </button>
             ) : (
               <button
@@ -1470,22 +1971,37 @@ export default function HospitalOnboardWizardPage() {
                 onClick={handleSubmit}
                 disabled={submitting}
                 style={{
-                  background: submitting ? '#94A3B8' : '#059669',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '11px 28px',
-                  fontWeight: 800,
-                  fontSize: 14,
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.3)'
+                  padding: '12px 28px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: isEditingRevision 
+                    ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' 
+                    : 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
+                  color: '#FFFFFF',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  boxShadow: isEditingRevision
+                    ? '0 4px 14px rgba(245, 158, 11, 0.35)'
+                    : '0 4px 14px rgba(0, 184, 117, 0.35)',
+                  opacity: submitting ? 0.7 : 1,
+                  transition: 'all 0.15s'
                 }}
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                <span>{submitting ? 'জমা দেওয়া হচ্ছে...' : (isEditingRevision ? 'সংশোধিত আবেদন জমা দিন' : 'চূড়ান্ত আবেদন জমা দিন')}</span>
+                {submitting ? (
+                  <>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>{isEditingRevision ? 'সংশোধন জমা দেওয়া হচ্ছে...' : 'আবেদন জমা দেওয়া হচ্ছে...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} strokeWidth={2.5} />
+                    <span>{isEditingRevision ? 'সংশোধন নিশ্চিত করে পুনরায় সাবমিট করুন' : 'চূড়ান্ত আবেদন সাবমিট করুন'}</span>
+                  </>
+                )}
               </button>
             )}
           </div>

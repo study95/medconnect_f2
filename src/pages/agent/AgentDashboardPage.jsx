@@ -229,21 +229,29 @@ export default function AgentDashboardPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 7,
-                background: 'rgba(255, 255, 255, 0.14)',
+                background: 'rgba(255, 255, 255, 0.12)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
                 borderRadius: 10,
-                padding: '9px 16px',
+                padding: '9px 15px',
                 fontSize: 13,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: '#FFFFFF',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
                 whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.18s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.22)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'
+                e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
-              <QrCode size={15} color="#6EE7B7" />
+              <QrCode size={15} color="#A7F3D0" />
               <span>QR Card &amp; Share</span>
             </button>
 
@@ -254,22 +262,30 @@ export default function AgentDashboardPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 7,
-                background: 'rgba(255, 255, 255, 0.14)',
+                background: 'rgba(255, 255, 255, 0.12)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
                 borderRadius: 10,
-                padding: '9px 16px',
+                padding: '9px 15px',
                 fontSize: 13,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: '#FFFFFF',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
                 whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.18s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.22)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'
+                e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
-              <Wallet size={15} color="#6EE7B7" />
-              <span>উইথড্র রিকোয়েস্ট</span>
+              <Wallet size={15} color="#A7F3D0" />
+              <span>Withdraw Request</span>
             </button>
 
             <Link
@@ -279,18 +295,33 @@ export default function AgentDashboardPage() {
                 alignItems: 'center',
                 gap: 7,
                 background: isAgentSuspended ? '#F1F5F9' : '#FFFFFF',
-                color: isAgentSuspended ? '#94A3B8' : '#064E3B',
+                color: isAgentSuspended ? '#94A3B8' : '#004D2C',
                 borderRadius: 10,
                 padding: '9px 16px',
                 fontSize: 13,
-                fontWeight: 800,
+                fontWeight: 700,
                 textDecoration: 'none',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.16)',
                 whiteSpace: 'nowrap',
-                transition: 'transform 0.15s ease'
+                transition: 'all 0.18s ease',
+                border: '1px solid rgba(255, 255, 255, 0.85)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isAgentSuspended) {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.22)'
+                  e.currentTarget.style.background = '#F8FAFC'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAgentSuspended) {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.16)'
+                  e.currentTarget.style.background = '#FFFFFF'
+                }
               }}
             >
-              {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Plus size={16} color="#059669" />}
+              {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Plus size={16} strokeWidth={2.5} color="#059669" />}
               <span>{isAgentSuspended ? 'Doctor (Locked)' : 'Onboard Doctor'}</span>
             </Link>
 
@@ -300,19 +331,34 @@ export default function AgentDashboardPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 7,
-                background: isAgentSuspended ? '#F1F5F9' : '#10B981',
-                color: isAgentSuspended ? '#94A3B8' : '#FFFFFF',
+                background: isAgentSuspended ? '#F1F5F9' : '#FFFFFF',
+                color: isAgentSuspended ? '#94A3B8' : '#004D2C',
                 borderRadius: 10,
                 padding: '9px 16px',
                 fontSize: 13,
-                fontWeight: 800,
+                fontWeight: 700,
                 textDecoration: 'none',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.16)',
                 whiteSpace: 'nowrap',
-                transition: 'transform 0.15s ease'
+                transition: 'all 0.18s ease',
+                border: '1px solid rgba(255, 255, 255, 0.85)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isAgentSuspended) {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.22)'
+                  e.currentTarget.style.background = '#F8FAFC'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAgentSuspended) {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.16)'
+                  e.currentTarget.style.background = '#FFFFFF'
+                }
               }}
             >
-              {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Building2 size={16} color="#FFFFFF" />}
+              {isAgentSuspended ? <Lock size={15} color="#94A3B8" /> : <Building2 size={16} strokeWidth={2.2} color="#059669" />}
               <span>{isAgentSuspended ? 'Hospital (Locked)' : 'Onboard Hospital'}</span>
             </Link>
           </div>
@@ -361,18 +407,18 @@ export default function AgentDashboardPage() {
                   gap: 3
                 }}
               >
-                <span>Payout</span>
+                <span>পেআউট</span>
                 <ArrowUpRight size={13} />
               </button>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              Available Balance
+              উত্তোলনযোগ্য ব্যালেন্স
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
               ৳{parseFloat(walletSummary.available_balance || 0).toFixed(2)}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
-              TDS 10% deducted on payout
+              পেআউটের সময় ১০% TDS কর্তনযোগ্য
             </div>
           </div>
 
@@ -398,17 +444,17 @@ export default function AgentDashboardPage() {
                 <Users size={18} />
               </div>
               <Link to="/agent/tracker" style={{ fontSize: 12, fontWeight: 700, color: '#059669', textDecoration: 'none' }}>
-                Tracker →
+                ট্র্যাকার →
               </Link>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              Total Candidates
+              মোট প্রার্থী
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
               {recentRequests.length}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
-              Doctor candidates in pipeline
+              পাইপলাইনে থাকা ডাক্তার প্রার্থী
             </div>
           </div>
 
@@ -436,13 +482,13 @@ export default function AgentDashboardPage() {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              Verified Doctors
+              ভেরিফাইড ডাক্তার
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#059669', letterSpacing: '-0.02em', marginTop: 4 }}>
               {approvedCount}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
-              Active on DoctorBooklet
+              ডাক্তার বুকলেটে সক্রিয়
             </div>
           </div>
 
@@ -470,13 +516,13 @@ export default function AgentDashboardPage() {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              In Verification Queue
+              যাচাইকরণ প্রক্রিয়ায়
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#D97706', letterSpacing: '-0.02em', marginTop: 4 }}>
               {pendingCount}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
-              BMDC review in progress
+              BMDC পর্যালোচনা চলমান
             </div>
           </div>
         </div>

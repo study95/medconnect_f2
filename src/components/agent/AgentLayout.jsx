@@ -18,7 +18,8 @@ import {
   Lock,
   KeyRound,
   ShieldAlert,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import agentApi from '../../api/agentApi'
@@ -159,12 +160,12 @@ export default function AgentLayout() {
                     padding: '8px 14px',
                     borderRadius: 8,
                     fontSize: 13,
-                    fontWeight: active ? 700 : 500,
+                    fontWeight: 600,
                     color: active ? '#065F46' : '#475569',
                     background: active ? '#FFFFFF' : 'transparent',
                     textDecoration: 'none',
-                    transition: 'all 0.15s ease',
-                    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                    boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   }}
                 >
                   <Icon size={14} color={active ? '#059669' : '#64748B'} />
@@ -544,7 +545,13 @@ export default function AgentLayout() {
             </Link>
           </div>
         )}
-        <Outlet />
+        <React.Suspense fallback={
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748B' }}>
+            <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', color: '#00B875' }} />
+          </div>
+        }>
+          <Outlet />
+        </React.Suspense>
       </main>
 
       {/* ── Mobile Field Force Bottom Navigation Bar (Thumb Friendly) ── */}

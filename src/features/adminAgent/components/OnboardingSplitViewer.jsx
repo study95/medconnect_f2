@@ -541,7 +541,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                       <span>অনবোর্ডিং প্রত্যাহার ও বাতিলকরণ (Clawback &amp; Revocation)</span>
                     </div>
                     <p style={{ margin: 0, fontSize: 12, color: '#7F1D1D', lineHeight: 1.4 }}>
-                      অনুমোদন প্রত্যাহার করলে প্রোভাইডার অ্যাকাউন্টটি অবিলম্বে নিষ্ক্রিয় করা হবে এবং সাবমিটিং এজেন্টের ওয়ালেট থেকে ৳৫০০ কমিশন স্বয়ংক্রিয়ভাবে রিভার্স করা হবে।
+                      অনুমোদন প্রত্যাহার করলে প্রোভাইডার অ্যাকাউন্টটি অবিলম্বে নিষ্ক্রিয় করা হবে এবং সাবমিটিং এজেন্টের ওয়ালেট থেকে {isHospital ? '৳১,৫০০' : '৳৫০০'} কমিশন স্বয়ংক্রিয়ভাবে রিভার্স করা হবে।
                     </p>
                     <textarea
                       rows={2}
@@ -961,12 +961,13 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {documents.map((docKey, idx) => {
-                    const docUrl = getMediaUrl(docKey) || `/storage/${docKey}`
+                    const docUrl = request.document_urls?.[idx] || getMediaUrl(docKey) || `/storage/${docKey}`
                     const isSelected = previewDoc === docKey
 
                     return (
                       <div
                         key={idx}
+                        onClick={() => window.open(docUrl, '_blank')}
                         style={{
                           background: isSelected ? 'rgba(0, 184, 117, 0.08)' : 'var(--admin-card-bg, #FFFFFF)',
                           border: isSelected ? '1.5px solid #00B875' : '1px solid var(--admin-border, #E2E8F0)',
@@ -976,6 +977,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           gap: 12,
+                          cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
                       >
@@ -1051,7 +1053,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
             }}>
               {isApproved ? (
                 <span>
-                  💡 <strong>সিস্টেম স্ট্যাটাস:</strong> এই প্রোভাইডার প্রোফাইলটি সফলভাবে লাইভ করা হয়েছে এবং এজেন্টের ওয়ালেটে ৳৫০০ কমিশন নিশ্চিত করা হয়েছে।
+                  💡 <strong>সিস্টেম স্ট্যাটাস:</strong> এই {isHospital ? 'হাসপাতাল' : 'প্রোভাইডার'} প্রোফাইলটি সফলভাবে লাইভ করা হয়েছে এবং এজেন্টের ওয়ালেটে {isHospital ? '৳১,৫০০' : '৳৫০০'} কমিশন নিশ্চিত করা হয়েছে।
                 </span>
               ) : isRejected ? (
                 <span>
@@ -1059,7 +1061,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                 </span>
               ) : (
                 <span>
-                  💡 <strong>Compliance Note:</strong> Approving will immediately generate the core doctor record, grant access to DoctorBooklet, and trigger double-entry credit of ৳500 to the submitting agent.
+                  💡 <strong>Compliance Note:</strong> Approving will immediately generate the core {isHospital ? 'hospital' : 'doctor'} record, grant access to DoctorBooklet, and trigger double-entry credit of {isHospital ? '৳1,500' : '৳500'} to the submitting agent.
                 </span>
               )}
             </div>
@@ -1188,7 +1190,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                   {loading
                     ? 'Processing...'
                     : actionType === 'approve'
-                    ? 'Approve & Provision Doctor'
+                    ? (request.entity_type === 'hospital' ? 'Approve & Provision Hospital' : 'Approve & Provision Doctor')
                     : actionType === 'reject'
                     ? 'Confirm Rejection'
                     : 'Request Revision'}

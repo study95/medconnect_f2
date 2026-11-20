@@ -17,7 +17,8 @@ import {
   Sparkles,
   Stethoscope,
   Building2,
-  Edit3
+  Edit3,
+  X
 } from 'lucide-react'
 import agentApi from '../../api/agentApi'
 
@@ -26,6 +27,7 @@ export default function SubmissionsTrackerPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [selectedReason, setSelectedReason] = useState(null)
 
   const fetchRequests = async () => {
     setLoading(true)
@@ -183,10 +185,10 @@ export default function SubmissionsTrackerPage() {
             </div>
             <div>
               <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
-                Onboarding Submissions Tracker
+                অনবোর্ডিং সাবমিশন ট্র্যাকার
               </h1>
               <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
-                Track real-time BMDC audit progress, approvals, and commission statuses of your candidates.
+                আপনার সাবমিট করা প্রার্থীদের রিয়েল-টাইম BMDC অডিট অগ্রগতি, অনুমোদন এবং কমিশন স্ট্যাটাস ট্র্যাক করুন।
               </p>
             </div>
           </div>
@@ -229,7 +231,7 @@ export default function SubmissionsTrackerPage() {
               }}
             >
               <Plus size={15} strokeWidth={2.5} />
-              <span>+ Doctor</span>
+              <span>Doctor</span>
             </Link>
             <Link
               to="/agent/onboard/hospital"
@@ -249,7 +251,7 @@ export default function SubmissionsTrackerPage() {
               }}
             >
               <Building2 size={15} strokeWidth={2.5} />
-              <span>+ Hospital</span>
+              <span>Hospital</span>
             </Link>
           </div>
         </div>
@@ -417,17 +419,75 @@ export default function SubmissionsTrackerPage() {
                         {new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td style={{ padding: '16px 20px' }}>
-                        {getStatusBadge(item.status)}
-                        {item.rejection_reason && (
-                          <div style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, fontWeight: 600 }}>
-                            Reason: {item.rejection_reason}
-                          </div>
-                        )}
-                        {item.admin_notes && item.status === 'revision_requested' && (
-                          <div style={{ fontSize: 11.5, color: '#D97706', marginTop: 4, fontWeight: 600 }}>
-                            Note: {item.admin_notes}
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          {getStatusBadge(item.status)}
+                          {item.rejection_reason && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReason({
+                                type: 'rejected',
+                                title: 'Rejection Reason',
+                                requestCode: item.request_code,
+                                providerName: item.payload?.name || 'N/A',
+                                entityType: item.entity_type,
+                                text: item.rejection_reason
+                              })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                border: '1px solid #FECDD3',
+                                background: '#FFF1F2',
+                                color: '#E11D48',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#FFE4E6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = '#FFF1F2'}
+                              title="Click to view detailed reason"
+                            >
+                              <Eye size={11} />
+                              <span>Reason</span>
+                            </button>
+                          )}
+                          {item.admin_notes && item.status === 'revision_requested' && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReason({
+                                type: 'revision_requested',
+                                title: 'Revision Instructions',
+                                requestCode: item.request_code,
+                                providerName: item.payload?.name || 'N/A',
+                                entityType: item.entity_type,
+                                text: item.admin_notes
+                              })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                border: '1px solid #FDE68A',
+                                background: '#FFFBEB',
+                                color: '#D97706',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#FEF3C7'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = '#FFFBEB'}
+                              title="Click to view revision note"
+                            >
+                              <Eye size={11} />
+                              <span>Note</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                         {item.status === 'revision_requested' ? (
@@ -451,11 +511,15 @@ export default function SubmissionsTrackerPage() {
                             }}
                           >
                             <Edit3 size={13} />
-                            <span>সংশোধন করুন (Fix)</span>
+                            <span>Edit / Fix</span>
                           </Link>
                         ) : (
                           <span style={{ fontSize: 12, color: item.status === 'approved' ? '#00B875' : '#94A3B8', fontWeight: item.status === 'approved' ? 700 : 500 }}>
-                            {item.status === 'approved' ? '৳৫০০ অর্জিত' : item.status === 'rejected' ? 'বাতিল' : 'অপেক্ষমান'}
+                            {item.status === 'approved' 
+                              ? (item.entity_type === 'hospital' ? '৳1,500 Earned' : '৳500 Earned') 
+                              : item.status === 'rejected' 
+                              ? 'Rejected' 
+                              : 'Pending'}
                           </span>
                         )}
                       </td>
@@ -467,6 +531,174 @@ export default function SubmissionsTrackerPage() {
           )}
         </div>
       </div>
+
+      {/* Reason / Audit Note Modal */}
+      {selectedReason && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20
+          }}
+          onClick={() => setSelectedReason(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              maxWidth: 480,
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden',
+              animation: 'fadeIn 0.15s ease-out'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '18px 22px',
+              borderBottom: '1px solid #F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: selectedReason.type === 'rejected' ? '#FFF1F2' : '#FFFBEB'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: selectedReason.type === 'rejected' ? '#FFE4E6' : '#FEF3C7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: selectedReason.type === 'rejected' ? '#E11D48' : '#D97706'
+                }}>
+                  {selectedReason.type === 'rejected' ? <XCircle size={20} /> : <AlertTriangle size={20} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0F172A' }}>
+                    {selectedReason.title}
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
+                    {selectedReason.requestCode} • {selectedReason.providerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReason(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: 6,
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0F172A'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '22px' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                {selectedReason.type === 'rejected' ? 'Official Audit Note' : 'Admin Note & Action Required'}
+              </div>
+              <div style={{
+                background: selectedReason.type === 'rejected' ? '#FEF2F2' : '#FFFBEB',
+                border: selectedReason.type === 'rejected' ? '1px solid #FECDD3' : '1px solid #FDE68A',
+                borderRadius: 12,
+                padding: '16px',
+                color: selectedReason.type === 'rejected' ? '#991B1B' : '#92400E',
+                fontSize: 13.5,
+                lineHeight: 1.6,
+                fontWeight: 500,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
+              }}>
+                {selectedReason.text}
+              </div>
+
+              {selectedReason.type === 'rejected' ? (
+                <p style={{ margin: '14px 0 0', fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+                  💡 ভুয়া বা অসম্পূর্ণ ডকুমেন্টের কারণে অ্যাডমিন ভেরিফিকেশন টিম আবেদনটি বাতিল করেছে। সঠিক ও হালনাগাদ তথ্যাবলি নিয়ে পুনরায় নতুন আবেদন করতে পারেন।
+                </p>
+              ) : (
+                <p style={{ margin: '14px 0 0', fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+                  💡 অ্যাডমিনের নির্দেশনা অনুযায়ী প্রয়োজনীয় তথ্য বা ডকুমেন্ট সংশোধন করে অবিলম্বে পুনরায় সাবমিট করুন।
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '14px 22px',
+              background: '#F8FAFC',
+              borderTop: '1px solid #F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 10
+            }}>
+              {selectedReason.type === 'revision_requested' && (
+                <Link
+                  to={selectedReason.entityType === 'hospital'
+                    ? `/agent/onboard/hospital?edit_code=${selectedReason.requestCode}`
+                    : `/agent/onboard/doctor?edit_code=${selectedReason.requestCode}`}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                    color: '#FFFFFF',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Edit3 size={14} />
+                  <span>সংশোধন করতে যান</span>
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedReason(null)}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
