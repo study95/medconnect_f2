@@ -1400,7 +1400,10 @@ function HospitalsPage() {
           }
           .hosp-mobile-search-bar {
             display: block !important;
-            padding: 8px 16px 4px !important;
+            padding: 10px 16px !important;
+            background: #FFFFFF !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06) !important;
             transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
         }
@@ -1514,22 +1517,23 @@ function HospitalsPage() {
           }
         }
 
-        /* ── Mobile Search & Filter (Matching Home & Doctors Page Design) ── */
+        /* ── Mobile Search & Filter (Integrated App Header Design) ── */
         .hosp-mobile-search-pill {
-          height: 50px;
-          background: #FFFFFF;
+          height: 46px;
+          background: #F8FAFC;
           border: 1.5px solid #E2E8F0;
-          border-radius: 16px;
+          border-radius: 14px;
           padding: 0 12px;
           display: flex;
           align-items: center;
           gap: 8px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          box-shadow: none;
           transition: all 0.2s ease;
         }
         .hosp-mobile-search-pill:focus-within {
+          background: #FFFFFF;
           border-color: #00B875;
-          box-shadow: 0 2px 12px rgba(0, 184, 117, 0.14);
+          box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.12);
         }
         .hosp-mobile-search-icon {
           color: #00B875;
@@ -1578,10 +1582,10 @@ function HospitalsPage() {
           color: #475569;
         }
         .hosp-mobile-filter-btn {
-          width: 50px;
-          height: 50px;
-          border-radius: 16px;
-          background: #FFFFFF;
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+          background: #F8FAFC;
           border: 1.5px solid #E2E8F0;
           display: flex;
           align-items: center;
@@ -1589,13 +1593,13 @@ function HospitalsPage() {
           color: #1E293B;
           flex-shrink: 0;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          box-shadow: none;
           position: relative;
           transition: all 0.2s ease;
         }
         .hosp-mobile-filter-btn:active {
           transform: scale(0.96);
-          background: #F8FAFC;
+          background: #F1F5F9;
         }
         .hosp-mobile-filter-btn.active {
           border-color: #00B875;
@@ -1628,12 +1632,10 @@ function HospitalsPage() {
         position: 'sticky',
         top: 'var(--mobile-search-top, 0px)',
         zIndex: 1040,
-        background: 'rgba(248, 250, 252, 0.96)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
-        padding: '10px 16px 8px',
-        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+        padding: '10px 16px',
+        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)',
         transition: 'top 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -1898,31 +1900,55 @@ function HospitalsPage() {
               {/* Sort Dropdown */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
-                <select
-                  value={sortBy}
-                  onChange={e => handleSortChange(e.target.value)}
-                  style={{
-                    background: 'white',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: 6,
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    fontFamily: "'Hind Siliguri', sans-serif"
-                  }}
-                >
-                  <option value="newest">সর্বশেষ যুক্ত</option>
-                  <option value="nearest">নিকটবর্তী হাসপাতাল</option>
-                  <option value="name_asc">নাম (A - Z)</option>
-                  <option value="name_desc">নাম (Z - A)</option>
-                </select>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select
+                    value={sortBy}
+                    onChange={e => handleSortChange(e.target.value)}
+                    style={{
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      background: '#FFFFFF',
+                      border: '1.5px solid #CBD5E1',
+                      borderRadius: 8,
+                      padding: '6px 28px 6px 10px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      fontFamily: "'Hind Siliguri', sans-serif",
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onFocus={e => {
+                      e.target.style.borderColor = '#00B875'
+                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 184, 117, 0.12)'
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = '#CBD5E1'
+                      e.target.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)'
+                    }}
+                  >
+                    <option value="newest">সর্বশেষ যুক্ত</option>
+                    <option value="nearest">নিকটবর্তী হাসপাতাল</option>
+                    <option value="name_asc">নাম (A - Z)</option>
+                    <option value="name_desc">নাম (Z - A)</option>
+                  </select>
+                  <IconChevronDown
+                    size={15}
+                    color="#64748B"
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      pointerEvents: 'none'
+                    }}
+                  />
+                </div>
               </div>
 
               {/* View Mode Toggle Buttons (List :== , Grid :::) */}
-              <div className="hosp-view-toggle" style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
+              <div className="hosp-view-toggle" style={{ display: 'flex', border: '1.5px solid #CBD5E1', borderRadius: 8, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}

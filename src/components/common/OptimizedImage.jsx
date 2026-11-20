@@ -19,6 +19,7 @@ const OptimizedImage = memo(function OptimizedImage({
   className = '',
   borderRadius,
   objectFit = 'cover',
+  objectPosition = 'center',
   // fetchpriority: 'high' for LCP/hero images, 'low' for below-fold
   // 'auto' (default) lets browser decide
   fetchpriority = 'auto',
@@ -70,6 +71,7 @@ const OptimizedImage = memo(function OptimizedImage({
             width: '100%',
             height: '100%',
             objectFit,
+            objectPosition: objectPosition || style.objectPosition || 'center',
             borderRadius: 'inherit',
             display: 'block',
             pointerEvents: 'none',
@@ -119,6 +121,7 @@ const OptimizedImage = memo(function OptimizedImage({
             width: '100%',
             height: '100%',
             objectFit,
+            objectPosition: objectPosition || style.objectPosition || 'center',
             display: 'block',
             opacity: (!hasMainSrc || loaded || errored) ? 1 : 0,
             transition: 'opacity 0.25s ease-in-out',

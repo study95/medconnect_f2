@@ -28,7 +28,8 @@ import {
   ShieldAlert,
   PhoneCall,
   Navigation,
-  MapPin
+  MapPin,
+  RotateCcw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -36,6 +37,33 @@ import agentApi from '../../api/agentApi'
 import axiosInstance from '../../api/axiosInstance'
 import PresignedDropzone from '../../features/agent/components/PresignedDropzone'
 import { getMediaUrl } from '../../utils/mediaUtils'
+
+const INITIAL_DOCTOR_FORM = {
+  name: '',
+  name_bn: '',
+  phone: '',
+  email: '',
+  specialty_id: '',
+  custom_specialty_name: '',
+  bmdc: '',
+  degree: 'MBBS',
+  workplace: '',
+  experience_years: '',
+  division_id: '',
+  district_id: '',
+  upazila_id: '',
+  union_id: '',
+  address: '',
+  latitude: '',
+  longitude: '',
+  google_map_url: '',
+  fee: '1000',
+  bio: '',
+  documents: {
+    doctor_bmdc_cert: null,
+    doctor_nid: null,
+  },
+}
 
 export default function DoctorOnboardWizardPage() {
   const navigate = useNavigate()
@@ -47,6 +75,11 @@ export default function DoctorOnboardWizardPage() {
   const [isEditingRevision, setIsEditingRevision] = useState(false)
   const [revisionOriginalRequest, setRevisionOriginalRequest] = useState(null)
   const [loadingEditData, setLoadingEditData] = useState(false)
+
+  // Auto-Save Draft states
+  const draftKey = `doctor_onboard_draft_${user?.id || 'session'}`
+  const [draftRestored, setDraftRestored] = useState(false)
+  const isInitializedRef = useRef(false)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [specialties, setSpecialties] = useState([])
@@ -68,32 +101,97 @@ export default function DoctorOnboardWizardPage() {
   const [loadingUnions, setLoadingUnions] = useState(false)
   const [locatingGps, setLocatingGps] = useState(false)
 
-  const [formData, setFormData] = useState({
-    name: '',
-    name_bn: '',
-    phone: '',
-    email: '',
-    specialty_id: '',
-    custom_specialty_name: '',
-    bmdc: '',
-    degree: 'MBBS',
-    workplace: '',
-    experience_years: '',
-    division_id: '',
-    district_id: '',
-    upazila_id: '',
-    union_id: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-    google_map_url: '',
-    fee: '1000',
-    bio: '',
-    documents: {
-      doctor_bmdc_cert: null,
-      doctor_nid: null,
-    },
-  })
+  const [formData, setFormData] = useState(INITIAL_DOCTOR_FORM)
+
+  // 1. Auto-Restore Draft on Mount (when !editCode)
+  useEffect(() => {
+    if (editCode) {
+      isInitializedRef.current = true
+      return
+    }
+
+    try {
+      const saved = localStorage.getItem(draftKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed && parsed.formData) {
+          const d = parsed.formData
+          const hasData = Boolean(
+            d.name || d.name_bn || d.phone || d.email || d.bmdc ||
+            d.specialty_id || d.custom_specialty_name || d.workplace ||
+            d.experience_years || d.division_id || d.district_id ||
+            d.address || d.bio || (d.documents?.doctor_bmdc_cert?.file_key) ||
+            (d.documents?.doctor_nid?.file_key) || (parsed.currentStep && parsed.currentStep > 1)
+          )
+
+          if (hasData) {
+            setFormData({
+              ...INITIAL_DOCTOR_FORM,
+              ...d,
+              documents: {
+                ...INITIAL_DOCTOR_FORM.documents,
+                ...(d.documents || {})
+              }
+            })
+            if (parsed.currentStep && parsed.currentStep >= 1 && parsed.currentStep <= 5) {
+              setCurrentStep(parsed.currentStep)
+            }
+            if (parsed.specialtySearch) {
+              setSpecialtySearch(parsed.specialtySearch)
+            }
+            setDraftRestored(true)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore doctor onboard draft:', e)
+    } finally {
+      isInitializedRef.current = true
+    }
+  }, [draftKey, editCode])
+
+  // 2. Auto-Save Draft whenever formData, currentStep, or specialtySearch changes
+  useEffect(() => {
+    if (editCode || isEditingRevision || !isInitializedRef.current) return
+
+    const d = formData
+    const hasData = Boolean(
+      d.name || d.name_bn || d.phone || d.email || d.bmdc ||
+      d.specialty_id || d.custom_specialty_name || d.workplace ||
+      d.experience_years || d.division_id || d.district_id ||
+      d.address || d.bio || (d.documents?.doctor_bmdc_cert?.file_key) ||
+      (d.documents?.doctor_nid?.file_key) || currentStep > 1
+    )
+
+    if (hasData) {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({
+          formData,
+          currentStep,
+          specialtySearch,
+          savedAt: new Date().toISOString()
+        }))
+      } catch (e) {
+        console.warn('Failed to auto-save doctor onboard draft:', e)
+      }
+    }
+  }, [formData, currentStep, specialtySearch, draftKey, editCode, isEditingRevision])
+
+  // Discard / Reset Draft
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(draftKey)
+    } catch (e) {
+      console.warn('Failed to clear doctor onboard draft:', e)
+    }
+    setFormData(INITIAL_DOCTOR_FORM)
+    setCurrentStep(1)
+    setSpecialtySearch('')
+    setDraftRestored(false)
+    setFieldErrors({})
+    setErrorList([])
+    setErrorMessage(null)
+  }
 
   // Load divisions on mount
   useEffect(() => {
@@ -429,7 +527,7 @@ export default function DoctorOnboardWizardPage() {
   const nextStep = () => {
     const err = validateStep(currentStep)
     if (err) {
-      toast.error(err)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     setCurrentStep((s) => Math.min(5, s + 1))
@@ -446,8 +544,8 @@ export default function DoctorOnboardWizardPage() {
     e.preventDefault()
     const err = validateStep(4)
     if (err) {
-      toast.error(err)
       setCurrentStep(4)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
@@ -487,14 +585,18 @@ export default function DoctorOnboardWizardPage() {
         navigate('/agent/tracker')
       } else {
         const res = await agentApi.submitDoctorOnboarding(payload)
+        try {
+          localStorage.removeItem(draftKey)
+        } catch (e) {
+          console.warn('Failed to clear draft upon submission:', e)
+        }
         toast.success('Doctor onboarding application submitted successfully! Under review.')
         navigate('/agent/tracker')
       }
     } catch (err) {
       console.error('Submission failed:', err)
       const data = err?.response?.data
-      const backendErrors = data?.errors || {}
-      setFieldErrors(backendErrors)
+      const backendErrors = data?.errors ? { ...data.errors } : {}
 
       const extracted = []
       if (typeof backendErrors === 'object' && Object.keys(backendErrors).length > 0) {
@@ -510,12 +612,40 @@ export default function DoctorOnboardWizardPage() {
       if (extracted.length === 0) {
         if (data?.error?.message) extracted.push(data.error.message)
         else if (data?.message) extracted.push(data.message)
-        else extracted.push('Doctor onboarding submission failed. Please verify credentials.')
+        else extracted.push('ডাক্তার অনবোর্ডিং আবেদন জমা দিতে সমস্যা হয়েছে। তথ্য যাচাই করুন।')
       }
 
-      setErrorList(extracted)
-      setErrorMessage(extracted[0])
-      toast.error(extracted[0])
+      const sanitizeDoctorError = (msg) => {
+        if (typeof msg !== 'string') return msg
+        const lower = msg.toLowerCase()
+        if (lower.includes('duplicate') || lower.includes('collision') || lower.includes('already exists')) {
+          if (lower.includes('bmdc')) {
+            return 'এই বিএমডিসি (BMDC) রেজিস্ট্রেশন নম্বরটি দিয়ে ইতোমধ্যে একজন চিকিৎসকের প্রোফাইল সিস্টেমে নিবন্ধিত রয়েছে।'
+          }
+          if (lower.includes('phone') || lower.includes('mobile')) {
+            return 'এই মোবাইল নম্বরটি দিয়ে ইতোমধ্যে একজন চিকিৎসকের প্রোফাইল সিস্টেমে নিবন্ধিত রয়েছে।'
+          }
+          return 'প্রদত্ত তথ্য (BMDC বা মোবাইল নম্বর) দিয়ে ইতোমধ্যে একজন চিকিৎসকের প্রোফাইল সিস্টেমে নিবন্ধিত রয়েছে।'
+        }
+        return msg
+      }
+
+      const sanitized = extracted.map(sanitizeDoctorError)
+
+      // Map top-level error (e.g. duplicate error) directly to fieldErrors so the exact field gets the red border and error message under it!
+      const topError = sanitized[0] || ''
+      if (topError.includes('মোবাইল') || topError.toLowerCase().includes('phone')) {
+        backendErrors.phone = topError
+      } else if (topError.includes('বিএমডিসি') || topError.toLowerCase().includes('bmdc')) {
+        backendErrors.bmdc = topError
+      } else if (topError.includes('ইমেইল') || topError.toLowerCase().includes('email')) {
+        backendErrors.email = topError
+      }
+
+      setFieldErrors(backendErrors)
+      setErrorList(sanitized)
+      setErrorMessage(sanitized[0])
+      // toast.error() omitted per security & clean UI requirement (no popup toast, inline alert only)
 
       // Auto jump to step where error exists
       if (backendErrors.name || backendErrors.phone || backendErrors.email) {
@@ -720,10 +850,9 @@ export default function DoctorOnboardWizardPage() {
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: 24,
-          flexWrap: 'wrap',
-          gap: 12
+          gap: 16
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
             <div style={{
               width: 48,
               height: 48,
@@ -733,38 +862,123 @@ export default function DoctorOnboardWizardPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)'
+              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)',
+              flexShrink: 0
             }}>
               <Stethoscope size={24} />
             </div>
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {isEditingRevision ? 'ডাক্তার আবেদন সংশোধন ফর্ম' : 'নতুন ডাক্তার অনবোর্ডিং ফর্ম'}
               </h1>
               <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
                 {isEditingRevision 
-                  ? `আবেদন কোড: ${editCode} • এডমিনের মন্তব্য অনুযায়ী সংশোধন করে পুনরায় জমা দিন`
-                  : <>ডাক্তারের তথ্য ও বিএমডিসি সনদ যাচাইয়ের জন্য জমা দিন। অনুমোদন সাপেক্ষে <strong>৳৫০০ কমিশন</strong> লাভ করুন।</>}
+                  ? `আবেদন #${editCode} • সংশোধিত তথ্য জমা দিন`
+                  : <>ডাক্তারের তথ্য ও BMDC যাচাই সাপেক্ষে <strong>৳৫০০ কমিশন</strong>।</>}
               </p>
             </div>
           </div>
 
-          <div style={{
-            background: isEditingRevision ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 184, 117, 0.1)',
-            border: isEditingRevision ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 184, 117, 0.25)',
-            borderRadius: 10,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 800,
-            color: isEditingRevision ? '#D97706' : '#00B875',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6
-          }}>
-            <Sparkles size={14} />
-            <span>ধাপ {currentStep} / ৫</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {!isEditingRevision && (
+              <span style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: '#059669',
+                background: '#ECFDF5',
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #A7F3D0',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                whiteSpace: 'nowrap'
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                অটো-সেভ ড্রাফট সক্রিয়
+              </span>
+            )}
+            <div style={{
+              background: isEditingRevision ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 184, 117, 0.1)',
+              border: isEditingRevision ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 184, 117, 0.25)',
+              borderRadius: 10,
+              padding: '6px 14px',
+              fontSize: 12.5,
+              fontWeight: 800,
+              color: isEditingRevision ? '#D97706' : '#00B875',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap'
+            }}>
+              <Sparkles size={14} />
+              <span>ধাপ {currentStep} / ৫</span>
+            </div>
           </div>
         </div>
+
+        {/* ── Auto-Save Draft Restored Banner ── */}
+        {draftRestored && !isEditingRevision && (
+          <div style={{
+            marginBottom: 20,
+            padding: '12px 18px',
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+            border: '1.5px solid #A7F3D0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: '#10B981',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>
+                  পূর্বের ড্রাফট থেকে তথ্য ও ধাপ স্বয়ংক্রিয়ভাবে উদ্ধার করা হয়েছে
+                </div>
+                <div style={{ fontSize: 11.5, color: '#047857' }}>
+                  আপনি যেখান থেকে ফর্ম পূরণ রেখে গিয়েছিলেন সেখান থেকেই আবার সক্রিয় রয়েছে।
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                background: '#FFFFFF',
+                border: '1.5px solid #FCA5A5',
+                color: '#DC2626',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease'
+              }}
+              title="ড্রাফট মুছে নতুন ফাঁকা ফর্ম শুরু করুন"
+            >
+              <RotateCcw size={13} />
+              <span>নতুন ফর্ম শুরু করুন (Reset)</span>
+            </button>
+          </div>
+        )}
 
         {/* ── Admin Revision Instructions Banner ── */}
         {isEditingRevision && revisionOriginalRequest && (
@@ -919,30 +1133,6 @@ export default function DoctorOnboardWizardPage() {
             })}
           </div>
         </div>
-
-        {/* ── Error Banner ── */}
-        {errorList.length > 0 && (
-          <div style={{
-            marginBottom: 20,
-            padding: '16px 18px',
-            borderRadius: 14,
-            background: '#FEF2F2',
-            border: '1.5px solid #FECDD3',
-            color: '#991B1B',
-            fontSize: 13,
-            animation: 'fadeIn 0.2s ease-out'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, marginBottom: 6, color: '#DC2626' }}>
-              <AlertCircle size={18} style={{ flexShrink: 0 }} />
-              <span>ভ্যালিডেশন এরর (Validation Errors Found):</span>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.5 }}>
-              {errorList.map((err, i) => (
-                <li key={i}>{typeof err === 'string' ? err : JSON.stringify(err)}</li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* ── Main Form Card ── */}
         <div style={{

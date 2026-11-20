@@ -402,6 +402,7 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
+            object-position: top center !important;
           }
           .doc-btn-detail,
           .doc-btn-book {
@@ -447,8 +448,13 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             .doc-list-image-box {
               width: 100% !important;
               min-width: 100% !important;
-              height: 200px !important;
+              height: 230px !important;
               align-self: auto !important;
+              background: #F8FAFC !important;
+            }
+            .doc-list-image-box .doc-list-img-wrapper img {
+              object-fit: contain !important;
+              object-position: center !important;
             }
             .doc-card-bottom {
               width: 100% !important;
@@ -529,7 +535,9 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
               width="100%"
               height="100%"
               borderRadius={0}
-              style={{ objectFit: 'cover', width: '100%', height: '100%', minHeight: '100%', flex: 1 }}
+              objectFit="cover"
+              objectPosition="top center"
+              style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%', minHeight: '100%', flex: 1 }}
             />
 
             {/* Verified Blue Badge Icon (Top Right of Doctor Image) */}
@@ -803,7 +811,9 @@ function DoctorCard({ doctor, index = 0, showBookingButton = true, viewMode = 'g
             width={90}
             height={95}
             borderRadius={12}
-            style={{ border: '1px solid #F1F5F9', objectFit: 'cover', width: 90, height: 95 }}
+            objectFit="cover"
+            objectPosition="top center"
+            style={{ border: '1px solid #F1F5F9', objectFit: 'cover', objectPosition: 'top center', width: 90, height: 95 }}
           />
           {/* Verified Badge Icon on Image Top Right */}
           <div style={{

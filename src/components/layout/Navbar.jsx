@@ -49,7 +49,7 @@ function AppNavbar() {
     if (segments.length >= 3) return true
     if (segments.length === 1) {
       const s = segments[0]
-      return /^\d+$/.test(s) || (s.length === 26 && /^[0-9A-HJ-KM-NP-TV-Z]+$/i.test(s))
+      return /^\d+$/.test(s) || (s.length === 26 && /^[0-9A-HJ-KM-NP-TV-Z]+$/i.test(s)) || /^(DR-|HP-)/i.test(s)
     }
     return false
   }
@@ -233,6 +233,7 @@ function AppNavbar() {
         }
       } else {
         // On all other pages (Home, About, Services, Contact, etc.)
+        if (isDetailPage) return
         setTopbarVisible(true)
         setScrolled(currentScrollY > 20)
         setMobileHeaderVisible(true)
@@ -519,7 +520,7 @@ function AppNavbar() {
             padding-top: 48px !important;
           }
           .doctor-detail-page {
-            padding-top: 0 !important;
+            padding-top: 50px !important;
           }
           body:has(.doctor-detail-page) header.fixed-top,
           body:has(.hospital-detail-page) header.fixed-top {

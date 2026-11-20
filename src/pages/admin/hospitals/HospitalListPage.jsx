@@ -791,22 +791,6 @@ export default function HospitalListPage() {
                                 <span>{badgeConfig.icon}</span>
                                 <span>{badgeConfig.text}</span>
                               </span>
-                              {h.verification_notes && (
-                                <div
-                                  style={{
-                                    marginTop: 3,
-                                    fontSize: 10,
-                                    color: isRevision ? '#DC2626' : '#2563EB',
-                                    maxWidth: 170,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                  title={`নোট: ${h.verification_notes}`}
-                                >
-                                  💬 {h.verification_notes}
-                                </div>
-                              )}
                             </div>
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>

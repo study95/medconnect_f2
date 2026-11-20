@@ -381,12 +381,17 @@ function DoctorDetailPageContent() {
       
       {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING IMAGE 2) */}
       <div 
-        className="d-flex d-lg-none align-items-center justify-content-between px-3 bg-white border-bottom sticky-top" 
+        className="d-flex d-lg-none align-items-center justify-content-between px-3 bg-white border-bottom" 
         style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
           zIndex: 1060, 
-          top: 0, 
           height: 50,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)'
         }}
       >
         <button 
@@ -455,6 +460,9 @@ function DoctorDetailPageContent() {
         </div>
       </div>
 
+      {/* Spacer for fixed mobile app header (50px) so top doctor info is never cut off */}
+      <div className="d-block d-lg-none" style={{ height: 50, width: '100%', flexShrink: 0 }} aria-hidden="true" />
+
       {/* 1. Top Breadcrumb Line (Desktop Only) */}
       <div className="doc-detail-breadcrumb d-none d-lg-block" style={{ background: '#FFFFFF', borderBottom: `1px solid ${cardBorderColor}`, padding: '12px 0' }}>
         <Container>
@@ -497,7 +505,8 @@ function DoctorDetailPageContent() {
                 alt={doctor?.name || 'Doctor'}
                 width="90"
                 height="98"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                objectPosition="top center"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
               />
               <div style={{
                 position: 'absolute',
@@ -610,10 +619,12 @@ function DoctorDetailPageContent() {
                   fallback={DEFAULT_DOCTOR_AVATAR}
                   alt={doctor?.name || 'Doctor'}
                   eager={true}
+                  objectPosition="top center"
                   style={{
                     width: '100%',
                     aspectRatio: '1/1',
                     objectFit: 'cover',
+                    objectPosition: 'top center',
                     borderRadius: 16,
                     display: 'block'
                   }}

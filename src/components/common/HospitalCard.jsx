@@ -51,7 +51,9 @@ function HospitalCardImageSlider({ hospital, width = 250, height = 180 }) {
         width="100%"
         height="100%"
         borderRadius={0}
-        style={{ objectFit: 'cover', width: '100%', height: '100%', minHeight: '100%', flex: 1, transition: 'all 0.3s ease' }}
+        objectFit="cover"
+        objectPosition="center"
+        style={{ objectFit: 'cover', objectPosition: 'center', width: '100%', height: '100%', minHeight: '100%', flex: 1, transition: 'all 0.3s ease' }}
       />
 
       {/* Prev Arrow Button (Only when multiple photos exist) */}
@@ -411,8 +413,13 @@ function HospitalCard({ hospital, index = 0, viewMode = 'list', userLocation = n
             .hosp-list-image-box {
               width: 100% !important;
               min-width: 100% !important;
-              height: 200px !important;
+              height: 230px !important;
               align-self: auto !important;
+              background: #F8FAFC !important;
+            }
+            .hosp-list-image-box .hosp-list-img-wrapper img {
+              object-fit: contain !important;
+              object-position: center !important;
             }
             .hosp-card-bottom {
               flex-direction: column !important;

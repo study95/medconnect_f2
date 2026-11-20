@@ -39,6 +39,7 @@ const TopDoctorsPage        = lazy(() => import('./pages/TopDoctorsPage'))
 const TopHospitalsPage      = lazy(() => import('./pages/TopHospitalsPage'))
 const LoginPage             = lazy(() => import('./pages/LoginPage'))
 const RegisterPage          = lazy(() => import('./pages/RegisterPage'))
+const JoinPartnerLandingPage = lazy(() => import('./pages/JoinPartnerLandingPage'))
 const ServicesPage          = lazy(() => import('./pages/ServicesPage'))
 const ServiceDetailPage      = lazy(() => import('./pages/ServiceDetailPage'))
 const ContactPage           = lazy(() => import('./pages/ContactPage'))
@@ -647,6 +648,8 @@ function App() {
                   <Route path="/login/hospital"             element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
                   <Route path="/login/choice"               element={<GuestOnlyRoute><LoginChoicePage /></GuestOnlyRoute>} />
 
+                  <Route path="/join"                       element={<JoinPartnerLandingPage />} />
+                  <Route path="/partner/:agentCode"         element={<JoinPartnerLandingPage />} />
                   <Route path="/register"                   element={<RegisterPage />} />
                   <Route path="/register/patient"           element={<RegisterPage />} />
                   <Route path="/register/doctor"            element={<RegisterPage />} />

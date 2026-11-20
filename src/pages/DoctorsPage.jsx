@@ -247,6 +247,27 @@ function DoctorsPage() {
 
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
   const [modalSpecialtySearch, setModalSpecialtySearch]         = useState('')
+  const [specDragOffset, setSpecDragOffset]                     = useState(0)
+  const specTouchStartY                                         = useRef(0)
+
+  const handleSpecTouchStart = (e) => {
+    specTouchStartY.current = e.touches[0].clientY
+  }
+
+  const handleSpecTouchMove = (e) => {
+    const deltaY = e.touches[0].clientY - specTouchStartY.current
+    if (deltaY > 0) {
+      setSpecDragOffset(deltaY)
+    }
+  }
+
+  const handleSpecTouchEnd = () => {
+    if (specDragOffset > 70) {
+      setIsAllSpecialtiesModalOpen(false)
+      setModalSpecialtySearch('')
+    }
+    setSpecDragOffset(0)
+  }
 
   // Dynamically sort specialties by popularity (doctors_count) or name
   const sortedPopularSpecialties = useMemo(() => {
@@ -634,9 +655,9 @@ function DoctorsPage() {
     }
   }, [isMobileFilterOpen, closeMobileFilter])
 
-  // Prevent background scroll when mobile filter bottom sheet is open
+  // Prevent background scroll when mobile filter bottom sheet or specialties drawer is open
   useEffect(() => {
-    if (isMobileFilterOpen) {
+    if (isMobileFilterOpen || isAllSpecialtiesModalOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -644,7 +665,7 @@ function DoctorsPage() {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [isMobileFilterOpen])
+  }, [isMobileFilterOpen, isAllSpecialtiesModalOpen])
 
   // Accordion state
   const [openAccordions, setOpenAccordions] = useState({
@@ -1578,6 +1599,65 @@ function DoctorsPage() {
           user-select: none;
         }
 
+        /* ── Specialties Bottom Sheet Drawer ── */
+        .specialties-drawer-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 99999;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: docSheetFadeIn 0.28s ease;
+          touch-action: none;
+        }
+
+        .specialties-drawer {
+          background: #FFFFFF;
+          width: 100%;
+          max-width: 520px;
+          height: 75vh;
+          height: 75dvh;
+          max-height: 85dvh;
+          border-radius: 20px 20px 0 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
+          animation: docSheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          position: relative;
+          transition: transform 0.15s ease-out;
+        }
+
+        .specialties-drawer-grid {
+          display: flex;
+          flex-direction: column;
+        }
+
+        @media (min-width: 992px) {
+          .specialties-drawer-backdrop {
+            align-items: center !important;
+            padding: 24px !important;
+          }
+          .specialties-drawer {
+            border-radius: 16px !important;
+            max-width: 720px !important;
+            height: auto !important;
+            max-height: 80vh !important;
+            animation: docSheetFadeIn 0.2s ease !important;
+          }
+          .specialties-drawer-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .specialties-drawer-grid button {
+            margin-bottom: 0 !important;
+          }
+        }
+
         .drawer-scroll-body {
           flex: 1;
           overflow-y: auto;
@@ -1668,8 +1748,10 @@ function DoctorsPage() {
             margin-bottom: 8px !important;
           }
           .doc-chips-scroll {
-            padding-top: 1px !important;
-            padding-bottom: 2px !important;
+            padding-top: 4px !important;
+            padding-bottom: 8px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
           }
           .doc-results-bar {
             margin-bottom: 10px !important;
@@ -1679,7 +1761,10 @@ function DoctorsPage() {
           }
           .doc-mobile-search-bar {
             display: block !important;
-            padding: 8px 16px 4px !important;
+            padding: 10px 16px !important;
+            background: #FFFFFF !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06) !important;
             transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .doc-chip-scroll-btn {
@@ -1799,22 +1884,23 @@ function DoctorsPage() {
           }
         }
 
-        /* ── Mobile Search & Filter (Matching Home Page 1no Image Design) ── */
+        /* ── Mobile Search & Filter (Integrated App Header Design) ── */
         .doc-mobile-search-pill {
-          height: 50px;
-          background: #FFFFFF;
+          height: 46px;
+          background: #F8FAFC;
           border: 1.5px solid #E2E8F0;
-          border-radius: 16px;
+          border-radius: 14px;
           padding: 0 12px;
           display: flex;
           align-items: center;
           gap: 8px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          box-shadow: none;
           transition: all 0.2s ease;
         }
         .doc-mobile-search-pill:focus-within {
+          background: #FFFFFF;
           border-color: #00B875;
-          box-shadow: 0 2px 12px rgba(0, 184, 117, 0.14);
+          box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.12);
         }
         .doc-mobile-search-icon {
           color: #00B875;
@@ -1867,10 +1953,10 @@ function DoctorsPage() {
           color: #475569;
         }
         .doc-mobile-filter-btn {
-          width: 50px;
-          height: 50px;
-          border-radius: 16px;
-          background: #FFFFFF;
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+          background: #F8FAFC;
           border: 1.5px solid #E2E8F0;
           display: flex;
           align-items: center;
@@ -1878,13 +1964,13 @@ function DoctorsPage() {
           color: #1E293B;
           flex-shrink: 0;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          box-shadow: none;
           position: relative;
           transition: all 0.2s ease;
         }
         .doc-mobile-filter-btn:active {
           transform: scale(0.96);
-          background: #F8FAFC;
+          background: #F1F5F9;
         }
         .doc-mobile-filter-btn.active {
           border-color: #00B875;
@@ -1917,12 +2003,10 @@ function DoctorsPage() {
         position: 'sticky',
         top: 'var(--mobile-search-top, 0px)',
         zIndex: 1040,
-        background: 'rgba(248, 250, 252, 0.96)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
-        padding: '10px 16px 8px',
-        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+        padding: '10px 16px',
+        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)',
         transition: 'top 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -2238,8 +2322,9 @@ function DoctorsPage() {
                     color: isSelected ? 'white' : '#334155',
                     border: isSelected ? '1px solid #00B875' : '1px solid #CBD5E1',
                     borderRadius: 20,
-                    padding: '5px 12px',
-                    fontSize: 12,
+                    padding: '6px 14px',
+                    height: 36,
+                    fontSize: 12.5,
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
@@ -2247,26 +2332,13 @@ function DoctorsPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     fontFamily: "'Hind Siliguri', sans-serif",
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     transition: 'all 0.2s ease',
                     flexShrink: 0
                   }}
                 >
                   <span>{getSpecialtyIcon(displayName, spec.slug, isSelected)}</span>
                   <span>{displayName}</span>
-                  {docCount !== undefined && docCount !== null && (
-                    <span style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      background: isSelected ? 'rgba(255,255,255,0.25)' : '#F1F5F9',
-                      color: isSelected ? 'white' : '#64748B',
-                      padding: '1px 7px',
-                      borderRadius: 10,
-                      marginLeft: 2
-                    }}>
-                      {toBengaliNumber(docCount)}
-                    </span>
-                  )}
                 </button>
               )
             })}
@@ -2282,6 +2354,7 @@ function DoctorsPage() {
                   border: '1.5px dashed #00B875',
                   borderRadius: 20,
                   padding: '6px 14px',
+                  height: 36,
                   fontSize: 12.5,
                   fontWeight: 800,
                   display: 'flex',
@@ -2290,6 +2363,7 @@ function DoctorsPage() {
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   fontFamily: "'Hind Siliguri', sans-serif",
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                   transition: 'all 0.2s ease',
                   flexShrink: 0
                 }}
@@ -2317,33 +2391,57 @@ function DoctorsPage() {
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Hind Siliguri', sans-serif" }}>সাজান:</span>
-              <select
-                value={sortBy}
-                onChange={e => handleSortChange(e.target.value)}
-                style={{
-                  background: 'white',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 6,
-                  padding: '6px 8px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#0F172A',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  maxWidth: 180,
-                  fontFamily: "'Hind Siliguri', sans-serif"
-                }}
-              >
-                <option value="relevance">প্রাসঙ্গিকতা</option>
-                <option value="nearest">নিকটবর্তী চেম্বার</option>
-                <option value="fee_low">ফি: কম থেকে বেশি</option>
-                <option value="fee_high">ফি: বেশি থেকে কম</option>
-                <option value="exp_high">অভিজ্ঞতা: বেশি থেকে কম</option>
-              </select>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <select
+                  value={sortBy}
+                  onChange={e => handleSortChange(e.target.value)}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    background: '#FFFFFF',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: 8,
+                    padding: '6px 28px 6px 10px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    maxWidth: 180,
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onFocus={e => {
+                    e.target.style.borderColor = '#00B875'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(0, 184, 117, 0.12)'
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = '#CBD5E1'
+                    e.target.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  <option value="relevance">প্রাসঙ্গিকতা</option>
+                  <option value="nearest">নিকটবর্তী চেম্বার</option>
+                  <option value="fee_low">ফি: কম থেকে বেশি</option>
+                  <option value="fee_high">ফি: বেশি থেকে কম</option>
+                  <option value="exp_high">অভিজ্ঞতা: বেশি থেকে কম</option>
+                </select>
+                <IconChevronDown
+                  size={15}
+                  color="#64748B"
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    pointerEvents: 'none'
+                  }}
+                />
+              </div>
             </div>
 
             {/* View Mode Toggle Buttons (Aligned to Right Edge) */}
-            <div className="doc-view-toggle" style={{ display: 'flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
+            <div className="doc-view-toggle" style={{ display: 'flex', border: '1.5px solid #CBD5E1', borderRadius: 8, overflow: 'hidden', background: 'white', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
@@ -3217,120 +3315,208 @@ function DoctorsPage() {
         onSuccess={handleLocationBannerSuccess}
       />
 
-      {/* ── ALL SPECIALTIES MODAL ── */}
-      <Modal
-        show={isAllSpecialtiesModalOpen}
-        onHide={() => setIsAllSpecialtiesModalOpen(false)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 20px' }}>
-          <Modal.Title style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>
-            সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ padding: 20, maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ position: 'relative', marginBottom: 16 }}>
-            <input
-              type="text"
-              placeholder="বিশেষজ্ঞ বিভাগের নাম দিয়ে খুঁজুন..."
-              value={modalSpecialtySearch}
-              onChange={(e) => setModalSpecialtySearch(e.target.value)}
+      {/* ── ALL SPECIALTIES RESPONSIVE BOTTOM SHEET / DRAWER ── */}
+      {isAllSpecialtiesModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="specialties-drawer-backdrop"
+          onClick={() => {
+            setIsAllSpecialtiesModalOpen(false)
+            setModalSpecialtySearch('')
+          }}
+        >
+          <div
+            className="specialties-drawer"
+            style={{
+              transform: specDragOffset > 0 ? `translateY(${specDragOffset}px)` : undefined,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile Drag Indicator Handle (Swipe down to dismiss) */}
+            <div
+              className="doc-sheet-drag-zone d-lg-none"
+              onTouchStart={handleSpecTouchStart}
+              onTouchMove={handleSpecTouchMove}
+              onTouchEnd={handleSpecTouchEnd}
+            >
+              <div className="doc-sheet-drag-bar" />
+            </div>
+
+            {/* Header */}
+            <div
               style={{
-                width: '100%',
-                height: 42,
-                borderRadius: 8,
-                border: '1.5px solid #CBD5E1',
-                padding: '0 36px 0 14px',
-                fontSize: 14,
-                color: '#0F172A',
-                fontWeight: 600,
-                outline: 'none',
-                fontFamily: "'Hind Siliguri', sans-serif"
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 18px 10px',
+                borderBottom: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                flexShrink: 0
               }}
-            />
-            {modalSpecialtySearch ? (
+              onTouchStart={handleSpecTouchStart}
+              onTouchMove={handleSpecTouchMove}
+              onTouchEnd={handleSpecTouchEnd}
+            >
+              <div>
+                <h5 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  সকল বিশেষজ্ঞ বিভাগ ({toBengaliNumber(specialties?.length || 0)})
+                </h5>
+                <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  আপনার পছন্দের চিকিৎসা বিভাগটি নির্বাচন করুন
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setModalSpecialtySearch('')}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+                onClick={() => {
+                  setIsAllSpecialtiesModalOpen(false)
+                  setModalSpecialtySearch('')
+                }}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 34,
+                  height: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
+                title="বন্ধ করুন"
               >
                 <IconX size={18} />
               </button>
-            ) : (
-              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}>
-                <IconSearch size={18} />
-              </span>
-            )}
-          </div>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {specialties
-              .filter(s => {
-                if (!modalSpecialtySearch.trim()) return true
-                const q = modalSpecialtySearch.toLowerCase()
-                return (s.name || '').toLowerCase().includes(q) || (s.name_bn || '').includes(q)
-              })
-              .map((spec) => {
-                const specId = String(spec.id)
-                const isSelected = selectedSpecialty === specId
-                const displayName = spec.name_bn || spec.name || 'বিশেষজ্ঞ'
-                const docCount = spec.doctors_count ?? spec.doctor_count
-
-                return (
+            {/* Search Input Filter */}
+            <div style={{ padding: '12px 16px 8px', background: '#FFFFFF', borderBottom: '1px solid #F1F5F9', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="বিশেষজ্ঞ বিভাগের নাম দিয়ে খুঁজুন..."
+                  value={modalSpecialtySearch}
+                  onChange={(e) => setModalSpecialtySearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 12,
+                    border: '1.5px solid #E2E8F0',
+                    padding: '0 36px 0 14px',
+                    fontSize: 13.5,
+                    color: '#0F172A',
+                    fontWeight: 600,
+                    outline: 'none',
+                    background: '#F8FAFC',
+                    fontFamily: "'Hind Siliguri', sans-serif",
+                    transition: 'all 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.background = '#FFFFFF'
+                    e.target.style.borderColor = '#00B875'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(0, 184, 117, 0.12)'
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.background = '#F8FAFC'
+                    e.target.style.borderColor = '#E2E8F0'
+                    e.target.style.boxShadow = 'none'
+                  }}
+                />
+                {modalSpecialtySearch ? (
                   <button
-                    key={spec.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedSpecialty(isSelected ? '' : specId)
-                      setIsAllSpecialtiesModalOpen(false)
-                    }}
-                    style={{
-                      background: isSelected ? '#F0FDF4' : 'white',
-                      border: isSelected ? '2px solid #00B875' : '1px solid #E2E8F0',
-                      borderRadius: 8,
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
+                    onClick={() => setModalSpecialtySearch('')}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                      <span>{getSpecialtyIcon(displayName, spec.slug, false)}</span>
-                      <span style={{
-                        fontSize: 13,
-                        fontWeight: isSelected ? 800 : 600,
-                        color: isSelected ? '#00B875' : '#1E293B',
-                        fontFamily: "'Hind Siliguri', sans-serif",
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {displayName}
-                      </span>
-                    </div>
-                    {docCount !== undefined && docCount !== null && (
-                      <span style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: isSelected ? '#00B875' : '#64748B',
-                        background: isSelected ? '#DCFCE7' : '#F1F5F9',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        marginLeft: 6
-                      }}>
-                        {toBengaliNumber(docCount)}
-                      </span>
-                    )}
+                    <IconX size={17} />
                   </button>
-                )
-              })}
+                ) : (
+                  <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none', display: 'flex' }}>
+                    <IconSearch size={18} />
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable Specialties List */}
+            <div style={{ padding: '10px 16px 20px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="specialties-drawer-grid">
+                {specialties
+                  .filter(s => {
+                    if (!modalSpecialtySearch.trim()) return true
+                    const q = modalSpecialtySearch.toLowerCase()
+                    return (s.name || '').toLowerCase().includes(q) || (s.name_bn || '').includes(q)
+                  })
+                  .map((spec) => {
+                    const specId = String(spec.id)
+                    const isSelected = selectedSpecialty === specId
+                    const displayName = spec.name_bn || spec.name || 'বিশেষজ্ঞ'
+                    const docCount = spec.doctors_count ?? spec.doctor_count
+
+                    return (
+                      <button
+                        key={spec.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSpecialty(isSelected ? '' : specId)
+                          setIsAllSpecialtiesModalOpen(false)
+                          setModalSpecialtySearch('')
+                        }}
+                        style={{
+                          width: '100%',
+                          background: isSelected ? '#F0FDF4' : '#FFFFFF',
+                          border: isSelected ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+                          borderRadius: 12,
+                          padding: '11px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          marginBottom: 8,
+                          boxShadow: isSelected ? '0 2px 8px rgba(0, 184, 117, 0.12)' : '0 1px 2px rgba(0, 0, 0, 0.02)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 18, display: 'flex', alignItems: 'center' }}>
+                            {getSpecialtyIcon(displayName, spec.slug, isSelected)}
+                          </span>
+                          <span style={{
+                            fontSize: 13.5,
+                            fontWeight: isSelected ? 800 : 600,
+                            color: isSelected ? '#00803D' : '#1E293B',
+                            fontFamily: "'Hind Siliguri', sans-serif",
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {displayName}
+                          </span>
+                        </div>
+                        {docCount !== undefined && docCount !== null && (
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: isSelected ? '#00803D' : '#64748B',
+                            background: isSelected ? '#DCFCE7' : '#F1F5F9',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            marginLeft: 8,
+                            flexShrink: 0
+                          }}>
+                            {toBengaliNumber(docCount)}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+              </div>
+            </div>
           </div>
-        </Modal.Body>
-      </Modal>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

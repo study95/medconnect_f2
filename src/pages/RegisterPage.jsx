@@ -90,6 +90,30 @@ const RegisterPage = () => {
     }
   }, [])
 
+  // Agent Referral Code (from URL or 30-day localStorage)
+  const [referralCode, setReferralCode] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return (params.get('ref') || params.get('agent_code') || localStorage.getItem('doctorbooklet_agent_ref') || '').trim().toUpperCase()
+    } catch (e) {
+      return ''
+    }
+  })
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const refParam = (params.get('ref') || params.get('agent_code') || '').trim().toUpperCase()
+      if (refParam) {
+        setReferralCode(refParam)
+        localStorage.setItem('doctorbooklet_agent_ref', refParam)
+      } else if (!referralCode) {
+        const cached = localStorage.getItem('doctorbooklet_agent_ref')
+        if (cached) setReferralCode(cached.trim().toUpperCase())
+      }
+    } catch (e) {}
+  }, [])
+
   const [form, setForm] = useState({
     name: '', hospital_name: '', email: '', mobile: '',
     specialty_id: '', custom_specialty_name: '', workplace: '', hospital_id: '', bmdc_number: '',
@@ -887,6 +911,12 @@ const RegisterPage = () => {
       }
     }
 
+    if (referralCode) {
+      formData.append('referral_code', referralCode)
+      formData.append('agent_code', referralCode)
+      formData.append('ref', referralCode)
+    }
+
     let result
     if (role === 'patient') result = await registerPatient(formData)
     else if (role === 'doctor') result = await registerDoctor(formData)
@@ -1153,6 +1183,29 @@ const RegisterPage = () => {
                 <p style={{ color: '#64748B', fontWeight: 500, fontSize: 13.5, marginBottom: 20 }}>
                   আপনার সক্রিয় মোবাইল নম্বর দিন
                 </p>
+
+                {referralCode && (role === 'doctor' || role === 'hospital') && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#ECFDF5',
+                    border: '1.5px solid #A7F3D0',
+                    borderRadius: 12,
+                    padding: '8px 14px',
+                    marginBottom: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ShieldCheck size={16} color="#059669" />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#065F46' }}>
+                        পার্টনার রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{referralCode}</span>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', background: '#FFFFFF', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Lock size={10} /> সংযুক্ত
+                    </span>
+                  </div>
+                )}
 
                 <Form.Group style={{ marginBottom: 18 }}>
                   <Form.Label className="auth-label-premium" style={{ color: !role ? '#94A3B8' : undefined }}>
@@ -1517,13 +1570,36 @@ const RegisterPage = () => {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     background: '#F0FDF4', border: '1px solid #CCFBF1',
-                    borderRadius: 0, padding: '8px 14px', marginBottom: 16
+                    borderRadius: 0, padding: '8px 14px', marginBottom: 12
                   }}>
                     <CheckCircle size={16} color="#0D9488" />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0F766E' }}>
                       যাচাইকৃত মোবাইল: {form.mobile}
                     </span>
                   </div>
+
+                  {referralCode && (role === 'doctor' || role === 'hospital') && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#ECFDF5',
+                      border: '1.5px solid #A7F3D0',
+                      borderRadius: 10,
+                      padding: '8px 14px',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ShieldCheck size={16} color="#059669" />
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#065F46' }}>
+                          পার্টনার রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{referralCode}</span>
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', background: '#FFFFFF', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Lock size={10} /> সংযুক্ত
+                      </span>
+                    </div>
+                  )}
 
                   {role !== 'hospital' && (
                     <Form.Group style={{ marginBottom: 14 }}>

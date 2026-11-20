@@ -258,7 +258,6 @@ function HospitalDetailPage() {
   }
 
   const [activeTab, setActiveTab] = useState('summary')
-  const [showStickyAppHeader, setShowStickyAppHeader] = useState(false)
   const activeTabRef = useRef('summary')
   const tabContainerRef = useRef(null)
   const stickyTabContainerRef = useRef(null)
@@ -301,35 +300,42 @@ function HospitalDetailPage() {
   };
 
   useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 180;
-      setShowStickyAppHeader(prev => prev !== isScrolled ? isScrolled : prev);
+    let rafId = null;
 
+    const handleScroll = () => {
       if (isProgrammaticScroll.current) return;
 
-      const sections = ['summary', 'department', 'facilities', 'doctors', 'gallery', 'reviews'];
-      const isMobile = window.innerWidth < 992;
-      const offset = isMobile ? 115 : 150;
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        if (isProgrammaticScroll.current) return;
 
-      let currentActive = 'summary';
+        const sections = ['summary', 'department', 'facilities', 'doctors', 'gallery', 'reviews'];
+        const isMobile = window.innerWidth < 992;
+        // 48px fixed app header + 44px tab bar + buffer = 115px
+        const offset = isMobile ? 115 : 150;
 
-      for (const id of sections) {
-        const el = document.getElementById(id);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= offset) {
-            currentActive = id;
+        let currentActive = 'summary';
+
+        for (const id of sections) {
+          const el = document.getElementById(id);
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            if (rect.top <= offset) {
+              currentActive = id;
+            }
           }
         }
-      }
 
-      handleSetActiveTab(currentActive);
+        handleSetActiveTab(currentActive);
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
     };
   }, []);
@@ -342,27 +348,35 @@ function HospitalDetailPage() {
   }, [id, hospital?.slug, hospital?.district_slug, hospital?.upazila_slug, navigate])
 
   useEffect(() => {
-    if (!activeTab) return;
-    [tabContainerRef.current, stickyTabContainerRef.current].forEach(container => {
-      if (!container) return;
+    if (!activeTab || isProgrammaticScroll.current) return;
+    const container = tabContainerRef.current;
+    if (!container) return;
 
-      const activeEl = container.querySelector('.nav-link.active') ||
-                       container.querySelector(`[data-rb-event-key="${activeTab}"]`) ||
-                       container.querySelector(`[data-key="${activeTab}"]`);
-      if (!activeEl) return;
+    const activeEl = container.querySelector('.nav-link.active') ||
+                     container.querySelector(`[data-rb-event-key="${activeTab}"]`) ||
+                     container.querySelector(`[data-key="${activeTab}"]`);
+    if (!activeEl) return;
 
-      const parentItem = activeEl.closest('.nav-item') || activeEl;
-      const containerWidth = container.offsetWidth;
-      const activeWidth = parentItem.offsetWidth;
-      const activeLeft = parentItem.offsetLeft;
+    const parentItem = activeEl.closest('.nav-item') || activeEl;
+    const containerWidth = container.offsetWidth;
+    const activeWidth = parentItem.offsetWidth;
+    const activeLeft = parentItem.offsetLeft;
 
-      const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
+    // Check if the tab is already comfortably visible within container bounds
+    const isVisible = (activeLeft >= container.scrollLeft + 8) &&
+                      (activeLeft + activeWidth <= container.scrollLeft + containerWidth - 8);
+
+    // ONLY scroll horizontally if the tab is actually hidden or clipped
+    if (!isVisible) {
+      const targetScrollLeft = activeLeft < container.scrollLeft
+        ? activeLeft - 16
+        : activeLeft + activeWidth - containerWidth + 16;
 
       container.scrollTo({
         left: Math.max(0, targetScrollLeft),
         behavior: 'smooth'
       });
-    });
+    }
   }, [activeTab]);
 
   const canonicalPath = `/hospitals/${hospital?.district_slug || district || 'bangladesh'}/${hospital?.upazila_slug || upazila || 'general'}/${hospital?.slug || slug || hospital?.id}`
@@ -418,6 +432,134 @@ function HospitalDetailPage() {
         ogType="business.business"
         schemaData={structuredSchema}
       />
+      
+      {/* MOBILE APP BAR TOP HEADER (SHOWS ON MOBILE ONLY — MATCHING DOCTOR DETAIL) */}
+      <div
+        className="d-block d-lg-none"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 48,
+          zIndex: 1060,
+          background: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 12px'
+          }}
+        >
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="ফিরে যান"
+            style={{
+              width: 36,
+              height: 36,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#0F172A',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <IconArrowLeft size={22} stroke={2.5} />
+          </button>
+
+          {/* Hospital Name (Center) */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: 'center',
+              padding: '0 8px'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 900,
+                color: '#0F172A',
+                margin: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.2
+              }}
+            >
+              {hospital?.name || 'হাসপাতাল'}
+            </h2>
+          </div>
+
+          {/* Right Action Icons: Favorite + Share */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {/* Favorite */}
+            <button
+              type="button"
+              onClick={() => hospital && toggleFavoriteHospital(hospital)}
+              aria-label="পছন্দ তালিকা"
+              style={{
+                width: 36,
+                height: 36,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A',
+                cursor: 'pointer'
+              }}
+            >
+              <IconHeart
+                size={20}
+                fill={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : 'none'}
+                color={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A'}
+              />
+            </button>
+
+            {/* Share */}
+            <button
+              type="button"
+              onClick={() => hospital && triggerShare({
+                title: hospital.name,
+                text: (hospital.address || 'হাসপাতাল') + ' | Doctor Booklet',
+                url: window.location.href,
+                image: hospital.photo_url || hospital.banner_url || DEMO_BANNER
+              })}
+              aria-label="শেয়ার করুন"
+              style={{
+                width: 36,
+                height: 36,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0F172A',
+                cursor: 'pointer'
+              }}
+            >
+              <IconShare size={19} />
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* 1. Breadcrumbs (Desktop Only) */}
       <div className="d-none d-lg-block" style={{ padding: '12px 0' }}>
@@ -477,7 +619,7 @@ function HospitalDetailPage() {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              objectPosition: 'center 30%'
+              objectPosition: 'center top'
             }}
           />
 
@@ -916,7 +1058,7 @@ function HospitalDetailPage() {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              objectPosition: 'center 30%'
+              objectPosition: 'center top'
             }}
           />
 
@@ -1416,235 +1558,60 @@ function HospitalDetailPage() {
         </div>
       </section>
 
-      {/* 2.5 MOBILE PERSISTENT APP HEADER (ALWAYS VISIBLE AT TOP: 0 WITH SAFE BACK, TITLE & ACTIONS) */}
-      <div
-        className="d-block d-lg-none"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1060,
-          background: '#FFFFFF',
-          boxShadow: showStickyAppHeader ? '0 4px 18px rgba(0, 0, 0, 0.09)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
-          borderBottom: '1px solid #E2E8F0',
-          transition: 'box-shadow 0.2s ease'
-        }}
-      >
-        {/* Top Row: Back (Left) | Hospital Name (Center) | Favorite & Share (Right) */}
-        <div
-          style={{
-            height: 48,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 12px',
-            borderBottom: showStickyAppHeader ? '1px solid #F1F5F9' : 'none'
-          }}
-        >
-          {/* Back Button */}
-          <button
-            type="button"
-            onClick={handleBack}
-            aria-label="ফিরে যান"
-            style={{
-              width: 36,
-              height: 36,
-              background: 'transparent',
-              border: 'none',
-              padding: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#0F172A',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            <IconArrowLeft size={22} stroke={2.5} />
-          </button>
-
-          {/* Hospital Name (Center) */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              textAlign: 'center',
-              padding: '0 8px'
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 900,
-                color: '#0F172A',
-                margin: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.2
-              }}
-            >
-              {hospital?.name || 'হাসপাতাল'}
-            </h2>
-          </div>
-
-          {/* Right Action Icons: Favorite + Share */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            {/* Favorite */}
-            <button
-              type="button"
-              onClick={() => hospital && toggleFavoriteHospital(hospital)}
-              aria-label="পছন্দ তালিকা"
-              style={{
-                width: 36,
-                height: 36,
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A',
-                cursor: 'pointer'
-              }}
-            >
-              <IconHeart
-                size={20}
-                fill={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : 'none'}
-                color={hospital && isHospitalFavorite(hospital.id) ? '#EF4444' : '#0F172A'}
-              />
-            </button>
-
-            {/* Share */}
-            <button
-              type="button"
-              onClick={() => hospital && triggerShare({
-                title: hospital.name,
-                text: (hospital.address || 'হাসপাতাল') + ' | Doctor Booklet',
-                url: window.location.href,
-                image: hospital.photo_url || hospital.banner_url || DEMO_BANNER
-              })}
-              aria-label="শেয়ার করুন"
-              style={{
-                width: 36,
-                height: 36,
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#0F172A',
-                cursor: 'pointer'
-              }}
-            >
-              <IconShare size={19} />
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom Row: Tab Navigation (Visible on scroll) */}
-        {showStickyAppHeader && (
-          <div
-            ref={stickyTabContainerRef}
-            className="sticky-mobile-tabs"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              overflowX: 'auto',
-              whiteSpace: 'nowrap',
-              padding: '8px 14px 10px 14px',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch'
-            }}
-          >
-            {[
-              { key: 'summary',    label: 'ওভারভিউ' },
-              { key: 'department', label: 'বিভাগ সমূহ' },
-              { key: 'facilities', label: 'সুবিধা সমূহ' },
-              { key: 'doctors',    label: 'ডাক্তার' },
-              { key: 'gallery',    label: 'গ্যালারি' },
-              { key: 'reviews',    label: 'রিভিউ' }
-            ].map(tab => {
-              const isActive = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  data-key={tab.key}
-                  type="button"
-                  onClick={() => scrollToSection(tab.key)}
-                  style={{
-                    flex: '0 0 auto',
-                    background: isActive ? '#00B875' : '#F8FAFC',
-                    border: `1px solid ${isActive ? '#00B875' : '#E2E8F0'}`,
-                    borderRadius: 20,
-                    color: isActive ? '#FFFFFF' : '#64748B',
-                    fontWeight: isActive ? 800 : 600,
-                    fontSize: 13,
-                    padding: '6px 14px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isActive ? '0 2px 8px rgba(0, 184, 117, 0.35)' : 'none',
-                    fontFamily: 'inherit',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    lineHeight: 1.2
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* 3. Navigation Tabs */}
-      <div className="sticky-tab-bar d-none d-lg-block" style={{ background: 'white', borderBottom: `1.5px solid ${borderColor}` }}>
+      <div className="sticky-tab-bar" style={{ background: '#FFFFFF', borderBottom: `1px solid #E2E8F0` }}>
         <Container>
           <Nav
             ref={tabContainerRef}
-            className="flex-nowrap overflow-auto justify-content-between w-100"
+            className="flex-nowrap overflow-auto w-100"
             activeKey={activeTab}
             onSelect={(k) => scrollToSection(k)}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12, padding: 0 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              gap: 8,
+              padding: '10px 0',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
           >
             {[
-              { key: 'summary',    label: 'ওভারভিউ',     icon: <IconLayoutGrid size={18} /> },
-              { key: 'department', label: 'বিভাগ সমূহ',  icon: <IconStethoscope size={18} /> },
-              { key: 'facilities', label: 'সুবিধা সমূহ', icon: <IconStar size={18} /> },
-              { key: 'doctors',    label: 'ডাক্তার',      icon: <IconUsers size={18} /> },
-              { key: 'gallery',    label: 'গ্যালারি',     icon: <IconPhoto size={18} /> },
-              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={18} /> }
-            ].map(tab => (
-              <Nav.Item key={tab.key} style={{ flex: '1 1 0', display: 'flex', justifyContent: 'center' }}>
-                <Nav.Link
-                  eventKey={tab.key}
-                  style={{
-                    padding: '18px 0',
-                    fontSize: 14.5,
-                    fontWeight: 800,
-                    color: activeTab === tab.key ? '#00B875' : mutedColor,
-                    borderBottom: `3px solid ${activeTab === tab.key ? '#00B875' : 'transparent'}`,
-                    borderRadius: 0,
-                    transition: '0.2s',
-                    background: 'transparent',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    whiteSpace: 'nowrap',
-                    width: '100%'
-                  }}
-                >
-                  {tab.icon} {tab.label}
-                </Nav.Link>
-              </Nav.Item>
-            ))}
+              { key: 'summary',    label: 'ওভারভিউ',     icon: <IconLayoutGrid size={16} /> },
+              { key: 'department', label: 'বিভাগ সমূহ',  icon: <IconStethoscope size={16} /> },
+              { key: 'facilities', label: 'সুবিধা সমূহ', icon: <IconStar size={16} /> },
+              { key: 'doctors',    label: 'ডাক্তার',      icon: <IconUsers size={16} /> },
+              { key: 'gallery',    label: 'গ্যালারি',     icon: <IconPhoto size={16} /> },
+              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={16} /> }
+            ].map(tab => {
+              const isActive = activeTab === tab.key;
+              return (
+                <Nav.Item key={tab.key} style={{ flex: '0 0 auto' }}>
+                  <Nav.Link
+                    eventKey={tab.key}
+                    style={{
+                      padding: '8px 18px',
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      color: isActive ? '#FFFFFF' : '#475569',
+                      background: isActive ? '#00B875' : '#F1F5F9',
+                      border: `1px solid ${isActive ? '#00B875' : '#E2E8F0'}`,
+                      borderRadius: 9999,
+                      boxShadow: isActive ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none',
+                      transition: 'background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      whiteSpace: 'nowrap',
+                      lineHeight: 1.2
+                    }}
+                  >
+                    {tab.icon} {tab.label}
+                  </Nav.Link>
+                </Nav.Item>
+              );
+            })}
           </Nav>
         </Container>
       </div>
@@ -2646,7 +2613,36 @@ function HospitalDetailPage() {
         }
 
         
-        .sticky-tab-bar { position: relative; background: #FFFFFF; border-bottom: 1.5px solid #E2E8F0; }
+        .sticky-tab-bar {
+          position: -webkit-sticky;
+          position: sticky;
+          top: 70px;
+          z-index: 1020;
+          background: #FFFFFF;
+          border-bottom: 1px solid #E2E8F0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+          contain: layout paint;
+        }
+
+        .sticky-tab-bar .nav-link {
+          border-radius: 9999px !important;
+          border-bottom: none !important;
+          text-decoration: none !important;
+          transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+        }
+
+        .sticky-tab-bar .nav-link:hover {
+          background: #E2E8F0 !important;
+          color: #1E293B !important;
+        }
+
+        .sticky-tab-bar .nav-link.active,
+        .sticky-tab-bar .nav-link.active:hover {
+          background: #00B875 !important;
+          color: #FFFFFF !important;
+          border-color: #00B875 !important;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.28) !important;
+        }
 
         /* Hero Responsive Row */
         @media (min-width: 992px) {
@@ -2669,10 +2665,18 @@ function HospitalDetailPage() {
         }
 
         @media (max-width: 991px) {
+          .db-topbar, .db-main-header, .navbar, footer {
+            display: none !important;
+          }
           .sticky-tab-bar {
-            position: relative !important;
+            position: -webkit-sticky !important;
+            position: sticky !important;
+            top: 48px !important;
+            z-index: 1040 !important;
             background: #FFFFFF !important;
-            border-bottom: 1.5px solid #E2E8F0 !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+            contain: layout paint;
           }
           .sticky-mobile-tabs::-webkit-scrollbar {
             display: none !important;
@@ -2691,22 +2695,25 @@ function HospitalDetailPage() {
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
-            gap: 4px !important;
-            padding: 0 10px !important;
+            gap: 8px !important;
+            padding: 8px 12px !important;
             width: 100% !important;
             justify-content: flex-start !important;
+            align-items: center !important;
           }
           .sticky-tab-bar .nav-item {
             flex: 0 0 auto !important;
             width: auto !important;
           }
           .sticky-tab-bar .nav-link {
-            padding: 12px 14px !important;
-            font-size: 13.5px !important;
+            padding: 7px 16px !important;
+            font-size: 13px !important;
             white-space: nowrap !important;
             display: inline-flex !important;
             align-items: center !important;
             gap: 6px !important;
+            border-radius: 9999px !important;
+            border-bottom: none !important;
           }
           .hospital-detail-page,
           .page-wrapper {
