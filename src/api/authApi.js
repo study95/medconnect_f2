@@ -119,11 +119,11 @@ export const getTwoFactorStatusApi = () =>
   axiosInstance.get('/two-factor/status')
 
 export const setupTwoFactorApi = (data) =>
-  axiosInstance.post('/two-factor/setup', data) // { password }
+  axiosInstance.post('/two-factor/setup', data, { skipGlobalToast: true }) // { password }
 
 export const enableTwoFactorApi = (data) =>
-  axiosInstance.post('/two-factor/enable', data) // { code }
+  axiosInstance.post('/two-factor/enable', data, { skipGlobalToast: true }) // { code }
 
 export const disableTwoFactorApi = (data) =>
-  axiosInstance.post('/two-factor/disable', data) // { password, code }
+  axiosInstance.post('/two-factor/disable', data, { skipGlobalToast: true }) // { password, code }
 

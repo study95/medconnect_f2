@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { 
   X, 
@@ -39,10 +39,13 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
   const [setupLoading, setSetupLoading] = useState(false)
   const [setupError, setSetupError] = useState('')
   const [setupData, setSetupData] = useState(null) // { secret, qr_url, backup_codes }
-  const [verifyCode, setVerifyCode] = useState('')
+  const [verifyOtp, setVerifyOtp] = useState(['', '', '', '', '', ''])
+  const verifyOtpRefs = useRef([])
+  const verifyCode = verifyOtp.join('')
   const [savedCodesChecked, setSavedCodesChecked] = useState(false)
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedCodes, setCopiedCodes] = useState(false)
+  const [showManualKey, setShowManualKey] = useState(false)
 
   // Disable Flow States
   const [isDisabling, setIsDisabling] = useState(false)
@@ -60,18 +63,73 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
     }
   }, [isOpen])
 
+  // Focus first OTP box when entering Step 2
+  useEffect(() => {
+    if (setupStep === 2 && verifyOtpRefs.current[0]) {
+      setTimeout(() => verifyOtpRefs.current[0]?.focus(), 150)
+    }
+  }, [setupStep])
+
   const resetViews = () => {
     setIsSettingUp(false)
     setSetupStep(1)
     setSetupPassword('')
     setSetupError('')
     setSetupData(null)
-    setVerifyCode('')
+    setVerifyOtp(['', '', '', '', '', ''])
     setSavedCodesChecked(false)
+    setShowManualKey(false)
     setIsDisabling(false)
     setDisablePassword('')
     setDisableCode('')
     setDisableError('')
+  }
+
+  const handleOtpChange = (index, value) => {
+    const clean = value.replace(/\D/g, '')
+    if (!clean && value !== '') return
+    const char = clean.slice(-1)
+
+    const newOtp = [...verifyOtp]
+    newOtp[index] = char
+    setVerifyOtp(newOtp)
+    if (setupError) setSetupError('')
+
+    if (char && index < 5 && verifyOtpRefs.current[index + 1]) {
+      verifyOtpRefs.current[index + 1].focus()
+    }
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (!verifyOtp[index] && index > 0) {
+        verifyOtpRefs.current[index - 1]?.focus()
+      } else {
+        const newOtp = [...verifyOtp]
+        newOtp[index] = ''
+        setVerifyOtp(newOtp)
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      verifyOtpRefs.current[index - 1]?.focus()
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      verifyOtpRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+
+    const newOtp = ['', '', '', '', '', '']
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = pasted[i] || ''
+    }
+    setVerifyOtp(newOtp)
+    if (setupError) setSetupError('')
+
+    const nextIndex = Math.min(pasted.length, 5)
+    verifyOtpRefs.current[nextIndex]?.focus()
   }
 
   const fetchStatus = async () => {
@@ -125,8 +183,9 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
   const handleEnable2Fa = async (e) => {
     if (e) e.preventDefault()
     const cleanCode = verifyCode.trim()
-    if (!cleanCode) {
+    if (!cleanCode || cleanCode.length !== 6) {
       setSetupError('গুগল অথেনটিকেটর অ্যাপের ৬ ডিজিটের কোড দিন।')
+      verifyOtpRefs.current[0]?.focus()
       return
     }
     if (!savedCodesChecked) {
@@ -143,10 +202,20 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
         await fetchStatus()
         resetViews()
       } else {
-        setSetupError(res.data?.message || 'যাচাইকরণ ব্যর্থ হয়েছে। সঠিক ৬-সংখ্যার কোড দিন।')
+        const msg = res.data?.message || 'যাচাইকরণ ব্যর্থ হয়েছে। সঠিক ৬-সংখ্যার কোড দিন।'
+        setSetupError(msg)
+        setTimeout(() => {
+          verifyOtpRefs.current[0]?.focus()
+          verifyOtpRefs.current[0]?.select?.()
+        }, 100)
       }
     } catch (err) {
-      setSetupError(err.response?.data?.message || 'ভুল অথেনটিকেটর কোড! আবার চেষ্টা করুন।')
+      const msg = err.response?.data?.message || 'ভুল অথেনটিকেটর কোড! আবার চেষ্টা করুন।'
+      setSetupError(msg)
+      setTimeout(() => {
+        verifyOtpRefs.current[0]?.focus()
+        verifyOtpRefs.current[0]?.select?.()
+      }, 100)
     } finally {
       setSetupLoading(false)
     }
@@ -304,7 +373,7 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
           ) : isSettingUp ? (
             /* ── Setup Flow ── */
             <div>
-              {setupError && (
+              {setupStep === 1 && setupError && (
                 <div style={{
                   marginBottom: 16,
                   padding: '12px 14px',
@@ -393,61 +462,94 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
               ) : (
                 /* Setup Step 2: QR Code, Backup Codes & Verification */
                 <form onSubmit={handleEnable2Fa}>
-                  <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ textAlign: 'center', marginBottom: 14 }}>
                     <div style={{
                       display: 'inline-block',
-                      padding: 12,
+                      padding: 10,
                       background: '#FFFFFF',
                       borderRadius: 14,
                       border: '2px solid #E2E8F0',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
                     }}>
                       {setupData?.qr_url && (
-                        <QRCodeSVG value={setupData.qr_url} size={160} level="M" />
+                        <QRCodeSVG value={setupData.qr_url} size={145} level="M" />
                       )}
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 8 }}>
+                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 6 }}>
                       আপনার মোবাইলের <strong>Google Authenticator</strong> অ্যাপে গিয়ে QR কোডটি স্ক্যান করুন।
                     </div>
                   </div>
 
-                  {/* Manual Secret Key */}
+                  {/* Manual Secret Key (Collapsible for cleaner UI & compact height) */}
                   <div style={{
                     background: '#F8FAFC',
                     border: '1px solid #E2E8F0',
                     borderRadius: 10,
                     padding: '8px 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 16
+                    marginBottom: 14
                   }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>ম্যানুয়াল সিক্রেট কি</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {setupData?.secret}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(setupData?.secret, 'secret')}
+                    <div 
+                      onClick={() => setShowManualKey(!showManualKey)}
                       style={{
-                        background: copiedSecret ? '#059669' : '#FFFFFF',
-                        color: copiedSecret ? '#FFFFFF' : '#475569',
-                        border: '1px solid #CBD5E1',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        userSelect: 'none'
                       }}
                     >
-                      {copiedSecret ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{copiedSecret ? 'কপি হয়েছে' : 'কপি'}</span>
-                    </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#475569' }}>
+                        <KeyRound size={13} color="#059669" />
+                        <span>ক্যামেরা দিয়ে স্ক্যান না হলে ম্যানুয়াল সিক্রেট কি</span>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#059669' }}>
+                        {showManualKey ? 'লুকান ▲' : 'দেখুন ▼'}
+                      </span>
+                    </div>
+
+                    {showManualKey && (
+                      <div style={{
+                        marginTop: 8,
+                        paddingTop: 8,
+                        borderTop: '1px solid #E2E8F0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8
+                      }}>
+                        <div style={{
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: '#0F172A',
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.04em',
+                          wordBreak: 'break-all'
+                        }}>
+                          {setupData?.secret}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(setupData?.secret, 'secret')}
+                          style={{
+                            background: copiedSecret ? '#059669' : '#FFFFFF',
+                            color: copiedSecret ? '#FFFFFF' : '#475569',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            flexShrink: 0
+                          }}
+                        >
+                          {copiedSecret ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedSecret ? 'কপি হয়েছে' : 'কপি'}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Backup Codes Section */}
@@ -509,30 +611,96 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
                   </div>
 
                   {/* Test 6-digit Code Input */}
-                  <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: 6 }}>
-                      অ্যাপ থেকে ৬-সংখ্যার কোড দিন
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      required
-                      value={verifyCode}
-                      onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="যেমন: 123456"
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase' }}>
+                        অ্যাপ থেকে ৬-সংখ্যার কোড দিন
+                      </label>
+                      <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>
+                        {verifyCode.length}/৬ ডিজিট
+                      </span>
+                    </div>
+
+                    <div 
+                      className="agent-otp-grid" 
+                      onPaste={handleOtpPaste}
                       style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: 10,
-                        border: '1.5px solid #CBD5E1',
-                        fontSize: 18,
-                        fontWeight: 800,
-                        textAlign: 'center',
-                        letterSpacing: '0.25em',
-                        fontFamily: 'monospace',
-                        outline: 'none'
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: '8px',
+                        maxWidth: '360px',
+                        margin: '0 auto'
                       }}
-                    />
+                    >
+                      {verifyOtp.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={(el) => (verifyOtpRefs.current[idx] = el)}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                          style={{
+                            width: '100%',
+                            height: '52px',
+                            border: setupError 
+                              ? '2px solid #EF4444' 
+                              : (digit ? '2px solid #059669' : '1.5px solid #CBD5E1'),
+                            borderRadius: '12px',
+                            textAlign: 'center',
+                            fontSize: '22px',
+                            fontWeight: 800,
+                            fontFamily: 'monospace',
+                            color: setupError 
+                              ? '#DC2626' 
+                              : (digit ? '#065F46' : '#0F172A'),
+                            background: setupError 
+                              ? '#FEF2F2' 
+                              : (digit ? '#ECFDF5' : '#F8FAFC'),
+                            outline: 'none',
+                            boxShadow: setupError 
+                              ? '0 0 0 3px rgba(239, 68, 68, 0.18)' 
+                              : (digit ? '0 2px 8px rgba(5, 150, 105, 0.12)' : 'none'),
+                            transition: 'all 0.15s ease'
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = setupError ? '#EF4444' : '#059669'
+                            e.target.style.background = '#FFFFFF'
+                            e.target.style.boxShadow = setupError ? '0 0 0 3px rgba(239, 68, 68, 0.18)' : '0 0 0 3px rgba(5, 150, 105, 0.18)'
+                            e.target.select()
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = setupError ? '#EF4444' : (digit ? '#059669' : '#CBD5E1')
+                            e.target.style.background = setupError ? '#FEF2F2' : (digit ? '#ECFDF5' : '#F8FAFC')
+                            e.target.style.boxShadow = setupError ? '0 0 0 3px rgba(239, 68, 68, 0.18)' : (digit ? '0 2px 8px rgba(5, 150, 105, 0.12)' : 'none')
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Error display directly under OTP boxes */}
+                    {setupError && (
+                      <div style={{
+                        marginTop: 12,
+                        padding: '10px 14px',
+                        background: '#FEF2F2',
+                        border: '1.5px solid #FCA5A5',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: '#DC2626'
+                      }}>
+                        <AlertTriangle size={16} style={{ flexShrink: 0, color: '#DC2626' }} />
+                        <span>{setupError}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -545,16 +713,16 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
                     </button>
                     <button
                       type="submit"
-                      disabled={setupLoading || !verifyCode || !savedCodesChecked}
+                      disabled={setupLoading || verifyCode.length !== 6 || !savedCodesChecked}
                       style={{
                         padding: '10px 22px',
                         borderRadius: 10,
                         border: 'none',
-                        background: setupLoading || !verifyCode || !savedCodesChecked ? '#94A3B8' : '#059669',
+                        background: setupLoading || verifyCode.length !== 6 || !savedCodesChecked ? '#94A3B8' : '#059669',
                         color: '#FFFFFF',
                         fontSize: 13.5,
                         fontWeight: 700,
-                        cursor: setupLoading || !verifyCode || !savedCodesChecked ? 'not-allowed' : 'pointer',
+                        cursor: setupLoading || verifyCode.length !== 6 || !savedCodesChecked ? 'not-allowed' : 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6
@@ -691,74 +859,98 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
             /* ── Default Status Overview Screen ── */
             <div>
               {status.enabled ? (
-                /* Enabled State */
+                /* Enabled State - Inspiring & Reassuring View */
                 <div>
                   <div style={{
-                    background: '#ECFDF5',
-                    border: '1px solid #A7F3D0',
-                    borderRadius: 14,
-                    padding: '16px',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 12,
-                    marginBottom: 18
+                    background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+                    border: '1.5px solid #A7F3D0',
+                    borderRadius: 16,
+                    padding: '20px 18px',
+                    textAlign: 'center',
+                    marginBottom: 18,
+                    boxShadow: '0 4px 16px rgba(5, 150, 105, 0.08)'
                   }}>
-                    <CheckCircle2 size={24} style={{ color: '#059669', flexShrink: 0, marginTop: 2 }} />
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#065F46' }}>
-                        Google Authenticator (2FA) সক্রিয় আছে
-                      </div>
-                      <div style={{ fontSize: 12, color: '#047857', marginTop: 3, lineHeight: 1.45 }}>
-                        আপনার অ্যাকাউন্ট সম্পূর্ণ সুরক্ষিত। প্রতিবার নতুন লগইনে Google Authenticator অ্যাপের ৬ সংখ্যার কোড প্রয়োজন হবে।
-                      </div>
-                      {status.setup_at && (
-                        <div style={{ fontSize: 11, color: '#059669', marginTop: 6 }}>
-                          চালু করার তারিখ: {new Date(status.setup_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-                      )}
+                    <div style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: '50%',
+                      background: '#10B981',
+                      color: '#FFFFFF',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)',
+                      marginBottom: 12
+                    }}>
+                      <ShieldCheck size={28} />
                     </div>
+
+                    <h4 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 900, color: '#065F46' }}>
+                      আপনার অ্যাকাউন্ট সর্বোচ্চ সুরক্ষায় সক্রিয়!
+                    </h4>
+
+                    <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#047857', lineHeight: 1.55 }}>
+                      অভিনন্দন! আপনার ফিল্ড পার্টনার প্রোফাইল ও কমিশন ওয়ালেটে Google 2FA নিরাপত্তা সক্রিয় রয়েছে। এখন আপনার পাসওয়ার্ড অন্য কারও জানা থাকলেও আপনার ফোন ছাড়া কেউ লগইন করতে পারবে না।
+                    </p>
+
+                    {status.setup_at && (
+                      <div style={{
+                        display: 'inline-block',
+                        background: '#FFFFFF',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 20,
+                        padding: '4px 12px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#059669'
+                      }}>
+                        🛡️ চালুর তারিখ: {new Date(status.setup_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+                    )}
                   </div>
 
-                  <div style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 12,
-                    padding: '12px 14px',
-                    marginBottom: 20,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: 12.5
-                  }}>
-                    <span style={{ color: '#475569', fontWeight: 600 }}>অবশিষ্ট জরুরি ব্যাকআপ কোড:</span>
-                    <strong style={{ color: '#0F172A', fontFamily: 'monospace', fontSize: 14 }}>
-                      {status.backup_codes_remaining} টি
-                    </strong>
-                  </div>
+                  {/* Primary OK Button */}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    style={{
+                      width: '100%',
+                      padding: '12px 20px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #065F46 0%, #059669 100%)',
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      boxShadow: '0 4px 14px rgba(5, 150, 105, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Check size={18} />
+                    <span>ঠিক আছে (সুরক্ষিত থাকুন)</span>
+                  </button>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      বন্ধ করুন
-                    </button>
+                  {/* Discreet Deactivate Link */}
+                  <div style={{ textAlign: 'center', marginTop: 14 }}>
                     <button
                       type="button"
                       onClick={() => setIsDisabling(true)}
                       style={{
-                        padding: '9px 18px',
-                        borderRadius: 10,
-                        border: '1px solid #FECACA',
-                        background: '#FEF2F2',
-                        color: '#DC2626',
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: 'pointer'
+                        background: 'none',
+                        border: 'none',
+                        color: '#94A3B8',
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
                       }}
                     >
-                      নিষ্ক্রিয় করুন
+                      প্রয়োজনে ২-ধাপ নিরাপত্তা নিষ্ক্রিয় করতে চান? এখানে ক্লিক করুন
                     </button>
                   </div>
                 </div>

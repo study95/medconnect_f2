@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { 
   getTwoFactorStatusApi, 
@@ -28,10 +28,66 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
   const [setupLoading, setSetupLoading] = useState(false)
   const [setupError, setSetupError] = useState('')
   const [setupData, setSetupData] = useState(null) // { secret, qr_url, backup_codes }
-  const [verifyCode, setVerifyCode] = useState('')
+  const [verifyOtp, setVerifyOtp] = useState(['', '', '', '', '', ''])
+  const verifyOtpRefs = useRef([])
+  const verifyCode = verifyOtp.join('')
   const [savedCodesChecked, setSavedCodesChecked] = useState(false)
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedCodes, setCopiedCodes] = useState(false)
+
+  // Auto-focus first digit on Step 2
+  useEffect(() => {
+    if (showSetupModal && setupStep === 2 && verifyOtpRefs.current[0]) {
+      setTimeout(() => verifyOtpRefs.current[0]?.focus(), 150)
+    }
+  }, [showSetupModal, setupStep])
+
+  const handleOtpChange = (index, value) => {
+    const clean = value.replace(/\D/g, '')
+    if (!clean && value !== '') return
+    const char = clean.slice(-1)
+
+    const newOtp = [...verifyOtp]
+    newOtp[index] = char
+    setVerifyOtp(newOtp)
+    if (setupError) setSetupError('')
+
+    if (char && index < 5 && verifyOtpRefs.current[index + 1]) {
+      verifyOtpRefs.current[index + 1].focus()
+    }
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (!verifyOtp[index] && index > 0) {
+        verifyOtpRefs.current[index - 1]?.focus()
+      } else {
+        const newOtp = [...verifyOtp]
+        newOtp[index] = ''
+        setVerifyOtp(newOtp)
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      verifyOtpRefs.current[index - 1]?.focus()
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      verifyOtpRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+
+    const newOtp = ['', '', '', '', '', '']
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = pasted[i] || ''
+    }
+    setVerifyOtp(newOtp)
+    if (setupError) setSetupError('')
+
+    const nextIndex = Math.min(pasted.length, 5)
+    verifyOtpRefs.current[nextIndex]?.focus()
+  }
 
   // Disable Modal State
   const [showDisableModal, setShowDisableModal] = useState(false)
@@ -120,10 +176,14 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
         resetSetupModalState()
         fetchStatus()
       } else {
-        setSetupError(res.data?.message || 'ভুল কোড! আবার চেষ্টা করুন।')
+        const msg = res.data?.message || 'ভুল কোড! আবার চেষ্টা করুন।'
+        setSetupError(msg)
+        setTimeout(() => verifyOtpRefs.current[0]?.focus(), 100)
       }
     } catch (err) {
-      setSetupError(err.response?.data?.message || 'ভুল সিকিউরিটি কোড! সঠিক কোডটি দিন।')
+      const msg = err.response?.data?.message || 'ভুল সিকিউরিটি কোড! সঠিক কোডটি দিন।'
+      setSetupError(msg)
+      setTimeout(() => verifyOtpRefs.current[0]?.focus(), 100)
     } finally {
       setSetupLoading(false)
     }
@@ -492,7 +552,7 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
 
             {/* Modal Body */}
             <div style={{ padding: '24px', maxHeight: '78vh', overflowY: 'auto' }}>
-              {setupError && (
+              {setupStep === 1 && setupError && (
                 <div style={{
                   padding: '10px 14px',
                   borderRadius: 8,
@@ -745,30 +805,95 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
 
                   {/* 6-digit Code input for test */}
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--admin-text)', marginBottom: 6 }}>
-                      অ্যাপ থেকে ৬-সংখ্যার কোডটি দিন (যাচাইকরণ):
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      placeholder="123456"
-                      value={verifyCode}
-                      onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>
+                        অ্যাপ থেকে ৬-সংখ্যার কোডটি দিন (যাচাইকরণ):
+                      </label>
+                      <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>
+                        {verifyCode.length}/৬ ডিজিট
+                      </span>
+                    </div>
+
+                    <div 
+                      className="admin-otp-grid" 
+                      onPaste={handleOtpPaste}
                       style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 10,
-                        border: '1.5px solid var(--admin-border)',
-                        background: 'var(--admin-bg-alt)',
-                        color: 'var(--admin-text)',
-                        fontSize: 18,
-                        letterSpacing: 4,
-                        textAlign: 'center',
-                        fontWeight: 700,
-                        outline: 'none',
-                        boxSizing: 'border-box'
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: '8px',
+                        maxWidth: '360px',
+                        margin: '0 auto'
                       }}
-                    />
+                    >
+                      {verifyOtp.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={(el) => (verifyOtpRefs.current[idx] = el)}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                          style={{
+                            width: '100%',
+                            height: '52px',
+                            border: setupError 
+                              ? '2px solid #EF4444' 
+                              : (digit ? '2px solid var(--admin-primary, #00B875)' : '1.5px solid var(--admin-border, #CBD5E1)'),
+                            borderRadius: '12px',
+                            textAlign: 'center',
+                            fontSize: '22px',
+                            fontWeight: 800,
+                            fontFamily: 'monospace',
+                            color: setupError 
+                              ? '#DC2626' 
+                              : (digit ? 'var(--admin-primary, #00B875)' : 'var(--admin-text, #0F172A)'),
+                            background: setupError 
+                              ? '#FEF2F2' 
+                              : (digit ? 'rgba(0, 184, 117, 0.08)' : 'var(--admin-bg-alt, #F8FAFC)'),
+                            outline: 'none',
+                            boxShadow: setupError 
+                              ? '0 0 0 3px rgba(239, 68, 68, 0.18)' 
+                              : (digit ? '0 2px 8px rgba(0, 184, 117, 0.12)' : 'none'),
+                            transition: 'all 0.15s ease'
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = setupError ? '#EF4444' : 'var(--admin-primary, #00B875)'
+                            e.target.style.background = '#FFFFFF'
+                            e.target.style.boxShadow = setupError ? '0 0 0 3px rgba(239, 68, 68, 0.18)' : '0 0 0 3px rgba(0, 184, 117, 0.18)'
+                            e.target.select()
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = setupError ? '#EF4444' : (digit ? 'var(--admin-primary, #00B875)' : 'var(--admin-border, #CBD5E1)')
+                            e.target.style.background = setupError ? '#FEF2F2' : (digit ? 'rgba(0, 184, 117, 0.08)' : 'var(--admin-bg-alt, #F8FAFC)')
+                            e.target.style.boxShadow = setupError ? '0 0 0 3px rgba(239, 68, 68, 0.18)' : (digit ? '0 2px 8px rgba(0, 184, 117, 0.12)' : 'none')
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Error message directly under OTP boxes */}
+                    {setupError && (
+                      <div style={{
+                        marginTop: 12,
+                        padding: '10px 14px',
+                        background: '#FEF2F2',
+                        border: '1.5px solid #FCA5A5',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: '#DC2626'
+                      }}>
+                        <AlertTriangle size={16} style={{ flexShrink: 0, color: '#DC2626' }} />
+                        <span>{setupError}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>

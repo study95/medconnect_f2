@@ -687,7 +687,7 @@ export function AuthProvider({ children }) {
     getRoles,
   }
 
-  const idleTimeoutMs = getRoleIdleTimeoutMs(userType, isAdmin, isStaff)
+  const idleTimeoutMs = getRoleIdleTimeoutMs(userType, isAdmin, isStaff, isAgent)
   const { showWarning, remainingSeconds, stayLoggedIn } = useIdleTimeout({
     enabled: !!user?.id,
     timeoutMs: idleTimeoutMs,

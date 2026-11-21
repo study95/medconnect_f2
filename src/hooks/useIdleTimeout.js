@@ -7,12 +7,15 @@ const AUTH_CHANNEL_NAME = 'medconnect_auth_sync'
 /**
  * Resolve role-based inactivity timeout duration in milliseconds.
  */
-export function getRoleIdleTimeoutMs(userType, isAdmin, isStaff) {
+export function getRoleIdleTimeoutMs(userType, isAdmin, isStaff, isAgent) {
   if (isAdmin || userType === 'admin') {
     return 15 * 60 * 1000 // 15 minutes for Admin / Super-Admin
   }
   if (isStaff || userType === 'doctor' || userType === 'hospital') {
     return 30 * 60 * 1000 // 30 minutes for Doctor / Hospital
+  }
+  if (isAgent || userType === 'agent') {
+    return 60 * 60 * 1000 // 60 minutes for Field Partner / Agent
   }
   return 60 * 60 * 1000 // 60 minutes for Patient / General User
 }
